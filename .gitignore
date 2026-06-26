@@ -1,0 +1,8 @@
+# Projetos da v1 (não versionar — recomeço a partir das specs em docs/)
+old/
+
+# macOS
+.DS_Store
+
+# Claude Code (config pessoal/local)
+.claude/settings.local.json
