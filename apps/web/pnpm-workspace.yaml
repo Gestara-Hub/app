@@ -1,0 +1,6 @@
+# Configuracoes do pnpm (pnpm 11 le daqui, nao do campo "pnpm" do package.json).
+# allowBuilds: permite que estes pacotes rodem seus build scripts (binarios nativos).
+allowBuilds:
+  esbuild: true
+  lightningcss: true
+  unrs-resolver: true
