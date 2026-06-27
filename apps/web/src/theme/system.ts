@@ -1,7 +1,7 @@
 import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react'
 
-// Tema do GestaraHub (Corte Nobre) - ver docs/frontend/04-design-system.md.
-// A UI consome SEMPRE tokens semanticos e tokens de status por chave; nunca hex literal.
+// GestaraHub theme (Corte Nobre) - see docs/frontend/04-design-system.md.
+// The UI ALWAYS consumes semantic tokens and status tokens by key; never literal hex.
 const config = defineConfig({
   globalCss: {
     'html, body, #app': { minHeight: '100%' },
@@ -14,7 +14,7 @@ const config = defineConfig({
         body: { value: '"Inter", "Segoe UI", system-ui, sans-serif' },
         mono: { value: '"JetBrains Mono", ui-monospace, monospace' },
       },
-      // Densidade de painel operacional: corpo base 14px.
+      // Operational panel density: base body 14px.
       fontSizes: {
         xs: { value: '0.75rem' },
         sm: { value: '0.8125rem' },
@@ -29,7 +29,7 @@ const config = defineConfig({
         lg: { value: '8px' },
       },
       colors: {
-        // Marca: ambar/dourado fosco (navalha, latao, couro).
+        // Brand: matte amber/gold (razor, brass, leather).
         brand: {
           50: { value: '#FBF6EC' },
           100: { value: '#F3E6C9' },
@@ -42,7 +42,7 @@ const config = defineConfig({
           800: { value: '#4D3712' },
           900: { value: '#2E210B' },
         },
-        // Neutros: grafite quente (estrutura e texto).
+        // Neutrals: warm graphite (structure and text).
         neutral: {
           50: { value: '#F7F7F6' },
           100: { value: '#EDEDEB' },
@@ -55,16 +55,16 @@ const config = defineConfig({
           800: { value: '#26261F' },
           900: { value: '#16160F' },
         },
-        // Cores de status de agendamento (chaves EXATAS do canon).
+        // Appointment status colors (EXACT canon keys).
         status: {
-          pendente: { solid: { value: '#B7791F' }, surface: { value: '#FBF1DC' } },
-          confirmado: { solid: { value: '#2C5F8A' }, surface: { value: '#E1ECF5' } },
-          em_atendimento: { solid: { value: '#2F7A4D' }, surface: { value: '#DEF0E5' } },
-          concluido: { solid: { value: '#54544F' }, surface: { value: '#ECECEA' } },
-          cancelado: { solid: { value: '#C0392B' }, surface: { value: '#F7E2DF' } },
-          nao_compareceu: { solid: { value: '#7A3FA0' }, surface: { value: '#EFE3F5' } },
-          // Bloqueio NAO e status; estilo proprio (hachura/neutro).
-          bloqueio: { surface: { value: '#EDEDEB' }, border: { value: '#C2C2BC' } },
+          pending: { solid: { value: '#B7791F' }, surface: { value: '#FBF1DC' } },
+          confirmed: { solid: { value: '#2C5F8A' }, surface: { value: '#E1ECF5' } },
+          in_service: { solid: { value: '#2F7A4D' }, surface: { value: '#DEF0E5' } },
+          completed: { solid: { value: '#54544F' }, surface: { value: '#ECECEA' } },
+          cancelled: { solid: { value: '#C0392B' }, surface: { value: '#F7E2DF' } },
+          no_show: { solid: { value: '#7A3FA0' }, surface: { value: '#EFE3F5' } },
+          // Block is NOT a status; its own style (hatch/neutral).
+          block: { surface: { value: '#EDEDEB' }, border: { value: '#C2C2BC' } },
         },
       },
     },
@@ -86,7 +86,7 @@ const config = defineConfig({
           default: { value: { base: '{colors.neutral.200}', _dark: '{colors.neutral.700}' } },
           strong: { value: { base: '{colors.neutral.300}', _dark: '{colors.neutral.600}' } },
         },
-        // Habilita colorPalette="brand" nos componentes Chakra.
+        // Enables colorPalette="brand" on Chakra components.
         brand: {
           solid: { value: { base: '{colors.brand.600}', _dark: '{colors.brand.500}' } },
           contrast: { value: 'white' },

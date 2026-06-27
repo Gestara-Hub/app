@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { PagePlaceholder } from '@/components/PagePlaceholder'
 
-export const Route = createFileRoute('/_app/agendamentos')({
+export const Route = createFileRoute('/_app/team')({
   component: () => (
     <PagePlaceholder
-      titulo="Agendamentos"
-      descricao="Lista de agendamentos com filtros, busca e status."
+      title="Equipe"
+      description="Profissionais que realizam atendimentos."
     />
   ),
 })

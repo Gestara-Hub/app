@@ -1,6 +1,6 @@
 import { Box, Flex, Text, VStack } from '@chakra-ui/react'
 import { Link } from '@tanstack/react-router'
-import { navPrincipal, navRodape } from '@/lib/navigation'
+import { mainNav, footerNav } from '@/lib/navigation'
 import type { NavItem } from '@/lib/navigation'
 
 function NavLink({ item }: { item: NavItem }) {
@@ -56,7 +56,7 @@ export function Sidebar() {
       </Box>
 
       <VStack align="stretch" gap="1" mt="2">
-        {navPrincipal.map((item) => (
+        {mainNav.map((item) => (
           <NavLink key={item.to} item={item} />
         ))}
       </VStack>
@@ -64,7 +64,7 @@ export function Sidebar() {
       <Box flex="1" />
 
       <VStack align="stretch" gap="1">
-        {navRodape.map((item) => (
+        {footerNav.map((item) => (
           <NavLink key={item.to} item={item} />
         ))}
       </VStack>

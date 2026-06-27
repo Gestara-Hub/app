@@ -12,14 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppServicosRouteImport } from './routes/_app/servicos'
-import { Route as AppEquipeRouteImport } from './routes/_app/equipe'
-import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
-import { Route as AppClientesRouteImport } from './routes/_app/clientes'
-import { Route as AppAgendamentosRouteImport } from './routes/_app/agendamentos'
-import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
-import { Route as AppEquipeIdRouteImport } from './routes/_app/equipe.$id'
-import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
+import { Route as AppTeamRouteImport } from './routes/_app/team'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppServicesRouteImport } from './routes/_app/services'
+import { Route as AppScheduleRouteImport } from './routes/_app/schedule'
+import { Route as AppClientsRouteImport } from './routes/_app/clients'
+import { Route as AppAppointmentsRouteImport } from './routes/_app/appointments'
+import { Route as AppTeamIdRouteImport } from './routes/_app/team.$id'
+import { Route as AppClientsIdRouteImport } from './routes/_app/clients.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -35,123 +35,123 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppServicosRoute = AppServicosRouteImport.update({
-  id: '/servicos',
-  path: '/servicos',
+const AppTeamRoute = AppTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEquipeRoute = AppEquipeRouteImport.update({
-  id: '/equipe',
-  path: '/equipe',
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
-const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
+const AppServicesRoute = AppServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
   getParentRoute: () => AppRoute,
 } as any)
-const AppClientesRoute = AppClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
+const AppScheduleRoute = AppScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAgendamentosRoute = AppAgendamentosRouteImport.update({
-  id: '/agendamentos',
-  path: '/agendamentos',
+const AppClientsRoute = AppClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAgendaRoute = AppAgendaRouteImport.update({
-  id: '/agenda',
-  path: '/agenda',
+const AppAppointmentsRoute = AppAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEquipeIdRoute = AppEquipeIdRouteImport.update({
+const AppTeamIdRoute = AppTeamIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AppEquipeRoute,
+  getParentRoute: () => AppTeamRoute,
 } as any)
-const AppClientesIdRoute = AppClientesIdRouteImport.update({
+const AppClientsIdRoute = AppClientsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AppClientesRoute,
+  getParentRoute: () => AppClientsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
-  '/agenda': typeof AppAgendaRoute
-  '/agendamentos': typeof AppAgendamentosRoute
-  '/clientes': typeof AppClientesRouteWithChildren
-  '/configuracoes': typeof AppConfiguracoesRoute
-  '/equipe': typeof AppEquipeRouteWithChildren
-  '/servicos': typeof AppServicosRoute
-  '/clientes/$id': typeof AppClientesIdRoute
-  '/equipe/$id': typeof AppEquipeIdRoute
+  '/appointments': typeof AppAppointmentsRoute
+  '/clients': typeof AppClientsRouteWithChildren
+  '/schedule': typeof AppScheduleRoute
+  '/services': typeof AppServicesRoute
+  '/settings': typeof AppSettingsRoute
+  '/team': typeof AppTeamRouteWithChildren
+  '/clients/$id': typeof AppClientsIdRoute
+  '/team/$id': typeof AppTeamIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/agenda': typeof AppAgendaRoute
-  '/agendamentos': typeof AppAgendamentosRoute
-  '/clientes': typeof AppClientesRouteWithChildren
-  '/configuracoes': typeof AppConfiguracoesRoute
-  '/equipe': typeof AppEquipeRouteWithChildren
-  '/servicos': typeof AppServicosRoute
+  '/appointments': typeof AppAppointmentsRoute
+  '/clients': typeof AppClientsRouteWithChildren
+  '/schedule': typeof AppScheduleRoute
+  '/services': typeof AppServicesRoute
+  '/settings': typeof AppSettingsRoute
+  '/team': typeof AppTeamRouteWithChildren
   '/': typeof AppIndexRoute
-  '/clientes/$id': typeof AppClientesIdRoute
-  '/equipe/$id': typeof AppEquipeIdRoute
+  '/clients/$id': typeof AppClientsIdRoute
+  '/team/$id': typeof AppTeamIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
-  '/_app/agenda': typeof AppAgendaRoute
-  '/_app/agendamentos': typeof AppAgendamentosRoute
-  '/_app/clientes': typeof AppClientesRouteWithChildren
-  '/_app/configuracoes': typeof AppConfiguracoesRoute
-  '/_app/equipe': typeof AppEquipeRouteWithChildren
-  '/_app/servicos': typeof AppServicosRoute
+  '/_app/appointments': typeof AppAppointmentsRoute
+  '/_app/clients': typeof AppClientsRouteWithChildren
+  '/_app/schedule': typeof AppScheduleRoute
+  '/_app/services': typeof AppServicesRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/team': typeof AppTeamRouteWithChildren
   '/_app/': typeof AppIndexRoute
-  '/_app/clientes/$id': typeof AppClientesIdRoute
-  '/_app/equipe/$id': typeof AppEquipeIdRoute
+  '/_app/clients/$id': typeof AppClientsIdRoute
+  '/_app/team/$id': typeof AppTeamIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/agenda'
-    | '/agendamentos'
-    | '/clientes'
-    | '/configuracoes'
-    | '/equipe'
-    | '/servicos'
-    | '/clientes/$id'
-    | '/equipe/$id'
+    | '/appointments'
+    | '/clients'
+    | '/schedule'
+    | '/services'
+    | '/settings'
+    | '/team'
+    | '/clients/$id'
+    | '/team/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
-    | '/agenda'
-    | '/agendamentos'
-    | '/clientes'
-    | '/configuracoes'
-    | '/equipe'
-    | '/servicos'
+    | '/appointments'
+    | '/clients'
+    | '/schedule'
+    | '/services'
+    | '/settings'
+    | '/team'
     | '/'
-    | '/clientes/$id'
-    | '/equipe/$id'
+    | '/clients/$id'
+    | '/team/$id'
   id:
     | '__root__'
     | '/_app'
     | '/login'
-    | '/_app/agenda'
-    | '/_app/agendamentos'
-    | '/_app/clientes'
-    | '/_app/configuracoes'
-    | '/_app/equipe'
-    | '/_app/servicos'
+    | '/_app/appointments'
+    | '/_app/clients'
+    | '/_app/schedule'
+    | '/_app/services'
+    | '/_app/settings'
+    | '/_app/team'
     | '/_app/'
-    | '/_app/clientes/$id'
-    | '/_app/equipe/$id'
+    | '/_app/clients/$id'
+    | '/_app/team/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -182,106 +182,105 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/servicos': {
-      id: '/_app/servicos'
-      path: '/servicos'
-      fullPath: '/servicos'
-      preLoaderRoute: typeof AppServicosRouteImport
+    '/_app/team': {
+      id: '/_app/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AppTeamRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/equipe': {
-      id: '/_app/equipe'
-      path: '/equipe'
-      fullPath: '/equipe'
-      preLoaderRoute: typeof AppEquipeRouteImport
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/configuracoes': {
-      id: '/_app/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof AppConfiguracoesRouteImport
+    '/_app/services': {
+      id: '/_app/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof AppServicesRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/clientes': {
-      id: '/_app/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AppClientesRouteImport
+    '/_app/schedule': {
+      id: '/_app/schedule'
+      path: '/schedule'
+      fullPath: '/schedule'
+      preLoaderRoute: typeof AppScheduleRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/agendamentos': {
-      id: '/_app/agendamentos'
-      path: '/agendamentos'
-      fullPath: '/agendamentos'
-      preLoaderRoute: typeof AppAgendamentosRouteImport
+    '/_app/clients': {
+      id: '/_app/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof AppClientsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/agenda': {
-      id: '/_app/agenda'
-      path: '/agenda'
-      fullPath: '/agenda'
-      preLoaderRoute: typeof AppAgendaRouteImport
+    '/_app/appointments': {
+      id: '/_app/appointments'
+      path: '/appointments'
+      fullPath: '/appointments'
+      preLoaderRoute: typeof AppAppointmentsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/equipe/$id': {
-      id: '/_app/equipe/$id'
+    '/_app/team/$id': {
+      id: '/_app/team/$id'
       path: '/$id'
-      fullPath: '/equipe/$id'
-      preLoaderRoute: typeof AppEquipeIdRouteImport
-      parentRoute: typeof AppEquipeRoute
+      fullPath: '/team/$id'
+      preLoaderRoute: typeof AppTeamIdRouteImport
+      parentRoute: typeof AppTeamRoute
     }
-    '/_app/clientes/$id': {
-      id: '/_app/clientes/$id'
+    '/_app/clients/$id': {
+      id: '/_app/clients/$id'
       path: '/$id'
-      fullPath: '/clientes/$id'
-      preLoaderRoute: typeof AppClientesIdRouteImport
-      parentRoute: typeof AppClientesRoute
+      fullPath: '/clients/$id'
+      preLoaderRoute: typeof AppClientsIdRouteImport
+      parentRoute: typeof AppClientsRoute
     }
   }
 }
 
-interface AppClientesRouteChildren {
-  AppClientesIdRoute: typeof AppClientesIdRoute
+interface AppClientsRouteChildren {
+  AppClientsIdRoute: typeof AppClientsIdRoute
 }
 
-const AppClientesRouteChildren: AppClientesRouteChildren = {
-  AppClientesIdRoute: AppClientesIdRoute,
+const AppClientsRouteChildren: AppClientsRouteChildren = {
+  AppClientsIdRoute: AppClientsIdRoute,
 }
 
-const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
-  AppClientesRouteChildren,
+const AppClientsRouteWithChildren = AppClientsRoute._addFileChildren(
+  AppClientsRouteChildren,
 )
 
-interface AppEquipeRouteChildren {
-  AppEquipeIdRoute: typeof AppEquipeIdRoute
+interface AppTeamRouteChildren {
+  AppTeamIdRoute: typeof AppTeamIdRoute
 }
 
-const AppEquipeRouteChildren: AppEquipeRouteChildren = {
-  AppEquipeIdRoute: AppEquipeIdRoute,
+const AppTeamRouteChildren: AppTeamRouteChildren = {
+  AppTeamIdRoute: AppTeamIdRoute,
 }
 
-const AppEquipeRouteWithChildren = AppEquipeRoute._addFileChildren(
-  AppEquipeRouteChildren,
-)
+const AppTeamRouteWithChildren =
+  AppTeamRoute._addFileChildren(AppTeamRouteChildren)
 
 interface AppRouteChildren {
-  AppAgendaRoute: typeof AppAgendaRoute
-  AppAgendamentosRoute: typeof AppAgendamentosRoute
-  AppClientesRoute: typeof AppClientesRouteWithChildren
-  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
-  AppEquipeRoute: typeof AppEquipeRouteWithChildren
-  AppServicosRoute: typeof AppServicosRoute
+  AppAppointmentsRoute: typeof AppAppointmentsRoute
+  AppClientsRoute: typeof AppClientsRouteWithChildren
+  AppScheduleRoute: typeof AppScheduleRoute
+  AppServicesRoute: typeof AppServicesRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppTeamRoute: typeof AppTeamRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAgendaRoute: AppAgendaRoute,
-  AppAgendamentosRoute: AppAgendamentosRoute,
-  AppClientesRoute: AppClientesRouteWithChildren,
-  AppConfiguracoesRoute: AppConfiguracoesRoute,
-  AppEquipeRoute: AppEquipeRouteWithChildren,
-  AppServicosRoute: AppServicosRoute,
+  AppAppointmentsRoute: AppAppointmentsRoute,
+  AppClientsRoute: AppClientsRouteWithChildren,
+  AppScheduleRoute: AppScheduleRoute,
+  AppServicesRoute: AppServicesRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppTeamRoute: AppTeamRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
 

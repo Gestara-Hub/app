@@ -15,16 +15,16 @@ export interface NavItem {
   icon: LucideIcon
 }
 
-// Navegacao canonica (ver docs/frontend/03 e 04). Rotulo "Equipe" na nav.
-export const navPrincipal: NavItem[] = [
+// Canonical navigation (see docs/frontend/03 and 04). Label "Equipe" in nav.
+export const mainNav: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard },
-  { label: 'Agenda', to: '/agenda', icon: CalendarDays },
-  { label: 'Agendamentos', to: '/agendamentos', icon: ClipboardList },
-  { label: 'Clientes', to: '/clientes', icon: Users },
-  { label: 'Equipe', to: '/equipe', icon: UserCog },
-  { label: 'Servicos', to: '/servicos', icon: Scissors },
+  { label: 'Agenda', to: '/schedule', icon: CalendarDays },
+  { label: 'Agendamentos', to: '/appointments', icon: ClipboardList },
+  { label: 'Clientes', to: '/clients', icon: Users },
+  { label: 'Equipe', to: '/team', icon: UserCog },
+  { label: 'Servicos', to: '/services', icon: Scissors },
 ]
 
-export const navRodape: NavItem[] = [
-  { label: 'Configuracoes', to: '/configuracoes', icon: Settings },
+export const footerNav: NavItem[] = [
+  { label: 'Configuracoes', to: '/settings', icon: Settings },
 ]

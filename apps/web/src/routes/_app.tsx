@@ -8,10 +8,10 @@ import { useEffect } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { authService } from '@/services/authService'
 
-// Layout protegido do app (sidebar + topbar). Login fica fora deste layout.
+// Protected app layout (sidebar + topbar). Login lives outside this layout.
 export const Route = createFileRoute('/_app')({
   beforeLoad: () => {
-    // Guarda mockada para navegacao no cliente.
+    // Mocked guard for client-side navigation.
     if (typeof window !== 'undefined' && !authService.getSession()) {
       throw redirect({ to: '/login' })
     }
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/_app')({
 function AppLayout() {
   const router = useRouter()
 
-  // Fallback para carga direta/hidratacao (SSR nao tem a sessao do localStorage).
+  // Fallback for direct load/hydration (SSR has no localStorage session).
   useEffect(() => {
     if (!authService.getSession()) {
       router.navigate({ to: '/login' })

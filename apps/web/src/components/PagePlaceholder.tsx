@@ -1,19 +1,19 @@
 import { Box, Heading, Text } from '@chakra-ui/react'
 
 interface PagePlaceholderProps {
-  titulo: string
-  descricao?: string
+  title: string
+  description?: string
 }
 
-export function PagePlaceholder({ titulo, descricao }: PagePlaceholderProps) {
+export function PagePlaceholder({ title, description }: PagePlaceholderProps) {
   return (
     <Box>
       <Heading size="2xl" color="fg.default">
-        {titulo}
+        {title}
       </Heading>
-      {descricao ? (
+      {description ? (
         <Text mt="2" color="fg.muted">
-          {descricao}
+          {description}
         </Text>
       ) : null}
       <Box

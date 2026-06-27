@@ -1,23 +1,24 @@
-// Servico de autenticacao MOCKADO (ver docs/frontend/02-camada-de-dados-mock.md).
-// Sessao volatil em localStorage; trocar por API real = trocar so esta implementacao.
+// MOCKED authentication service (see docs/frontend/02-camada-de-dados-mock.md).
+// Volatile session in localStorage; swapping for a real API = swap only this
+// implementation.
 
-export interface Sessao {
-  usuarioId: string
-  nome: string
-  perfil: 'admin'
-  organizacaoId: string
-  unidadeId: string
+export interface Session {
+  userId: string
+  name: string
+  role: 'admin'
+  organizationId: string
+  unitId: string
 }
 
 const STORAGE_KEY = 'gestarahub.sessao'
 
-// Usuario logado do MVP = proprietario/admin da Corte Nobre (ver docs/product/06 e 08).
-const SESSAO_MOCK: Sessao = {
-  usuarioId: 'u-marcelo',
-  nome: 'Marcelo Andrade',
-  perfil: 'admin',
-  organizacaoId: 'org-corte-nobre',
-  unidadeId: 'un-matriz',
+// Logged-in MVP user = owner/admin of Corte Nobre (see docs/product/06 and 08).
+const MOCK_SESSION: Session = {
+  userId: 'u-marcelo',
+  name: 'Marcelo Andrade',
+  role: 'admin',
+  organizationId: 'org-corte-nobre',
+  unitId: 'un-matriz',
 }
 
 function isBrowser(): boolean {
@@ -25,21 +26,21 @@ function isBrowser(): boolean {
 }
 
 export const authService = {
-  getSession(): Sessao | null {
+  getSession(): Session | null {
     if (!isBrowser()) return null
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     try {
-      return JSON.parse(raw) as Sessao
+      return JSON.parse(raw) as Session
     } catch {
       return null
     }
   },
-  login(): Sessao {
+  login(): Session {
     if (isBrowser()) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(SESSAO_MOCK))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_SESSION))
     }
-    return SESSAO_MOCK
+    return MOCK_SESSION
   },
   logout(): void {
     if (isBrowser()) {
