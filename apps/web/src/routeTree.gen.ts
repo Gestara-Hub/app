@@ -9,50 +9,287 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppServicosRouteImport } from './routes/_app/servicos'
+import { Route as AppEquipeRouteImport } from './routes/_app/equipe'
+import { Route as AppConfiguracoesRouteImport } from './routes/_app/configuracoes'
+import { Route as AppClientesRouteImport } from './routes/_app/clientes'
+import { Route as AppAgendamentosRouteImport } from './routes/_app/agendamentos'
+import { Route as AppAgendaRouteImport } from './routes/_app/agenda'
+import { Route as AppEquipeIdRouteImport } from './routes/_app/equipe.$id'
+import { Route as AppClientesIdRouteImport } from './routes/_app/clientes.$id'
 
-const IndexRoute = IndexRouteImport.update({
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppServicosRoute = AppServicosRouteImport.update({
+  id: '/servicos',
+  path: '/servicos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipeRoute = AppEquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClientesRoute = AppClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendamentosRoute = AppAgendamentosRouteImport.update({
+  id: '/agendamentos',
+  path: '/agendamentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipeIdRoute = AppEquipeIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppEquipeRoute,
+} as any)
+const AppClientesIdRoute = AppClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppClientesRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/agenda': typeof AppAgendaRoute
+  '/agendamentos': typeof AppAgendamentosRoute
+  '/clientes': typeof AppClientesRouteWithChildren
+  '/configuracoes': typeof AppConfiguracoesRoute
+  '/equipe': typeof AppEquipeRouteWithChildren
+  '/servicos': typeof AppServicosRoute
+  '/clientes/$id': typeof AppClientesIdRoute
+  '/equipe/$id': typeof AppEquipeIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/agenda': typeof AppAgendaRoute
+  '/agendamentos': typeof AppAgendamentosRoute
+  '/clientes': typeof AppClientesRouteWithChildren
+  '/configuracoes': typeof AppConfiguracoesRoute
+  '/equipe': typeof AppEquipeRouteWithChildren
+  '/servicos': typeof AppServicosRoute
+  '/': typeof AppIndexRoute
+  '/clientes/$id': typeof AppClientesIdRoute
+  '/equipe/$id': typeof AppEquipeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/agenda': typeof AppAgendaRoute
+  '/_app/agendamentos': typeof AppAgendamentosRoute
+  '/_app/clientes': typeof AppClientesRouteWithChildren
+  '/_app/configuracoes': typeof AppConfiguracoesRoute
+  '/_app/equipe': typeof AppEquipeRouteWithChildren
+  '/_app/servicos': typeof AppServicosRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/clientes/$id': typeof AppClientesIdRoute
+  '/_app/equipe/$id': typeof AppEquipeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/agenda'
+    | '/agendamentos'
+    | '/clientes'
+    | '/configuracoes'
+    | '/equipe'
+    | '/servicos'
+    | '/clientes/$id'
+    | '/equipe/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/login'
+    | '/agenda'
+    | '/agendamentos'
+    | '/clientes'
+    | '/configuracoes'
+    | '/equipe'
+    | '/servicos'
+    | '/'
+    | '/clientes/$id'
+    | '/equipe/$id'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/login'
+    | '/_app/agenda'
+    | '/_app/agendamentos'
+    | '/_app/clientes'
+    | '/_app/configuracoes'
+    | '/_app/equipe'
+    | '/_app/servicos'
+    | '/_app/'
+    | '/_app/clientes/$id'
+    | '/_app/equipe/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/servicos': {
+      id: '/_app/servicos'
+      path: '/servicos'
+      fullPath: '/servicos'
+      preLoaderRoute: typeof AppServicosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/equipe': {
+      id: '/_app/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof AppEquipeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/configuracoes': {
+      id: '/_app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/clientes': {
+      id: '/_app/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AppClientesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agendamentos': {
+      id: '/_app/agendamentos'
+      path: '/agendamentos'
+      fullPath: '/agendamentos'
+      preLoaderRoute: typeof AppAgendamentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda': {
+      id: '/_app/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/equipe/$id': {
+      id: '/_app/equipe/$id'
+      path: '/$id'
+      fullPath: '/equipe/$id'
+      preLoaderRoute: typeof AppEquipeIdRouteImport
+      parentRoute: typeof AppEquipeRoute
+    }
+    '/_app/clientes/$id': {
+      id: '/_app/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof AppClientesIdRouteImport
+      parentRoute: typeof AppClientesRoute
     }
   }
 }
 
+interface AppClientesRouteChildren {
+  AppClientesIdRoute: typeof AppClientesIdRoute
+}
+
+const AppClientesRouteChildren: AppClientesRouteChildren = {
+  AppClientesIdRoute: AppClientesIdRoute,
+}
+
+const AppClientesRouteWithChildren = AppClientesRoute._addFileChildren(
+  AppClientesRouteChildren,
+)
+
+interface AppEquipeRouteChildren {
+  AppEquipeIdRoute: typeof AppEquipeIdRoute
+}
+
+const AppEquipeRouteChildren: AppEquipeRouteChildren = {
+  AppEquipeIdRoute: AppEquipeIdRoute,
+}
+
+const AppEquipeRouteWithChildren = AppEquipeRoute._addFileChildren(
+  AppEquipeRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
+  AppAgendamentosRoute: typeof AppAgendamentosRoute
+  AppClientesRoute: typeof AppClientesRouteWithChildren
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppEquipeRoute: typeof AppEquipeRouteWithChildren
+  AppServicosRoute: typeof AppServicosRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
+  AppAgendamentosRoute: AppAgendamentosRoute,
+  AppClientesRoute: AppClientesRouteWithChildren,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppEquipeRoute: AppEquipeRouteWithChildren,
+  AppServicosRoute: AppServicosRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
