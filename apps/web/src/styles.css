@@ -1,6 +1,4 @@
-
-@import "tailwindcss";
-
+/* Base global minima; o restante do reset vem do Chakra UI v3 (preflight). */
 * {
   box-sizing: border-box;
 }
@@ -14,4 +12,3 @@ body,
 body {
   margin: 0;
 }
-

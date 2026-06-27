@@ -1,14 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Box, Heading, Text } from '@chakra-ui/react'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 function Home() {
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-      <p className="mt-4 text-lg">
-        Edit <code>src/routes/index.tsx</code> to get started.
-      </p>
-    </div>
+    <Box p="8">
+      <Heading size="2xl" color="brand.fg">
+        GestaraHub
+      </Heading>
+      <Text mt="4" color="fg.muted">
+        Esqueleto do app — cenario Corte Nobre. Chakra UI v3 ativo.
+      </Text>
+    </Box>
   )
 }
