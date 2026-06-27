@@ -154,11 +154,14 @@ O MVP deve permitir que o usuario:
 
 ## Entidades do MVP
 
+Convencao multi-tenant: as entidades carregam `organizacaoId` (e `unidadeId` nas entidades ligadas a uma unidade: Profissional, Agendamento, Bloqueio, SerieRecorrencia), para que o modelo de dados ja se pareca com um contrato real de API e facilite a evolucao para multiunidade (ver 05-regras-negocio.md). No MVP existe apenas uma organizacao e uma unidade simuladas.
+
 ### Cliente
 
 Campos esperados:
 
 - id
+- organizacaoId
 - nome
 - telefone
 - email opcional
@@ -172,6 +175,8 @@ Campos esperados:
 Campos esperados:
 
 - id
+- organizacaoId
+- unidadeId
 - nome
 - cargo ou especialidade
 - telefone opcional
@@ -186,6 +191,7 @@ Campos esperados:
 Campos esperados:
 
 - id
+- organizacaoId
 - nome
 - categoria
 - duracaoMinutos
@@ -200,6 +206,8 @@ Campos esperados:
 Campos esperados:
 
 - id
+- organizacaoId
+- unidadeId
 - clienteId
 - profissionalId
 - servicoId
@@ -220,6 +228,8 @@ Bloqueio de horario de um profissional.
 Campos esperados:
 
 - id
+- organizacaoId
+- unidadeId
 - profissionalId
 - data
 - inicio
@@ -235,13 +245,16 @@ Serie que agrupa as ocorrencias de um agendamento recorrente.
 Campos esperados:
 
 - id
+- organizacaoId
+- unidadeId
 - clienteId
 - profissionalId
 - servicoId
 - frequencia (semanal, quinzenal, mensal)
 - terminoPorOcorrencias opcional
 - terminoPorData opcional
-- inicio
+- inicio (data da primeira ocorrencia)
+- hora (horario das ocorrencias)
 - criadoEm
 - atualizadoEm
 
