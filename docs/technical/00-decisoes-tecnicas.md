@@ -2,18 +2,20 @@
 
 ## Decisao
 
-O GestaraHub e construido do zero, com abordagem frontend-first e dados mockados, sobre uma stack TypeScript moderna baseada em TanStack Start. O backend real fica adiado para a fase 3; ate la, toda a aplicacao roda no frontend, consumindo uma camada de servico mockada que imita um contrato de API HTTP.
+O GestaraHub e construido com abordagem frontend-first e dados mockados, sobre uma stack TypeScript moderna baseada em Next.js 16 (App Router, React Server Components). O backend real fica adiado para a fase 3; ate la, toda a aplicacao roda no frontend, consumindo uma camada de servico mockada que imita um contrato de API HTTP.
 
-Nada do projeto anterior (old gestarahub-web e gestarahub-api) sera reaproveitado. Este documento e a fonte de verdade das escolhas tecnicas; decisoes marcadas como "refinavel" podem ser revistas sem reabrir a discussao das demais.
+A referencia visual e de componentes e o projeto `old/gestarahub-web` (Next + shadcn/ui), presente na maquina mas fora do git. Dele reaproveitamos layout refinado, componentes shadcn e wrappers de formulario; nao reaproveitamos a antiga `gestarahub-api`. Este documento e a fonte de verdade das escolhas tecnicas; decisoes marcadas como "refinavel" podem ser revistas sem reabrir a discussao das demais.
 
 ## Contexto
 
 O produto precisa validar escopo, telas, fluxos e regras operacionais antes de modelar um backend definitivo (ver `docs/frontend/00-estrategia-frontend.md` e `docs/product/04-mvp-barbearia.md`). Por isso a UI e desenvolvida primeiro, contra mocks que ja se parecem com a futura API. Quando o backend chegar, trocamos apenas a implementacao da camada de servico, sem reescrever telas.
 
+A escolha por Next.js + shadcn/ui (no lugar de TanStack Start + Chakra) busca uma stack mais madura e estavel, ja dominada pelo time, com layout de referencia pronto em `old/gestarahub-web`.
+
 ## Escopo
 
 - Stack tecnica e justificativa de cada item.
-- Estrutura de repositorio (monorepo).
+- Estrutura de repositorio (monorepo) e organizacao interna de `apps/web` (App Router).
 - Convencoes de codigo (TypeScript, organizacao por feature, path aliases, lint/format, gerenciador de pacotes).
 - Estrategia de testes.
 - Principio de mocks como contrato de API.
@@ -31,35 +33,39 @@ O produto precisa validar escopo, telas, fluxos e regras operacionais antes de m
 
 | Camada | Escolha | Justificativa curta |
 | --- | --- | --- |
-| Framework | TanStack Start (v1.0, mar/2026, production-ready) | Full-stack React sobre Vite, com SSR e server functions disponiveis. No MVP usamos so o lado cliente; o caminho para o backend (fase 3) ja fica preparado sem trocar de framework. |
-| Roteamento | TanStack Router (file-based, type-safe) | Rotas tipadas de ponta a ponta, params e search params validados, integrado ao TanStack Start. |
+| Framework | Next.js 16 (App Router, RSC) | Full-stack React maduro e estavel; App Router com Server e Client Components. No MVP usamos so o lado cliente para a camada mockada; o caminho para o backend (fase 3) fica preparado. |
 | Linguagem | TypeScript (modo strict) | Seguranca de tipos em todo o codigo; os mocks viram contratos tipados reutilizaveis pelo backend futuro. |
-| UI / design system | Chakra UI v3 | Usa CSS variables e e SSR-friendly (resolveu os problemas de SSR da v2). Tem guia oficial de integracao com TanStack Router. |
-| Estado de servidor / dados | TanStack Query | Cache, loading/erro, invalidacao e refetch padronizados. Consome a camada de servico mockada como se fosse uma API real. |
+| UI / design system | shadcn/ui (style "new-york", base color "neutral", cssVariables) | Componentes copiados para o repo (controle total), sobre Radix. Layout de referencia ja pronto em `old/gestarahub-web`. |
+| CSS / estilo | Tailwind CSS v4 | Utilitarios + variaveis CSS do tema shadcn. |
+| Primitivas acessiveis | Radix UI | Base dos componentes shadcn (dialog, select, dropdown, etc.). |
+| Icones | lucide-react | Conjunto de icones padrao do shadcn. |
+| Formularios | React Hook Form 7 + Zod 4 via `@hookform/resolvers` (zodResolver) | Validacao no submit, revalidacao no change (padrao RHF: `mode: onSubmit` + `reValidateMode: onChange`). Wrappers de campo Controller-based (ver `old/src/components/form`). |
+| Estado de servidor / dados | TanStack Query | Cache, loading/erro, invalidacao e refetch padronizados. Consome a camada de servico mockada como se fosse uma API real. Roda em client components. |
 | Estado de UI local | useState | Estado simples vive no componente. |
 | Estado de UI global leve | Zustand (se necessario) | Para estado de UI compartilhado (ex.: filtros, preferencias). NAO usar Redux. So introduzir quando houver necessidade real. |
-| Calendario / Agenda | react-big-calendar (free) | Suporta colunas por recurso (profissional) no day view sem custo. NAO usar Schedule-X (resource view paga) nem FullCalendar (resource pago). |
-| Build / bundler | Vite | Base do TanStack Start; dev server rapido e build otimizado. |
+| Calendario / Agenda | react-big-calendar (free, client component) | Suporta colunas por recurso (profissional) no day view sem custo. NAO usar Schedule-X (resource view paga) nem FullCalendar (resource pago). |
+| Datas | date-fns | Formatacao e manipulacao de datas. |
+| Toasts / notificacoes | sonner | Toasts via `<Toaster/>` montado no root layout. |
 | Gerenciador de pacotes | pnpm (refinavel) | Bom para monorepo (workspaces, store unico, instalacao rapida). |
-| Testes unit/componente | Vitest + Testing Library | Integra com Vite; testes rapidos focados em comportamento de componentes e logica. |
+| Testes unit/componente | Vitest + Testing Library | Testes rapidos focados em comportamento de componentes e logica pura. |
 | Testes e2e | Playwright (fase posterior) | E2e dos fluxos principais quando a aplicacao amadurecer. |
-| Lint / format | ESLint + Prettier OU Biome (refinavel) | Padronizacao de estilo e qualidade. A escolha entre o par ESLint+Prettier e o Biome (tudo-em-um, mais rapido) fica em aberto. |
+| Lint / format | ESLint + Prettier OU Biome (refinavel) | Padronizacao de estilo e qualidade. A escolha fica em aberto. |
 
 ### Notas sobre a stack
 
-- SSR esta disponivel no TanStack Start, mas no MVP frontend-first nao e um requisito; o foco e a experiencia interativa contra mocks.
-- Server functions do TanStack Start NAO sao usadas no MVP. Ficam reservadas para a fase 3, quando o backend for construido.
-- Onde a API exata de uma lib for incerta, consultar a doc oficial antes de codificar (ex.: integracao Chakra UI v3 + TanStack Router, configuracao de resource view do react-big-calendar).
+- RSC esta disponivel no App Router, mas a camada de dados mockada (TanStack Query + services) vive em client components no MVP; o foco e a experiencia interativa contra mocks.
+- Nenhuma rota de servidor / route handler do Next acessa dados reais no MVP. Ficam reservados para a fase 3.
+- Onde a API exata de uma lib for incerta, consultar `old/gestarahub-web` e a doc oficial antes de codificar (ex.: configuracao de resource view do react-big-calendar, padroes de wrapper RHF).
 
 ## Estrutura de repositorio
 
-Monorepo unico em `gestarahub/app`. No momento existe apenas o frontend; `apps/api` e `packages/` sao previsao para fases futuras.
+Monorepo unico. No momento existe apenas o frontend; `apps/api` e `packages/` sao previsao para fases futuras.
 
 ```text
-gestarahub/app
+gestarahub
   apps/
-    web/                # frontend (TanStack Start) - unico app no MVP
-    api/                # FUTURO (fase 3): backend do zero
+    web/                # frontend (Next.js 16, App Router) - unico app no MVP
+    api/                # FUTURO (fase 3): backend NestJS (do zero)
   packages/             # FUTURO: codigo compartilhado (tipos, contratos, utils)
   pnpm-workspace.yaml   # workspaces do monorepo
   package.json          # scripts e deps na raiz
@@ -69,35 +75,43 @@ gestarahub/app
 - `packages/` surgira quando houver codigo a compartilhar entre `apps/web` e `apps/api` (ex.: tipos de entidade e contratos de servico).
 - O monorepo evita reescrita: os contratos tipados nascidos nos mocks podem migrar para `packages/` e ser consumidos pelo backend.
 
-### Organizacao interna de apps/web (por feature)
+### Organizacao interna de apps/web (App Router, por feature)
 
-A organizacao e por feature (dominio), nao por tipo de arquivo. Cada feature agrupa suas telas, componentes, hooks e services.
+As rotas vivem em `src/app` (App Router). A UI de dominio vive em `src/features`, organizada por feature, nao por tipo de arquivo. Aliases `@/*` apontam para `src/*` (incluindo `@/components/ui`, `@/lib/utils`, `@/hooks`, como o shadcn espera).
 
 ```text
 apps/web/src
-  routes/               # rotas file-based do TanStack Router
-  features/
-    agenda/
-    agendamentos/
-    clientes/
-    equipe/
-    servicos/
-    dashboard/
-    configuracoes/
-  components/            # componentes de UI compartilhados (design system local)
-  services/             # camada de servico mockada (contrato de API)
-  lib/                  # utils, setup de query client, theme Chakra, etc.
-  mocks/                # store em memoria e seed (ver doc de frontend 02)
+  app/                        # rotas (App Router)
+    layout.tsx                # root layout: html, Providers (QueryClient, ThemeProvider, <Toaster/>), globals.css
+    globals.css               # Tailwind v4 + variaveis CSS do tema shadcn
+    not-found.tsx             # pagina 404
+    (auth)/login/page.tsx     # login (publico)
+    (app)/layout.tsx          # app shell (Sidebar + Topbar) + guarda de sessao
+    (app)/page.tsx            # Dashboard (/)
+    (app)/services/  clients/[id]  team/[id]  schedule/  appointments/  settings/
+  components/ui/              # componentes shadcn (button, dialog, select, form, input, ...)
+  components/layout/          # Sidebar, Topbar, AppShell
+  components/form/            # wrappers de campo RHF (Controller-based): InputText, InputCurrency, ...
+  features/<dominio>/         # UI por dominio (components/, hooks/)
+  lib/                        # utils (cn), queryKeys, format, providers
+  services/                   # camada de servico mockada (async tipada)
+  mocks/                      # store em memoria + seed Corte Nobre
+  types/                      # contratos (entidades, enums, schemas Zod)
 ```
 
 A divisao final de pastas dentro de cada feature e detalhada nos docs de frontend.
 
+### Guarda de rota (mock)
+
+Sessao mockada via cookie. A protecao de `(app)/*` e feita por Next middleware (`middleware.ts`) que redireciona para `/login`, ou por guarda no `(app)/layout`. Como e mock, manter simples.
+
 ## Convencoes
 
-- TypeScript em modo strict em todo o repositorio; evitar `any`, preferir tipos derivados dos contratos.
+- TypeScript em modo strict em todo o repositorio; evitar `any`, preferir tipos derivados dos contratos (`src/types`, schemas Zod).
 - Organizacao por feature/dominio (ver arvore acima). Codigo realmente generico vai para `components/`, `lib/` ou, no futuro, `packages/`.
-- Path aliases (ex.: `@/features/...`, `@/services/...`, `@/lib/...`) para imports limpos e estaveis, configurados no `tsconfig` e no Vite. Os aliases exatos serao fixados no setup do `apps/web`.
-- Nomenclatura de codigo em ingles segue o padrao das libs; os ENUMS de dominio usam as chaves canonicas em portugues definidas pelo produto (ver secao de enums).
+- Path aliases `@/*` -> `src/*`, com `@/components/ui`, `@/lib/utils` e `@/hooks` conforme o padrao do shadcn; configurados no `tsconfig` e em `components.json`.
+- Nomenclatura de codigo em ingles segue o padrao das libs; a UI e em portugues (acentuado). Os ENUMS de dominio usam chaves canonicas em portugues (ver secao de enums).
+- Formularios: React Hook Form + zodResolver; validacao no submit e revalidacao no change. Usar os wrappers de campo em `components/form`.
 - Lint/format: ESLint + Prettier OU Biome (refinavel). Decidir um e aplicar consistentemente no `apps/web`.
 - Gerenciador de pacotes: pnpm (refinavel), com workspaces na raiz do monorepo.
 
@@ -106,7 +120,7 @@ A divisao final de pastas dentro de cada feature e detalhada nos docs de fronten
 Dashboard, Agenda, Agendamentos, Clientes, Equipe, Servicos, Configuracoes.
 
 - "Equipe" e o rotulo da navegacao; "Profissional" e o termo usado no contexto de agendamento e nas telas de detalhe.
-- Login fica fora do app shell (tela separada, sessao mockada).
+- Login fica fora do app shell (rota `(auth)/login`, sessao mockada).
 
 ### Enums (chaves exatas)
 
@@ -141,11 +155,15 @@ O detalhamento desta camada (estrutura de services, store, seed, simulacao de la
 
 ## Backend (fase 3)
 
-- O backend sera construido do zero na fase 3, sem reaproveitar nada do projeto antigo.
-- Caminho provavel: server functions do TanStack Start (e/ou um `apps/api` dedicado), reaproveitando os contratos tipados ja definidos pelos mocks.
-- Ate la, nenhuma server function e usada; persistencia e autenticacao continuam mockadas e volateis.
+- O backend sera **NestJS**, construido do zero na fase 3 num `apps/api` dedicado (monorepo), sem reaproveitar nada do projeto antigo (`gestarahub-api`).
+- A camada de servico mockada do frontend ja imita o contrato da futura API NestJS: na fase 3, troca-se apenas a implementacao dos services (de store em memoria para `fetch` ao NestJS), mantendo assinaturas e tipos. Os contratos tipados podem ser promovidos para `packages/` e compartilhados entre `apps/web` e `apps/api`.
+- Ate la, nenhum endpoint real e usado; persistencia e autenticacao continuam mockadas e volateis.
 
 ## Referencias
+
+Referencia de implementacao:
+
+- `old/gestarahub-web` (Next + shadcn) - layout, componentes shadcn e wrappers de formulario.
 
 Frontend:
 
@@ -166,6 +184,6 @@ Produto:
 
 - Fixar o gerenciador de pacotes (pnpm e a recomendacao) e inicializar o monorepo com workspaces.
 - Decidir entre ESLint + Prettier e Biome e aplicar no `apps/web`.
-- Definir os path aliases exatos no `tsconfig` e no Vite.
-- Confirmar na doc oficial os detalhes de integracao Chakra UI v3 + TanStack Router e de resource view do react-big-calendar antes de codificar.
+- Confirmar os path aliases em `tsconfig` e `components.json` no setup do `apps/web`.
+- Confirmar na doc oficial / em `old/gestarahub-web` os detalhes de resource view do react-big-calendar antes de codificar.
 - Completar os docs de frontend 01 a 05 referenciados acima.

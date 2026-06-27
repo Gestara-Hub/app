@@ -14,6 +14,13 @@ calendario. Ela atende a todos os requisitos do MVP sem custo:
 Nao usamos Schedule-X (a resource view e paga) nem FullCalendar (a resource view
 tambem e paga). Ver STACK CANON.
 
+No Next App Router a Agenda e um **client component** (`'use client'`):
+react-big-calendar depende de APIs de browser (DOM, medidas de layout, eventos de
+ponteiro), entao a tela da Agenda e o componente de calendario rodam no cliente.
+Os dados continuam vindo da camada mockada via hooks (TanStack Query), tambem em
+client components. RSC pode envolver a pagina (shell, metadados), mas o grid do
+calendario fica sob a fronteira `'use client'`.
+
 Docs oficiais (consultar quando a API exata for necessaria):
 
 - Site de docs/demos: https://bigcalendar.github.io/react-big-calendar/index.html
@@ -38,31 +45,47 @@ A Agenda e a tela central do MVP (`docs/product/04-mvp-barbearia.md`). Ela preci
 A Agenda nunca le mocks direto. Ela consome **hooks (TanStack Query) -> services
 mockados -> store em memoria**, conforme o principio central do STACK CANON. O
 componente de calendario apenas recebe eventos ja mapeados e dispara callbacks de
-intencao (selecionar slot, selecionar evento) que abrem modais.
+intencao (selecionar slot, selecionar evento) que abrem dialogs.
 
 ## Escopo
 
 - Views: dia, semana, mes e agenda (lista).
 - Colunas por profissional (resources) no day view + filtro por profissional.
 - Mapeamento Agendamento -> evento do calendario.
-- Cor do evento por status (alinhada ao guia de status do frontend).
+- Cor do evento por status (alinhada ao design system do frontend).
 - Bloqueios como background events, destacados e nao agendaveis.
 - Series recorrentes com indicacao visual de pertencimento a uma serie.
 - Bloqueio de conflito (sobreposicao para o mesmo profissional).
-- Criacao/edicao via modal (sem drag-and-drop no MVP).
+- Criacao/edicao via Dialog (shadcn/ui), sem drag-and-drop no MVP.
 - Localizacao pt-BR (localizer date-fns) e expediente da Corte Nobre.
 - Estados da Agenda conforme `docs/product/10-estados-e-mensagens.md`.
 
 ## Fora de escopo (MVP)
 
 - Drag-and-drop e resize de eventos (addon `react-big-calendar/lib/addons/dragAndDrop`).
-  Remarcacao acontece por modal, nao por arrastar.
+  Remarcacao acontece por dialog, nao por arrastar.
 - Encaixe manual / confirmacao de sobreposicao. Conflito do mesmo profissional e
   SEMPRE bloqueado.
 - Resource view em week/month. Colunas por profissional sao usadas apenas no day
   view; week/month exibem a agenda agregada (com filtro por profissional).
-- Server functions / SSR de dados da Agenda. No MVP os dados vem da camada mockada.
+- Server functions / SSR de dados da Agenda. No MVP os dados vem da camada mockada
+  via hooks em client components; o calendario nao e renderizado no servidor.
 - Origens `online` e `whatsapp`.
+
+## Client component (Next App Router)
+
+- O arquivo da rota (ex.: `src/app/(app)/schedule/page.tsx`) pode ser RSC, mas o
+  componente que renderiza `<Calendar />` declara `'use client'` no topo.
+- O `localizer` (date-fns) e construido no modulo client; nao depende de runtime
+  de servidor.
+- Para evitar mismatch de SSR/hidratacao, manter o grid do calendario dentro da
+  fronteira client. Se necessario, montar o calendario apenas apos o mount do
+  cliente (ex.: `dynamic(..., { ssr: false })` ou guarda de `mounted`), confirmando
+  a estrategia na doc da lib e do Next.
+- O CSS base do react-big-calendar e importado uma vez no modulo client (ex.:
+  `import "react-big-calendar/lib/css/react-big-calendar.css"`) e sobrescrito com
+  as variaveis CSS do design system (Tailwind v4 + shadcn). Confirmar o caminho do
+  CSS na doc oficial.
 
 ## Views
 
@@ -81,7 +104,8 @@ Props relevantes (confirmar nas docs):
 
 - `views` define o conjunto habilitado (ex.: dia, semana, mes, agenda).
 - `defaultView` / `view` controla a view atual (controlado via estado da rota/URL
-  para permitir deep-link, ex.: `?view=day&date=2026-06-26`).
+  para permitir deep-link, ex.: `?view=day&date=2026-06-26`, usando os search
+  params do App Router).
 - `date` / `onNavigate` controlam a data corrente.
 - `min` / `max` limitam a faixa de horas exibida nos time views (alinhar ao
   expediente; ver "Expediente").
@@ -122,9 +146,9 @@ Regras das colunas:
 - "Todos" (default no day view): mostra todas as colunas de resources.
 - Um profissional especifico: no day view mostra so a coluna dele; no week/month
   filtra os eventos para o profissional escolhido.
-- O filtro e estado de UI; pode viver na URL (deep-link) ou em estado local. Os
-  dados continuam vindo dos hooks/services (a filtragem pode ser feita no service
-  por parametro, simulando query string de API).
+- O filtro e estado de UI; pode viver na URL (deep-link, via search params do App
+  Router) ou em estado local. Os dados continuam vindo dos hooks/services (a
+  filtragem pode ser feita no service por parametro, simulando query string de API).
 
 ## Mapeamento Agendamento -> evento
 
@@ -181,8 +205,9 @@ cada cor (o hex final esta no `frontend/04`):
 | nao_compareceu | Nao compareceu | Erro/alerta esmaecido (perda operacional). |
 
 A aplicacao da cor usa `eventPropGetter`, que retorna `className` e/ou `style` por
-evento. Preferir `className` mapeado a tokens/CSS variables do Chakra UI v3 (que
-ja usa CSS variables, SSR-friendly) em vez de cores hardcoded.
+evento. Preferir `className` mapeado as **variaveis CSS do design system**
+(tokens `status.*` expostos como CSS variables via Tailwind v4 + shadcn) em vez de
+cores hardcoded.
 
 ```ts
 // conceitual; confirmar assinatura exata na doc oficial
@@ -196,7 +221,7 @@ Indicadores adicionais no proprio evento (via `components.event`, override do
 render do evento):
 
 - Origem `recorrencia` ou presenca de `serieId`: icone/badge de serie (ver
-  "Series recorrentes").
+  "Series recorrentes"). Icone via lucide-react.
 - `cancelado`/`nao_compareceu`: titulo tachado quando exibidos.
 
 ## Bloqueios de horario
@@ -228,7 +253,7 @@ type BlockEvent = {
 Comportamento (regra de negocio):
 
 - Horario bloqueado **nao aceita agendamento**.
-- Selecionar um slot que cai sobre um bloqueio NAO abre o modal de criacao; exibe
+- Selecionar um slot que cai sobre um bloqueio NAO abre o Dialog de criacao; exibe
   a mensagem de bloqueio: "Este horario esta bloqueado e nao aceita agendamento."
 - Bloqueios participam das verificacoes de conflito (ver "Conflito").
 
@@ -244,7 +269,7 @@ Na Agenda:
 - Indicacao visual de que pertence a uma serie: badge/icone de recorrencia no
   evento (via `components.event`), acionado por `serieId` presente (ou
   `origem === "recorrencia"`).
-- Ao abrir o detalhe/edicao de uma ocorrencia, o modal oferece o escopo da acao
+- Ao abrir o detalhe/edicao de uma ocorrencia, o Dialog oferece o escopo da acao
   quando aplicavel: "Somente esta ocorrencia" ou "Esta e as futuras"
   (edicao, cancelamento e remarcacao), conforme
   `docs/product/10-estados-e-mensagens.md`.
@@ -262,8 +287,8 @@ A validacao de conflito NAO mora no componente de calendario; mora na **camada d
 service** (e e re-checada pelo backend futuro). O calendario apenas:
 
 1. Captura a intencao via `onSelectSlot` (selecionar um intervalo livre) ou
-   `onSelectEvent` (abrir um existente) e abre o modal.
-2. O modal/servico valida antes de confirmar.
+   `onSelectEvent` (abrir um existente) e abre o Dialog.
+2. O Dialog/servico valida antes de confirmar.
 
 Regras de bloqueio (mensagens em `docs/product/10-estados-e-mensagens.md`):
 
@@ -276,16 +301,23 @@ Regras de bloqueio (mensagens em `docs/product/10-estados-e-mensagens.md`):
 A remarcacao usa exatamente as mesmas validacoes (expediente, bloqueio,
 sobreposicao); se houver conflito, a remarcacao e impedida.
 
-## Criacao/edicao via modal (sem drag-and-drop)
+## Criacao/edicao via Dialog (sem drag-and-drop)
 
-- `selectable` habilita a selecao de slots livres -> `onSelectSlot` abre o modal de
-  **novo agendamento** ja com data, horario e profissional (resource) pre-preenchidos.
-- `onSelectEvent` abre o modal de **detalhe/edicao** do agendamento (status,
+Os modais de criar/editar usam o **Dialog do shadcn/ui** (Radix por baixo),
+montados na tela da Agenda (client component). O calendario apenas emite a intencao
+e a tela controla o estado de abertura do Dialog.
+
+- `selectable` habilita a selecao de slots livres -> `onSelectSlot` abre o Dialog
+  de **novo agendamento** ja com data, horario e profissional (resource)
+  pre-preenchidos.
+- `onSelectEvent` abre o Dialog de **detalhe/edicao** do agendamento (status,
   remarcacao, cancelamento, conclusao, no-show).
+- O formulario dentro do Dialog usa React Hook Form + Zod (zodResolver), conforme
+  o padrao de forms do CANON; as validacoes de conflito vivem no service.
 - Drag-and-drop e resize NAO sao habilitados no MVP (o addon de DnD nao e usado).
-  Mover horario/profissional = remarcacao via modal.
-- Selecionar um slot sobre bloqueio ou fora do expediente nao abre o modal de
-  criacao; mostra a mensagem correspondente.
+  Mover horario/profissional = remarcacao via Dialog.
+- Selecionar um slot sobre bloqueio ou fora do expediente nao abre o Dialog de
+  criacao; mostra a mensagem correspondente (ex.: via toast sonner ou inline).
 
 ## Estados da Agenda
 
@@ -313,10 +345,13 @@ Notas de implementacao dos estados:
 
 ## Localizacao pt-BR (localizer date-fns)
 
-Usar `dateFnsLocalizer` com locale pt-BR do date-fns.
+Usar `dateFnsLocalizer` com locale pt-BR do date-fns. O localizer e criado no
+modulo client da Agenda.
 
 ```ts
 // conceitual; confirmar imports/assinatura na doc oficial
+"use client";
+
 import { dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -369,17 +404,19 @@ Aplicacao na Agenda:
 
 ## Regras / Convencoes
 
+- A Agenda e um client component (`'use client'`); o grid do calendario nao roda no
+  servidor.
 - A UI nunca le mocks direto: Agenda -> hooks (TanStack Query) -> services -> store
   em memoria. O componente de calendario recebe eventos ja mapeados e emite apenas
   intencoes (`onSelectSlot`, `onSelectEvent`, `onNavigate`, troca de view).
 - Validacao de conflito/disponibilidade vive no service (e sera reexecutada pelo
   backend futuro), nunca no componente visual.
-- Cores de status vem do guia de status do frontend (`frontend/04`); este doc nao
-  fixa hex. Usar tokens/CSS variables do Chakra UI v3 via `className` no
-  `eventPropGetter`, evitando cores hardcoded.
+- Cores de status vem do design system do frontend (`frontend/04`); este doc nao
+  fixa hex. Usar as variaveis CSS do design system (tokens `status.*` via Tailwind
+  v4 + shadcn) por `className` no `eventPropGetter`, evitando cores hardcoded.
 - Bloqueios = background events nao clicaveis; agendamentos = eventos clicaveis.
 - Resources (colunas por profissional) so no day view; week/month usam filtro.
-- Sem drag-and-drop no MVP; mover = remarcar via modal.
+- Sem drag-and-drop no MVP; mover = remarcar via Dialog (shadcn).
 - Datas/horas sempre via localizer date-fns pt-BR, 24h.
 - Eventos cancelados/no-show: esmaecidos; ocultos por default no day/week (toggle),
   visiveis na tela Agendamentos.
@@ -401,15 +438,17 @@ https://bigcalendar.github.io/react-big-calendar/index.html):
 - `slotPropGetter` / `dayPropGetter` - estilo por slot/dia (expediente/bloqueio).
 - `components` (ex.: `components.event`, `components.toolbar`) - overrides de render.
 - background events (faixa de fundo) - bloqueios destacados.
-- `selectable` / `onSelectSlot` / `onSelectEvent` - intencao de criar/abrir (modal).
+- `selectable` / `onSelectSlot` / `onSelectEvent` - intencao de criar/abrir (Dialog).
 - `messages` / `formats` - traducao de rotulos e formatos pt-BR.
 
 ## Pendencias
 
 - Confirmar a assinatura exata dos accessors de resource e do getter de background
   events na doc oficial antes de implementar.
+- Confirmar a estrategia de montagem client-only no Next (ex.: `dynamic` com
+  `ssr: false` vs. guarda de `mounted`) para evitar mismatch de hidratacao.
 - Definir o toggle de exibicao de cancelados/no-shows (default e local).
 - Definir como o `startOfWeek` exibe a semana iniciando na segunda (opcao do
   localizer/`culture`) sem quebrar o domingo fechado.
-- Definir o tema visual dos eventos (Chakra UI v3 tokens vs. CSS proprio do
-  react-big-calendar) e a estrategia de override do CSS base da lib em SSR.
+- Definir o override do CSS base da lib com as variaveis CSS do design system
+  (Tailwind v4 + shadcn) e como importa-lo no modulo client.

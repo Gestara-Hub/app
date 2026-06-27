@@ -17,8 +17,8 @@ Esta e a doc-ponte entre `docs/product` (produto, regras, cenario) e o codigo do
 
 ## Contexto
 
-- Stack: TanStack Start + TanStack Router, TypeScript strict, Chakra UI v3, TanStack Query sobre camada de servico mockada. Detalhes em `technical/00-decisoes-tecnicas.md`.
-- No MVP frontend-first nao usamos server functions; o "backend" e a camada de service mockada que roda no cliente.
+- Stack: Next.js (App Router, RSC) + TypeScript strict, shadcn/ui + Tailwind CSS, TanStack Query sobre camada de servico mockada. Detalhes em `technical/00-decisoes-tecnicas.md`.
+- TanStack Query e a camada de servico mockada rodam no cliente: o consumo de dados (hooks `useQuery`/`useMutation`) acontece em client components (`'use client'`). No MVP frontend-first nao ha backend nem fetch no servidor; o "backend" e a camada de service mockada que vive na memoria do browser.
 - O store em memoria e seedado a partir do cenario canonico `docs/product/08-barbearia-corte-nobre.md` e e volatil: reinicia a cada reload da pagina.
 - As entidades e campos seguem `docs/product/04-mvp-barbearia.md`. As regras de conflito/disponibilidade/remarcacao/recorrencia seguem `docs/product/05-regras-negocio.md`. Os estados de carregando/vazio/erro e mensagens seguem `docs/product/10-estados-e-mensagens.md`.
 
@@ -33,8 +33,9 @@ Esta e a doc-ponte entre `docs/product` (produto, regras, cenario) e o codigo do
 
 ## Fora de escopo
 
-- Backend real, persistencia real e server functions (fase 3).
+- Backend real, persistencia real e camada de API (fase 3).
 - Implementacao de telas e componentes (ver demais docs de frontend).
+- Validacao de formulario na UI: pertence ao doc de design system (React Hook Form + Zod).
 - Roteamento (ver `frontend/03-rotas-e-navegacao.md`).
 - Sistema de rotulos por segmento (label overrides) - previsao conceitual; o MVP usa linguagem unica e generica.
 
@@ -377,7 +378,7 @@ export function isApiError(e: unknown): e is ApiError {
 
 - Modulo unico (ex.: `store`) que mantem as colecoes em memoria: organizacao, unidade, clientes, profissionais, servicos, agendamentos, bloqueios, series.
 - Seedado a partir do cenario canonico `docs/product/08-barbearia-corte-nobre.md` (1 organizacao, 1 unidade, 4 profissionais, 12 servicos, ~20 clientes, 40-80 agendamentos, >=2 series, >=1 bloqueio, ao menos 1 remarcado com rastro).
-- Volatil: vive na memoria do JS; reinicia a cada reload (sem persistencia no MVP).
+- Volatil: vive na memoria do JS do browser; reinicia a cada reload (sem persistencia no MVP).
 - Apenas os services leem/escrevem no store. A UI nunca importa o store.
 - Convencao: o store guarda os registros "como o banco guardaria"; os services aplicam regras, derivam campos (ex.: `fim`) e montam os tipos de contrato no retorno.
 - A data de referencia ("hoje" do cenario) deve ser fixada num unico ponto do seed para manter passado/presente/futuro estaveis entre telas (pendencia herdada do doc 08).
@@ -586,6 +587,8 @@ Antes de qualquer regra de agenda, valida os campos do payload e, se invalido, r
 - Cliente: nome e telefone obrigatorios; email valido se preenchido.
 - Profissional: nome e cargo obrigatorios; ao menos um `servicosIds`; em cada `FaixaHorario`, `inicio` antes de `fim`.
 
+Esta e a validacao do "servidor" (regra de negocio). A validacao de formulario na UI (React Hook Form + Zod) e tratada no doc de design system e e independente: o service continua sendo a fonte de verdade das regras.
+
 ### Validacao de agendamento (create e remarcar)
 
 Aplicada por `agendamentosService.create` e por `agendamentosService.remarcar`, na seguinte ordem (primeira que falha rejeita):
@@ -630,6 +633,43 @@ Cada `ApiError` carrega a `mensagem` de referencia do doc 10 (ex.: `CONFLITO_SOB
 ## TanStack Query
 
 A UI consome os services apenas via hooks de TanStack Query. Isso da cache, estados de carregando/erro e invalidacao consistentes.
+
+No Next App Router, esses hooks rodam em client components: todo arquivo de hook (e o componente que o consome) leva a diretiva `'use client'`. O `QueryClientProvider` e montado uma unica vez, num componente `'use client'` (ex.: `Providers`) renderizado no root layout (`src/app/layout.tsx`), envolvendo a arvore da aplicacao. O `QueryClient` deve ser instanciado dentro desse componente (via `useState`/`useRef`), nunca no escopo de modulo, para nao compartilhar cache entre requisicoes/usuarios no servidor.
+
+```tsx
+// src/lib/providers.tsx (ou src/app/providers.tsx)
+'use client';
+
+import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  // Instancia por arvore de cliente, nao no escopo de modulo.
+  const [queryClient] = useState(() => new QueryClient());
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
+```
+
+```tsx
+// src/app/layout.tsx (root layout) - monta o Provider uma vez.
+import { Providers } from '@/lib/providers';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="pt-BR">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
 
 Referencias de API (manter conceitual, confirmar assinaturas na doc oficial):
 - TanStack Query: https://tanstack.com/query/latest/docs/framework/react/overview
@@ -677,6 +717,8 @@ export const queryKeys = {
 ### useQuery (leitura)
 
 ```ts
+'use client';
+
 // Exemplo: lista de agendamentos da Agenda (um dia, um profissional).
 export function useAgendamentos(filtro?: AgendamentoFiltro) {
   return useQuery({
@@ -700,6 +742,8 @@ export function useCliente(id: Id) {
 Toda mutation invalida as queries afetadas no `onSuccess`, para a UI refletir o novo estado do store.
 
 ```ts
+'use client';
+
 export function useCriarAgendamento() {
   const qc = useQueryClient();
   return useMutation({
@@ -792,14 +836,14 @@ apps/web/src/
     agendamentosService.ts
     bloqueiosService.ts
     seriesService.ts
-  features/<dominio>/hooks/   # hooks TanStack Query (useQuery/useMutation), por feature
+  features/<dominio>/hooks/   # hooks TanStack Query (useQuery/useMutation), 'use client', por feature
     # ex.: features/agendamentos/hooks/useAgendamentos.ts
   lib/
+    providers.tsx   # 'use client': QueryClientProvider (montado no root layout)
     queryKeys.ts    # convencao de queryKeys (ver secao acima)
-    queryClient.ts  # instancia do QueryClient
 ```
 
-Separacao logica: contratos (`types`) -> store/seed (`mocks`) -> services -> hooks de Query (por feature). A regra de fronteira (a UI nunca toca os mocks; so os services tocam o store) e os caminhos finais estao em `frontend/01-arquitetura.md`.
+Separacao logica: contratos (`types`) -> store/seed (`mocks`) -> services -> hooks de Query (por feature, client components). A regra de fronteira (a UI nunca toca os mocks; so os services tocam o store) e os caminhos finais estao em `frontend/01-arquitetura.md`.
 
 ## Pendencias
 
