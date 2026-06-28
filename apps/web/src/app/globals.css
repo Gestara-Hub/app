@@ -4,10 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Tema Corte Nobre (barbearia classica): marca ambar/dourado fosco + neutros
-  grafite quente. Paleta de referencia em docs/frontend/04-design-system.md,
-  convertida de hex para OKLCH preservando matiz/contraste.
-  A UI consome SEMPRE as variaveis/classes do tema; nunca hex literal.
+  Tema base neutral (shadcn new-york), alinhado ao layout de referencia
+  (old/gestarahub-web). A marca colorida vem da logo do GestaraHub; a UI fica
+  neutra. A UI consome SEMPRE as variaveis/classes do tema, nunca hex literal.
 */
 
 @theme inline {
@@ -60,59 +59,45 @@
 
 :root {
   --radius: 0.625rem;
-
-  /* Estrutura / texto (neutros grafite quente) */
-  --background: oklch(0.9759 0.0013 106.42); /* neutral-50 */
-  --foreground: oklch(0.3471 0.0068 106.75); /* neutral-700 */
-  --card: oklch(1 0 0); /* white */
-  --card-foreground: oklch(0.3471 0.0068 106.75);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.3471 0.0068 106.75);
-
-  /* Marca (ambar/dourado fosco) */
-  --primary: oklch(0.53 0.0959 78.02); /* brand-600 */
-  --primary-foreground: oklch(1 0 0); /* white */
-
-  --secondary: oklch(0.9455 0.0027 106.45); /* neutral-100 */
-  --secondary-foreground: oklch(0.3471 0.0068 106.75);
-  --muted: oklch(0.9455 0.0027 106.45); /* neutral-100 */
-  --muted-foreground: oklch(0.5571 0.0091 106.69); /* neutral-500 */
-  --accent: oklch(0.9455 0.0027 106.45); /* neutral-100 */
-  --accent-foreground: oklch(0.3471 0.0068 106.75);
-
-  --destructive: oklch(0.5433 0.174 29.7); /* danger #C0392B */
-  --destructive-foreground: oklch(1 0 0);
-
-  --border: oklch(0.8934 0.0054 106.51); /* neutral-200 */
-  --input: oklch(0.8934 0.0054 106.51);
-  --ring: oklch(0.6152 0.1105 79.16); /* brand-500 */
-
-  --chart-1: oklch(0.6152 0.1105 79.16); /* brand-500 (ambar) */
-  --chart-2: oklch(0.471 0.0889 246.61); /* info (azul) */
-  --chart-3: oklch(0.5202 0.1031 154.14); /* success (verde) */
-  --chart-4: oklch(0.6264 0.1248 70.45); /* warning (ambar) */
-  --chart-5: oklch(0.5433 0.174 29.7); /* danger (vermelho) */
-
-  /* Sidebar grafite estrutural */
-  --sidebar: oklch(0.1976 0.0134 107.57); /* neutral-900 */
-  --sidebar-foreground: oklch(0.9455 0.0027 106.45); /* neutral-100 */
-  --sidebar-primary: oklch(0.6152 0.1105 79.16); /* brand-500 */
-  --sidebar-primary-foreground: oklch(0.1976 0.0134 107.57); /* neutral-900 */
-  --sidebar-accent: oklch(0.2661 0.0126 107.23); /* neutral-800 */
-  --sidebar-accent-foreground: oklch(0.9759 0.0013 106.42); /* neutral-50 */
-  --sidebar-border: oklch(0.2661 0.0126 107.23); /* neutral-800 */
-  --sidebar-ring: oklch(0.7086 0.117 83.39); /* brand-400 */
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 
   /* Cores funcionais (feedback) */
   --success: oklch(0.5202 0.1031 154.14);
   --warning: oklch(0.6264 0.1248 70.45);
   --info: oklch(0.471 0.0889 246.61);
 
-  /*
-    Cores de status de agendamento (mapa fixo chave -> cor).
-    Hex exatos do doc 04 (independentes do tema base p/ contraste consistente).
-    Par: solid (barra/dot/texto) + surface (fundo do bloco/badge).
-  */
+  /* Cores de status de agendamento (codigos EN; usadas pela Agenda futura) */
   --status-pending-solid: #b7791f;
   --status-pending-surface: #fbf1dc;
   --status-confirmed-solid: #2c5f8a;
@@ -130,44 +115,38 @@
 }
 
 .dark {
-  --background: oklch(0.1976 0.0134 107.57); /* neutral-900 */
-  --foreground: oklch(0.9759 0.0013 106.42); /* neutral-50 */
-  --card: oklch(0.2661 0.0126 107.23); /* neutral-800 */
-  --card-foreground: oklch(0.9759 0.0013 106.42);
-  --popover: oklch(0.2661 0.0126 107.23);
-  --popover-foreground: oklch(0.9759 0.0013 106.42);
-
-  --primary: oklch(0.6152 0.1105 79.16); /* brand-500 */
-  --primary-foreground: oklch(0.1976 0.0134 107.57); /* neutral-900 */
-
-  --secondary: oklch(0.2661 0.0126 107.23); /* neutral-800 */
-  --secondary-foreground: oklch(0.9759 0.0013 106.42);
-  --muted: oklch(0.2661 0.0126 107.23);
-  --muted-foreground: oklch(0.8123 0.0083 106.58); /* neutral-300 */
-  --accent: oklch(0.2661 0.0126 107.23);
-  --accent-foreground: oklch(0.9759 0.0013 106.42);
-
-  --destructive: oklch(0.6412 0.1703 29.03); /* danger-dark #E15B4C */
-  --destructive-foreground: oklch(0.1976 0.0134 107.57);
-
-  --border: oklch(0.3471 0.0068 106.75); /* neutral-700 */
-  --input: oklch(0.3471 0.0068 106.75);
-  --ring: oklch(0.7086 0.117 83.39); /* brand-400 */
-
-  --chart-1: oklch(0.7086 0.117 83.39);
-  --chart-2: oklch(0.471 0.0889 246.61);
-  --chart-3: oklch(0.5202 0.1031 154.14);
-  --chart-4: oklch(0.6264 0.1248 70.45);
-  --chart-5: oklch(0.6412 0.1703 29.03);
-
-  --sidebar: oklch(0.1976 0.0134 107.57);
-  --sidebar-foreground: oklch(0.9455 0.0027 106.45);
-  --sidebar-primary: oklch(0.6152 0.1105 79.16);
-  --sidebar-primary-foreground: oklch(0.1976 0.0134 107.57);
-  --sidebar-accent: oklch(0.2661 0.0126 107.23);
-  --sidebar-accent-foreground: oklch(0.9759 0.0013 106.42);
-  --sidebar-border: oklch(0.2661 0.0126 107.23);
-  --sidebar-ring: oklch(0.7086 0.117 83.39);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 
   --success: oklch(0.5202 0.1031 154.14);
   --warning: oklch(0.6264 0.1248 70.45);

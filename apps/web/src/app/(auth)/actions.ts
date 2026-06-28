@@ -12,7 +12,7 @@ import {
  * Login mockado: nao valida credenciais (qualquer envio entra). Apenas grava o
  * cookie de sessao e redireciona para o destino original (`from`) ou o Dashboard.
  */
-export async function signIn(formData: FormData): Promise<void> {
+export async function signIn(from?: string): Promise<void> {
   const store = await cookies();
   store.set(SESSION_COOKIE, SESSION_VALUE, {
     httpOnly: true,
@@ -21,8 +21,7 @@ export async function signIn(formData: FormData): Promise<void> {
     maxAge: SESSION_MAX_AGE,
   });
 
-  const from = formData.get("from");
-  const target = typeof from === "string" && from.startsWith("/") ? from : "/";
+  const target = from && from.startsWith("/") ? from : "/";
   redirect(target);
 }
 

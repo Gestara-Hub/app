@@ -1,45 +1,71 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
-import { signIn } from "../actions";
+import { useTransition } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { InputText } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { signIn } from "../actions";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Entrando..." : "Entrar"}
-    </Button>
-  );
-}
+const loginSchema = z.object({
+  email: z.email("Informe um e-mail válido."),
+  password: z.string().min(6, "A senha deve ter ao menos 6 caracteres."),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm({ from }: { from: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  const methods = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: {
+      email: "marcelo@cortenobre.com",
+      password: "123456",
+    },
+  });
+
+  const onSubmit = () => {
+    startTransition(async () => {
+      await signIn(from);
+    });
+  };
+
   return (
-    <form action={signIn} className="space-y-4">
-      <input type="hidden" name="from" value={from} />
-      <div className="space-y-2">
-        <Label htmlFor="email">E-mail</Label>
-        <Input
-          id="email"
+    <FormProvider {...methods}>
+      <form
+        onSubmit={methods.handleSubmit(onSubmit)}
+        noValidate
+        className="space-y-4"
+      >
+        <InputText<LoginFormValues>
           name="email"
           type="email"
-          defaultValue="marcelo@cortenobre.com"
-          autoComplete="email"
+          label="E-mail"
+          placeholder="seu@email.com"
+          required
+          disabled={isPending}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
-        <Input
-          id="password"
+
+        <InputText<LoginFormValues>
           name="password"
           type="password"
-          defaultValue="123456"
-          autoComplete="current-password"
+          label="Senha"
+          required
+          disabled={isPending}
         />
-      </div>
-      <SubmitButton />
-    </form>
+
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Login mockado — qualquer credencial entra.
+        </p>
+
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? "Entrando..." : "Entrar"}
+        </Button>
+      </form>
+    </FormProvider>
   );
 }

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
+import appIcon from "@/assets/icon.png";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GestaraHub — Corte Nobre",
-  description: "Gestão de barbearia — agenda, clientes, equipe e serviços.",
+  title: "GestaraHub",
+  description: "Plataforma de gestão — agenda, clientes, equipe e serviços.",
+  icons: { icon: appIcon.src, shortcut: appIcon.src, apple: appIcon.src },
 };
 
 export default function RootLayout({

@@ -1,0 +1,111 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { MoreVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+
+export type ListItemAction = {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  onSelect?: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+};
+
+function ActionItems({
+  actions,
+  kind,
+}: {
+  actions: ListItemAction[];
+  kind: "dropdown" | "context";
+}) {
+  return actions.map((action) => {
+    const handleSelect = () => {
+      if (action.disabled) return;
+      action.onSelect?.();
+    };
+
+    if (kind === "dropdown") {
+      return (
+        <DropdownMenuItem
+          key={action.key}
+          onSelect={handleSelect}
+          disabled={action.disabled}
+          variant={action.destructive ? "destructive" : "default"}
+        >
+          {action.icon}
+          <span>{action.label}</span>
+        </DropdownMenuItem>
+      );
+    }
+
+    return (
+      <ContextMenuItem
+        key={action.key}
+        onSelect={handleSelect}
+        disabled={action.disabled}
+        variant={action.destructive ? "destructive" : "default"}
+      >
+        {action.icon}
+        <span>{action.label}</span>
+      </ContextMenuItem>
+    );
+  });
+}
+
+export function ListItemActionsMenu({
+  actions,
+  title,
+}: {
+  actions: ListItemAction[];
+  title: string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          title={title}
+          aria-label={title}
+        >
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-48">
+        <ActionItems actions={actions} kind="dropdown" />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ListItemContextMenu({
+  actions,
+  children,
+}: {
+  actions: ListItemAction[];
+  children: ReactNode;
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger className="block">{children}</ContextMenuTrigger>
+      <ContextMenuContent className="min-w-48">
+        <ActionItems actions={actions} kind="context" />
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}

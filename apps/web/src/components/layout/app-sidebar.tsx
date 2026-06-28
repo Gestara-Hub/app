@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Scissors } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import iconImage from "@/assets/icon.png";
+import logoLightImage from "@/assets/logo-light.png";
+import logoDarkImage from "@/assets/logo-dark.png";
 import { FOOTER_NAV, MAIN_NAV, isNavItemActive, type NavItem } from "./nav";
 
 function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
@@ -45,18 +48,27 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-1 py-1.5">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Scissors className="size-4" />
-          </div>
-          <div className="grid flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-semibold">Corte Nobre</span>
-            <span className="truncate text-xs text-sidebar-foreground/70">
-              Barbearia
-            </span>
-          </div>
+        <div className="flex items-center justify-center gap-2 py-1">
+          <Image
+            src={iconImage}
+            alt="GestaraHub"
+            width={36}
+            className="hidden rounded-sm group-data-[collapsible=icon]:block"
+          />
+          <Image
+            src={logoLightImage}
+            alt="GestaraHub"
+            className="h-14 w-auto group-data-[collapsible=icon]:hidden dark:hidden"
+            priority
+          />
+          <Image
+            src={logoDarkImage}
+            alt="GestaraHub"
+            className="hidden h-14 w-auto dark:group-data-[collapsible=icon]:hidden dark:block"
+            priority
+          />
         </div>
       </SidebarHeader>
 

@@ -16,7 +16,7 @@ interface InputTextProps<T extends FieldValues> {
   hint?: string;
   required?: boolean;
   disabled?: boolean;
-  type?: "text" | "email" | "tel" | "url";
+  type?: "text" | "email" | "tel" | "url" | "password";
   id?: string;
 }
 
