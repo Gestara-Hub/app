@@ -6,13 +6,14 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form";
+import { ChevronDown } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { FieldShell } from "./field-shell";
 
 export interface SelectOption {
@@ -31,6 +32,11 @@ interface SelectFieldProps<T extends FieldValues> {
   id?: string;
 }
 
+/**
+ * Campo de selecao unica. Internamente usa DropdownMenu (nao o Select do Radix):
+ * o trigger e um <button> nativo que recebe `field.ref`, entao o foco no 1o campo
+ * invalido (RHF `shouldFocusError`) funciona — inclusive visualmente, via `focus:`.
+ */
 export function SelectField<T extends FieldValues>({
   name,
   label,
@@ -48,37 +54,56 @@ export function SelectField<T extends FieldValues>({
     <Controller
       control={control}
       name={name}
-      render={({ field, fieldState }) => (
-        <FieldShell
-          id={fieldId}
-          label={label}
-          hint={hint}
-          error={fieldState.error?.message}
-          required={required}
-        >
-          <Select
-            value={(field.value as string | undefined) || undefined}
-            onValueChange={field.onChange}
-            disabled={disabled}
+      render={({ field, fieldState }) => {
+        const selected = options.find((o) => o.value === field.value);
+        return (
+          <FieldShell
+            id={fieldId}
+            label={label}
+            hint={hint}
+            error={fieldState.error?.message}
+            required={required}
           >
-            <SelectTrigger
-              id={fieldId}
-              ref={field.ref}
-              aria-invalid={fieldState.invalid}
-              className="w-full"
-            >
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FieldShell>
-      )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  id={fieldId}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  disabled={disabled}
+                  aria-invalid={fieldState.invalid}
+                  className={cn(
+                    "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
+                    "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
+                    "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    !selected && "text-muted-foreground",
+                  )}
+                >
+                  <span className="truncate">
+                    {selected ? selected.label : placeholder}
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 opacity-50" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
+              >
+                {options.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onSelect={() => field.onChange(option.value)}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FieldShell>
+        );
+      }}
     />
   );
 }

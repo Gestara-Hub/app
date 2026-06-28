@@ -25,7 +25,10 @@ export function ServiceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{isEdit ? "Editar serviço" : "Novo serviço"}</DialogTitle>
           <DialogDescription>
