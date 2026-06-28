@@ -180,12 +180,14 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           disabled={pending}
         />
 
-        <SwitchField<ServiceFormValues>
-          name="active"
-          label="Serviço ativo"
-          hint="Serviços inativos não são sugeridos em novos agendamentos."
-          disabled={pending}
-        />
+        {isEdit ? (
+          <SwitchField<ServiceFormValues>
+            name="active"
+            label="Serviço ativo"
+            hint="Serviços inativos não são sugeridos em novos agendamentos."
+            disabled={pending}
+          />
+        ) : null}
 
         <DialogFooter>
           <DialogClose asChild>

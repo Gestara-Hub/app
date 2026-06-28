@@ -54,6 +54,11 @@ function timestamps() {
   return { createdAt: SEED_NOW, updatedAt: SEED_NOW };
 }
 
+// Telefone e armazenado apenas com digitos; a UI formata na exibicao.
+function digits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 // --- Categorias (preset do segmento barbearia) ----------------------------
 
 function seedCategories(): Category[] {
@@ -91,7 +96,7 @@ function seedUnit(): Unit {
     organizationId: ORG_ID,
     name: "Corte Nobre - Matriz",
     address: "Rua das Tesouras, 120 - Centro",
-    phone: "(11) 4002-8922",
+    phone: digits("(11) 4002-8922"),
     status: "active",
     businessHours: [
       { weekday: 0, closed: true },
@@ -172,7 +177,7 @@ function seedProfessionals(): Professional[] {
     unitId: UNIT_ID,
     name,
     role,
-    phone,
+    phone: digits(phone),
     status: "active",
     workingHours: workingHours(days),
     serviceIds,
@@ -228,7 +233,7 @@ function seedClients(): Client[] {
     id,
     organizationId: ORG_ID,
     name,
-    phone,
+    phone: digits(phone),
     notes,
     status,
     ...timestamps(),

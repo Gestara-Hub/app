@@ -1,5 +1,6 @@
 export { FieldShell } from "./field-shell";
 export { InputText } from "./input-text";
+export { InputPhone } from "./input-phone";
 export { TextArea } from "./text-area";
 export { InputNumber } from "./input-number";
 export { InputCurrency } from "./input-currency";

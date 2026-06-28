@@ -35,7 +35,7 @@ const STORAGE_KEY = "gestarahub:db";
 
 // Versao do seed. Subir quando a forma/conteudo do seed mudar: dados salvos com
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 interface PersistedBlob {
   v: number;
