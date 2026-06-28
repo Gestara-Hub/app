@@ -1,0 +1,12 @@
+{
+  "name": "gestarahub",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "pnpm --filter @gestarahub/web dev",
+    "build": "pnpm --filter @gestarahub/web build",
+    "lint": "pnpm --filter @gestarahub/web lint",
+    "typecheck": "pnpm --filter @gestarahub/web typecheck"
+  }
+}

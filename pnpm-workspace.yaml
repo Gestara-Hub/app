@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Frontend mockado no MVP: nenhum build nativo e necessario.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

@@ -12,7 +12,7 @@ No MVP frontend-first, o app roda contra uma camada de servico mockada em client
 
 - O MVP valida escopo, fluxos, telas e regras antes de modelar o backend (ver `docs/frontend/00-estrategia-frontend.md`).
 - Os dados sao mockados, mas o formato imita um contrato de API HTTP futuro (ver `docs/product/04-mvp-barbearia.md`).
-- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`) e e volatil: reinicia a cada reload.
+- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`) e persistido no localStorage do navegador: sobrevive a reloads (reset por versao de seed ou pela acao "Restaurar dados de exemplo" em Configuracoes).
 - A organizacao do codigo prioriza isolamento por dominio (feature) para evoluir sem reescrever telas quando o backend chegar.
 
 ## Escopo
@@ -152,7 +152,7 @@ A regra central e fluxo unidirecional do acesso a dados. A UI nunca toca o store
                 ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  src/mocks/*  (store em memoria + seed)                      │
-│  - estado volatil em memoria (reinicia no reload)           │
+│  - persiste no localStorage (sobrevive ao reload)           │
 │  - seedado do cenario Corte Nobre                            │
 │  - NUNCA importado pela UI                                   │
 └─────────────────────────────────────────────────────────────┘

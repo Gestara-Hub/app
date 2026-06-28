@@ -19,7 +19,7 @@ Esta e a doc-ponte entre `docs/product` (produto, regras, cenario) e o codigo do
 
 - Stack: Next.js (App Router, RSC) + TypeScript strict, shadcn/ui + Tailwind CSS, TanStack Query sobre camada de servico mockada. Detalhes em `technical/00-decisoes-tecnicas.md`.
 - TanStack Query e a camada de servico mockada rodam no cliente: o consumo de dados (hooks `useQuery`/`useMutation`) acontece em client components (`'use client'`). No MVP frontend-first nao ha backend nem fetch no servidor; o "backend" e a camada de service mockada que vive na memoria do browser.
-- O store em memoria e seedado a partir do cenario canonico `docs/product/08-barbearia-corte-nobre.md` e e volatil: reinicia a cada reload da pagina.
+- O store em memoria e seedado a partir do cenario canonico `docs/product/08-barbearia-corte-nobre.md` e persistido no localStorage do navegador (simula um banco): sobrevive a reloads. Um `SEED_VERSION` versiona o blob salvo; mudar a versao descarta o dado antigo e re-seeda. A tela Configuracoes oferece "Restaurar dados de exemplo". A persistencia roda so no cliente (no SSR/Node e no-op).
 - As entidades e campos seguem `docs/product/04-mvp-barbearia.md`. As regras de conflito/disponibilidade/remarcacao/recorrencia seguem `docs/product/05-regras-negocio.md`. Os estados de carregando/vazio/erro e mensagens seguem `docs/product/10-estados-e-mensagens.md`.
 
 ## Escopo
@@ -378,7 +378,7 @@ export function isApiError(e: unknown): e is ApiError {
 
 - Modulo unico (ex.: `store`) que mantem as colecoes em memoria: organizacao, unidade, clientes, profissionais, servicos, agendamentos, bloqueios, series.
 - Seedado a partir do cenario canonico `docs/product/08-barbearia-corte-nobre.md` (1 organizacao, 1 unidade, 4 profissionais, 12 servicos, ~20 clientes, 40-80 agendamentos, >=2 series, >=1 bloqueio, ao menos 1 remarcado com rastro).
-- Volatil: vive na memoria do JS do browser; reinicia a cada reload (sem persistencia no MVP).
+- Persistido no localStorage do navegador (chave `gestarahub:db`, blob versionado por `SEED_VERSION`): sobrevive a reloads. Hidrata na 1a carga do modulo e regrava a cada escrita (via `simulateWrite`). No SSR/Node e no-op (apenas em memoria).
 - Apenas os services leem/escrevem no store. A UI nunca importa o store.
 - Convencao: o store guarda os registros "como o banco guardaria"; os services aplicam regras, derivam campos (ex.: `fim`) e montam os tipos de contrato no retorno.
 - A data de referencia ("hoje" do cenario) deve ser fixada num unico ponto do seed para manter passado/presente/futuro estaveis entre telas (pendencia herdada do doc 08).

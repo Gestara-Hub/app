@@ -33,7 +33,7 @@ componentes (telas, client components)
 
 - O mock imita um contrato de API HTTP: o service retorna `Promise`, pode falhar, tem latencia simulada e tipos estaveis.
 - Trocar o mock por backend real significa trocar SO a implementacao dos services. Os tipos do contrato, os hooks e as telas nao mudam.
-- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`). No MVP ele e volatil: reinicia a cada reload.
+- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`) e persistido no localStorage do navegador: sobrevive a reloads (reset por versao de seed ou pela acao "Restaurar dados de exemplo" em Configuracoes).
 
 ## Stack concreta
 

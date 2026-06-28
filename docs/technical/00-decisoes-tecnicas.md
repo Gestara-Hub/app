@@ -149,7 +149,7 @@ type Frequencia = "semanal" | "quinzenal" | "mensal";
 - A UI nunca acessa mocks diretamente. O fluxo e sempre: hooks (TanStack Query) -> services (funcoes async tipadas) -> store em memoria.
 - O service imita um contrato de API HTTP (mesma forma de chamada, mesmos tipos de entrada e saida, mesmos erros).
 - Trocar o mock por backend real significa trocar SO a implementacao do service; hooks e telas permanecem iguais.
-- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`). E volatil no MVP: reinicia a cada reload da pagina.
+- O store em memoria e seedado a partir do cenario canonico Corte Nobre (`docs/product/08-barbearia-corte-nobre.md`) e persistido no localStorage do navegador (simula um banco): sobrevive a reloads, com reset por versao de seed (`SEED_VERSION`) e acao "Restaurar dados de exemplo" em Configuracoes. A persistencia e so no cliente (no SSR/Node e no-op).
 
 O detalhamento desta camada (estrutura de services, store, seed, simulacao de latencia e erro) esta em `docs/frontend/02-camada-de-dados-mock.md`.
 
@@ -157,7 +157,7 @@ O detalhamento desta camada (estrutura de services, store, seed, simulacao de la
 
 - O backend sera **NestJS**, construido do zero na fase 3 num `apps/api` dedicado (monorepo), sem reaproveitar nada do projeto antigo (`gestarahub-api`).
 - A camada de servico mockada do frontend ja imita o contrato da futura API NestJS: na fase 3, troca-se apenas a implementacao dos services (de store em memoria para `fetch` ao NestJS), mantendo assinaturas e tipos. Os contratos tipados podem ser promovidos para `packages/` e compartilhados entre `apps/web` e `apps/api`.
-- Ate la, nenhum endpoint real e usado; persistencia e autenticacao continuam mockadas e volateis.
+- Ate la, nenhum endpoint real e usado; a persistencia e mockada (localStorage no cliente) e a autenticacao tambem (cookie de sessao mockado).
 
 ## Referencias
 
