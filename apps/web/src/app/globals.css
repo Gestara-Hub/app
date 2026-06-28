@@ -113,20 +113,20 @@
     Hex exatos do doc 04 (independentes do tema base p/ contraste consistente).
     Par: solid (barra/dot/texto) + surface (fundo do bloco/badge).
   */
-  --status-pendente-solid: #b7791f;
-  --status-pendente-surface: #fbf1dc;
-  --status-confirmado-solid: #2c5f8a;
-  --status-confirmado-surface: #e1ecf5;
-  --status-em-atendimento-solid: #2f7a4d;
-  --status-em-atendimento-surface: #def0e5;
-  --status-concluido-solid: #54544f;
-  --status-concluido-surface: #ececea;
-  --status-cancelado-solid: #c0392b;
-  --status-cancelado-surface: #f7e2df;
-  --status-nao-compareceu-solid: #7a3fa0;
-  --status-nao-compareceu-surface: #efe3f5;
-  --status-bloqueio-surface: #ededeb;
-  --status-bloqueio-border: #c2c2bc;
+  --status-pending-solid: #b7791f;
+  --status-pending-surface: #fbf1dc;
+  --status-confirmed-solid: #2c5f8a;
+  --status-confirmed-surface: #e1ecf5;
+  --status-in-service-solid: #2f7a4d;
+  --status-in-service-surface: #def0e5;
+  --status-completed-solid: #54544f;
+  --status-completed-surface: #ececea;
+  --status-canceled-solid: #c0392b;
+  --status-canceled-surface: #f7e2df;
+  --status-no-show-solid: #7a3fa0;
+  --status-no-show-surface: #efe3f5;
+  --status-blocked-surface: #ededeb;
+  --status-blocked-border: #c2c2bc;
 }
 
 .dark {

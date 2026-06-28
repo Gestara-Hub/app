@@ -1,12 +1,12 @@
 import type {
-  Agendamento,
-  Bloqueio,
-  Cliente,
-  Organizacao,
-  Profissional,
-  SerieRecorrencia,
-  Servico,
-  Unidade,
+  Appointment,
+  Client,
+  Organization,
+  Professional,
+  RecurrenceSeries,
+  Service,
+  TimeBlock,
+  Unit,
 } from "@/types";
 import { mockConfig } from "./config";
 import { createInitialStore } from "./seed";
@@ -16,25 +16,24 @@ import { createInitialStore } from "./seed";
  *
  * Persistencia: para simular um "banco", o estado e espelhado no localStorage
  * do navegador. Hidrata na 1a carga do modulo (client) e re-grava a cada escrita
- * (via simulateWrite). No servidor (SSR) e no Node (testes) e no-op: cai para
- * apenas-em-memoria, sem persistencia.
+ * (via simulateWrite). No servidor (SSR) e no Node (testes) e no-op.
  */
 export interface MockStore {
-  organizacao: Organizacao;
-  unidade: Unidade;
-  clientes: Cliente[];
-  profissionais: Profissional[];
-  servicos: Servico[];
-  agendamentos: Agendamento[];
-  bloqueios: Bloqueio[];
-  series: SerieRecorrencia[];
+  organization: Organization;
+  unit: Unit;
+  clients: Client[];
+  professionals: Professional[];
+  services: Service[];
+  appointments: Appointment[];
+  timeBlocks: TimeBlock[];
+  series: RecurrenceSeries[];
 }
 
 const STORAGE_KEY = "gestarahub:db";
 
 // Versao do seed. Subir quando a forma/conteudo do seed mudar: dados salvos com
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 
 interface PersistedBlob {
   v: number;
@@ -42,7 +41,7 @@ interface PersistedBlob {
 }
 
 function canPersist(): boolean {
-  return mockConfig.persistencia && typeof window !== "undefined";
+  return mockConfig.persistence && typeof window !== "undefined";
 }
 
 function loadFromStorage(): MockStore | null {
@@ -76,7 +75,6 @@ if (canPersist()) {
   if (saved) {
     Object.assign(store, saved);
   } else {
-    // 1a visita (ou versao trocada): grava o seed inicial.
     saveToStorage(store);
   }
 }

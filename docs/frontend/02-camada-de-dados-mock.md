@@ -61,7 +61,15 @@ export type ServiceFn<Args extends unknown[], Result> = (
 
 Os contratos abaixo sao 100% coerentes com `docs/product/04-mvp-barbearia.md` e `docs/product/08-barbearia-corte-nobre.md`. Em modo strict.
 
-### Tipos base e enums
+> Convencao: keys e enum VALUES em ingles; portugues so para texto livre de
+> cadastro (name, description, notes...) e para os ROTULOS de exibicao dos enums
+> (`src/lib/labels.ts`). A implementacao canonica do contrato vive em
+> `apps/web/src/types/*`. Os blocos abaixo marcados como migrados ja refletem o
+> ingles; os demais (entidades/payloads/filtros) seguem o mesmo padrao de rename
+> (`nome`->`name`, `precoCentavos`->`priceCents`, `categoria`->`category`,
+> `servicos`->`services`, etc.) e o codigo em `src/types` e a referencia exata.
+
+### Tipos base e enums (migrado)
 
 ```ts
 // Identificadores e datas.
@@ -71,44 +79,44 @@ Os contratos abaixo sao 100% coerentes com `docs/product/04-mvp-barbearia.md` e 
 export type Id = string;
 
 // Data sem horario, formato 'YYYY-MM-DD' (ex.: '2026-06-26').
-export type DataISO = string;
+export type DateISO = string;
 
 // Horario local 'HH:mm' (ex.: '09:00', '18:30').
-export type HoraISO = string;
+export type TimeISO = string;
 
 // Timestamp completo ISO 8601 (ex.: '2026-06-26T12:00:00.000Z').
 export type DateTimeISO = string;
 
-// Status generico de cadastro (Cliente, Profissional, Servico, Organizacao, Unidade).
-export type StatusCadastro = 'ativo' | 'inativo';
+// Status generico de cadastro (Client, Professional, Service, Organization, Unit).
+export type RecordStatus = 'active' | 'inactive';
 
-// Chaves exatas do STACK CANON.
-export type StatusAgendamento =
-  | 'pendente'
-  | 'confirmado'
-  | 'em_atendimento'
-  | 'concluido'
-  | 'cancelado'
-  | 'nao_compareceu';
+// Codigos de status de agendamento (label PT em src/lib/labels.ts).
+export type AppointmentStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in_service'
+  | 'completed'
+  | 'canceled'
+  | 'no_show';
 
-// MVP: manual | recorrencia. Futuro (fora do MVP): online | whatsapp.
-export type OrigemAgendamento = 'manual' | 'recorrencia';
+// MVP: manual | recurrence. Futuro (fora do MVP): online | whatsapp.
+export type AppointmentOrigin = 'manual' | 'recurrence';
 
-export type Frequencia = 'semanal' | 'quinzenal' | 'mensal';
+export type Frequency = 'weekly' | 'biweekly' | 'monthly';
 
 // Dia da semana para horarios de trabalho e funcionamento.
 // 0 = domingo ... 6 = sabado.
-export type DiaSemana = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 // Faixa de horario de trabalho de um profissional em um dia.
-export interface FaixaHorario {
-  diaSemana: DiaSemana;
-  inicio: HoraISO; // ex.: '09:00'
-  fim: HoraISO; // ex.: '20:00'
+export interface WorkingHours {
+  weekday: Weekday;
+  start: TimeISO; // ex.: '09:00'
+  end: TimeISO; // ex.: '20:00'
 }
 
-// Categoria de servico (CANON Corte Nobre).
-export type CategoriaServico = 'Cabelo' | 'Barba' | 'Cuidados' | 'Combos';
+// Categoria de servico. Codigos EN; labels PT: Cabelo/Barba/Cuidados/Combos.
+export type ServiceCategory = 'hair' | 'beard' | 'care' | 'combo';
 ```
 
 ### Organizacao e Unidade

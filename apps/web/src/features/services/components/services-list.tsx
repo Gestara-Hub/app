@@ -20,21 +20,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  CATEGORIAS_SERVICO,
-  type CategoriaServico,
-  type Servico,
-  type ServicoFiltro,
-  type StatusCadastro,
+import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@/lib/labels";
+import type {
+  RecordStatus,
+  Service,
+  ServiceCategory,
+  ServiceFilter,
 } from "@/types";
 import { useServices } from "../hooks/use-services";
 import { ServiceCard } from "./service-card";
 
 interface ServicesListProps {
   onCreate: () => void;
-  onEdit: (service: Servico) => void;
-  onInactivate: (service: Servico) => void;
-  onReactivate: (service: Servico) => void;
+  onEdit: (service: Service) => void;
+  onInactivate: (service: Service) => void;
+  onReactivate: (service: Service) => void;
 }
 
 export function ServicesList({
@@ -43,26 +43,26 @@ export function ServicesList({
   onInactivate,
   onReactivate,
 }: ServicesListProps) {
-  const [busca, setBusca] = useState("");
-  const [categoria, setCategoria] = useState<"all" | CategoriaServico>("all");
-  const [status, setStatus] = useState<"all" | StatusCadastro>("all");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<"all" | ServiceCategory>("all");
+  const [status, setStatus] = useState<"all" | RecordStatus>("all");
 
-  const filtro: ServicoFiltro = {
-    busca: busca.trim() || undefined,
-    categoria: categoria === "all" ? undefined : categoria,
+  const filter: ServiceFilter = {
+    search: search.trim() || undefined,
+    category: category === "all" ? undefined : category,
     status: status === "all" ? undefined : status,
   };
 
-  const { data, isPending, isError, refetch } = useServices(filtro);
+  const { data, isPending, isError, refetch } = useServices(filter);
   const services = data ?? [];
 
-  const hasBusca = Boolean(filtro.busca);
-  const hasFilters = Boolean(filtro.categoria || filtro.status);
+  const hasSearch = Boolean(filter.search);
+  const hasFilters = Boolean(filter.category || filter.status);
 
-  const clearBusca = () => setBusca("");
+  const clearSearch = () => setSearch("");
   const clearAll = () => {
-    setBusca("");
-    setCategoria("all");
+    setSearch("");
+    setCategory("all");
     setStatus("all");
   };
 
@@ -72,16 +72,16 @@ export function ServicesList({
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={busca}
-            onChange={(event) => setBusca(event.target.value)}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nome ou descrição..."
             className="px-8"
             aria-label="Buscar serviço"
           />
-          {busca ? (
+          {search ? (
             <button
               type="button"
-              onClick={clearBusca}
+              onClick={clearSearch}
               aria-label="Limpar busca"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
@@ -91,17 +91,17 @@ export function ServicesList({
         </div>
 
         <Select
-          value={categoria}
-          onValueChange={(value) => setCategoria(value as "all" | CategoriaServico)}
+          value={category}
+          onValueChange={(value) => setCategory(value as "all" | ServiceCategory)}
         >
           <SelectTrigger className="sm:w-48" aria-label="Filtrar por categoria">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as categorias</SelectItem>
-            {CATEGORIAS_SERVICO.map((c) => (
+            {SERVICE_CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>
-                {c}
+                {serviceCategoryLabel(c)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -109,15 +109,15 @@ export function ServicesList({
 
         <Select
           value={status}
-          onValueChange={(value) => setStatus(value as "all" | StatusCadastro)}
+          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
         >
           <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="ativo">Ativos</SelectItem>
-            <SelectItem value="inativo">Inativos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -133,12 +133,12 @@ export function ServicesList({
           onAction={() => refetch()}
         />
       ) : services.length === 0 ? (
-        hasBusca ? (
+        hasSearch ? (
           <StateCard
             icon={Search}
             title="Nenhum resultado para esta busca."
             actionLabel="Limpar busca"
-            onAction={clearBusca}
+            onAction={clearSearch}
           />
         ) : hasFilters ? (
           <StateCard

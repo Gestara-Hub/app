@@ -99,9 +99,13 @@ Itens do app shell: Dashboard, Agenda, Agendamentos, Clientes, Equipe, Servicos,
 
 ## Enums (chaves exatas)
 
-- StatusAgendamento: `pendente` | `confirmado` | `em_atendimento` | `concluido` | `cancelado` | `nao_compareceu`
-- OrigemAgendamento: `manual` | `recorrencia` (futuro: `online`, `whatsapp`)
-- Frequencia (recorrencia): `semanal` | `quinzenal` | `mensal`
+Codigos em ingles; o rotulo PT vai na UI (`src/lib/labels.ts`).
+
+- AppointmentStatus: `pending` | `confirmed` | `in_service` | `completed` | `canceled` | `no_show`
+- AppointmentOrigin: `manual` | `recurrence` (futuro: `online`, `whatsapp`)
+- Frequency: `weekly` | `biweekly` | `monthly`
+- RecordStatus: `active` | `inactive`
+- ServiceCategory: `hair` | `beard` | `care` | `combo` (labels: Cabelo/Barba/Cuidados/Combos)
 
 ## Direcao
 
@@ -110,7 +114,7 @@ Itens do app shell: Dashboard, Agenda, Agendamentos, Clientes, Equipe, Servicos,
 - Nunca espalhar dados soltos dentro de componentes; tudo passa por hook -> service.
 - Priorizar telas e fluxos do MVP de barbearia.
 - Respeitar as regras de negocio (conflito, expediente, bloqueio, recorrencia) ja na camada mockada.
-- Codigo em ingles; UI em portugues (acentuado). Os docs seguem portugues SEM acentos (padrao ASCII do repo).
+- Codigo em ingles, incluindo keys e enum VALUES; UI em portugues (acentuado). So texto livre (name, description, notes) e os rotulos de exibicao dos enums (`src/lib/labels.ts`) ficam em portugues. Os docs seguem portugues SEM acentos (padrao ASCII do repo).
 
 ## Mapa dos docs de frontend
 

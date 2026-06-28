@@ -17,15 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCentavos, formatDuracao } from "@/lib/format";
-import type { Servico } from "@/types";
+import { formatCents, formatDuration } from "@/lib/format";
+import { serviceCategoryLabel } from "@/lib/labels";
+import type { Service } from "@/types";
 import { ServiceStatusBadge } from "./service-status-badge";
 
 interface ServiceCardProps {
-  service: Servico;
-  onEdit: (service: Servico) => void;
-  onInactivate: (service: Servico) => void;
-  onReactivate: (service: Servico) => void;
+  service: Service;
+  onEdit: (service: Service) => void;
+  onInactivate: (service: Service) => void;
+  onReactivate: (service: Service) => void;
 }
 
 export function ServiceCard({
@@ -34,15 +35,15 @@ export function ServiceCard({
   onInactivate,
   onReactivate,
 }: ServiceCardProps) {
-  const ativo = service.status === "ativo";
+  const isActive = service.status === "active";
 
   return (
     <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle className="text-base leading-tight">{service.nome}</CardTitle>
+        <CardTitle className="text-base leading-tight">{service.name}</CardTitle>
         <CardDescription className="flex flex-wrap items-center gap-2 pt-1">
           <ServiceStatusBadge status={service.status} />
-          <span>{service.categoria}</span>
+          <span>{serviceCategoryLabel(service.category)}</span>
         </CardDescription>
         <CardAction>
           <DropdownMenu>
@@ -61,7 +62,7 @@ export function ServiceCard({
                 <Pencil />
                 Editar
               </DropdownMenuItem>
-              {ativo ? (
+              {isActive ? (
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={() => onInactivate(service)}
@@ -81,9 +82,9 @@ export function ServiceCard({
       </CardHeader>
 
       <CardContent className="flex-1">
-        {service.descricao ? (
+        {service.description ? (
           <p className="line-clamp-2 text-sm text-muted-foreground">
-            {service.descricao}
+            {service.description}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground/60 italic">
@@ -95,10 +96,10 @@ export function ServiceCard({
       <CardFooter className="justify-between border-t pt-4 text-sm">
         <span className="inline-flex items-center gap-1.5 text-muted-foreground">
           <Clock className="size-3.5" />
-          {formatDuracao(service.duracaoMinutos)}
+          {formatDuration(service.durationMinutes)}
         </span>
         <span className="font-semibold text-foreground">
-          {formatCentavos(service.precoCentavos)}
+          {formatCents(service.priceCents)}
         </span>
       </CardFooter>
     </Card>

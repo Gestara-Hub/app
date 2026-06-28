@@ -30,12 +30,14 @@ export function FieldShell({
     <div className={cn("space-y-1.5", className)}>
       {label ? (
         <Label htmlFor={id} className="text-sm">
-          {label}
-          {required ? (
-            <span className="ml-0.5 text-destructive" aria-hidden>
-              *
-            </span>
-          ) : null}
+          <span>
+            {label}
+            {required ? (
+              <span className="ml-0.5 text-destructive" aria-hidden>
+                *
+              </span>
+            ) : null}
+          </span>
         </Label>
       ) : null}
       {children}

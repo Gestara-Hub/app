@@ -1,46 +1,47 @@
 import type {
-  AgendamentoFiltro,
-  BloqueioFiltro,
-  ClienteFiltro,
+  AppointmentFilter,
+  ClientFilter,
   Id,
-  ProfissionalFiltro,
-  ServicoFiltro,
+  ProfessionalFilter,
+  ServiceFilter,
+  TimeBlockFilter,
 } from "@/types";
 
 /**
  * Convencao de queryKeys (hierarquia estavel):
- *  - [entidade] para o namespace,
- *  - [entidade, 'list', filtro] para listas,
- *  - [entidade, 'detail', id] para detalhe.
+ *  - [entity] para o namespace,
+ *  - [entity, 'list', filter] para listas,
+ *  - [entity, 'detail', id] para detalhe.
  * Filtros entram como objeto serializavel (o Query faz hash estrutural).
  */
 export const queryKeys = {
-  clientes: {
-    all: ["clientes"] as const,
-    list: (filtro?: ClienteFiltro) => ["clientes", "list", filtro] as const,
-    detail: (id: Id) => ["clientes", "detail", id] as const,
+  clients: {
+    all: ["clients"] as const,
+    list: (filter?: ClientFilter) => ["clients", "list", filter] as const,
+    detail: (id: Id) => ["clients", "detail", id] as const,
   },
-  profissionais: {
-    all: ["profissionais"] as const,
-    list: (filtro?: ProfissionalFiltro) =>
-      ["profissionais", "list", filtro] as const,
-    detail: (id: Id) => ["profissionais", "detail", id] as const,
+  professionals: {
+    all: ["professionals"] as const,
+    list: (filter?: ProfessionalFilter) =>
+      ["professionals", "list", filter] as const,
+    detail: (id: Id) => ["professionals", "detail", id] as const,
   },
-  servicos: {
-    all: ["servicos"] as const,
-    list: (filtro?: ServicoFiltro) => ["servicos", "list", filtro] as const,
-    detail: (id: Id) => ["servicos", "detail", id] as const,
+  services: {
+    all: ["services"] as const,
+    list: (filter?: ServiceFilter) => ["services", "list", filter] as const,
+    detail: (id: Id) => ["services", "detail", id] as const,
   },
-  agendamentos: {
-    all: ["agendamentos"] as const,
-    list: (filtro?: AgendamentoFiltro) =>
-      ["agendamentos", "list", filtro] as const,
-    detail: (id: Id) => ["agendamentos", "detail", id] as const,
-    ocorrencias: (serieId: Id) => ["agendamentos", "serie", serieId] as const,
+  appointments: {
+    all: ["appointments"] as const,
+    list: (filter?: AppointmentFilter) =>
+      ["appointments", "list", filter] as const,
+    detail: (id: Id) => ["appointments", "detail", id] as const,
+    occurrences: (seriesId: Id) =>
+      ["appointments", "series", seriesId] as const,
   },
-  bloqueios: {
-    all: ["bloqueios"] as const,
-    list: (filtro?: BloqueioFiltro) => ["bloqueios", "list", filtro] as const,
+  timeBlocks: {
+    all: ["timeBlocks"] as const,
+    list: (filter?: TimeBlockFilter) => ["timeBlocks", "list", filter] as const,
   },
   series: {
     detail: (id: Id) => ["series", "detail", id] as const,

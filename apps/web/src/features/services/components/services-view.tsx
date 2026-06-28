@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Servico } from "@/types";
+import type { Service } from "@/types";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
 import { ServiceFormDialog } from "./service-form-dialog";
@@ -15,20 +15,20 @@ import { InactivateServiceDialog } from "./inactivate-service-dialog";
 export function ServicesView() {
   const [formState, setFormState] = useState<{
     open: boolean;
-    service?: Servico;
+    service?: Service;
   }>({ open: false });
-  const [inactivating, setInactivating] = useState<Servico | null>(null);
+  const [inactivating, setInactivating] = useState<Service | null>(null);
 
   const updateMut = useUpdateService();
 
   const openCreate = () => setFormState({ open: true });
-  const openEdit = (service: Servico) => setFormState({ open: true, service });
+  const openEdit = (service: Service) => setFormState({ open: true, service });
 
-  async function reactivate(service: Servico) {
+  async function reactivate(service: Service) {
     try {
       await updateMut.mutateAsync({
         id: service.id,
-        payload: { status: "ativo" },
+        payload: { status: "active" },
       });
       toast.success("Serviço reativado.");
     } catch (error) {

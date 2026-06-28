@@ -16,13 +16,9 @@ import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@/lib/labels";
 import { ORG_ID } from "@/config/tenant";
-import {
-  CATEGORIAS_SERVICO,
-  type CategoriaServico,
-  type CreateServico,
-  type Servico,
-} from "@/types";
+import type { CreateService, Service, ServiceCategory } from "@/types";
 import { useCreateService, useUpdateService } from "../hooks/use-services";
 import {
   serviceFormSchema,
@@ -30,22 +26,25 @@ import {
 } from "../service-schema";
 
 const DURATION_PRESETS = [15, 30, 40, 45, 60, 75, 90];
-const CATEGORY_OPTIONS = CATEGORIAS_SERVICO.map((c) => ({ label: c, value: c }));
+const CATEGORY_OPTIONS = SERVICE_CATEGORIES.map((c) => ({
+  label: serviceCategoryLabel(c),
+  value: c,
+}));
 
-function toDefaults(service?: Servico): ServiceFormValues {
+function toDefaults(service?: Service): ServiceFormValues {
   return {
-    nome: service?.nome ?? "",
-    categoria: service?.categoria ?? "",
-    duracaoMinutos: service?.duracaoMinutos ?? 30,
+    name: service?.name ?? "",
+    category: service?.category ?? "",
+    durationMinutes: service?.durationMinutes ?? 30,
     // undefined ate o usuario digitar (campo de preco vazio).
-    precoCentavos: service?.precoCentavos ?? (undefined as unknown as number),
-    descricao: service?.descricao ?? "",
-    ativo: service ? service.status === "ativo" : true,
+    priceCents: service?.priceCents ?? (undefined as unknown as number),
+    description: service?.description ?? "",
+    active: service ? service.status === "active" : true,
   };
 }
 
 interface ServiceFormProps {
-  service?: Servico;
+  service?: Service;
   onSuccess: () => void;
   formId: string;
 }
@@ -63,20 +62,20 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
     defaultValues: toDefaults(service),
   });
 
-  const duracaoAtual = useWatch({
+  const currentDuration = useWatch({
     control: form.control,
-    name: "duracaoMinutos",
+    name: "durationMinutes",
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const payload: CreateServico = {
-      organizacaoId: service?.organizacaoId ?? ORG_ID,
-      nome: values.nome,
-      categoria: values.categoria as CategoriaServico,
-      duracaoMinutos: values.duracaoMinutos,
-      precoCentavos: values.precoCentavos,
-      descricao: values.descricao || undefined,
-      status: values.ativo ? "ativo" : "inativo",
+    const payload: CreateService = {
+      organizationId: service?.organizationId ?? ORG_ID,
+      name: values.name,
+      category: values.category as ServiceCategory,
+      durationMinutes: values.durationMinutes,
+      priceCents: values.priceCents,
+      description: values.description || undefined,
+      status: values.active ? "active" : "inactive",
     };
 
     try {
@@ -89,12 +88,11 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
       }
       onSuccess();
     } catch (error) {
-      // Erros de validacao do "servidor" caem no campo; demais viram toast.
-      const campos = getFieldErrors(error);
-      if (campos && campos.length > 0) {
-        for (const c of campos) {
-          form.setError(c.campo as Path<ServiceFormValues>, {
-            message: c.mensagem,
+      const fields = getFieldErrors(error);
+      if (fields && fields.length > 0) {
+        for (const f of fields) {
+          form.setError(f.field as Path<ServiceFormValues>, {
+            message: f.message,
           });
         }
       } else {
@@ -107,7 +105,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
     <FormProvider {...form}>
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<ServiceFormValues>
-          name="nome"
+          name="name"
           label="Nome"
           placeholder="Ex.: Corte Masculino"
           required
@@ -115,7 +113,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
         />
 
         <SelectField<ServiceFormValues>
-          name="categoria"
+          name="category"
           label="Categoria"
           placeholder="Selecione uma categoria"
           options={CATEGORY_OPTIONS}
@@ -123,12 +121,14 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           disabled={pending}
         />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm">
-              Duração
-              <span className="ml-0.5 text-destructive" aria-hidden>
-                *
+              <span>
+                Duração
+                <span className="ml-0.5 text-destructive" aria-hidden>
+                  *
+                </span>
               </span>
             </Label>
             <div className="flex flex-wrap gap-1.5">
@@ -138,13 +138,13 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
                   type="button"
                   disabled={pending}
                   onClick={() =>
-                    form.setValue("duracaoMinutos", preset, {
+                    form.setValue("durationMinutes", preset, {
                       shouldValidate: form.formState.isSubmitted,
                     })
                   }
                   className={cn(
                     "rounded-md border px-2 py-1 text-xs transition-colors",
-                    duracaoAtual === preset
+                    currentDuration === preset
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-muted-foreground hover:bg-accent",
                   )}
@@ -154,7 +154,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
               ))}
             </div>
             <InputNumber<ServiceFormValues>
-              name="duracaoMinutos"
+              name="durationMinutes"
               min={1}
               max={1440}
               step={5}
@@ -164,7 +164,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           </div>
 
           <InputCurrency<ServiceFormValues>
-            name="precoCentavos"
+            name="priceCents"
             label="Preço"
             required
             disabled={pending}
@@ -172,14 +172,14 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
         </div>
 
         <TextArea<ServiceFormValues>
-          name="descricao"
+          name="description"
           label="Descrição"
           placeholder="Detalhes do serviço (opcional)"
           disabled={pending}
         />
 
         <SwitchField<ServiceFormValues>
-          name="ativo"
+          name="active"
           label="Serviço ativo"
           hint="Serviços inativos não são sugeridos em novos agendamentos."
           disabled={pending}

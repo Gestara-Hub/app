@@ -6,20 +6,20 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { servicosService } from "@/services/servicosService";
-import type { CreateServico, Id, ServicoFiltro, UpdateServico } from "@/types";
+import { servicesService } from "@/services/servicesService";
+import type { CreateService, Id, ServiceFilter, UpdateService } from "@/types";
 
-export function useServices(filtro?: ServicoFiltro) {
+export function useServices(filter?: ServiceFilter) {
   return useQuery({
-    queryKey: queryKeys.servicos.list(filtro),
-    queryFn: () => servicosService.list(filtro),
+    queryKey: queryKeys.services.list(filter),
+    queryFn: () => servicesService.list(filter),
   });
 }
 
 export function useService(id: Id) {
   return useQuery({
-    queryKey: queryKeys.servicos.detail(id),
-    queryFn: () => servicosService.getById(id),
+    queryKey: queryKeys.services.detail(id),
+    queryFn: () => servicesService.getById(id),
     enabled: Boolean(id),
   });
 }
@@ -27,27 +27,27 @@ export function useService(id: Id) {
 export function useCreateService() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreateServico) => servicosService.create(payload),
+    mutationFn: (payload: CreateService) => servicesService.create(payload),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: queryKeys.servicos.all }),
+      qc.invalidateQueries({ queryKey: queryKeys.services.all }),
   });
 }
 
 export function useUpdateService() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: Id; payload: UpdateServico }) =>
-      servicosService.update(id, payload),
+    mutationFn: ({ id, payload }: { id: Id; payload: UpdateService }) =>
+      servicesService.update(id, payload),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: queryKeys.servicos.all }),
+      qc.invalidateQueries({ queryKey: queryKeys.services.all }),
   });
 }
 
 export function useInactivateService() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: Id) => servicosService.remove(id),
+    mutationFn: (id: Id) => servicesService.remove(id),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: queryKeys.servicos.all }),
+      qc.invalidateQueries({ queryKey: queryKeys.services.all }),
   });
 }

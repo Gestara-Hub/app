@@ -12,11 +12,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Servico } from "@/types";
+import type { Service } from "@/types";
 import { useInactivateService } from "../hooks/use-services";
 
 interface InactivateServiceDialogProps {
-  service: Servico | null;
+  service: Service | null;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -50,7 +50,7 @@ export function InactivateServiceDialog({
           <AlertDialogDescription>
             {service ? (
               <>
-                “{service.nome}” deixará de ser sugerido em novos agendamentos.
+                “{service.name}” deixará de ser sugerido em novos agendamentos.
                 Você pode reativá-lo depois.
               </>
             ) : null}

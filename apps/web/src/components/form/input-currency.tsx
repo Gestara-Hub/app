@@ -73,7 +73,7 @@ export function InputCurrency<T extends FieldValues>({
               inputMode="numeric"
               placeholder={placeholder}
               disabled={disabled}
-              className="pl-9 text-right"
+              className="pl-9"
               value={formatCentavos(field.value as number | undefined)}
               onChange={(event) =>
                 field.onChange(digitsToCentavos(event.target.value))

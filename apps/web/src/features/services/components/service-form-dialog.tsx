@@ -7,13 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Servico } from "@/types";
+import type { Service } from "@/types";
 import { ServiceForm } from "./service-form";
 
 interface ServiceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  service?: Servico;
+  service?: Service;
 }
 
 export function ServiceFormDialog({

@@ -1,7 +1,7 @@
 import type {
   ApiError,
-  ApiErrorCampo,
-  ApiErrorCodigo,
+  ApiErrorCode,
+  ApiErrorField,
   DateTimeISO,
   Id,
 } from "@/types";
@@ -23,15 +23,15 @@ export function nowIso(): DateTimeISO {
 // --- Fabrica de erros (formato unico, imita erro de API) -------------------
 
 export function apiError(
-  codigo: ApiErrorCodigo,
-  mensagem: string,
-  options?: { campos?: ApiErrorCampo[]; statusHttp?: number },
+  code: ApiErrorCode,
+  message: string,
+  options?: { fields?: ApiErrorField[]; httpStatus?: number },
 ): ApiError {
   return {
-    codigo,
-    mensagem,
-    campos: options?.campos,
-    statusHttp: options?.statusHttp,
+    code,
+    message,
+    fields: options?.fields,
+    httpStatus: options?.httpStatus,
   };
 }
 
@@ -39,29 +39,29 @@ export function networkError(): ApiError {
   return apiError(
     "NETWORK",
     "Não foi possível concluir a operação. Tente novamente.",
-    { statusHttp: 500 },
+    { httpStatus: 500 },
   );
 }
 
-export function notFoundError(mensagem = "Registro não encontrado."): ApiError {
-  return apiError("NOT_FOUND", mensagem, { statusHttp: 404 });
+export function notFoundError(message = "Registro não encontrado."): ApiError {
+  return apiError("NOT_FOUND", message, { httpStatus: 404 });
 }
 
-export function validationError(campos: ApiErrorCampo[]): ApiError {
+export function validationError(fields: ApiErrorField[]): ApiError {
   return apiError("VALIDATION", "Verifique os campos destacados.", {
-    campos,
-    statusHttp: 422,
+    fields,
+    httpStatus: 422,
   });
 }
 
 // --- Simulacao de latencia e erro de leitura -------------------------------
 
-/** Leitura simulada: latencia + chance de erro de rede (taxaErroLeitura). */
+/** Leitura simulada: latencia + chance de erro de rede (readErrorRate). */
 export async function simulateRead<T>(produce: () => T): Promise<T> {
-  await sleep(mockConfig.latenciaMs);
+  await sleep(mockConfig.latencyMs);
   if (
-    mockConfig.taxaErroLeitura > 0 &&
-    Math.random() < mockConfig.taxaErroLeitura
+    mockConfig.readErrorRate > 0 &&
+    Math.random() < mockConfig.readErrorRate
   ) {
     throw networkError();
   }
@@ -73,7 +73,7 @@ export async function simulateRead<T>(produce: () => T): Promise<T> {
  * apos a mutacao, persiste o store (no-op no server/Node).
  */
 export async function simulateWrite<T>(produce: () => T): Promise<T> {
-  await sleep(mockConfig.latenciaMs);
+  await sleep(mockConfig.latencyMs);
   const result = produce();
   persist();
   return result;

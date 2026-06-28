@@ -6,19 +6,19 @@ const BRL = new Intl.NumberFormat("pt-BR", {
 });
 
 /** Centavos -> "R$ 45,00". */
-export function formatCentavos(centavos: number): string {
-  return BRL.format(centavos / 100);
+export function formatCents(cents: number): string {
+  return BRL.format(cents / 100);
 }
 
 /** Minutos -> "30 min", "1h", "1h 30min". */
-export function formatDuracao(minutos: number): string {
-  if (minutos < 60) return `${minutos} min`;
-  const horas = Math.floor(minutos / 60);
-  const resto = minutos % 60;
-  return resto === 0 ? `${horas}h` : `${horas}h ${resto}min`;
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}min`;
 }
 
 /** ISO -> "27/06/2026". */
-export function formatData(iso: string): string {
+export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }

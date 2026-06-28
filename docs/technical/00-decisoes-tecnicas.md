@@ -110,7 +110,7 @@ Sessao mockada via cookie. A protecao de `(app)/*` e feita por Next middleware (
 - TypeScript em modo strict em todo o repositorio; evitar `any`, preferir tipos derivados dos contratos (`src/types`, schemas Zod).
 - Organizacao por feature/dominio (ver arvore acima). Codigo realmente generico vai para `components/`, `lib/` ou, no futuro, `packages/`.
 - Path aliases `@/*` -> `src/*`, com `@/components/ui`, `@/lib/utils` e `@/hooks` conforme o padrao do shadcn; configurados no `tsconfig` e em `components.json`.
-- Nomenclatura de codigo em ingles segue o padrao das libs; a UI e em portugues (acentuado). Os ENUMS de dominio usam chaves canonicas em portugues (ver secao de enums).
+- Nomenclatura de codigo em ingles (identificadores, keys e enum VALUES), seguindo o padrao das libs. So strings vistas pelo usuario ficam em portugues: texto livre de cadastro (name, description, notes...) e os ROTULOS de exibicao dos enums (`src/lib/labels.ts`). Os codigos de enum sao em ingles (ver secao de enums).
 - Formularios: React Hook Form + zodResolver; validacao no submit e revalidacao no change. Usar os wrappers de campo em `components/form`.
 - Lint/format: ESLint + Prettier OU Biome (refinavel). Decidir um e aplicar consistentemente no `apps/web`.
 - Gerenciador de pacotes: pnpm (refinavel), com workspaces na raiz do monorepo.
@@ -124,18 +124,24 @@ Dashboard, Agenda, Agendamentos, Clientes, Equipe, Servicos, Configuracoes.
 
 ### Enums (chaves exatas)
 
+Codigos em ingles; o rotulo PT vai na UI (ver `src/lib/labels.ts`).
+
 ```ts
-type StatusAgendamento =
-  | "pendente"
-  | "confirmado"
-  | "em_atendimento"
-  | "concluido"
-  | "cancelado"
-  | "nao_compareceu";
+type AppointmentStatus =
+  | "pending"
+  | "confirmed"
+  | "in_service"
+  | "completed"
+  | "canceled"
+  | "no_show";
 
-type OrigemAgendamento = "manual" | "recorrencia"; // futuro: "online" | "whatsapp"
+type AppointmentOrigin = "manual" | "recurrence"; // futuro: "online" | "whatsapp"
 
-type Frequencia = "semanal" | "quinzenal" | "mensal";
+type Frequency = "weekly" | "biweekly" | "monthly";
+
+type RecordStatus = "active" | "inactive";
+
+type ServiceCategory = "hair" | "beard" | "care" | "combo"; // labels: Cabelo/Barba/Cuidados/Combos
 ```
 
 ## Testes

@@ -223,24 +223,24 @@ Sombras suaves; o painel se apoia mais em bordas do que em elevacao. Usar `shado
 
 ## Cores de status de agendamento
 
-Mapa fixo chave -> cor, definido como variaveis CSS proprias em `globals.css` (independentes do tema shadcn base, para garantir contraste consistente). Cada status tem um par: `solid` (barra lateral, dot e texto do badge) + `surface` (fundo do bloco/badge). As chaves sao EXATAMENTE as do canon: `pendente`, `confirmado`, `em_atendimento`, `concluido`, `cancelado`, `nao_compareceu`. O `bloqueio` de horario NAO e um status de agendamento, mas tem estilo proprio definido aqui.
+Mapa fixo chave -> cor, definido como variaveis CSS proprias em `globals.css` (independentes do tema shadcn base, para garantir contraste consistente). Cada status tem um par: `solid` (barra lateral, dot e texto do badge) + `surface` (fundo do bloco/badge). As chaves sao os codigos EN do canon (label PT na UI): `pending`, `confirmed`, `in_service`, `completed`, `canceled`, `no_show`. O `bloqueio` de horario (`blocked`) NAO e um status de agendamento, mas tem estilo proprio definido aqui.
 
 Requisitos: distinguiveis entre si (matiz diferente, nao so tonalidade) e acessiveis (texto sobre o fundo claro do badge com contraste AA >= 4.5:1; cor nunca e o unico sinal - sempre acompanha rotulo).
 
 | Chave | Rotulo | Significado visual | solid | surface |
 | --- | --- | --- | --- | --- |
-| pendente | Pendente | aguardando confirmacao | #B7791F (ambar) | #FBF1DC |
-| confirmado | Confirmado | confirmado, vai acontecer | #2C5F8A (azul) | #E1ECF5 |
-| em_atendimento | Em atendimento | acontecendo agora | #2F7A4D (verde) | #DEF0E5 |
-| concluido | Concluido | finalizado | #54544F (grafite) | #ECECEA |
-| cancelado | Cancelado | cancelado pelo cliente/equipe | #C0392B (vermelho) | #F7E2DF |
-| nao_compareceu | Nao compareceu | no-show | #7A3FA0 (roxo) | #EFE3F5 |
+| pending | Pendente | aguardando confirmacao | #B7791F (ambar) | #FBF1DC |
+| confirmed | Confirmado | confirmado, vai acontecer | #2C5F8A (azul) | #E1ECF5 |
+| in_service | Em atendimento | acontecendo agora | #2F7A4D (verde) | #DEF0E5 |
+| completed | Concluido | finalizado | #54544F (grafite) | #ECECEA |
+| canceled | Cancelado | cancelado pelo cliente/equipe | #C0392B (vermelho) | #F7E2DF |
+| no_show | Nao compareceu | no-show | #7A3FA0 (roxo) | #EFE3F5 |
 
 Regras de aplicacao:
 
 - Os 6 status usam 6 matizes distintos (ambar, azul, verde, grafite, vermelho, roxo) para serem separaveis a primeira vista no day view, inclusive por daltonicos quando combinados ao rotulo.
-- `concluido` e neutro/dessaturado (cinza) de proposito: o passado "recua" visualmente e nao compete com o que ainda vai acontecer.
-- `em_atendimento` (verde, "ao vivo") pode ganhar um indicador extra de "agora" (ex.: leve pulso/borda mais forte) ja que e o estado mais acionavel no dia.
+- `completed` e neutro/dessaturado (cinza) de proposito: o passado "recua" visualmente e nao compete com o que ainda vai acontecer.
+- `in_service` (verde, "ao vivo") pode ganhar um indicador extra de "agora" (ex.: leve pulso/borda mais forte) ja que e o estado mais acionavel no dia.
 - Na Agenda (react-big-calendar), o evento usa `surface` como fundo, `solid` como barra lateral esquerda (4px) e dot, e o texto do evento em `foreground` ou no proprio `solid` quando couber.
 - Em badges de lista/detalhe: fundo `surface`, texto `solid`, e um dot `solid`.
 
@@ -250,20 +250,20 @@ Declarar as variaveis em `globals.css` e expor classes utilitarias para consumo 
 
 ```css
 :root {
-  --status-pendente-solid: #b7791f;
-  --status-pendente-surface: #fbf1dc;
-  --status-confirmado-solid: #2c5f8a;
-  --status-confirmado-surface: #e1ecf5;
-  --status-em-atendimento-solid: #2f7a4d;
-  --status-em-atendimento-surface: #def0e5;
-  --status-concluido-solid: #54544f;
-  --status-concluido-surface: #ececea;
-  --status-cancelado-solid: #c0392b;
-  --status-cancelado-surface: #f7e2df;
-  --status-nao-compareceu-solid: #7a3fa0;
-  --status-nao-compareceu-surface: #efe3f5;
-  --status-bloqueio-surface: #ededeb;
-  --status-bloqueio-border: #c2c2bc;
+  --status-pending-solid: #b7791f;
+  --status-pending-surface: #fbf1dc;
+  --status-confirmed-solid: #2c5f8a;
+  --status-confirmed-surface: #e1ecf5;
+  --status-in-service-solid: #2f7a4d;
+  --status-in-service-surface: #def0e5;
+  --status-completed-solid: #54544f;
+  --status-completed-surface: #ececea;
+  --status-canceled-solid: #c0392b;
+  --status-canceled-surface: #f7e2df;
+  --status-no-show-solid: #7a3fa0;
+  --status-no-show-surface: #efe3f5;
+  --status-blocked-surface: #ededeb;
+  --status-blocked-border: #c2c2bc;
 }
 ```
 
@@ -272,12 +272,12 @@ No TypeScript, um mapa unico expoe a chave do canon -> par de variaveis, e um he
 ```ts
 // src/features/appointments/status-style.ts (conceitual)
 export const STATUS_STYLE = {
-  pendente:       { solid: "var(--status-pendente-solid)",       surface: "var(--status-pendente-surface)" },
-  confirmado:     { solid: "var(--status-confirmado-solid)",     surface: "var(--status-confirmado-surface)" },
-  em_atendimento: { solid: "var(--status-em-atendimento-solid)", surface: "var(--status-em-atendimento-surface)" },
-  concluido:      { solid: "var(--status-concluido-solid)",      surface: "var(--status-concluido-surface)" },
-  cancelado:      { solid: "var(--status-cancelado-solid)",      surface: "var(--status-cancelado-surface)" },
-  nao_compareceu: { solid: "var(--status-nao-compareceu-solid)", surface: "var(--status-nao-compareceu-surface)" },
+  pending:    { solid: "var(--status-pending-solid)",    surface: "var(--status-pending-surface)" },
+  confirmed:  { solid: "var(--status-confirmed-solid)",  surface: "var(--status-confirmed-surface)" },
+  in_service: { solid: "var(--status-in-service-solid)", surface: "var(--status-in-service-surface)" },
+  completed:  { solid: "var(--status-completed-solid)",  surface: "var(--status-completed-surface)" },
+  canceled:   { solid: "var(--status-canceled-solid)",   surface: "var(--status-canceled-surface)" },
+  no_show:    { solid: "var(--status-no-show-solid)",     surface: "var(--status-no-show-surface)" },
 } as const;
 
 export function statusStyle(status: keyof typeof STATUS_STYLE) {
@@ -293,8 +293,8 @@ Bloqueio NAO e agendamento e precisa ser inconfundivel (ver doc 10, "Horario blo
 
 | Item | Definicao |
 | --- | --- |
-| Fundo do slot | `--status-bloqueio-surface` com padrao de listras diagonais (hachura via `repeating-linear-gradient`) |
-| Borda | tracejada (`border-dashed`) usando `--status-bloqueio-border` |
+| Fundo do slot | `--status-blocked-surface` com padrao de listras diagonais (hachura via `repeating-linear-gradient`) |
+| Borda | tracejada (`border-dashed`) usando `--status-blocked-border` |
 | Texto | `text-muted-foreground`, "Bloqueado" + motivo opcional (ex.: "Bloqueado - Almoco") |
 | Cursor / interacao | nao clicavel para agendar; tentativa dispara o erro de bloqueio do doc 10 |
 
@@ -380,7 +380,7 @@ Alternativa: primitivos `Form` do shadcn (`FormField`/`FormItem`/`FormLabel`/`Fo
 ### Layout de form
 
 - Coluna unica no mobile; ate duas colunas em desktop quando os campos forem curtos (ex.: data + horario lado a lado).
-- Selects dependentes: ao escolher profissional, filtrar servicos que ele realiza; ao escolher servico, derivar `fim` por `inicio + duracaoMinutos` (campo `fim` nao editavel).
+- Selects dependentes: ao escolher profissional, filtrar servicos que ele realiza; ao escolher servico, derivar `end` por `start + durationMinutes` (campo `end` nao editavel).
 
 ## Convencoes de componentes (shadcn/ui)
 
@@ -487,6 +487,6 @@ Adaptacoes:
 - Definir os icones lucide de cada item de navegacao e de origem/recorrencia.
 - Ativar e revisar o modo escuro (hoje apenas previsto nas variaveis `.dark`).
 - Converter a paleta de referencia (hex) para os valores OKLCH finais em `globals.css`, mantendo a intencao de matiz/contraste.
-- Definir o indicador visual de "agora" para `em_atendimento` (borda/pulso) sem prejudicar a leitura da Agenda.
+- Definir o indicador visual de "agora" para `in_service` (borda/pulso) sem prejudicar a leitura da Agenda.
 </content>
 </invoke>

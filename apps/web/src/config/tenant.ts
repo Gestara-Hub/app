@@ -5,4 +5,4 @@
  * tocar no store).
  */
 export const ORG_ID = "org-corte-nobre";
-export const UNIDADE_ID = "unit-matriz";
+export const UNIT_ID = "unit-matriz";
