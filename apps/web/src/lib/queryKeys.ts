@@ -1,5 +1,6 @@
 import type {
   AppointmentFilter,
+  CategoryFilter,
   ClientFilter,
   Id,
   ProfessionalFilter,
@@ -30,6 +31,11 @@ export const queryKeys = {
     all: ["services"] as const,
     list: (filter?: ServiceFilter) => ["services", "list", filter] as const,
     detail: (id: Id) => ["services", "detail", id] as const,
+  },
+  categories: {
+    all: ["categories"] as const,
+    list: (filter?: CategoryFilter) => ["categories", "list", filter] as const,
+    detail: (id: Id) => ["categories", "detail", id] as const,
   },
   appointments: {
     all: ["appointments"] as const,

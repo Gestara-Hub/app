@@ -16,9 +16,9 @@ import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
-import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@/lib/labels";
 import { ORG_ID } from "@/config/tenant";
-import type { CreateService, Service, ServiceCategory } from "@/types";
+import type { CreateService, Service } from "@/types";
+import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useCreateService, useUpdateService } from "../hooks/use-services";
 import {
   serviceFormSchema,
@@ -26,15 +26,11 @@ import {
 } from "../service-schema";
 
 const DURATION_PRESETS = [15, 30, 40, 45, 60, 75, 90];
-const CATEGORY_OPTIONS = SERVICE_CATEGORIES.map((c) => ({
-  label: serviceCategoryLabel(c),
-  value: c,
-}));
 
 function toDefaults(service?: Service): ServiceFormValues {
   return {
     name: service?.name ?? "",
-    category: service?.category ?? "",
+    categoryId: service?.categoryId ?? "",
     durationMinutes: service?.durationMinutes ?? 30,
     // undefined ate o usuario digitar (campo de preco vazio).
     priceCents: service?.priceCents ?? (undefined as unknown as number),
@@ -55,6 +51,12 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
   const updateMut = useUpdateService();
   const pending = createMut.isPending || updateMut.isPending;
 
+  const { data: categories } = useCategories({ status: "active" });
+  const categoryOptions = (categories ?? []).map((c) => ({
+    label: c.name,
+    value: c.id,
+  }));
+
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     mode: "onSubmit",
@@ -71,7 +73,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
     const payload: CreateService = {
       organizationId: service?.organizationId ?? ORG_ID,
       name: values.name,
-      category: values.category as ServiceCategory,
+      categoryId: values.categoryId,
       durationMinutes: values.durationMinutes,
       priceCents: values.priceCents,
       description: values.description || undefined,
@@ -113,10 +115,10 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
         />
 
         <SelectField<ServiceFormValues>
-          name="category"
+          name="categoryId"
           label="Categoria"
           placeholder="Selecione uma categoria"
-          options={CATEGORY_OPTIONS}
+          options={categoryOptions}
           required
           disabled={pending}
         />

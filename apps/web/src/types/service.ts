@@ -1,15 +1,10 @@
-import type {
-  DateTimeISO,
-  Id,
-  RecordStatus,
-  ServiceCategory,
-} from "./common";
+import type { DateTimeISO, Id, RecordStatus } from "./common";
 
 export interface Service {
   id: Id;
   organizationId: Id;
   name: string;
-  category: ServiceCategory;
+  categoryId: Id; // referencia a entidade Category
   durationMinutes: number; // > 0
   priceCents: number; // >= 0 (centavos para precisao)
   description?: string;
@@ -23,6 +18,6 @@ export type UpdateService = Partial<CreateService>;
 
 export interface ServiceFilter {
   search?: string;
-  category?: ServiceCategory;
+  categoryId?: Id;
   status?: RecordStatus;
 }

@@ -31,17 +31,9 @@ import {
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { formatCents, formatDuration } from "@/lib/format";
-import {
-  SERVICE_CATEGORIES,
-  recordStatusLabel,
-  serviceCategoryLabel,
-} from "@/lib/labels";
-import type {
-  RecordStatus,
-  Service,
-  ServiceCategory,
-  ServiceFilter,
-} from "@/types";
+import { recordStatusLabel } from "@/lib/labels";
+import type { RecordStatus, Service, ServiceFilter } from "@/types";
+import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useServices } from "../hooks/use-services";
 
 interface ServicesListProps {
@@ -59,11 +51,13 @@ function statusPillClass(isActive: boolean): string {
 
 function ServiceRow({
   service,
+  categoryName,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
   service: Service;
+  categoryName: string;
   onEdit: (s: Service) => void;
   onInactivate: (s: Service) => void;
   onReactivate: (s: Service) => void;
@@ -107,9 +101,7 @@ function ServiceRow({
             >
               {recordStatusLabel(service.status)}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {serviceCategoryLabel(service.category)}
-            </span>
+            <span className="text-xs text-muted-foreground">{categoryName}</span>
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {formatDuration(service.durationMinutes)} ·{" "}
@@ -146,25 +138,30 @@ export function ServicesList({
   onReactivate,
 }: ServicesListProps) {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<"all" | ServiceCategory>("all");
+  const [categoryId, setCategoryId] = useState<"all" | string>("all");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
 
   const filter: ServiceFilter = {
     search: search.trim() || undefined,
-    category: category === "all" ? undefined : category,
+    categoryId: categoryId === "all" ? undefined : categoryId,
     status: status === "all" ? undefined : status,
   };
 
   const { data, isPending, isError, refetch } = useServices(filter);
+  const { data: categories } = useCategories({ status: "active" });
   const services = data ?? [];
 
+  const categoryNameById = new Map(
+    (categories ?? []).map((c) => [c.id, c.name]),
+  );
+
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.category || filter.status);
+  const hasFilters = Boolean(filter.categoryId || filter.status);
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setCategory("all");
+    setCategoryId("all");
     setStatus("all");
   };
 
@@ -191,6 +188,7 @@ export function ServicesList({
       <ServiceRow
         key={service.id}
         service={service}
+        categoryName={categoryNameById.get(service.categoryId) ?? "—"}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -255,19 +253,17 @@ export function ServicesList({
           </div>
 
           <Select
-            value={category}
-            onValueChange={(value) =>
-              setCategory(value as "all" | ServiceCategory)
-            }
+            value={categoryId}
+            onValueChange={(value) => setCategoryId(value)}
           >
             <SelectTrigger className="sm:w-48" aria-label="Filtrar por categoria">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as categorias</SelectItem>
-              {SERVICE_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {serviceCategoryLabel(c)}
+              {(categories ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>

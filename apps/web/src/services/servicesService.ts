@@ -6,7 +6,6 @@ import type {
   ServiceFilter,
   UpdateService,
 } from "@/types";
-import { SERVICE_CATEGORIES } from "@/lib/labels";
 import { store } from "@/mocks/store";
 import {
   newId,
@@ -41,9 +40,12 @@ function validateService(
       fields.push({ field: "name", message: "Informe o nome do serviço." });
     }
   }
-  if (!partial || has("category")) {
-    if (!payload.category || !SERVICE_CATEGORIES.includes(payload.category)) {
-      fields.push({ field: "category", message: "Selecione uma categoria." });
+  if (!partial || has("categoryId")) {
+    const exists =
+      payload.categoryId != null &&
+      store.categories.some((c) => c.id === payload.categoryId);
+    if (!exists) {
+      fields.push({ field: "categoryId", message: "Selecione uma categoria." });
     }
   }
   if (!partial || has("durationMinutes")) {
@@ -73,11 +75,15 @@ function validateService(
   }
 }
 
+function categoryPosition(categoryId: Id): number {
+  return store.categories.find((c) => c.id === categoryId)?.position ?? 9999;
+}
+
 function sortServices(list: Service[]): Service[] {
   return [...list].sort((a, b) => {
-    const ca = SERVICE_CATEGORIES.indexOf(a.category);
-    const cb = SERVICE_CATEGORIES.indexOf(b.category);
-    if (ca !== cb) return ca - cb;
+    const pa = categoryPosition(a.categoryId);
+    const pb = categoryPosition(b.categoryId);
+    if (pa !== pb) return pa - pb;
     return a.name.localeCompare(b.name, "pt-BR");
   });
 }
@@ -94,8 +100,8 @@ export const servicesService = {
             (s.description ? textIncludes(s.description, term) : false),
         );
       }
-      if (filter?.category) {
-        result = result.filter((s) => s.category === filter.category);
+      if (filter?.categoryId) {
+        result = result.filter((s) => s.categoryId === filter.categoryId);
       }
       if (filter?.status) {
         result = result.filter((s) => s.status === filter.status);
@@ -120,7 +126,7 @@ export const servicesService = {
         id: newId(),
         organizationId: store.organization.id,
         name: payload.name.trim(),
-        category: payload.category,
+        categoryId: payload.categoryId,
         durationMinutes: payload.durationMinutes,
         priceCents: payload.priceCents,
         description: payload.description?.trim() || undefined,

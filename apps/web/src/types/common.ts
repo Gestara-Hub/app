@@ -46,9 +46,6 @@ export interface WorkingHours {
   end: TimeISO; // ex.: '20:00'
 }
 
-// Categoria de servico (codigos; rotulos PT em src/lib/labels.ts).
-export type ServiceCategory = "hair" | "beard" | "care" | "combo";
-
 // Escopo de acoes sobre ocorrencias de serie.
 export type SeriesScope = "only_this" | "this_and_future";
 

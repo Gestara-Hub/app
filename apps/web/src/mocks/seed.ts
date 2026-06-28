@@ -1,5 +1,6 @@
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
+  Category,
   Client,
   Organization,
   Professional,
@@ -41,8 +42,36 @@ const S = {
   comboFull: "svc-combo-completo",
 } as const;
 
+// IDs das categorias (semeadas por segmento; tenant podera editar no futuro).
+const CAT = {
+  cabelo: "cat-cabelo",
+  barba: "cat-barba",
+  cuidados: "cat-cuidados",
+  combos: "cat-combos",
+} as const;
+
 function timestamps() {
   return { createdAt: SEED_NOW, updatedAt: SEED_NOW };
+}
+
+// --- Categorias (preset do segmento barbearia) ----------------------------
+
+function seedCategories(): Category[] {
+  const base = (id: string, name: string, position: number): Category => ({
+    id,
+    organizationId: ORG_ID,
+    name,
+    position,
+    status: "active",
+    ...timestamps(),
+  });
+
+  return [
+    base(CAT.cabelo, "Cabelo", 1),
+    base(CAT.barba, "Barba", 2),
+    base(CAT.cuidados, "Cuidados", 3),
+    base(CAT.combos, "Combos", 4),
+  ];
 }
 
 // --- Organization + Unit ---------------------------------------------------
@@ -82,7 +111,7 @@ function seedServices(): Service[] {
   const base = (
     id: string,
     name: string,
-    category: Service["category"],
+    categoryId: string,
     durationMinutes: number,
     priceCents: number,
     description: string,
@@ -90,7 +119,7 @@ function seedServices(): Service[] {
     id,
     organizationId: ORG_ID,
     name,
-    category,
+    categoryId,
     durationMinutes,
     priceCents,
     description,
@@ -99,18 +128,18 @@ function seedServices(): Service[] {
   });
 
   return [
-    base(S.haircut, "Corte Masculino", "hair", 30, 4500, "Corte clássico na tesoura e máquina."),
-    base(S.fade, "Corte Degradê", "hair", 40, 5500, "Degradê com transição suave."),
-    base(S.kidsCut, "Corte Infantil", "hair", 30, 4000, "Corte para crianças."),
-    base(S.edgeUp, "Pezinho / Acabamento", "hair", 15, 2000, "Acabamento de contorno entre cortes."),
-    base(S.beard, "Barba", "beard", 30, 3500, "Aparo e modelagem da barba."),
-    base(S.razorBeard, "Barba Navalhada", "beard", 40, 4500, "Barba feita na navalha com toalha quente."),
-    base(S.beardColor, "Pigmentação de Barba", "beard", 45, 6000, "Preenchimento e pigmentação de falhas."),
-    base(S.eyebrow, "Sobrancelha", "care", 15, 2000, "Design de sobrancelha masculina."),
-    base(S.hairTreatment, "Hidratação Capilar", "care", 30, 4000, "Hidratação e nutrição dos fios."),
-    base(S.straightening, "Relaxamento / Progressiva", "care", 90, 12000, "Alisamento e redução de volume."),
-    base(S.comboCutBeard, "Combo Corte + Barba", "combo", 60, 7500, "Corte masculino com barba."),
-    base(S.comboFull, "Combo Completo (Corte + Barba + Sobrancelha)", "combo", 75, 9000, "Corte, barba e sobrancelha."),
+    base(S.haircut, "Corte Masculino", CAT.cabelo, 30, 4500, "Corte clássico na tesoura e máquina."),
+    base(S.fade, "Corte Degradê", CAT.cabelo, 40, 5500, "Degradê com transição suave."),
+    base(S.kidsCut, "Corte Infantil", CAT.cabelo, 30, 4000, "Corte para crianças."),
+    base(S.edgeUp, "Pezinho / Acabamento", CAT.cabelo, 15, 2000, "Acabamento de contorno entre cortes."),
+    base(S.beard, "Barba", CAT.barba, 30, 3500, "Aparo e modelagem da barba."),
+    base(S.razorBeard, "Barba Navalhada", CAT.barba, 40, 4500, "Barba feita na navalha com toalha quente."),
+    base(S.beardColor, "Pigmentação de Barba", CAT.barba, 45, 6000, "Preenchimento e pigmentação de falhas."),
+    base(S.eyebrow, "Sobrancelha", CAT.cuidados, 15, 2000, "Design de sobrancelha masculina."),
+    base(S.hairTreatment, "Hidratação Capilar", CAT.cuidados, 30, 4000, "Hidratação e nutrição dos fios."),
+    base(S.straightening, "Relaxamento / Progressiva", CAT.cuidados, 90, 12000, "Alisamento e redução de volume."),
+    base(S.comboCutBeard, "Combo Corte + Barba", CAT.combos, 60, 7500, "Corte masculino com barba."),
+    base(S.comboFull, "Combo Completo (Corte + Barba + Sobrancelha)", CAT.combos, 75, 9000, "Corte, barba e sobrancelha."),
   ];
 }
 
@@ -236,6 +265,7 @@ export function createInitialStore(): MockStore {
     unit: seedUnit(),
     clients: seedClients(),
     professionals: seedProfessionals(),
+    categories: seedCategories(),
     services: seedServices(),
     appointments: [],
     timeBlocks: [],

@@ -1,33 +1,12 @@
-import type {
-  AppointmentStatus,
-  Frequency,
-  RecordStatus,
-  ServiceCategory,
-} from "@/types";
+import type { AppointmentStatus, Frequency, RecordStatus } from "@/types";
 
 /**
  * Rotulos de exibicao (PT, vistos pelo usuario) para os codigos de enum.
  * Os codigos ficam em ingles no dado; a UI traduz por aqui.
+ *
+ * NOTA: categoria de servico deixou de ser enum — virou entidade `Category`
+ * (nome guardado no dado, editavel pelo tenant). Ver `categoriesService`.
  */
-
-// Ordem canonica das categorias (para agrupar/ordenar listas).
-export const SERVICE_CATEGORIES: ServiceCategory[] = [
-  "hair",
-  "beard",
-  "care",
-  "combo",
-];
-
-const SERVICE_CATEGORY_LABEL: Record<ServiceCategory, string> = {
-  hair: "Cabelo",
-  beard: "Barba",
-  care: "Cuidados",
-  combo: "Combos",
-};
-
-export function serviceCategoryLabel(category: ServiceCategory): string {
-  return SERVICE_CATEGORY_LABEL[category];
-}
 
 const RECORD_STATUS_LABEL: Record<RecordStatus, string> = {
   active: "Ativo",

@@ -1,18 +1,13 @@
 import { z } from "zod";
-import { SERVICE_CATEGORIES } from "@/lib/labels";
 
 /**
  * Schema de formulario do Service (validacao da UI). Mensagens EXATAS do
- * doc 10-estados-e-mensagens.md. Validacao no submit, revalida no change
- * (config do useForm na tela). Independente da validacao do service.
+ * doc 10-estados-e-mensagens.md. Validacao no submit, revalida no change.
+ * `categoryId` referencia a entidade Category (carregada via useCategories).
  */
 export const serviceFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do serviço."),
-  category: z
-    .string()
-    .refine((v) => (SERVICE_CATEGORIES as string[]).includes(v), {
-      message: "Selecione uma categoria.",
-    }),
+  categoryId: z.string().min(1, "Selecione uma categoria."),
   durationMinutes: z
     .number({ error: "A duração deve ser maior que zero." })
     .int("A duração deve ser maior que zero.")

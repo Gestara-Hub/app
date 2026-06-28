@@ -1,5 +1,6 @@
 import type {
   Appointment,
+  Category,
   Client,
   Organization,
   Professional,
@@ -23,6 +24,7 @@ export interface MockStore {
   unit: Unit;
   clients: Client[];
   professionals: Professional[];
+  categories: Category[];
   services: Service[];
   appointments: Appointment[];
   timeBlocks: TimeBlock[];
@@ -33,7 +35,7 @@ const STORAGE_KEY = "gestarahub:db";
 
 // Versao do seed. Subir quando a forma/conteudo do seed mudar: dados salvos com
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 interface PersistedBlob {
   v: number;
