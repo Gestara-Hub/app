@@ -58,4 +58,10 @@ export const queryKeys = {
   series: {
     detail: (id: Id) => ["series", "detail", id] as const,
   },
+  organization: {
+    detail: ["organization"] as const,
+  },
+  unit: {
+    detail: ["unit"] as const,
+  },
 } as const;
