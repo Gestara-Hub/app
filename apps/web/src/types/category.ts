@@ -15,8 +15,16 @@ export interface Category {
   updatedAt: DateTimeISO;
 }
 
-export type CreateCategory = Omit<Category, "id" | "createdAt" | "updatedAt">;
-export type UpdateCategory = Partial<CreateCategory>;
+// position/status sao opcionais na criacao: a gestao cria so com o nome; o
+// service atribui a proxima position e status "active".
+export type CreateCategory = Omit<
+  Category,
+  "id" | "position" | "status" | "createdAt" | "updatedAt"
+> & {
+  position?: number;
+  status?: RecordStatus;
+};
+export type UpdateCategory = Partial<Pick<Category, "name" | "position" | "status">>;
 
 export interface CategoryFilter {
   search?: string;

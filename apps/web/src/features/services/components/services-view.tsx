@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
 import type { Service } from "@/types";
+import { CategoryManagerDialog } from "@/features/categories/components/category-manager-dialog";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
 import { ServiceFormDialog } from "./service-form-dialog";
@@ -18,6 +19,7 @@ export function ServicesView() {
     service?: Service;
   }>({ open: false });
   const [inactivating, setInactivating] = useState<Service | null>(null);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const updateMut = useUpdateService();
 
@@ -42,6 +44,10 @@ export function ServicesView() {
         title="Serviços"
         description="Catálogo de serviços da Corte Nobre — Matriz."
       >
+        <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
+          <Tag className="size-4" />
+          Categorias
+        </Button>
         <Button onClick={openCreate}>
           <Plus className="size-4" />
           Novo serviço
@@ -68,6 +74,11 @@ export function ServicesView() {
         onOpenChange={(open) => {
           if (!open) setInactivating(null);
         }}
+      />
+
+      <CategoryManagerDialog
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
       />
     </>
   );

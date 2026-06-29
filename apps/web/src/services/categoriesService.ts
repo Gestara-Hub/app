@@ -7,6 +7,7 @@ import type {
   UpdateCategory,
 } from "@/types";
 import { store } from "@/mocks/store";
+import { normalizeText } from "@/lib/text";
 import {
   newId,
   notFoundError,
@@ -22,6 +23,14 @@ function clone<T>(value: T): T {
 }
 
 const NOT_FOUND = "Categoria não encontrada.";
+
+// Nome de categoria e unico por organizacao (match accent/case-insensitive).
+function isDuplicateName(name: string, excludeId?: Id): boolean {
+  const target = normalizeText(name);
+  return store.categories.some(
+    (c) => c.id !== excludeId && normalizeText(c.name) === target,
+  );
+}
 
 function validateCategory(
   payload: Partial<CreateCategory>,
@@ -72,6 +81,11 @@ export const categoriesService = {
   create(payload: CreateCategory): Promise<Category> {
     return simulateWrite(() => {
       validateCategory(payload, { partial: false });
+      if (isDuplicateName(payload.name)) {
+        throw validationError([
+          { field: "name", message: "Já existe uma categoria com esse nome." },
+        ]);
+      }
       const ts = nowIso();
       const nextPosition =
         payload.position ??
@@ -95,6 +109,11 @@ export const categoriesService = {
       const idx = store.categories.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       validateCategory(payload, { partial: true });
+      if (payload.name !== undefined && isDuplicateName(payload.name, id)) {
+        throw validationError([
+          { field: "name", message: "Já existe uma categoria com esse nome." },
+        ]);
+      }
       const current = store.categories[idx];
       const updated: Category = {
         ...current,
