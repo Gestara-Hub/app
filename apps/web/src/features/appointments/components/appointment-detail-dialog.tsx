@@ -129,6 +129,15 @@ export function AppointmentDetailDialog({
                 </span>
               </Row>
             ) : null}
+            {appointment.rescheduledFrom && appointment.rescheduledFrom.length > 0 ? (
+              <Row label="Remarcado">
+                <span className="text-muted-foreground">
+                  originalmente{" "}
+                  {format(parseISO(appointment.rescheduledFrom[0].date), "dd/MM")} às{" "}
+                  {appointment.rescheduledFrom[0].start}
+                </span>
+              </Row>
+            ) : null}
             {appointment.notes ? <Row label="Observações">{appointment.notes}</Row> : null}
           </div>
 

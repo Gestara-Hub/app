@@ -22,6 +22,8 @@ export interface Appointment {
   origin: AppointmentOrigin;
   notes?: string;
   seriesId?: Id; // presente quando faz parte de uma serie recorrente
+  // Rastro de remarcacao: slots anteriores (mais antigo primeiro).
+  rescheduledFrom?: { date: DateISO; start: TimeISO; professionalId: Id }[];
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

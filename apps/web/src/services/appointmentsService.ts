@@ -258,12 +258,26 @@ export const appointmentsService = {
         start: payload.start ?? current.start,
       };
       const { end } = resolveAndValidate(merged, { excludeId: id });
+      const moved =
+        merged.date !== current.date ||
+        merged.start !== current.start ||
+        merged.professionalId !== current.professionalId;
       const updated: Appointment = {
         ...current,
         professionalId: merged.professionalId,
         date: merged.date,
         start: merged.start,
         end,
+        rescheduledFrom: moved
+          ? [
+              ...(current.rescheduledFrom ?? []),
+              {
+                date: current.date,
+                start: current.start,
+                professionalId: current.professionalId,
+              },
+            ]
+          : current.rescheduledFrom,
         updatedAt: nowIso(),
       };
       store.appointments[idx] = updated;
@@ -324,7 +338,20 @@ export const appointmentsService = {
           continue;
         }
         const idx = store.appointments.findIndex((x) => x.id === a.id);
-        store.appointments[idx] = { ...a, professionalId, start, end, updatedAt: nowIso() };
+        const moved = professionalId !== a.professionalId || start !== a.start;
+        store.appointments[idx] = {
+          ...a,
+          professionalId,
+          start,
+          end,
+          rescheduledFrom: moved
+            ? [
+                ...(a.rescheduledFrom ?? []),
+                { date: a.date, start: a.start, professionalId: a.professionalId },
+              ]
+            : a.rescheduledFrom,
+          updatedAt: nowIso(),
+        };
         updatedCount += 1;
       }
       return clone({ updatedCount, conflicts });

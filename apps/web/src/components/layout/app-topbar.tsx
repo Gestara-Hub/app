@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LogOut, Plus } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,6 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button size="sm" className="gap-1.5">
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">Novo agendamento</span>
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-2 px-1.5 sm:px-2">
