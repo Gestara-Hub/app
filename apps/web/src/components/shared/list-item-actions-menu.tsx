@@ -96,14 +96,21 @@ export function ListItemActionsMenu({
 export function ListItemContextMenu({
   actions,
   children,
+  onCloseAutoFocus,
 }: {
   actions: ListItemAction[];
   children: ReactNode;
+  /**
+   * Repassado ao conteudo do menu. Util quando a acao transforma a propria
+   * linha (ex.: edicao inline) e o restore de foco do Radix roubaria o foco do
+   * novo input — passe `(e) => e.preventDefault()`.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger className="block">{children}</ContextMenuTrigger>
-      <ContextMenuContent className="min-w-48">
+      <ContextMenuContent className="min-w-48" onCloseAutoFocus={onCloseAutoFocus}>
         <ActionItems actions={actions} kind="context" />
       </ContextMenuContent>
     </ContextMenu>

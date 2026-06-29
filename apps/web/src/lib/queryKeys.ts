@@ -4,6 +4,7 @@ import type {
   ClientFilter,
   Id,
   ProfessionalFilter,
+  RoleFilter,
   ServiceFilter,
   TimeBlockFilter,
 } from "@/types";
@@ -36,6 +37,11 @@ export const queryKeys = {
     all: ["categories"] as const,
     list: (filter?: CategoryFilter) => ["categories", "list", filter] as const,
     detail: (id: Id) => ["categories", "detail", id] as const,
+  },
+  roles: {
+    all: ["roles"] as const,
+    list: (filter?: RoleFilter) => ["roles", "list", filter] as const,
+    detail: (id: Id) => ["roles", "detail", id] as const,
   },
   appointments: {
     all: ["appointments"] as const,

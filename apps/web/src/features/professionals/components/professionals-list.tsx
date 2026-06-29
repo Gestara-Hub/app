@@ -7,8 +7,8 @@ import {
   Power,
   PowerOff,
   RotateCw,
+  Scissors,
   Search,
-  Users,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -32,14 +32,18 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@/lib/format";
 import { recordStatusLabel } from "@/lib/labels";
-import type { Client, ClientFilter, RecordStatus } from "@/types";
-import { useClients } from "../hooks/use-clients";
+import type {
+  ProfessionalFilter,
+  ProfessionalView,
+  RecordStatus,
+} from "@/types";
+import { useProfessionals } from "../hooks/use-professionals";
 
-interface ClientsListProps {
+interface ProfessionalsListProps {
   onCreate: () => void;
-  onEdit: (client: Client) => void;
-  onInactivate: (client: Client) => void;
-  onReactivate: (client: Client) => void;
+  onEdit: (professional: ProfessionalView) => void;
+  onInactivate: (professional: ProfessionalView) => void;
+  onReactivate: (professional: ProfessionalView) => void;
 }
 
 function statusPillClass(isActive: boolean): string {
@@ -48,43 +52,48 @@ function statusPillClass(isActive: boolean): string {
     : "border border-border bg-muted/40 text-muted-foreground";
 }
 
-function ClientRow({
-  client,
+function ProfessionalRow({
+  professional,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
-  client: Client;
-  onEdit: (c: Client) => void;
-  onInactivate: (c: Client) => void;
-  onReactivate: (c: Client) => void;
+  professional: ProfessionalView;
+  onEdit: (p: ProfessionalView) => void;
+  onInactivate: (p: ProfessionalView) => void;
+  onReactivate: (p: ProfessionalView) => void;
 }) {
-  const isActive = client.status === "active";
+  const isActive = professional.status === "active";
 
   const actions: ListItemAction[] = [
     {
       key: "edit",
       label: "Editar",
       icon: <Pencil className="size-4" />,
-      onSelect: () => onEdit(client),
+      onSelect: () => onEdit(professional),
     },
     isActive
       ? {
           key: "inactivate",
           label: "Inativar",
           icon: <PowerOff className="size-4" />,
-          onSelect: () => onInactivate(client),
+          onSelect: () => onInactivate(professional),
           destructive: true,
         }
       : {
           key: "reactivate",
           label: "Reativar",
           icon: <Power className="size-4" />,
-          onSelect: () => onReactivate(client),
+          onSelect: () => onReactivate(professional),
         },
   ];
 
-  const meta = [formatPhone(client.phone), client.email, client.notes]
+  const meta = [
+    professional.role.name,
+    `${professional.serviceIds.length} serviços`,
+    `${professional.workingHours.length} dias de atendimento`,
+    professional.phone ? formatPhone(professional.phone) : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -93,19 +102,19 @@ function ClientRow({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{client.name}</p>
+            <p className="font-medium">{professional.name}</p>
             <span
               className={cn(
                 "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
                 statusPillClass(isActive),
               )}
             >
-              {recordStatusLabel(client.status)}
+              {recordStatusLabel(professional.status)}
             </span>
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
         </div>
-        <ListItemActionsMenu actions={actions} title="Ações do cliente" />
+        <ListItemActionsMenu actions={actions} title="Ações do profissional" />
       </div>
     </ListItemCard>
   );
@@ -114,12 +123,12 @@ function ClientRow({
 }
 
 function SkeletonRows() {
-  return Array.from({ length: 6 }).map((_, i) => (
+  return Array.from({ length: 4 }).map((_, i) => (
     <div key={i} className="rounded-md border p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1.5">
           <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-56" />
+          <Skeleton className="h-4 w-72" />
         </div>
         <Skeleton className="size-8 rounded-md" />
       </div>
@@ -127,22 +136,22 @@ function SkeletonRows() {
   ));
 }
 
-export function ClientsList({
+export function ProfessionalsList({
   onCreate,
   onEdit,
   onInactivate,
   onReactivate,
-}: ClientsListProps) {
+}: ProfessionalsListProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
 
-  const filter: ClientFilter = {
+  const filter: ProfessionalFilter = {
     search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
   };
 
-  const { data, isPending, isError, refetch } = useClients(filter);
-  const clients = data ?? [];
+  const { data, isPending, isError, refetch } = useProfessionals(filter);
+  const professionals = data ?? [];
 
   const hasSearch = Boolean(filter.search);
   const hasFilters = Boolean(filter.status);
@@ -163,7 +172,7 @@ export function ClientsList({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertTriangle className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Não foi possível carregar os clientes. Tente novamente.
+          Não foi possível carregar a equipe. Tente novamente.
         </p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RotateCw className="size-4" />
@@ -172,10 +181,10 @@ export function ClientsList({
       </div>
     );
   } else {
-    items = clients.map((client) => (
-      <ClientRow
-        key={client.id}
-        client={client}
+    items = professionals.map((professional) => (
+      <ProfessionalRow
+        key={professional.id}
+        professional={professional}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -203,10 +212,10 @@ export function ClientsList({
       </div>
     ) : (
       <ModuleEmptyGuide
-        icon={<Users className="size-8" />}
-        title="Nenhum cliente cadastrado ainda."
-        description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
-        actionLabel="Cadastrar cliente"
+        icon={<Scissors className="size-8" />}
+        title="Nenhum profissional cadastrado ainda."
+        description="Cadastre sua equipe, os serviços que cada um realiza e a disponibilidade."
+        actionLabel="Cadastrar profissional"
         onAction={onCreate}
       />
     );
@@ -223,10 +232,10 @@ export function ClientsList({
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou telefone..."
+              placeholder="Buscar por nome ou cargo..."
               className="px-8"
               autoComplete="off"
-              aria-label="Buscar cliente"
+              aria-label="Buscar profissional"
             />
             {search ? (
               <button

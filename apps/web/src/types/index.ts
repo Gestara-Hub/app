@@ -3,6 +3,7 @@ export * from "./organization";
 export * from "./client";
 export * from "./category";
 export * from "./service";
+export * from "./role";
 export * from "./professional";
 export * from "./appointment";
 export * from "./time-block";

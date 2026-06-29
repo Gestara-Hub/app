@@ -4,6 +4,7 @@ import type {
   Client,
   Organization,
   Professional,
+  Role,
   Service,
   Unit,
   Weekday,
@@ -50,6 +51,14 @@ const CAT = {
   combos: "cat-combos",
 } as const;
 
+// IDs dos cargos (entidade Role). Cargos novos sao criados pelo autocomplete da
+// Equipe; aqui ficam os do cenario canonico.
+const ROLE = {
+  owner: "role-barbeiro-proprietario",
+  barber: "role-barbeiro",
+  junior: "role-barbeiro-junior",
+} as const;
+
 function timestamps() {
   return { createdAt: SEED_NOW, updatedAt: SEED_NOW };
 }
@@ -76,6 +85,25 @@ function seedCategories(): Category[] {
     base(CAT.barba, "Barba", 2),
     base(CAT.cuidados, "Cuidados", 3),
     base(CAT.combos, "Combos", 4),
+  ];
+}
+
+// --- Cargos (entidade Role) ------------------------------------------------
+
+function seedRoles(): Role[] {
+  const base = (id: string, name: string, position: number): Role => ({
+    id,
+    organizationId: ORG_ID,
+    name,
+    position,
+    status: "active",
+    ...timestamps(),
+  });
+
+  return [
+    base(ROLE.owner, "Barbeiro e proprietário", 1),
+    base(ROLE.barber, "Barbeiro", 2),
+    base(ROLE.junior, "Barbeiro júnior", 3),
   ];
 }
 
@@ -167,7 +195,7 @@ function seedProfessionals(): Professional[] {
   const base = (
     id: string,
     name: string,
-    role: string,
+    roleId: string,
     phone: string,
     days: Weekday[],
     serviceIds: string[],
@@ -176,7 +204,7 @@ function seedProfessionals(): Professional[] {
     organizationId: ORG_ID,
     unitId: UNIT_ID,
     name,
-    role,
+    roleId,
     phone: digits(phone),
     status: "active",
     workingHours: workingHours(days),
@@ -188,7 +216,7 @@ function seedProfessionals(): Professional[] {
     base(
       "prof-marcelo",
       "Marcelo Andrade",
-      "Barbeiro e proprietário",
+      ROLE.owner,
       "(11) 98800-0001",
       [1, 2, 3, 4, 5, 6], // Seg a Sab
       [...ALL_SERVICES], // todos os 12
@@ -196,7 +224,7 @@ function seedProfessionals(): Professional[] {
     base(
       "prof-rafael",
       "Rafael Lima",
-      "Barbeiro",
+      ROLE.barber,
       "(11) 98800-0002",
       [2, 3, 4, 5, 6], // Ter a Sab
       ALL_SERVICES.filter((id) => id !== S.straightening),
@@ -204,7 +232,7 @@ function seedProfessionals(): Professional[] {
     base(
       "prof-bruno",
       "Bruno Costa",
-      "Barbeiro",
+      ROLE.barber,
       "(11) 98800-0003",
       [1, 2, 3, 4, 5], // Seg a Sex
       ALL_SERVICES.filter((id) => id !== S.kidsCut),
@@ -212,7 +240,7 @@ function seedProfessionals(): Professional[] {
     base(
       "prof-diego",
       "Diego Santos",
-      "Barbeiro júnior",
+      ROLE.junior,
       "(11) 98800-0004",
       [3, 4, 5, 6], // Qua a Sab
       [S.haircut, S.fade, S.kidsCut, S.edgeUp, S.beard, S.eyebrow],
@@ -270,6 +298,7 @@ export function createInitialStore(): MockStore {
     unit: seedUnit(),
     clients: seedClients(),
     professionals: seedProfessionals(),
+    roles: seedRoles(),
     categories: seedCategories(),
     services: seedServices(),
     appointments: [],

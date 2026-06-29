@@ -238,6 +238,7 @@ export function ServicesList({
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar por nome ou descrição..."
               className="px-8"
+              autoComplete="off"
               aria-label="Buscar serviço"
             />
             {search ? (

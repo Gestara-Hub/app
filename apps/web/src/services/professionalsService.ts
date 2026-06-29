@@ -4,6 +4,7 @@ import type {
   Id,
   Professional,
   ProfessionalFilter,
+  ProfessionalView,
   UpdateProfessional,
 } from "@/types";
 import { store } from "@/mocks/store";
@@ -19,6 +20,15 @@ import {
 
 function clone<T>(value: T): T {
   return structuredClone(value);
+}
+
+function roleNameOf(roleId: Id): string {
+  return store.roles.find((r) => r.id === roleId)?.name ?? "";
+}
+
+// Expande o cargo (roleId -> role) — espelha o join que a API faria no GET.
+function toView(p: Professional): ProfessionalView {
+  return { ...p, role: { id: p.roleId, name: roleNameOf(p.roleId) } };
 }
 
 const NOT_FOUND = "Profissional não encontrado.";
@@ -37,9 +47,11 @@ function validateProfessional(
       fields.push({ field: "name", message: "Informe o nome do profissional." });
     }
   }
-  if (!partial || has("role")) {
-    if (!payload.role || !payload.role.trim()) {
-      fields.push({ field: "role", message: "Informe o cargo." });
+  if (!partial || has("roleId")) {
+    if (!payload.roleId) {
+      fields.push({ field: "roleId", message: "Informe o cargo." });
+    } else if (!store.roles.some((r) => r.id === payload.roleId)) {
+      fields.push({ field: "roleId", message: "Cargo inválido." });
     }
   }
   if (!partial || has("serviceIds")) {
@@ -64,13 +76,15 @@ function validateProfessional(
 }
 
 export const professionalsService = {
-  list(filter?: ProfessionalFilter): Promise<Professional[]> {
+  list(filter?: ProfessionalFilter): Promise<ProfessionalView[]> {
     return simulateRead(() => {
       let result = store.professionals;
       if (filter?.search) {
         const term = filter.search;
         result = result.filter(
-          (p) => textIncludes(p.name, term) || textIncludes(p.role, term),
+          (p) =>
+            textIncludes(p.name, term) ||
+            textIncludes(roleNameOf(p.roleId), term),
         );
       }
       if (filter?.status) {
@@ -80,20 +94,22 @@ export const professionalsService = {
         result = result.filter((p) => p.serviceIds.includes(filter.serviceId!));
       }
       return clone(
-        [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+        [...result]
+          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+          .map(toView),
       );
     });
   },
 
-  getById(id: Id): Promise<Professional> {
+  getById(id: Id): Promise<ProfessionalView> {
     return simulateRead(() => {
       const found = store.professionals.find((p) => p.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
-      return clone(found);
+      return clone(toView(found));
     });
   },
 
-  create(payload: CreateProfessional): Promise<Professional> {
+  create(payload: CreateProfessional): Promise<ProfessionalView> {
     return simulateWrite(() => {
       validateProfessional(payload, { partial: false });
       const ts = nowIso();
@@ -102,7 +118,7 @@ export const professionalsService = {
         organizationId: store.organization.id,
         unitId: payload.unitId ?? store.unit.id,
         name: payload.name.trim(),
-        role: payload.role.trim(),
+        roleId: payload.roleId,
         phone: payload.phone?.trim() || undefined,
         status: payload.status ?? "active",
         workingHours: payload.workingHours ?? [],
@@ -111,11 +127,11 @@ export const professionalsService = {
         updatedAt: ts,
       };
       store.professionals.push(professional);
-      return clone(professional);
+      return clone(toView(professional));
     });
   },
 
-  update(id: Id, payload: UpdateProfessional): Promise<Professional> {
+  update(id: Id, payload: UpdateProfessional): Promise<ProfessionalView> {
     return simulateWrite(() => {
       const idx = store.professionals.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
@@ -127,7 +143,7 @@ export const professionalsService = {
         updatedAt: nowIso(),
       };
       store.professionals[idx] = updated;
-      return clone(updated);
+      return clone(toView(updated));
     });
   },
 
