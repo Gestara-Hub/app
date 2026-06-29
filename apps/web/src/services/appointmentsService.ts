@@ -271,6 +271,66 @@ export const appointmentsService = {
     });
   },
 
+  /**
+   * Remarca "esta e as futuras" ocorrencias de uma serie: aplica novo horario
+   * e/ou profissional a partir desta ocorrencia (mantendo a data de cada uma).
+   * Passadas/concluidas nao mudam; ocorrencias em conflito sao puladas.
+   */
+  rescheduleSeriesFuture(
+    id: Id,
+    payload: { start?: TimeISO; professionalId?: Id },
+  ): Promise<{ updatedCount: number; conflicts: { date: DateISO; code: SlotConflictCode }[] }> {
+    return simulateWrite(() => {
+      const occ = store.appointments.find((a) => a.id === id);
+      if (!occ) throw notFoundError(NOT_FOUND);
+
+      if (payload.professionalId) {
+        const professional = store.professionals.find((p) => p.id === payload.professionalId);
+        if (!professional) {
+          throw validationError([{ field: "professionalId", message: "Selecione um profissional." }]);
+        }
+        if (professional.status !== "active") {
+          throw apiError("PROFESSIONAL_INACTIVE", "Este profissional está inativo.", {
+            fields: [{ field: "professionalId", message: "Este profissional está inativo." }],
+            httpStatus: 422,
+          });
+        }
+        if (!professional.serviceIds.includes(occ.serviceId)) {
+          const message = `${professional.name} não realiza este serviço.`;
+          throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
+            fields: [{ field: "professionalId", message }],
+            httpStatus: 422,
+          });
+        }
+      }
+
+      const targets = occ.seriesId
+        ? store.appointments.filter(
+            (a) => a.seriesId === occ.seriesId && a.date >= occ.date && occupies(a.status),
+          )
+        : [occ];
+
+      const conflicts: { date: DateISO; code: SlotConflictCode }[] = [];
+      let updatedCount = 0;
+      for (const a of targets) {
+        const professionalId = payload.professionalId ?? a.professionalId;
+        const start = payload.start ?? a.start;
+        const service = store.services.find((s) => s.id === a.serviceId);
+        const end = addMinutesToTime(start, service?.durationMinutes ?? 0);
+        const ctx = slotContext(professionalId, a.date, a.id);
+        const slot = checkSlotAvailability(a.date, start, end, ctx);
+        if (!slot.ok) {
+          conflicts.push({ date: a.date, code: slot.code });
+          continue;
+        }
+        const idx = store.appointments.findIndex((x) => x.id === a.id);
+        store.appointments[idx] = { ...a, professionalId, start, end, updatedAt: nowIso() };
+        updatedCount += 1;
+      }
+      return clone({ updatedCount, conflicts });
+    });
+  },
+
   // Transicao de status (confirmar, iniciar, concluir, cancelar, no-show). Sem
   // checagem de slot — cancelado permanece no historico.
   setStatus(id: Id, status: AppointmentStatus): Promise<AppointmentView> {

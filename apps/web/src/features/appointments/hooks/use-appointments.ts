@@ -57,6 +57,20 @@ export function useRescheduleAppointment() {
   });
 }
 
+export function useRescheduleSeriesFuture() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: Id;
+      payload: { start?: string; professionalId?: Id };
+    }) => appointmentsService.rescheduleSeriesFuture(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
 export function useSetAppointmentStatus() {
   const qc = useQueryClient();
   return useMutation({

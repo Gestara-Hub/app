@@ -3,7 +3,15 @@
 import { useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, CheckCheck, Play, Repeat, UserX } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  CheckCheck,
+  Pencil,
+  Play,
+  Repeat,
+  UserX,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -59,12 +67,16 @@ interface AppointmentDetailDialogProps {
   appointment: AppointmentView | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReschedule: (appointment: AppointmentView) => void;
+  onEdit: (appointment: AppointmentView) => void;
 }
 
 export function AppointmentDetailDialog({
   appointment,
   open,
   onOpenChange,
+  onReschedule,
+  onEdit,
 }: AppointmentDetailDialogProps) {
   const setStatusMut = useSetAppointmentStatus();
   const [showCancel, setShowCancel] = useState(false);
@@ -122,6 +134,23 @@ export function AppointmentDetailDialog({
 
           {!isTerminal ? (
             <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
+              <Button
+                variant="outline"
+                disabled={pending}
+                className="sm:mr-auto"
+                onClick={() => onEdit(appointment)}
+              >
+                <Pencil className="size-4" />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => onReschedule(appointment)}
+              >
+                <CalendarClock className="size-4" />
+                Remarcar
+              </Button>
               {canNoShow ? (
                 <Button
                   variant="outline"

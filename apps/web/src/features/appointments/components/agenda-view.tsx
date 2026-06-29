@@ -6,12 +6,22 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle,
   CalendarClock,
+  CalendarPlus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Lock,
   Plus,
+  Repeat,
   RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -24,6 +34,9 @@ import { useTimeBlocks } from "../hooks/use-time-blocks";
 import { AgendaDayGrid } from "./agenda-day-grid";
 import { AppointmentFormDialog } from "./appointment-form-dialog";
 import { AppointmentDetailDialog } from "./appointment-detail-dialog";
+import { RescheduleDialog } from "./reschedule-appointment-dialog";
+import { BlockFormDialog } from "./block-form-dialog";
+import { SeriesFormDialog } from "./series-form-dialog";
 
 function formatDateLabel(date: string): string {
   const label = format(parseISO(date), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
@@ -32,8 +45,14 @@ function formatDateLabel(date: string): string {
 
 export function AgendaView() {
   const [date, setDate] = useState(REFERENCE_DATE);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formState, setFormState] = useState<{
+    open: boolean;
+    appointment?: AppointmentView;
+  }>({ open: false });
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [seriesOpen, setSeriesOpen] = useState(false);
   const [selected, setSelected] = useState<AppointmentView | null>(null);
+  const [rescheduling, setRescheduling] = useState<AppointmentView | null>(null);
 
   const range = { dateFrom: date, dateTo: date };
   const professionalsQuery = useProfessionals({ status: "active" });
@@ -60,10 +79,29 @@ export function AgendaView() {
   return (
     <>
       <PageHeader title="Agenda" description="Agenda diária por profissional.">
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="size-4" />
-          Novo agendamento
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Plus className="size-4" />
+              Novo
+              <ChevronDown className="size-4 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-48">
+            <DropdownMenuItem onSelect={() => setFormState({ open: true })}>
+              <CalendarPlus className="size-4" />
+              Agendamento
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setBlockOpen(true)}>
+              <Lock className="size-4" />
+              Bloqueio
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSeriesOpen(true)}>
+              <Repeat className="size-4" />
+              Série recorrente
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -126,16 +164,39 @@ export function AgendaView() {
       )}
 
       <AppointmentFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
+        open={formState.open}
+        onOpenChange={(next) => {
+          if (!next) setFormState({ open: false });
+        }}
         defaultDate={date}
+        appointment={formState.appointment}
       />
+
+      <BlockFormDialog open={blockOpen} onOpenChange={setBlockOpen} defaultDate={date} />
+
+      <SeriesFormDialog open={seriesOpen} onOpenChange={setSeriesOpen} defaultDate={date} />
 
       <AppointmentDetailDialog
         appointment={selected}
         open={selected !== null}
         onOpenChange={(next) => {
           if (!next) setSelected(null);
+        }}
+        onEdit={(appointment) => {
+          setSelected(null);
+          setFormState({ open: true, appointment });
+        }}
+        onReschedule={(appointment) => {
+          setSelected(null);
+          setRescheduling(appointment);
+        }}
+      />
+
+      <RescheduleDialog
+        appointment={rescheduling}
+        open={rescheduling !== null}
+        onOpenChange={(next) => {
+          if (!next) setRescheduling(null);
         }}
       />
     </>

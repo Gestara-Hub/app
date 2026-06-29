@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { AppointmentView } from "@/types";
 import { AppointmentForm } from "./appointment-form";
 
 interface AppointmentFormDialogProps {
@@ -14,6 +15,8 @@ interface AppointmentFormDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultDate: string;
   defaultProfessionalId?: string;
+  /** Quando presente, edita o agendamento; senao, cria. */
+  appointment?: AppointmentView;
 }
 
 export function AppointmentFormDialog({
@@ -21,7 +24,10 @@ export function AppointmentFormDialog({
   onOpenChange,
   defaultDate,
   defaultProfessionalId,
+  appointment,
 }: AppointmentFormDialogProps) {
+  const isEdit = Boolean(appointment);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -29,13 +35,16 @@ export function AppointmentFormDialog({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Novo agendamento</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Editar agendamento" : "Novo agendamento"}
+          </DialogTitle>
           <DialogDescription>
             Selecione cliente, profissional, serviço, data e horário.
           </DialogDescription>
         </DialogHeader>
         <AppointmentForm
-          key={`${defaultDate}-${defaultProfessionalId ?? ""}-${String(open)}`}
+          key={`${appointment?.id ?? "new"}-${defaultDate}-${String(open)}`}
+          appointment={appointment}
           defaultDate={defaultDate}
           defaultProfessionalId={defaultProfessionalId}
           formId="appointment-form"

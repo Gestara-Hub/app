@@ -10,17 +10,22 @@ import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { addMinutesToTime } from "@/lib/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
-import type { CreateAppointment } from "@/types";
+import type { AppointmentView, CreateAppointment } from "@/types";
 import { useClients } from "@/features/clients/hooks/use-clients";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useServices } from "@/features/services/hooks/use-services";
-import { useCreateAppointment } from "../hooks/use-appointments";
+import {
+  useCreateAppointment,
+  useUpdateAppointment,
+} from "../hooks/use-appointments";
 import {
   appointmentFormSchema,
   type AppointmentFormValues,
 } from "../appointment-schema";
 
 interface AppointmentFormProps {
+  /** Quando presente, o form edita o agendamento; senao, cria. */
+  appointment?: AppointmentView;
   defaultDate: string;
   defaultProfessionalId?: string;
   onSuccess: () => void;
@@ -28,13 +33,16 @@ interface AppointmentFormProps {
 }
 
 export function AppointmentForm({
+  appointment,
   defaultDate,
   defaultProfessionalId,
   onSuccess,
   formId,
 }: AppointmentFormProps) {
+  const isEdit = Boolean(appointment);
   const createMut = useCreateAppointment();
-  const pending = createMut.isPending;
+  const updateMut = useUpdateAppointment();
+  const pending = createMut.isPending || updateMut.isPending;
 
   const { data: clients } = useClients({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
@@ -44,14 +52,23 @@ export function AppointmentForm({
     resolver: zodResolver(appointmentFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: {
-      clientId: "",
-      professionalId: defaultProfessionalId ?? "",
-      serviceId: "",
-      date: defaultDate,
-      start: "",
-      notes: "",
-    },
+    defaultValues: appointment
+      ? {
+          clientId: appointment.clientId,
+          professionalId: appointment.professionalId,
+          serviceId: appointment.serviceId,
+          date: appointment.date,
+          start: appointment.start,
+          notes: appointment.notes ?? "",
+        }
+      : {
+          clientId: "",
+          professionalId: defaultProfessionalId ?? "",
+          serviceId: "",
+          date: defaultDate,
+          start: "",
+          notes: "",
+        },
   });
 
   const professionalId = useWatch({ control: form.control, name: "professionalId" });
@@ -89,8 +106,13 @@ export function AppointmentForm({
       notes: values.notes || undefined,
     };
     try {
-      await createMut.mutateAsync(payload);
-      toast.success("Agendamento criado com sucesso.");
+      if (appointment) {
+        await updateMut.mutateAsync({ id: appointment.id, payload });
+        toast.success("Agendamento atualizado com sucesso.");
+      } else {
+        await createMut.mutateAsync(payload);
+        toast.success("Agendamento criado com sucesso.");
+      }
       onSuccess();
     } catch (error) {
       const fields = getFieldErrors(error);
@@ -101,7 +123,7 @@ export function AppointmentForm({
         // Conflitos (expediente/bloqueio/sobreposicao) tambem como toast.
         toast.error(fields[0].message);
       } else {
-        toast.error(getErrorMessage(error, "Não foi possível criar o agendamento."));
+        toast.error(getErrorMessage(error, "Não foi possível salvar o agendamento."));
       }
     }
   });
@@ -192,7 +214,11 @@ export function AppointmentForm({
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Criar agendamento"}
+            {pending
+              ? "Salvando..."
+              : isEdit
+                ? "Salvar alterações"
+                : "Criar agendamento"}
           </Button>
         </DialogFooter>
       </form>
