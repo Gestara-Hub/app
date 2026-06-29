@@ -4,6 +4,7 @@ import type {
   DateISO,
   DateTimeISO,
   Id,
+  RecordStatus,
   TimeISO,
 } from "./common";
 
@@ -34,6 +35,30 @@ export type CreateAppointment = Omit<
 };
 
 export type UpdateAppointment = Partial<CreateAppointment>;
+
+// Remarcacao: move data/horario/profissional (mantem cliente e servico).
+export interface RescheduleAppointment {
+  date?: DateISO;
+  start?: TimeISO;
+  professionalId?: Id;
+}
+
+/**
+ * Read model retornado pelos GET de agendamento: o `Appointment` com cliente,
+ * profissional e servico ja expandidos (o que a API faria com join no servidor).
+ * A Agenda le os nomes/duracao/preco direto, sem buscar cada cadastro e juntar.
+ */
+export interface AppointmentView extends Appointment {
+  client: { id: Id; name: string; status: RecordStatus };
+  professional: { id: Id; name: string; status: RecordStatus };
+  service: {
+    id: Id;
+    name: string;
+    durationMinutes: number;
+    priceCents: number;
+    status: RecordStatus;
+  };
+}
 
 export interface AppointmentFilter {
   // Periodo (inclusivo). Para a Agenda diaria, dateFrom === dateTo.

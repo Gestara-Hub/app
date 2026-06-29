@@ -38,7 +38,8 @@ const STORAGE_KEY = "gestarahub:db";
 // Versao do seed. Subir quando a forma/conteudo do seed mudar: dados salvos com
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
 // v5: cargo (role) virou entidade Role; Professional.role -> roleId.
-const SEED_VERSION = 5;
+// v6: agenda semeada (appointments, timeBlocks, series).
+const SEED_VERSION = 6;
 
 interface PersistedBlob {
   v: number;

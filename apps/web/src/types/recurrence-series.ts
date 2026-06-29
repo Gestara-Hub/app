@@ -13,6 +13,12 @@ export interface RecurrenceSeries {
   // Exatamente um dos dois criterios de termino (serie sempre finita).
   untilOccurrences?: number;
   untilDate?: DateISO;
+  notes?: string;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
+
+export type CreateRecurrenceSeries = Omit<
+  RecurrenceSeries,
+  "id" | "createdAt" | "updatedAt"
+>;

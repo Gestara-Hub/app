@@ -1,15 +1,29 @@
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
+  Appointment,
+  AppointmentOrigin,
+  AppointmentStatus,
   Category,
   Client,
   Organization,
   Professional,
+  RecurrenceSeries,
   Role,
   Service,
+  TimeBlock,
+  TimeISO,
   Unit,
   Weekday,
   WorkingHours,
 } from "@/types";
+import {
+  addMinutesToTime,
+  generateOccurrenceDates,
+  minutesToTime,
+  rangesOverlap,
+  timeToMinutes,
+  weekdayOf,
+} from "@/lib/scheduling";
 import type { MockStore } from "./store";
 
 /**
@@ -291,18 +305,309 @@ function seedClients(): Client[] {
   ];
 }
 
+// --- Agenda: bloqueios, series e agendamentos ------------------------------
+//
+// Tudo deterministico (ids sequenciais, sem random/now) para hidratar igual no
+// server e no client. Os agendamentos sao posicionados pela engine (rangesOverlap)
+// dentro do expediente, pulando bloqueios e horarios ja ocupados — sem conflito.
+
+const PROF = {
+  marcelo: "prof-marcelo",
+  rafael: "prof-rafael",
+  bruno: "prof-bruno",
+  diego: "prof-diego",
+} as const;
+const PROF_ORDER = [PROF.marcelo, PROF.rafael, PROF.bruno, PROF.diego];
+
+// Janela do cenario: semana do REFERENCE_DATE + semana seguinte (sem domingos).
+const AGENDA_DATES = [
+  "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27",
+  "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04",
+];
+
+interface Interval {
+  start: TimeISO;
+  end: TimeISO;
+}
+type BusyMap = Map<string, Interval[]>;
+const busyKey = (professionalId: string, date: string) => `${professionalId}|${date}`;
+
+function busyFor(busy: BusyMap, professionalId: string, date: string): Interval[] {
+  const key = busyKey(professionalId, date);
+  let arr = busy.get(key);
+  if (!arr) {
+    arr = [];
+    busy.set(key, arr);
+  }
+  return arr;
+}
+
+// Status do agendamento avulso: passado concluido (com alguns no-show/cancelado),
+// hoje em andamento/confirmado/pendente, futuro pendente/confirmado.
+function appointmentStatusFor(date: string, idx: number): AppointmentStatus {
+  if (date < REFERENCE_DATE) {
+    if (idx % 9 === 4) return "no_show";
+    if (idx % 11 === 7) return "canceled";
+    return "completed";
+  }
+  if (date === REFERENCE_DATE) {
+    const cycle = idx % 4;
+    if (cycle === 0) return "in_service";
+    if (cycle === 1) return "confirmed";
+    if (cycle === 2) return "pending";
+    return "confirmed";
+  }
+  return idx % 3 === 0 ? "pending" : "confirmed";
+}
+
+function seriesStatusFor(date: string): AppointmentStatus {
+  if (date < REFERENCE_DATE) return "completed";
+  if (date === REFERENCE_DATE) return "confirmed";
+  return "pending";
+}
+
+function makeAppointment(
+  professionalId: string,
+  serviceId: string,
+  clientId: string,
+  date: string,
+  start: TimeISO,
+  end: TimeISO,
+  status: AppointmentStatus,
+  origin: AppointmentOrigin = "manual",
+  seriesId?: string,
+): Appointment {
+  return {
+    id: "", // atribuido por indice no final
+    organizationId: ORG_ID,
+    unitId: UNIT_ID,
+    clientId,
+    professionalId,
+    serviceId,
+    date,
+    start,
+    end,
+    status,
+    origin,
+    seriesId,
+    ...timestamps(),
+  };
+}
+
+// Bloqueio de almoco (12:00-13:00) para os barbeiros seniores nos dias que trabalham.
+function seedTimeBlocks(professionals: Professional[]): TimeBlock[] {
+  const byId = new Map(professionals.map((p) => [p.id, p]));
+  const blocks: TimeBlock[] = [];
+  let n = 1;
+  for (const professionalId of [PROF.marcelo, PROF.rafael]) {
+    const prof = byId.get(professionalId);
+    if (!prof) continue;
+    for (const date of AGENDA_DATES) {
+      const weekday = weekdayOf(date);
+      if (prof.workingHours.some((w) => w.weekday === weekday)) {
+        blocks.push({
+          id: `blk-${String(n++).padStart(3, "0")}`,
+          organizationId: ORG_ID,
+          unitId: UNIT_ID,
+          professionalId,
+          date,
+          start: "12:00",
+          end: "13:00",
+          reason: "Almoço",
+          ...timestamps(),
+        });
+      }
+    }
+  }
+  return blocks;
+}
+
+function initBusy(blocks: TimeBlock[]): BusyMap {
+  const busy: BusyMap = new Map();
+  for (const b of blocks) {
+    busyFor(busy, b.professionalId, b.date).push({ start: b.start, end: b.end });
+  }
+  return busy;
+}
+
+// 2 series recorrentes; ocorrencias entram como agendamentos origin 'recurrence'.
+function seedSeries(
+  serviceById: Map<string, Service>,
+  busy: BusyMap,
+  appts: Appointment[],
+): RecurrenceSeries[] {
+  const defs = [
+    {
+      id: "ser-1",
+      clientId: "cli-carlos-mendes",
+      professionalId: PROF.rafael,
+      serviceId: S.comboCutBeard,
+      frequency: "weekly",
+      startDate: "2026-06-27",
+      time: "10:00",
+      untilOccurrences: 5,
+    },
+    {
+      id: "ser-2",
+      clientId: "cli-eduardo-tavares",
+      professionalId: PROF.bruno,
+      serviceId: S.hairTreatment,
+      frequency: "biweekly",
+      startDate: "2026-06-24",
+      time: "14:00",
+      untilOccurrences: 4,
+    },
+  ] as const;
+
+  const series: RecurrenceSeries[] = [];
+  for (const def of defs) {
+    const service = serviceById.get(def.serviceId);
+    if (!service) continue;
+    series.push({
+      id: def.id,
+      organizationId: ORG_ID,
+      unitId: UNIT_ID,
+      clientId: def.clientId,
+      professionalId: def.professionalId,
+      serviceId: def.serviceId,
+      frequency: def.frequency,
+      startDate: def.startDate,
+      time: def.time,
+      untilOccurrences: def.untilOccurrences,
+      ...timestamps(),
+    });
+
+    const end = addMinutesToTime(def.time, service.durationMinutes);
+    const dates = generateOccurrenceDates(def.frequency, def.startDate, {
+      untilOccurrences: def.untilOccurrences,
+    });
+    for (const date of dates) {
+      const arr = busyFor(busy, def.professionalId, date);
+      if (arr.some((b) => rangesOverlap(def.time, end, b.start, b.end))) continue;
+      appts.push(
+        makeAppointment(
+          def.professionalId,
+          def.serviceId,
+          def.clientId,
+          date,
+          def.time,
+          end,
+          seriesStatusFor(date),
+          "recurrence",
+          def.id,
+        ),
+      );
+      arr.push({ start: def.time, end });
+    }
+  }
+  return series;
+}
+
+// Agendamentos avulsos: preenche cada profissional/dia (alguns dias ficam vazios).
+function seedRegularAppointments(
+  professionals: Professional[],
+  serviceById: Map<string, Service>,
+  clients: Client[],
+  busy: BusyMap,
+  appts: Appointment[],
+): void {
+  const activeClients = clients.filter((c) => c.status === "active");
+  const byId = new Map(professionals.map((p) => [p.id, p]));
+  let counter = 0;
+
+  for (let di = 0; di < AGENDA_DATES.length; di++) {
+    const date = AGENDA_DATES[di];
+    const weekday = weekdayOf(date);
+    for (let pi = 0; pi < PROF_ORDER.length; pi++) {
+      const prof = byId.get(PROF_ORDER[pi]);
+      if (!prof) continue;
+      const working = prof.workingHours.find((w) => w.weekday === weekday);
+      if (!working) continue;
+
+      const target = (pi + di) % 4; // 0 = dia vazio
+      if (target === 0) continue;
+
+      const arr = busyFor(busy, prof.id, date);
+      const startLimit = timeToMinutes(working.start);
+      const endLimit = timeToMinutes(working.end);
+      let cursor = startLimit;
+      let placed = 0;
+      let svcCursor = pi + di;
+
+      while (placed < target) {
+        const service = serviceById.get(
+          prof.serviceIds[svcCursor % prof.serviceIds.length],
+        );
+        if (!service) break;
+        const dur = service.durationMinutes;
+        let start = cursor;
+        let done = false;
+        while (start + dur <= endLimit) {
+          const s = minutesToTime(start);
+          const e = minutesToTime(start + dur);
+          if (!arr.some((b) => rangesOverlap(s, e, b.start, b.end))) {
+            const clientId = activeClients[counter % activeClients.length].id;
+            appts.push(
+              makeAppointment(
+                prof.id,
+                service.id,
+                clientId,
+                date,
+                s,
+                e,
+                appointmentStatusFor(date, counter),
+              ),
+            );
+            arr.push({ start: s, end: e });
+            cursor = start + dur;
+            placed += 1;
+            counter += 1;
+            svcCursor += 1;
+            done = true;
+            break;
+          }
+          start += 15;
+        }
+        if (!done) break;
+      }
+    }
+  }
+}
+
 /** Constroi um store novo a partir do seed (usado no boot e no reset). */
 export function createInitialStore(): MockStore {
+  const organization = seedOrganization();
+  const unit = seedUnit();
+  const clients = seedClients();
+  const professionals = seedProfessionals();
+  const roles = seedRoles();
+  const categories = seedCategories();
+  const services = seedServices();
+  const serviceById = new Map(services.map((s) => [s.id, s]));
+
+  const timeBlocks = seedTimeBlocks(professionals);
+  const busy = initBusy(timeBlocks);
+
+  const appts: Appointment[] = [];
+  const series = seedSeries(serviceById, busy, appts);
+  seedRegularAppointments(professionals, serviceById, clients, busy, appts);
+
+  // ids deterministicos por ordem de geracao (series primeiro, depois avulsos).
+  const appointments = appts.map((a, i) => ({
+    ...a,
+    id: `apt-${String(i + 1).padStart(4, "0")}`,
+  }));
+
   return {
-    organization: seedOrganization(),
-    unit: seedUnit(),
-    clients: seedClients(),
-    professionals: seedProfessionals(),
-    roles: seedRoles(),
-    categories: seedCategories(),
-    services: seedServices(),
-    appointments: [],
-    timeBlocks: [],
-    series: [],
+    organization,
+    unit,
+    clients,
+    professionals,
+    roles,
+    categories,
+    services,
+    appointments,
+    timeBlocks,
+    series,
   };
 }
