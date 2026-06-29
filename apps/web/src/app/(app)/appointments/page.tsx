@@ -1,14 +1,5 @@
-import { PageHeader } from "@/components/layout/page-header";
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { AppointmentsView } from "@/features/appointments/components/appointments-view";
 
 export default function AppointmentsPage() {
-  return (
-    <>
-      <PageHeader
-        title="Agendamentos"
-        description="Lista de agendamentos da unidade."
-      />
-      <ComingSoon />
-    </>
-  );
+  return <AppointmentsView />;
 }
