@@ -6,3 +6,7 @@
  */
 export const ORG_ID = "org-corte-nobre";
 export const UNIT_ID = "unit-matriz";
+
+// "Hoje" do cenario Corte Nobre (2026-06-27, sabado de maior movimento). E em
+// torno desta data que o seed da agenda e construido; a Agenda abre nela.
+export const REFERENCE_DATE = "2026-06-27";

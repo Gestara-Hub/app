@@ -1,4 +1,4 @@
-import { ORG_ID, UNIT_ID } from "@/config/tenant";
+import { ORG_ID, REFERENCE_DATE, UNIT_ID } from "@/config/tenant";
 import type {
   Appointment,
   AppointmentOrigin,
@@ -37,8 +37,7 @@ import type { MockStore } from "./store";
  * Agendamentos; por ora as colecoes nascem vazias.
  */
 
-// "Hoje" do cenario (2026-06-27 e um sabado, dia de maior movimento).
-export const REFERENCE_DATE = "2026-06-27";
+// "Hoje" do cenario vem do config (REFERENCE_DATE). Timestamp fixo do seed:
 const SEED_NOW = "2026-06-20T12:00:00.000Z";
 
 // IDs estaveis e legiveis dos 12 servicos (facilita a matriz professional x service).
