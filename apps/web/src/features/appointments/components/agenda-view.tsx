@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { weekdayOf } from "@/lib/scheduling";
-import { REFERENCE_DATE } from "@/config/tenant";
+import { todayISO } from "@/lib/date";
 import type { AppointmentView } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
@@ -44,7 +44,8 @@ function formatDateLabel(date: string): string {
 }
 
 export function AgendaView() {
-  const [date, setDate] = useState(REFERENCE_DATE);
+  const today = todayISO();
+  const [date, setDate] = useState(today);
   const [formState, setFormState] = useState<{
     open: boolean;
     appointment?: AppointmentView;
@@ -109,7 +110,7 @@ export function AgendaView() {
           <Button variant="outline" size="icon-sm" aria-label="Dia anterior" onClick={() => shift(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setDate(REFERENCE_DATE)}>
+          <Button variant="outline" size="sm" onClick={() => setDate(today)}>
             Hoje
           </Button>
           <Button variant="outline" size="icon-sm" aria-label="Próximo dia" onClick={() => shift(1)}>
@@ -168,7 +169,6 @@ export function AgendaView() {
         onOpenChange={(next) => {
           if (!next) setFormState({ open: false });
         }}
-        defaultDate={date}
         appointment={formState.appointment}
       />
 

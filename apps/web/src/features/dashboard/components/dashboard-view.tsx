@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format";
-import { REFERENCE_DATE } from "@/config/tenant";
+import { todayISO } from "@/lib/date";
 import type { AppointmentStatus } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
@@ -59,8 +59,9 @@ function Kpi({
 }
 
 export function DashboardView() {
+  const todayDate = todayISO();
   const todayLabel = (() => {
-    const l = format(parseISO(REFERENCE_DATE), "EEEE, d 'de' MMMM 'de' yyyy", {
+    const l = format(parseISO(todayDate), "EEEE, d 'de' MMMM 'de' yyyy", {
       locale: ptBR,
     });
     return l.charAt(0).toUpperCase() + l.slice(1);
@@ -68,8 +69,8 @@ export function DashboardView() {
 
   const professionalsQuery = useProfessionals({ status: "active" });
   const appointmentsQuery = useAppointments({
-    dateFrom: REFERENCE_DATE,
-    dateTo: REFERENCE_DATE,
+    dateFrom: todayDate,
+    dateTo: todayDate,
   });
 
   const professionals = professionalsQuery.data ?? [];

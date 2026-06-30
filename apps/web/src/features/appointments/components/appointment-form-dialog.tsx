@@ -13,7 +13,6 @@ import { AppointmentForm } from "./appointment-form";
 interface AppointmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultDate: string;
   defaultProfessionalId?: string;
   /** Quando presente, edita o agendamento; senao, cria. */
   appointment?: AppointmentView;
@@ -22,7 +21,6 @@ interface AppointmentFormDialogProps {
 export function AppointmentFormDialog({
   open,
   onOpenChange,
-  defaultDate,
   defaultProfessionalId,
   appointment,
 }: AppointmentFormDialogProps) {
@@ -43,9 +41,8 @@ export function AppointmentFormDialog({
           </DialogDescription>
         </DialogHeader>
         <AppointmentForm
-          key={`${appointment?.id ?? "new"}-${defaultDate}-${String(open)}`}
+          key={`${appointment?.id ?? "new"}-${String(open)}`}
           appointment={appointment}
-          defaultDate={defaultDate}
           defaultProfessionalId={defaultProfessionalId}
           formId="appointment-form"
           onSuccess={() => onOpenChange(false)}

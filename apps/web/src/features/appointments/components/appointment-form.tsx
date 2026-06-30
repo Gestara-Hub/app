@@ -26,7 +26,6 @@ import {
 interface AppointmentFormProps {
   /** Quando presente, o form edita o agendamento; senao, cria. */
   appointment?: AppointmentView;
-  defaultDate: string;
   defaultProfessionalId?: string;
   onSuccess: () => void;
   formId: string;
@@ -34,7 +33,6 @@ interface AppointmentFormProps {
 
 export function AppointmentForm({
   appointment,
-  defaultDate,
   defaultProfessionalId,
   onSuccess,
   formId,
@@ -65,7 +63,7 @@ export function AppointmentForm({
           clientId: "",
           professionalId: defaultProfessionalId ?? "",
           serviceId: "",
-          date: defaultDate,
+          date: "", // vazio: o usuario escolhe a data
           start: "",
           notes: "",
         },
