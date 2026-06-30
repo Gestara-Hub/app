@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { Combobox } from "@/components/shared/combobox";
 import { ListItemCard } from "@/components/shared/list-item-card";
 import { formatCents } from "@/lib/format";
 import { appointmentStatusLabel } from "@/lib/labels";
-import { REFERENCE_DATE } from "@/config/tenant";
+import { todayISO } from "@/lib/date";
 import type { AppointmentStatus, AppointmentView } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
@@ -40,7 +41,7 @@ const STATUS_VALUES: AppointmentStatus[] = [
 function formatGroupDate(date: string): string {
   const label = format(parseISO(date), "EEEE, d 'de' MMMM", { locale: ptBR });
   const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
-  return date === REFERENCE_DATE ? `${capitalized} (hoje)` : capitalized;
+  return date === todayISO() ? `${capitalized} (hoje)` : capitalized;
 }
 
 function groupByDate(appointments: AppointmentView[]) {
@@ -54,11 +55,12 @@ function groupByDate(appointments: AppointmentView[]) {
 }
 
 export function AppointmentsView() {
+  const today = todayISO();
   const [dateFrom, setDateFrom] = useState(
-    format(addDays(parseISO(REFERENCE_DATE), -5), "yyyy-MM-dd"),
+    format(addDays(parseISO(today), -5), "yyyy-MM-dd"),
   );
   const [dateTo, setDateTo] = useState(
-    format(addDays(parseISO(REFERENCE_DATE), 7), "yyyy-MM-dd"),
+    format(addDays(parseISO(today), 7), "yyyy-MM-dd"),
   );
   const [professionalId, setProfessionalId] = useState("all");
   const [status, setStatus] = useState<"all" | AppointmentStatus>("all");
@@ -197,32 +199,41 @@ export function AppointmentsView() {
           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               De
-              <Input type="date" value={dateFrom} onChange={(e) => e.target.value && setDateFrom(e.target.value)} />
+              <Input
+                type="date"
+                aria-label="Data inicial"
+                value={dateFrom}
+                onChange={(e) => e.target.value && setDateFrom(e.target.value)}
+              />
             </label>
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Até
-              <Input type="date" value={dateTo} onChange={(e) => e.target.value && setDateTo(e.target.value)} />
+              <Input
+                type="date"
+                aria-label="Data final"
+                value={dateTo}
+                onChange={(e) => e.target.value && setDateTo(e.target.value)}
+              />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <div className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Profissional
-              <Select value={professionalId} onValueChange={setProfessionalId}>
-                <SelectTrigger aria-label="Filtrar por profissional">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {(professionals ?? []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
+              <Combobox
+                value={professionalId}
+                onChange={setProfessionalId}
+                options={[
+                  { label: "Todos", value: "all" },
+                  ...(professionals ?? []).map((p) => ({ label: p.name, value: p.id })),
+                ]}
+                placeholder="Todos"
+                searchPlaceholder="Buscar profissional..."
+                emptyMessage="Nenhum profissional."
+                ariaLabel="Filtrar por profissional"
+              />
+            </div>
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Status
               <Select value={status} onValueChange={(v) => setStatus(v as "all" | AppointmentStatus)}>
-                <SelectTrigger aria-label="Filtrar por status">
+                <SelectTrigger className="w-full" aria-label="Filtrar por status">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -291,7 +302,6 @@ export function AppointmentsView() {
         onOpenChange={(next) => {
           if (!next) setFormState({ open: false });
         }}
-        defaultDate={REFERENCE_DATE}
         appointment={formState.appointment}
       />
     </>
