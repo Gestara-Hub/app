@@ -1,5 +1,5 @@
 import { simulateWrite } from "@/mocks/helpers";
-import { resetStore } from "@/mocks/store";
+import { clearStore, resetStore } from "@/mocks/store";
 
 /**
  * Acoes de sistema do mock (nao mapeiam a API real; existem so para o MVP).
@@ -9,6 +9,13 @@ export const systemService = {
   resetData(): Promise<void> {
     return simulateWrite(() => {
       resetStore();
+    });
+  },
+
+  /** Esvazia o store (mantem org/unidade) — para cadastrar do zero. */
+  clearData(): Promise<void> {
+    return simulateWrite(() => {
+      clearStore();
     });
   },
 };

@@ -95,3 +95,24 @@ export function resetStore(): void {
   Object.assign(store, createInitialStore());
   if (canPersist()) saveToStorage(store);
 }
+
+/**
+ * Esvazia o store (mantem organizacao e unidade) e re-grava no localStorage.
+ * Util para simular um cadastro do zero.
+ */
+export function clearStore(): void {
+  const base = createInitialStore();
+  Object.assign(store, {
+    organization: base.organization,
+    unit: base.unit,
+    clients: [],
+    professionals: [],
+    roles: [],
+    categories: [],
+    services: [],
+    appointments: [],
+    timeBlocks: [],
+    series: [],
+  });
+  if (canPersist()) saveToStorage(store);
+}

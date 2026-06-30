@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { Eraser, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -23,11 +23,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getErrorMessage } from "@/lib/api-error";
-import { useResetData } from "../hooks/use-reset-data";
+import { useClearData, useResetData } from "../hooks/use-reset-data";
 
 export function ResetDataCard() {
   const reset = useResetData();
+  const clear = useClearData();
   const [open, setOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
 
   async function handleConfirm() {
     try {
@@ -39,16 +41,27 @@ export function ResetDataCard() {
     }
   }
 
+  async function handleClear() {
+    try {
+      await clear.mutateAsync();
+      toast.success("Mock zerado. Cadastre tudo do zero.");
+      setClearOpen(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível zerar o mock."));
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Dados de exemplo</CardTitle>
         <CardDescription>
           Suas alterações ficam salvas no navegador (localStorage). Restaurar
-          descarta tudo e recarrega o catálogo de exemplo da Corte Nobre.
+          recarrega o catálogo de exemplo da Corte Nobre; zerar limpa tudo para
+          você cadastrar do zero.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-wrap gap-2">
         <AlertDialog open={open} onOpenChange={setOpen}>
           <AlertDialogTrigger asChild>
             <Button variant="outline">
@@ -77,6 +90,40 @@ export function ResetDataCard() {
                 className="bg-destructive text-white hover:bg-destructive/90"
               >
                 {reset.isPending ? "Restaurando..." : "Restaurar"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="text-destructive hover:text-destructive">
+              <Eraser className="size-4" />
+              Zerar mock
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Zerar o mock?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove todos os clientes, equipe, cargos, serviços, categorias,
+                agendamentos e bloqueios. A organização e a unidade são mantidas.
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={clear.isPending}>
+                Voltar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleClear();
+                }}
+                disabled={clear.isPending}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                {clear.isPending ? "Zerando..." : "Zerar mock"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

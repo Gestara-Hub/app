@@ -11,3 +11,11 @@ export function useResetData() {
     onSuccess: () => qc.invalidateQueries(),
   });
 }
+
+export function useClearData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => systemService.clearData(),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
