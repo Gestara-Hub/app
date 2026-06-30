@@ -31,7 +31,7 @@ import type { AppointmentView } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { useTimeBlocks } from "../hooks/use-time-blocks";
-import { AgendaDayGrid } from "./agenda-day-grid";
+import { ScheduleDayGrid } from "./schedule-day-grid";
 import { AppointmentFormDialog } from "./appointment-form-dialog";
 import { AppointmentDetailDialog } from "./appointment-detail-dialog";
 import { RescheduleDialog } from "./reschedule-appointment-dialog";
@@ -43,7 +43,7 @@ function formatDateLabel(date: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export function AgendaView() {
+export function ScheduleView() {
   const today = todayISO();
   const [date, setDate] = useState(today);
   const [formState, setFormState] = useState<{
@@ -155,7 +155,7 @@ export function AgendaView() {
               Nenhum agendamento neste dia.
             </div>
           ) : null}
-          <AgendaDayGrid
+          <ScheduleDayGrid
             professionals={professionals}
             appointments={appointments}
             blocks={blocks}
@@ -172,9 +172,9 @@ export function AgendaView() {
         appointment={formState.appointment}
       />
 
-      <BlockFormDialog open={blockOpen} onOpenChange={setBlockOpen} defaultDate={date} />
+      <BlockFormDialog open={blockOpen} onOpenChange={setBlockOpen} />
 
-      <SeriesFormDialog open={seriesOpen} onOpenChange={setSeriesOpen} defaultDate={date} />
+      <SeriesFormDialog open={seriesOpen} onOpenChange={setSeriesOpen} />
 
       <AppointmentDetailDialog
         appointment={selected}

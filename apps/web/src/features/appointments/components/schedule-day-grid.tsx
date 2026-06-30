@@ -82,24 +82,24 @@ function BlockCard({ block }: { block: TimeBlock }) {
   );
 }
 
-interface AgendaDayGridProps {
+interface ScheduleDayGridProps {
   professionals: ProfessionalView[];
   appointments: AppointmentView[];
   blocks: TimeBlock[];
   onSelectAppointment?: (a: AppointmentView) => void;
 }
 
-export function AgendaDayGrid({
+export function ScheduleDayGrid({
   professionals,
   appointments,
   blocks,
   onSelectAppointment,
-}: AgendaDayGridProps) {
+}: ScheduleDayGridProps) {
   // Cancelados nao aparecem no grid operacional (ficam no historico/Agendamentos).
   const visible = appointments.filter((a) => a.status !== "canceled");
 
   return (
-    <div data-slot="agenda-grid" className="overflow-x-auto rounded-lg border bg-card">
+    <div data-slot="schedule-grid" className="overflow-x-auto rounded-lg border bg-card">
       <div className="flex min-w-max">
         {/* Eixo de horas */}
         <div className="sticky left-0 z-10 w-14 shrink-0 border-r bg-card">

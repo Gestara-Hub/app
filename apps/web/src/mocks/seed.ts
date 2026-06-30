@@ -319,7 +319,7 @@ const PROF = {
 const PROF_ORDER = [PROF.marcelo, PROF.rafael, PROF.bruno, PROF.diego];
 
 // Janela do cenario: semana do REFERENCE_DATE + semana seguinte (sem domingos).
-const AGENDA_DATES = [
+const SCHEDULE_DATES = [
   "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27",
   "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04",
 ];
@@ -401,7 +401,7 @@ function seedTimeBlocks(professionals: Professional[]): TimeBlock[] {
   for (const professionalId of [PROF.marcelo, PROF.rafael]) {
     const prof = byId.get(professionalId);
     if (!prof) continue;
-    for (const date of AGENDA_DATES) {
+    for (const date of SCHEDULE_DATES) {
       const weekday = weekdayOf(date);
       if (prof.workingHours.some((w) => w.weekday === weekday)) {
         blocks.push({
@@ -514,8 +514,8 @@ function seedRegularAppointments(
   const byId = new Map(professionals.map((p) => [p.id, p]));
   let counter = 0;
 
-  for (let di = 0; di < AGENDA_DATES.length; di++) {
-    const date = AGENDA_DATES[di];
+  for (let di = 0; di < SCHEDULE_DATES.length; di++) {
+    const date = SCHEDULE_DATES[di];
     const weekday = weekdayOf(date);
     for (let pi = 0; pi < PROF_ORDER.length; pi++) {
       const prof = byId.get(PROF_ORDER[pi]);

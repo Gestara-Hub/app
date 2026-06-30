@@ -44,11 +44,9 @@ const END_MODE_OPTIONS = [
 ];
 
 function SeriesForm({
-  defaultDate,
   formId,
   onSuccess,
 }: {
-  defaultDate: string;
   formId: string;
   onSuccess: () => void;
 }) {
@@ -68,7 +66,7 @@ function SeriesForm({
       professionalId: "",
       serviceId: "",
       frequency: "weekly",
-      startDate: defaultDate,
+      startDate: "",
       time: "",
       endMode: "count",
       untilOccurrences: 4,
@@ -258,13 +256,11 @@ function SeriesForm({
 interface SeriesFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultDate: string;
 }
 
 export function SeriesFormDialog({
   open,
   onOpenChange,
-  defaultDate,
 }: SeriesFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -280,8 +276,7 @@ export function SeriesFormDialog({
           </DialogDescription>
         </DialogHeader>
         <SeriesForm
-          key={`${defaultDate}-${String(open)}`}
-          defaultDate={defaultDate}
+          key={String(open)}
           formId="series-form"
           onSuccess={() => onOpenChange(false)}
         />

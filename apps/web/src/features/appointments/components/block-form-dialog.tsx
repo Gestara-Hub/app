@@ -28,11 +28,9 @@ import { useCreateTimeBlock } from "../hooks/use-time-blocks";
 import { blockFormSchema, type BlockFormValues } from "../block-schema";
 
 function BlockForm({
-  defaultDate,
   formId,
   onSuccess,
 }: {
-  defaultDate: string;
   formId: string;
   onSuccess: () => void;
 }) {
@@ -46,7 +44,7 @@ function BlockForm({
     reValidateMode: "onChange",
     defaultValues: {
       professionalId: "",
-      date: defaultDate,
+      date: "",
       start: "",
       end: "",
       reason: "",
@@ -177,13 +175,11 @@ function BlockForm({
 interface BlockFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultDate: string;
 }
 
 export function BlockFormDialog({
   open,
   onOpenChange,
-  defaultDate,
 }: BlockFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,8 +195,7 @@ export function BlockFormDialog({
           </DialogDescription>
         </DialogHeader>
         <BlockForm
-          key={`${defaultDate}-${String(open)}`}
-          defaultDate={defaultDate}
+          key={String(open)}
           formId="block-form"
           onSuccess={() => onOpenChange(false)}
         />
