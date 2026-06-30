@@ -21,11 +21,11 @@ export interface NavItem {
 // "Equipe" e o rotulo de navegacao; "Profissional" e o termo de detalhe/agenda.
 export const MAIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Agenda", href: "/schedule", icon: CalendarDays },
-  { label: "Agendamentos", href: "/appointments", icon: CalendarClock },
   { label: "Clientes", href: "/clients", icon: Users },
   { label: "Equipe", href: "/team", icon: Scissors },
   { label: "Serviços", href: "/services", icon: Tag },
+  { label: "Agenda", href: "/schedule", icon: CalendarDays },
+  { label: "Agendamentos", href: "/appointments", icon: CalendarClock },
 ];
 
 // Configuracoes fica ancorado no rodape, separado dos modulos operacionais.
