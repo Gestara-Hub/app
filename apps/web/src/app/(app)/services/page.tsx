@@ -8,8 +8,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ServicesView } from "@/features/services/components/services-view";
+import { requirePermission } from "@/features/auth/require-permission";
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  await requirePermission("services:view");
   return (
     <>
       <Breadcrumb className="mb-4">

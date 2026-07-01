@@ -32,6 +32,7 @@ import {
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { recordStatusLabel, userProfileLabel } from "@/lib/labels";
+import { canManageProfile } from "@/lib/permissions";
 import type { RecordStatus, UserView } from "@/types";
 import { useCurrentUser } from "@/features/auth/session-provider";
 import { useUsers } from "../hooks/use-users";
@@ -168,7 +169,11 @@ export function UsersList({
   };
 
   const { data, isPending, isError, refetch } = useUsers(filter);
-  const users = data ?? [];
+  // So exibe usuarios que o usuario atual pode gerenciar (Gerente ve apenas
+  // Atendente/Profissional; Owner ve todos). Reforca a restricao de perfis-alvo.
+  const users = (data ?? []).filter((u) =>
+    canManageProfile(currentUser, u.profile),
+  );
 
   const hasSearch = Boolean(filter.search);
   const hasFilters = Boolean(filter.status);

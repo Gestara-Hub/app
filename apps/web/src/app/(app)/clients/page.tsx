@@ -8,8 +8,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ClientsView } from "@/features/clients/components/clients-view";
+import { requirePermission } from "@/features/auth/require-permission";
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
+  await requirePermission("clients:view");
   return (
     <>
       <Breadcrumb className="mb-4">

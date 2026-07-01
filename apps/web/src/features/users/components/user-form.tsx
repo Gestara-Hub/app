@@ -20,19 +20,24 @@ import { userProfileLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID } from "@/config/tenant";
 import type { CreateUser, UserProfile, UserView } from "@/types";
+import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
+import { useCurrentUser } from "@/features/auth/session-provider";
 import { useCreateUser, useUpdateUser } from "../hooks/use-users";
 import { userFormSchema, type UserFormValues } from "../user-schema";
 
-const PROFILE_OPTIONS = (
-  ["owner", "manager", "attendant", "professional"] as UserProfile[]
-).map((value) => ({ value, label: userProfileLabel(value) }));
+const PROFILE_ORDER: UserProfile[] = [
+  "owner",
+  "manager",
+  "attendant",
+  "professional",
+];
 
 function toDefaults(user?: UserView): UserFormValues {
   return {
     name: user?.name ?? "",
     email: user?.email ?? "",
-    profile: user?.profile ?? "attendant",
+    profile: user?.profile ?? "",
     professionalId: user?.professionalId ?? "",
     active: user ? user.status === "active" : true,
   };
@@ -53,6 +58,16 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
   const { data: professionals } = useProfessionals({ status: "active" });
   const [nameOpen, setNameOpen] = useState(false);
 
+  // Um usuario so pode atribuir perfis que ele mesmo pode gerenciar (Gerente:
+  // Atendente/Profissional). Ao editar, preserva o perfil atual do usuario mesmo
+  // que fora do conjunto, para nao perde-lo no select.
+  const currentUser = useCurrentUser();
+  const allowedProfiles = new Set<UserProfile>(manageableProfiles(currentUser));
+  if (user) allowedProfiles.add(user.profile);
+  const profileOptions = PROFILE_ORDER.filter((p) => allowedProfiles.has(p)).map(
+    (value) => ({ value, label: userProfileLabel(value) }),
+  );
+
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     mode: "onSubmit",
@@ -71,7 +86,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
       organizationId: user?.organizationId ?? ORG_ID,
       name: values.name,
       email: values.email,
-      profile: values.profile,
+      profile: values.profile as UserProfile,
       professionalId: values.professionalId || undefined,
       status: values.active ? "active" : "inactive",
     };
@@ -199,7 +214,8 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         <SelectField<UserFormValues>
           name="profile"
           label="Perfil de acesso"
-          options={PROFILE_OPTIONS}
+          placeholder="Selecione o perfil"
+          options={profileOptions}
           required
           disabled={pending}
         />

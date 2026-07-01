@@ -63,9 +63,15 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "clients:manage",
     "team:manage",
     "services:manage",
+    // Gestao de usuarios: a capability libera a tela; QUAIS perfis ele pode
+    // gerenciar (so Atendente/Profissional) e limitado por `manageableProfiles`.
+    "users:view",
+    "users:manage",
   ],
   attendant: [...OPERATIONAL_VIEWS, ...APPOINTMENT_OPS, "clients:manage"],
-  professional: [...OPERATIONAL_VIEWS, "appointments:status"],
+  // Profissional: acesso restrito a propria Agenda (sem Clientes/Equipe/Servicos);
+  // pode atualizar o status dos proprios agendamentos, nada alem disso.
+  professional: ["schedule:view", "appointments:status"],
 };
 
 /**
@@ -78,4 +84,27 @@ export function can(
 ): boolean {
   const profile = typeof subject === "string" ? subject : subject.profile;
   return PROFILE_PERMISSIONS[profile].includes(permission);
+}
+
+/**
+ * Perfis-alvo que o usuario pode gerenciar (criar/editar/inativar) na tela de
+ * Usuarios — restricao ALEM da capability `users:manage`. Owner gere todos;
+ * Gerente so Atendente/Profissional; demais perfis, nenhum. Um backend real
+ * deve reforcar isso na policy (o mock so aplica no client).
+ */
+export function manageableProfiles(
+  subject: UserProfile | Pick<User, "profile">,
+): readonly UserProfile[] {
+  const profile = typeof subject === "string" ? subject : subject.profile;
+  if (profile === "owner") return ["owner", "manager", "attendant", "professional"];
+  if (profile === "manager") return ["attendant", "professional"];
+  return [];
+}
+
+/** O usuario pode gerenciar um usuario-alvo com este perfil? */
+export function canManageProfile(
+  subject: UserProfile | Pick<User, "profile">,
+  target: UserProfile,
+): boolean {
+  return manageableProfiles(subject).includes(target);
 }
