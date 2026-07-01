@@ -125,7 +125,7 @@ function ServiceRow({
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
-function SkeletonRows() {
+function SkeletonRows({ showAction }: { showAction: boolean }) {
   return Array.from({ length: 5 }).map((_, i) => (
     <div key={i} className="rounded-md border p-3">
       <div className="flex items-center justify-between gap-3">
@@ -133,7 +133,7 @@ function SkeletonRows() {
           <Skeleton className="h-5 w-44" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <Skeleton className="size-8 rounded-md" />
+        {showAction ? <Skeleton className="size-8 rounded-md" /> : null}
       </div>
     </div>
   ));
@@ -178,7 +178,7 @@ export function ServicesList({
   let emptyState: ReactNode = null;
 
   if (isPending) {
-    items = [<SkeletonRows key="skeleton" />];
+    items = [<SkeletonRows key="skeleton" showAction={canManage} />];
   } else if (isError) {
     emptyState = (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
