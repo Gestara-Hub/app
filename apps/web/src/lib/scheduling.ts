@@ -50,6 +50,7 @@ export function weekdayOf(date: DateISO): Weekday {
 
 export type SlotConflictCode =
   | "OUTSIDE_BUSINESS_HOURS"
+  | "ON_BREAK"
   | "TIME_BLOCKED"
   | "OVERLAP_CONFLICT";
 
@@ -103,6 +104,15 @@ export function checkSlotAvailability(
   );
   if (timeToMinutes(start) < effectiveStart || timeToMinutes(end) > effectiveEnd) {
     return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+  }
+
+  // Intervalo (almoco) do profissional: recusa slot que o cobre.
+  if (
+    working.breakStart &&
+    working.breakEnd &&
+    rangesOverlap(start, end, working.breakStart, working.breakEnd)
+  ) {
+    return { ok: false, code: "ON_BREAK" };
   }
 
   if (ctx.blocks.some((b) => rangesOverlap(start, end, b.start, b.end))) {

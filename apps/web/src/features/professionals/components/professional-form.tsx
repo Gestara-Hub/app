@@ -108,6 +108,9 @@ export function ProfessionalForm({
         weekday: h.weekday as Weekday,
         start: h.start,
         end: h.end,
+        ...(h.breakStart && h.breakEnd
+          ? { breakStart: h.breakStart, breakEnd: h.breakEnd }
+          : {}),
       })),
     };
 

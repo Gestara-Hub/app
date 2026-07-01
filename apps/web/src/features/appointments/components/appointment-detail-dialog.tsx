@@ -33,6 +33,7 @@ import {
 import { getErrorMessage } from "@/lib/api-error";
 import { formatCents } from "@/lib/format";
 import type { AppointmentStatus, AppointmentView } from "@/types";
+import { useCan } from "@/features/auth/session-provider";
 import { useSetAppointmentStatus } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
 
@@ -79,6 +80,11 @@ export function AppointmentDetailDialog({
   onEdit,
 }: AppointmentDetailDialogProps) {
   const setStatusMut = useSetAppointmentStatus();
+  const can = useCan();
+  const canEdit = can("appointments:edit");
+  const canReschedule = can("appointments:reschedule");
+  const canCancel = can("appointments:cancel");
+  const canStatus = can("appointments:status");
   const [showCancel, setShowCancel] = useState(false);
   const pending = setStatusMut.isPending;
 
@@ -141,26 +147,31 @@ export function AppointmentDetailDialog({
             {appointment.notes ? <Row label="Observações">{appointment.notes}</Row> : null}
           </div>
 
-          {!isTerminal ? (
+          {!isTerminal &&
+          (canEdit || canReschedule || canCancel || canStatus) ? (
             <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
-              <Button
-                variant="outline"
-                disabled={pending}
-                className="sm:mr-auto"
-                onClick={() => onEdit(appointment)}
-              >
-                <Pencil className="size-4" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
-                disabled={pending}
-                onClick={() => onReschedule(appointment)}
-              >
-                <CalendarClock className="size-4" />
-                Remarcar
-              </Button>
-              {canNoShow ? (
+              {canEdit ? (
+                <Button
+                  variant="outline"
+                  disabled={pending}
+                  className="sm:mr-auto"
+                  onClick={() => onEdit(appointment)}
+                >
+                  <Pencil className="size-4" />
+                  Editar
+                </Button>
+              ) : null}
+              {canReschedule ? (
+                <Button
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => onReschedule(appointment)}
+                >
+                  <CalendarClock className="size-4" />
+                  Remarcar
+                </Button>
+              ) : null}
+              {canStatus && canNoShow ? (
                 <Button
                   variant="outline"
                   disabled={pending}
@@ -170,15 +181,17 @@ export function AppointmentDetailDialog({
                   Não compareceu
                 </Button>
               ) : null}
-              <Button
-                variant="outline"
-                disabled={pending}
-                className="text-destructive hover:text-destructive"
-                onClick={() => setShowCancel(true)}
-              >
-                Cancelar agendamento
-              </Button>
-              {advance ? (
+              {canCancel ? (
+                <Button
+                  variant="outline"
+                  disabled={pending}
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setShowCancel(true)}
+                >
+                  Cancelar agendamento
+                </Button>
+              ) : null}
+              {canStatus && advance ? (
                 <Button disabled={pending} onClick={() => changeStatus(advance.status)}>
                   {advance.icon}
                   {advance.label}

@@ -2,8 +2,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { OrganizationSettingsCard } from "@/features/settings/components/organization-settings-card";
 import { BusinessHoursCard } from "@/features/settings/components/business-hours-card";
 import { ResetDataCard } from "@/features/system/components/reset-data-card";
+import { requirePermission } from "@/features/auth/require-permission";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  await requirePermission("settings:view");
   return (
     <>
       <PageHeader

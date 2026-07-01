@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, LogOut } from "lucide-react";
+import { Building2, Check, LogOut, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut } from "@/app/(auth)/actions";
-import { MOCK_USER, userInitials } from "@/lib/session";
+import { signOut, switchUser } from "@/app/(auth)/actions";
+import { userInitials } from "@/lib/session";
+import { userProfileLabel } from "@/lib/labels";
+import { useCurrentUser } from "@/features/auth/session-provider";
+import { useUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {
+  const user = useCurrentUser();
+  const { data: users } = useUsers({ status: "active" });
+
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3">
       <SidebarTrigger className="-ml-1" />
@@ -33,21 +39,41 @@ export function AppTopbar() {
             <Button variant="ghost" size="sm" className="gap-2 px-1.5 sm:px-2">
               <Avatar className="size-6">
                 <AvatarFallback className="bg-secondary text-xs">
-                  {userInitials(MOCK_USER.name)}
+                  {userInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium sm:inline">
-                {MOCK_USER.name}
+                {user.name}
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuLabel className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">{MOCK_USER.name}</span>
+              <span className="text-sm font-medium">{user.name}</span>
               <span className="text-xs font-normal text-muted-foreground">
-                {MOCK_USER.role}
+                {userProfileLabel(user.profile)}
               </span>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+              <Users className="size-3.5" />
+              Trocar usuário (demo)
+            </DropdownMenuLabel>
+            {(users ?? []).map((u) => (
+              <form key={u.id} action={switchUser.bind(null, u.id)}>
+                <DropdownMenuItem asChild disabled={u.id === user.id}>
+                  <button type="submit" className="w-full cursor-pointer">
+                    <span className="flex-1 truncate">{u.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {userProfileLabel(u.profile)}
+                    </span>
+                    {u.id === user.id ? <Check className="size-4" /> : null}
+                  </button>
+                </DropdownMenuItem>
+              </form>
+            ))}
+
             <DropdownMenuSeparator />
             <form action={signOut}>
               <DropdownMenuItem asChild variant="destructive">

@@ -79,6 +79,23 @@ Observacoes:
 - Marcelo e o profissional com agenda mais cheia (proprietario, atende todos os servicos, trabalha 6 dias).
 - Diego e o profissional com agenda mais vazia (junior, menor cartela de servicos, comeca a trabalhar so na quarta).
 
+## Usuarios (acesso)
+
+Sao 5 usuarios cobrindo os 4 perfis de acesso, incluindo o mix "usuario que e (ou nao) profissional". O perfil de acesso e distinto do cargo (ver `06-perfis-permissoes.md`).
+
+| Nome | E-mail | Perfil | Vinculo com profissional |
+| --- | --- | --- | --- |
+| Marcelo Andrade | marcelo@cortenobre.com | Proprietario | Sim (tambem atende) |
+| Patricia Nunes | patricia@cortenobre.com | Gerente | Nao |
+| Sofia Ramos | sofia@cortenobre.com | Atendente | Nao |
+| Rafael Lima | rafael@cortenobre.com | Profissional | Sim (Rafael) |
+| Diego Santos | diego@cortenobre.com | Profissional | Sim (Diego) |
+
+Observacoes:
+
+- Bruno (profissional) nao possui usuario — nem todo funcionario faz login.
+- O login e por selecao de usuario (senha irrelevante no mock); a topbar permite trocar de usuario para demonstrar cada perfil.
+
 ## Servicos
 
 Sao 12 servicos. O preco e exibido em reais; o preco em centavos e o valor de armazenamento para precisao.
@@ -224,4 +241,4 @@ Exemplos adicionais de estados especiais (para historico):
 
 - Fixar a data de referencia ("hoje" do cenario) usada para distribuir passado/presente/futuro nos mocks, para manter os exemplos estaveis entre telas.
 - Definir o numero exato de agendamentos dentro da faixa 40-80 e a alocacao final por dia, garantindo o sabado cheio e a terca fraca.
-- Detalhar ao menos um bloqueio de horario de exemplo por profissional (ex.: almoco), para exercitar a regra de bloqueio na Agenda.
+- O almoço dos barbeiros seniores (Marcelo e Rafael, 12:00–13:00) é modelado como intervalo do horário de trabalho (breakStart/breakEnd), não como bloqueio avulso — aparece como faixa "Almoço" na Agenda e recusa agendamento nesse horário. Bloqueios avulsos (folga/indisponibilidade) são criados pela UI.

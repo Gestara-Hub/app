@@ -40,6 +40,7 @@ import type {
 import { useProfessionals } from "../hooks/use-professionals";
 
 interface ProfessionalsListProps {
+  canManage: boolean;
   onCreate: () => void;
   onEdit: (professional: ProfessionalView) => void;
   onInactivate: (professional: ProfessionalView) => void;
@@ -54,39 +55,43 @@ function statusPillClass(isActive: boolean): string {
 
 function ProfessionalRow({
   professional,
+  canManage,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
   professional: ProfessionalView;
+  canManage: boolean;
   onEdit: (p: ProfessionalView) => void;
   onInactivate: (p: ProfessionalView) => void;
   onReactivate: (p: ProfessionalView) => void;
 }) {
   const isActive = professional.status === "active";
 
-  const actions: ListItemAction[] = [
-    {
-      key: "edit",
-      label: "Editar",
-      icon: <Pencil className="size-4" />,
-      onSelect: () => onEdit(professional),
-    },
-    isActive
-      ? {
-          key: "inactivate",
-          label: "Inativar",
-          icon: <PowerOff className="size-4" />,
-          onSelect: () => onInactivate(professional),
-          destructive: true,
-        }
-      : {
-          key: "reactivate",
-          label: "Reativar",
-          icon: <Power className="size-4" />,
-          onSelect: () => onReactivate(professional),
+  const actions: ListItemAction[] = canManage
+    ? [
+        {
+          key: "edit",
+          label: "Editar",
+          icon: <Pencil className="size-4" />,
+          onSelect: () => onEdit(professional),
         },
-  ];
+        isActive
+          ? {
+              key: "inactivate",
+              label: "Inativar",
+              icon: <PowerOff className="size-4" />,
+              onSelect: () => onInactivate(professional),
+              destructive: true,
+            }
+          : {
+              key: "reactivate",
+              label: "Reativar",
+              icon: <Power className="size-4" />,
+              onSelect: () => onReactivate(professional),
+            },
+      ]
+    : [];
 
   const meta = [
     professional.role.name,
@@ -114,11 +119,14 @@ function ProfessionalRow({
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
         </div>
-        <ListItemActionsMenu actions={actions} title="Ações do profissional" />
+        {canManage ? (
+          <ListItemActionsMenu actions={actions} title="Ações do profissional" />
+        ) : null}
       </div>
     </ListItemCard>
   );
 
+  if (!canManage) return content;
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
@@ -137,6 +145,7 @@ function SkeletonRows() {
 }
 
 export function ProfessionalsList({
+  canManage,
   onCreate,
   onEdit,
   onInactivate,
@@ -185,6 +194,7 @@ export function ProfessionalsList({
       <ProfessionalRow
         key={professional.id}
         professional={professional}
+        canManage={canManage}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -215,8 +225,8 @@ export function ProfessionalsList({
         icon={<Scissors className="size-8" />}
         title="Nenhum profissional cadastrado ainda."
         description="Cadastre sua equipe, os serviços que cada um realiza e a disponibilidade."
-        actionLabel="Cadastrar profissional"
-        onAction={onCreate}
+        actionLabel={canManage ? "Cadastrar profissional" : undefined}
+        onAction={canManage ? onCreate : undefined}
       />
     );
   }

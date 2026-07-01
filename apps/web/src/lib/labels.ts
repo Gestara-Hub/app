@@ -1,4 +1,9 @@
-import type { AppointmentStatus, Frequency, RecordStatus } from "@/types";
+import type {
+  AppointmentStatus,
+  Frequency,
+  RecordStatus,
+  UserProfile,
+} from "@/types";
 
 /**
  * Rotulos de exibicao (PT, vistos pelo usuario) para os codigos de enum.
@@ -38,4 +43,15 @@ const FREQUENCY_LABEL: Record<Frequency, string> = {
 
 export function frequencyLabel(frequency: Frequency): string {
   return FREQUENCY_LABEL[frequency];
+}
+
+const USER_PROFILE_LABEL: Record<UserProfile, string> = {
+  owner: "Proprietário",
+  manager: "Gerente",
+  attendant: "Atendente",
+  professional: "Profissional",
+};
+
+export function userProfileLabel(profile: UserProfile): string {
+  return USER_PROFILE_LABEL[profile];
 }

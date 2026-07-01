@@ -18,6 +18,7 @@ import {
 import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
+import { useCan } from "@/features/auth/session-provider";
 import { FOOTER_NAV, MAIN_NAV, isNavItemActive, type NavItem } from "./nav";
 
 function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
@@ -46,6 +47,9 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const can = useCan();
+  const mainItems = MAIN_NAV.filter((item) => can(item.permission));
+  const footerItems = FOOTER_NAV.filter((item) => can(item.permission));
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -75,14 +79,16 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <NavMenu items={MAIN_NAV} pathname={pathname} />
+            <NavMenu items={mainItems} pathname={pathname} />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <NavMenu items={FOOTER_NAV} pathname={pathname} />
-      </SidebarFooter>
+      {footerItems.length > 0 ? (
+        <SidebarFooter>
+          <NavMenu items={footerItems} pathname={pathname} />
+        </SidebarFooter>
+      ) : null}
 
       <SidebarRail />
     </Sidebar>

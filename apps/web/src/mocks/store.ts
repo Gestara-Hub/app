@@ -9,6 +9,7 @@ import type {
   Service,
   TimeBlock,
   Unit,
+  User,
 } from "@/types";
 import { mockConfig } from "./config";
 import { createInitialStore } from "./seed";
@@ -25,6 +26,7 @@ export interface MockStore {
   unit: Unit;
   clients: Client[];
   professionals: Professional[];
+  users: User[];
   roles: Role[];
   categories: Category[];
   services: Service[];
@@ -39,7 +41,9 @@ const STORAGE_KEY = "gestarahub:db";
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
 // v5: cargo (role) virou entidade Role; Professional.role -> roleId.
 // v6: agenda semeada (appointments, timeBlocks, series).
-const SEED_VERSION = 6;
+// v7: usuarios (multi-user + RBAC simulado).
+// v8: almoco no WorkingHours (breakStart/breakEnd); almoco deixou de ser TimeBlock.
+const SEED_VERSION = 8;
 
 interface PersistedBlob {
   v: number;
@@ -107,6 +111,7 @@ export function clearStore(): void {
     unit: base.unit,
     clients: [],
     professionals: [],
+    users: base.users,
     roles: [],
     categories: [],
     services: [],

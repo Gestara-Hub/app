@@ -39,11 +39,14 @@ export type Frequency = "weekly" | "biweekly" | "monthly";
 // Dia da semana. 0 = domingo ... 6 = sabado.
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
-// Faixa de horario de trabalho de um profissional em um dia.
+// Faixa de horario de trabalho de um profissional em um dia. Intervalo (almoco)
+// opcional dentro do expediente; se presente, o slot que o cobre e recusado.
 export interface WorkingHours {
   weekday: Weekday;
   start: TimeISO; // ex.: '09:00'
   end: TimeISO; // ex.: '20:00'
+  breakStart?: TimeISO; // inicio do intervalo/almoco (ex.: '12:00')
+  breakEnd?: TimeISO; // fim do intervalo/almoco (ex.: '13:00')
 }
 
 // Escopo de acoes sobre ocorrencias de serie.
@@ -61,6 +64,7 @@ export type ApiErrorCode =
   // Regras de negocio (agenda)
   | "OVERLAP_CONFLICT"
   | "OUTSIDE_BUSINESS_HOURS"
+  | "ON_BREAK"
   | "TIME_BLOCKED"
   | "PROFESSIONAL_DOES_NOT_OFFER_SERVICE"
   | "PROFESSIONAL_INACTIVE"

@@ -7,8 +7,9 @@ import {
   Power,
   PowerOff,
   RotateCw,
+  Scissors,
   Search,
-  Tag,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -30,18 +31,17 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
-import { formatCents, formatDuration } from "@/lib/format";
-import { recordStatusLabel } from "@/lib/labels";
-import type { RecordStatus, Service, ServiceFilter } from "@/types";
-import { useCategories } from "@/features/categories/hooks/use-categories";
-import { useServices } from "../hooks/use-services";
+import { recordStatusLabel, userProfileLabel } from "@/lib/labels";
+import type { RecordStatus, UserView } from "@/types";
+import { useCurrentUser } from "@/features/auth/session-provider";
+import { useUsers } from "../hooks/use-users";
 
-interface ServicesListProps {
+interface UsersListProps {
   canManage: boolean;
   onCreate: () => void;
-  onEdit: (service: Service) => void;
-  onInactivate: (service: Service) => void;
-  onReactivate: (service: Service) => void;
+  onEdit: (user: UserView) => void;
+  onInactivate: (user: UserView) => void;
+  onReactivate: (user: UserView) => void;
 }
 
 function statusPillClass(isActive: boolean): string {
@@ -50,22 +50,22 @@ function statusPillClass(isActive: boolean): string {
     : "border border-border bg-muted/40 text-muted-foreground";
 }
 
-function ServiceRow({
-  service,
-  categoryName,
+function UserRow({
+  user,
   canManage,
+  isSelf,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
-  service: Service;
-  categoryName: string;
+  user: UserView;
   canManage: boolean;
-  onEdit: (s: Service) => void;
-  onInactivate: (s: Service) => void;
-  onReactivate: (s: Service) => void;
+  isSelf: boolean;
+  onEdit: (u: UserView) => void;
+  onInactivate: (u: UserView) => void;
+  onReactivate: (u: UserView) => void;
 }) {
-  const isActive = service.status === "active";
+  const isActive = user.status === "active";
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -73,49 +73,61 @@ function ServiceRow({
           key: "edit",
           label: "Editar",
           icon: <Pencil className="size-4" />,
-          onSelect: () => onEdit(service),
+          onSelect: () => onEdit(user),
         },
         isActive
           ? {
               key: "inactivate",
-              label: "Inativar",
+              label: isSelf ? "Inativar (você)" : "Inativar",
               icon: <PowerOff className="size-4" />,
-              onSelect: () => onInactivate(service),
+              onSelect: () => onInactivate(user),
               destructive: true,
+              disabled: isSelf,
             }
           : {
               key: "reactivate",
               label: "Reativar",
               icon: <Power className="size-4" />,
-              onSelect: () => onReactivate(service),
+              onSelect: () => onReactivate(user),
             },
       ]
     : [];
+
+  const meta = [
+    user.email,
+    user.professional ? `Profissional: ${user.professional.name}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const content = (
     <ListItemCard>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{service.name}</p>
+            <p className="font-medium">{user.name}</p>
+            <span className="inline-flex rounded-full border bg-muted/40 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {userProfileLabel(user.profile)}
+            </span>
+            {user.professional ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400">
+                <Scissors className="size-3" />
+                Equipe
+              </span>
+            ) : null}
             <span
               className={cn(
                 "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
                 statusPillClass(isActive),
               )}
             >
-              {recordStatusLabel(service.status)}
+              {recordStatusLabel(user.status)}
             </span>
-            <span className="text-xs text-muted-foreground">{categoryName}</span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {formatDuration(service.durationMinutes)} ·{" "}
-            {formatCents(service.priceCents)}
-            {service.description ? ` · ${service.description}` : ""}
-          </p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
         </div>
         {canManage ? (
-          <ListItemActionsMenu actions={actions} title="Ações do serviço" />
+          <ListItemActionsMenu actions={actions} title="Ações do usuário" />
         ) : null}
       </div>
     </ListItemCard>
@@ -139,38 +151,31 @@ function SkeletonRows() {
   ));
 }
 
-export function ServicesList({
+export function UsersList({
   canManage,
   onCreate,
   onEdit,
   onInactivate,
   onReactivate,
-}: ServicesListProps) {
+}: UsersListProps) {
+  const currentUser = useCurrentUser();
   const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<"all" | string>("all");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
 
-  const filter: ServiceFilter = {
+  const filter = {
     search: search.trim() || undefined,
-    categoryId: categoryId === "all" ? undefined : categoryId,
     status: status === "all" ? undefined : status,
   };
 
-  const { data, isPending, isError, refetch } = useServices(filter);
-  const { data: categories } = useCategories({ status: "active" });
-  const services = data ?? [];
-
-  const categoryNameById = new Map(
-    (categories ?? []).map((c) => [c.id, c.name]),
-  );
+  const { data, isPending, isError, refetch } = useUsers(filter);
+  const users = data ?? [];
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.categoryId || filter.status);
+  const hasFilters = Boolean(filter.status);
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setCategoryId("all");
     setStatus("all");
   };
 
@@ -184,7 +189,7 @@ export function ServicesList({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertTriangle className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Não foi possível carregar os serviços. Tente novamente.
+          Não foi possível carregar os usuários. Tente novamente.
         </p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RotateCw className="size-4" />
@@ -193,12 +198,12 @@ export function ServicesList({
       </div>
     );
   } else {
-    items = services.map((service) => (
-      <ServiceRow
-        key={service.id}
-        service={service}
-        categoryName={categoryNameById.get(service.categoryId) ?? "—"}
+    items = users.map((user) => (
+      <UserRow
+        key={user.id}
+        user={user}
         canManage={canManage}
+        isSelf={user.id === currentUser.id}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -226,10 +231,10 @@ export function ServicesList({
       </div>
     ) : (
       <ModuleEmptyGuide
-        icon={<Tag className="size-8" />}
-        title="Nenhum serviço cadastrado ainda."
-        description="Cadastre os serviços do seu catálogo para usá-los nos agendamentos."
-        actionLabel={canManage ? "Cadastrar serviço" : undefined}
+        icon={<ShieldCheck className="size-8" />}
+        title="Nenhum usuário cadastrado ainda."
+        description="Cadastre quem pode acessar o sistema e defina o perfil de acesso."
+        actionLabel={canManage ? "Cadastrar usuário" : undefined}
         onAction={canManage ? onCreate : undefined}
       />
     );
@@ -246,10 +251,10 @@ export function ServicesList({
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou descrição..."
+              placeholder="Buscar por nome ou e-mail..."
               className="px-8"
               autoComplete="off"
-              aria-label="Buscar serviço"
+              aria-label="Buscar usuário"
             />
             {search ? (
               <button
@@ -262,23 +267,6 @@ export function ServicesList({
               </button>
             ) : null}
           </div>
-
-          <Select
-            value={categoryId}
-            onValueChange={(value) => setCategoryId(value)}
-          >
-            <SelectTrigger className="sm:w-48" aria-label="Filtrar por categoria">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <Select
             value={status}

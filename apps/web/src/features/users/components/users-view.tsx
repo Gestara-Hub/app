@@ -6,53 +6,50 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Client } from "@/types";
+import type { UserView } from "@/types";
 import { useCan } from "@/features/auth/session-provider";
-import { useUpdateClient } from "../hooks/use-clients";
-import { ClientsList } from "./clients-list";
-import { ClientFormDialog } from "./client-form-dialog";
-import { InactivateClientDialog } from "./inactivate-client-dialog";
+import { useUpdateUser } from "../hooks/use-users";
+import { UsersList } from "./users-list";
+import { UserFormDialog } from "./user-form-dialog";
+import { InactivateUserDialog } from "./inactivate-user-dialog";
 
-export function ClientsView() {
+export function UsersView() {
   const [formState, setFormState] = useState<{
     open: boolean;
-    client?: Client;
+    user?: UserView;
   }>({ open: false });
-  const [inactivating, setInactivating] = useState<Client | null>(null);
+  const [inactivating, setInactivating] = useState<UserView | null>(null);
 
-  const updateMut = useUpdateClient();
-  const canManage = useCan()("clients:manage");
+  const updateMut = useUpdateUser();
+  const canManage = useCan()("users:manage");
 
   const openCreate = () => setFormState({ open: true });
-  const openEdit = (client: Client) => setFormState({ open: true, client });
+  const openEdit = (user: UserView) => setFormState({ open: true, user });
 
-  async function reactivate(client: Client) {
+  async function reactivate(user: UserView) {
     try {
-      await updateMut.mutateAsync({
-        id: client.id,
-        payload: { status: "active" },
-      });
-      toast.success("Cliente reativado.");
+      await updateMut.mutateAsync({ id: user.id, payload: { status: "active" } });
+      toast.success("Usuário reativado.");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível reativar o cliente."));
+      toast.error(getErrorMessage(error, "Não foi possível reativar o usuário."));
     }
   }
 
   return (
     <>
       <PageHeader
-        title="Clientes"
-        description="Cadastro de clientes da Corte Nobre."
+        title="Usuários"
+        description="Quem acessa o sistema e o perfil de acesso."
       >
         {canManage ? (
           <Button onClick={openCreate}>
             <Plus className="size-4" />
-            Novo cliente
+            Novo usuário
           </Button>
         ) : null}
       </PageHeader>
 
-      <ClientsList
+      <UsersList
         canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
@@ -60,16 +57,16 @@ export function ClientsView() {
         onReactivate={reactivate}
       />
 
-      <ClientFormDialog
+      <UserFormDialog
         open={formState.open}
         onOpenChange={(open) => {
           if (!open) setFormState({ open: false });
         }}
-        client={formState.client}
+        user={formState.user}
       />
 
-      <InactivateClientDialog
-        client={inactivating}
+      <InactivateUserDialog
+        user={inactivating}
         onOpenChange={(open) => {
           if (!open) setInactivating(null);
         }}

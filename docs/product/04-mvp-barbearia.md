@@ -44,9 +44,11 @@ O MVP deve permitir que o usuario:
 
 ### Autenticacao visual mockada
 
-- Login sem backend real.
-- Sessao simulada.
-- Usuario inicial com perfil de proprietario/admin.
+- Login sem backend real (senha irrelevante).
+- Sessao simulada (cookie guarda o `userId`).
+- Multiplos usuarios semeados, um por perfil (proprietario, gerente, atendente, profissional).
+- Login por selecao de usuario e troca de usuario na topbar.
+- RBAC aplicado de verdade na navegacao, nas acoes e nas rotas (ver `06-perfis-permissoes.md`).
 
 ### Dashboard operacional
 
@@ -170,6 +172,22 @@ Campos esperados:
 - criadoEm
 - atualizadoEm
 
+### Usuario
+
+Quem acessa o sistema (RBAC). Campos esperados:
+
+- id
+- organizacaoId
+- nome
+- email
+- perfil (owner | manager | attendant | professional)
+- profissionalId opcional (vinculo com um Professional; pode ou nao existir)
+- status
+- criadoEm
+- atualizadoEm
+
+Perfil de acesso (`UserProfile`) e distinto de cargo (`Role`, funcao do profissional). Detalhes e matriz de permissoes em `06-perfis-permissoes.md`.
+
 ### Profissional
 
 Campos esperados:
@@ -181,7 +199,7 @@ Campos esperados:
 - cargo ou especialidade
 - telefone opcional
 - status
-- horariosDeTrabalho
+- horariosDeTrabalho (por dia; com intervalo/almoço opcional — breakStart/breakEnd dentro do expediente)
 - servicosIds
 - criadoEm
 - atualizadoEm

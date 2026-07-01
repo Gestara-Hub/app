@@ -26,8 +26,8 @@ URLs e identificadores de codigo ficam em ingles (slugs `/services`, `/clients`,
 ## Fora de escopo
 
 - Server actions, route handlers de dados e data fetching no servidor (reservados para a fase 3, backend do zero).
-- Autenticacao real, tokens, refresh, RBAC por rota. No MVP a sessao e mockada (cookie simples) e o usuario logado e tratado como Proprietario/Admin.
-- Permissoes finas por rota/acao (ver `docs/product/06-perfis-permissoes.md`); o MVP nao bloqueia rotas por perfil.
+- Autenticacao real, tokens, refresh. No MVP a sessao e mockada (cookie guarda o `userId`).
+- Tela de gestao de permissoes (matriz editavel) e enforcement server-side de dados. O MVP JA aplica RBAC na navegacao, nas acoes e nas rotas restritas (client + guarda no `(app)/layout.tsx`/pages), com escopo de dados UI-only para o perfil Profissional (ver `docs/product/06-perfis-permissoes.md`).
 - Rotas de modulos futuros (Unidades, Relatorios, Financeiro etc.).
 - Deep-linking de modais (ex.: `?modal=novo-agendamento`) como contrato fixo; fica como pendencia.
 
@@ -141,7 +141,7 @@ Topbar:
 
 - Contexto da organizacao/unidade mockada selecionada (Corte Nobre / Corte Nobre - Matriz).
 - Acao rapida de "Novo agendamento" (atalho para o Fluxo 3), quando fizer sentido.
-- Identificacao do usuario logado (Proprietario/Admin mockado) e acao de "Sair" (encerra a sessao mockada, limpa o cookie e volta para `/login`).
+- Identificacao do usuario logado (nome + perfil), acao de "Trocar usuario" (alterna entre os usuarios mockados, sem logout) e "Sair" (limpa o cookie e volta para `/login`).
 
 Login fora do shell:
 
@@ -194,7 +194,7 @@ export const config = {
 Notas:
 
 - No MVP a sessao e mockada via cookie; por viver no cookie (e nao so no store em memoria), sobrevive ao reload, evitando retorno forcado ao `/login`. O store de dados em memoria, esse sim, reinicia no reload.
-- A guarda NAO faz controle por perfil; o usuario logado e sempre tratado como Proprietario/Admin (ver `docs/product/06-perfis-permissoes.md`).
+- A guarda de sessao (proxy/middleware) e binaria (logado x deslogado). O controle por PERFIL vive no `(app)/layout.tsx` (resolve o usuario e monta o SessionProvider) e nas pages protegidas via `requirePermission` (ex.: Dashboard, Configuracoes), que redirecionam para a primeira rota acessivel do perfil quando o acesso e negado. A sidebar tambem filtra os itens por permissao. Ver `docs/product/06-perfis-permissoes.md`.
 - O `(app)/layout.tsx` pode reforcar a guarda (defesa em profundidade), mas o middleware e a protecao primaria.
 
 ## Relacao Agenda (calendario) x Agendamentos (lista)

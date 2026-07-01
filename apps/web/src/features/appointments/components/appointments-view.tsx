@@ -22,6 +22,8 @@ import { formatCents } from "@/lib/format";
 import { appointmentStatusLabel } from "@/lib/labels";
 import { todayISO } from "@/lib/date";
 import type { AppointmentStatus, AppointmentView } from "@/types";
+import { useCan, useCurrentUser } from "@/features/auth/session-provider";
+import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
@@ -73,11 +75,18 @@ export function AppointmentsView() {
     appointment?: AppointmentView;
   }>({ open: false });
 
+  const user = useCurrentUser();
+  const can = useCan();
+  const scopedProfId = scopedProfessionalId(user);
+  const scoped = Boolean(scopedProfId);
+  const canCreate = can("appointments:create");
+
   const { data: professionals } = useProfessionals({ status: "active" });
   const query = useAppointments({
     dateFrom,
     dateTo,
-    professionalId: professionalId === "all" ? undefined : professionalId,
+    professionalId:
+      scopedProfId ?? (professionalId === "all" ? undefined : professionalId),
     status: status === "all" ? undefined : status,
     search: search.trim() || undefined,
   });
@@ -127,12 +136,12 @@ export function AppointmentsView() {
           <Button variant="outline" size="sm" onClick={clearAll}>
             Limpar filtros
           </Button>
-        ) : (
+        ) : canCreate ? (
           <Button size="sm" onClick={() => setFormState({ open: true })}>
             <Plus className="size-4" />
             Novo agendamento
           </Button>
-        )}
+        ) : null}
       </div>
     );
   } else {
@@ -187,11 +196,16 @@ export function AppointmentsView() {
 
   return (
     <>
-      <PageHeader title="Agendamentos" description="Lista e histórico de agendamentos.">
-        <Button onClick={() => setFormState({ open: true })}>
-          <Plus className="size-4" />
-          Novo agendamento
-        </Button>
+      <PageHeader
+        title={scoped ? "Meus agendamentos" : "Agendamentos"}
+        description="Lista e histórico de agendamentos."
+      >
+        {canCreate ? (
+          <Button onClick={() => setFormState({ open: true })}>
+            <Plus className="size-4" />
+            Novo agendamento
+          </Button>
+        ) : null}
       </PageHeader>
 
       <Card className="mb-4">
@@ -215,21 +229,23 @@ export function AppointmentsView() {
                 onChange={(e) => e.target.value && setDateTo(e.target.value)}
               />
             </label>
-            <div className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Profissional
-              <Combobox
-                value={professionalId}
-                onChange={setProfessionalId}
-                options={[
-                  { label: "Todos", value: "all" },
-                  ...(professionals ?? []).map((p) => ({ label: p.name, value: p.id })),
-                ]}
-                placeholder="Todos"
-                searchPlaceholder="Buscar profissional..."
-                emptyMessage="Nenhum profissional."
-                ariaLabel="Filtrar por profissional"
-              />
-            </div>
+            {scoped ? null : (
+              <div className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                Profissional
+                <Combobox
+                  value={professionalId}
+                  onChange={setProfessionalId}
+                  options={[
+                    { label: "Todos", value: "all" },
+                    ...(professionals ?? []).map((p) => ({ label: p.name, value: p.id })),
+                  ]}
+                  placeholder="Todos"
+                  searchPlaceholder="Buscar profissional..."
+                  emptyMessage="Nenhum profissional."
+                  ariaLabel="Filtrar por profissional"
+                />
+              </div>
+            )}
             <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
               Status
               <Select value={status} onValueChange={(v) => setStatus(v as "all" | AppointmentStatus)}>

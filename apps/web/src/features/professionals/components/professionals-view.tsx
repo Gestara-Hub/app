@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
 import type { ProfessionalView } from "@/types";
+import { useCan } from "@/features/auth/session-provider";
 import { RoleManagerDialog } from "@/features/roles/components/role-manager-dialog";
 import { useUpdateProfessional } from "../hooks/use-professionals";
 import { ProfessionalsList } from "./professionals-list";
@@ -24,6 +25,7 @@ export function ProfessionalsView() {
   const [rolesOpen, setRolesOpen] = useState(false);
 
   const updateMut = useUpdateProfessional();
+  const canManage = useCan()("team:manage");
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (professional: ProfessionalView) =>
@@ -49,17 +51,22 @@ export function ProfessionalsView() {
         title="Equipe"
         description="Profissionais da Corte Nobre — Matriz."
       >
-        <Button variant="outline" onClick={() => setRolesOpen(true)}>
-          <Briefcase className="size-4" />
-          Cargos
-        </Button>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" />
-          Novo profissional
-        </Button>
+        {canManage ? (
+          <>
+            <Button variant="outline" onClick={() => setRolesOpen(true)}>
+              <Briefcase className="size-4" />
+              Cargos
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" />
+              Novo profissional
+            </Button>
+          </>
+        ) : null}
       </PageHeader>
 
       <ProfessionalsList
+        canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
         onInactivate={setInactivating}

@@ -36,6 +36,7 @@ import type { Client, ClientFilter, RecordStatus } from "@/types";
 import { useClients } from "../hooks/use-clients";
 
 interface ClientsListProps {
+  canManage: boolean;
   onCreate: () => void;
   onEdit: (client: Client) => void;
   onInactivate: (client: Client) => void;
@@ -50,39 +51,43 @@ function statusPillClass(isActive: boolean): string {
 
 function ClientRow({
   client,
+  canManage,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
   client: Client;
+  canManage: boolean;
   onEdit: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
   const isActive = client.status === "active";
 
-  const actions: ListItemAction[] = [
-    {
-      key: "edit",
-      label: "Editar",
-      icon: <Pencil className="size-4" />,
-      onSelect: () => onEdit(client),
-    },
-    isActive
-      ? {
-          key: "inactivate",
-          label: "Inativar",
-          icon: <PowerOff className="size-4" />,
-          onSelect: () => onInactivate(client),
-          destructive: true,
-        }
-      : {
-          key: "reactivate",
-          label: "Reativar",
-          icon: <Power className="size-4" />,
-          onSelect: () => onReactivate(client),
+  const actions: ListItemAction[] = canManage
+    ? [
+        {
+          key: "edit",
+          label: "Editar",
+          icon: <Pencil className="size-4" />,
+          onSelect: () => onEdit(client),
         },
-  ];
+        isActive
+          ? {
+              key: "inactivate",
+              label: "Inativar",
+              icon: <PowerOff className="size-4" />,
+              onSelect: () => onInactivate(client),
+              destructive: true,
+            }
+          : {
+              key: "reactivate",
+              label: "Reativar",
+              icon: <Power className="size-4" />,
+              onSelect: () => onReactivate(client),
+            },
+      ]
+    : [];
 
   const meta = [formatPhone(client.phone), client.email, client.notes]
     .filter(Boolean)
@@ -105,11 +110,14 @@ function ClientRow({
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
         </div>
-        <ListItemActionsMenu actions={actions} title="Ações do cliente" />
+        {canManage ? (
+          <ListItemActionsMenu actions={actions} title="Ações do cliente" />
+        ) : null}
       </div>
     </ListItemCard>
   );
 
+  if (!canManage) return content;
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
@@ -128,6 +136,7 @@ function SkeletonRows() {
 }
 
 export function ClientsList({
+  canManage,
   onCreate,
   onEdit,
   onInactivate,
@@ -176,6 +185,7 @@ export function ClientsList({
       <ClientRow
         key={client.id}
         client={client}
+        canManage={canManage}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -206,8 +216,8 @@ export function ClientsList({
         icon={<Users className="size-8" />}
         title="Nenhum cliente cadastrado ainda."
         description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
-        actionLabel="Cadastrar cliente"
-        onAction={onCreate}
+        actionLabel={canManage ? "Cadastrar cliente" : undefined}
+        onAction={canManage ? onCreate : undefined}
       />
     );
   }

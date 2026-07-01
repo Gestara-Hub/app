@@ -21,11 +21,27 @@ export const professionalFormSchema = z.object({
         weekday: z.number().int().min(0).max(6),
         start: z.string(),
         end: z.string(),
+        breakStart: z.string().optional(),
+        breakEnd: z.string().optional(),
       }),
     )
     .refine((hours) => hours.every((h) => h.start < h.end), {
       message: "Horário inválido: o início deve ser antes do fim.",
-    }),
+    })
+    .refine(
+      (hours) =>
+        hours.every((h) => {
+          if (!h.breakStart && !h.breakEnd) return true;
+          return (
+            Boolean(h.breakStart) &&
+            Boolean(h.breakEnd) &&
+            h.start <= h.breakStart! &&
+            h.breakStart! < h.breakEnd! &&
+            h.breakEnd! <= h.end
+          );
+        }),
+      { message: "Almoço inválido: deve ficar dentro do expediente do dia." },
+    ),
   active: z.boolean(),
 });
 

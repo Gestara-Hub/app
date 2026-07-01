@@ -47,9 +47,10 @@ No MVP, a interface usa uma linguagem unica e generica de navegacao: Clientes, E
 
 ## Regras de disponibilidade
 
-- A disponibilidade inicial do MVP pode ser simples, baseada em horario de funcionamento da unidade e horarios de trabalho dos profissionais.
+- A disponibilidade inicial do MVP pode ser simples, baseada em horario de funcionamento da unidade e horarios de trabalho dos profissionais (incluindo intervalo/almoço opcional por dia).
 - Horarios fora do expediente nao devem ser sugeridos como opcoes principais e nao aceitam agendamento.
 - Horarios cobertos por um bloqueio nao aceitam agendamento.
+- O intervalo/almoço do profissional (breakStart/breakEnd no horario de trabalho) tambem nao aceita agendamento e aparece destacado na Agenda.
 - A agenda deve deixar claro quando um profissional esta sem horarios livres no periodo filtrado.
 
 ## Regras de remarcacao
@@ -62,7 +63,7 @@ No MVP, a interface usa uma linguagem unica e generica de navegacao: Clientes, E
 
 ## Regras de bloqueio de horario
 
-- Um profissional pode ter bloqueios de agenda (por exemplo: folga, almoco, indisponibilidade).
+- Um profissional pode ter bloqueios de agenda (por exemplo: folga, indisponibilidade). O almoço/intervalo faz parte do horario de trabalho (breakStart/breakEnd por dia), nao um bloqueio avulso.
 - Um bloqueio possui data, horario de inicio, horario de fim e motivo opcional.
 - Horario bloqueado nao aceita agendamento e deve aparecer destacado na Agenda.
 - Bloqueios participam das verificacoes de conflito: nenhum agendamento, remarcacao ou ocorrencia recorrente pode ser criado sobre um horario bloqueado.

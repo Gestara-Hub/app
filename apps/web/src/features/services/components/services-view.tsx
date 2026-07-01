@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
 import type { Service } from "@/types";
+import { useCan } from "@/features/auth/session-provider";
 import { CategoryManagerDialog } from "@/features/categories/components/category-manager-dialog";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
@@ -22,6 +23,7 @@ export function ServicesView() {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const updateMut = useUpdateService();
+  const canManage = useCan()("services:manage");
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (service: Service) => setFormState({ open: true, service });
@@ -44,17 +46,22 @@ export function ServicesView() {
         title="Serviços"
         description="Catálogo de serviços da Corte Nobre — Matriz."
       >
-        <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
-          <Tag className="size-4" />
-          Categorias
-        </Button>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" />
-          Novo serviço
-        </Button>
+        {canManage ? (
+          <>
+            <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
+              <Tag className="size-4" />
+              Categorias
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" />
+              Novo serviço
+            </Button>
+          </>
+        ) : null}
       </PageHeader>
 
       <ServicesList
+        canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
         onInactivate={setInactivating}

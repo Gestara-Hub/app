@@ -28,6 +28,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { weekdayOf } from "@/lib/scheduling";
 import { todayISO } from "@/lib/date";
 import type { AppointmentView } from "@/types";
+import { useCan, useCurrentUser } from "@/features/auth/session-provider";
+import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { useTimeBlocks } from "../hooks/use-time-blocks";
@@ -55,15 +57,29 @@ export function ScheduleView() {
   const [selected, setSelected] = useState<AppointmentView | null>(null);
   const [rescheduling, setRescheduling] = useState<AppointmentView | null>(null);
 
+  const user = useCurrentUser();
+  const can = useCan();
+  const scopedProfId = scopedProfessionalId(user);
+  const scoped = Boolean(scopedProfId);
+  const canCreate = can("appointments:create");
+  const canBlock = can("appointments:block");
+  const canSeries = can("recurrence:manage");
+  const showNew = canCreate || canBlock || canSeries;
+
   const range = { dateFrom: date, dateTo: date };
   const professionalsQuery = useProfessionals({ status: "active" });
-  const appointmentsQuery = useAppointments(range);
+  const appointmentsQuery = useAppointments(
+    scopedProfId ? { ...range, professionalId: scopedProfId } : range,
+  );
   const blocksQuery = useTimeBlocks(range);
 
-  // Mostra apenas quem atende neste dia da semana (sem coluna de quem esta de folga).
+  // Mostra apenas quem atende neste dia da semana (sem coluna de quem esta de
+  // folga). Perfil Profissional ve apenas a propria coluna.
   const weekday = weekdayOf(date);
-  const professionals = (professionalsQuery.data ?? []).filter((p) =>
-    p.workingHours.some((w) => w.weekday === weekday),
+  const professionals = (professionalsQuery.data ?? []).filter(
+    (p) =>
+      p.workingHours.some((w) => w.weekday === weekday) &&
+      (!scopedProfId || p.id === scopedProfId),
   );
   const appointments = appointmentsQuery.data ?? [];
   const blocks = blocksQuery.data ?? [];
@@ -79,30 +95,45 @@ export function ScheduleView() {
 
   return (
     <>
-      <PageHeader title="Agenda" description="Agenda diária por profissional.">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button>
-              <Plus className="size-4" />
-              Novo
-              <ChevronDown className="size-4 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48">
-            <DropdownMenuItem onSelect={() => setFormState({ open: true })}>
-              <CalendarPlus className="size-4" />
-              Agendamento
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setBlockOpen(true)}>
-              <Lock className="size-4" />
-              Bloqueio
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSeriesOpen(true)}>
-              <Repeat className="size-4" />
-              Série recorrente
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <PageHeader
+        title={scoped ? "Minha agenda" : "Agenda"}
+        description={
+          scoped
+            ? "Seus agendamentos do dia."
+            : "Agenda diária por profissional."
+        }
+      >
+        {showNew ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="size-4" />
+                Novo
+                <ChevronDown className="size-4 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-48">
+              {canCreate ? (
+                <DropdownMenuItem onSelect={() => setFormState({ open: true })}>
+                  <CalendarPlus className="size-4" />
+                  Agendamento
+                </DropdownMenuItem>
+              ) : null}
+              {canBlock ? (
+                <DropdownMenuItem onSelect={() => setBlockOpen(true)}>
+                  <Lock className="size-4" />
+                  Bloqueio
+                </DropdownMenuItem>
+              ) : null}
+              {canSeries ? (
+                <DropdownMenuItem onSelect={() => setSeriesOpen(true)}>
+                  <Repeat className="size-4" />
+                  Série recorrente
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </PageHeader>
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -156,6 +187,7 @@ export function ScheduleView() {
             </div>
           ) : null}
           <ScheduleDayGrid
+            date={date}
             professionals={professionals}
             appointments={appointments}
             blocks={blocks}

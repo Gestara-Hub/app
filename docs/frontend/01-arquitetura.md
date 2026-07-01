@@ -170,7 +170,8 @@ A regra central e fluxo unidirecional do acesso a dados. A UI nunca toca o store
 | UI shadcn | `src/components/ui/` | Primitivos do design system (gerados pelo shadcn). | `lib/utils` (cn) |
 | Layout | `src/components/layout/` | Sidebar, Topbar, AppShell. | `components/ui/*`, `lib/*`, `types/*` |
 | Form | `src/components/form/` | Wrappers de campo RHF (Controller-based). | `components/ui/*`, `lib/*` |
-| Lib | `src/lib/` | Utils (cn), Providers, queryKeys, format, datas. | `types/*` |
+| Lib | `src/lib/` | Utils (cn), Providers, queryKeys, format, datas, RBAC (`permissions.ts`: matriz `PROFILE_PERMISSIONS` + `can()`). | `types/*` |
+| Auth/Sessao | `src/features/auth/` | Resolver o usuario logado no server (`get-current-user`), `SessionProvider`/`useCurrentUser`/`useCan` (client), guarda de rota (`require-permission`), escopo do Profissional (`scope`). | `services/*`, `lib/*`, `types/*`, `mocks/store` (so em `get-current-user`, server) |
 | Types | `src/types/` | Contratos e tipos (entidades, enums, schemas Zod). | (nenhuma camada de runtime) |
 
 ### Estado: dados vs UI
@@ -188,7 +189,8 @@ Validacao de formularios: padrao RHF `mode: onSubmit` + `reValidateMode: onChang
 
 | Regra | Detalhe |
 | --- | --- |
-| UI nunca importa `mocks` | Acesso a dados so via hooks -> services. |
+| UI nunca importa `mocks` | Acesso a dados so via hooks -> services. Excecao unica: a cola de sessao server `features/auth/get-current-user.ts` le `mocks/store` para resolver o usuario do cookie (infra de sessao, nao e UI). |
+| RBAC deriva do perfil | Permissoes vem de `PROFILE_PERMISSIONS`/`can()` (`lib/permissions`); a UI checa via `useCan()`/`requirePermission`, nunca compara `profile === '...'`. |
 | Services sao o unico ponto que toca o store | Trocar mock por API real = mudar so `src/services/*`. |
 | Tipos/contratos vivem em `src/types` | Entidades, enums e schemas Zod. Mocks e services importam de `types`, nunca o contrario. |
 | `'use client'` so onde necessario | Estado, efeitos, Query, RHF, eventos ou libs client-only. Default e RSC. |

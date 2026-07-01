@@ -7,6 +7,7 @@ import type {
   RoleFilter,
   ServiceFilter,
   TimeBlockFilter,
+  UserFilter,
 } from "@/types";
 
 /**
@@ -27,6 +28,11 @@ export const queryKeys = {
     list: (filter?: ProfessionalFilter) =>
       ["professionals", "list", filter] as const,
     detail: (id: Id) => ["professionals", "detail", id] as const,
+  },
+  users: {
+    all: ["users"] as const,
+    list: (filter?: UserFilter) => ["users", "list", filter] as const,
+    detail: (id: Id) => ["users", "detail", id] as const,
   },
   services: {
     all: ["services"] as const,

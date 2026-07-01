@@ -1,8 +1,9 @@
 "use client";
 
-import { Lock } from "lucide-react";
+import { Coffee, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appointmentStatusLabel } from "@/lib/labels";
+import { weekdayOf } from "@/lib/scheduling";
 import type {
   AppointmentStatus,
   AppointmentView,
@@ -68,6 +69,20 @@ function AppointmentCard({
   );
 }
 
+function BreakCard({ start, end }: { start: string; end: string }) {
+  return (
+    <div
+      data-slot="break-band"
+      style={{ top: topOf(start), height: heightOf(start, end) }}
+      title={`Almoço · ${start}–${end}`}
+      className="absolute inset-x-1 flex items-center gap-1 overflow-hidden rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-2 py-1 text-xs text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-500"
+    >
+      <Coffee className="size-3 shrink-0" />
+      <span className="truncate">Almoço</span>
+    </div>
+  );
+}
+
 function BlockCard({ block }: { block: TimeBlock }) {
   return (
     <div
@@ -83,6 +98,7 @@ function BlockCard({ block }: { block: TimeBlock }) {
 }
 
 interface ScheduleDayGridProps {
+  date: string;
   professionals: ProfessionalView[];
   appointments: AppointmentView[];
   blocks: TimeBlock[];
@@ -90,6 +106,7 @@ interface ScheduleDayGridProps {
 }
 
 export function ScheduleDayGrid({
+  date,
   professionals,
   appointments,
   blocks,
@@ -97,6 +114,7 @@ export function ScheduleDayGrid({
 }: ScheduleDayGridProps) {
   // Cancelados nao aparecem no grid operacional (ficam no historico/Agendamentos).
   const visible = appointments.filter((a) => a.status !== "canceled");
+  const weekday = weekdayOf(date);
 
   return (
     <div data-slot="schedule-grid" className="overflow-x-auto rounded-lg border bg-card">
@@ -121,6 +139,11 @@ export function ScheduleDayGrid({
         {professionals.map((prof) => {
           const profAppts = visible.filter((a) => a.professionalId === prof.id);
           const profBlocks = blocks.filter((b) => b.professionalId === prof.id);
+          const working = prof.workingHours.find((w) => w.weekday === weekday);
+          const lunch =
+            working?.breakStart && working?.breakEnd
+              ? { start: working.breakStart, end: working.breakEnd }
+              : null;
           return (
             <div key={prof.id} className="w-48 shrink-0 border-r last:border-r-0">
               <div className="flex h-10 items-center justify-center border-b px-2 text-sm font-medium">
@@ -134,6 +157,7 @@ export function ScheduleDayGrid({
                     style={{ top: (i + 1) * HOUR_HEIGHT }}
                   />
                 ))}
+                {lunch ? <BreakCard start={lunch.start} end={lunch.end} /> : null}
                 {profBlocks.map((b) => (
                   <BlockCard key={b.id} block={b} />
                 ))}

@@ -27,13 +27,9 @@ export function proxy(request: NextRequest): NextResponse {
     return NextResponse.redirect(url);
   }
 
-  if (hasSession && publicPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
-
+  // Estar logado e visitar /login NAO redireciona aqui: a propria page decide
+  // (so redireciona se o cookie resolver um usuario valido). Evita loop quando
+  // o cookie e stale/invalido — o proxy so garante presenca do cookie.
   return NextResponse.next();
 }
 

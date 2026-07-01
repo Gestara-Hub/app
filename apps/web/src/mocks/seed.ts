@@ -13,6 +13,7 @@ import type {
   TimeBlock,
   TimeISO,
   Unit,
+  User,
   Weekday,
   WorkingHours,
 } from "@/types";
@@ -198,8 +199,18 @@ function hoursForDay(weekday: Weekday): { start: string; end: string } {
     : { start: "09:00", end: "20:00" };
 }
 
-function workingHours(days: Weekday[]): WorkingHours[] {
-  return days.map((weekday) => ({ weekday, ...hoursForDay(weekday) }));
+// Almoco padrao dos barbeiros seniores (aplicado a todos os dias trabalhados).
+const LUNCH = { start: "12:00", end: "13:00" };
+
+function workingHours(
+  days: Weekday[],
+  lunch?: { start: string; end: string },
+): WorkingHours[] {
+  return days.map((weekday) => ({
+    weekday,
+    ...hoursForDay(weekday),
+    ...(lunch ? { breakStart: lunch.start, breakEnd: lunch.end } : {}),
+  }));
 }
 
 const ALL_SERVICES = Object.values(S);
@@ -212,6 +223,7 @@ function seedProfessionals(): Professional[] {
     phone: string,
     days: Weekday[],
     serviceIds: string[],
+    lunch?: { start: string; end: string },
   ): Professional => ({
     id,
     organizationId: ORG_ID,
@@ -220,7 +232,7 @@ function seedProfessionals(): Professional[] {
     roleId,
     phone: digits(phone),
     status: "active",
-    workingHours: workingHours(days),
+    workingHours: workingHours(days, lunch),
     serviceIds,
     ...timestamps(),
   });
@@ -233,6 +245,7 @@ function seedProfessionals(): Professional[] {
       "(11) 98800-0001",
       [1, 2, 3, 4, 5, 6], // Seg a Sab
       [...ALL_SERVICES], // todos os 12
+      LUNCH,
     ),
     base(
       "prof-rafael",
@@ -241,6 +254,7 @@ function seedProfessionals(): Professional[] {
       "(11) 98800-0002",
       [2, 3, 4, 5, 6], // Ter a Sab
       ALL_SERVICES.filter((id) => id !== S.straightening),
+      LUNCH,
     ),
     base(
       "prof-bruno",
@@ -258,6 +272,39 @@ function seedProfessionals(): Professional[] {
       [3, 4, 5, 6], // Qua a Sab
       [S.haircut, S.fade, S.kidsCut, S.edgeUp, S.beard, S.eyebrow],
     ),
+  ];
+}
+
+// --- Users (acesso / RBAC) -------------------------------------------------
+
+// Usuarios do cenario cobrindo os 4 perfis. `professionalId` opcional: usuario
+// pode ou nao ser um profissional. Marcelo (owner) tambem atende; Patricia
+// (gerente) e Sofia (atendente) nao sao profissionais; Rafael e Diego logam
+// como Profissional vinculados. Bruno (profissional) nao tem login.
+function seedUsers(): User[] {
+  const base = (
+    id: string,
+    name: string,
+    email: string,
+    profile: User["profile"],
+    professionalId?: string,
+  ): User => ({
+    id,
+    organizationId: ORG_ID,
+    name,
+    email,
+    profile,
+    ...(professionalId ? { professionalId } : {}),
+    status: "active",
+    ...timestamps(),
+  });
+
+  return [
+    base("usr-marcelo", "Marcelo Andrade", "marcelo@cortenobre.com", "owner", "prof-marcelo"),
+    base("usr-patricia", "Patrícia Nunes", "patricia@cortenobre.com", "manager"),
+    base("usr-sofia", "Sofia Ramos", "sofia@cortenobre.com", "attendant"),
+    base("usr-rafael", "Rafael Lima", "rafael@cortenobre.com", "professional", "prof-rafael"),
+    base("usr-diego", "Diego Santos", "diego@cortenobre.com", "professional", "prof-diego"),
   ];
 }
 
@@ -393,38 +440,18 @@ function makeAppointment(
   };
 }
 
-// Bloqueio de almoco (12:00-13:00) para os barbeiros seniores nos dias que trabalham.
-function seedTimeBlocks(professionals: Professional[]): TimeBlock[] {
-  const byId = new Map(professionals.map((p) => [p.id, p]));
-  const blocks: TimeBlock[] = [];
-  let n = 1;
-  for (const professionalId of [PROF.marcelo, PROF.rafael]) {
-    const prof = byId.get(professionalId);
-    if (!prof) continue;
+// O almoco agora faz parte do WorkingHours (breakStart/breakEnd). Semeia o
+// `busy` a partir desses intervalos para que os agendamentos semeados nao caiam
+// no almoco. Bloqueios avulsos ficam vazios no seed (criados pela UI).
+function initBusyFromBreaks(professionals: Professional[]): BusyMap {
+  const busy: BusyMap = new Map();
+  for (const prof of professionals) {
     for (const date of SCHEDULE_DATES) {
-      const weekday = weekdayOf(date);
-      if (prof.workingHours.some((w) => w.weekday === weekday)) {
-        blocks.push({
-          id: `blk-${String(n++).padStart(3, "0")}`,
-          organizationId: ORG_ID,
-          unitId: UNIT_ID,
-          professionalId,
-          date,
-          start: "12:00",
-          end: "13:00",
-          reason: "Almoço",
-          ...timestamps(),
-        });
+      const w = prof.workingHours.find((x) => x.weekday === weekdayOf(date));
+      if (w?.breakStart && w?.breakEnd) {
+        busyFor(busy, prof.id, date).push({ start: w.breakStart, end: w.breakEnd });
       }
     }
-  }
-  return blocks;
-}
-
-function initBusy(blocks: TimeBlock[]): BusyMap {
-  const busy: BusyMap = new Map();
-  for (const b of blocks) {
-    busyFor(busy, b.professionalId, b.date).push({ start: b.start, end: b.end });
   }
   return busy;
 }
@@ -579,13 +606,14 @@ export function createInitialStore(): MockStore {
   const unit = seedUnit();
   const clients = seedClients();
   const professionals = seedProfessionals();
+  const users = seedUsers();
   const roles = seedRoles();
   const categories = seedCategories();
   const services = seedServices();
   const serviceById = new Map(services.map((s) => [s.id, s]));
 
-  const timeBlocks = seedTimeBlocks(professionals);
-  const busy = initBusy(timeBlocks);
+  const timeBlocks: TimeBlock[] = [];
+  const busy = initBusyFromBreaks(professionals);
 
   const appts: Appointment[] = [];
   const series = seedSeries(serviceById, busy, appts);
@@ -602,6 +630,7 @@ export function createInitialStore(): MockStore {
     unit,
     clients,
     professionals,
+    users,
     roles,
     categories,
     services,
