@@ -1,8 +1,7 @@
 import {
-  CalendarClock,
   CalendarDays,
+  Contact,
   LayoutDashboard,
-  Scissors,
   Settings,
   Tag,
   UserCog,
@@ -27,10 +26,9 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view" },
   { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view" },
-  { label: "Equipe", href: "/team", icon: Scissors, permission: "team:view" },
+  { label: "Equipe", href: "/team", icon: Contact, permission: "team:view" },
   { label: "Serviços", href: "/services", icon: Tag, permission: "services:view" },
   { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view" },
-  { label: "Agendamentos", href: "/appointments", icon: CalendarClock, permission: "appointments:view" },
 ];
 
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.

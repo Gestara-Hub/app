@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PageHeader } from "@/components/layout/page-header";
 import { Combobox } from "@/components/shared/combobox";
 import { ListItemCard } from "@/components/shared/list-item-card";
 import { formatCents } from "@/lib/format";
@@ -27,9 +26,6 @@ import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
-import { AppointmentDetailDialog } from "./appointment-detail-dialog";
-import { AppointmentFormDialog } from "./appointment-form-dialog";
-import { RescheduleDialog } from "./reschedule-appointment-dialog";
 
 const STATUS_VALUES: AppointmentStatus[] = [
   "pending",
@@ -56,7 +52,19 @@ function groupByDate(appointments: AppointmentView[]) {
   return groups;
 }
 
-export function AppointmentsView() {
+interface ListPanelProps {
+  /** Abre o detalhe do agendamento selecionado (dialogs vivem no AgendaView). */
+  onSelectAppointment: (appointment: AppointmentView) => void;
+  /** Abre o formulario de novo agendamento (acao do +Novo, no AgendaView). */
+  onCreate: () => void;
+}
+
+/**
+ * Aba "Lista": historico/listagem com filtros. So exibe e seleciona — a criacao
+ * (+Novo) e todos os dialogs ficam no AgendaView (pai), compartilhados com a aba
+ * Calendário.
+ */
+export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
   const today = todayISO();
   const [dateFrom, setDateFrom] = useState(
     format(addDays(parseISO(today), -5), "yyyy-MM-dd"),
@@ -67,13 +75,6 @@ export function AppointmentsView() {
   const [professionalId, setProfessionalId] = useState("all");
   const [status, setStatus] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
-
-  const [selected, setSelected] = useState<AppointmentView | null>(null);
-  const [rescheduling, setRescheduling] = useState<AppointmentView | null>(null);
-  const [formState, setFormState] = useState<{
-    open: boolean;
-    appointment?: AppointmentView;
-  }>({ open: false });
 
   const user = useCurrentUser();
   const can = useCan();
@@ -137,7 +138,7 @@ export function AppointmentsView() {
             Limpar filtros
           </Button>
         ) : canCreate ? (
-          <Button size="sm" onClick={() => setFormState({ open: true })}>
+          <Button size="sm" onClick={onCreate}>
             <Plus className="size-4" />
             Novo agendamento
           </Button>
@@ -158,11 +159,11 @@ export function AppointmentsView() {
                 data-slot="appointment-row"
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelected(appointment)}
+                onClick={() => onSelectAppointment(appointment)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    setSelected(appointment);
+                    onSelectAppointment(appointment);
                   }
                 }}
                 className="cursor-pointer"
@@ -196,18 +197,6 @@ export function AppointmentsView() {
 
   return (
     <>
-      <PageHeader
-        title={scoped ? "Meus agendamentos" : "Agendamentos"}
-        description="Lista e histórico de agendamentos."
-      >
-        {canCreate ? (
-          <Button onClick={() => setFormState({ open: true })}>
-            <Plus className="size-4" />
-            Novo agendamento
-          </Button>
-        ) : null}
-      </PageHeader>
-
       <Card className="mb-4">
         <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -288,38 +277,6 @@ export function AppointmentsView() {
       </Card>
 
       {body}
-
-      <AppointmentDetailDialog
-        appointment={selected}
-        open={selected !== null}
-        onOpenChange={(next) => {
-          if (!next) setSelected(null);
-        }}
-        onEdit={(appointment) => {
-          setSelected(null);
-          setFormState({ open: true, appointment });
-        }}
-        onReschedule={(appointment) => {
-          setSelected(null);
-          setRescheduling(appointment);
-        }}
-      />
-
-      <RescheduleDialog
-        appointment={rescheduling}
-        open={rescheduling !== null}
-        onOpenChange={(next) => {
-          if (!next) setRescheduling(null);
-        }}
-      />
-
-      <AppointmentFormDialog
-        open={formState.open}
-        onOpenChange={(next) => {
-          if (!next) setFormState({ open: false });
-        }}
-        appointment={formState.appointment}
-      />
     </>
   );
 }

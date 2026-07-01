@@ -8,7 +8,6 @@
 export type Permission =
   | "dashboard:view"
   | "schedule:view"
-  | "appointments:view"
   | "appointments:create"
   | "appointments:edit"
   | "appointments:cancel"

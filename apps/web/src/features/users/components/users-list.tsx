@@ -3,11 +3,11 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Contact,
   Pencil,
   Power,
   PowerOff,
   RotateCw,
-  Scissors,
   Search,
   ShieldCheck,
   X,
@@ -111,7 +111,7 @@ function UserRow({
             </span>
             {user.professional ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400">
-                <Scissors className="size-3" />
+                <Contact className="size-3" />
                 Equipe
               </span>
             ) : null}

@@ -1,26 +1,42 @@
 import type { Permission, User, UserProfile } from "@/types";
 
 /**
- * Lista completa de permissoes. Usada como conjunto do perfil "owner" e
- * checada em tempo de compilacao para cobrir toda a uniao `Permission` (assim
- * o proprietario nunca perde uma acao silenciosamente ao adicionarmos keys).
+ * Blocos de capacidade reutilizaveis. Cada permissao e declarada uma unica vez
+ * aqui e composta (spread) nos perfis abaixo — assim, mudar a terminologia de
+ * uma key reflete em todos os perfis que a usam, sem risco de divergencia ou
+ * erro de digitacao entre perfis.
  */
-const ALL_PERMISSIONS = [
-  "dashboard:view",
+
+// Leitura das secoes operacionais — base comum a todo perfil que opera.
+const OPERATIONAL_VIEWS = [
   "schedule:view",
-  "appointments:view",
+  "clients:view",
+  "services:view",
+  "team:view",
+] as const satisfies readonly Permission[];
+
+// Operar a agenda: criar/editar/remarcar/cancelar, mudar status e series.
+const APPOINTMENT_OPS = [
   "appointments:create",
   "appointments:edit",
   "appointments:cancel",
   "appointments:reschedule",
   "appointments:status",
-  "appointments:block",
   "recurrence:manage",
-  "clients:view",
+] as const satisfies readonly Permission[];
+
+/**
+ * Lista completa de permissoes. Conjunto do perfil "owner" e ancora da
+ * verificacao de exaustividade abaixo (garante que nenhuma key nova fique de
+ * fora silenciosamente). Composta dos mesmos blocos + as keys exclusivas.
+ */
+const ALL_PERMISSIONS = [
+  "dashboard:view",
+  ...OPERATIONAL_VIEWS,
+  ...APPOINTMENT_OPS,
+  "appointments:block",
   "clients:manage",
-  "team:view",
   "team:manage",
-  "services:view",
   "services:manage",
   "settings:view",
   "users:view",
@@ -34,50 +50,22 @@ void _assertExhaustive;
 
 /**
  * Matriz perfil -> permissoes (fonte unica do RBAC; espelha doc 06). Mapeia
- * direto para policies/scopes do backend real.
+ * direto para policies/scopes do backend real. Cada perfil compoe os blocos
+ * acima e adiciona so o que lhe e exclusivo.
  */
 export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
   owner: ALL_PERMISSIONS,
   manager: [
     "dashboard:view",
-    "schedule:view",
-    "appointments:view",
-    "appointments:create",
-    "appointments:edit",
-    "appointments:cancel",
-    "appointments:reschedule",
-    "appointments:status",
+    ...OPERATIONAL_VIEWS,
+    ...APPOINTMENT_OPS,
     "appointments:block",
-    "recurrence:manage",
-    "clients:view",
     "clients:manage",
-    "team:view",
     "team:manage",
-    "services:view",
     "services:manage",
   ],
-  attendant: [
-    "schedule:view",
-    "appointments:view",
-    "appointments:create",
-    "appointments:edit",
-    "appointments:cancel",
-    "appointments:reschedule",
-    "appointments:status",
-    "recurrence:manage",
-    "clients:view",
-    "clients:manage",
-    "team:view",
-    "services:view",
-  ],
-  professional: [
-    "schedule:view",
-    "appointments:view",
-    "appointments:status",
-    "clients:view",
-    "services:view",
-    "team:view",
-  ],
+  attendant: [...OPERATIONAL_VIEWS, ...APPOINTMENT_OPS, "clients:manage"],
+  professional: [...OPERATIONAL_VIEWS, "appointments:status"],
 };
 
 /**

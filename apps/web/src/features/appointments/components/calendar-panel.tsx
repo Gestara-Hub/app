@@ -6,65 +6,44 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle,
   CalendarClock,
-  CalendarPlus,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Lock,
-  Plus,
-  Repeat,
   RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/layout/page-header";
 import { weekdayOf } from "@/lib/scheduling";
 import { todayISO } from "@/lib/date";
 import type { AppointmentView } from "@/types";
-import { useCan, useCurrentUser } from "@/features/auth/session-provider";
+import { useCurrentUser } from "@/features/auth/session-provider";
 import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { useTimeBlocks } from "../hooks/use-time-blocks";
 import { ScheduleDayGrid } from "./schedule-day-grid";
-import { AppointmentFormDialog } from "./appointment-form-dialog";
-import { AppointmentDetailDialog } from "./appointment-detail-dialog";
-import { RescheduleDialog } from "./reschedule-appointment-dialog";
-import { BlockFormDialog } from "./block-form-dialog";
-import { SeriesFormDialog } from "./series-form-dialog";
 
 function formatDateLabel(date: string): string {
   const label = format(parseISO(date), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-export function ScheduleView() {
+interface CalendarPanelProps {
+  /** Abre o detalhe do agendamento selecionado (dialogs vivem no AgendaView). */
+  onSelectAppointment: (appointment: AppointmentView) => void;
+}
+
+/**
+ * Aba "Calendário": grade diária por profissional. So exibe e seleciona — a
+ * criacao (+Novo) e todos os dialogs ficam no AgendaView (pai), compartilhados
+ * com a aba Lista.
+ */
+export function CalendarPanel({ onSelectAppointment }: CalendarPanelProps) {
   const today = todayISO();
   const [date, setDate] = useState(today);
-  const [formState, setFormState] = useState<{
-    open: boolean;
-    appointment?: AppointmentView;
-  }>({ open: false });
-  const [blockOpen, setBlockOpen] = useState(false);
-  const [seriesOpen, setSeriesOpen] = useState(false);
-  const [selected, setSelected] = useState<AppointmentView | null>(null);
-  const [rescheduling, setRescheduling] = useState<AppointmentView | null>(null);
 
   const user = useCurrentUser();
-  const can = useCan();
   const scopedProfId = scopedProfessionalId(user);
-  const scoped = Boolean(scopedProfId);
-  const canCreate = can("appointments:create");
-  const canBlock = can("appointments:block");
-  const canSeries = can("recurrence:manage");
-  const showNew = canCreate || canBlock || canSeries;
 
   const range = { dateFrom: date, dateTo: date };
   const professionalsQuery = useProfessionals({ status: "active" });
@@ -95,47 +74,6 @@ export function ScheduleView() {
 
   return (
     <>
-      <PageHeader
-        title={scoped ? "Minha agenda" : "Agenda"}
-        description={
-          scoped
-            ? "Seus agendamentos do dia."
-            : "Agenda diária por profissional."
-        }
-      >
-        {showNew ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>
-                <Plus className="size-4" />
-                Novo
-                <ChevronDown className="size-4 opacity-70" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
-              {canCreate ? (
-                <DropdownMenuItem onSelect={() => setFormState({ open: true })}>
-                  <CalendarPlus className="size-4" />
-                  Agendamento
-                </DropdownMenuItem>
-              ) : null}
-              {canBlock ? (
-                <DropdownMenuItem onSelect={() => setBlockOpen(true)}>
-                  <Lock className="size-4" />
-                  Bloqueio
-                </DropdownMenuItem>
-              ) : null}
-              {canSeries ? (
-                <DropdownMenuItem onSelect={() => setSeriesOpen(true)}>
-                  <Repeat className="size-4" />
-                  Série recorrente
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-      </PageHeader>
-
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5">
           <Button variant="outline" size="icon-sm" aria-label="Dia anterior" onClick={() => shift(-1)}>
@@ -191,46 +129,10 @@ export function ScheduleView() {
             professionals={professionals}
             appointments={appointments}
             blocks={blocks}
-            onSelectAppointment={setSelected}
+            onSelectAppointment={onSelectAppointment}
           />
         </>
       )}
-
-      <AppointmentFormDialog
-        open={formState.open}
-        onOpenChange={(next) => {
-          if (!next) setFormState({ open: false });
-        }}
-        appointment={formState.appointment}
-      />
-
-      <BlockFormDialog open={blockOpen} onOpenChange={setBlockOpen} />
-
-      <SeriesFormDialog open={seriesOpen} onOpenChange={setSeriesOpen} />
-
-      <AppointmentDetailDialog
-        appointment={selected}
-        open={selected !== null}
-        onOpenChange={(next) => {
-          if (!next) setSelected(null);
-        }}
-        onEdit={(appointment) => {
-          setSelected(null);
-          setFormState({ open: true, appointment });
-        }}
-        onReschedule={(appointment) => {
-          setSelected(null);
-          setRescheduling(appointment);
-        }}
-      />
-
-      <RescheduleDialog
-        appointment={rescheduling}
-        open={rescheduling !== null}
-        onOpenChange={(next) => {
-          if (!next) setRescheduling(null);
-        }}
-      />
     </>
   );
 }

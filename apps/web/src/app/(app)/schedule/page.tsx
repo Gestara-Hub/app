@@ -1,5 +1,5 @@
-import { ScheduleView } from "@/features/appointments/components/schedule-view";
+import { AgendaView } from "@/features/appointments/components/agenda-view";
 
 export default function SchedulePage() {
-  return <ScheduleView />;
+  return <AgendaView />;
 }

@@ -3,11 +3,11 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Contact,
   Pencil,
   Power,
   PowerOff,
   RotateCw,
-  Scissors,
   Search,
   X,
 } from "lucide-react";
@@ -222,7 +222,7 @@ export function ProfessionalsList({
       </div>
     ) : (
       <ModuleEmptyGuide
-        icon={<Scissors className="size-8" />}
+        icon={<Contact className="size-8" />}
         title="Nenhum profissional cadastrado ainda."
         description="Cadastre sua equipe, os serviços que cada um realiza e a disponibilidade."
         actionLabel={canManage ? "Cadastrar profissional" : undefined}
