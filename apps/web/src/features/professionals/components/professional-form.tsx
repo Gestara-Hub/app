@@ -15,12 +15,15 @@ import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
+  BusinessHoursDay,
   CreateProfessional,
   Professional,
   ProfessionalView,
   Weekday,
+  WorkingHours,
 } from "@/types";
 import { useRoles } from "@/features/roles/hooks/use-roles";
+import { useUnit } from "@/features/settings/hooks/use-settings";
 import {
   useCreateProfessional,
   useUpdateProfessional,
@@ -32,16 +35,58 @@ import {
 import { ServiceSelectionField } from "./service-selection-field";
 import { WorkingHoursField } from "./working-hours-field";
 
+/**
+ * Deriva a disponibilidade inicial de um novo profissional a partir do horario
+ * de funcionamento da unidade: pre-seleciona os dias abertos e aplica um unico
+ * horario (o mais frequente entre eles) a todos — coerente com o campo, que usa
+ * um horario para todos os dias marcados. Sem almoco por padrao (o horario de
+ * funcionamento nao modela intervalo).
+ */
+function defaultWorkingHours(
+  businessHours: BusinessHoursDay[],
+): WorkingHours[] {
+  const open = businessHours.filter((d) => !d.closed && d.start && d.end);
+  if (open.length === 0) return [];
+
+  // Horario representativo = par (start,end) mais frequente entre os dias
+  // abertos; empate resolvido pelo dia de menor indice (ordem da semana).
+  const counts = new Map<string, number>();
+  for (const d of open) counts.set(keyOf(d), (counts.get(keyOf(d)) ?? 0) + 1);
+  let best = open[0];
+  let bestCount = 0;
+  for (const d of open) {
+    const c = counts.get(keyOf(d)) ?? 0;
+    if (c > bestCount) {
+      bestCount = c;
+      best = d;
+    }
+  }
+
+  return open.map((d) => ({
+    weekday: d.weekday,
+    start: best.start!,
+    end: best.end!,
+  }));
+}
+
+function keyOf(d: BusinessHoursDay): string {
+  return `${d.start}-${d.end}`;
+}
+
 function toDefaults(
   professional: Professional | undefined,
   roleName: string,
+  businessHours: BusinessHoursDay[],
 ): ProfessionalFormValues {
   return {
     name: professional?.name ?? "",
     role: roleName,
     phone: professional?.phone ?? "",
     serviceIds: professional?.serviceIds ?? [],
-    workingHours: professional?.workingHours ?? [],
+    // Novo profissional herda a disponibilidade do horario de funcionamento;
+    // na edicao mantem a que ja tem.
+    workingHours:
+      professional?.workingHours ?? defaultWorkingHours(businessHours),
     active: professional ? professional.status === "active" : true,
   };
 }
@@ -52,11 +97,40 @@ interface ProfessionalFormProps {
   formId: string;
 }
 
-export function ProfessionalForm({
+/**
+ * Wrapper que carrega a unidade antes de montar o formulario. Ao criar, os
+ * defaults de disponibilidade dependem do `businessHours` — montar so com ele
+ * pronto garante que o campo ja inicialize com o horario certo (o
+ * WorkingHoursField deriva seu estado local uma unica vez, no mount).
+ */
+export function ProfessionalForm(props: ProfessionalFormProps) {
+  const isEdit = Boolean(props.professional);
+  const unitQuery = useUnit();
+
+  // So a criacao precisa do horario de funcionamento; na edicao a
+  // disponibilidade vem do proprio profissional.
+  if (!isEdit && unitQuery.isLoading) {
+    return (
+      <div className="py-8 text-center text-sm text-muted-foreground">
+        Carregando disponibilidade…
+      </div>
+    );
+  }
+
+  return (
+    <ProfessionalFormBody
+      {...props}
+      businessHours={unitQuery.data?.businessHours ?? []}
+    />
+  );
+}
+
+function ProfessionalFormBody({
   professional,
   onSuccess,
   formId,
-}: ProfessionalFormProps) {
+  businessHours,
+}: ProfessionalFormProps & { businessHours: BusinessHoursDay[] }) {
   const isEdit = Boolean(professional);
   const createMut = useCreateProfessional();
   const updateMut = useUpdateProfessional();
@@ -79,7 +153,7 @@ export function ProfessionalForm({
     resolver: zodResolver(professionalFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(professional, currentRoleName),
+    defaultValues: toDefaults(professional, currentRoleName, businessHours),
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
