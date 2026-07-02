@@ -6,6 +6,7 @@ export { TextArea } from "./text-area";
 export { InputNumber } from "./input-number";
 export { InputCurrency } from "./input-currency";
 export { SelectField, type SelectOption } from "./select-field";
+export { ComboboxField } from "./combobox-field";
 export {
   MultiSelectField,
   type MultiSelectOption,

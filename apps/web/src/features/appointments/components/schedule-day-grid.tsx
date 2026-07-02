@@ -27,6 +27,24 @@ const topOf = (start: string) => (toMin(start) - DAY_START_MIN) * PX_PER_MIN;
 const heightOf = (start: string, end: string) =>
   Math.max((toMin(end) - toMin(start)) * PX_PER_MIN, 22);
 
+const SNAP_MIN = 15;
+function minToTime(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// Primeiro slot de 15 min livre a partir de `startMin`, pulando os intervalos
+// ocupados (agendamentos, almoco e bloqueios do profissional). Se tudo estiver
+// ocupado ate o fim do dia, volta ao inicio — o form valida no submit.
+function firstFreeSlot(startMin: number, busy: [number, number][]): number {
+  const maxMin = HOUR_END * 60;
+  for (let t = startMin; t < maxMin; t += SNAP_MIN) {
+    if (!busy.some(([s, e]) => t >= s && t < e)) return t;
+  }
+  return startMin;
+}
+
 // Cor por status (borda esquerda + leve tom de fundo).
 const STATUS_STYLE: Record<AppointmentStatus, string> = {
   pending: "border-l-amber-400 bg-amber-50 dark:bg-amber-950/20",
@@ -103,6 +121,13 @@ interface ScheduleDayGridProps {
   appointments: AppointmentView[];
   blocks: TimeBlock[];
   onSelectAppointment?: (a: AppointmentView) => void;
+  /** Clique num espaco vago da coluna cria um agendamento naquele profissional
+   *  e horario. Ausente = grade so de leitura (sem permissao de criar). */
+  onCreateAppointment?: (args: {
+    professionalId: string;
+    date: string;
+    start: string;
+  }) => void;
 }
 
 export function ScheduleDayGrid({
@@ -111,6 +136,7 @@ export function ScheduleDayGrid({
   appointments,
   blocks,
   onSelectAppointment,
+  onCreateAppointment,
 }: ScheduleDayGridProps) {
   // Cancelados nao aparecem no grid operacional (ficam no historico/Agendamentos).
   const visible = appointments.filter((a) => a.status !== "canceled");
@@ -149,11 +175,48 @@ export function ScheduleDayGrid({
               <div className="flex h-10 items-center justify-center border-b px-2 text-sm font-medium">
                 <span className="truncate">{prof.name}</span>
               </div>
-              <div className="relative" style={{ height: GRID_HEIGHT }}>
+              <div
+                className={cn("relative", onCreateAppointment && "cursor-pointer")}
+                style={{ height: GRID_HEIGHT }}
+                onClick={
+                  onCreateAppointment
+                    ? (event) => {
+                        // So o espaco vazio da coluna (nao cards/almoco/bloqueio,
+                        // que sao filhos e param aqui por serem !== currentTarget).
+                        if (event.target !== event.currentTarget) return;
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const rawMin =
+                          DAY_START_MIN + (event.clientY - rect.top) / PX_PER_MIN;
+                        // Sempre parte do inicio da hora clicada; se ocupado,
+                        // avanca 15 min ate achar um horario livre.
+                        const hourStart = Math.max(
+                          Math.floor(rawMin / 60) * 60,
+                          DAY_START_MIN,
+                        );
+                        const busy: [number, number][] = [
+                          ...profAppts.map(
+                            (a): [number, number] => [toMin(a.start), toMin(a.end)],
+                          ),
+                          ...profBlocks.map(
+                            (b): [number, number] => [toMin(b.start), toMin(b.end)],
+                          ),
+                          ...(lunch
+                            ? [[toMin(lunch.start), toMin(lunch.end)] as [number, number]]
+                            : []),
+                        ];
+                        onCreateAppointment({
+                          professionalId: prof.id,
+                          date,
+                          start: minToTime(firstFreeSlot(hourStart, busy)),
+                        });
+                      }
+                    : undefined
+                }
+              >
                 {HOURS.slice(1).map((h, i) => (
                   <div
                     key={h}
-                    className="absolute inset-x-0 border-t border-border/60"
+                    className="pointer-events-none absolute inset-x-0 border-t border-border/60"
                     style={{ top: (i + 1) * HOUR_HEIGHT }}
                   />
                 ))}

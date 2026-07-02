@@ -6,13 +6,6 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { InputPhone, InputText } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/api-error";
 import type { Organization, Unit } from "@/types";
@@ -107,28 +100,20 @@ function OrgUnitForm({
   );
 }
 
-export function OrganizationSettingsCard() {
+export function OrganizationSettingsForm() {
   const orgQuery = useOrganization();
   const unitQuery = useUnit();
   const loading = orgQuery.isPending || unitQuery.isPending;
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Organização e unidade</CardTitle>
-        <CardDescription>Dados gerais exibidos no sistema.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading || !orgQuery.data || !unitQuery.data ? (
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </div>
-        ) : (
-          <OrgUnitForm organization={orgQuery.data} unit={unitQuery.data} />
-        )}
-      </CardContent>
-    </Card>
-  );
+  if (loading || !orgQuery.data || !unitQuery.data) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return <OrgUnitForm organization={orgQuery.data} unit={unitQuery.data} />;
 }

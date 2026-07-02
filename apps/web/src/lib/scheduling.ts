@@ -85,6 +85,9 @@ export function checkSlotAvailability(
   start: TimeISO,
   end: TimeISO,
   ctx: SlotContext,
+  // `allowBreak` pula APENAS a checagem de almoco (override com confirmacao do
+  // usuario); bloqueio, sobreposicao e expediente continuam valendo.
+  opts: { allowBreak?: boolean } = {},
 ): SlotCheck {
   const weekday = weekdayOf(date);
 
@@ -106,8 +109,9 @@ export function checkSlotAvailability(
     return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
   }
 
-  // Intervalo (almoco) do profissional: recusa slot que o cobre.
+  // Intervalo (almoco) do profissional: recusa slot que o cobre, salvo override.
   if (
+    !opts.allowBreak &&
     working.breakStart &&
     working.breakEnd &&
     rangesOverlap(start, end, working.breakStart, working.breakEnd)

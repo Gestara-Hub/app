@@ -15,17 +15,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getErrorMessage } from "@/lib/api-error";
 import { useClearData, useResetData } from "../hooks/use-reset-data";
 
-export function ResetDataCard() {
+export function ResetDataActions() {
   const reset = useResetData();
   const clear = useClearData();
   const [open, setOpen] = useState(false);
@@ -52,83 +45,73 @@ export function ResetDataCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dados de exemplo</CardTitle>
-        <CardDescription>
-          Suas alterações ficam salvas no navegador (localStorage). Restaurar
-          recarrega o catálogo de exemplo da Corte Nobre; zerar limpa tudo para
-          você cadastrar do zero.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        <AlertDialog open={open} onOpenChange={setOpen}>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline">
-              <RotateCcw className="size-4" />
-              Restaurar dados de exemplo
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Restaurar dados de exemplo?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Todas as alterações feitas serão descartadas e o catálogo de
-                exemplo será recarregado. Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={reset.isPending}>
-                Voltar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(event) => {
-                  event.preventDefault();
-                  void handleConfirm();
-                }}
-                disabled={reset.isPending}
-                className="bg-destructive text-white hover:bg-destructive/90"
-              >
-                {reset.isPending ? "Restaurando..." : "Restaurar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+    <div className="flex flex-wrap gap-2">
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline">
+            <RotateCcw className="size-4" />
+            Restaurar dados de exemplo
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar dados de exemplo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todas as alterações feitas serão descartadas e o catálogo de
+              exemplo será recarregado. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reset.isPending}>
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirm();
+              }}
+              disabled={reset.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {reset.isPending ? "Restaurando..." : "Restaurar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" className="text-destructive hover:text-destructive">
-              <Eraser className="size-4" />
-              Zerar mock
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Zerar o mock?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Remove todos os clientes, equipe, cargos, serviços, categorias,
-                agendamentos e bloqueios. A organização e a unidade são mantidas.
-                Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={clear.isPending}>
-                Voltar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(event) => {
-                  event.preventDefault();
-                  void handleClear();
-                }}
-                disabled={clear.isPending}
-                className="bg-destructive text-white hover:bg-destructive/90"
-              >
-                {clear.isPending ? "Zerando..." : "Zerar mock"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardContent>
-    </Card>
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" className="text-destructive hover:text-destructive">
+            <Eraser className="size-4" />
+            Zerar mock
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Zerar o mock?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove todos os clientes, equipe, cargos, serviços, categorias,
+              agendamentos e bloqueios. A organização e a unidade são mantidas.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clear.isPending}>
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleClear();
+              }}
+              disabled={clear.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {clear.isPending ? "Zerando..." : "Zerar mock"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

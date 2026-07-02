@@ -71,7 +71,7 @@ export function ServicesView() {
       <ServiceFormDialog
         open={formState.open}
         onOpenChange={(open) => {
-          if (!open) setFormState({ open: false });
+          if (!open) setFormState((state) => ({ ...state, open: false }));
         }}
         service={formState.service}
       />

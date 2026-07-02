@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, Check, LogOut, Users } from "lucide-react";
+import { Building2, Check, LogOut, Moon, Sun, Users } from "lucide-react";
+import { useTheme } from "next-themes";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { useUsers } from "@/features/users/hooks/use-users";
 export function AppTopbar() {
   const user = useCurrentUser();
   const { data: users } = useUsers({ status: "active" });
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3">
@@ -34,6 +36,18 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label="Alternar modo claro/escuro"
+          title="Alternar modo claro/escuro"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        >
+          <Moon className="size-4 dark:hidden" />
+          <Sun className="hidden size-4 dark:block" />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-2 px-1.5 sm:px-2">

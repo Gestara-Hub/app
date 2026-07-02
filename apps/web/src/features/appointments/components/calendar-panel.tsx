@@ -31,6 +31,13 @@ function formatDateLabel(date: string): string {
 interface CalendarPanelProps {
   /** Abre o detalhe do agendamento selecionado (dialogs vivem no AgendaView). */
   onSelectAppointment: (appointment: AppointmentView) => void;
+  /** Clique num espaco vago cria um agendamento no profissional/horario; ausente
+   *  quando o usuario nao pode criar. */
+  onCreateAppointment?: (args: {
+    professionalId: string;
+    date: string;
+    start: string;
+  }) => void;
 }
 
 /**
@@ -38,7 +45,10 @@ interface CalendarPanelProps {
  * criacao (+Novo) e todos os dialogs ficam no AgendaView (pai), compartilhados
  * com a aba Lista.
  */
-export function CalendarPanel({ onSelectAppointment }: CalendarPanelProps) {
+export function CalendarPanel({
+  onSelectAppointment,
+  onCreateAppointment,
+}: CalendarPanelProps) {
   const today = todayISO();
   const [date, setDate] = useState(today);
 
@@ -130,6 +140,7 @@ export function CalendarPanel({ onSelectAppointment }: CalendarPanelProps) {
             appointments={appointments}
             blocks={blocks}
             onSelectAppointment={onSelectAppointment}
+            onCreateAppointment={onCreateAppointment}
           />
         </>
       )}

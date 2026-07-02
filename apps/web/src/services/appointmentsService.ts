@@ -90,7 +90,10 @@ interface SlotValues {
  * Valida cliente/profissional/servico e a disponibilidade do slot (expediente +
  * bloqueio + sobreposicao). Retorna a duracao/fim derivados do servico.
  */
-function resolveAndValidate(values: SlotValues, opts: { excludeId?: Id }) {
+function resolveAndValidate(
+  values: SlotValues,
+  opts: { excludeId?: Id; allowBreak?: boolean },
+) {
   const fields = [];
   if (!values.clientId) fields.push({ field: "clientId", message: "Selecione um cliente." });
   if (!values.professionalId) fields.push({ field: "professionalId", message: "Selecione um profissional." });
@@ -128,7 +131,9 @@ function resolveAndValidate(values: SlotValues, opts: { excludeId?: Id }) {
 
   const end = addMinutesToTime(values.start, service.durationMinutes);
   const ctx = slotContext(professional.id, values.date, opts.excludeId);
-  const slot = checkSlotAvailability(values.date, values.start, end, ctx);
+  const slot = checkSlotAvailability(values.date, values.start, end, ctx, {
+    allowBreak: opts.allowBreak,
+  });
   if (!slot.ok) throw slotError(slot.code, professional.name);
 
   return { end };
@@ -201,9 +206,12 @@ export const appointmentsService = {
     });
   },
 
-  create(payload: CreateAppointment): Promise<AppointmentView> {
+  create(
+    payload: CreateAppointment,
+    opts: { allowBreak?: boolean } = {},
+  ): Promise<AppointmentView> {
     return simulateWrite(() => {
-      const { end } = resolveAndValidate(payload, {});
+      const { end } = resolveAndValidate(payload, { allowBreak: opts.allowBreak });
       const ts = nowIso();
       const appointment: Appointment = {
         id: newId(),
@@ -227,13 +235,20 @@ export const appointmentsService = {
     });
   },
 
-  update(id: Id, payload: UpdateAppointment): Promise<AppointmentView> {
+  update(
+    id: Id,
+    payload: UpdateAppointment,
+    opts: { allowBreak?: boolean } = {},
+  ): Promise<AppointmentView> {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.appointments[idx];
       const merged = { ...current, ...payload };
-      const { end } = resolveAndValidate(merged, { excludeId: id });
+      const { end } = resolveAndValidate(merged, {
+        excludeId: id,
+        allowBreak: opts.allowBreak,
+      });
       const updated: Appointment = {
         ...current,
         ...payload,

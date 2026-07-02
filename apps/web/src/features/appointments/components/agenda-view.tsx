@@ -49,6 +49,9 @@ export function AgendaView() {
   const [formState, setFormState] = useState<{
     open: boolean;
     appointment?: AppointmentView;
+    defaultProfessionalId?: string;
+    defaultDate?: string;
+    defaultStart?: string;
   }>({ open: false });
   const [blockOpen, setBlockOpen] = useState(false);
   const [seriesOpen, setSeriesOpen] = useState(false);
@@ -64,6 +67,19 @@ export function AgendaView() {
   const showNew = canCreate || canBlock || canSeries;
 
   const openCreate = () => setFormState({ open: true });
+  // Clique num espaco vago do calendario abre o form ja com profissional, data e
+  // horario preenchidos.
+  const openCreateAt = (args: {
+    professionalId: string;
+    date: string;
+    start: string;
+  }) =>
+    setFormState({
+      open: true,
+      defaultProfessionalId: args.professionalId,
+      defaultDate: args.date,
+      defaultStart: args.start,
+    });
 
   return (
     <>
@@ -147,7 +163,10 @@ export function AgendaView() {
         aria-labelledby="agenda-tab-calendario"
         hidden={tab !== "calendario"}
       >
-        <CalendarPanel onSelectAppointment={setSelected} />
+        <CalendarPanel
+          onSelectAppointment={setSelected}
+          onCreateAppointment={canCreate ? openCreateAt : undefined}
+        />
       </div>
       <div
         role="tabpanel"
@@ -161,9 +180,12 @@ export function AgendaView() {
       <AppointmentFormDialog
         open={formState.open}
         onOpenChange={(next) => {
-          if (!next) setFormState({ open: false });
+          if (!next) setFormState((state) => ({ ...state, open: false }));
         }}
         appointment={formState.appointment}
+        defaultProfessionalId={formState.defaultProfessionalId}
+        defaultDate={formState.defaultDate}
+        defaultStart={formState.defaultStart}
       />
 
       <BlockFormDialog open={blockOpen} onOpenChange={setBlockOpen} />

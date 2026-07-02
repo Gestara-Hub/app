@@ -3,13 +3,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -81,7 +74,10 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
   }
 
   return (
-    <div className="space-y-4">
+    // Largura do proprio conteudo (w-fit): assim o botao "Salvar horarios"
+    // (justify-end) alinha com a borda direita dos inputs, e nao com a largura
+    // total do card.
+    <div className="w-fit space-y-4">
       <div className="space-y-2">
         {days.map((day) => {
           const label = WEEKDAYS.find((w) => w.weekday === day.weekday)!.label;
@@ -133,28 +129,18 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
   );
 }
 
-export function BusinessHoursCard() {
+export function BusinessHoursForm() {
   const unitQuery = useUnit();
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Horários de funcionamento</CardTitle>
-        <CardDescription>
-          Define o expediente da unidade — usado para validar os agendamentos.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {unitQuery.isPending || !unitQuery.data ? (
-          <div className="space-y-2">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </div>
-        ) : (
-          <BusinessHoursEditor unit={unitQuery.data} />
-        )}
-      </CardContent>
-    </Card>
-  );
+  if (unitQuery.isPending || !unitQuery.data) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return <BusinessHoursEditor unit={unitQuery.data} />;
 }

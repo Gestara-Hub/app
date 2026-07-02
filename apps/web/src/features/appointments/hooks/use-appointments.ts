@@ -34,7 +34,14 @@ export function useAppointment(id: Id) {
 export function useCreateAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreateAppointment) => appointmentsService.create(payload),
+    // allowBreak = agendar mesmo no intervalo de almoco (override confirmado).
+    mutationFn: ({
+      payload,
+      allowBreak,
+    }: {
+      payload: CreateAppointment;
+      allowBreak?: boolean;
+    }) => appointmentsService.create(payload, { allowBreak }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
@@ -42,8 +49,15 @@ export function useCreateAppointment() {
 export function useUpdateAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: Id; payload: UpdateAppointment }) =>
-      appointmentsService.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+      allowBreak,
+    }: {
+      id: Id;
+      payload: UpdateAppointment;
+      allowBreak?: boolean;
+    }) => appointmentsService.update(id, payload, { allowBreak }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
