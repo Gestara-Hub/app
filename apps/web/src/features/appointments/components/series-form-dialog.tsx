@@ -13,6 +13,7 @@ import {
   ComboboxField,
   FieldShell,
   InputNumber,
+  MultiSelectField,
   SelectField,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,7 @@ function SeriesForm({
     defaultValues: {
       clientId: "",
       professionalId: "",
-      serviceId: "",
+      serviceIds: [],
       frequency: "weekly",
       startDate: "",
       time: "",
@@ -94,7 +95,7 @@ function SeriesForm({
       unitId: UNIT_ID,
       clientId: values.clientId,
       professionalId: values.professionalId,
-      serviceId: values.serviceId,
+      serviceIds: values.serviceIds,
       frequency: values.frequency,
       startDate: values.startDate,
       time: values.time,
@@ -149,9 +150,9 @@ function SeriesForm({
             required
             disabled={pending}
           />
-          <ComboboxField<SeriesFormValues>
-            name="serviceId"
-            label="Serviço"
+          <MultiSelectField<SeriesFormValues>
+            name="serviceIds"
+            label="Serviços"
             placeholder="Selecione"
             searchPlaceholder="Buscar serviço..."
             emptyMessage="Nenhum serviço."

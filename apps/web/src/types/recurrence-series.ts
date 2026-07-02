@@ -6,7 +6,7 @@ export interface RecurrenceSeries {
   unitId: Id;
   clientId: Id;
   professionalId: Id;
-  serviceId: Id;
+  serviceIds: Id[]; // mesmos servicos aplicados a cada ocorrencia
   frequency: Frequency;
   startDate: DateISO; // data da primeira ocorrencia
   time: TimeISO; // horario fixo das ocorrencias

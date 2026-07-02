@@ -4,7 +4,7 @@ export const seriesFormSchema = z
   .object({
     clientId: z.string().min(1, "Selecione um cliente."),
     professionalId: z.string().min(1, "Selecione um profissional."),
-    serviceId: z.string().min(1, "Selecione um serviço."),
+    serviceIds: z.array(z.string()).min(1, "Selecione ao menos um serviço."),
     frequency: z.enum(["weekly", "biweekly", "monthly"]),
     startDate: z.string().min(1, "Selecione a data de início."),
     time: z.string().min(1, "Selecione o horário."),

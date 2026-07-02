@@ -102,7 +102,7 @@ function AppointmentCard({
         top: topOf(appointment.start, dayStartMin),
         height: heightOf(appointment.start, appointment.end),
       }}
-      title={`${appointment.start}–${appointment.end} · ${appointment.client.name} · ${appointment.service.name} · ${appointmentStatusLabel(appointment.status)}`}
+      title={`${appointment.start}–${appointment.end} · ${appointment.client.name} · ${appointment.services.map((s) => s.name).join(" + ")} · ${appointmentStatusLabel(appointment.status)}`}
       className={cn(
         "absolute inset-x-1 overflow-hidden rounded-md border border-l-4 px-2 py-1 text-left text-xs shadow-sm transition-colors hover:shadow",
         STATUS_STYLE[appointment.status],
@@ -113,7 +113,7 @@ function AppointmentCard({
         <span className="tabular-nums text-muted-foreground">{appointment.start}</span>{" "}
         {appointment.client.name}
       </p>
-      <p className="truncate text-muted-foreground">{appointment.service.name}</p>
+      <p className="truncate text-muted-foreground">{appointment.services.map((s) => s.name).join(" + ")}</p>
     </button>
   );
 }
@@ -344,7 +344,7 @@ function SummaryAppointmentButton({
 }) {
   return (
     <div
-      title={`${appointment.start}–${appointment.end} · ${appointment.client.name} · ${appointment.service.name} · ${appointment.professional.name}`}
+      title={`${appointment.start}–${appointment.end} · ${appointment.client.name} · ${appointment.services.map((s) => s.name).join(" + ")} · ${appointment.professional.name}`}
       className={cn(
         "flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs",
         appointment.status === "completed" || appointment.status === "no_show"

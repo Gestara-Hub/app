@@ -4,7 +4,12 @@ import { useState } from "react";
 import { useForm, useWatch, FormProvider, Controller, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ComboboxField, FieldShell, TextArea } from "@/components/form";
+import {
+  ComboboxField,
+  FieldShell,
+  MultiSelectField,
+  TextArea,
+} from "@/components/form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { isPastSlot } from "@/lib/date";
+import { formatCents } from "@/lib/format";
 import { addMinutesToTime } from "@/lib/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@/types";
@@ -71,7 +77,7 @@ export function AppointmentForm({
       ? {
           clientId: appointment.clientId,
           professionalId: appointment.professionalId,
-          serviceId: appointment.serviceId,
+          serviceIds: appointment.serviceIds,
           date: appointment.date,
           start: appointment.start,
           notes: appointment.notes ?? "",
@@ -79,7 +85,7 @@ export function AppointmentForm({
       : {
           clientId: "",
           professionalId: defaultProfessionalId ?? "",
-          serviceId: "",
+          serviceIds: [],
           date: defaultDate ?? "", // vazio: o usuario escolhe a data
           start: defaultStart ?? "",
           notes: "",
@@ -87,7 +93,7 @@ export function AppointmentForm({
   });
 
   const professionalId = useWatch({ control: form.control, name: "professionalId" });
-  const serviceId = useWatch({ control: form.control, name: "serviceId" });
+  const serviceIds = useWatch({ control: form.control, name: "serviceIds" });
   const start = useWatch({ control: form.control, name: "start" });
 
   const clientOptions = (clients ?? []).map((c) => ({ label: c.name, value: c.id }));
@@ -101,13 +107,17 @@ export function AppointmentForm({
     .filter((s) => !selectedProfessional || selectedProfessional.serviceIds.includes(s.id))
     .map((s) => ({ label: s.name, value: s.id }));
 
-  const selectedService = (services ?? []).find((s) => s.id === serviceId);
+  const selectedServices = (services ?? []).filter((s) =>
+    (serviceIds ?? []).includes(s.id),
+  );
+  const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceCents, 0);
   const endHint =
-    selectedService && start
-      ? `Duração ${selectedService.durationMinutes} min · termina às ${addMinutesToTime(start, selectedService.durationMinutes)}`
-      : selectedService
-        ? `Duração ${selectedService.durationMinutes} min`
-        : undefined;
+    selectedServices.length === 0
+      ? undefined
+      : `Duração ${totalDuration} min · ${formatCents(totalPrice)}${
+          start ? ` · termina às ${addMinutesToTime(start, totalDuration)}` : ""
+        }`;
 
   // Valores pendentes quando o slot cai no almoco — abre a confirmacao.
   const [confirmBreak, setConfirmBreak] = useState<AppointmentFormValues | null>(
@@ -124,7 +134,7 @@ export function AppointmentForm({
       unitId: UNIT_ID,
       clientId: values.clientId,
       professionalId: values.professionalId,
-      serviceId: values.serviceId,
+      serviceIds: values.serviceIds,
       date: values.date,
       start: values.start,
       notes: values.notes || undefined,
@@ -198,9 +208,9 @@ export function AppointmentForm({
             required
             disabled={pending}
           />
-          <ComboboxField<AppointmentFormValues>
-            name="serviceId"
-            label="Serviço"
+          <MultiSelectField<AppointmentFormValues>
+            name="serviceIds"
+            label="Serviços"
             placeholder="Selecione"
             searchPlaceholder="Buscar serviço..."
             emptyMessage="Nenhum serviço."

@@ -176,13 +176,13 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{appointment.client.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {appointment.service.name} · {appointment.professional.name}
+                        {appointment.services.map((s) => s.name).join(" + ")} · {appointment.professional.name}
                       </p>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="hidden text-sm text-muted-foreground sm:inline">
-                      {formatCents(appointment.service.priceCents)}
+                      {formatCents(appointment.totalPriceCents)}
                     </span>
                     <AppointmentStatusBadge status={appointment.status} />
                   </div>

@@ -37,7 +37,6 @@ import { isPastSlot } from "@/lib/date";
 import { addMinutesToTime } from "@/lib/scheduling";
 import type { AppointmentView, SeriesScope } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
-import { useServices } from "@/features/services/hooks/use-services";
 import {
   useRescheduleAppointment,
   useRescheduleSeriesFuture,
@@ -65,7 +64,6 @@ function RescheduleForm({
   const pending = rescheduleMut.isPending || seriesMut.isPending;
 
   const { data: professionals } = useProfessionals({ status: "active" });
-  const { data: services } = useServices({ status: "active" });
 
   const form = useForm<RescheduleValues>({
     resolver: zodResolver(schema),
@@ -82,14 +80,12 @@ function RescheduleForm({
   // Valores pendentes quando o novo slot cai no passado (regra mole: confirma).
   const [confirmPast, setConfirmPast] = useState<RescheduleValues | null>(null);
 
-  // Profissionais que realizam o servico do agendamento.
+  // Profissionais que realizam TODOS os servicos do agendamento.
   const professionalOptions = (professionals ?? [])
-    .filter((p) => p.serviceIds.includes(appointment.serviceId))
+    .filter((p) => appointment.serviceIds.every((sid) => p.serviceIds.includes(sid)))
     .map((p) => ({ label: p.name, value: p.id }));
-  const service =
-    (services ?? []).find((s) => s.id === appointment.serviceId) ?? appointment.service;
   const endHint = start
-    ? `Termina às ${addMinutesToTime(start, service.durationMinutes)}`
+    ? `Termina às ${addMinutesToTime(start, appointment.totalDurationMinutes)}`
     : undefined;
 
   const doReschedule = async (values: RescheduleValues) => {
@@ -283,7 +279,7 @@ export function RescheduleDialog({
         <DialogHeader>
           <DialogTitle>Remarcar agendamento</DialogTitle>
           <DialogDescription>
-            {appointment.client.name} - {appointment.service.name}
+            {appointment.client.name} - {appointment.services.map((s) => s.name).join(" + ")}
           </DialogDescription>
         </DialogHeader>
 

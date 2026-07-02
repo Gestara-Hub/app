@@ -7,6 +7,7 @@ import type {
   DateISO,
   Id,
   RescheduleAppointment,
+  Service,
   TimeISO,
   UpdateAppointment,
 } from "@/types";
@@ -81,9 +82,17 @@ function slotError(code: SlotConflictCode, professionalName: string) {
 interface SlotValues {
   clientId: Id;
   professionalId: Id;
-  serviceId: Id;
+  serviceIds: Id[];
   date: DateISO;
   start: TimeISO;
+}
+
+// Soma das duracoes dos servicos (ignora ids nao encontrados).
+function totalDuration(serviceIds: Id[]): number {
+  return serviceIds.reduce((sum, id) => {
+    const s = store.services.find((x) => x.id === id);
+    return sum + (s?.durationMinutes ?? 0);
+  }, 0);
 }
 
 /**
@@ -97,7 +106,9 @@ function resolveAndValidate(
   const fields = [];
   if (!values.clientId) fields.push({ field: "clientId", message: "Selecione um cliente." });
   if (!values.professionalId) fields.push({ field: "professionalId", message: "Selecione um profissional." });
-  if (!values.serviceId) fields.push({ field: "serviceId", message: "Selecione um serviço." });
+  if (!values.serviceIds || values.serviceIds.length === 0) {
+    fields.push({ field: "serviceIds", message: "Selecione ao menos um serviço." });
+  }
   if (!values.date) fields.push({ field: "date", message: "Selecione a data." });
   if (!values.start) fields.push({ field: "start", message: "Selecione o horário." });
   if (fields.length > 0) throw validationError(fields);
@@ -106,8 +117,11 @@ function resolveAndValidate(
   if (!client) throw validationError([{ field: "clientId", message: "Selecione um cliente." }]);
   const professional = store.professionals.find((p) => p.id === values.professionalId);
   if (!professional) throw validationError([{ field: "professionalId", message: "Selecione um profissional." }]);
-  const service = store.services.find((s) => s.id === values.serviceId);
-  if (!service) throw validationError([{ field: "serviceId", message: "Selecione um serviço." }]);
+  const services = values.serviceIds.map((id) => store.services.find((s) => s.id === id));
+  if (services.some((s) => !s)) {
+    throw validationError([{ field: "serviceIds", message: "Selecione ao menos um serviço." }]);
+  }
+  const found = services as Service[];
 
   if (professional.status !== "active") {
     throw apiError("PROFESSIONAL_INACTIVE", "Este profissional está inativo.", {
@@ -115,21 +129,24 @@ function resolveAndValidate(
       httpStatus: 422,
     });
   }
-  if (service.status !== "active") {
-    throw apiError("SERVICE_INACTIVE", "Este serviço está inativo.", {
-      fields: [{ field: "serviceId", message: "Este serviço está inativo." }],
+  const inactive = found.find((s) => s.status !== "active");
+  if (inactive) {
+    const message = `${inactive.name} está inativo.`;
+    throw apiError("SERVICE_INACTIVE", message, {
+      fields: [{ field: "serviceIds", message }],
       httpStatus: 422,
     });
   }
-  if (!professional.serviceIds.includes(service.id)) {
-    const message = `${professional.name} não realiza este serviço.`;
+  const notOffered = found.find((s) => !professional.serviceIds.includes(s.id));
+  if (notOffered) {
+    const message = `${professional.name} não realiza ${notOffered.name}.`;
     throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
-      fields: [{ field: "serviceId", message }],
+      fields: [{ field: "serviceIds", message }],
       httpStatus: 422,
     });
   }
 
-  const end = addMinutesToTime(values.start, service.durationMinutes);
+  const end = addMinutesToTime(values.start, totalDuration(values.serviceIds));
   const ctx = slotContext(professional.id, values.date, opts.excludeId);
   const slot = checkSlotAvailability(values.date, values.start, end, ctx, {
     allowBreak: opts.allowBreak,
@@ -142,7 +159,16 @@ function resolveAndValidate(
 function toView(a: Appointment): AppointmentView {
   const client = store.clients.find((c) => c.id === a.clientId);
   const professional = store.professionals.find((p) => p.id === a.professionalId);
-  const service = store.services.find((s) => s.id === a.serviceId);
+  const services = a.serviceIds.map((id) => {
+    const s = store.services.find((x) => x.id === id);
+    return {
+      id,
+      name: s?.name ?? "",
+      durationMinutes: s?.durationMinutes ?? 0,
+      priceCents: s?.priceCents ?? 0,
+      status: s?.status ?? "inactive",
+    };
+  });
   return {
     ...a,
     client: {
@@ -155,13 +181,9 @@ function toView(a: Appointment): AppointmentView {
       name: professional?.name ?? "",
       status: professional?.status ?? "inactive",
     },
-    service: {
-      id: a.serviceId,
-      name: service?.name ?? "",
-      durationMinutes: service?.durationMinutes ?? 0,
-      priceCents: service?.priceCents ?? 0,
-      status: service?.status ?? "inactive",
-    },
+    services,
+    totalDurationMinutes: services.reduce((sum, s) => sum + s.durationMinutes, 0),
+    totalPriceCents: services.reduce((sum, s) => sum + s.priceCents, 0),
   };
 }
 
@@ -219,7 +241,7 @@ export const appointmentsService = {
         unitId: payload.unitId ?? store.unit.id,
         clientId: payload.clientId,
         professionalId: payload.professionalId,
-        serviceId: payload.serviceId,
+        serviceIds: payload.serviceIds,
         date: payload.date,
         start: payload.start,
         end,
@@ -268,7 +290,7 @@ export const appointmentsService = {
       const current = store.appointments[idx];
       const merged = {
         clientId: current.clientId,
-        serviceId: current.serviceId,
+        serviceIds: current.serviceIds,
         professionalId: payload.professionalId ?? current.professionalId,
         date: payload.date ?? current.date,
         start: payload.start ?? current.start,
@@ -325,8 +347,12 @@ export const appointmentsService = {
             httpStatus: 422,
           });
         }
-        if (!professional.serviceIds.includes(occ.serviceId)) {
-          const message = `${professional.name} não realiza este serviço.`;
+        const notOffered = occ.serviceIds.find(
+          (sid) => !professional.serviceIds.includes(sid),
+        );
+        if (notOffered) {
+          const svc = store.services.find((s) => s.id === notOffered);
+          const message = `${professional.name} não realiza ${svc?.name ?? "um dos serviços"}.`;
           throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
             fields: [{ field: "professionalId", message }],
             httpStatus: 422,
@@ -345,8 +371,7 @@ export const appointmentsService = {
       for (const a of targets) {
         const professionalId = payload.professionalId ?? a.professionalId;
         const start = payload.start ?? a.start;
-        const service = store.services.find((s) => s.id === a.serviceId);
-        const end = addMinutesToTime(start, service?.durationMinutes ?? 0);
+        const end = addMinutesToTime(start, totalDuration(a.serviceIds));
         const ctx = slotContext(professionalId, a.date, a.id);
         const slot = checkSlotAvailability(a.date, start, end, ctx);
         if (!slot.ok) {

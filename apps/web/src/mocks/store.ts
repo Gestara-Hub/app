@@ -43,7 +43,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v6: agenda semeada (appointments, timeBlocks, series).
 // v7: usuarios (multi-user + RBAC simulado).
 // v8: almoco no WorkingHours (breakStart/breakEnd); almoco deixou de ser TimeBlock.
-const SEED_VERSION = 8;
+// v9: agendamento/serie com multiplos servicos (serviceId -> serviceIds[]).
+const SEED_VERSION = 9;
 
 interface PersistedBlob {
   v: number;

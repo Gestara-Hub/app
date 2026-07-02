@@ -79,7 +79,7 @@ export function DashboardView() {
   const active = today.filter((a) => a.status !== "canceled");
   const revenue = today
     .filter((a) => REVENUE_STATUSES.has(a.status))
-    .reduce((sum, a) => sum + a.service.priceCents, 0);
+    .reduce((sum, a) => sum + a.totalPriceCents, 0);
   const completed = today.filter((a) => a.status === "completed").length;
   const pending = today.filter((a) => a.status === "pending").length;
   const upcoming = today
@@ -171,7 +171,7 @@ export function DashboardView() {
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{a.client.name}</p>
                             <p className="truncate text-xs text-muted-foreground">
-                              {a.service.name} · {a.professional.name}
+                              {a.services.map((s) => s.name).join(" + ")} · {a.professional.name}
                             </p>
                           </div>
                         </div>

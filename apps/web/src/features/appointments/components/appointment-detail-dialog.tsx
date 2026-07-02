@@ -238,11 +238,11 @@ export function AppointmentDetailDialog({
                   {data.start} – {data.end}
                 </span>
                 <span className="rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
-                  {formatDuration(data.service.durationMinutes)}
+                  {formatDuration(data.totalDurationMinutes)}
                 </span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                {data.service.name}
+                {data.services.map((s) => s.name).join(" + ")}
               </p>
             </div>
 
@@ -251,7 +251,7 @@ export function AppointmentDetailDialog({
               <Row label="Profissional">{data.professional.name}</Row>
               <Row label="Valor estimado">
                 <span className="font-semibold">
-                  {formatCents(data.service.priceCents)}
+                  {formatCents(data.totalPriceCents)}
                 </span>
               </Row>
             </div>
@@ -306,7 +306,7 @@ export function AppointmentDetailDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O agendamento de {data.client.name} - {data.service.name} com{" "}
+              O agendamento de {data.client.name} - {data.services.map((s) => s.name).join(" + ")} com{" "}
               {data.professional.name} em {dateLabel}, {data.start} será cancelado. O
               registro permanece no histórico.
             </AlertDialogDescription>
@@ -332,7 +332,7 @@ export function AppointmentDetailDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Marcar como não compareceu?</AlertDialogTitle>
             <AlertDialogDescription>
-              O agendamento de {data.client.name} - {data.service.name} com{" "}
+              O agendamento de {data.client.name} - {data.services.map((s) => s.name).join(" + ")} com{" "}
               {data.professional.name} em {dateLabel}, {data.start} será marcado
               como não compareceu. O registro permanece no histórico.
             </AlertDialogDescription>

@@ -4,6 +4,7 @@ import type {
   DateISO,
   Id,
   RecurrenceSeries,
+  Service,
 } from "@/types";
 import { store } from "@/mocks/store";
 import {
@@ -63,19 +64,24 @@ export const recurrenceService = {
   create(payload: CreateRecurrenceSeries): Promise<SeriesGenerationResult> {
     return simulateWrite(() => {
       const professional = store.professionals.find((p) => p.id === payload.professionalId);
-      const service = store.services.find((s) => s.id === payload.serviceId);
+      const services = (payload.serviceIds ?? []).map((id) =>
+        store.services.find((s) => s.id === id),
+      );
       const client = store.clients.find((c) => c.id === payload.clientId);
 
       const fields = [];
       if (!client) fields.push({ field: "clientId", message: "Selecione um cliente." });
       if (!professional) fields.push({ field: "professionalId", message: "Selecione um profissional." });
-      if (!service) fields.push({ field: "serviceId", message: "Selecione um serviço." });
+      if (services.length === 0 || services.some((s) => !s)) {
+        fields.push({ field: "serviceIds", message: "Selecione ao menos um serviço." });
+      }
       if (!payload.untilOccurrences && !payload.untilDate) {
         fields.push({ field: "untilOccurrences", message: "Defina o término por número de ocorrências ou data." });
       }
-      if (fields.length > 0 || !professional || !service || !client) {
+      if (fields.length > 0 || !professional || !client || services.some((s) => !s)) {
         throw validationError(fields);
       }
+      const found = services as Service[];
 
       if (professional.status !== "active") {
         throw apiError("PROFESSIONAL_INACTIVE", "Este profissional está inativo.", {
@@ -83,16 +89,19 @@ export const recurrenceService = {
           httpStatus: 422,
         });
       }
-      if (service.status !== "active") {
-        throw apiError("SERVICE_INACTIVE", "Este serviço está inativo.", {
-          fields: [{ field: "serviceId", message: "Este serviço está inativo." }],
+      const inactive = found.find((s) => s.status !== "active");
+      if (inactive) {
+        const message = `${inactive.name} está inativo.`;
+        throw apiError("SERVICE_INACTIVE", message, {
+          fields: [{ field: "serviceIds", message }],
           httpStatus: 422,
         });
       }
-      if (!professional.serviceIds.includes(service.id)) {
-        const message = `${professional.name} não realiza este serviço.`;
+      const notOffered = found.find((s) => !professional.serviceIds.includes(s.id));
+      if (notOffered) {
+        const message = `${professional.name} não realiza ${notOffered.name}.`;
         throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
-          fields: [{ field: "serviceId", message }],
+          fields: [{ field: "serviceIds", message }],
           httpStatus: 422,
         });
       }
@@ -104,7 +113,7 @@ export const recurrenceService = {
         unitId: payload.unitId ?? store.unit.id,
         clientId: payload.clientId,
         professionalId: payload.professionalId,
-        serviceId: payload.serviceId,
+        serviceIds: payload.serviceIds,
         frequency: payload.frequency,
         startDate: payload.startDate,
         time: payload.time,
@@ -120,7 +129,10 @@ export const recurrenceService = {
         untilOccurrences: series.untilOccurrences,
         untilDate: series.untilDate,
       });
-      const end = addMinutesToTime(series.time, service.durationMinutes);
+      const end = addMinutesToTime(
+        series.time,
+        found.reduce((sum, s) => sum + s.durationMinutes, 0),
+      );
       const conflicts: { date: DateISO; code: SlotConflictCode }[] = [];
       let createdCount = 0;
 
@@ -136,7 +148,7 @@ export const recurrenceService = {
           unitId: series.unitId,
           clientId: series.clientId,
           professionalId: series.professionalId,
-          serviceId: series.serviceId,
+          serviceIds: series.serviceIds,
           date,
           start: series.time,
           end,

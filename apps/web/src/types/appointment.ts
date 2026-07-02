@@ -14,7 +14,7 @@ export interface Appointment {
   unitId: Id;
   clientId: Id;
   professionalId: Id;
-  serviceId: Id;
+  serviceIds: Id[]; // 1..n servicos do agendamento (duracao/preco = soma)
   date: DateISO; // 'YYYY-MM-DD'
   start: TimeISO; // 'HH:mm'
   end: TimeISO; // derivado de start + durationMinutes do service
@@ -53,13 +53,16 @@ export interface RescheduleAppointment {
 export interface AppointmentView extends Appointment {
   client: { id: Id; name: string; status: RecordStatus };
   professional: { id: Id; name: string; status: RecordStatus };
-  service: {
+  // Servicos expandidos (na ordem de `serviceIds`) + totais derivados.
+  services: {
     id: Id;
     name: string;
     durationMinutes: number;
     priceCents: number;
     status: RecordStatus;
-  };
+  }[];
+  totalDurationMinutes: number;
+  totalPriceCents: number;
 }
 
 export interface AppointmentFilter {
