@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import {
   Controller,
   useFormContext,
@@ -86,6 +86,7 @@ export function MultiSelectField<T extends FieldValues>({
   // dialog (container null), o Portal usa o body (padrao).
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const fieldId = id ?? String(name);
+  const listId = useId();
 
   const handleOpenChange = (next: boolean) => {
     if (next && typeof document !== "undefined") {
@@ -167,6 +168,10 @@ export function MultiSelectField<T extends FieldValues>({
                   type="button"
                   id={fieldId}
                   ref={field.ref}
+                  role="combobox"
+                  aria-expanded={open}
+                  aria-haspopup="listbox"
+                  aria-controls={listId}
                   onBlur={field.onBlur}
                   disabled={disabled}
                   aria-invalid={fieldState.invalid}
@@ -226,6 +231,7 @@ export function MultiSelectField<T extends FieldValues>({
                   <CommandInput placeholder={searchPlaceholder} />
                   <div className="relative">
                     <CommandList
+                      id={listId}
                       ref={setListNode}
                       onScroll={updateScroll}
                       // overscroll-contain impede o scroll de "vazar" para o

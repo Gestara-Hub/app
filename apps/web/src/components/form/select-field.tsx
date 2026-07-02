@@ -1,5 +1,6 @@
 "use client";
 
+import { useId, useState } from "react";
 import {
   Controller,
   useFormContext,
@@ -49,6 +50,8 @@ export function SelectField<T extends FieldValues>({
 }: SelectFieldProps<T>) {
   const { control } = useFormContext<T>();
   const fieldId = id ?? String(name);
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
 
   return (
     <Controller
@@ -64,12 +67,16 @@ export function SelectField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <DropdownMenu>
+            <DropdownMenu open={open} onOpenChange={setOpen}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   id={fieldId}
                   ref={field.ref}
+                  role="combobox"
+                  aria-expanded={open}
+                  aria-haspopup="menu"
+                  aria-controls={menuId}
                   onBlur={field.onBlur}
                   disabled={disabled}
                   aria-invalid={fieldState.invalid}
@@ -88,6 +95,7 @@ export function SelectField<T extends FieldValues>({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
+                id={menuId}
                 align="start"
                 className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
               >
