@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useState } from "react";
+import { useCallback, useId, useState, type Ref } from "react";
 import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import {
   Command,
@@ -30,8 +30,12 @@ interface ComboboxProps {
   searchPlaceholder?: string;
   emptyMessage?: string;
   className?: string;
+  id?: string;
   ariaLabel?: string;
+  invalid?: boolean;
   disabled?: boolean;
+  onBlur?: () => void;
+  triggerRef?: Ref<HTMLButtonElement>;
 }
 
 /**
@@ -47,8 +51,12 @@ export function Combobox({
   searchPlaceholder = "Buscar...",
   emptyMessage = "Nenhum resultado.",
   className,
+  id,
   ariaLabel,
+  invalid,
   disabled,
+  onBlur,
+  triggerRef,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [canScrollUp, setCanScrollUp] = useState(false);
@@ -72,15 +80,20 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          id={id}
+          ref={triggerRef}
           type="button"
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}
           aria-label={ariaLabel}
+          aria-invalid={invalid}
           disabled={disabled}
+          onBlur={onBlur}
           className={cn(
             "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
-            "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
+            "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
             "disabled:cursor-not-allowed disabled:opacity-50",
             "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='text-'])]:text-muted-foreground",
             className,

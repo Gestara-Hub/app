@@ -56,13 +56,17 @@ export function ComboboxField<T extends FieldValues>({
           required={required}
         >
           <Combobox
+            id={fieldId}
+            triggerRef={field.ref}
             value={field.value ?? ""}
             onChange={field.onChange}
+            onBlur={field.onBlur}
             options={options}
             placeholder={placeholder}
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}
             ariaLabel={label}
+            invalid={fieldState.invalid}
             disabled={disabled}
           />
         </FieldShell>

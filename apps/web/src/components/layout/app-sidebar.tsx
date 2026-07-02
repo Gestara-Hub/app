@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
@@ -22,6 +23,12 @@ import { useCan } from "@/features/auth/session-provider";
 import { FOOTER_NAV, MAIN_NAV, isNavItemActive, type NavItem } from "./nav";
 
 function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
   return (
     <SidebarMenu>
       {items.map((item) => {
@@ -33,7 +40,7 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
               isActive={isNavItemActive(pathname, item.href)}
               tooltip={item.label}
             >
-              <Link href={item.href}>
+              <Link href={item.href} onClick={closeMobileSidebar}>
                 <Icon />
                 <span>{item.label}</span>
               </Link>

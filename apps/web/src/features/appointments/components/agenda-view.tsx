@@ -87,8 +87,8 @@ export function AgendaView() {
         title={scoped ? "Minha agenda" : "Agenda"}
         description={
           scoped
-            ? "Seus agendamentos — calendário do dia e lista."
-            : "Calendário diário por profissional e lista de agendamentos."
+            ? "Seus agendamentos — calendário e lista."
+            : "Calendário por período e lista de agendamentos."
         }
       >
         {showNew ? (
