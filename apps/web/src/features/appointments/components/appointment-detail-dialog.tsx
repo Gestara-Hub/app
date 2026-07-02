@@ -4,13 +4,18 @@ import { useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  Ban,
   CalendarClock,
   Check,
   CheckCheck,
+  MoreVertical,
   Pencil,
   Play,
   Repeat,
+  RotateCcw,
+  StickyNote,
   UserX,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -23,18 +28,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { getErrorMessage } from "@/lib/api-error";
 import { formatCents } from "@/lib/format";
+import { userInitials } from "@/lib/session";
 import type { AppointmentStatus, AppointmentView } from "@/types";
 import { useCan } from "@/features/auth/session-provider";
-import { useSetAppointmentStatus } from "../hooks/use-appointments";
+import { useAppointment, useSetAppointmentStatus } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
 
 const STATUS_TOAST: Record<AppointmentStatus, string> = {
@@ -55,9 +70,19 @@ const ADVANCE: Partial<
   in_service: { status: "completed", label: "Concluir", icon: <CheckCheck className="size-4" /> },
 };
 
+// Duracao legivel a partir dos minutos do servico (ex.: 90 -> "1h30", 45 -> "45min").
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}h${String(m).padStart(2, "0")}`;
+  if (h) return `${h}h`;
+  return `${m}min`;
+}
+
+// Linha compacta rotulo/valor (detalhes sob o hero).
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between gap-4 py-1.5 text-sm">
+    <div className="flex items-center justify-between gap-4 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium">{children}</span>
     </div>
@@ -86,18 +111,28 @@ export function AppointmentDetailDialog({
   const canCancel = can("appointments:cancel");
   const canStatus = can("appointments:status");
   const [showCancel, setShowCancel] = useState(false);
+  const [showNoShow, setShowNoShow] = useState(false);
+  // Le o dado vivo por id: reflete edicao/remarcacao feitas na modal aberta por
+  // cima (as mutations invalidam a query e este detalhe re-renderiza).
+  const liveQuery = useAppointment(appointment?.id ?? "");
   const pending = setStatusMut.isPending;
 
   if (!appointment) return null;
 
-  const rawDate = format(parseISO(appointment.date), "EEEE, d 'de' MMMM", { locale: ptBR });
+  // Prefere o dado vivo; cai no snapshot recebido ate a query de detalhe resolver.
+  const data = liveQuery.data ?? appointment;
+
+  const rawDate = format(parseISO(data.date), "EEEE, d 'de' MMMM", { locale: ptBR });
   const dateLabel = rawDate.charAt(0).toUpperCase() + rawDate.slice(1);
   const isTerminal =
-    appointment.status === "completed" ||
-    appointment.status === "canceled" ||
-    appointment.status === "no_show";
-  const advance = ADVANCE[appointment.status];
-  const canNoShow = appointment.status === "pending" || appointment.status === "confirmed";
+    data.status === "completed" ||
+    data.status === "canceled" ||
+    data.status === "no_show";
+  const advance = ADVANCE[data.status];
+  const canNoShow = data.status === "pending" || data.status === "confirmed";
+  const canNoShowAction = canStatus && canNoShow;
+  // Acoes secundarias/destrutivas vivem no menu "Mais acoes".
+  const hasMenuActions = canEdit || canReschedule || canNoShowAction || canCancel;
 
   async function changeStatus(status: AppointmentStatus) {
     try {
@@ -112,93 +147,157 @@ export function AppointmentDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={false}
+          // Nao fecha por clique/foco fora: evita que fechar o form/remarcacao
+          // aberto por cima derrube tambem o detalhe (fecha por X, Esc ou acao).
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {appointment.client.name}
-              <AppointmentStatusBadge status={appointment.status} />
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="size-11">
+                  <AvatarFallback className="bg-secondary text-sm font-semibold">
+                    {userInitials(data.client.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <DialogTitle className="flex flex-wrap items-center gap-2 text-left">
+                    <span className="truncate">{data.client.name}</span>
+                    <AppointmentStatusBadge status={data.status} />
+                  </DialogTitle>
+                </div>
+              </div>
+              <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-0.5">
+                {!isTerminal && hasMenuActions ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={pending}
+                        aria-label="Mais ações"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {canEdit ? (
+                        <DropdownMenuItem onSelect={() => onEdit(data)}>
+                          <Pencil className="size-4" />
+                          Editar
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canReschedule ? (
+                        <DropdownMenuItem onSelect={() => onReschedule(data)}>
+                          <CalendarClock className="size-4" />
+                          Remarcar
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canNoShowAction ? (
+                        <DropdownMenuItem onSelect={() => setShowNoShow(true)}>
+                          <UserX className="size-4" />
+                          Não compareceu
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canCancel ? (
+                        <>
+                          {canEdit || canReschedule || canNoShowAction ? (
+                            <DropdownMenuSeparator />
+                          ) : null}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setShowCancel(true)}
+                          >
+                            <Ban className="size-4" />
+                            Cancelar agendamento
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+                <DialogClose asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label="Fechar">
+                    <X className="size-4" />
+                  </Button>
+                </DialogClose>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="divide-y">
-            <Row label="Serviço">{appointment.service.name}</Row>
-            <Row label="Profissional">{appointment.professional.name}</Row>
-            <Row label="Data">{dateLabel}</Row>
-            <Row label="Horário">
-              {appointment.start}–{appointment.end}
-            </Row>
-            <Row label="Valor estimado">{formatCents(appointment.service.priceCents)}</Row>
-            {appointment.seriesId ? (
-              <Row label="Origem">
-                <span className="inline-flex items-center gap-1 text-muted-foreground">
-                  <Repeat className="size-3.5" /> Série recorrente
+          <div className="space-y-4 py-1">
+            {/* Hero: destaque do "quando" + servico como subtitulo. */}
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-base font-semibold leading-tight sm:text-lg">
+                {dateLabel}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium tabular-nums">
+                  {data.start} – {data.end}
+                </span>
+                <span className="rounded-full border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                  {formatDuration(data.service.durationMinutes)}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {data.service.name}
+              </p>
+            </div>
+
+            {/* Detalhes compactos */}
+            <div className="divide-y">
+              <Row label="Profissional">{data.professional.name}</Row>
+              <Row label="Valor estimado">
+                <span className="font-semibold">
+                  {formatCents(data.service.priceCents)}
                 </span>
               </Row>
+            </div>
+
+            {data.seriesId ||
+            (data.rescheduledFrom && data.rescheduledFrom.length > 0) ||
+            data.notes ? (
+              <div className="space-y-1.5 border-t pt-3">
+                {data.seriesId ? (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Repeat className="size-3.5 shrink-0" />
+                    Faz parte de uma série recorrente
+                  </p>
+                ) : null}
+                {data.rescheduledFrom &&
+                data.rescheduledFrom.length > 0 ? (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RotateCcw className="size-3.5 shrink-0" />
+                    Remarcado — originalmente{" "}
+                    {format(parseISO(data.rescheduledFrom[0].date), "dd/MM")} às{" "}
+                    {data.rescheduledFrom[0].start}
+                  </p>
+                ) : null}
+                {data.notes ? (
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <StickyNote className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{data.notes}</span>
+                  </p>
+                ) : null}
+              </div>
             ) : null}
-            {appointment.rescheduledFrom && appointment.rescheduledFrom.length > 0 ? (
-              <Row label="Remarcado">
-                <span className="text-muted-foreground">
-                  originalmente{" "}
-                  {format(parseISO(appointment.rescheduledFrom[0].date), "dd/MM")} às{" "}
-                  {appointment.rescheduledFrom[0].start}
-                </span>
-              </Row>
-            ) : null}
-            {appointment.notes ? <Row label="Observações">{appointment.notes}</Row> : null}
           </div>
 
-          {!isTerminal &&
-          (canEdit || canReschedule || canCancel || canStatus) ? (
-            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
-              {canEdit ? (
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  className="sm:mr-auto"
-                  onClick={() => onEdit(appointment)}
-                >
-                  <Pencil className="size-4" />
-                  Editar
-                </Button>
-              ) : null}
-              {canReschedule ? (
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => onReschedule(appointment)}
-                >
-                  <CalendarClock className="size-4" />
-                  Remarcar
-                </Button>
-              ) : null}
-              {canStatus && canNoShow ? (
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => changeStatus("no_show")}
-                >
-                  <UserX className="size-4" />
-                  Não compareceu
-                </Button>
-              ) : null}
-              {canCancel ? (
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => setShowCancel(true)}
-                >
-                  Cancelar agendamento
-                </Button>
-              ) : null}
-              {canStatus && advance ? (
-                <Button disabled={pending} onClick={() => changeStatus(advance.status)}>
-                  {advance.icon}
-                  {advance.label}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <DialogClose asChild>
+              <Button variant="outline" disabled={pending}>
+                Fechar
+              </Button>
+            </DialogClose>
+            {canStatus && advance ? (
+              <Button disabled={pending} onClick={() => changeStatus(advance.status)}>
+                {advance.icon}
+                {advance.label}
+              </Button>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -207,8 +306,8 @@ export function AppointmentDetailDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              O agendamento de {appointment.client.name} - {appointment.service.name} com{" "}
-              {appointment.professional.name} em {dateLabel}, {appointment.start} será cancelado. O
+              O agendamento de {data.client.name} - {data.service.name} com{" "}
+              {data.professional.name} em {dateLabel}, {data.start} será cancelado. O
               registro permanece no histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -221,9 +320,34 @@ export function AppointmentDetailDialog({
                 void changeStatus("canceled");
               }}
               disabled={pending}
-              className="bg-destructive text-white hover:bg-destructive/90"
             >
               Cancelar agendamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showNoShow} onOpenChange={setShowNoShow}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar como não compareceu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O agendamento de {data.client.name} - {data.service.name} com{" "}
+              {data.professional.name} em {dateLabel}, {data.start} será marcado
+              como não compareceu. O registro permanece no histórico.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                setShowNoShow(false);
+                void changeStatus("no_show");
+              }}
+              disabled={pending}
+            >
+              Não compareceu
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

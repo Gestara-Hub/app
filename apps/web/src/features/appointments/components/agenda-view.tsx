@@ -199,11 +199,11 @@ export function AgendaView() {
           if (!next) setSelected(null);
         }}
         onEdit={(appointment) => {
-          setSelected(null);
+          // Mantem o detalhe aberto por baixo; o form abre por cima (stack) e,
+          // ao fechar, o detalhe reflete os dados atualizados (le por id).
           setFormState({ open: true, appointment });
         }}
         onReschedule={(appointment) => {
-          setSelected(null);
           setRescheduling(appointment);
         }}
       />
