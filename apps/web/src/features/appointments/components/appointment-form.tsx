@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { isPastSlot } from "@/lib/date";
 import { addMinutesToTime } from "@/lib/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@/types";
@@ -112,6 +113,10 @@ export function AppointmentForm({
   const [confirmBreak, setConfirmBreak] = useState<AppointmentFormValues | null>(
     null,
   );
+  // Idem quando o slot escolhido esta no passado (regra mole: confirma).
+  const [confirmPast, setConfirmPast] = useState<AppointmentFormValues | null>(
+    null,
+  );
 
   const submit = async (values: AppointmentFormValues, allowBreak: boolean) => {
     const payload: CreateAppointment = {
@@ -153,7 +158,20 @@ export function AppointmentForm({
     }
   };
 
-  const onSubmit = form.handleSubmit((values) => submit(values, false));
+  const onSubmit = form.handleSubmit((values) => {
+    // Slot no passado costuma ser engano — confirma antes (regra mole). Ao
+    // editar, so alerta se a data/horario mudou (nao incomoda ao mexer so nas
+    // observacoes de um agendamento ja passado).
+    const slotChanged =
+      !appointment ||
+      values.date !== appointment.date ||
+      values.start !== appointment.start;
+    if (slotChanged && isPastSlot(values.date, values.start)) {
+      setConfirmPast(values);
+      return;
+    }
+    void submit(values, false);
+  });
 
   return (
     <FormProvider {...form}>
@@ -277,6 +295,36 @@ export function AppointmentForm({
               onClick={() => {
                 const values = confirmBreak;
                 if (values) void submit(values, true);
+              }}
+            >
+              Agendar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmPast !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmPast(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Agendar para um horário no passado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A data e o horário escolhidos já passaram. Costuma ser um engano de
+              digitação — confirme se deseja registrar mesmo assim (ex.: lançar um
+              atendimento que já ocorreu).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => {
+                const values = confirmPast;
+                if (values) void submit(values, false);
               }}
             >
               Agendar mesmo assim

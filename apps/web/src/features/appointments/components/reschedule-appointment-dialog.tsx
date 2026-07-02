@@ -12,6 +12,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { FieldShell, SelectField } from "@/components/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { isPastSlot } from "@/lib/date";
 import { addMinutesToTime } from "@/lib/scheduling";
 import type { AppointmentView, SeriesScope } from "@/types";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
@@ -68,6 +79,8 @@ function RescheduleForm({
   });
 
   const start = useWatch({ control: form.control, name: "start" });
+  // Valores pendentes quando o novo slot cai no passado (regra mole: confirma).
+  const [confirmPast, setConfirmPast] = useState<RescheduleValues | null>(null);
 
   // Profissionais que realizam o servico do agendamento.
   const professionalOptions = (professionals ?? [])
@@ -79,11 +92,7 @@ function RescheduleForm({
     ? `Termina às ${addMinutesToTime(start, service.durationMinutes)}`
     : undefined;
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    if (single && !values.date) {
-      form.setError("date", { message: "Selecione a data." });
-      return;
-    }
+  const doReschedule = async (values: RescheduleValues) => {
     try {
       if (single) {
         await rescheduleMut.mutateAsync({
@@ -120,6 +129,24 @@ function RescheduleForm({
         toast.error(getErrorMessage(error, "Não foi possível remarcar o agendamento."));
       }
     }
+  };
+
+  const onSubmit = form.handleSubmit((values) => {
+    if (single && !values.date) {
+      form.setError("date", { message: "Selecione a data." });
+      return;
+    }
+    // "Somente esta": checa a data/horario escolhidos. Série: mantém a data de
+    // cada ocorrência, então checa a atual com o novo horário.
+    const checkDate = single ? values.date : appointment.date;
+    const slotChanged = single
+      ? values.date !== appointment.date || values.start !== appointment.start
+      : values.start !== appointment.start;
+    if (slotChanged && isPastSlot(checkDate, values.start)) {
+      setConfirmPast(values);
+      return;
+    }
+    void doReschedule(values);
   });
 
   return (
@@ -192,6 +219,35 @@ function RescheduleForm({
           </Button>
         </DialogFooter>
       </form>
+
+      <AlertDialog
+        open={confirmPast !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmPast(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remarcar para um horário no passado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A data e o horário escolhidos já passaram. Costuma ser um engano —
+              confirme se deseja remarcar mesmo assim.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => {
+                const values = confirmPast;
+                if (values) void doReschedule(values);
+              }}
+            >
+              Remarcar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FormProvider>
   );
 }

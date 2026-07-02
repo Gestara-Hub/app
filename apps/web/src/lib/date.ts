@@ -6,3 +6,21 @@ export function todayISO(): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+/** Hora atual (local) em 'HH:mm'. */
+export function nowTime(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * `true` se a data ('YYYY-MM-DD') + horario ('HH:mm') forem anteriores a agora.
+ * Compara strings (formato fixo). Sem data, retorna `false` (nada a checar).
+ */
+export function isPastSlot(date: string | undefined, start: string): boolean {
+  if (!date) return false;
+  const today = todayISO();
+  if (date < today) return true;
+  if (date > today) return false;
+  return Boolean(start) && start < nowTime();
+}
