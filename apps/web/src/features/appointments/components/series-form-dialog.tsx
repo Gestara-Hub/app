@@ -10,6 +10,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
+  ComboboxField,
   FieldShell,
   InputNumber,
   SelectField,
@@ -127,27 +128,33 @@ function SeriesForm({
   return (
     <FormProvider {...form}>
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <SelectField<SeriesFormValues>
+        <ComboboxField<SeriesFormValues>
           name="clientId"
           label="Cliente"
           placeholder="Selecione o cliente"
+          searchPlaceholder="Buscar cliente..."
+          emptyMessage="Nenhum cliente."
           options={clientOptions}
           required
           disabled={pending}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField<SeriesFormValues>
+          <ComboboxField<SeriesFormValues>
             name="professionalId"
             label="Profissional"
             placeholder="Selecione"
+            searchPlaceholder="Buscar profissional..."
+            emptyMessage="Nenhum profissional."
             options={professionalOptions}
             required
             disabled={pending}
           />
-          <SelectField<SeriesFormValues>
+          <ComboboxField<SeriesFormValues>
             name="serviceId"
             label="Serviço"
             placeholder="Selecione"
+            searchPlaceholder="Buscar serviço..."
+            emptyMessage="Nenhum serviço."
             options={serviceOptions}
             required
             disabled={pending}

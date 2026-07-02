@@ -8,7 +8,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { FieldShell, InputText, SelectField } from "@/components/form";
+import { ComboboxField, FieldShell, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -85,10 +85,12 @@ function BlockForm({
   return (
     <FormProvider {...form}>
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <SelectField<BlockFormValues>
+        <ComboboxField<BlockFormValues>
           name="professionalId"
           label="Profissional"
           placeholder="Selecione"
+          searchPlaceholder="Buscar profissional..."
+          emptyMessage="Nenhum profissional."
           options={professionalOptions}
           required
           disabled={pending}
@@ -151,7 +153,7 @@ function BlockForm({
             )}
           />
         </div>
-        <InputText<BlockFormValues>
+        <TextArea<BlockFormValues>
           name="reason"
           label="Motivo"
           placeholder="Ex.: Almoço, folga (opcional)"
