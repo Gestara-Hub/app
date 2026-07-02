@@ -71,7 +71,7 @@ export function SelectField<T extends FieldValues>({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  id={fieldId}
+                  aria-label={label}
                   ref={field.ref}
                   role="combobox"
                   aria-expanded={open}

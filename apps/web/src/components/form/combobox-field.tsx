@@ -56,7 +56,6 @@ export function ComboboxField<T extends FieldValues>({
           required={required}
         >
           <Combobox
-            id={fieldId}
             triggerRef={field.ref}
             value={field.value ?? ""}
             onChange={field.onChange}
