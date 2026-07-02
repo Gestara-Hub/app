@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCw,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,8 @@ import { useProfessionals } from "@/features/professionals/hooks/use-professiona
 import { useUnit } from "@/features/settings/hooks/use-settings";
 import { useAppointments } from "../hooks/use-appointments";
 import { useTimeBlocks } from "../hooks/use-time-blocks";
+import { useCalendarProfessionalFilter } from "../hooks/use-calendar-professional-filter";
+import { ProfessionalFilter } from "./professional-filter";
 import {
   ScheduleDayGrid,
   ScheduleMonthGrid,
@@ -106,6 +109,7 @@ export function CalendarPanel({
   const today = todayISO();
   const [date, setDate] = useState(today);
   const [mode, setMode] = useState<CalendarMode>("day");
+  const [profFilter, setProfFilter] = useCalendarProfessionalFilter();
 
   const user = useCurrentUser();
   const scopedProfId = scopedProfessionalId(user);
@@ -121,12 +125,21 @@ export function CalendarPanel({
   // Mostra apenas quem atende neste dia da semana (sem coluna de quem esta de
   // folga). Perfil Profissional ve apenas a propria coluna.
   const weekday = weekdayOf(date);
-  const professionals = (professionalsQuery.data ?? []).filter(
+  const activeProfessionals = professionalsQuery.data ?? [];
+  // "Todos" (profFilter null) = sem filtro nenhum; perfil Profissional (scoped)
+  // ve apenas a propria coluna independente do filtro.
+  const showAllProfs = !scopedProfId && profFilter === null;
+  const selectedProfs = new Set(scopedProfId ? [scopedProfId] : (profFilter ?? []));
+  const isProfVisible = (id: string) => showAllProfs || selectedProfs.has(id);
+  const professionals = activeProfessionals.filter(
     (p) =>
       p.workingHours.some((w) => w.weekday === weekday) &&
-      (!scopedProfId || p.id === scopedProfId),
+      (!scopedProfId || p.id === scopedProfId) &&
+      isProfVisible(p.id),
   );
-  const appointments = appointmentsQuery.data ?? [];
+  const appointments = (appointmentsQuery.data ?? []).filter((a) =>
+    isProfVisible(a.professionalId),
+  );
   const blocks = blocksQuery.data ?? [];
   const rangeDays = eachDayOfInterval({
     start: parseISO(range.dateFrom),
@@ -173,6 +186,9 @@ export function CalendarPanel({
       : mode === "week"
         ? "Nenhum agendamento nesta semana."
         : "Nenhum agendamento neste mês.";
+  const showProfFilter = !scopedProfId && activeProfessionals.length > 1;
+  const noProfSelected =
+    !scopedProfId && profFilter !== null && profFilter.length === 0;
 
   return (
     <>
@@ -195,6 +211,13 @@ export function CalendarPanel({
           <p className="ml-2 text-sm font-medium">{formatRangeLabel(date, mode)}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {showProfFilter ? (
+            <ProfessionalFilter
+              professionals={activeProfessionals}
+              value={profFilter}
+              onChange={setProfFilter}
+            />
+          ) : null}
           <div className="inline-flex rounded-md border bg-muted/40 p-1">
             {[
               ["day", "Dia"],
@@ -249,13 +272,21 @@ export function CalendarPanel({
         <Skeleton className="h-[520px] w-full rounded-lg" />
       ) : (
         <>
-          {appointmentCount === 0 ? (
+          {appointmentCount === 0 && !noProfSelected ? (
             <div className="mb-3 flex items-center gap-2 rounded-md border border-dashed bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
               <CalendarClock className="size-4" />
               {emptyMessage}
             </div>
           ) : null}
-          {mode === "day" && isClosed ? (
+          {noProfSelected ? (
+            <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/20 py-16 text-center">
+              <Users className="size-8 text-muted-foreground" />
+              <p className="text-sm font-medium">Nenhum profissional selecionado.</p>
+              <p className="text-sm text-muted-foreground">
+                Selecione ao menos um profissional no filtro para ver a agenda.
+              </p>
+            </div>
+          ) : mode === "day" && isClosed ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/20 py-16 text-center">
               <CalendarClock className="size-8 text-muted-foreground" />
               <p className="text-sm font-medium">Unidade fechada nesta data.</p>
