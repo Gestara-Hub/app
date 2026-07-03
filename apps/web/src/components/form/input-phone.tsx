@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
-import { formatPhone } from "@/lib/format";
+import { formatPhone } from "@gestarahub/core/format";
 import { FieldShell } from "./field-shell";
 
 interface InputPhoneProps<T extends FieldValues> {

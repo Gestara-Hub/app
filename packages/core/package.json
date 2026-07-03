@@ -1,0 +1,16 @@
+{
+  "name": "@gestarahub/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./scheduling": "./src/scheduling.ts",
+    "./date": "./src/date.ts",
+    "./format": "./src/format.ts",
+    "./api-error": "./src/api-error.ts"
+  },
+  "dependencies": {
+    "@gestarahub/contracts": "workspace:*",
+    "date-fns": "^4.4.0"
+  }
+}

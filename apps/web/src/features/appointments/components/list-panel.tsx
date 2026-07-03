@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Combobox } from "@/components/shared/combobox";
 import { ListItemCard } from "@/components/shared/list-item-card";
-import { formatCents } from "@/lib/format";
+import { formatCents } from "@gestarahub/core/format";
 import { appointmentStatusLabel } from "@/lib/labels";
-import { todayISO } from "@/lib/date";
+import { todayISO } from "@gestarahub/core/date";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
 import { useCan, useCurrentUser } from "@/features/auth/session-provider";
 import { scopedProfessionalId } from "@/features/auth/scope";

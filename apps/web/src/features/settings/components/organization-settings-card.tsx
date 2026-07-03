@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { InputPhone, InputText } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Organization, Unit } from "@gestarahub/contracts";
 import {
   useOrganization,

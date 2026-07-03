@@ -23,10 +23,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
-import { isPastSlot } from "@/lib/date";
-import { formatCents } from "@/lib/format";
-import { addMinutesToTime } from "@/lib/scheduling";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import { isPastSlot } from "@gestarahub/core/date";
+import { formatCents } from "@gestarahub/core/format";
+import { addMinutesToTime } from "@gestarahub/core/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@gestarahub/contracts";
 import type { AppointmentView, CreateAppointment } from "@gestarahub/contracts";

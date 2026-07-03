@@ -32,9 +32,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
-import { isPastSlot } from "@/lib/date";
-import { addMinutesToTime } from "@/lib/scheduling";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import { isPastSlot } from "@gestarahub/core/date";
+import { addMinutesToTime } from "@gestarahub/core/scheduling";
 import type { AppointmentView, SeriesScope } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import {

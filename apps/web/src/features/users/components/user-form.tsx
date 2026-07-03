@@ -15,7 +15,7 @@ import { FieldShell, InputText, SelectField, SwitchField } from "@/components/fo
 import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { userProfileLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID } from "@/config/tenant";

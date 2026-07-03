@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
-import { getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth/session-provider";
 import { useUpdateClient } from "../hooks/use-clients";

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { BusinessHoursDay, Unit, Weekday } from "@gestarahub/contracts";
 import { useUnit, useUpdateUnit } from "../hooks/use-settings";
 

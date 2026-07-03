@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getErrorMessage } from "@/lib/api-error";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Service } from "@gestarahub/contracts";
 import { useInactivateService } from "../hooks/use-services";
 

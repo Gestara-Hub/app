@@ -30,7 +30,7 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
-import { formatPhone } from "@/lib/format";
+import { formatPhone } from "@gestarahub/core/format";
 import { recordStatusLabel } from "@/lib/labels";
 import type {
   ProfessionalFilter,

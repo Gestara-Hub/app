@@ -5,8 +5,8 @@ import { ptBR } from "date-fns/locale";
 import { Coffee, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { appointmentStatusLabel } from "@/lib/labels";
-import { weekdayOf } from "@/lib/scheduling";
-import { todayISO } from "@/lib/date";
+import { weekdayOf } from "@gestarahub/core/scheduling";
+import { todayISO } from "@gestarahub/core/date";
 import type {
   AppointmentStatus,
   AppointmentView,

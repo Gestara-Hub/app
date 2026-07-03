@@ -20,7 +20,7 @@ import {
   generateOccurrenceDates,
   type SlotConflictCode,
   type SlotContext,
-} from "@/lib/scheduling";
+} from "@gestarahub/core/scheduling";
 
 function clone<T>(value: T): T {
   return structuredClone(value);

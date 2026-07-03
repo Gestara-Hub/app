@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { frequencyLabel } from "@/lib/labels";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type { CreateRecurrenceSeries, Frequency } from "@gestarahub/contracts";

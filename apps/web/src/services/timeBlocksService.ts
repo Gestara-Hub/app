@@ -14,7 +14,7 @@ import {
   simulateWrite,
   validationError,
 } from "@/mocks/helpers";
-import { timeToMinutes } from "@/lib/scheduling";
+import { timeToMinutes } from "@gestarahub/core/scheduling";
 
 function clone<T>(value: T): T {
   return structuredClone(value);

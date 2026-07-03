@@ -33,7 +33,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { cn } from "@/lib/utils";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { recordStatusLabel } from "@/lib/labels";
 import type { RecordStatus } from "@gestarahub/contracts";
 

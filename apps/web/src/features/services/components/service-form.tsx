@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID } from "@/config/tenant";
 import type { CreateService, Service } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories/hooks/use-categories";

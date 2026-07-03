@@ -11,7 +11,7 @@ import {
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {

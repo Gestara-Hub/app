@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { InputPhone, InputText, SwitchField, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID } from "@/config/tenant";
 import type { Client, CreateClient } from "@gestarahub/contracts";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";

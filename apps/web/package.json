@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
+    "@gestarahub/core": "workspace:*",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.1",
     "class-variance-authority": "^0.7.1",

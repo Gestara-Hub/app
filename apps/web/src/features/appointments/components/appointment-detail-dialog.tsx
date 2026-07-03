@@ -44,8 +44,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getErrorMessage } from "@/lib/api-error";
-import { formatCents } from "@/lib/format";
+import { getErrorMessage } from "@gestarahub/core/api-error";
+import { formatCents } from "@gestarahub/core/format";
 import { userInitials } from "@/lib/session";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth/session-provider";

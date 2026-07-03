@@ -24,7 +24,7 @@ import {
   rangesOverlap,
   timeToMinutes,
   weekdayOf,
-} from "@/lib/scheduling";
+} from "@gestarahub/core/scheduling";
 import type { MockStore } from "./store";
 
 /**
