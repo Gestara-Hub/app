@@ -285,6 +285,8 @@ export const appointmentsService = {
 
   reschedule(id: Id, payload: RescheduleAppointment): Promise<AppointmentView> {
     return simulateWrite(() => {
+      // Motivo opcional na remarcacao: guardado no rastro quando informado.
+      const reason = payload.reason?.trim() || undefined;
       const idx = store.appointments.findIndex((a) => a.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.appointments[idx];
@@ -313,6 +315,7 @@ export const appointmentsService = {
                 date: current.date,
                 start: current.start,
                 professionalId: current.professionalId,
+                reason,
               },
             ]
           : current.rescheduledFrom,
@@ -330,9 +333,10 @@ export const appointmentsService = {
    */
   rescheduleSeriesFuture(
     id: Id,
-    payload: { start?: TimeISO; professionalId?: Id },
+    payload: { start?: TimeISO; professionalId?: Id; reason?: string },
   ): Promise<{ updatedCount: number; conflicts: { date: DateISO; code: SlotConflictCode }[] }> {
     return simulateWrite(() => {
+      const reason = payload.reason?.trim() || undefined;
       const occ = store.appointments.find((a) => a.id === id);
       if (!occ) throw notFoundError(NOT_FOUND);
 
@@ -388,7 +392,7 @@ export const appointmentsService = {
           rescheduledFrom: moved
             ? [
                 ...(a.rescheduledFrom ?? []),
-                { date: a.date, start: a.start, professionalId: a.professionalId },
+                { date: a.date, start: a.start, professionalId: a.professionalId, reason },
               ]
             : a.rescheduledFrom,
           updatedAt: nowIso(),
@@ -399,8 +403,8 @@ export const appointmentsService = {
     });
   },
 
-  // Transicao de status (confirmar, iniciar, concluir, cancelar, no-show). Sem
-  // checagem de slot — cancelado permanece no historico.
+  // Transicao de status (confirmar, iniciar, concluir, no-show). Sem checagem de
+  // slot. Para cancelar, use `cancel` (exige motivo).
   setStatus(id: Id, status: AppointmentStatus): Promise<AppointmentView> {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
@@ -408,6 +412,40 @@ export const appointmentsService = {
       store.appointments[idx] = {
         ...store.appointments[idx],
         status,
+        updatedAt: nowIso(),
+      };
+      return clone(toView(store.appointments[idx]));
+    });
+  },
+
+  // Cancelamento com motivo obrigatorio; o registro permanece no historico (doc 05).
+  cancel(id: Id, reason: string): Promise<AppointmentView> {
+    return simulateWrite(() => {
+      const trimmed = reason?.trim();
+      if (!trimmed) {
+        throw validationError([{ field: "reason", message: "Informe o motivo do cancelamento." }]);
+      }
+      const idx = store.appointments.findIndex((a) => a.id === id);
+      if (idx === -1) throw notFoundError(NOT_FOUND);
+      store.appointments[idx] = {
+        ...store.appointments[idx],
+        status: "canceled",
+        cancellationReason: trimmed,
+        updatedAt: nowIso(),
+      };
+      return clone(toView(store.appointments[idx]));
+    });
+  },
+
+  // Marca como nao compareceu; o motivo e opcional e fica no historico (doc 05).
+  markNoShow(id: Id, reason?: string): Promise<AppointmentView> {
+    return simulateWrite(() => {
+      const idx = store.appointments.findIndex((a) => a.id === id);
+      if (idx === -1) throw notFoundError(NOT_FOUND);
+      store.appointments[idx] = {
+        ...store.appointments[idx],
+        status: "no_show",
+        noShowReason: reason?.trim() || undefined,
         updatedAt: nowIso(),
       };
       return clone(toView(store.appointments[idx]));

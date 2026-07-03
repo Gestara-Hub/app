@@ -148,19 +148,29 @@ Acoes sensiveis exigem confirmacao explicita antes de executar. Cada dialogo tem
 
 - Titulo: "Cancelar agendamento?"
 - Corpo: "O agendamento de [Cliente] - [Servico] com [Profissional] em [data, horario] sera cancelado. O registro permanece no historico."
+- Campo obrigatorio: "Motivo do cancelamento" (texto). Confirmar sem motivo exibe "Informe o motivo do cancelamento."
 - Botoes: "Cancelar agendamento" / "Voltar".
-- Efeito: status vai para `cancelado`. O agendamento continua visivel no historico. Nao conta como receita estimada.
+- Efeito: status vai para `cancelado`, guardando o motivo. O agendamento continua visivel no historico. Nao conta como receita estimada.
 
 ### Remarcar agendamento
 
 - Titulo: "Remarcar agendamento?"
 - Corpo: "O agendamento de [Cliente] - [Servico] sera movido para [novo profissional / nova data / novo horario]. Mantem cliente e servico e registra o rastro no historico."
+- Campo opcional: "Motivo (opcional)" (texto). Quando informado, fica no rastro do historico.
 - Botoes: "Remarcar" / "Voltar".
 - Validacao previa: a remarcacao esta sujeita as mesmas regras de conflito e disponibilidade de um novo agendamento (expediente, bloqueio, sobreposicao). Se houver conflito, a remarcacao e impedida com a mensagem de conflito correspondente.
 - A remarcacao NAO conclui o agendamento; o status nao vira "concluido".
 - Se o agendamento faz parte de uma serie, antes de confirmar, perguntar o escopo:
   - Titulo: "Remarcar quais ocorrencias?"
   - Opcoes: "Somente esta ocorrencia" / "Esta e as futuras".
+
+### Marcar como nao compareceu
+
+- Titulo: "Marcar como nao compareceu?"
+- Corpo: "O agendamento de [Cliente] - [Servico] com [Profissional] em [data, horario] sera marcado como nao compareceu. O registro permanece no historico."
+- Campo opcional: "Motivo (opcional)" (texto). Quando informado, fica no historico.
+- Botoes: "Nao compareceu" / "Voltar".
+- Efeito: status vai para `nao_compareceu`, guardando o motivo quando houver. Nao conta como receita realizada.
 
 ### Excluir / cancelar serie recorrente
 

@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldShell } from "@/components/form";
 import {
   Dialog,
   DialogClose,
@@ -49,7 +51,12 @@ import { formatCents } from "@gestarahub/core/format";
 import { userInitials } from "@/lib/session";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useAppointment, useSetAppointmentStatus } from "../hooks/use-appointments";
+import {
+  useAppointment,
+  useCancelAppointment,
+  useMarkNoShow,
+  useSetAppointmentStatus,
+} from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
 
 const STATUS_TOAST: Record<AppointmentStatus, string> = {
@@ -105,6 +112,8 @@ export function AppointmentDetailDialog({
   onEdit,
 }: AppointmentDetailDialogProps) {
   const setStatusMut = useSetAppointmentStatus();
+  const cancelMut = useCancelAppointment();
+  const noShowMut = useMarkNoShow();
   const can = useCan();
   const canEdit = can("appointments:edit");
   const canReschedule = can("appointments:reschedule");
@@ -112,10 +121,15 @@ export function AppointmentDetailDialog({
   const canStatus = can("appointments:status");
   const [showCancel, setShowCancel] = useState(false);
   const [showNoShow, setShowNoShow] = useState(false);
+  // Motivo obrigatorio do cancelamento (validado antes de confirmar).
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReasonError, setCancelReasonError] = useState<string | null>(null);
+  // Motivo opcional do nao-comparecimento.
+  const [noShowReason, setNoShowReason] = useState("");
   // Le o dado vivo por id: reflete edicao/remarcacao feitas na modal aberta por
   // cima (as mutations invalidam a query e este detalhe re-renderiza).
   const liveQuery = useAppointment(appointment?.id ?? "");
-  const pending = setStatusMut.isPending;
+  const pending = setStatusMut.isPending || cancelMut.isPending || noShowMut.isPending;
 
   if (!appointment) return null;
 
@@ -138,6 +152,36 @@ export function AppointmentDetailDialog({
     try {
       await setStatusMut.mutateAsync({ id: appointment!.id, status });
       toast.success(STATUS_TOAST[status]);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível atualizar o status."));
+    }
+  }
+
+  async function confirmCancel() {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      setCancelReasonError("Informe o motivo do cancelamento.");
+      return;
+    }
+    try {
+      await cancelMut.mutateAsync({ id: appointment!.id, reason });
+      toast.success(STATUS_TOAST.canceled);
+      setShowCancel(false);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível cancelar o agendamento."));
+    }
+  }
+
+  async function confirmNoShow() {
+    try {
+      await noShowMut.mutateAsync({
+        id: appointment!.id,
+        reason: noShowReason.trim() || undefined,
+      });
+      toast.success(STATUS_TOAST.no_show);
+      setShowNoShow(false);
       onOpenChange(false);
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível atualizar o status."));
@@ -258,6 +302,8 @@ export function AppointmentDetailDialog({
 
             {data.seriesId ||
             (data.rescheduledFrom && data.rescheduledFrom.length > 0) ||
+            (data.status === "canceled" && data.cancellationReason) ||
+            (data.status === "no_show" && data.noShowReason) ||
             data.notes ? (
               <div className="space-y-1.5 border-t pt-3">
                 {data.seriesId ? (
@@ -268,11 +314,28 @@ export function AppointmentDetailDialog({
                 ) : null}
                 {data.rescheduledFrom &&
                 data.rescheduledFrom.length > 0 ? (
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <RotateCcw className="size-3.5 shrink-0" />
-                    Remarcado — originalmente{" "}
-                    {format(parseISO(data.rescheduledFrom[0].date), "dd/MM")} às{" "}
-                    {data.rescheduledFrom[0].start}
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <RotateCcw className="mt-0.5 size-3.5 shrink-0" />
+                    <span>
+                      Remarcado — originalmente{" "}
+                      {format(parseISO(data.rescheduledFrom[0].date), "dd/MM")} às{" "}
+                      {data.rescheduledFrom[0].start}
+                      {data.rescheduledFrom[data.rescheduledFrom.length - 1].reason
+                        ? ` (${data.rescheduledFrom[data.rescheduledFrom.length - 1].reason})`
+                        : ""}
+                    </span>
+                  </p>
+                ) : null}
+                {data.status === "canceled" && data.cancellationReason ? (
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <Ban className="mt-0.5 size-3.5 shrink-0" />
+                    <span>Cancelado — {data.cancellationReason}</span>
+                  </p>
+                ) : null}
+                {data.status === "no_show" && data.noShowReason ? (
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <UserX className="mt-0.5 size-3.5 shrink-0" />
+                    <span>Não compareceu — {data.noShowReason}</span>
                   </p>
                 ) : null}
                 {data.notes ? (
@@ -301,7 +364,16 @@ export function AppointmentDetailDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showCancel} onOpenChange={setShowCancel}>
+      <AlertDialog
+        open={showCancel}
+        onOpenChange={(open) => {
+          setShowCancel(open);
+          if (!open) {
+            setCancelReason("");
+            setCancelReasonError(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar agendamento?</AlertDialogTitle>
@@ -311,13 +383,31 @@ export function AppointmentDetailDialog({
               registro permanece no histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <FieldShell
+            id="cancel-reason"
+            label="Motivo do cancelamento"
+            required
+            error={cancelReasonError ?? undefined}
+          >
+            <Textarea
+              id="cancel-reason"
+              rows={3}
+              placeholder="Descreva o motivo do cancelamento"
+              value={cancelReason}
+              onChange={(event) => {
+                setCancelReason(event.target.value);
+                if (cancelReasonError) setCancelReasonError(null);
+              }}
+              disabled={pending}
+              aria-invalid={Boolean(cancelReasonError)}
+            />
+          </FieldShell>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                setShowCancel(false);
-                void changeStatus("canceled");
+                void confirmCancel();
               }}
               disabled={pending}
             >
@@ -327,7 +417,13 @@ export function AppointmentDetailDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showNoShow} onOpenChange={setShowNoShow}>
+      <AlertDialog
+        open={showNoShow}
+        onOpenChange={(open) => {
+          setShowNoShow(open);
+          if (!open) setNoShowReason("");
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Marcar como não compareceu?</AlertDialogTitle>
@@ -337,13 +433,22 @@ export function AppointmentDetailDialog({
               como não compareceu. O registro permanece no histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <FieldShell id="no-show-reason" label="Motivo (opcional)">
+            <Textarea
+              id="no-show-reason"
+              rows={3}
+              placeholder="Descreva o motivo, se quiser registrar"
+              value={noShowReason}
+              onChange={(event) => setNoShowReason(event.target.value)}
+              disabled={pending}
+            />
+          </FieldShell>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                setShowNoShow(false);
-                void changeStatus("no_show");
+                void confirmNoShow();
               }}
               disabled={pending}
             >

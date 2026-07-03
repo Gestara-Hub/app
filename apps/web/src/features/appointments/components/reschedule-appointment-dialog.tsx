@@ -11,7 +11,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { FieldShell, SelectField } from "@/components/form";
+import { FieldShell, SelectField, TextArea } from "@/components/form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +46,7 @@ const schema = z.object({
   professionalId: z.string().min(1, "Selecione um profissional."),
   date: z.string().optional(),
   start: z.string().min(1, "Selecione o horário."),
+  reason: z.string().trim().optional(),
 });
 type RescheduleValues = z.infer<typeof schema>;
 
@@ -73,6 +74,7 @@ function RescheduleForm({
       professionalId: appointment.professionalId,
       date: appointment.date,
       start: appointment.start,
+      reason: "",
     },
   });
 
@@ -97,13 +99,18 @@ function RescheduleForm({
             date: values.date,
             start: values.start,
             professionalId: values.professionalId,
+            reason: values.reason,
           },
         });
         toast.success("Agendamento remarcado.");
       } else {
         const result = await seriesMut.mutateAsync({
           id: appointment.id,
-          payload: { start: values.start, professionalId: values.professionalId },
+          payload: {
+            start: values.start,
+            professionalId: values.professionalId,
+            reason: values.reason,
+          },
         });
         if (result.conflicts.length > 0) {
           toast.warning(
@@ -205,6 +212,13 @@ function RescheduleForm({
             )}
           />
         </div>
+
+        <TextArea<RescheduleValues>
+          name="reason"
+          label="Motivo (opcional)"
+          placeholder="Descreva o motivo, se quiser registrar"
+          disabled={pending}
+        />
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onDone} disabled={pending}>

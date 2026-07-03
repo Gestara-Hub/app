@@ -18,8 +18,10 @@ No MVP, a interface usa uma linguagem unica e generica de navegacao: Clientes, E
 - Um servico inativo nao deve ser sugerido para novos agendamentos.
 - Um cliente inativo pode aparecer em historico, mas nao deve ser sugerido como primeira opcao para novos agendamentos.
 - Agendamentos cancelados permanecem no historico.
+- O cancelamento exige um motivo (texto obrigatorio), guardado junto ao agendamento para consulta no historico.
 - Agendamentos concluidos nao devem ser editados livremente como agendamentos futuros.
 - No-show deve ser tratado como perda operacional, nao como atendimento concluido.
+- Marcar como nao compareceu aceita um motivo (texto opcional), guardado junto ao agendamento para consulta no historico.
 
 ## Regras de status
 
@@ -56,7 +58,8 @@ No MVP, a interface usa uma linguagem unica e generica de navegacao: Clientes, E
 ## Regras de remarcacao
 
 - Remarcar e mover um agendamento existente para outro horario e/ou outro profissional, mantendo o mesmo cliente e o mesmo servico.
-- A remarcacao mantem rastro no historico: registra-se que o agendamento foi remarcado, com horario/profissional anterior e novo.
+- A remarcacao aceita um motivo (texto opcional), registrado no rastro do historico quando informado.
+- A remarcacao mantem rastro no historico: registra-se que o agendamento foi remarcado, com horario/profissional anterior e novo e o motivo informado (quando houver).
 - A remarcacao NAO conclui o agendamento; o status nao vira "concluido" por causa da remarcacao.
 - A remarcacao esta sujeita as mesmas regras de conflito e disponibilidade de um novo agendamento (expediente, bloqueios e sobreposicao com o mesmo profissional). Se houver conflito, a remarcacao e impedida.
 - Se o agendamento faz parte de uma serie recorrente, a remarcacao pergunta o escopo: "somente esta ocorrencia" ou "esta e as futuras".

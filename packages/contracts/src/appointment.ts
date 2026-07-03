@@ -21,9 +21,11 @@ export interface Appointment {
   status: AppointmentStatus;
   origin: AppointmentOrigin;
   notes?: string;
+  cancellationReason?: string; // motivo obrigatorio ao cancelar (doc 05)
+  noShowReason?: string; // motivo opcional ao marcar como nao compareceu (doc 05)
   seriesId?: Id; // presente quando faz parte de uma serie recorrente
-  // Rastro de remarcacao: slots anteriores (mais antigo primeiro).
-  rescheduledFrom?: { date: DateISO; start: TimeISO; professionalId: Id }[];
+  // Rastro de remarcacao: slots anteriores (mais antigo primeiro) + motivo informado.
+  rescheduledFrom?: { date: DateISO; start: TimeISO; professionalId: Id; reason?: string }[];
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
@@ -39,10 +41,17 @@ export type CreateAppointment = Omit<
 export type UpdateAppointment = Partial<CreateAppointment>;
 
 // Remarcacao: move data/horario/profissional (mantem cliente e servico).
+// O motivo e opcional e, quando informado, fica no rastro do historico (doc 05).
 export interface RescheduleAppointment {
   date?: DateISO;
   start?: TimeISO;
   professionalId?: Id;
+  reason?: string;
+}
+
+// Cancelamento: exige motivo; o registro permanece no historico (doc 05).
+export interface CancelAppointment {
+  reason: string;
 }
 
 /**

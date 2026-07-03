@@ -79,7 +79,7 @@ export function useRescheduleSeriesFuture() {
       payload,
     }: {
       id: Id;
-      payload: { start?: string; professionalId?: Id };
+      payload: { start?: string; professionalId?: Id; reason?: string };
     }) => appointmentsService.rescheduleSeriesFuture(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
@@ -90,6 +90,24 @@ export function useSetAppointmentStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: Id; status: AppointmentStatus }) =>
       appointmentsService.setStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
+export function useCancelAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: Id; reason: string }) =>
+      appointmentsService.cancel(id, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
+  });
+}
+
+export function useMarkNoShow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: Id; reason?: string }) =>
+      appointmentsService.markNoShow(id, reason),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
