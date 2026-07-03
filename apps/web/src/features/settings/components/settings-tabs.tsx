@@ -24,7 +24,7 @@ const TABS: { value: Tab; label: string; description: string }[] = [
     value: "dados",
     label: "Dados de exemplo",
     description:
-      "Suas alterações ficam salvas no navegador (localStorage). Restaurar recarrega o catálogo de exemplo; zerar limpa tudo para você cadastrar do zero.",
+      "Suas alterações ficam salvas no navegador (localStorage). Restaurar recarrega o catálogo de exemplo; zerar limpa tudo (mantendo só o Proprietário) para simular uma configuração inicial do zero.",
   },
 ];
 

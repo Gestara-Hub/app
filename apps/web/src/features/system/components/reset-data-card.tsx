@@ -37,7 +37,7 @@ export function ResetDataActions() {
   async function handleClear() {
     try {
       await clear.mutateAsync();
-      toast.success("Mock zerado. Cadastre tudo do zero.");
+      toast.success("Mock zerado — só o Proprietário foi mantido. Cadastre tudo do zero.");
       setClearOpen(false);
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível zerar o mock."));
@@ -91,8 +91,9 @@ export function ResetDataActions() {
             <AlertDialogTitle>Zerar o mock?</AlertDialogTitle>
             <AlertDialogDescription>
               Remove todos os clientes, equipe, cargos, serviços, categorias,
-              agendamentos e bloqueios. A organização e a unidade são mantidas.
-              Esta ação não pode ser desfeita.
+              agendamentos, bloqueios e os demais usuários. A organização, a
+              unidade e o usuário Proprietário são mantidos, para simular uma
+              configuração inicial do zero. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

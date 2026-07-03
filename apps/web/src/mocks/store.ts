@@ -102,17 +102,23 @@ export function resetStore(): void {
 }
 
 /**
- * Esvazia o store (mantem organizacao e unidade) e re-grava no localStorage.
- * Util para simular um cadastro do zero.
+ * Esvazia o store para simular a configuracao inicial (onboarding): mantem
+ * organizacao, unidade e apenas o usuario Proprietario (owner). Todo o resto
+ * (equipe, cargos, servicos, categorias, clientes, agenda e demais usuarios) e
+ * limpo, para cadastrar do zero. Re-grava no localStorage.
  */
 export function clearStore(): void {
   const base = createInitialStore();
+  const owner = base.users.find((u) => u.profile === "owner");
+  // No setup inicial ainda nao ha equipe: remove o vinculo do Proprietario com
+  // um profissional para nao deixar uma referencia pendurada.
+  if (owner) delete owner.professionalId;
   Object.assign(store, {
     organization: base.organization,
     unit: base.unit,
     clients: [],
     professionals: [],
-    users: base.users,
+    users: owner ? [owner] : base.users,
     roles: [],
     categories: [],
     services: [],
