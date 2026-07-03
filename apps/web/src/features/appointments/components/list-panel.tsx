@@ -21,9 +21,8 @@ import { formatCents } from "@gestarahub/core/format";
 import { appointmentStatusLabel } from "@/lib/labels";
 import { todayISO } from "@gestarahub/core/date";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
-import { useCan, useCurrentUser } from "@/features/auth/session-provider";
-import { scopedProfessionalId } from "@/features/auth/scope";
-import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
+import { useCan, useCurrentUser, scopedProfessionalId } from "@/features/auth";
+import { useProfessionals } from "@/features/professionals";
 import { useAppointments } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
 

@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { formatCents, formatDuration } from "@gestarahub/core/format";
 import { recordStatusLabel } from "@/lib/labels";
 import type { RecordStatus, Service, ServiceFilter } from "@gestarahub/contracts";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/features/categories";
 import { useServices } from "../hooks/use-services";
 
 interface ServicesListProps {

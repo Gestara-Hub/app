@@ -30,9 +30,9 @@ import { addMinutesToTime } from "@gestarahub/core/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@gestarahub/contracts";
 import type { AppointmentView, CreateAppointment } from "@gestarahub/contracts";
-import { useClients } from "@/features/clients/hooks/use-clients";
-import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
-import { useServices } from "@/features/services/hooks/use-services";
+import { useClients } from "@/features/clients";
+import { useProfessionals } from "@/features/professionals";
+import { useServices } from "@/features/services";
 import {
   useCreateAppointment,
   useUpdateAppointment,

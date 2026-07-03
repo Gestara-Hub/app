@@ -23,7 +23,7 @@ import {
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type { CreateTimeBlock } from "@gestarahub/contracts";
-import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
+import { useProfessionals } from "@/features/professionals";
 import { useCreateTimeBlock } from "../hooks/use-time-blocks";
 import { blockFormSchema, type BlockFormValues } from "../block-schema";
 

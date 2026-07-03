@@ -22,8 +22,8 @@ import type {
   Weekday,
   WorkingHours,
 } from "@gestarahub/contracts";
-import { useRoles } from "@/features/roles/hooks/use-roles";
-import { useUnit } from "@/features/settings/hooks/use-settings";
+import { useRoles } from "@/features/roles";
+import { useUnit } from "@/features/settings";
 import {
   useCreateProfessional,
   useUpdateProfessional,

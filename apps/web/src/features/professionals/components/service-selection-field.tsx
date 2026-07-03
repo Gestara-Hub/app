@@ -5,8 +5,8 @@ import {
   MultiSelectField,
   type MultiSelectOption,
 } from "@/components/form/multi-select-field";
-import { useServices } from "@/features/services/hooks/use-services";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useServices } from "@/features/services";
+import { useCategories } from "@/features/categories";
 
 interface ServiceSelectionFieldProps<T extends FieldValues> {
   name: Path<T>;

@@ -20,8 +20,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
 import type { AppointmentView } from "@gestarahub/contracts";
-import { useCan, useCurrentUser } from "@/features/auth/session-provider";
-import { scopedProfessionalId } from "@/features/auth/scope";
+import { useCan, useCurrentUser, scopedProfessionalId } from "@/features/auth";
 import { CalendarPanel } from "./calendar-panel";
 import { ListPanel } from "./list-panel";
 import { AppointmentFormDialog } from "./appointment-form-dialog";

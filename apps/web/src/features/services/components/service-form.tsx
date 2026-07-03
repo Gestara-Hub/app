@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID } from "@/config/tenant";
 import type { CreateService, Service } from "@gestarahub/contracts";
-import { useCategories } from "@/features/categories/hooks/use-categories";
+import { useCategories } from "@/features/categories";
 import { useCreateService, useUpdateService } from "../hooks/use-services";
 import {
   serviceFormSchema,

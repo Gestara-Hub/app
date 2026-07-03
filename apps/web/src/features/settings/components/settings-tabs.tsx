@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ResetDataActions } from "@/features/system/components/reset-data-card";
+import { ResetDataActions } from "@/features/system";
 import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 

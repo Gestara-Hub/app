@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { UserView } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth/session-provider";
+import { useCan } from "@/features/auth";
 import { useUpdateUser } from "../hooks/use-users";
 import { UsersList } from "./users-list";
 import { UserFormDialog } from "./user-form-dialog";

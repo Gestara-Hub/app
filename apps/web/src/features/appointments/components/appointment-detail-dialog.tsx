@@ -48,7 +48,7 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { userInitials } from "@/lib/session";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth/session-provider";
+import { useCan } from "@/features/auth";
 import { useAppointment, useSetAppointmentStatus } from "../hooks/use-appointments";
 import { AppointmentStatusBadge } from "./appointment-status-badge";
 

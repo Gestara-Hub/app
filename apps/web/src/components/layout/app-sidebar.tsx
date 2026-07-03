@@ -19,7 +19,7 @@ import {
 import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
-import { useCan } from "@/features/auth/session-provider";
+import { useCan } from "@/features/auth";
 import { FOOTER_NAV, MAIN_NAV, isNavItemActive, type NavItem } from "./nav";
 
 function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {

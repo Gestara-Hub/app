@@ -21,8 +21,8 @@ import { normalizeText } from "@/lib/text";
 import { ORG_ID } from "@/config/tenant";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
-import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
-import { useCurrentUser } from "@/features/auth/session-provider";
+import { useProfessionals } from "@/features/professionals";
+import { useCurrentUser } from "@/features/auth";
 import { useCreateUser, useUpdateUser } from "../hooks/use-users";
 import { userFormSchema, type UserFormValues } from "../user-schema";
 

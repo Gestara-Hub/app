@@ -17,7 +17,7 @@ import {
 import { signOut, switchUser } from "@/app/(auth)/actions";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
-import { useCurrentUser } from "@/features/auth/session-provider";
+import { useCurrentUser } from "@/features/auth";
 import { useUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {

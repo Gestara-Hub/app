@@ -20,9 +20,8 @@ import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
 import type { AppointmentStatus } from "@gestarahub/contracts";
-import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
-import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
-import { useAppointments } from "@/features/appointments/hooks/use-appointments";
+import { useProfessionals } from "@/features/professionals";
+import { AppointmentStatusBadge, useAppointments } from "@/features/appointments";
 
 // Receita estimada considera confirmados, em atendimento e concluidos (doc 05).
 const REVENUE_STATUSES = new Set<AppointmentStatus>([
