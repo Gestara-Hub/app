@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { UserView } from "@/types";
+import type { UserView } from "@gestarahub/contracts";
 import { UserForm } from "./user-form";
 
 interface UserFormDialogProps {

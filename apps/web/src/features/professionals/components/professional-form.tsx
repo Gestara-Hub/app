@@ -21,7 +21,7 @@ import type {
   ProfessionalView,
   Weekday,
   WorkingHours,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { useRoles } from "@/features/roles/hooks/use-roles";
 import { useUnit } from "@/features/settings/hooks/use-settings";
 import {

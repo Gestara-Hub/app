@@ -6,7 +6,7 @@ import type {
   ProfessionalFilter,
   ProfessionalView,
   UpdateProfessional,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   newId,

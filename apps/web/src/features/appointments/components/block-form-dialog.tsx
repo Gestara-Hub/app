@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
-import type { CreateTimeBlock } from "@/types";
+import type { CreateTimeBlock } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useCreateTimeBlock } from "../hooks/use-time-blocks";
 import { blockFormSchema, type BlockFormValues } from "../block-schema";

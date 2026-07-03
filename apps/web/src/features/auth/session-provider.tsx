@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { can as canFn } from "@/lib/permissions";
-import type { Permission, UserView } from "@/types";
+import type { Permission, UserView } from "@gestarahub/contracts";
 
 interface SessionContextValue {
   user: UserView;

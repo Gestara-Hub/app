@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { recordStatusLabel } from "@/lib/labels";
-import type { RecordStatus } from "@/types";
+import type { RecordStatus } from "@gestarahub/contracts";
 
 /** Forma minima que uma entidade gerenciavel precisa ter. */
 export interface ManagedEntity {

@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { clientsService } from "@/services/clientsService";
-import type { ClientFilter, CreateClient, Id, UpdateClient } from "@/types";
+import type { ClientFilter, CreateClient, Id, UpdateClient } from "@gestarahub/contracts";
 
 export function useClients(filter?: ClientFilter) {
   return useQuery({

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Pacotes de workspace consumidos como fonte TS (sem build separado).
+  transpilePackages: ["@gestarahub/contracts"],
 };
 
 export default nextConfig;

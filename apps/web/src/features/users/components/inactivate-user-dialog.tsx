@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getErrorMessage } from "@/lib/api-error";
-import type { UserView } from "@/types";
+import type { UserView } from "@gestarahub/contracts";
 import { useInactivateUser } from "../hooks/use-users";
 
 interface InactivateUserDialogProps {

@@ -3,7 +3,7 @@ import type {
   Frequency,
   RecordStatus,
   UserProfile,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 /**
  * Rotulos de exibicao (PT, vistos pelo usuario) para os codigos de enum.

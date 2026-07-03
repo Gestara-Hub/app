@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { ORG_ID } from "@/config/tenant";
-import type { CreateService, Service } from "@/types";
+import type { CreateService, Service } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useCreateService, useUpdateService } from "../hooks/use-services";
 import {

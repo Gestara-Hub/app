@@ -7,7 +7,7 @@ import type {
   User,
   UserFilter,
   UserView,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   apiError,

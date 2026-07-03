@@ -8,7 +8,7 @@ import type {
   ServiceFilter,
   TimeBlockFilter,
   UserFilter,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 /**
  * Convencao de queryKeys (hierarquia estavel):

@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Professional } from "@/types";
+import type { Professional } from "@gestarahub/contracts";
 import { useInactivateProfessional } from "../hooks/use-professionals";
 
 interface InactivateProfessionalDialogProps {

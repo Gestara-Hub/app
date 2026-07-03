@@ -12,7 +12,7 @@ import type {
   Id,
   TimeBlockFilter,
   UpdateTimeBlock,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 export function useTimeBlocks(filter?: TimeBlockFilter) {
   return useQuery({

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { appointmentStatusLabel } from "@/lib/labels";
-import type { AppointmentStatus } from "@/types";
+import type { AppointmentStatus } from "@gestarahub/contracts";
 
 const BADGE: Record<AppointmentStatus, string> = {
   pending:

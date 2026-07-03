@@ -5,7 +5,7 @@ import type {
   Service,
   ServiceFilter,
   UpdateService,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   newId,

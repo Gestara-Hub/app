@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Service } from "@/types";
+import type { Service } from "@gestarahub/contracts";
 import { ServiceForm } from "./service-form";
 
 interface ServiceFormDialogProps {

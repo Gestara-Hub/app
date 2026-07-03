@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage } from "@/lib/api-error";
-import type { BusinessHoursDay, Unit, Weekday } from "@/types";
+import type { BusinessHoursDay, Unit, Weekday } from "@gestarahub/contracts";
 import { useUnit, useUpdateUnit } from "../hooks/use-settings";
 
 const WEEKDAYS: { weekday: Weekday; label: string }[] = [

@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format";
 import { todayISO } from "@/lib/date";
-import type { AppointmentStatus } from "@/types";
+import type { AppointmentStatus } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
 import { useAppointments } from "@/features/appointments/hooks/use-appointments";

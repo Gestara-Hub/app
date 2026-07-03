@@ -35,7 +35,7 @@ import {
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { isPastSlot } from "@/lib/date";
 import { addMinutesToTime } from "@/lib/scheduling";
-import type { AppointmentView, SeriesScope } from "@/types";
+import type { AppointmentView, SeriesScope } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import {
   useRescheduleAppointment,

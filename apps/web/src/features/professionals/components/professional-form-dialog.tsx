@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { ProfessionalView } from "@/types";
+import type { ProfessionalView } from "@gestarahub/contracts";
 import { ProfessionalForm } from "./professional-form";
 
 interface ProfessionalFormDialogProps {

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { can } from "@/lib/permissions";
-import type { Permission, User } from "@/types";
+import type { Permission, User } from "@gestarahub/contracts";
 
 export interface NavItem {
   /** Rotulo visivel (PT acentuado). */

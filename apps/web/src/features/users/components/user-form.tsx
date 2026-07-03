@@ -19,7 +19,7 @@ import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { userProfileLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID } from "@/config/tenant";
-import type { CreateUser, UserProfile, UserView } from "@/types";
+import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useCurrentUser } from "@/features/auth/session-provider";

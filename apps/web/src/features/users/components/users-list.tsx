@@ -33,7 +33,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { recordStatusLabel, userProfileLabel } from "@/lib/labels";
 import { canManageProfile } from "@/lib/permissions";
-import type { RecordStatus, UserView } from "@/types";
+import type { RecordStatus, UserView } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth/session-provider";
 import { useUsers } from "../hooks/use-users";
 

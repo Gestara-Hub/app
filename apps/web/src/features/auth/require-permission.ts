@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { can } from "@/lib/permissions";
 import { firstAllowedRoute } from "@/components/layout/nav";
-import type { Permission, UserView } from "@/types";
+import type { Permission, UserView } from "@gestarahub/contracts";
 import { getCurrentUser } from "./get-current-user";
 
 /**

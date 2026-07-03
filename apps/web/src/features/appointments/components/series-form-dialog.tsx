@@ -30,7 +30,7 @@ import {
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { frequencyLabel } from "@/lib/labels";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
-import type { CreateRecurrenceSeries, Frequency } from "@/types";
+import type { CreateRecurrenceSeries, Frequency } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients/hooks/use-clients";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";
 import { useServices } from "@/features/services/hooks/use-services";

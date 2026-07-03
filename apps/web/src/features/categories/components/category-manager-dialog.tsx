@@ -5,7 +5,7 @@ import {
   type EntityManagerLabels,
 } from "@/components/shared/entity-manager-dialog";
 import { ORG_ID } from "@/config/tenant";
-import type { Category } from "@/types";
+import type { Category } from "@gestarahub/contracts";
 import {
   useCategories,
   useCreateCategory,

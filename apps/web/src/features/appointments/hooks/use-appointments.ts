@@ -14,7 +14,7 @@ import type {
   Id,
   RescheduleAppointment,
   UpdateAppointment,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 export function useAppointments(filter?: AppointmentFilter) {
   return useQuery({

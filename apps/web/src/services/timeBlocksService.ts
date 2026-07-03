@@ -4,7 +4,7 @@ import type {
   TimeBlock,
   TimeBlockFilter,
   UpdateTimeBlock,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   newId,

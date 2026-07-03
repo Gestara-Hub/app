@@ -1,4 +1,4 @@
-import type { Permission, User, UserProfile } from "@/types";
+import type { Permission, User, UserProfile } from "@gestarahub/contracts";
 
 /**
  * Blocos de capacidade reutilizaveis. Cada permissao e declarada uma unica vez

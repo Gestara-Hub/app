@@ -8,7 +8,7 @@ import { InputPhone, InputText } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Organization, Unit } from "@/types";
+import type { Organization, Unit } from "@gestarahub/contracts";
 import {
   useOrganization,
   useUnit,

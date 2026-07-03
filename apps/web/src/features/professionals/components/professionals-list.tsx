@@ -36,7 +36,7 @@ import type {
   ProfessionalFilter,
   ProfessionalView,
   RecordStatus,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { useProfessionals } from "../hooks/use-professionals";
 
 interface ProfessionalsListProps {

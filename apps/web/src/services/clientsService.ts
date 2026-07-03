@@ -5,7 +5,7 @@ import type {
   CreateClient,
   Id,
   UpdateClient,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   newId,

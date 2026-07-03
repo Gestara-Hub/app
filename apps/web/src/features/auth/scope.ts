@@ -1,4 +1,4 @@
-import type { User } from "@/types";
+import type { User } from "@gestarahub/contracts";
 
 /**
  * Escopo de dados do perfil Profissional: quando o usuario e "professional" e

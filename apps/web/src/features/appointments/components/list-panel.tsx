@@ -20,7 +20,7 @@ import { ListItemCard } from "@/components/shared/list-item-card";
 import { formatCents } from "@/lib/format";
 import { appointmentStatusLabel } from "@/lib/labels";
 import { todayISO } from "@/lib/date";
-import type { AppointmentStatus, AppointmentView } from "@/types";
+import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
 import { useCan, useCurrentUser } from "@/features/auth/session-provider";
 import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";

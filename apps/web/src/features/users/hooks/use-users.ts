@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { usersService } from "@/services/usersService";
-import type { CreateUser, Id, UpdateUser, UserFilter } from "@/types";
+import type { CreateUser, Id, UpdateUser, UserFilter } from "@gestarahub/contracts";
 
 export function useUsers(filter?: UserFilter) {
   return useQuery({

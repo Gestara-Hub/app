@@ -32,7 +32,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@/lib/format";
 import { recordStatusLabel } from "@/lib/labels";
-import type { Client, ClientFilter, RecordStatus } from "@/types";
+import type { Client, ClientFilter, RecordStatus } from "@gestarahub/contracts";
 import { useClients } from "../hooks/use-clients";
 
 interface ClientsListProps {

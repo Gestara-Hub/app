@@ -4,7 +4,7 @@ import type {
   ApiErrorField,
   DateTimeISO,
   Id,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { mockConfig } from "./config";
 import { persist } from "./store";
 

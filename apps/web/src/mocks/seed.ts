@@ -16,7 +16,7 @@ import type {
   User,
   Weekday,
   WorkingHours,
-} from "@/types";
+} from "@gestarahub/contracts";
 import {
   addMinutesToTime,
   generateOccurrenceDates,

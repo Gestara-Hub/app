@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { servicesService } from "@/services/servicesService";
-import type { CreateService, Id, ServiceFilter, UpdateService } from "@/types";
+import type { CreateService, Id, ServiceFilter, UpdateService } from "@gestarahub/contracts";
 
 export function useServices(filter?: ServiceFilter) {
   return useQuery({

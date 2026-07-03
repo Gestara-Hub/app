@@ -12,7 +12,7 @@ import type {
   CreateCategory,
   Id,
   UpdateCategory,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 export function useCategories(filter?: CategoryFilter) {
   return useQuery({

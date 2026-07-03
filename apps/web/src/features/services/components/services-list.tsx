@@ -32,7 +32,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
 import { formatCents, formatDuration } from "@/lib/format";
 import { recordStatusLabel } from "@/lib/labels";
-import type { RecordStatus, Service, ServiceFilter } from "@/types";
+import type { RecordStatus, Service, ServiceFilter } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories/hooks/use-categories";
 import { useServices } from "../hooks/use-services";
 

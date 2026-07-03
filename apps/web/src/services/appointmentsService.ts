@@ -10,7 +10,7 @@ import type {
   Service,
   TimeISO,
   UpdateAppointment,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   apiError,

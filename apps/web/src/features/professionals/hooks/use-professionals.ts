@@ -12,7 +12,7 @@ import type {
   Id,
   ProfessionalFilter,
   UpdateProfessional,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 export function useProfessionals(filter?: ProfessionalFilter) {
   return useQuery({

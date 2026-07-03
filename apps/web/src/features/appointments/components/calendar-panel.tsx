@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { weekdayOf } from "@/lib/scheduling";
 import { todayISO } from "@/lib/date";
-import type { AppointmentView } from "@/types";
+import type { AppointmentView } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth/session-provider";
 import { scopedProfessionalId } from "@/features/auth/scope";
 import { useProfessionals } from "@/features/professionals/hooks/use-professionals";

@@ -5,7 +5,7 @@ import {
   type EntityManagerLabels,
 } from "@/components/shared/entity-manager-dialog";
 import { ORG_ID } from "@/config/tenant";
-import type { Role } from "@/types";
+import type { Role } from "@gestarahub/contracts";
 import {
   useCreateRole,
   useInactivateRole,

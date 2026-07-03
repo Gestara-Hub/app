@@ -10,7 +10,7 @@ import type {
   TimeBlock,
   Unit,
   User,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { mockConfig } from "./config";
 import { createInitialStore } from "./seed";
 

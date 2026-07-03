@@ -1,4 +1,4 @@
-import { isApiError, type ApiErrorField } from "@/types";
+import { isApiError, type ApiErrorField } from "@gestarahub/contracts";
 
 /** Extrai a mensagem amigavel de um erro de service, com fallback. */
 export function getErrorMessage(error: unknown, fallback: string): string {

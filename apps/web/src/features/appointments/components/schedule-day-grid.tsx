@@ -12,7 +12,7 @@ import type {
   AppointmentView,
   ProfessionalView,
   TimeBlock,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 // Escala vertical da janela diaria.
 const HOUR_HEIGHT = 72; // px por hora

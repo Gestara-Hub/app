@@ -1,4 +1,4 @@
-import type { BusinessHoursDay, Organization, Unit } from "@/types";
+import type { BusinessHoursDay, Organization, Unit } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import { simulateRead, simulateWrite } from "@/mocks/helpers";
 

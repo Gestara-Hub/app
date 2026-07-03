@@ -5,7 +5,7 @@ import type {
   Id,
   RecurrenceSeries,
   Service,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import {
   apiError,

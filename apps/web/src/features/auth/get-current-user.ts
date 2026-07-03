@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/session";
 import { store } from "@/mocks/store";
-import type { UserView } from "@/types";
+import type { UserView } from "@gestarahub/contracts";
 
 /**
  * Resolve o usuario logado no SERVER: le o `userId` do cookie e busca no store.

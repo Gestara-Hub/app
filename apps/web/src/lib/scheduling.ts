@@ -6,7 +6,7 @@ import type {
   TimeISO,
   Weekday,
   WorkingHours,
-} from "@/types";
+} from "@gestarahub/contracts";
 
 /**
  * Nucleo de agenda (puro, sem store): aritmetica de horario, conflito de slot

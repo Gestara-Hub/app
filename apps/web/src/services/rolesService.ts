@@ -5,7 +5,7 @@ import type {
   Role,
   RoleFilter,
   UpdateRole,
-} from "@/types";
+} from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import { normalizeText } from "@/lib/text";
 import {

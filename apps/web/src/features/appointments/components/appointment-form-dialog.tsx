@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { AppointmentView } from "@/types";
+import type { AppointmentView } from "@gestarahub/contracts";
 import { AppointmentForm } from "./appointment-form";
 
 interface AppointmentFormDialogProps {

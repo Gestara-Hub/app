@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { rolesService } from "@/services/rolesService";
-import type { CreateRole, Id, RoleFilter, UpdateRole } from "@/types";
+import type { CreateRole, Id, RoleFilter, UpdateRole } from "@gestarahub/contracts";
 
 export function useRoles(filter?: RoleFilter) {
   return useQuery({

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@/lib/api-error";
-import type { Service } from "@/types";
+import type { Service } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth/session-provider";
 import { CategoryManagerDialog } from "@/features/categories/components/category-manager-dialog";
 import { useUpdateService } from "../hooks/use-services";

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@/lib/api-error";
 import { ORG_ID } from "@/config/tenant";
-import type { Client, CreateClient } from "@/types";
+import type { Client, CreateClient } from "@gestarahub/contracts";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
 
