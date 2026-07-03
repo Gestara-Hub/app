@@ -1,5 +1,14 @@
 # Agenda com react-big-calendar
 
+> ⚠️ **DESATUALIZADO / SUPERSEDED.** A Agenda foi implementada **à mão** (React +
+> Tailwind), **sem** `react-big-calendar` nem qualquer lib externa de calendario.
+> `date-fns` é usado apenas para cálculos/formatos de data. Este documento
+> descreve a decisão original (avaliada e revertida) e permanece como registro de
+> contexto/requisitos. Implementação real:
+> `apps/web/src/features/appointments/components/` (`calendar-panel.tsx`,
+> `schedule-day-grid.tsx` — views Dia/Semana/Mês). Motivos da reversão: controle
+> total do layout/UX, zero dependência externa e sem risco de features pagas.
+
 ## Decisao
 
 A Agenda do MVP usa a biblioteca **react-big-calendar** (gratuita) como motor de

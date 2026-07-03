@@ -74,9 +74,10 @@ apps/web/
 │  ├─ features/<dominio>/          # UI por dominio (components/, hooks/)
 │  ├─ services/                    # camada de dados async tipada (contrato de API)
 │  ├─ mocks/                       # store em memoria + seed Corte Nobre
-│  ├─ lib/                         # utils (cn), queryKeys, format, providers
-│  ├─ hooks/                       # hooks genericos reutilizaveis
-│  └─ types/                       # contratos (entidades, enums, schemas Zod)
+│  ├─ lib/                         # utils (cn), queryKeys, providers, labels, session
+│  │                               #   (puros scheduling/date/format/api-error -> @gestarahub/core)
+│  └─ hooks/                       # hooks genericos reutilizaveis
+│                                  # (types/ movido para o pacote @gestarahub/contracts)
 ├─ middleware.ts                   # guarda de rota mock (cookie de sessao)
 ├─ public/                         # assets estaticos
 ├─ next.config.ts                  # config do Next
@@ -192,12 +193,45 @@ Validacao de formularios: padrao RHF `mode: onSubmit` + `reValidateMode: onChang
 | UI nunca importa `mocks` | Acesso a dados so via hooks -> services. Excecao unica: a cola de sessao server `features/auth/get-current-user.ts` le `mocks/store` para resolver o usuario do cookie (infra de sessao, nao e UI). |
 | RBAC deriva do perfil | Permissoes vem de `PROFILE_PERMISSIONS`/`can()` (`lib/permissions`); a UI checa via `useCan()`/`requirePermission`, nunca compara `profile === '...'`. |
 | Services sao o unico ponto que toca o store | Trocar mock por API real = mudar so `src/services/*`. |
-| Tipos/contratos vivem em `src/types` | Entidades, enums e schemas Zod. Mocks e services importam de `types`, nunca o contrario. |
+| Tipos/contratos vivem no pacote `@gestarahub/contracts` | Entidades, enums e schemas Zod (era `src/types`). Mocks e services importam do contrato, nunca o contrario. |
+| Features so se conhecem pelo barrel publico | Uma feature importa outra apenas via `@/features/<x>` (o `index.ts`), nunca pelos internals (`hooks/`, `components/`). |
 | `'use client'` so onde necessario | Estado, efeitos, Query, RHF, eventos ou libs client-only. Default e RSC. |
 | Providers num client wrapper | Root layout (RSC) monta o wrapper `'use client'` com Query/Theme/Toaster. |
 | Features nao importam umas das outras diretamente | Compartilhamento sobe para `components/`, `lib/` ou `types/`. |
 | Hooks de dados nao chamam o store | So chamam services. |
 | Estado de servidor mora no Query | Nao duplicar dados de servidor em estado de UI. |
+
+### Pacotes compartilhados e prontidao para microfrontend (MFE)
+
+O monolito vive em `apps/web`, mas as **costuras** de um futuro split (MFE / Next
+Multi-Zones) ja estao desenhadas e **aplicadas por lint** — extrair depois vira
+tarefa mecanica, nao um rewrite.
+
+- **Pacotes de workspace** (`packages/*`, consumidos como fonte TS via
+  `transpilePackages`):
+  - `@gestarahub/contracts` — o contrato de dominio (entidades, enums, schemas).
+    Todo o resto depende dele; ele nao depende de nada do app.
+  - `@gestarahub/core` — logica pura, framework-agnostica: `scheduling` (motor de
+    conflito), `date`, `format`, `api-error`. Reutilizavel por qualquer app futuro.
+  - O **design system** (`components/ui|form|shared`) fica no app por ora; a
+    extracao para `@gestarahub/ui` acontece no split (envolve config de conteudo
+    do Tailwind v4 cross-package).
+
+- **Fronteiras aplicadas** (ESLint `no-restricted-imports`, ver
+  `apps/web/eslint.config.mjs`):
+  - Camada compartilhada (design system + `lib` + `config`) **nao** importa de
+    `features` nem do `mocks` store.
+  - Cada **feature** so importa outra pelo **barrel publico** (`@/features/<x>`),
+    nunca pelos internals — cada feature e uma unidade trocavel.
+  - **Nenhuma** feature/UI acessa o `mocks` store direto (so via `services`).
+    Excecao unica e transitoria: a resolucao de sessao server-side em
+    `features/auth` (vira auth/API real depois).
+
+- **Plataforma vs. workflow:** `clients`, `professionals`, `services`,
+  `categories`, `roles`, `users`, `settings`, `auth` sao **dados de referencia
+  transversais** (plataforma) consumidos por features de workflow como `schedule`
+  (agenda) e `dashboard`. No split, a plataforma vira camada/contrato
+  compartilhado; as features de workflow viram as zonas.
 
 ## Organizacao por feature
 
@@ -220,7 +254,7 @@ Dominios do MVP (alinhados a navegacao canonica; rota tecnica em ingles, rotulo 
 | Feature (pasta) | Rota | Navegacao (rotulo PT) | Contexto |
 | --- | --- | --- | --- |
 | `dashboard` | `/` | Dashboard | Resumo operacional do dia. |
-| `schedule` | `/schedule` | Agenda | Calendario (react-big-calendar), bloqueios, recorrencia. |
+| `schedule` (feature `appointments`) | `/schedule` | Agenda | Calendario hand-built (React + Tailwind, sem lib externa), bloqueios, recorrencia. |
 | `appointments` | `/appointments` | Agendamentos | Lista/tabela complementar a agenda. |
 | `clients` | `/clients`, `/clients/[id]` | Clientes | Cadastro, busca, historico. |
 | `team` | `/team`, `/team/[id]` | Equipe | Profissionais (rotulo "Profissional" no contexto de agendamento). |
