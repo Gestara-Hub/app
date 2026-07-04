@@ -17,7 +17,9 @@ const labels: EntityManagerLabels = {
   title: "Categorias",
   description: "Cadastre e gerencie as categorias de serviço.",
   nameLabel: "Nome da categoria",
-  namePlaceholder: "Ex.: Cabelo",
+  namePlaceholder: "Ex.: Consultas",
+  nameHint:
+    "Uma categoria agrupa serviços parecidos (ex.: Consultas, Sessões, Pacotes) para organizar o catálogo e filtrar a agenda. Todo serviço é vinculado a uma.",
   nameRequired: "Informe o nome da categoria.",
   createButton: "Criar categoria",
   empty: "Nenhuma categoria cadastrada ainda.",

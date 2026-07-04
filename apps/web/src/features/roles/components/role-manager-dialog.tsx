@@ -17,7 +17,9 @@ const labels: EntityManagerLabels = {
   title: "Cargos",
   description: "Cadastre e gerencie os cargos da equipe.",
   nameLabel: "Nome do cargo",
-  namePlaceholder: "Ex.: Barbeiro",
+  namePlaceholder: "Ex.: Atendente",
+  nameHint:
+    "Um cargo é a função do profissional na equipe (ex.: Atendente, Gerente, Especialista). Serve para organizar a equipe e os relatórios.",
   nameRequired: "Informe o nome do cargo.",
   createButton: "Criar cargo",
   empty: "Nenhum cargo cadastrado ainda.",

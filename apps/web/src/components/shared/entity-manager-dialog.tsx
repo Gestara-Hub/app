@@ -60,6 +60,8 @@ export interface EntityManagerLabels {
   description: string;
   nameLabel: string;
   namePlaceholder: string;
+  /** Texto descritivo abaixo do campo, explicando o que cadastrar (opcional). */
+  nameHint?: string;
   nameRequired: string;
   createButton: string;
   empty: string;
@@ -151,6 +153,7 @@ function CreateForm({
           name="name"
           label={labels.nameLabel}
           placeholder={labels.namePlaceholder}
+          hint={labels.nameHint}
           required
           disabled={createMut.isPending}
         />
