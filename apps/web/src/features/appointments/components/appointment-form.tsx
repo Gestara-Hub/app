@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useForm, useWatch, FormProvider, Controller, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import Link from "next/link";
+import { Info, Plus } from "lucide-react";
 import {
   ComboboxField,
   FieldShell,
@@ -68,6 +70,18 @@ export function AppointmentForm({
   const { data: clients } = useClients({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
   const { data: services } = useServices({ status: "active" });
+
+  // Um agendamento exige cliente + profissional + servico, cada um cadastrado em
+  // sua tela. Como sao tres, consolida os que faltam num aviso unico (evita
+  // repetir um alerta em cada campo). `undefined` durante o load nao conta.
+  const noClients = clients?.length === 0;
+  const noProfessionals = professionals?.length === 0;
+  const noServices = services?.length === 0;
+  const missingPrereqs = [
+    { key: "clients", label: "Clientes", href: "/clients", missing: noClients },
+    { key: "professionals", label: "Equipe", href: "/team", missing: noProfessionals },
+    { key: "services", label: "Serviços", href: "/services", missing: noServices },
+  ].filter((p) => p.missing);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
@@ -186,38 +200,68 @@ export function AppointmentForm({
   return (
     <FormProvider {...form}>
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
+        {missingPrereqs.length > 0 ? (
+          <div className="flex items-start gap-3 rounded-md border border-dashed bg-muted/40 p-3">
+            <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Antes de agendar, cadastre</p>
+                <p className="text-xs text-muted-foreground">
+                  Um agendamento precisa de cliente, profissional e serviço.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {missingPrereqs.map((prereq) => (
+                  <Button
+                    key={prereq.key}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <Link href={prereq.href}>
+                      <Plus className="size-3.5" />
+                      {prereq.label}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <ComboboxField<AppointmentFormValues>
           name="clientId"
           label="Cliente"
-          placeholder="Selecione o cliente"
+          placeholder={noClients ? "Nenhum cliente cadastrado" : "Selecione o cliente"}
           searchPlaceholder="Buscar cliente..."
           emptyMessage="Nenhum cliente."
           options={clientOptions}
           required
-          disabled={pending}
+          disabled={pending || noClients}
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ComboboxField<AppointmentFormValues>
             name="professionalId"
             label="Profissional"
-            placeholder="Selecione"
+            placeholder={noProfessionals ? "Nenhum profissional cadastrado" : "Selecione"}
             searchPlaceholder="Buscar profissional..."
             emptyMessage="Nenhum profissional."
             options={professionalOptions}
             required
-            disabled={pending}
+            disabled={pending || noProfessionals}
           />
           <MultiSelectField<AppointmentFormValues>
             name="serviceIds"
             label="Serviços"
-            placeholder="Selecione"
+            placeholder={noServices ? "Nenhum serviço cadastrado" : "Selecione"}
             searchPlaceholder="Buscar serviço..."
             emptyMessage="Nenhum serviço."
             options={serviceOptions}
             hint={endHint}
             required
-            disabled={pending}
+            disabled={pending || noServices}
           />
         </div>
 
@@ -274,7 +318,7 @@ export function AppointmentForm({
               Cancelar
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || missingPrereqs.length > 0}>
             {pending
               ? "Salvando..."
               : isEdit
