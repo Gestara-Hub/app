@@ -40,7 +40,11 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
               isActive={isNavItemActive(pathname, item.href)}
               tooltip={item.label}
             >
-              <Link href={item.href} onClick={closeMobileSidebar}>
+              <Link
+                href={item.href}
+                onClick={closeMobileSidebar}
+                data-tour={item.tourId}
+              >
                 <Icon />
                 <span>{item.label}</span>
               </Link>
@@ -86,7 +90,9 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <NavMenu items={mainItems} pathname={pathname} />
+            <div data-tour="sidebar-nav">
+              <NavMenu items={mainItems} pathname={pathname} />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

@@ -22,6 +22,7 @@ import { todayISO } from "@gestarahub/core/date";
 import type { AppointmentStatus } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals";
 import { AppointmentStatusBadge, useAppointments } from "@/features/appointments";
+import { Onboarding } from "@/features/onboarding";
 
 // Receita estimada considera confirmados, em atendimento e concluidos (doc 05).
 const REVENUE_STATUSES = new Set<AppointmentStatus>([
@@ -99,6 +100,8 @@ export function DashboardView() {
   return (
     <>
       <PageHeader title="Dashboard" description={`Visão geral · ${todayLabel}`} />
+
+      <Onboarding />
 
       {isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border py-16 text-center">

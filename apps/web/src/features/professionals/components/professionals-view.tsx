@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Briefcase, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ProfessionalView } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
+import { TeamOnboarding } from "@/features/onboarding";
 import { RoleManagerDialog } from "@/features/roles";
 import { useUpdateProfessional } from "../hooks/use-professionals";
 import { ProfessionalsList } from "./professionals-list";
@@ -22,7 +24,11 @@ export function ProfessionalsView() {
   const [inactivating, setInactivating] = useState<ProfessionalView | null>(
     null,
   );
-  const [rolesOpen, setRolesOpen] = useState(false);
+  // Deep-link do checklist de onboarding: /team?manage=roles abre o CRUD de Cargos.
+  const searchParams = useSearchParams();
+  const [rolesOpen, setRolesOpen] = useState(
+    () => searchParams.get("manage") === "roles",
+  );
 
   const updateMut = useUpdateProfessional();
   const canManage = useCan()("team:manage");
@@ -49,15 +55,19 @@ export function ProfessionalsView() {
     <>
       <PageHeader
         title="Equipe"
-        description="Profissionais da Corte Nobre — Matriz."
+        description="Profissionais da unidade e a disponibilidade de cada um."
       >
         {canManage ? (
           <>
-            <Button variant="outline" onClick={() => setRolesOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => setRolesOpen(true)}
+              data-tour="team-roles"
+            >
               <Briefcase className="size-4" />
               Cargos
             </Button>
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} data-tour="team-new">
               <Plus className="size-4" />
               Novo profissional
             </Button>
@@ -89,6 +99,8 @@ export function ProfessionalsView() {
       />
 
       <RoleManagerDialog open={rolesOpen} onOpenChange={setRolesOpen} />
+
+      <TeamOnboarding />
     </>
   );
 }

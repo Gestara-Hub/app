@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ResetDataActions } from "@/features/system";
 import { OrganizationSettingsForm } from "./organization-settings-card";
@@ -33,8 +34,17 @@ const TABS: { value: Tab; label: string; description: string }[] = [
  * painéis ficam montados e alternamos só a visibilidade, para não descartar
  * edições em andamento ao trocar de aba.
  */
+function isTab(value: string | null): value is Tab {
+  return value === "geral" || value === "horarios" || value === "dados";
+}
+
 export function SettingsTabs() {
-  const [tab, setTab] = useState<Tab>("geral");
+  const searchParams = useSearchParams();
+  // Deep-link: `/settings?tab=horarios` (ex.: passo do onboarding) abre a aba.
+  const initialTab: Tab = isTab(searchParams.get("tab"))
+    ? (searchParams.get("tab") as Tab)
+    : "geral";
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <div className="max-w-2xl">

@@ -19,6 +19,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Permissao minima para ver/acessar o item (RBAC). */
   permission: Permission;
+  /** Alvo do tour de onboarding (data-tour), quando destacado. */
+  tourId?: string;
 }
 
 // Itens canonicos do app shell (ordem do doc frontend/04).
@@ -27,14 +29,14 @@ export const MAIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view" },
   { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view" },
   { label: "Equipe", href: "/team", icon: Contact, permission: "team:view" },
-  { label: "Serviços", href: "/services", icon: Tag, permission: "services:view" },
-  { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view" },
+  { label: "Serviços", href: "/services", icon: Tag, permission: "services:view", tourId: "nav-services" },
+  { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view", tourId: "nav-agenda" },
 ];
 
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.
 export const FOOTER_NAV: NavItem[] = [
   { label: "Usuários", href: "/users", icon: UserCog, permission: "users:view" },
-  { label: "Configurações", href: "/settings", icon: Settings, permission: "settings:view" },
+  { label: "Configurações", href: "/settings", icon: Settings, permission: "settings:view", tourId: "nav-settings" },
 ];
 
 export function isNavItemActive(pathname: string, href: string): boolean {

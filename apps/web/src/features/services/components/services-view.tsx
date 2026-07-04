@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Tag } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Plus, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Service } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
+import { ServicesOnboarding } from "@/features/onboarding";
 import { CategoryManagerDialog } from "@/features/categories";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
@@ -20,7 +22,11 @@ export function ServicesView() {
     service?: Service;
   }>({ open: false });
   const [inactivating, setInactivating] = useState<Service | null>(null);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  // Deep-link do checklist de onboarding: /services?manage=categories abre o CRUD.
+  const searchParams = useSearchParams();
+  const [categoriesOpen, setCategoriesOpen] = useState(
+    () => searchParams.get("manage") === "categories",
+  );
 
   const updateMut = useUpdateService();
   const canManage = useCan()("services:manage");
@@ -44,15 +50,19 @@ export function ServicesView() {
     <>
       <PageHeader
         title="Serviços"
-        description="Catálogo de serviços da Corte Nobre — Matriz."
+        description="Catálogo de serviços da unidade."
       >
         {canManage ? (
           <>
-            <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
-              <Tag className="size-4" />
+            <Button
+              variant="outline"
+              onClick={() => setCategoriesOpen(true)}
+              data-tour="services-categories"
+            >
+              <Tags className="size-4" />
               Categorias
             </Button>
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} data-tour="services-new">
               <Plus className="size-4" />
               Novo serviço
             </Button>
@@ -87,6 +97,8 @@ export function ServicesView() {
         open={categoriesOpen}
         onOpenChange={setCategoriesOpen}
       />
+
+      <ServicesOnboarding />
     </>
   );
 }
