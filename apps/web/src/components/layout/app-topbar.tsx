@@ -18,10 +18,12 @@ import { signOut, switchUser } from "@/app/(auth)/actions";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
+import { useUnit } from "@/features/settings";
 import { useUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {
   const user = useCurrentUser();
+  const { data: unit } = useUnit();
   const { data: users } = useUsers({ status: "active" });
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -32,7 +34,7 @@ export function AppTopbar() {
 
       <div className="hidden items-center gap-2 text-sm font-medium sm:flex">
         <Building2 className="size-4 text-muted-foreground" />
-        Corte Nobre — Matriz
+        {unit?.name ?? ""}
       </div>
 
       <div className="ml-auto flex items-center gap-2">

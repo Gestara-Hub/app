@@ -42,7 +42,7 @@ export function ClientsView() {
     <>
       <PageHeader
         title="Clientes"
-        description="Cadastro de clientes da Corte Nobre."
+        description="Cadastro e histórico de clientes."
       >
         {canManage ? (
           <Button onClick={openCreate}>
