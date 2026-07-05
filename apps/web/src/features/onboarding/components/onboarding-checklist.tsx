@@ -1,35 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Briefcase,
-  CalendarPlus,
-  Check,
-  Clock,
-  Compass,
-  Contact,
-  Lock,
-  Tag,
-  Tags,
-  Users,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Check, Compass, Lock, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "../hooks/use-onboarding-steps";
 
-// Icone e rotulo curto (para o texto "Requer: ...") por passo.
-const STEP_ICON: Record<string, LucideIcon> = {
-  hours: Clock,
-  categories: Tags,
-  services: Tag,
-  roles: Briefcase,
-  team: Contact,
-  clients: Users,
-  appointment: CalendarPlus,
-};
+// Rotulo curto por passo, para o texto "Requer: ...".
 const STEP_SHORT: Record<string, string> = {
   hours: "horário",
   categories: "categorias",
@@ -40,87 +17,32 @@ const STEP_SHORT: Record<string, string> = {
   appointment: "agendamento",
 };
 
-function StepTile({
-  step,
-  locked,
-  missing,
-}: {
-  step: OnboardingStep;
-  locked: boolean;
-  missing: string[];
-}) {
-  const Icon = STEP_ICON[step.id] ?? Clock;
-  const state = step.done ? "done" : locked ? "locked" : "todo";
-
-  return (
-    <div
-      className={cn(
-        "flex h-full flex-col gap-3 rounded-lg border p-4 transition-colors",
-        state === "done" && "border-primary/30 bg-primary/5",
-        state === "locked" && "bg-muted/30",
-      )}
-    >
-      <div className="flex items-start justify-between">
-        <div
-          className={cn(
-            "flex size-10 items-center justify-center rounded-full",
-            state === "done"
-              ? "bg-primary/15 text-primary"
-              : state === "locked"
-                ? "bg-muted text-muted-foreground/70"
-                : "bg-secondary text-secondary-foreground",
-          )}
-        >
-          <Icon className="size-5" />
-        </div>
-        {state === "done" ? (
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Check className="size-3.5" />
-          </span>
-        ) : state === "locked" ? (
-          <Lock className="size-4 text-muted-foreground" />
-        ) : null}
-      </div>
-
-      <div className="space-y-1">
-        <p
-          className={cn(
-            "text-sm font-semibold",
-            state !== "todo" && "text-muted-foreground",
-          )}
-        >
-          {step.label}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {state === "locked"
-            ? `Requer: ${missing.join(", ")}`
-            : step.description}
-        </p>
-      </div>
-
-      <div className="mt-auto pt-1">
-        {state === "done" ? (
-          <span className="text-xs font-medium text-primary">Concluído</span>
-        ) : state === "locked" ? (
-          <Button variant="outline" size="sm" className="w-full" disabled>
-            <Lock className="size-3.5" />
-            Bloqueado
-          </Button>
-        ) : (
-          <Button variant="default" size="sm" className="w-full" asChild>
-            <Link href={step.href}>{step.cta}</Link>
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+// Fases do setup: agrupam os passos e dao hierarquia (evita a "parede" de cards).
+const GROUPS = [
+  {
+    id: "config",
+    label: "Configuração",
+    description: "Horário de funcionamento e serviços.",
+    stepIds: ["hours", "services"],
+  },
+  {
+    id: "team",
+    label: "Equipe",
+    description: "Profissionais e disponibilidade.",
+    stepIds: ["team"],
+  },
+  {
+    id: "ops",
+    label: "Operação",
+    description: "Clientes e primeiro agendamento.",
+    stepIds: ["clients", "appointment"],
+  },
+] as const;
 
 /**
- * Card "Primeiros passos": grid de passos com estado concluido / disponivel /
- * bloqueado (cadeado). Um passo fica bloqueado enquanto seus pre-requisitos
- * (`requires`) nao estao concluidos — ex.: agendamento exige serviços, equipe e
- * clientes. Progresso derivado do dado; fica no Dashboard ate concluir/dispensar.
+ * "Primeiros passos" no estilo setup guiado: um "próximo passo" em destaque no
+ * topo, progresso geral, e os passos agrupados por fase em cartões numerados
+ * (concluido / disponivel / bloqueado). Progresso derivado do dado.
  */
 export function OnboardingChecklist({
   steps,
@@ -137,55 +59,159 @@ export function OnboardingChecklist({
 }) {
   const pct = Math.round((doneCount / total) * 100);
   const doneById = Object.fromEntries(steps.map((s) => [s.id, s.done]));
+  const stepById = Object.fromEntries(steps.map((s) => [s.id, s]));
+  const numberById = Object.fromEntries(steps.map((s, i) => [s.id, i + 1]));
+
+  const missingOf = (step: OnboardingStep) =>
+    (step.requires ?? [])
+      .filter((id) => !doneById[id])
+      .map((id) => STEP_SHORT[id] ?? id);
+
+  // Proximo passo = primeiro disponivel (nao concluido e sem pre-requisito pendente).
+  const nextStep = steps.find((s) => !s.done && missingOf(s).length === 0);
 
   return (
-    <Card data-tour="onboarding-checklist" className="mb-4">
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="space-y-1">
-          <CardTitle className="text-base">Primeiros passos</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Configure seu negócio para começar a agendar · {doneCount} de {total}{" "}
-            concluídos
-          </p>
-        </div>
-        <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-0.5">
-          <Button variant="ghost" size="sm" onClick={onStartTour}>
-            <Compass className="size-4" />
-            Tour
+    <div
+      data-tour="onboarding-checklist"
+      className="mb-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5"
+    >
+      <div className="mb-3 flex items-center justify-end gap-0.5">
+        <Button variant="ghost" size="sm" onClick={onStartTour}>
+          <Compass className="size-4" />
+          Tour
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Ocultar primeiros passos"
+          onClick={onDismiss}
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      {nextStep ? (
+        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+              <Sparkles className="size-3.5" />
+              Próximo passo
+            </p>
+            <p className="mt-1 truncate text-lg font-semibold">
+              {nextStep.label}
+            </p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href={nextStep.href}>
+              Continuar
+              <ArrowRight className="size-4" />
+            </Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Ocultar primeiros passos"
-            onClick={onDismiss}
-          >
-            <X className="size-4" />
-          </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {steps.map((step) => {
-            const missing = (step.requires ?? [])
-              .filter((id) => !doneById[id])
-              .map((id) => STEP_SHORT[id] ?? id);
-            return (
-              <StepTile
-                key={step.id}
-                step={step}
-                locked={missing.length > 0}
-                missing={missing}
-              />
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+      ) : null}
+
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Primeiros passos
+        </p>
+        <p className="text-xs font-medium text-muted-foreground tabular-nums">
+          {doneCount}/{total} concluídos
+        </p>
+      </div>
+      <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <div className="space-y-5">
+        {GROUPS.map((group) => (
+          <section key={group.id}>
+            <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                {group.description}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {group.stepIds.map((id) => {
+                const step = stepById[id];
+                if (!step) return null;
+                const missing = missingOf(step);
+                const locked = missing.length > 0;
+                const active = nextStep?.id === step.id;
+                const actionable = !step.done && !locked;
+                const num = String(numberById[id]).padStart(2, "0");
+
+                const classes = cn(
+                  "flex items-start gap-3 rounded-lg border p-3.5 transition-colors",
+                  active && "border-primary/40 bg-primary/5",
+                  step.done && "bg-muted/30",
+                  locked && "opacity-70",
+                  actionable && "hover:border-primary/40 hover:bg-accent",
+                );
+
+                const inner = (
+                  <>
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                        step.done
+                          ? "bg-primary/15 text-primary"
+                          : active
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {step.done ? <Check className="size-4" /> : num}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p
+                          className={cn(
+                            "truncate text-sm font-medium",
+                            active && "text-primary",
+                          )}
+                        >
+                          {step.label}
+                        </p>
+                        {active ? (
+                          <span className="shrink-0 rounded-full border border-primary/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                            Atual
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {locked ? `Requer: ${missing.join(", ")}` : step.description}
+                      </p>
+                    </div>
+                    <span className="mt-0.5 shrink-0 text-muted-foreground">
+                      {step.done ? null : locked ? (
+                        <Lock className="size-4" />
+                      ) : (
+                        <ArrowRight className="size-4" />
+                      )}
+                    </span>
+                  </>
+                );
+
+                return actionable ? (
+                  <Link key={id} href={step.href} className={classes}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <div key={id} className={classes}>
+                    {inner}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
