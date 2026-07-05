@@ -60,7 +60,7 @@ export function useOnboardingSteps() {
     {
       id: "categories",
       label: "Cadastrar categorias",
-      description: "Agrupe seus serviços em categorias — o serviço é vinculado a uma.",
+      description: "Agrupe seus serviços em categorias — cada serviço fica em uma.",
       href: "/services?manage=categories",
       cta: "Adicionar",
       done: (categoriesQuery.data?.length ?? 0) > 0,
@@ -78,7 +78,7 @@ export function useOnboardingSteps() {
     {
       id: "roles",
       label: "Cadastrar cargos",
-      description: "Defina os cargos da equipe — o profissional é vinculado a um.",
+      description: "Defina os cargos da equipe — cada profissional tem um.",
       href: "/team?manage=roles",
       cta: "Adicionar",
       done: (rolesQuery.data?.length ?? 0) > 0,

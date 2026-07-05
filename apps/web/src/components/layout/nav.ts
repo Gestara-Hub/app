@@ -35,7 +35,7 @@ export const MAIN_NAV: NavItem[] = [
 
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.
 export const FOOTER_NAV: NavItem[] = [
-  { label: "Usuários", href: "/users", icon: UserCog, permission: "users:view" },
+  { label: "Usuários", href: "/users", icon: UserCog, permission: "users:view", tourId: "nav-users" },
   { label: "Configurações", href: "/settings", icon: Settings, permission: "settings:view", tourId: "nav-settings" },
 ];
 

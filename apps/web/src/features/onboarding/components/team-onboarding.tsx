@@ -13,7 +13,7 @@ const STEPS: TourStep[] = [
   {
     target: '[data-tour="team-roles"]',
     title: "E os cargos",
-    body: "O profissional é vinculado a um cargo, e no formulário você seleciona um cargo já existente (não dá para criar por lá). Cadastre os cargos aqui em Cargos antes.",
+    body: "Todo profissional tem um cargo. No cadastro você escolhe um cargo que já existe (não dá para criar ali), então cadastre os cargos aqui em Cargos antes.",
   },
   {
     target: '[data-tour="team-new"]',

@@ -13,23 +13,28 @@ import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 const TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="sidebar-nav"]',
-    title: "Sua navegação",
-    body: "Todos os módulos do sistema ficam aqui na lateral — é por onde você circula.",
+    title: "O menu ao lado",
+    body: "É por aqui que você anda no dia a dia: clientes, equipe, serviços e agenda ficam todos neste menu.",
   },
   {
     target: '[data-tour="nav-agenda"]',
     title: "Agenda",
-    body: "O coração do sistema: crie e acompanhe os agendamentos por dia, semana e mês.",
+    body: "É aqui que você marca e acompanha os agendamentos — por dia, semana ou mês.",
+  },
+  {
+    target: '[data-tour="nav-users"]',
+    title: "Usuários",
+    body: "Cadastre quem vai usar o GestaraHub e defina o que cada pessoa pode ver e fazer.",
   },
   {
     target: '[data-tour="nav-settings"]',
     title: "Configurações",
-    body: "Ajuste o horário de funcionamento e as preferências do negócio por aqui.",
+    body: "Aqui você ajusta o horário de funcionamento e outras opções do seu negócio.",
   },
   {
     target: '[data-tour="onboarding-checklist"]',
     title: "Primeiros passos",
-    body: "Siga estes cards para deixar tudo pronto. Cada um leva direto à tela — e alguns só liberam após os pré-cadastros.",
+    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
   },
 ];
 
