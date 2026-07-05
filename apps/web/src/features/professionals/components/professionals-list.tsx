@@ -94,7 +94,7 @@ function ProfessionalRow({
     : [];
 
   const meta = [
-    professional.role.name,
+    professional.role?.name ?? null,
     `${professional.serviceIds.length} serviços`,
     `${professional.workingHours.length} dias de atendimento`,
     professional.phone ? formatPhone(professional.phone) : null,

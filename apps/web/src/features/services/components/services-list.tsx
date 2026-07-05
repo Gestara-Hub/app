@@ -197,7 +197,11 @@ export function ServicesList({
       <ServiceRow
         key={service.id}
         service={service}
-        categoryName={categoryNameById.get(service.categoryId) ?? "—"}
+        categoryName={
+          service.categoryId
+            ? (categoryNameById.get(service.categoryId) ?? "—")
+            : "Sem categoria"
+        }
         canManage={canManage}
         onEdit={onEdit}
         onInactivate={onInactivate}

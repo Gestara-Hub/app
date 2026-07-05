@@ -30,6 +30,8 @@ export interface MultiSelectOption {
   value: string;
   /** Rotulo do grupo (opcional). Opcoes do mesmo grupo aparecem juntas. */
   group?: string;
+  /** Marcador de destaque (ex.: "realiza"), exibido em cor de acento. */
+  badge?: string;
 }
 
 interface MultiSelectFieldProps<T extends FieldValues> {
@@ -259,6 +261,11 @@ export function MultiSelectField<T extends FieldValues>({
                                   )}
                                 />
                                 {option.label}
+                                {option.badge ? (
+                                  <span className="ml-auto rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                    {option.badge}
+                                  </span>
+                                ) : null}
                               </CommandItem>
                             );
                           })}

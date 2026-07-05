@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Tags } from "lucide-react";
 import {
   InputCurrency,
   InputNumber,
@@ -20,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID } from "@/config/tenant";
 import type { CreateService, Service } from "@gestarahub/contracts";
-import { useCategories, CategoryManagerDialog } from "@/features/categories";
+import { useCategories } from "@/features/categories";
 import { useCreateService, useUpdateService } from "../hooks/use-services";
 import {
   serviceFormSchema,
@@ -58,9 +56,6 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
     label: c.name,
     value: c.id,
   }));
-  // Sem categorias ativas (ja carregadas): o campo nao tem o que oferecer.
-  const noCategories = categories?.length === 0;
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
@@ -78,7 +73,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
     const payload: CreateService = {
       organizationId: service?.organizationId ?? ORG_ID,
       name: values.name,
-      categoryId: values.categoryId,
+      categoryId: values.categoryId || undefined,
       durationMinutes: values.durationMinutes,
       priceCents: values.priceCents,
       description: values.description || undefined,
@@ -119,45 +114,14 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           disabled={pending}
         />
 
-        <div className="space-y-2">
-          <SelectField<ServiceFormValues>
-            name="categoryId"
-            label="Categoria"
-            placeholder={
-              noCategories
-                ? "Nenhuma categoria disponível"
-                : "Selecione uma categoria"
-            }
-            options={categoryOptions}
-            required
-            disabled={pending || noCategories}
-          />
-          {noCategories ? (
-            <div className="flex items-start gap-3 rounded-md border border-dashed bg-muted/40 p-3">
-              <Tags className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <p className="text-sm font-medium">
-                  Você ainda não tem categorias
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Todo serviço pertence a uma categoria (ex.: Consultas,
-                  Sessões). Cadastre a primeira para continuar.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-0.5"
-                  disabled={pending}
-                  onClick={() => setCategoriesOpen(true)}
-                >
-                  <Plus className="size-3.5" />
-                  Cadastrar categoria
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
+        <SelectField<ServiceFormValues>
+          name="categoryId"
+          label="Categoria"
+          placeholder="Selecione uma categoria (opcional)"
+          hint="Ajuda a organizar o catálogo. Pode deixar sem e definir depois."
+          options={categoryOptions}
+          disabled={pending}
+        />
 
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -236,13 +200,6 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           </Button>
         </DialogFooter>
       </form>
-
-      {/* Recuperacao inline: cria categoria sem sair do form. Ao fechar, a query
-          de categorias ja foi invalidada e o campo acima se reabilita. */}
-      <CategoryManagerDialog
-        open={categoriesOpen}
-        onOpenChange={setCategoriesOpen}
-      />
     </FormProvider>
   );
 }

@@ -137,14 +137,9 @@ function resolveAndValidate(
       httpStatus: 422,
     });
   }
-  const notOffered = found.find((s) => !professional.serviceIds.includes(s.id));
-  if (notOffered) {
-    const message = `${professional.name} não realiza ${notOffered.name}.`;
-    throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
-      fields: [{ field: "serviceIds", message }],
-      httpStatus: 422,
-    });
-  }
+  // Qualquer profissional ativo pode realizar qualquer servico ativo — a
+  // associacao profissional↔servico e apenas informativa (destaque na Agenda),
+  // nao uma restricao.
 
   const end = addMinutesToTime(values.start, totalDuration(values.serviceIds));
   const ctx = slotContext(professional.id, values.date, opts.excludeId);
@@ -351,17 +346,7 @@ export const appointmentsService = {
             httpStatus: 422,
           });
         }
-        const notOffered = occ.serviceIds.find(
-          (sid) => !professional.serviceIds.includes(sid),
-        );
-        if (notOffered) {
-          const svc = store.services.find((s) => s.id === notOffered);
-          const message = `${professional.name} não realiza ${svc?.name ?? "um dos serviços"}.`;
-          throw apiError("PROFESSIONAL_DOES_NOT_OFFER_SERVICE", message, {
-            fields: [{ field: "professionalId", message }],
-            httpStatus: 422,
-          });
-        }
+        // Associacao profissional↔servico e informativa: nao barra a remarcacao.
       }
 
       const targets = occ.seriesId

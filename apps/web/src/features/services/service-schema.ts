@@ -7,7 +7,8 @@ import { z } from "zod";
  */
 export const serviceFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do serviço."),
-  categoryId: z.string().min(1, "Selecione uma categoria."),
+  // Categoria opcional: serve só para organizar o catálogo.
+  categoryId: z.string(),
   durationMinutes: z
     .number({ error: "A duração deve ser maior que zero." })
     .int("A duração deve ser maior que zero.")

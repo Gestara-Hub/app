@@ -190,7 +190,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
                         >
                           <span className="truncate">{p.name}</span>
                           <span className="shrink-0 text-xs text-muted-foreground">
-                            {p.role.name}
+                            {p.role?.name}
                           </span>
                         </button>
                       ))}

@@ -22,13 +22,17 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-function roleNameOf(roleId: Id): string {
-  return store.roles.find((r) => r.id === roleId)?.name ?? "";
+function roleNameOf(roleId?: Id): string {
+  return roleId ? (store.roles.find((r) => r.id === roleId)?.name ?? "") : "";
 }
 
 // Expande o cargo (roleId -> role) — espelha o join que a API faria no GET.
+// Cargo e opcional: sem roleId, o profissional nao tem `role`.
 function toView(p: Professional): ProfessionalView {
-  return { ...p, role: { id: p.roleId, name: roleNameOf(p.roleId) } };
+  return {
+    ...p,
+    role: p.roleId ? { id: p.roleId, name: roleNameOf(p.roleId) } : undefined,
+  };
 }
 
 const NOT_FOUND = "Profissional não encontrado.";
@@ -47,21 +51,11 @@ function validateProfessional(
       fields.push({ field: "name", message: "Informe o nome do profissional." });
     }
   }
-  if (!partial || has("roleId")) {
-    if (!payload.roleId) {
-      fields.push({ field: "roleId", message: "Informe o cargo." });
-    } else if (!store.roles.some((r) => r.id === payload.roleId)) {
-      fields.push({ field: "roleId", message: "Cargo inválido." });
-    }
+  // Cargo e opcional; se informado, precisa existir.
+  if (has("roleId") && payload.roleId && !store.roles.some((r) => r.id === payload.roleId)) {
+    fields.push({ field: "roleId", message: "Cargo inválido." });
   }
-  if (!partial || has("serviceIds")) {
-    if (!payload.serviceIds || payload.serviceIds.length === 0) {
-      fields.push({
-        field: "serviceIds",
-        message: "Selecione ao menos um serviço.",
-      });
-    }
-  }
+  // serviceIds e opcional (pode ser vazio).
   if (has("workingHours") && payload.workingHours) {
     const invalid = payload.workingHours.some((h) => h.start >= h.end);
     if (invalid) {

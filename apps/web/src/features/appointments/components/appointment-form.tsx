@@ -115,11 +115,18 @@ export function AppointmentForm({
     label: p.name,
     value: p.id,
   }));
-  // Servicos oferecidos pelo profissional selecionado (ou todos os ativos).
+  // Todos os servicos ativos ficam disponiveis para qualquer profissional. Os
+  // que o profissional selecionado realiza sao apenas destacados (badge) e sobem
+  // para o topo — sem impedir a escolha de nenhum outro.
   const selectedProfessional = (professionals ?? []).find((p) => p.id === professionalId);
+  const offeredIds = new Set(selectedProfessional?.serviceIds ?? []);
   const serviceOptions = (services ?? [])
-    .filter((s) => !selectedProfessional || selectedProfessional.serviceIds.includes(s.id))
-    .map((s) => ({ label: s.name, value: s.id }));
+    .map((s) => ({
+      label: s.name,
+      value: s.id,
+      badge: offeredIds.has(s.id) ? "realiza" : undefined,
+    }))
+    .sort((a, b) => (b.badge ? 1 : 0) - (a.badge ? 1 : 0));
 
   const selectedServices = (services ?? []).filter((s) =>
     (serviceIds ?? []).includes(s.id),

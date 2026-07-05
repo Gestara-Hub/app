@@ -30,16 +30,19 @@ export function ServiceSelectionField<T extends FieldValues>({
   const options: MultiSelectOption[] = (services ?? []).map((service) => ({
     label: service.name,
     value: service.id,
-    group: categoryName.get(service.categoryId) ?? "Outros",
+    group: service.categoryId
+      ? (categoryName.get(service.categoryId) ?? "Sem categoria")
+      : "Sem categoria",
   }));
 
   return (
     <MultiSelectField<T>
       name={name}
       label="Serviços realizados"
-      placeholder="Selecione os serviços..."
+      placeholder="Selecione os serviços (opcional)"
       searchPlaceholder="Buscar serviço..."
       emptyMessage="Nenhum serviço encontrado."
+      hint="Informa o que o profissional costuma fazer — não limita o agendamento."
       options={options}
       required={required}
       disabled={disabled}

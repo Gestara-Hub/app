@@ -6,7 +6,8 @@ import { z } from "zod";
  */
 export const professionalFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do profissional."),
-  role: z.string().trim().min(1, "Selecione o cargo."),
+  // Cargo opcional: campo pode ficar vazio.
+  role: z.string().trim(),
   phone: z
     .string()
     .trim()
@@ -14,7 +15,8 @@ export const professionalFormSchema = z.object({
     .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
       message: "Informe um telefone válido.",
     }),
-  serviceIds: z.array(z.string()).min(1, "Selecione ao menos um serviço."),
+  // Serviços opcionais: podem ficar vazios (associação é informativa).
+  serviceIds: z.array(z.string()),
   workingHours: z
     .array(
       z.object({

@@ -4,7 +4,7 @@ export interface Service {
   id: Id;
   organizationId: Id;
   name: string;
-  categoryId: Id; // referencia a entidade Category
+  categoryId?: Id; // referencia a entidade Category — OPCIONAL (sem = "Sem categoria")
   durationMinutes: number; // > 0
   priceCents: number; // >= 0 (centavos para precisao)
   description?: string;

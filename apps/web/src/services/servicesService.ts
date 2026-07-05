@@ -40,13 +40,13 @@ function validateService(
       fields.push({ field: "name", message: "Informe o nome do serviço." });
     }
   }
-  if (!partial || has("categoryId")) {
-    const exists =
-      payload.categoryId != null &&
-      store.categories.some((c) => c.id === payload.categoryId);
-    if (!exists) {
-      fields.push({ field: "categoryId", message: "Selecione uma categoria." });
-    }
+  // Categoria e opcional; se informada, precisa existir.
+  if (
+    has("categoryId") &&
+    payload.categoryId != null &&
+    !store.categories.some((c) => c.id === payload.categoryId)
+  ) {
+    fields.push({ field: "categoryId", message: "Categoria inválida." });
   }
   if (!partial || has("durationMinutes")) {
     if (typeof payload.durationMinutes !== "number" || payload.durationMinutes <= 0) {
@@ -75,8 +75,11 @@ function validateService(
   }
 }
 
-function categoryPosition(categoryId: Id): number {
-  return store.categories.find((c) => c.id === categoryId)?.position ?? 9999;
+// Sem categoria vai para o fim da ordenacao (posicao alta).
+function categoryPosition(categoryId?: Id): number {
+  return categoryId
+    ? (store.categories.find((c) => c.id === categoryId)?.position ?? 9999)
+    : 9999;
 }
 
 function sortServices(list: Service[]): Service[] {

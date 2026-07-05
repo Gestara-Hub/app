@@ -10,11 +10,11 @@ export interface Professional {
   organizationId: Id;
   unitId: Id;
   name: string;
-  roleId: Id; // FK -> Role (cargo/especialidade); nome resolvido via store.roles
+  roleId?: Id; // FK -> Role (cargo/especialidade) — OPCIONAL; nome via store.roles
   phone?: string;
   status: RecordStatus;
   workingHours: WorkingHours[]; // respeita o funcionamento da unidade
-  serviceIds: Id[]; // servicos que o profissional realiza (matriz do canon)
+  serviceIds: Id[]; // servicos que o profissional realiza (pode ser vazio)
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
@@ -43,5 +43,5 @@ export interface RoleRef {
  * le `professional.role.name` direto, sem buscar /roles e juntar no cliente.
  */
 export interface ProfessionalView extends Professional {
-  role: RoleRef;
+  role?: RoleRef; // ausente quando o profissional nao tem cargo
 }

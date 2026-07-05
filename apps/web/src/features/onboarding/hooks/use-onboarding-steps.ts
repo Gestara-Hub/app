@@ -1,11 +1,9 @@
 "use client";
 
 import { useClients } from "@/features/clients";
-import { useCategories } from "@/features/categories";
 import { useServices } from "@/features/services";
 import { useProfessionals } from "@/features/professionals";
 import { useAppointments } from "@/features/appointments";
-import { useRoles } from "@/features/roles";
 import { useUnit } from "@/features/settings";
 
 export interface OnboardingStep {
@@ -28,18 +26,14 @@ export interface OnboardingStep {
  */
 export function useOnboardingSteps() {
   const unitQuery = useUnit();
-  const categoriesQuery = useCategories();
   const servicesQuery = useServices();
-  const rolesQuery = useRoles();
   const professionalsQuery = useProfessionals();
   const clientsQuery = useClients();
   const appointmentsQuery = useAppointments();
 
   const isReady =
     !unitQuery.isPending &&
-    !categoriesQuery.isPending &&
     !servicesQuery.isPending &&
-    !rolesQuery.isPending &&
     !professionalsQuery.isPending &&
     !clientsQuery.isPending &&
     !appointmentsQuery.isPending;
@@ -58,41 +52,22 @@ export function useOnboardingSteps() {
       done: hoursSet,
     },
     {
-      id: "categories",
-      label: "Cadastrar categorias",
-      description: "Agrupe seus serviços em categorias — cada serviço fica em uma.",
-      href: "/services?manage=categories",
-      cta: "Adicionar",
-      done: (categoriesQuery.data?.length ?? 0) > 0,
-    },
-    {
       id: "services",
       label: "Cadastrar serviços",
       description: "Adicione o que o seu negócio oferece.",
       href: "/services",
       cta: "Adicionar",
       done: (servicesQuery.data?.length ?? 0) > 0,
-      // Cadastrar servico exige uma categoria (categoryId obrigatorio).
-      requires: ["categories"],
-    },
-    {
-      id: "roles",
-      label: "Cadastrar cargos",
-      description: "Defina os cargos da equipe — cada profissional tem um.",
-      href: "/team?manage=roles",
-      cta: "Adicionar",
-      done: (rolesQuery.data?.length ?? 0) > 0,
+      // Categoria do servico e opcional — sem pre-requisito aqui.
     },
     {
       id: "team",
       label: "Montar a equipe",
-      description: "Cadastre os profissionais que realizam os serviços.",
+      description: "Cadastre os profissionais que fazem os atendimentos.",
       href: "/team",
       cta: "Adicionar",
       done: (professionalsQuery.data?.length ?? 0) > 0,
-      // Cadastrar profissional exige ao menos um servico (serviceIds) e um cargo
-      // existente (roleId — o form so seleciona, nao cria).
-      requires: ["services", "roles"],
+      // Cargo e serviços do profissional sao opcionais — sem pre-requisito aqui.
     },
     {
       id: "clients",

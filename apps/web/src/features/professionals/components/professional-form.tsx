@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useForm, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Briefcase, Plus } from "lucide-react";
 import {
   AutocompleteField,
   InputPhone,
@@ -24,7 +22,7 @@ import type {
   Weekday,
   WorkingHours,
 } from "@gestarahub/contracts";
-import { useRoles, RoleManagerDialog } from "@/features/roles";
+import { useRoles } from "@/features/roles";
 import { useUnit } from "@/features/settings";
 import {
   useCreateProfessional,
@@ -138,21 +136,18 @@ function ProfessionalFormBody({
   const updateMut = useUpdateProfessional();
   const pending = createMut.isPending || updateMut.isPending;
 
-  // Cargo e entidade (Role) gerenciada no CRUD de Cargos: aqui so SELECIONA um
+  // Cargo (Role) e OPCIONAL: gerenciado no CRUD de Cargos, aqui so seleciona um
   // existente (select com filtro), nao cria. Sugestoes = cargos ativos; inclui
   // o cargo atual do profissional mesmo se inativo, para nao perde-lo ao editar.
   const { data: roles } = useRoles();
   const activeRoleNames = (roles ?? [])
     .filter((r) => r.status === "active")
     .map((r) => r.name);
-  const currentRoleName = professional?.role.name ?? "";
+  const currentRoleName = professional?.role?.name ?? "";
   const roleSuggestions =
     currentRoleName && !activeRoleNames.includes(currentRoleName)
       ? [...activeRoleNames, currentRoleName]
       : activeRoleNames;
-  // Sem cargos para escolher (o campo so seleciona um existente, nao cria).
-  const noRoles = roles !== undefined && roleSuggestions.length === 0;
-  const [rolesOpen, setRolesOpen] = useState(false);
 
   const form = useForm<ProfessionalFormValues>({
     resolver: zodResolver(professionalFormSchema),
@@ -164,16 +159,19 @@ function ProfessionalFormBody({
   const onSubmit = form.handleSubmit(async (values) => {
     const organizationId = professional?.organizationId ?? ORG_ID;
 
-    // Resolve o cargo selecionado para um Role (FK). So seleciona um existente —
-    // novos cargos sao criados no CRUD de Cargos, nao aqui.
-    const selectedRole = (roles ?? []).find(
-      (r) => normalizeText(r.name) === normalizeText(values.role),
-    );
-    if (!selectedRole) {
+    // Cargo e opcional: se preenchido, resolve para um Role (FK) existente; se um
+    // texto sem correspondencia for digitado, avisa. Vazio -> sem cargo.
+    const typedRole = values.role.trim();
+    const selectedRole = typedRole
+      ? (roles ?? []).find(
+          (r) => normalizeText(r.name) === normalizeText(typedRole),
+        )
+      : undefined;
+    if (typedRole && !selectedRole) {
       form.setError("role", { message: "Selecione um cargo da lista." });
       return;
     }
-    const roleId = selectedRole.id;
+    const roleId = selectedRole?.id;
 
     const payload: CreateProfessional = {
       organizationId,
@@ -229,54 +227,25 @@ function ProfessionalFormBody({
           disabled={pending}
         />
 
-        <div className="space-y-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AutocompleteField<ProfessionalFormValues>
-              name="role"
-              label="Cargo"
-              placeholder={
-                noRoles ? "Nenhum cargo disponível" : "Selecione um cargo"
-              }
-              suggestions={roleSuggestions}
-              strict
-              emptyMessage="Nenhum cargo encontrado."
-              required
-              disabled={pending || noRoles}
-            />
-            <InputPhone<ProfessionalFormValues>
-              name="phone"
-              label="Telefone"
-              disabled={pending}
-            />
-          </div>
-          {noRoles ? (
-            <div className="flex items-start gap-3 rounded-md border border-dashed bg-muted/40 p-3">
-              <Briefcase className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <p className="text-sm font-medium">Você ainda não tem cargos</p>
-                <p className="text-xs text-muted-foreground">
-                  Todo profissional tem um cargo (ex.: Atendente, Gerente).
-                  Cadastre o primeiro para continuar.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-0.5"
-                  disabled={pending}
-                  onClick={() => setRolesOpen(true)}
-                >
-                  <Plus className="size-3.5" />
-                  Cadastrar cargo
-                </Button>
-              </div>
-            </div>
-          ) : null}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <AutocompleteField<ProfessionalFormValues>
+            name="role"
+            label="Cargo"
+            placeholder="Selecione um cargo (opcional)"
+            suggestions={roleSuggestions}
+            strict
+            emptyMessage="Nenhum cargo encontrado."
+            disabled={pending}
+          />
+          <InputPhone<ProfessionalFormValues>
+            name="phone"
+            label="Telefone"
+            disabled={pending}
+          />
         </div>
 
         <ServiceSelectionField<ProfessionalFormValues>
           name="serviceIds"
-          required
           disabled={pending}
         />
 
@@ -309,10 +278,6 @@ function ProfessionalFormBody({
           </Button>
         </DialogFooter>
       </form>
-
-      {/* Recuperacao inline: cria cargo sem sair do form. Ao fechar, a query de
-          cargos ja foi invalidada e o campo acima se reabilita. */}
-      <RoleManagerDialog open={rolesOpen} onOpenChange={setRolesOpen} />
     </FormProvider>
   );
 }

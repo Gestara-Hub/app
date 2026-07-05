@@ -6,25 +6,19 @@ import { ScreenTour } from "./screen-tour";
 
 const STEPS: TourStep[] = [
   {
-    target: '[data-tour="services-categories"]',
-    title: "Primeiro, uma categoria",
-    body: "Todo serviço pertence a uma categoria — então você precisa de pelo menos uma antes de cadastrar serviços. Crie a primeira aqui em Categorias.",
-  },
-  {
     target: '[data-tour="services-new"]',
-    title: "Depois, o serviço",
-    body: "Com a categoria criada, cadastre seu primeiro serviço aqui em Novo serviço.",
+    title: "Cadastre seus serviços",
+    body: "Adicione o que o seu negócio oferece aqui. Categoria é opcional — serve só para organizar o catálogo; dá para deixar sem e definir depois.",
   },
 ];
 
 /**
- * Onboarding guiado da tela de Servicos (primeiro acesso): explica que servico
- * depende de categoria (categoryId obrigatorio) e conduz Categorias -> Novo
- * servico.
+ * Onboarding guiado da tela de Servicos (primeiro acesso): um passo apontando o
+ * "Novo serviço". Categoria e opcional, entao nao ha pre-requisito a explicar.
  */
 export function ServicesOnboarding() {
-  // Nao dispara o tour quando a tela abre numa acao dirigida (ex.: deep-link do
-  // checklist para o CRUD de Categorias, /services?manage=categories).
+  // Nao dispara o tour quando a tela abre numa acao dirigida (ex.: deep-link para
+  // o CRUD de Categorias, /services?manage=categories).
   const directed = useSearchParams().has("manage");
   return (
     <ScreenTour
