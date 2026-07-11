@@ -178,11 +178,11 @@ export function AppointmentForm({
       }
       const fields = getFieldErrors(error);
       if (fields && fields.length > 0) {
+        // Erro com campo (slot/expediente/inativo/validacao) aparece inline no
+        // input correspondente — sem toast para nao duplicar a mensagem.
         for (const f of fields) {
           form.setError(f.field as Path<AppointmentFormValues>, { message: f.message });
         }
-        // Conflitos (expediente/bloqueio/sobreposicao) tambem como toast.
-        toast.error(fields[0].message);
       } else {
         toast.error(getErrorMessage(error, "Não foi possível salvar o agendamento."));
       }

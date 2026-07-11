@@ -68,7 +68,8 @@ function slotContext(
 // Erro de conflito de slot com a mensagem de referencia (doc 10).
 function slotError(code: SlotConflictCode, professionalName: string) {
   const message: Record<SlotConflictCode, string> = {
-    OUTSIDE_BUSINESS_HOURS: "Horário fora do expediente para esta data.",
+    OUTSIDE_BUSINESS_HOURS: "Fora do horário de funcionamento da unidade nesta data.",
+    OUTSIDE_PROFESSIONAL_HOURS: `${professionalName} não atende neste horário.`,
     ON_BREAK: `${professionalName} está em intervalo (almoço) neste horário.`,
     TIME_BLOCKED: "Este horário está bloqueado e não aceita agendamento.",
     OVERLAP_CONFLICT: `Este horário já está ocupado para ${professionalName}.`,

@@ -50,6 +50,7 @@ export function weekdayOf(date: DateISO): Weekday {
 
 export type SlotConflictCode =
   | "OUTSIDE_BUSINESS_HOURS"
+  | "OUTSIDE_PROFESSIONAL_HOURS"
   | "ON_BREAK"
   | "TIME_BLOCKED"
   | "OVERLAP_CONFLICT";
@@ -90,23 +91,26 @@ export function checkSlotAvailability(
   opts: { allowBreak?: boolean } = {},
 ): SlotCheck {
   const weekday = weekdayOf(date);
+  const startMin = timeToMinutes(start);
+  const endMin = timeToMinutes(end);
 
+  // Expediente da unidade: fechada ou fora do horario de funcionamento — o
+  // motivo e a unidade, independe do profissional.
   const business = ctx.businessHours.find((b) => b.weekday === weekday);
-  const working = ctx.workingHours.find((w) => w.weekday === weekday);
-  if (!business || business.closed || !business.start || !business.end || !working) {
+  if (!business || business.closed || !business.start || !business.end) {
+    return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+  }
+  if (startMin < timeToMinutes(business.start) || endMin > timeToMinutes(business.end)) {
     return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
   }
 
-  const effectiveStart = Math.max(
-    timeToMinutes(business.start),
-    timeToMinutes(working.start),
-  );
-  const effectiveEnd = Math.min(
-    timeToMinutes(business.end),
-    timeToMinutes(working.end),
-  );
-  if (timeToMinutes(start) < effectiveStart || timeToMinutes(end) > effectiveEnd) {
-    return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+  // Disponibilidade do profissional: dia nao atendido ou fora do horario dele.
+  const working = ctx.workingHours.find((w) => w.weekday === weekday);
+  if (!working) {
+    return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
+  }
+  if (startMin < timeToMinutes(working.start) || endMin > timeToMinutes(working.end)) {
+    return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
   }
 
   // Intervalo (almoco) do profissional: recusa slot que o cobre, salvo override.

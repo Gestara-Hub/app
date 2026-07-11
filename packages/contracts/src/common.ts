@@ -64,6 +64,7 @@ export type ApiErrorCode =
   // Regras de negocio (agenda)
   | "OVERLAP_CONFLICT"
   | "OUTSIDE_BUSINESS_HOURS"
+  | "OUTSIDE_PROFESSIONAL_HOURS"
   | "ON_BREAK"
   | "TIME_BLOCKED"
   | "PROFESSIONAL_DOES_NOT_OFFER_SERVICE"
