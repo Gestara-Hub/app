@@ -17,6 +17,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -121,6 +122,11 @@ export const professionalsService = {
         updatedAt: ts,
       };
       store.professionals.push(professional);
+      auditLogService.record({
+        action: "created",
+        target: { type: "professional", id: professional.id, label: professional.name },
+        predicate: `criou o profissional ${professional.name}`,
+      });
       return clone(toView(professional));
     });
   },
@@ -137,6 +143,15 @@ export const professionalsService = {
         updatedAt: nowIso(),
       };
       store.professionals[idx] = updated;
+      // Reativacao (inativo -> ativo) e um evento proprio; senao, edicao comum.
+      const reactivated = current.status === "inactive" && updated.status === "active";
+      auditLogService.record({
+        action: reactivated ? "activated" : "updated",
+        target: { type: "professional", id: updated.id, label: updated.name },
+        predicate: reactivated
+          ? `reativou o profissional ${updated.name}`
+          : `atualizou o profissional ${updated.name}`,
+      });
       return clone(toView(updated));
     });
   },
@@ -146,11 +161,17 @@ export const professionalsService = {
     return simulateWrite(() => {
       const idx = store.professionals.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const name = store.professionals[idx].name;
       store.professionals[idx] = {
         ...store.professionals[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "professional", id, label: name },
+        predicate: `inativou o profissional ${name}`,
+      });
     });
   },
 };

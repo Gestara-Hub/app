@@ -23,4 +23,5 @@ export type Permission =
   | "services:manage" // criar/editar/inativar servicos + categorias
   | "settings:view"
   | "users:view" // reservado (gestao de usuarios — fora do MVP)
-  | "users:manage"; // reservado (gestao de usuarios — fora do MVP)
+  | "users:manage" // reservado (gestao de usuarios — fora do MVP)
+  | "audit:view"; // ler o log de auditoria (Dono; Gerente com visao restrita)

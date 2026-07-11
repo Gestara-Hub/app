@@ -2,6 +2,7 @@ import {
   CalendarDays,
   Contact,
   LayoutDashboard,
+  ScrollText,
   Settings,
   Tag,
   UserCog,
@@ -36,6 +37,7 @@ export const MAIN_NAV: NavItem[] = [
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.
 export const FOOTER_NAV: NavItem[] = [
   { label: "Usuários", href: "/users", icon: UserCog, permission: "users:view", tourId: "nav-users" },
+  { label: "Auditoria", href: "/audit", icon: ScrollText, permission: "audit:view" },
   { label: "Configurações", href: "/settings", icon: Settings, permission: "settings:view", tourId: "nav-settings" },
 ];
 

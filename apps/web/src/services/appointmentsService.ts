@@ -28,12 +28,20 @@ import {
   type SlotConflictCode,
   type SlotContext,
 } from "@gestarahub/core/scheduling";
+import { appointmentStatusLabel } from "@/lib/labels";
+import { auditLogService } from "./auditLogService";
+import type { AuditChange } from "@gestarahub/contracts";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
 const NOT_FOUND = "Agendamento não encontrado.";
+
+// Nome do cliente de um agendamento (para o rastro de auditoria).
+function clientNameOf(clientId: Id): string {
+  return store.clients.find((c) => c.id === clientId)?.name ?? "cliente";
+}
 
 // Status que ocupam a agenda do profissional (cancelado/no-show liberam o slot).
 function occupies(status: AppointmentStatus): boolean {
@@ -249,6 +257,12 @@ export const appointmentsService = {
         updatedAt: ts,
       };
       store.appointments.push(appointment);
+      const name = clientNameOf(appointment.clientId);
+      auditLogService.record({
+        action: "created",
+        target: { type: "appointment", id: appointment.id, label: name },
+        predicate: `criou o agendamento de ${name}`,
+      });
       return clone(toView(appointment));
     });
   },
@@ -275,6 +289,12 @@ export const appointmentsService = {
         updatedAt: nowIso(),
       };
       store.appointments[idx] = updated;
+      const name = clientNameOf(updated.clientId);
+      auditLogService.record({
+        action: "updated",
+        target: { type: "appointment", id: updated.id, label: name },
+        predicate: `atualizou o agendamento de ${name}`,
+      });
       return clone(toView(updated));
     });
   },
@@ -318,6 +338,20 @@ export const appointmentsService = {
         updatedAt: nowIso(),
       };
       store.appointments[idx] = updated;
+      const name = clientNameOf(updated.clientId);
+      const changes: AuditChange[] = [];
+      if (merged.date !== current.date) {
+        changes.push({ field: "date", label: "Data", before: current.date, after: merged.date });
+      }
+      if (merged.start !== current.start) {
+        changes.push({ field: "start", label: "Horário", before: current.start, after: merged.start });
+      }
+      auditLogService.record({
+        action: "rescheduled",
+        target: { type: "appointment", id: updated.id, label: name },
+        predicate: `remarcou o agendamento de ${name}`,
+        changes,
+      });
       return clone(toView(updated));
     });
   },
@@ -385,6 +419,14 @@ export const appointmentsService = {
         };
         updatedCount += 1;
       }
+      if (updatedCount > 0) {
+        const name = clientNameOf(occ.clientId);
+        auditLogService.record({
+          action: "rescheduled",
+          target: { type: "appointment", id: occ.id, label: name },
+          predicate: `remarcou ${updatedCount} ocorrência(s) da série de ${name}`,
+        });
+      }
       return clone({ updatedCount, conflicts });
     });
   },
@@ -395,11 +437,26 @@ export const appointmentsService = {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const before = store.appointments[idx].status;
       store.appointments[idx] = {
         ...store.appointments[idx],
         status,
         updatedAt: nowIso(),
       };
+      const name = clientNameOf(store.appointments[idx].clientId);
+      auditLogService.record({
+        action: "status_changed",
+        target: { type: "appointment", id, label: name },
+        predicate: `marcou o agendamento de ${name} como ${appointmentStatusLabel(status)}`,
+        changes: [
+          {
+            field: "status",
+            label: "Status",
+            before: appointmentStatusLabel(before),
+            after: appointmentStatusLabel(status),
+          },
+        ],
+      });
       return clone(toView(store.appointments[idx]));
     });
   },
@@ -419,6 +476,12 @@ export const appointmentsService = {
         cancellationReason: trimmed,
         updatedAt: nowIso(),
       };
+      const name = clientNameOf(store.appointments[idx].clientId);
+      auditLogService.record({
+        action: "cancelled",
+        target: { type: "appointment", id, label: name },
+        predicate: `cancelou o agendamento de ${name}`,
+      });
       return clone(toView(store.appointments[idx]));
     });
   },
@@ -428,12 +491,27 @@ export const appointmentsService = {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const before = store.appointments[idx].status;
       store.appointments[idx] = {
         ...store.appointments[idx],
         status: "no_show",
         noShowReason: reason?.trim() || undefined,
         updatedAt: nowIso(),
       };
+      const name = clientNameOf(store.appointments[idx].clientId);
+      auditLogService.record({
+        action: "status_changed",
+        target: { type: "appointment", id, label: name },
+        predicate: `marcou o agendamento de ${name} como ${appointmentStatusLabel("no_show")}`,
+        changes: [
+          {
+            field: "status",
+            label: "Status",
+            before: appointmentStatusLabel(before),
+            after: appointmentStatusLabel("no_show"),
+          },
+        ],
+      });
       return clone(toView(store.appointments[idx]));
     });
   },

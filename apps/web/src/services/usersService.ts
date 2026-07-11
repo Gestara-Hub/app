@@ -1,6 +1,7 @@
 import type {
   ApiError,
   ApiErrorField,
+  AuditChange,
   CreateUser,
   Id,
   UpdateUser,
@@ -9,6 +10,7 @@ import type {
   UserView,
 } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
+import { userProfileLabel } from "@/lib/labels";
 import {
   apiError,
   newId,
@@ -19,6 +21,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -152,6 +155,12 @@ export const usersService = {
         updatedAt: ts,
       };
       store.users.push(user);
+      auditLogService.record({
+        action: "created",
+        target: { type: "user", id: user.id, label: user.name, profile: user.profile },
+        predicate: `criou o usuário ${user.name} (${userProfileLabel(user.profile)})`,
+        security: true,
+      });
       return clone(toView(user));
     });
   },
@@ -178,6 +187,26 @@ export const usersService = {
         updatedAt: nowIso(),
       };
       store.users[idx] = updated;
+      const changes: AuditChange[] = [];
+      if (updated.profile !== current.profile) {
+        changes.push({
+          field: "profile",
+          label: "Perfil",
+          before: userProfileLabel(current.profile),
+          after: userProfileLabel(updated.profile),
+        });
+      }
+      const reactivated = current.status === "inactive" && updated.status === "active";
+      const inactivated = current.status === "active" && updated.status === "inactive";
+      const action = reactivated ? "activated" : inactivated ? "inactivated" : "updated";
+      const verb = reactivated ? "reativou" : inactivated ? "inativou" : "atualizou";
+      auditLogService.record({
+        action,
+        target: { type: "user", id: updated.id, label: updated.name, profile: updated.profile },
+        predicate: `${verb} o usuário ${updated.name}`,
+        changes,
+        security: true,
+      });
       return clone(toView(updated));
     });
   },
@@ -188,11 +217,18 @@ export const usersService = {
       const idx = store.users.findIndex((u) => u.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       ensureNotLastOwner(store.users[idx], { status: "inactive" });
+      const target = store.users[idx];
       store.users[idx] = {
         ...store.users[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "user", id, label: target.name, profile: target.profile },
+        predicate: `inativou o usuário ${target.name}`,
+        security: true,
+      });
     });
   },
 };

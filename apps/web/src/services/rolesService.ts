@@ -17,6 +17,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -100,6 +101,11 @@ export const rolesService = {
         updatedAt: ts,
       };
       store.roles.push(role);
+      auditLogService.record({
+        action: "created",
+        target: { type: "role", id: role.id, label: role.name },
+        predicate: `criou o cargo ${role.name}`,
+      });
       return clone(role);
     });
   },
@@ -122,6 +128,11 @@ export const rolesService = {
         updatedAt: nowIso(),
       };
       store.roles[idx] = updated;
+      auditLogService.record({
+        action: "updated",
+        target: { type: "role", id: updated.id, label: updated.name },
+        predicate: `atualizou o cargo ${updated.name}`,
+      });
       return clone(updated);
     });
   },
@@ -131,11 +142,17 @@ export const rolesService = {
     return simulateWrite(() => {
       const idx = store.roles.findIndex((r) => r.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const name = store.roles[idx].name;
       store.roles[idx] = {
         ...store.roles[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "role", id, label: name },
+        predicate: `inativou o cargo ${name}`,
+      });
     });
   },
 };

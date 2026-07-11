@@ -7,6 +7,7 @@ import type {
   UpdateService,
 } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
+import { formatCents, formatDuration } from "@gestarahub/core/format";
 import {
   newId,
   notFoundError,
@@ -16,6 +17,8 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
+import type { AuditChange } from "@gestarahub/contracts";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -138,6 +141,11 @@ export const servicesService = {
         updatedAt: ts,
       };
       store.services.push(service);
+      auditLogService.record({
+        action: "created",
+        target: { type: "service", id: service.id, label: service.name },
+        predicate: `criou o serviço ${service.name}`,
+      });
       return clone(service);
     });
   },
@@ -160,6 +168,29 @@ export const servicesService = {
         updatedAt: nowIso(),
       };
       store.services[idx] = updated;
+      const changes: AuditChange[] = [];
+      if (updated.priceCents !== current.priceCents) {
+        changes.push({
+          field: "priceCents",
+          label: "Preço",
+          before: formatCents(current.priceCents),
+          after: formatCents(updated.priceCents),
+        });
+      }
+      if (updated.durationMinutes !== current.durationMinutes) {
+        changes.push({
+          field: "durationMinutes",
+          label: "Duração",
+          before: formatDuration(current.durationMinutes),
+          after: formatDuration(updated.durationMinutes),
+        });
+      }
+      auditLogService.record({
+        action: "updated",
+        target: { type: "service", id: updated.id, label: updated.name },
+        predicate: `atualizou o serviço ${updated.name}`,
+        changes,
+      });
       return clone(updated);
     });
   },
@@ -170,11 +201,17 @@ export const servicesService = {
     return simulateWrite(() => {
       const idx = store.services.findIndex((s) => s.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const name = store.services[idx].name;
       store.services[idx] = {
         ...store.services[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "service", id, label: name },
+        predicate: `inativou o serviço ${name}`,
+      });
     });
   },
 };

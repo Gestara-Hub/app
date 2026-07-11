@@ -1,5 +1,6 @@
 import type {
   Appointment,
+  AuditLogEntry,
   Category,
   Client,
   Organization,
@@ -33,6 +34,8 @@ export interface MockStore {
   appointments: Appointment[];
   timeBlocks: TimeBlock[];
   series: RecurrenceSeries[];
+  // Log de auditoria (append-only): registrado pelos services em cada mutacao.
+  auditLog: AuditLogEntry[];
 }
 
 const STORAGE_KEY = "gestarahub:db";
@@ -44,7 +47,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v7: usuarios (multi-user + RBAC simulado).
 // v8: almoco no WorkingHours (breakStart/breakEnd); almoco deixou de ser TimeBlock.
 // v9: agendamento/serie com multiplos servicos (serviceId -> serviceIds[]).
-const SEED_VERSION = 9;
+// v10: log de auditoria (auditLog[]).
+const SEED_VERSION = 10;
 
 interface PersistedBlob {
   v: number;
@@ -125,6 +129,7 @@ export function clearStore(): void {
     appointments: [],
     timeBlocks: [],
     series: [],
+    auditLog: [],
   });
   if (canPersist()) saveToStorage(store);
 }

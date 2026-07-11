@@ -16,6 +16,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -93,6 +94,11 @@ export const clientsService = {
         updatedAt: ts,
       };
       store.clients.push(client);
+      auditLogService.record({
+        action: "created",
+        target: { type: "client", id: client.id, label: client.name },
+        predicate: `criou o cliente ${client.name}`,
+      });
       return clone(client);
     });
   },
@@ -109,6 +115,11 @@ export const clientsService = {
         updatedAt: nowIso(),
       };
       store.clients[idx] = updated;
+      auditLogService.record({
+        action: "updated",
+        target: { type: "client", id: updated.id, label: updated.name },
+        predicate: `atualizou o cliente ${updated.name}`,
+      });
       return clone(updated);
     });
   },
@@ -118,11 +129,17 @@ export const clientsService = {
     return simulateWrite(() => {
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const name = store.clients[idx].name;
       store.clients[idx] = {
         ...store.clients[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "client", id, label: name },
+        predicate: `inativou o cliente ${name}`,
+      });
     });
   },
 };

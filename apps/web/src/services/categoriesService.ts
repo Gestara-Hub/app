@@ -17,6 +17,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -100,6 +101,11 @@ export const categoriesService = {
         updatedAt: ts,
       };
       store.categories.push(category);
+      auditLogService.record({
+        action: "created",
+        target: { type: "category", id: category.id, label: category.name },
+        predicate: `criou a categoria ${category.name}`,
+      });
       return clone(category);
     });
   },
@@ -122,6 +128,11 @@ export const categoriesService = {
         updatedAt: nowIso(),
       };
       store.categories[idx] = updated;
+      auditLogService.record({
+        action: "updated",
+        target: { type: "category", id: updated.id, label: updated.name },
+        predicate: `atualizou a categoria ${updated.name}`,
+      });
       return clone(updated);
     });
   },
@@ -131,11 +142,17 @@ export const categoriesService = {
     return simulateWrite(() => {
       const idx = store.categories.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      const name = store.categories[idx].name;
       store.categories[idx] = {
         ...store.categories[idx],
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "category", id, label: name },
+        predicate: `inativou a categoria ${name}`,
+      });
     });
   },
 };

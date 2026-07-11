@@ -3,6 +3,10 @@ import type {
   Appointment,
   AppointmentOrigin,
   AppointmentStatus,
+  AuditAction,
+  AuditActor,
+  AuditLogEntry,
+  AuditTarget,
   Category,
   Client,
   Organization,
@@ -601,6 +605,123 @@ function seedRegularAppointments(
 }
 
 /** Constroi um store novo a partir do seed (usado no boot e no reset). */
+// --- Audit log (historico sintetico) ---------------------------------------
+
+// Atores do cenario para o historico de auditoria (snapshot de nome/perfil).
+const AUDIT_ACTORS = {
+  owner: { userId: "usr-marcelo", name: "Marcelo Andrade", profile: "owner" },
+  manager: { userId: "usr-patricia", name: "Patrícia Nunes", profile: "manager" },
+  attendant: { userId: "usr-sofia", name: "Sofia Ramos", profile: "attendant" },
+} as const satisfies Record<string, AuditActor>;
+
+function seedAuditLog(): AuditLogEntry[] {
+  let seq = 0;
+  const at = (
+    timestamp: string,
+    actor: AuditActor,
+    action: AuditAction,
+    target: AuditTarget,
+    summary: string,
+    extra?: { changes?: AuditLogEntry["changes"]; security?: boolean },
+  ): AuditLogEntry => ({
+    id: `aud-${String(++seq).padStart(4, "0")}`,
+    organizationId: ORG_ID,
+    unitId: UNIT_ID,
+    timestamp,
+    actor,
+    action,
+    target,
+    summary,
+    ...(extra?.changes ? { changes: extra.changes } : {}),
+    security: extra?.security ?? false,
+  });
+
+  const { owner, manager, attendant } = AUDIT_ACTORS;
+
+  return [
+    at(
+      "2026-06-15T13:05:00.000Z",
+      attendant,
+      "created",
+      { type: "appointment", id: "apt-0001", label: "Pedro Raul" },
+      "Sofia Ramos criou o agendamento de Pedro Raul.",
+    ),
+    at(
+      "2026-06-16T18:42:00.000Z",
+      manager,
+      "status_changed",
+      { type: "appointment", id: "apt-0002", label: "João Vitor" },
+      "Patrícia Nunes marcou o agendamento de João Vitor como Concluído.",
+      { changes: [{ field: "status", label: "Status", before: "Em atendimento", after: "Concluído" }] },
+    ),
+    at(
+      "2026-06-17T10:10:00.000Z",
+      manager,
+      "rescheduled",
+      { type: "appointment", id: "apt-0003", label: "Lucas Prado" },
+      "Patrícia Nunes remarcou o agendamento de Lucas Prado.",
+      {
+        changes: [
+          { field: "date", label: "Data", before: "17/06/2026", after: "19/06/2026" },
+          { field: "start", label: "Horário", before: "14:00", after: "16:30" },
+        ],
+      },
+    ),
+    at(
+      "2026-06-17T16:30:00.000Z",
+      attendant,
+      "cancelled",
+      { type: "appointment", id: "apt-0004", label: "Rafael Souza" },
+      "Sofia Ramos cancelou o agendamento de Rafael Souza.",
+    ),
+    at(
+      "2026-06-18T09:15:00.000Z",
+      owner,
+      "updated",
+      { type: "service", id: "svc-corte-masculino", label: "Corte Masculino" },
+      "Marcelo Andrade atualizou o serviço Corte Masculino.",
+      { changes: [{ field: "priceCents", label: "Preço", before: "R$ 40,00", after: "R$ 45,00" }] },
+    ),
+    at(
+      "2026-06-18T11:00:00.000Z",
+      owner,
+      "inactivated",
+      { type: "professional", id: "prof-diego", label: "Diego Santos" },
+      "Marcelo Andrade inativou o profissional Diego Santos.",
+    ),
+    at(
+      "2026-06-19T08:40:00.000Z",
+      owner,
+      "created",
+      { type: "user", id: "usr-sofia", label: "Sofia Ramos", profile: "attendant" },
+      "Marcelo Andrade criou o usuário Sofia Ramos (Atendente).",
+      { security: true },
+    ),
+    at(
+      "2026-06-19T08:55:00.000Z",
+      owner,
+      "updated",
+      { type: "user", id: "usr-patricia", label: "Patrícia Nunes", profile: "manager" },
+      "Marcelo Andrade alterou o perfil de Patrícia Nunes para Gerente.",
+      {
+        security: true,
+        changes: [{ field: "profile", label: "Perfil", before: "Atendente", after: "Gerente" }],
+      },
+    ),
+    at(
+      "2026-06-19T19:20:00.000Z",
+      owner,
+      "updated",
+      { type: "settings", label: "Horário de funcionamento" },
+      "Marcelo Andrade alterou o horário de funcionamento da unidade.",
+      {
+        security: true,
+        changes: [{ field: "saturday", label: "Sábado", before: "08:00–17:00", after: "08:00–18:00" }],
+      },
+    ),
+  ];
+}
+
 export function createInitialStore(): MockStore {
   const organization = seedOrganization();
   const unit = seedUnit();
@@ -637,5 +758,6 @@ export function createInitialStore(): MockStore {
     appointments,
     timeBlocks,
     series,
+    auditLog: seedAuditLog(),
   };
 }

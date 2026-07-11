@@ -1,5 +1,6 @@
 import type {
   AppointmentFilter,
+  AuditLogFilter,
   CategoryFilter,
   ClientFilter,
   Id,
@@ -8,6 +9,7 @@ import type {
   ServiceFilter,
   TimeBlockFilter,
   UserFilter,
+  UserProfile,
 } from "@gestarahub/contracts";
 
 /**
@@ -63,6 +65,12 @@ export const queryKeys = {
   },
   series: {
     detail: (id: Id) => ["series", "detail", id] as const,
+  },
+  audit: {
+    all: ["audit"] as const,
+    // O perfil do espectador entra na key: a visibilidade do log varia por perfil.
+    list: (filter?: AuditLogFilter, viewer?: UserProfile) =>
+      ["audit", "list", filter, viewer] as const,
   },
   organization: {
     detail: ["organization"] as const,

@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { can as canFn } from "@/lib/permissions";
+import { setCurrentActor } from "@/mocks/currentActor";
 import type { Permission, UserView } from "@gestarahub/contracts";
 
 interface SessionContextValue {
@@ -27,6 +28,13 @@ export function SessionProvider({
     () => ({ user, can: (permission) => canFn(user, permission) }),
     [user],
   );
+  // Publica o ator ambiente lido pela camada de services (auditoria carimba o
+  // autor de cada mutacao sem receber o ator por parametro). Espelha o principal
+  // do request que o backend real resolveria do token.
+  useEffect(() => {
+    setCurrentActor({ userId: user.id, name: user.name, profile: user.profile });
+    return () => setCurrentActor(null);
+  }, [user]);
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   );

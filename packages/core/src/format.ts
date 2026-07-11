@@ -23,6 +23,17 @@ export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
+/** ISO -> "27/06/2026 09:15". */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /**
  * Telefone: recebe digitos (armazenados) e formata para exibicao.
  * Suporta celular "(11) 99999-9999" e fixo "(11) 9999-9999". Aceita parcial

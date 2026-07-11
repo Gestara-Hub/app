@@ -1,5 +1,7 @@
 import type {
   AppointmentStatus,
+  AuditAction,
+  AuditEntityType,
   Frequency,
   RecordStatus,
   UserProfile,
@@ -54,4 +56,34 @@ const USER_PROFILE_LABEL: Record<UserProfile, string> = {
 
 export function userProfileLabel(profile: UserProfile): string {
   return USER_PROFILE_LABEL[profile];
+}
+
+const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
+  created: "Criou",
+  updated: "Atualizou",
+  deleted: "Removeu",
+  cancelled: "Cancelou",
+  rescheduled: "Remarcou",
+  status_changed: "Mudou status",
+  activated: "Reativou",
+  inactivated: "Inativou",
+};
+
+export function auditActionLabel(action: AuditAction): string {
+  return AUDIT_ACTION_LABEL[action];
+}
+
+const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
+  appointment: "Agendamento",
+  client: "Cliente",
+  service: "Serviço",
+  category: "Categoria",
+  role: "Cargo",
+  professional: "Profissional",
+  user: "Usuário",
+  settings: "Configurações",
+};
+
+export function auditEntityTypeLabel(type: AuditEntityType): string {
+  return AUDIT_ENTITY_TYPE_LABEL[type];
 }

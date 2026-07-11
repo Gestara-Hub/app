@@ -3,4 +3,5 @@ export { categoriesService } from "./categoriesService";
 export { clientsService } from "./clientsService";
 export { professionalsService } from "./professionalsService";
 export { usersService } from "./usersService";
+export { auditLogService } from "./auditLogService";
 export { systemService } from "./system";

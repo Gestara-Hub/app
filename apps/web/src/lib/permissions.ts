@@ -41,6 +41,7 @@ const ALL_PERMISSIONS = [
   "settings:view",
   "users:view",
   "users:manage",
+  "audit:view",
 ] as const satisfies readonly Permission[];
 
 // Erro de compilacao se ALL_PERMISSIONS deixar de cobrir alguma `Permission`.
@@ -67,6 +68,9 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     // gerenciar (so Atendente/Profissional) e limitado por `manageableProfiles`.
     "users:view",
     "users:manage",
+    // Auditoria: a capability libera a tela; QUAIS eventos ele ve (operacionais
+    // + usuario Atendente/Profissional) e limitado no read-model do service.
+    "audit:view",
   ],
   attendant: [...OPERATIONAL_VIEWS, ...APPOINTMENT_OPS, "clients:manage"],
   // Profissional: acesso restrito a propria Agenda (sem Clientes/Equipe/Servicos);
