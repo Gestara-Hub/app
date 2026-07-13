@@ -86,16 +86,18 @@ export function checkSlotAvailability(
   start: TimeISO,
   end: TimeISO,
   ctx: SlotContext,
-  // `allowBreak` pula APENAS a checagem de almoco (override com confirmacao do
-  // usuario); bloqueio, sobreposicao e expediente continuam valendo.
-  opts: { allowBreak?: boolean } = {},
+  // Overrides confirmados pelo usuario (regras "moles"): `allowBreak` pula a
+  // checagem de almoco; `allowOutsideHours` pula a do horario do profissional
+  // (dia nao atendido ou fora da janela dele). Expediente da unidade, bloqueio e
+  // sobreposicao NUNCA sao pulados.
+  opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
 ): SlotCheck {
   const weekday = weekdayOf(date);
   const startMin = timeToMinutes(start);
   const endMin = timeToMinutes(end);
 
   // Expediente da unidade: fechada ou fora do horario de funcionamento — o
-  // motivo e a unidade, independe do profissional.
+  // motivo e a unidade, independe do profissional (regra rigida).
   const business = ctx.businessHours.find((b) => b.weekday === weekday);
   if (!business || business.closed || !business.start || !business.end) {
     return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
@@ -104,17 +106,22 @@ export function checkSlotAvailability(
     return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
   }
 
-  // Disponibilidade do profissional: dia nao atendido ou fora do horario dele.
+  // Disponibilidade do profissional: dia nao atendido ou fora do horario dele —
+  // regra "mole", pulada com `allowOutsideHours` (confirmacao do usuario).
   const working = ctx.workingHours.find((w) => w.weekday === weekday);
-  if (!working) {
-    return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
-  }
-  if (startMin < timeToMinutes(working.start) || endMin > timeToMinutes(working.end)) {
-    return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
+  if (!opts.allowOutsideHours) {
+    if (!working) {
+      return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
+    }
+    if (startMin < timeToMinutes(working.start) || endMin > timeToMinutes(working.end)) {
+      return { ok: false, code: "OUTSIDE_PROFESSIONAL_HOURS" };
+    }
   }
 
   // Intervalo (almoco) do profissional: recusa slot que o cobre, salvo override.
+  // So se aplica quando ha horario para o dia (fora do horario nao tem almoco).
   if (
+    working &&
     !opts.allowBreak &&
     working.breakStart &&
     working.breakEnd &&

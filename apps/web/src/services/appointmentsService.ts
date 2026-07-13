@@ -110,7 +110,7 @@ function totalDuration(serviceIds: Id[]): number {
  */
 function resolveAndValidate(
   values: SlotValues,
-  opts: { excludeId?: Id; allowBreak?: boolean },
+  opts: { excludeId?: Id; allowBreak?: boolean; allowOutsideHours?: boolean },
 ) {
   const fields = [];
   if (!values.clientId) fields.push({ field: "clientId", message: "Selecione um cliente." });
@@ -154,6 +154,7 @@ function resolveAndValidate(
   const ctx = slotContext(professional.id, values.date, opts.excludeId);
   const slot = checkSlotAvailability(values.date, values.start, end, ctx, {
     allowBreak: opts.allowBreak,
+    allowOutsideHours: opts.allowOutsideHours,
   });
   if (!slot.ok) throw slotError(slot.code, professional.name);
 
@@ -234,10 +235,13 @@ export const appointmentsService = {
 
   create(
     payload: CreateAppointment,
-    opts: { allowBreak?: boolean } = {},
+    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
   ): Promise<AppointmentView> {
     return simulateWrite(() => {
-      const { end } = resolveAndValidate(payload, { allowBreak: opts.allowBreak });
+      const { end } = resolveAndValidate(payload, {
+        allowBreak: opts.allowBreak,
+        allowOutsideHours: opts.allowOutsideHours,
+      });
       const ts = nowIso();
       const appointment: Appointment = {
         id: newId(),
@@ -270,7 +274,7 @@ export const appointmentsService = {
   update(
     id: Id,
     payload: UpdateAppointment,
-    opts: { allowBreak?: boolean } = {},
+    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
   ): Promise<AppointmentView> {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
@@ -280,6 +284,7 @@ export const appointmentsService = {
       const { end } = resolveAndValidate(merged, {
         excludeId: id,
         allowBreak: opts.allowBreak,
+        allowOutsideHours: opts.allowOutsideHours,
       });
       const updated: Appointment = {
         ...current,

@@ -28,7 +28,7 @@ import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { isPastSlot } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
-import { addMinutesToTime } from "@gestarahub/core/scheduling";
+import { addMinutesToTime, weekdayOf } from "@gestarahub/core/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@gestarahub/contracts";
 import type { AppointmentView, CreateAppointment } from "@gestarahub/contracts";
@@ -144,12 +144,18 @@ export function AppointmentForm({
   const [confirmBreak, setConfirmBreak] = useState<AppointmentFormValues | null>(
     null,
   );
+  // Idem quando o slot cai fora do horario de atendimento do profissional.
+  const [confirmOutside, setConfirmOutside] =
+    useState<AppointmentFormValues | null>(null);
   // Idem quando o slot escolhido esta no passado (regra mole: confirma).
   const [confirmPast, setConfirmPast] = useState<AppointmentFormValues | null>(
     null,
   );
 
-  const submit = async (values: AppointmentFormValues, allowBreak: boolean) => {
+  const submit = async (
+    values: AppointmentFormValues,
+    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
+  ) => {
     const payload: CreateAppointment = {
       organizationId: ORG_ID,
       unitId: UNIT_ID,
@@ -162,17 +168,27 @@ export function AppointmentForm({
     };
     try {
       if (appointment) {
-        await updateMut.mutateAsync({ id: appointment.id, payload, allowBreak });
+        await updateMut.mutateAsync({ id: appointment.id, payload, ...opts });
         toast.success("Agendamento atualizado com sucesso.");
       } else {
-        await createMut.mutateAsync({ payload, allowBreak });
+        await createMut.mutateAsync({ payload, ...opts });
         toast.success("Agendamento criado com sucesso.");
       }
       onSuccess();
     } catch (error) {
-      // Almoco e regra "mole": em vez de barrar, pede confirmacao para agendar
-      // mesmo assim. Bloqueio/sobreposicao/expediente seguem como erro normal.
-      if (!allowBreak && isApiError(error) && error.code === "ON_BREAK") {
+      // Regras "moles": em vez de barrar, pedem confirmacao para agendar mesmo
+      // assim. Expediente da unidade, bloqueio e sobreposicao seguem como erro
+      // normal. Almoco e horario do profissional sao mutuamente exclusivos (o
+      // almoco fica dentro da janela), entao nao ha risco de laco de confirmacao.
+      if (
+        !opts.allowOutsideHours &&
+        isApiError(error) &&
+        error.code === "OUTSIDE_PROFESSIONAL_HOURS"
+      ) {
+        setConfirmOutside(values);
+        return;
+      }
+      if (!opts.allowBreak && isApiError(error) && error.code === "ON_BREAK") {
         setConfirmBreak(values);
         return;
       }
@@ -201,8 +217,22 @@ export function AppointmentForm({
       setConfirmPast(values);
       return;
     }
-    void submit(values, false);
+    void submit(values);
   });
+
+  // Texto da confirmacao "fora do horario": mostra a janela do profissional no
+  // dia (ou avisa que ele nao atende no dia).
+  const outsideHoursMessage = (values: AppointmentFormValues | null): string => {
+    if (!values) return "";
+    const prof = (professionals ?? []).find((p) => p.id === values.professionalId);
+    const name = prof?.name ?? "O profissional";
+    const window = prof?.workingHours.find(
+      (w) => w.weekday === weekdayOf(values.date),
+    );
+    return window
+      ? `${name} atende neste dia das ${window.start} às ${window.end}, e o horário escolhido está fora desse período. Deseja agendar mesmo assim?`
+      : `${name} não atende neste dia. Deseja agendar mesmo assim?`;
+  };
 
   return (
     <FormProvider {...form}>
@@ -355,7 +385,37 @@ export function AppointmentForm({
               disabled={pending}
               onClick={() => {
                 const values = confirmBreak;
-                if (values) void submit(values, true);
+                if (values) void submit(values, { allowBreak: true });
+              }}
+            >
+              Agendar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmOutside !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmOutside(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Agendar fora do horário do profissional?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {outsideHoursMessage(confirmOutside)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => {
+                const values = confirmOutside;
+                if (values) void submit(values, { allowOutsideHours: true });
               }}
             >
               Agendar mesmo assim
@@ -385,7 +445,7 @@ export function AppointmentForm({
               disabled={pending}
               onClick={() => {
                 const values = confirmPast;
-                if (values) void submit(values, false);
+                if (values) void submit(values);
               }}
             >
               Agendar mesmo assim

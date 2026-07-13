@@ -34,14 +34,17 @@ export function useAppointment(id: Id) {
 export function useCreateAppointment() {
   const qc = useQueryClient();
   return useMutation({
-    // allowBreak = agendar mesmo no intervalo de almoco (override confirmado).
+    // allowBreak = agendar mesmo no intervalo de almoco; allowOutsideHours =
+    // agendar fora do horario do profissional (ambos override confirmado).
     mutationFn: ({
       payload,
       allowBreak,
+      allowOutsideHours,
     }: {
       payload: CreateAppointment;
       allowBreak?: boolean;
-    }) => appointmentsService.create(payload, { allowBreak }),
+      allowOutsideHours?: boolean;
+    }) => appointmentsService.create(payload, { allowBreak, allowOutsideHours }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
@@ -53,11 +56,13 @@ export function useUpdateAppointment() {
       id,
       payload,
       allowBreak,
+      allowOutsideHours,
     }: {
       id: Id;
       payload: UpdateAppointment;
       allowBreak?: boolean;
-    }) => appointmentsService.update(id, payload, { allowBreak }),
+      allowOutsideHours?: boolean;
+    }) => appointmentsService.update(id, payload, { allowBreak, allowOutsideHours }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }

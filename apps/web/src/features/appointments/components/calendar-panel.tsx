@@ -121,8 +121,11 @@ export function CalendarPanel({
   );
   const blocksQuery = useTimeBlocks(range);
 
-  // Mostra apenas quem atende neste dia da semana (sem coluna de quem esta de
-  // folga). Perfil Profissional ve apenas a propria coluna.
+  // Mostra quem atende neste dia da semana (sem coluna de quem esta de folga).
+  // Profissional SEM disponibilidade definida (workingHours vazio) e tratado como
+  // "atende qualquer dia" e aparece em todo dia aberto — coerente com a regra
+  // mole: agendar fora do horario apenas pede confirmacao. Perfil Profissional ve
+  // apenas a propria coluna.
   const weekday = weekdayOf(date);
   const activeProfessionals = professionalsQuery.data ?? [];
   // "Todos" (profFilter null) = sem filtro nenhum; perfil Profissional (scoped)
@@ -130,9 +133,11 @@ export function CalendarPanel({
   const showAllProfs = !scopedProfId && profFilter === null;
   const selectedProfs = new Set(scopedProfId ? [scopedProfId] : (profFilter ?? []));
   const isProfVisible = (id: string) => showAllProfs || selectedProfs.has(id);
+  const attendsOn = (p: (typeof activeProfessionals)[number]) =>
+    p.workingHours.length === 0 || p.workingHours.some((w) => w.weekday === weekday);
   const professionals = activeProfessionals.filter(
     (p) =>
-      p.workingHours.some((w) => w.weekday === weekday) &&
+      attendsOn(p) &&
       (!scopedProfId || p.id === scopedProfId) &&
       isProfVisible(p.id),
   );
