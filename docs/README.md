@@ -21,6 +21,7 @@ O objetivo inicial e retomar o projeto com uma abordagem frontend-first: primeir
 Modelos futuros (spec dev-ready, ainda nao implementados):
 
 - [product/11-modelo-3-turmas.md](product/11-modelo-3-turmas.md)
+- [product/12-modelo-2-entrega.md](product/12-modelo-2-entrega.md)
 
 ## Tecnico
 
