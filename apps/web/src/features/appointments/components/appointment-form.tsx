@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { isPastSlot } from "@gestarahub/core/date";
+import { format, parseISO } from "date-fns";
 import { formatCents } from "@gestarahub/core/format";
 import { addMinutesToTime, weekdayOf } from "@gestarahub/core/scheduling";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
@@ -302,45 +303,60 @@ export function AppointmentForm({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Controller
-            control={form.control}
-            name="date"
-            render={({ field, fieldState }) => (
-              <FieldShell id="date" label="Data" required error={fieldState.error?.message}>
-                <Input
-                  id="date"
-                  type="date"
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="start"
-            render={({ field, fieldState }) => (
-              <FieldShell id="start" label="Horário" required error={fieldState.error?.message}>
-                <Input
-                  id="start"
-                  type="time"
-                  step={300}
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
-        </div>
+        {/* Editar cuida dos DADOS; mover no tempo (data/horário/profissional) é
+            responsabilidade do Remarcar, que registra a trilha da remarcação. Por
+            isso os campos de data/horário só aparecem ao criar. */}
+        {appointment ? (
+          <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Agendado para{" "}
+            <span className="font-medium text-foreground">
+              {format(parseISO(appointment.date), "dd/MM/yyyy")} ·{" "}
+              {appointment.start}–{appointment.end}
+            </span>
+            . Para mudar a data ou o horário, use{" "}
+            <span className="font-medium text-foreground">Remarcar</span>.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Controller
+              control={form.control}
+              name="date"
+              render={({ field, fieldState }) => (
+                <FieldShell id="date" label="Data" required error={fieldState.error?.message}>
+                  <Input
+                    id="date"
+                    type="date"
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={pending}
+                    aria-invalid={fieldState.invalid}
+                  />
+                </FieldShell>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="start"
+              render={({ field, fieldState }) => (
+                <FieldShell id="start" label="Horário" required error={fieldState.error?.message}>
+                  <Input
+                    id="start"
+                    type="time"
+                    step={300}
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={pending}
+                    aria-invalid={fieldState.invalid}
+                  />
+                </FieldShell>
+              )}
+            />
+          </div>
+        )}
 
         <TextArea<AppointmentFormValues>
           name="notes"

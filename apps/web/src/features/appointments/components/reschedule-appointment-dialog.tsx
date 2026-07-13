@@ -82,10 +82,13 @@ function RescheduleForm({
   // Valores pendentes quando o novo slot cai no passado (regra mole: confirma).
   const [confirmPast, setConfirmPast] = useState<RescheduleValues | null>(null);
 
-  // Profissionais que realizam TODOS os servicos do agendamento.
-  const professionalOptions = (professionals ?? [])
-    .filter((p) => appointment.serviceIds.every((sid) => p.serviceIds.includes(sid)))
-    .map((p) => ({ label: p.name, value: p.id }));
+  // Qualquer profissional ativo pode ser escolhido — a associacao
+  // profissional↔servico e apenas informativa, nao restringe (idem form de
+  // agendar). Assim o profissional original vem sempre pre-selecionado.
+  const professionalOptions = (professionals ?? []).map((p) => ({
+    label: p.name,
+    value: p.id,
+  }));
   const endHint = start
     ? `Termina às ${addMinutesToTime(start, appointment.totalDurationMinutes)}`
     : undefined;
