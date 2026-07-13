@@ -26,7 +26,7 @@ URLs e identificadores de codigo ficam em ingles (slugs `/services`, `/clients`,
 ## Fora de escopo
 
 - Server actions, route handlers de dados e data fetching no servidor (reservados para a fase 3, backend do zero).
-- Autenticacao real, tokens, refresh. No MVP a sessao e mockada (cookie guarda o `userId`).
+- Autenticacao real, tokens, refresh. No MVP a sessao e mockada (cookie guarda as claims do usuario — o `UserView` —, espelhando um futuro token assinado).
 - Tela de gestao de permissoes (matriz editavel) e enforcement server-side de dados. O MVP JA aplica RBAC na navegacao, nas acoes e nas rotas restritas (client + guarda no `(app)/layout.tsx`/pages), com escopo de dados UI-only para o perfil Profissional (ver `docs/product/06-perfis-permissoes.md`).
 - Rotas de modulos futuros (Unidades, Relatorios, Financeiro etc.).
 - Deep-linking de modais (ex.: `?modal=novo-agendamento`) como contrato fixo; fica como pendencia.

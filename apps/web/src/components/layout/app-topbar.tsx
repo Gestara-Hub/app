@@ -77,7 +77,7 @@ export function AppTopbar() {
               Trocar usuário (demo)
             </DropdownMenuLabel>
             {(users ?? []).map((u) => (
-              <form key={u.id} action={switchUser.bind(null, u.id)}>
+              <form key={u.id} action={switchUser.bind(null, u)}>
                 <DropdownMenuItem asChild disabled={u.id === user.id}>
                   <button type="submit" className="w-full cursor-pointer">
                     <span className="flex-1 truncate">{u.name}</span>

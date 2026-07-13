@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { ChevronRight } from "lucide-react";
+import type { UserView } from "@gestarahub/contracts";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { userInitials } from "@/lib/session";
@@ -13,9 +14,9 @@ export function LoginForm({ from }: { from: string }) {
   const { data: users, isLoading } = useUsers({ status: "active" });
   const [isPending, startTransition] = useTransition();
 
-  const onSelect = (userId: string) => {
+  const onSelect = (user: UserView) => {
     startTransition(async () => {
-      await signIn(userId, from);
+      await signIn(user, from);
     });
   };
 
@@ -35,7 +36,7 @@ export function LoginForm({ from }: { from: string }) {
               <button
                 key={user.id}
                 type="button"
-                onClick={() => onSelect(user.id)}
+                onClick={() => onSelect(user)}
                 disabled={isPending}
                 className="flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-accent disabled:pointer-events-none disabled:opacity-60"
               >

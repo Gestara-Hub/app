@@ -133,7 +133,7 @@ Regras especificas (herdadas do fluxo operacional):
 
 ## Fluxo de acesso (mock)
 
-- **Login por selecao de usuario:** a tela de login lista os usuarios semeados; clicar em um entra como aquele perfil (senha irrelevante no mock). O cookie de sessao guarda o `userId`.
+- **Login por selecao de usuario:** a tela de login lista os usuarios (semeados + criados na UI); clicar em um entra como aquele perfil (senha irrelevante no mock). O cookie de sessao guarda o snapshot do usuario (as "claims" — o `UserView`), nao so o `userId`: os usuarios criados na UI vivem no store do navegador e o server nao os enxergaria por id. Espelha o futuro token assinado (JWT).
 - **Trocar usuario:** o menu do usuario (topbar) permite alternar entre os usuarios sem logout — util para demonstrar cada perfil.
 - **Enforcement:** a navegacao esconde itens sem permissao; acoes (botoes/menus) sao ocultadas por `can()`; rotas restritas (Dashboard, Configuracoes) sao barradas no server (`requirePermission`) e redirecionam para a primeira rota acessivel do perfil (evita loop).
 - **Escopo do Profissional:** Agenda e Agendamentos filtram para o `professionalId` do usuario (UI-only no mock).

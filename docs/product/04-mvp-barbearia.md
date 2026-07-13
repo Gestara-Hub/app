@@ -45,7 +45,7 @@ O MVP deve permitir que o usuario:
 ### Autenticacao visual mockada
 
 - Login sem backend real (senha irrelevante).
-- Sessao simulada (cookie guarda o `userId`).
+- Sessao simulada (cookie guarda as claims do usuario — o `UserView` — nao so o `userId`).
 - Multiplos usuarios semeados, um por perfil (proprietario, gerente, atendente, profissional).
 - Login por selecao de usuario e troca de usuario na topbar.
 - RBAC aplicado de verdade na navegacao, nas acoes e nas rotas (ver `06-perfis-permissoes.md`).
