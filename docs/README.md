@@ -18,9 +18,14 @@ O objetivo inicial e retomar o projeto com uma abordagem frontend-first: primeir
 10. [product/10-estados-e-mensagens.md](product/10-estados-e-mensagens.md)
 11. [product/07-roadmap.md](product/07-roadmap.md)
 
+Modelos futuros (spec dev-ready, ainda nao implementados):
+
+- [product/11-modelo-3-turmas.md](product/11-modelo-3-turmas.md)
+
 ## Tecnico
 
 - [technical/00-decisoes-tecnicas.md](technical/00-decisoes-tecnicas.md)
+- [technical/01-extensao-modelos-operacionais.md](technical/01-extensao-modelos-operacionais.md)
 
 ## Frontend
 

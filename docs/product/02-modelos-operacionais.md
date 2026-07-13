@@ -128,3 +128,5 @@ Futuro. Nao entra no MVP.
 ## Regra de evolucao
 
 Novos modelos operacionais nao devem alterar a linguagem simples do MVP. Eles devem ser adicionados como extensoes progressivas do conceito de compromisso operacional.
+
+> Como aplicar na arquitetura (Modelos 2 e 3): ver [`technical/01-extensao-modelos-operacionais.md`](../technical/01-extensao-modelos-operacionais.md) — modulos separados, reusando a fundacao, sem genericizar o nucleo do Modelo 1 (Service/Appointment/Agenda).
