@@ -21,12 +21,16 @@ import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import type { CreateClassGroup, Weekday } from "@gestarahub/contracts";
+import type {
+  ClassGroupView,
+  CreateClassGroup,
+  Weekday,
+} from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
 import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
-import { useCreateClassGroup } from "../hooks/use-turmas";
+import { useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
 import { turmaFormSchema, type TurmaFormValues } from "../turma-schema";
 
 const WEEKDAYS = [
@@ -135,14 +139,18 @@ function MeetingSlotsEditor({
 }
 
 export function TurmaForm({
+  turma,
   formId,
   onSuccess,
 }: {
+  turma?: ClassGroupView;
   formId: string;
   onSuccess: () => void;
 }) {
   const createMut = useCreateClassGroup();
-  const pending = createMut.isPending;
+  const updateMut = useUpdateClassGroup();
+  const isEdit = Boolean(turma);
+  const pending = createMut.isPending || updateMut.isPending;
   const user = useCurrentUser();
   const { data: unit } = useUnit();
   const { data: categories } = useCategories({ status: "active" });
@@ -152,15 +160,25 @@ export function TurmaForm({
     resolver: zodResolver(turmaFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: {
-      name: "",
-      modalityId: "",
-      instructorId: "",
-      enrollmentType: "fixed",
-      capacity: 10,
-      startDate: format(new Date(), "yyyy-MM-dd"),
-      meetingSlots: [],
-    },
+    defaultValues: turma
+      ? {
+          name: turma.name,
+          modalityId: turma.modalityId ?? "",
+          instructorId: turma.instructorId,
+          enrollmentType: turma.enrollmentType,
+          capacity: turma.capacity,
+          startDate: turma.startDate,
+          meetingSlots: turma.meetingSlots,
+        }
+      : {
+          name: "",
+          modalityId: "",
+          instructorId: "",
+          enrollmentType: "fixed",
+          capacity: 10,
+          startDate: format(new Date(), "yyyy-MM-dd"),
+          meetingSlots: [],
+        },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -181,8 +199,13 @@ export function TurmaForm({
       status: "active",
     };
     try {
-      await createMut.mutateAsync(payload);
-      toast.success("Turma criada com sucesso.");
+      if (isEdit && turma) {
+        await updateMut.mutateAsync({ id: turma.id, payload });
+        toast.success("Turma atualizada com sucesso.");
+      } else {
+        await createMut.mutateAsync(payload);
+        toast.success("Turma criada com sucesso.");
+      }
       onSuccess();
     } catch (error) {
       const fields = getFieldErrors(error);
@@ -191,7 +214,7 @@ export function TurmaForm({
           form.setError(f.field as Path<TurmaFormValues>, { message: f.message });
         }
       } else {
-        toast.error(getErrorMessage(error, "Não foi possível criar a turma."));
+        toast.error(getErrorMessage(error, "Não foi possível salvar a turma."));
       }
     }
   });
@@ -295,7 +318,11 @@ export function TurmaForm({
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Criar turma"}
+            {pending
+              ? "Salvando..."
+              : isEdit
+                ? "Salvar alterações"
+                : "Criar turma"}
           </Button>
         </DialogFooter>
       </form>

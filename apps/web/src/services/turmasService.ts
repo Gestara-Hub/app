@@ -60,6 +60,28 @@ function activeEnrollments(classGroupId: Id): Enrollment[] {
   );
 }
 
+// Frequencia de um aluno numa turma, das presencas ja marcadas (o sessionId
+// carrega o classGroupId como prefixo). justified nao entra no denominador.
+function frequencyOf(
+  classGroupId: Id,
+  studentId: Id,
+): { presentCount: number; absentCount: number; attendanceRate: number | null } {
+  const prefix = `${classGroupId}${SEP}`;
+  let present = 0;
+  let absent = 0;
+  for (const a of store.attendances) {
+    if (a.studentId !== studentId || !a.sessionId.startsWith(prefix)) continue;
+    if (a.status === "present") present += 1;
+    else if (a.status === "absent") absent += 1;
+  }
+  const total = present + absent;
+  return {
+    presentCount: present,
+    absentCount: absent,
+    attendanceRate: total > 0 ? present / total : null,
+  };
+}
+
 function toGroupView(g: ClassGroup): ClassGroupView {
   const enrolledCount = activeEnrollments(g.id).length;
   return {
@@ -205,6 +227,7 @@ export const turmasService = {
             studentStatus:
               store.clients.find((c) => c.id === e.studentId)?.status ??
               "inactive",
+            ...frequencyOf(classGroupId, e.studentId),
           }))
           .sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR")),
       );
@@ -252,6 +275,9 @@ export const turmasService = {
         ...enrollment,
         studentName: student.name,
         studentStatus: student.status,
+        presentCount: 0,
+        absentCount: 0,
+        attendanceRate: null,
       });
     });
   },

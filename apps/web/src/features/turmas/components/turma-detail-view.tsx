@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, UserPlus, X } from "lucide-react";
+import { ChevronLeft, Pencil, UserPlus, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,37 @@ import {
   useEnrollments,
 } from "../hooks/use-turmas";
 import { slotsSummary } from "./turmas-view";
+import { TurmaFormDialog } from "./turma-form-dialog";
+
+/** Badge de frequencia do aluno (informativo; destaque quando < 75%). */
+function FreqBadge({
+  rate,
+  present,
+  absent,
+}: {
+  rate: number | null;
+  present: number;
+  absent: number;
+}) {
+  if (rate === null) {
+    return <span className="text-xs text-muted-foreground">sem presença</span>;
+  }
+  const pct = Math.round(rate * 100);
+  const low = rate < 0.75;
+  return (
+    <span
+      title={`${present} presença(s) · ${absent} falta(s)`}
+      className={
+        "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums " +
+        (low
+          ? "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+          : "border-border bg-muted/40 text-muted-foreground")
+      }
+    >
+      {pct}%
+    </span>
+  );
+}
 
 export function TurmaDetailView({ id }: { id: string }) {
   const { data: turma, isLoading } = useClassGroup(id);
@@ -38,6 +69,8 @@ export function TurmaDetailView({ id }: { id: string }) {
   const cancelMut = useCancelEnrollment();
   const can = useCan();
   const canManage = can("enrollment:manage");
+  const canEditTurma = can("classes:manage");
+  const [editOpen, setEditOpen] = useState(false);
   const [confirmFull, setConfirmFull] = useState<{
     studentId: string;
     studentName: string;
@@ -87,10 +120,19 @@ export function TurmaDetailView({ id }: { id: string }) {
       </Button>
 
       <PageHeader title={turma.name} description={meta}>
+        {canEditTurma ? (
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" />
+            Editar
+          </Button>
+        ) : null}
         <span className="rounded-full border px-2.5 py-1 text-sm font-medium text-muted-foreground">
           {turma.enrolledCount}/{turma.capacity} vagas
         </span>
       </PageHeader>
+
+      <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-2">
@@ -106,24 +148,31 @@ export function TurmaDetailView({ id }: { id: string }) {
               <ListItemCard key={e.id} disableHover>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium">{e.studentName}</span>
-                  {canManage ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Cancelar matrícula"
-                      onClick={() =>
-                        cancelMut.mutate(
-                          { id: e.id },
-                          {
-                            onSuccess: () =>
-                              toast.success("Matrícula cancelada."),
-                          },
-                        )
-                      }
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <FreqBadge
+                      rate={e.attendanceRate}
+                      present={e.presentCount}
+                      absent={e.absentCount}
+                    />
+                    {canManage ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Cancelar matrícula"
+                        onClick={() =>
+                          cancelMut.mutate(
+                            { id: e.id },
+                            {
+                              onSuccess: () =>
+                                toast.success("Matrícula cancelada."),
+                            },
+                          )
+                        }
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </ListItemCard>
             ))

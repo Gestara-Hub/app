@@ -1,5 +1,6 @@
 "use client";
 
+import type { ClassGroupView } from "@gestarahub/contracts";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +13,13 @@ import { TurmaForm } from "./turma-form";
 export function TurmaFormDialog({
   open,
   onOpenChange,
+  turma,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  turma?: ClassGroupView;
 }) {
+  const isEdit = Boolean(turma);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -23,13 +27,16 @@ export function TurmaFormDialog({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Nova turma</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar turma" : "Nova turma"}</DialogTitle>
           <DialogDescription>
-            Cadastre uma turma, o instrutor e os encontros recorrentes.
+            {isEdit
+              ? "Atualize os dados, o instrutor e os encontros da turma."
+              : "Cadastre uma turma, o instrutor e os encontros recorrentes."}
           </DialogDescription>
         </DialogHeader>
         <TurmaForm
-          key={open ? "open" : "closed"}
+          key={turma?.id ?? (open ? "open" : "closed")}
+          turma={turma}
           formId="turma-form"
           onSuccess={() => onOpenChange(false)}
         />

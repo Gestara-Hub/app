@@ -80,6 +80,11 @@ export type CreateEnrollment = Pick<Enrollment, "classGroupId" | "studentId">;
 export interface EnrollmentView extends Enrollment {
   studentName: string;
   studentStatus: RecordStatus;
+  // Frequencia (sobre as presencas ja marcadas da turma): `justified` nao
+  // penaliza; `attendanceRate` = present/(present+absent), null se sem dados.
+  presentCount: number;
+  absentCount: number;
+  attendanceRate: number | null;
 }
 
 /** Sessao — ocorrencia datada de uma turma (uma aula). */
