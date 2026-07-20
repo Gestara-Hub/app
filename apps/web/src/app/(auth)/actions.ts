@@ -9,6 +9,7 @@ import {
   encodeSession,
 } from "@/lib/session";
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
+import { organizationModelById } from "@/mocks/store";
 
 /**
  * Grava as claims do usuario no cookie de sessao. O client passa o `UserView`
@@ -33,17 +34,19 @@ async function setSession(user: UserView): Promise<void> {
 export async function signIn(user: UserView, from?: string): Promise<void> {
   await setSession(user);
 
+  const model = organizationModelById(user.organizationId) ?? "scheduling";
   const target =
-    from && from.startsWith("/") && canAccessRoute(user, from)
+    from && from.startsWith("/") && canAccessRoute(user, from, model)
       ? from
-      : firstAllowedRoute(user);
+      : firstAllowedRoute(user, model);
   redirect(target);
 }
 
-/** Troca o usuario logado (demo) e volta pra primeira rota do novo perfil. */
+/** Troca o usuario logado (demo) e volta pra primeira rota do modelo do tenant. */
 export async function switchUser(user: UserView): Promise<void> {
   await setSession(user);
-  redirect(firstAllowedRoute(user));
+  const model = organizationModelById(user.organizationId) ?? "scheduling";
+  redirect(firstAllowedRoute(user, model));
 }
 
 /** Logout mockado: limpa o cookie de sessao e volta para o login. */

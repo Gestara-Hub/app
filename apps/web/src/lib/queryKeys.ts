@@ -2,7 +2,9 @@ import type {
   AppointmentFilter,
   AuditLogFilter,
   CategoryFilter,
+  ClassGroupFilter,
   ClientFilter,
+  DateISO,
   Id,
   ProfessionalFilter,
   RoleFilter,
@@ -71,6 +73,16 @@ export const queryKeys = {
     // O perfil do espectador entra na key: a visibilidade do log varia por perfil.
     list: (filter?: AuditLogFilter, viewer?: UserProfile) =>
       ["audit", "list", filter, viewer] as const,
+  },
+  classes: {
+    all: ["classes"] as const,
+    list: (filter?: ClassGroupFilter) => ["classes", "list", filter] as const,
+    detail: (id: Id) => ["classes", "detail", id] as const,
+    enrollments: (classGroupId: Id) =>
+      ["classes", "enrollments", classGroupId] as const,
+    sessions: (range: { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }) =>
+      ["classes", "sessions", range] as const,
+    session: (sessionId: Id) => ["classes", "session", sessionId] as const,
   },
   organization: {
     detail: ["organization"] as const,

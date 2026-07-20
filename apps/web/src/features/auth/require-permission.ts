@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { can } from "@/lib/permissions";
 import { firstAllowedRoute } from "@/components/layout/nav";
+import { organizationModelById } from "@/mocks/store";
 import type { Permission, UserView } from "@gestarahub/contracts";
 import { getCurrentUser } from "./get-current-user";
 
@@ -14,6 +15,9 @@ export async function requirePermission(
 ): Promise<UserView> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!can(user, permission)) redirect(firstAllowedRoute(user));
+  if (!can(user, permission)) {
+    const model = organizationModelById(user.organizationId) ?? "scheduling";
+    redirect(firstAllowedRoute(user, model));
+  }
   return user;
 }

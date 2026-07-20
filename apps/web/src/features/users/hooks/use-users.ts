@@ -24,6 +24,15 @@ export function useUser(id: Id) {
   });
 }
 
+// Usuarios de TODOS os tenants (login/troca do demo) — cross-tenant, fora do
+// escopo da org ativa.
+export function useSwitchableUsers() {
+  return useQuery({
+    queryKey: ["users", "switch-list"] as const,
+    queryFn: () => usersService.listForSwitch(),
+  });
+}
+
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({

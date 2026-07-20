@@ -19,12 +19,12 @@ import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
 import { useUnit } from "@/features/settings";
-import { useUsers } from "@/features/users/hooks/use-users";
+import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {
   const user = useCurrentUser();
   const { data: unit } = useUnit();
-  const { data: users } = useUsers({ status: "active" });
+  const { data: switchOptions } = useSwitchableUsers();
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
@@ -74,17 +74,17 @@ export function AppTopbar() {
 
             <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <Users className="size-3.5" />
-              Trocar usuário (demo)
+              Trocar usuário / organização (demo)
             </DropdownMenuLabel>
-            {(users ?? []).map((u) => (
-              <form key={u.id} action={switchUser.bind(null, u)}>
-                <DropdownMenuItem asChild disabled={u.id === user.id}>
+            {(switchOptions ?? []).map((opt) => (
+              <form key={opt.user.id} action={switchUser.bind(null, opt.user)}>
+                <DropdownMenuItem asChild disabled={opt.user.id === user.id}>
                   <button type="submit" className="w-full cursor-pointer">
-                    <span className="flex-1 truncate">{u.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {userProfileLabel(u.profile)}
+                    <span className="flex-1 truncate">{opt.user.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {opt.organizationName}
                     </span>
-                    {u.id === user.id ? <Check className="size-4" /> : null}
+                    {opt.user.id === user.id ? <Check className="size-4" /> : null}
                   </button>
                 </DropdownMenuItem>
               </form>

@@ -24,4 +24,10 @@ export type Permission =
   | "settings:view"
   | "users:view" // reservado (gestao de usuarios — fora do MVP)
   | "users:manage" // reservado (gestao de usuarios — fora do MVP)
-  | "audit:view"; // ler o log de auditoria (Dono; Gerente com visao restrita)
+  | "audit:view" // ler o log de auditoria (Dono; Gerente com visao restrita)
+  // Modelo 3 (turmas). So aparecem em tenants model=classes (nav por modelo);
+  // as keys sao model-agnosticas (perfil), a visibilidade e gatada pelo modelo.
+  | "classes:view" // ver turmas, sessoes e presenca
+  | "classes:manage" // criar/editar turmas
+  | "enrollment:manage" // matricular/cancelar alunos
+  | "attendance:mark"; // marcar presenca nas sessoes

@@ -25,6 +25,16 @@ const APPOINTMENT_OPS = [
   "recurrence:manage",
 ] as const satisfies readonly Permission[];
 
+// Modelo 3 (turmas). Keys por perfil (model-agnosticas); a nav por modelo gata
+// a visibilidade. `classes:manage` = criar/editar turmas; `enrollment:manage` =
+// matricular/cancelar; `attendance:mark` = marcar presenca.
+const CLASS_OPS = [
+  "classes:view",
+  "classes:manage",
+  "enrollment:manage",
+  "attendance:mark",
+] as const satisfies readonly Permission[];
+
 /**
  * Lista completa de permissoes. Conjunto do perfil "owner" e ancora da
  * verificacao de exaustividade abaixo (garante que nenhuma key nova fique de
@@ -34,6 +44,7 @@ const ALL_PERMISSIONS = [
   "dashboard:view",
   ...OPERATIONAL_VIEWS,
   ...APPOINTMENT_OPS,
+  ...CLASS_OPS,
   "appointments:block",
   "clients:manage",
   "team:manage",
@@ -71,11 +82,25 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     // Auditoria: a capability libera a tela; QUAIS eventos ele ve (operacionais
     // + usuario Atendente/Profissional) e limitado no read-model do service.
     "audit:view",
+    ...CLASS_OPS,
   ],
-  attendant: [...OPERATIONAL_VIEWS, ...APPOINTMENT_OPS, "clients:manage"],
-  // Profissional: acesso restrito a propria Agenda (sem Clientes/Equipe/Servicos);
-  // pode atualizar o status dos proprios agendamentos, nada alem disso.
-  professional: ["schedule:view", "appointments:status"],
+  attendant: [
+    ...OPERATIONAL_VIEWS,
+    ...APPOINTMENT_OPS,
+    "clients:manage",
+    // Turmas: opera o dia a dia (matricula/presenca), sem criar/editar turmas.
+    "classes:view",
+    "enrollment:manage",
+    "attendance:mark",
+  ],
+  // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas e
+  // marca presenca; nada de gestao.
+  professional: [
+    "schedule:view",
+    "appointments:status",
+    "classes:view",
+    "attendance:mark",
+  ],
 };
 
 /**

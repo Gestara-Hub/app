@@ -8,7 +8,9 @@ import type {
   AuditLogEntry,
   AuditTarget,
   Category,
+  ClassGroup,
   Client,
+  Enrollment,
   Organization,
   Professional,
   RecurrenceSeries,
@@ -29,7 +31,7 @@ import {
   timeToMinutes,
   weekdayOf,
 } from "@gestarahub/core/scheduling";
-import type { MockStore } from "./store";
+import type { MockStore, MockWorld } from "./store";
 
 /**
  * Seed do cenario canonico "Corte Nobre" (docs/product/08-barbearia-corte-nobre.md):
@@ -132,6 +134,7 @@ function seedOrganization(): Organization {
     id: ORG_ID,
     name: "Corte Nobre",
     segment: "Barbearia",
+    model: "scheduling", // Modelo 1: atendimento individual
     status: "active",
   };
 }
@@ -759,5 +762,208 @@ export function createInitialStore(): MockStore {
     timeBlocks,
     series,
     auditLog: seedAuditLog(),
+    classGroups: [],
+    enrollments: [],
+    attendances: [],
+  };
+}
+
+// --- 2o tenant: "Academia X" (Modelo 3 — turmas) ---------------------------
+//
+// Fundacao compartilhada apenas (org/unit/users/instrutores/modalidades/alunos).
+// As colecoes de M1 (services/appointments/series) nascem vazias; as de M3
+// (turmas/matriculas/sessoes/presenca) entram com o modulo `features/turmas`.
+
+const ORG_ACADEMIA = "org-academia-x";
+const UNIT_ACADEMIA = "unit-academia-x";
+
+function seedAcademia(): MockStore {
+  const organization: Organization = {
+    id: ORG_ACADEMIA,
+    name: "Academia X",
+    segment: "Academia",
+    model: "classes", // Modelo 3: turmas e aulas
+    status: "active",
+  };
+
+  const unit: Unit = {
+    id: UNIT_ACADEMIA,
+    organizationId: ORG_ACADEMIA,
+    name: "Academia X - Unidade 1",
+    address: "Av. das Modalidades, 300 - Centro",
+    phone: digits("(11) 4003-1000"),
+    status: "active",
+    businessHours: [
+      { weekday: 0, closed: true },
+      { weekday: 1, closed: false, start: "07:00", end: "22:00" },
+      { weekday: 2, closed: false, start: "07:00", end: "22:00" },
+      { weekday: 3, closed: false, start: "07:00", end: "22:00" },
+      { weekday: 4, closed: false, start: "07:00", end: "22:00" },
+      { weekday: 5, closed: false, start: "07:00", end: "22:00" },
+      { weekday: 6, closed: false, start: "08:00", end: "14:00" },
+    ],
+  };
+
+  const roles: Role[] = [
+    { id: "role-ac-instrutor", organizationId: ORG_ACADEMIA, name: "Instrutor", position: 1, status: "active", ...timestamps() },
+    { id: "role-ac-coord", organizationId: ORG_ACADEMIA, name: "Coordenador", position: 2, status: "active", ...timestamps() },
+  ];
+
+  const categories: Category[] = [
+    { id: "cat-ac-judo", organizationId: ORG_ACADEMIA, name: "Judô", position: 1, status: "active", ...timestamps() },
+    { id: "cat-ac-ingles", organizationId: ORG_ACADEMIA, name: "Inglês", position: 2, status: "active", ...timestamps() },
+    { id: "cat-ac-ballet", organizationId: ORG_ACADEMIA, name: "Ballet", position: 3, status: "active", ...timestamps() },
+  ];
+
+  const instructor = (
+    id: string,
+    name: string,
+    roleId: string,
+    phone: string,
+    days: Weekday[],
+  ): Professional => ({
+    id,
+    organizationId: ORG_ACADEMIA,
+    unitId: UNIT_ACADEMIA,
+    name,
+    roleId,
+    phone: digits(phone),
+    status: "active",
+    workingHours: workingHours(days),
+    serviceIds: [],
+    ...timestamps(),
+  });
+  const professionals: Professional[] = [
+    instructor("prof-ac-carlos", "Carlos Dias", "role-ac-instrutor", "(11) 98811-0001", [1, 2, 3, 4, 5, 6]),
+    instructor("prof-ac-marina", "Marina Alves", "role-ac-instrutor", "(11) 98811-0002", [1, 2, 3, 4, 5]),
+  ];
+
+  const user = (
+    id: string,
+    name: string,
+    email: string,
+    profile: User["profile"],
+    professionalId?: string,
+  ): User => ({
+    id,
+    organizationId: ORG_ACADEMIA,
+    name,
+    email,
+    profile,
+    ...(professionalId ? { professionalId } : {}),
+    status: "active",
+    ...timestamps(),
+  });
+  const users: User[] = [
+    user("usr-ac-ana", "Ana Ribeiro", "ana@academiax.com", "owner"),
+    user("usr-ac-carlos", "Carlos Dias", "carlos@academiax.com", "professional", "prof-ac-carlos"),
+    user("usr-ac-paula", "Paula Souza", "paula@academiax.com", "manager"),
+  ];
+
+  const aluno = (
+    id: string,
+    name: string,
+    phone: string,
+    notes: string,
+  ): Client => ({
+    id,
+    organizationId: ORG_ACADEMIA,
+    name,
+    phone: digits(phone),
+    notes,
+    status: "active",
+    ...timestamps(),
+  });
+  const clients: Client[] = [
+    aluno("cli-ac-lucas", "Lucas Aluno", "(11) 99200-0001", "Turma de judô infantil."),
+    aluno("cli-ac-bia", "Bia Aluna", "(11) 99200-0002", "Inglês A1."),
+    aluno("cli-ac-theo", "Theo Aluno", "(11) 99200-0003", "Judô juvenil."),
+    aluno("cli-ac-manu", "Manuela Aluna", "(11) 99200-0004", "Ballet iniciante."),
+    aluno("cli-ac-rafa", "Rafael Aluno", "(11) 99200-0005", "Inglês B1; frequência alta."),
+  ];
+
+  const turma = (
+    id: string,
+    name: string,
+    modalityId: string,
+    instructorId: string,
+    capacity: number,
+    meetingSlots: { weekday: Weekday; start: string; end: string }[],
+  ): ClassGroup => ({
+    id,
+    organizationId: ORG_ACADEMIA,
+    unitId: UNIT_ACADEMIA,
+    name,
+    modalityId,
+    instructorId,
+    enrollmentType: "fixed",
+    capacity,
+    meetingSlots,
+    startDate: "2026-06-01",
+    status: "active",
+    ...timestamps(),
+  });
+  const classGroups: ClassGroup[] = [
+    turma("turma-ac-judo", "Judô Infantil A", "cat-ac-judo", "prof-ac-carlos", 12, [
+      { weekday: 1, start: "18:00", end: "19:00" },
+      { weekday: 3, start: "18:00", end: "19:00" },
+    ]),
+    turma("turma-ac-ingles", "Inglês A1", "cat-ac-ingles", "prof-ac-marina", 10, [
+      { weekday: 2, start: "19:00", end: "20:00" },
+      { weekday: 4, start: "19:00", end: "20:00" },
+    ]),
+    turma("turma-ac-ballet", "Ballet Iniciante", "cat-ac-ballet", "prof-ac-marina", 8, [
+      { weekday: 6, start: "09:00", end: "10:00" },
+    ]),
+  ];
+
+  const enroll = (
+    id: string,
+    classGroupId: string,
+    studentId: string,
+  ): Enrollment => ({
+    id,
+    classGroupId,
+    studentId,
+    status: "active",
+    enrolledAt: SEED_NOW,
+  });
+  const enrollments: Enrollment[] = [
+    enroll("enr-ac-1", "turma-ac-judo", "cli-ac-lucas"),
+    enroll("enr-ac-2", "turma-ac-judo", "cli-ac-theo"),
+    enroll("enr-ac-3", "turma-ac-ingles", "cli-ac-bia"),
+    enroll("enr-ac-4", "turma-ac-ingles", "cli-ac-rafa"),
+    enroll("enr-ac-5", "turma-ac-ballet", "cli-ac-manu"),
+  ];
+
+  return {
+    organization,
+    unit,
+    clients,
+    professionals,
+    users,
+    roles,
+    categories,
+    services: [],
+    appointments: [],
+    timeBlocks: [],
+    series: [],
+    auditLog: [],
+    classGroups,
+    enrollments,
+    attendances: [],
+  };
+}
+
+/** Mundo multi-tenant: Corte Nobre (M1) + Academia X (M3). Ativo = Corte Nobre. */
+export function createInitialWorld(): MockWorld {
+  const corteNobre = createInitialStore();
+  const academia = seedAcademia();
+  return {
+    tenants: {
+      [corteNobre.organization.id]: corteNobre,
+      [academia.organization.id]: academia,
+    },
+    activeOrganizationId: corteNobre.organization.id,
   };
 }

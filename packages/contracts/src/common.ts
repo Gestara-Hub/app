@@ -69,7 +69,9 @@ export type ApiErrorCode =
   | "TIME_BLOCKED"
   | "PROFESSIONAL_DOES_NOT_OFFER_SERVICE"
   | "PROFESSIONAL_INACTIVE"
-  | "SERVICE_INACTIVE";
+  | "SERVICE_INACTIVE"
+  // Regras de negocio (turmas — Modelo 3)
+  | "CLASS_FULL"; // turma lotada (regra mole: confirma para matricular mesmo assim)
 
 export interface ApiErrorField {
   field: string; // ex.: 'name', 'priceCents'

@@ -19,8 +19,14 @@ import {
 import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
-import { useCan } from "@/features/auth";
-import { FOOTER_NAV, MAIN_NAV, isNavItemActive, type NavItem } from "./nav";
+import { useCan, useModel } from "@/features/auth";
+import {
+  FOOTER_NAV,
+  MAIN_NAV,
+  isNavItemActive,
+  navForModel,
+  type NavItem,
+} from "./nav";
 
 function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -28,6 +34,12 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
   };
+
+  // Ativo = href que casa E e o mais especifico (mais longo), para um pai
+  // (/classes) e um filho (/classes/calendar) nao ficarem ambos ativos.
+  const activeHref = items
+    .filter((i) => isNavItemActive(pathname, i.href))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <SidebarMenu>
@@ -37,7 +49,7 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild
-              isActive={isNavItemActive(pathname, item.href)}
+              isActive={item.href === activeHref}
               tooltip={item.label}
             >
               <Link
@@ -59,8 +71,14 @@ function NavMenu({ items, pathname }: { items: NavItem[]; pathname: string }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const can = useCan();
-  const mainItems = MAIN_NAV.filter((item) => can(item.permission));
-  const footerItems = FOOTER_NAV.filter((item) => can(item.permission));
+  const model = useModel();
+  // Filtra por MODELO do tenant, depois por permissao (RBAC).
+  const mainItems = navForModel(MAIN_NAV, model).filter((item) =>
+    can(item.permission),
+  );
+  const footerItems = navForModel(FOOTER_NAV, model).filter((item) =>
+    can(item.permission),
+  );
 
   return (
     <Sidebar variant="inset" collapsible="icon">

@@ -11,3 +11,4 @@ export * from "./appointment";
 export * from "./time-block";
 export * from "./recurrence-series";
 export * from "./audit-log";
+export * from "./class";

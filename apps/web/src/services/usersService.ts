@@ -4,12 +4,13 @@ import type {
   AuditChange,
   CreateUser,
   Id,
+  Professional,
   UpdateUser,
   User,
   UserFilter,
   UserView,
 } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import { allTenants, store } from "@/mocks/store";
 import { userProfileLabel } from "@/lib/labels";
 import {
   apiError,
@@ -31,14 +32,27 @@ const NOT_FOUND = "Usuário não encontrado.";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Expande o profissional vinculado (espelha o join que a API faria no GET).
-function toView(u: User): UserView {
+// Parametrizado pelos profissionais de um tenant especifico — o login/troca
+// (cross-tenant) precisa expandir usuarios de outra org, nao so a ativa.
+function toViewWith(professionals: Professional[], u: User): UserView {
   const p = u.professionalId
-    ? store.professionals.find((x) => x.id === u.professionalId)
+    ? professionals.find((x) => x.id === u.professionalId)
     : undefined;
   return {
     ...u,
     professional: p ? { id: p.id, name: p.name, status: p.status } : undefined,
   };
+}
+
+function toView(u: User): UserView {
+  return toViewWith(store.professionals, u);
+}
+
+/** Opcao de login/troca de usuario (demo), com a organizacao (tenant) do usuario. */
+export interface UserSwitchOption {
+  user: UserView;
+  organizationId: Id;
+  organizationName: string;
 }
 
 function validateUser(
@@ -126,6 +140,31 @@ export const usersService = {
         [...result]
           .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
           .map(toView),
+      );
+    });
+  },
+
+  // Usuarios ATIVOS de TODOS os tenants (cross-tenant), para o login e o
+  // "trocar usuario" do demo — escolher um usuario de outra org troca o tenant.
+  listForSwitch(): Promise<UserSwitchOption[]> {
+    return simulateRead(() => {
+      const options: UserSwitchOption[] = [];
+      for (const tenant of allTenants()) {
+        for (const u of tenant.users) {
+          if (u.status !== "active") continue;
+          options.push({
+            user: toViewWith(tenant.professionals, u),
+            organizationId: tenant.organization.id,
+            organizationName: tenant.organization.name,
+          });
+        }
+      }
+      return clone(
+        options.sort(
+          (a, b) =>
+            a.organizationName.localeCompare(b.organizationName, "pt-BR") ||
+            a.user.name.localeCompare(b.user.name, "pt-BR"),
+        ),
       );
     });
   },

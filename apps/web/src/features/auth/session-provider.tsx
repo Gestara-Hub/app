@@ -3,11 +3,18 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { can as canFn } from "@/lib/permissions";
 import { setCurrentActor } from "@/mocks/currentActor";
-import type { Permission, UserView } from "@gestarahub/contracts";
+import { setActiveOrganization } from "@/mocks/store";
+import type {
+  OperationalModel,
+  Permission,
+  UserView,
+} from "@gestarahub/contracts";
 
 interface SessionContextValue {
   user: UserView;
   can: (permission: Permission) => boolean;
+  /** Modelo operacional do tenant atual — a nav/shell derivam dele. */
+  model: OperationalModel;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -19,14 +26,22 @@ const SessionContext = createContext<SessionContextValue | null>(null);
  */
 export function SessionProvider({
   user,
+  model,
   children,
 }: {
   user: UserView;
+  model: OperationalModel;
   children: ReactNode;
 }) {
+  // O tenant ativo do mock segue o usuario logado: assim, logar/trocar para um
+  // usuario de outra organizacao faz os services enxergarem os dados dela.
+  // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
+  if (typeof window !== "undefined") {
+    setActiveOrganization(user.organizationId);
+  }
   const value = useMemo<SessionContextValue>(
-    () => ({ user, can: (permission) => canFn(user, permission) }),
-    [user],
+    () => ({ user, can: (permission) => canFn(user, permission), model }),
+    [user, model],
   );
   // Publica o ator ambiente lido pela camada de services (auditoria carimba o
   // autor de cada mutacao sem receber o ator por parametro). Espelha o principal
@@ -54,4 +69,8 @@ export function useCurrentUser(): UserView {
 
 export function useCan(): (permission: Permission) => boolean {
   return useSession().can;
+}
+
+export function useModel(): OperationalModel {
+  return useSession().model;
 }

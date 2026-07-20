@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { PublicAuthShell } from "@/components/shared/public-auth-shell";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { firstAllowedRoute } from "@/components/layout/nav";
+import { organizationModelById } from "@/mocks/store";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -13,7 +14,10 @@ export default async function LoginPage({
   // (getCurrentUser null) cai no seletor e sera sobrescrito no proximo login,
   // evitando loop de redirect com o layout.
   const current = await getCurrentUser();
-  if (current) redirect(firstAllowedRoute(current));
+  if (current) {
+    const model = organizationModelById(current.organizationId) ?? "scheduling";
+    redirect(firstAllowedRoute(current, model));
+  }
 
   const { from } = await searchParams;
   const target = from && from.startsWith("/") ? from : "/";

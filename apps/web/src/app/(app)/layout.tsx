@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
+import { organizationModelById } from "@/mocks/store";
 
 export default async function AppLayout({
   children,
@@ -15,13 +16,15 @@ export default async function AppLayout({
   // cookie) e injeta no client via SessionProvider.
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // Modelo operacional do tenant do usuario (resolvido no server; sem flicker).
+  const model = organizationModelById(user.organizationId) ?? "scheduling";
 
   // Estado de colapso da sidebar persistido pelo shadcn no cookie `sidebar_state`.
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <SessionProvider user={user}>
+    <SessionProvider user={user} model={model}>
       <SidebarProvider defaultOpen={defaultOpen}>
         <AppSidebar />
         <SidebarInset>
