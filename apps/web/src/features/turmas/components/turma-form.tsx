@@ -31,6 +31,7 @@ import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
 import { useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
+import { usePlans } from "../hooks/use-billing";
 import { turmaFormSchema, type TurmaFormValues } from "../turma-schema";
 
 const WEEKDAYS = [
@@ -155,6 +156,7 @@ export function TurmaForm({
   const { data: unit } = useUnit();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
+  const { data: plans } = usePlans({ status: "active" });
 
   const form = useForm<TurmaFormValues>({
     resolver: zodResolver(turmaFormSchema),
@@ -164,6 +166,7 @@ export function TurmaForm({
       ? {
           name: turma.name,
           modalityId: turma.modalityId ?? "",
+          planId: turma.planId ?? "",
           instructorId: turma.instructorId,
           enrollmentType: turma.enrollmentType,
           capacity: turma.capacity,
@@ -173,6 +176,7 @@ export function TurmaForm({
       : {
           name: "",
           modalityId: "",
+          planId: "",
           instructorId: "",
           enrollmentType: "fixed",
           capacity: 10,
@@ -187,6 +191,7 @@ export function TurmaForm({
       unitId: unit?.id ?? "",
       name: values.name,
       modalityId: values.modalityId || undefined,
+      planId: values.planId || undefined,
       instructorId: values.instructorId,
       enrollmentType: values.enrollmentType,
       capacity: values.capacity,
@@ -224,6 +229,10 @@ export function TurmaForm({
     value: c.id,
   }));
   const instructorOptions = (professionals ?? []).map((p) => ({
+    label: p.name,
+    value: p.id,
+  }));
+  const planOptions = (plans ?? []).map((p) => ({
     label: p.name,
     value: p.id,
   }));
@@ -275,6 +284,14 @@ export function TurmaForm({
             disabled={pending}
           />
         </div>
+
+        <SelectField<TurmaFormValues>
+          name="planId"
+          label="Plano (mensalidade)"
+          placeholder="Sem cobrança (opcional)"
+          options={planOptions}
+          disabled={pending}
+        />
 
         <Controller
           control={form.control}

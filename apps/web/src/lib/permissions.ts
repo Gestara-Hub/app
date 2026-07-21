@@ -35,6 +35,12 @@ const CLASS_OPS = [
   "attendance:mark",
 ] as const satisfies readonly Permission[];
 
+// Financeiro do M3 (planos + mensalidades) — territorio de owner/gerente.
+const BILLING_OPS = [
+  "billing:view",
+  "billing:manage",
+] as const satisfies readonly Permission[];
+
 /**
  * Lista completa de permissoes. Conjunto do perfil "owner" e ancora da
  * verificacao de exaustividade abaixo (garante que nenhuma key nova fique de
@@ -45,6 +51,7 @@ const ALL_PERMISSIONS = [
   ...OPERATIONAL_VIEWS,
   ...APPOINTMENT_OPS,
   ...CLASS_OPS,
+  ...BILLING_OPS,
   "appointments:block",
   "clients:manage",
   "team:manage",
@@ -83,6 +90,7 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     // + usuario Atendente/Profissional) e limitado no read-model do service.
     "audit:view",
     ...CLASS_OPS,
+    ...BILLING_OPS,
   ],
   attendant: [
     ...OPERATIONAL_VIEWS,
@@ -92,6 +100,8 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "classes:view",
     "enrollment:manage",
     "attendance:mark",
+    // Financeiro: ve mensalidades, mas nao gerencia planos/cobrancas.
+    "billing:view",
   ],
   // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas e
   // marca presenca; nada de gestao.

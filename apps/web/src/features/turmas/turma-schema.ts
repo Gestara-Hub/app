@@ -8,6 +8,8 @@ export const turmaFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da turma."),
   // Modalidade (= Category) opcional; string vazia = sem modalidade.
   modalityId: z.string(),
+  // Plano de mensalidade opcional; vazio = turma sem cobranca.
+  planId: z.string(),
   instructorId: z.string().min(1, "Selecione o instrutor."),
   enrollmentType: z.enum(["fixed", "dropin"]),
   capacity: z.number().int().min(1, "A capacidade deve ser ao menos 1."),

@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, Pencil, UserPlus, X } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import {
+  ChevronLeft,
+  Clock,
+  ListPlus,
+  Pencil,
+  UserCheck,
+  UserPlus,
+  X,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,10 +32,16 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import { useCan } from "@/features/auth";
 import { useClients } from "@/features/clients";
 import {
+  useAddToWaitlist,
   useCancelEnrollment,
   useClassGroup,
+  useConcludeReposicao,
   useEnroll,
   useEnrollments,
+  usePromoteWaitlist,
+  useRemoveFromWaitlist,
+  useReposicoes,
+  useWaitlist,
 } from "../hooks/use-turmas";
 import { slotsSummary } from "./turmas-view";
 import { TurmaFormDialog } from "./turma-form-dialog";
@@ -65,8 +80,14 @@ export function TurmaDetailView({ id }: { id: string }) {
   const { data: turma, isLoading } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
+  const { data: waitlist } = useWaitlist(id);
+  const { data: reposicoes } = useReposicoes(id);
   const enrollMut = useEnroll();
   const cancelMut = useCancelEnrollment();
+  const addWaitMut = useAddToWaitlist();
+  const promoteMut = usePromoteWaitlist();
+  const removeWaitMut = useRemoveFromWaitlist();
+  const concludeRepMut = useConcludeReposicao();
   const can = useCan();
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
@@ -105,6 +126,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const meta = [
     turma.modalityName,
     `Instrutor: ${turma.instructorName}`,
+    turma.planName ? `Plano: ${turma.planName}` : null,
     slotsSummary(turma.meetingSlots),
   ]
     .filter(Boolean)
@@ -208,6 +230,83 @@ export function TurmaDetailView({ id }: { id: string }) {
         ) : null}
       </div>
 
+      {(waitlist ?? []).length > 0 ? (
+        <section className="mt-6 space-y-2">
+          <h2 className="text-sm font-semibold">
+            Lista de espera ({(waitlist ?? []).length})
+          </h2>
+          {(waitlist ?? []).map((w) => (
+            <ListItemCard key={w.id} disableHover>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">
+                  {w.position}. {w.studentName}
+                </span>
+                {canManage ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        promoteMut.mutate(w.id, {
+                          onSuccess: () =>
+                            toast.success("Aluno promovido para matrícula."),
+                        })
+                      }
+                    >
+                      <UserCheck className="size-4" />
+                      Promover
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Remover da lista"
+                      onClick={() => removeWaitMut.mutate(w.id)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </ListItemCard>
+          ))}
+        </section>
+      ) : null}
+
+      {(reposicoes ?? []).length > 0 ? (
+        <section className="mt-6 space-y-2">
+          <h2 className="text-sm font-semibold">
+            Reposições pendentes ({(reposicoes ?? []).length})
+          </h2>
+          {(reposicoes ?? []).map((r) => (
+            <ListItemCard key={r.id} disableHover>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{r.studentName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Faltou em {format(parseISO(r.missedDate), "dd/MM")} · repor
+                    até {format(parseISO(r.deadline), "dd/MM")}
+                  </p>
+                </div>
+                {canManage ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      concludeRepMut.mutate(r.id, {
+                        onSuccess: () => toast.success("Reposição concluída."),
+                      })
+                    }
+                  >
+                    <Clock className="size-4" />
+                    Marcar reposta
+                  </Button>
+                ) : null}
+              </div>
+            </ListItemCard>
+          ))}
+        </section>
+      ) : null}
+
       <AlertDialog
         open={confirmFull !== null}
         onOpenChange={(open) => {
@@ -224,6 +323,24 @@ export function TurmaDetailView({ id }: { id: string }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmFull) {
+                  addWaitMut.mutate(
+                    { classGroupId: id, studentId: confirmFull.studentId },
+                    {
+                      onSuccess: () =>
+                        toast.success("Adicionado à lista de espera."),
+                    },
+                  );
+                  setConfirmFull(null);
+                }
+              }}
+            >
+              <ListPlus className="size-4" />
+              Pôr na lista de espera
+            </Button>
             <AlertDialogAction
               onClick={() => {
                 if (confirmFull) void doEnroll(confirmFull.studentId, true);

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
+import { ChevronLeft, UserPlus, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +11,13 @@ import { ListItemCard } from "@/components/shared/list-item-card";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useClassSession, useMarkAttendance } from "../hooks/use-turmas";
+import { useClients } from "@/features/clients";
+import {
+  useCancelReserva,
+  useClassSession,
+  useMarkAttendance,
+  useReserveSession,
+} from "../hooks/use-turmas";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   {
@@ -35,13 +42,23 @@ const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const { data: session, isLoading } = useClassSession(sessionId);
+  const { data: clients } = useClients({ status: "active" });
   const markMut = useMarkAttendance();
+  const reserveMut = useReserveSession();
+  const cancelReservaMut = useCancelReserva();
   const can = useCan();
   const canMark = can("attendance:mark");
+  const canEnroll = can("enrollment:manage");
 
   if (isLoading || !session) {
     return <Skeleton className="h-40 w-full rounded-md" />;
   }
+
+  const isDropin = session.enrollmentType === "dropin";
+  const rosterIds = new Set(session.roster.map((r) => r.studentId));
+  const available = isDropin
+    ? (clients ?? []).filter((c) => !rosterIds.has(c.id))
+    : [];
 
   const meta = [
     session.modalityName,
@@ -63,11 +80,14 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       <PageHeader title={session.className} description={meta} />
 
       <h2 className="mb-2 text-sm font-semibold">
-        Presença ({session.roster.length} alunos)
+        {isDropin ? "Reservas e presença" : "Presença"} (
+        {session.roster.length} {isDropin ? "reservados" : "alunos"})
       </h2>
       {session.roster.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nenhum aluno matriculado na turma.
+          {isDropin
+            ? "Nenhuma reserva nesta aula."
+            : "Nenhum aluno matriculado na turma."}
         </p>
       ) : (
         <div className="space-y-2">
@@ -75,7 +95,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
             <ListItemCard key={r.studentId} disableHover>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-medium">{r.studentName}</span>
-                <div className="flex gap-1.5">
+                <div className="flex items-center gap-1.5">
                   {STATUSES.map((s) => {
                     const on = r.attendance === s.value;
                     return (
@@ -101,12 +121,64 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                       </button>
                     );
                   })}
+                  {isDropin && canEnroll ? (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Cancelar reserva"
+                      onClick={() =>
+                        cancelReservaMut.mutate({
+                          sessionId,
+                          studentId: r.studentId,
+                        })
+                      }
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </ListItemCard>
           ))}
         </div>
       )}
+
+      {isDropin && canEnroll ? (
+        <section className="mt-6 space-y-2">
+          <h2 className="text-sm font-semibold">Reservar aluno</h2>
+          {available.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Todos os alunos ativos já reservaram esta aula.
+            </p>
+          ) : (
+            available.map((c) => (
+              <ListItemCard key={c.id} disableHover>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm">{c.name}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={reserveMut.isPending}
+                    onClick={() =>
+                      reserveMut.mutate(
+                        {
+                          classGroupId: session.classGroupId,
+                          sessionId,
+                          studentId: c.id,
+                        },
+                        { onSuccess: () => toast.success("Reserva feita.") },
+                      )
+                    }
+                  >
+                    <UserPlus className="size-4" />
+                    Reservar
+                  </Button>
+                </div>
+              </ListItemCard>
+            ))
+          )}
+        </section>
+      ) : null}
     </>
   );
 }

@@ -7,15 +7,21 @@ import type {
   ClassMeetingSlot,
   ClassSessionDetail,
   ClassSessionView,
+  Cobranca,
   CreateClassGroup,
   CreateEnrollment,
   DateISO,
   Enrollment,
   EnrollmentView,
   Id,
+  ReposicaoView,
+  Reserva,
+  ReservaView,
   SessionRosterEntry,
   TimeISO,
   UpdateClassGroup,
+  WaitlistEntry,
+  WaitlistEntryView,
 } from "@gestarahub/contracts";
 import { addDays, format, parseISO } from "date-fns";
 import { weekdayOf } from "@gestarahub/core/scheduling";
@@ -72,7 +78,16 @@ function frequencyOf(
   for (const a of store.attendances) {
     if (a.studentId !== studentId || !a.sessionId.startsWith(prefix)) continue;
     if (a.status === "present") present += 1;
-    else if (a.status === "absent") absent += 1;
+    else if (a.status === "absent") {
+      // Falta com reposicao concluida nao penaliza a frequencia.
+      const reposta = store.reposicoes.some(
+        (r) =>
+          r.missedSessionId === a.sessionId &&
+          r.studentId === studentId &&
+          r.status === "done",
+      );
+      if (!reposta) absent += 1;
+    }
   }
   const total = present + absent;
   return {
@@ -88,6 +103,9 @@ function toGroupView(g: ClassGroup): ClassGroupView {
     ...g,
     modalityName: modalityName(g.modalityId),
     instructorName: instructorName(g.instructorId),
+    planName: g.planId
+      ? store.plans.find((p) => p.id === g.planId)?.name
+      : undefined,
     enrolledCount,
     vagasRestantes: g.capacity - enrolledCount,
   };
@@ -137,6 +155,36 @@ function datesBetween(from: DateISO, to: DateISO): DateISO[] {
     d = addDays(d, 1);
   }
   return out;
+}
+
+// Falta gera reposicao pendente (prazo 30d); presenca/justificada desfaz a
+// pendente. Concluida (done) e mantida (neutraliza a falta na frequencia).
+function ensureReposicaoForAbsence(
+  sessionId: Id,
+  studentId: Id,
+  status: AttendanceStatus,
+): void {
+  const existing = store.reposicoes.find(
+    (r) => r.missedSessionId === sessionId && r.studentId === studentId,
+  );
+  if (status === "absent") {
+    if (existing) return;
+    const p = parseSessionId(sessionId);
+    if (!p) return;
+    const g = store.classGroups.find((x) => x.id === p.classGroupId);
+    if (!g) return;
+    store.reposicoes.push({
+      id: newId(),
+      classGroupId: g.id,
+      studentId,
+      missedSessionId: sessionId,
+      deadline: format(addDays(parseISO(p.date), 30), "yyyy-MM-dd"),
+      status: "pending",
+      createdAt: nowIso(),
+    });
+  } else if (existing && existing.status === "pending") {
+    store.reposicoes.splice(store.reposicoes.indexOf(existing), 1);
+  }
 }
 
 function validateGroup(payload: Partial<CreateClassGroup>): void {
@@ -333,16 +381,23 @@ export const turmasService = {
       const slot = g.meetingSlots.find((s) => s.start === p.start);
       if (!slot) throw notFoundError("Aula não encontrada.");
       const view = toSessionView(g, p.date, slot);
-      const roster: SessionRosterEntry[] = activeEnrollments(g.id)
-        .map((e) => ({
-          studentId: e.studentId,
-          studentName: studentName(e.studentId),
+      // Roster: turma fixa = matriculas ativas; drop-in = reservas da sessao.
+      const studentIds =
+        g.enrollmentType === "dropin"
+          ? store.reservas
+              .filter((r) => r.sessionId === id && r.status === "reserved")
+              .map((r) => r.studentId)
+          : activeEnrollments(g.id).map((e) => e.studentId);
+      const roster: SessionRosterEntry[] = studentIds
+        .map((sid) => ({
+          studentId: sid,
+          studentName: studentName(sid),
           attendance: store.attendances.find(
-            (a) => a.sessionId === id && a.studentId === e.studentId,
+            (a) => a.sessionId === id && a.studentId === sid,
           )?.status,
         }))
         .sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
-      return clone({ ...view, roster });
+      return clone({ ...view, enrollmentType: g.enrollmentType, roster });
     });
   },
 
@@ -366,6 +421,218 @@ export const turmasService = {
           status: input.status,
           markedAt: nowIso(),
         });
+      }
+      ensureReposicaoForAbsence(input.sessionId, input.studentId, input.status);
+    });
+  },
+
+  // --- Lista de espera ----------------------------------------------------
+  listWaitlist(classGroupId: Id): Promise<WaitlistEntryView[]> {
+    return simulateRead(() => {
+      const rows = store.waitlist.filter(
+        (w) => w.classGroupId === classGroupId && w.status === "waiting",
+      );
+      return clone(
+        rows
+          .sort((a, b) => a.position - b.position)
+          .map((w) => ({ ...w, studentName: studentName(w.studentId) })),
+      );
+    });
+  },
+
+  addToWaitlist(input: {
+    classGroupId: Id;
+    studentId: Id;
+  }): Promise<WaitlistEntryView> {
+    return simulateWrite(() => {
+      const g = store.classGroups.find((x) => x.id === input.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+      const already = store.waitlist.find(
+        (w) =>
+          w.classGroupId === g.id &&
+          w.studentId === input.studentId &&
+          w.status === "waiting",
+      );
+      if (already) {
+        throw validationError([
+          { field: "studentId", message: "Aluno já está na lista de espera." },
+        ]);
+      }
+      const position =
+        store.waitlist.filter(
+          (w) => w.classGroupId === g.id && w.status === "waiting",
+        ).length + 1;
+      const entry: WaitlistEntry = {
+        id: newId(),
+        classGroupId: g.id,
+        studentId: input.studentId,
+        position,
+        status: "waiting",
+        createdAt: nowIso(),
+      };
+      store.waitlist.push(entry);
+      return clone({ ...entry, studentName: studentName(input.studentId) });
+    });
+  },
+
+  // Promove o aluno da espera para matricula (decisao manual; permite exceder a
+  // capacidade, pois e uma acao consciente).
+  promoteFromWaitlist(id: Id): Promise<EnrollmentView> {
+    return simulateWrite(() => {
+      const w = store.waitlist.find((x) => x.id === id);
+      if (!w) throw notFoundError("Registro não encontrado.");
+      w.status = "promoted";
+      const enrollment: Enrollment = {
+        id: newId(),
+        classGroupId: w.classGroupId,
+        studentId: w.studentId,
+        status: "active",
+        enrolledAt: nowIso(),
+      };
+      store.enrollments.push(enrollment);
+      const student = store.clients.find((c) => c.id === w.studentId);
+      return clone({
+        ...enrollment,
+        studentName: student?.name ?? "",
+        studentStatus: student?.status ?? "inactive",
+        presentCount: 0,
+        absentCount: 0,
+        attendanceRate: null,
+      });
+    });
+  },
+
+  removeFromWaitlist(id: Id): Promise<void> {
+    return simulateWrite(() => {
+      const w = store.waitlist.find((x) => x.id === id);
+      if (!w) throw notFoundError("Registro não encontrado.");
+      w.status = "canceled";
+    });
+  },
+
+  // --- Reposicoes ---------------------------------------------------------
+  listReposicoes(classGroupId?: Id): Promise<ReposicaoView[]> {
+    return simulateRead(() => {
+      const rows = store.reposicoes.filter(
+        (r) =>
+          (r.status === "pending" || r.status === "scheduled") &&
+          (!classGroupId || r.classGroupId === classGroupId),
+      );
+      return clone(
+        rows
+          .map((r) => {
+            const missed = parseSessionId(r.missedSessionId);
+            const makeup = r.makeupSessionId
+              ? parseSessionId(r.makeupSessionId)
+              : null;
+            return {
+              ...r,
+              studentName: studentName(r.studentId),
+              className:
+                store.classGroups.find((g) => g.id === r.classGroupId)?.name ??
+                "",
+              missedDate: missed?.date ?? r.missedSessionId,
+              makeupDate: makeup?.date,
+            };
+          })
+          .sort((a, b) => a.missedDate.localeCompare(b.missedDate)),
+      );
+    });
+  },
+
+  scheduleReposicao(id: Id, makeupSessionId: Id): Promise<void> {
+    return simulateWrite(() => {
+      const r = store.reposicoes.find((x) => x.id === id);
+      if (!r) throw notFoundError("Reposição não encontrada.");
+      r.makeupSessionId = makeupSessionId;
+      r.status = "scheduled";
+    });
+  },
+
+  concludeReposicao(id: Id): Promise<void> {
+    return simulateWrite(() => {
+      const r = store.reposicoes.find((x) => x.id === id);
+      if (!r) throw notFoundError("Reposição não encontrada.");
+      r.status = "done";
+    });
+  },
+
+  // --- Reservas (drop-in) -------------------------------------------------
+  reserveSession(input: {
+    classGroupId: Id;
+    sessionId: Id;
+    studentId: Id;
+  }): Promise<ReservaView> {
+    return simulateWrite(() => {
+      const g = store.classGroups.find((x) => x.id === input.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+      const already = store.reservas.find(
+        (r) =>
+          r.sessionId === input.sessionId &&
+          r.studentId === input.studentId &&
+          r.status === "reserved",
+      );
+      if (already) {
+        throw validationError([
+          { field: "studentId", message: "Aluno já reservou esta aula." },
+        ]);
+      }
+      const reserva: Reserva = {
+        id: newId(),
+        classGroupId: g.id,
+        sessionId: input.sessionId,
+        studentId: input.studentId,
+        status: "reserved",
+        reservedAt: nowIso(),
+      };
+      store.reservas.push(reserva);
+      // Cobranca avulsa pela aula (registro/status; sem gateway).
+      const p = parseSessionId(input.sessionId);
+      const sessionDate = p?.date ?? todayISO();
+      const ts = nowIso();
+      const cobranca: Cobranca = {
+        id: newId(),
+        organizationId: store.organization.id,
+        studentId: input.studentId,
+        kind: "avulsa",
+        classGroupId: g.id,
+        sessionId: input.sessionId,
+        competencia: sessionDate.slice(0, 7),
+        dueDate: sessionDate,
+        amountCents: g.sessionPriceCents ?? 0,
+        status: "pending",
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      store.cobrancas.push(cobranca);
+      return clone({
+        ...reserva,
+        studentName: studentName(input.studentId),
+      });
+    });
+  },
+
+  cancelReserva(input: { sessionId: Id; studentId: Id }): Promise<void> {
+    return simulateWrite(() => {
+      const r = store.reservas.find(
+        (x) =>
+          x.sessionId === input.sessionId &&
+          x.studentId === input.studentId &&
+          x.status === "reserved",
+      );
+      if (!r) throw notFoundError("Reserva não encontrada.");
+      r.status = "canceled";
+      // Cancela a cobranca avulsa vinculada, se ainda nao paga.
+      const cob = store.cobrancas.find(
+        (c) =>
+          c.kind === "avulsa" &&
+          c.sessionId === input.sessionId &&
+          c.studentId === input.studentId &&
+          c.status !== "paid",
+      );
+      if (cob) {
+        cob.status = "canceled";
+        cob.updatedAt = nowIso();
       }
     });
   },

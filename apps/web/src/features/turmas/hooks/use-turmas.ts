@@ -110,7 +110,91 @@ export function useMarkAttendance() {
       studentId: Id;
       status: AttendanceStatus;
     }) => turmasService.markAttendance(input),
-    onSuccess: (_data, input) =>
-      qc.invalidateQueries({ queryKey: queryKeys.classes.session(input.sessionId) }),
+    // Presenca muda frequencia e pode abrir/fechar reposicao -> invalida tudo.
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+// --- Lista de espera ------------------------------------------------------
+export function useWaitlist(classGroupId: Id) {
+  return useQuery({
+    queryKey: queryKeys.classes.waitlist(classGroupId),
+    queryFn: () => turmasService.listWaitlist(classGroupId),
+    enabled: Boolean(classGroupId),
+  });
+}
+
+export function useAddToWaitlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { classGroupId: Id; studentId: Id }) =>
+      turmasService.addToWaitlist(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+export function usePromoteWaitlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => turmasService.promoteFromWaitlist(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+export function useRemoveFromWaitlist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => turmasService.removeFromWaitlist(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+// --- Reposicoes -----------------------------------------------------------
+export function useReposicoes(classGroupId?: Id) {
+  return useQuery({
+    queryKey: queryKeys.classes.reposicoes(classGroupId),
+    queryFn: () => turmasService.listReposicoes(classGroupId),
+  });
+}
+
+export function useScheduleReposicao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, makeupSessionId }: { id: Id; makeupSessionId: Id }) =>
+      turmasService.scheduleReposicao(id, makeupSessionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+export function useConcludeReposicao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => turmasService.concludeReposicao(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+// --- Reservas (drop-in) ---------------------------------------------------
+export function useReserveSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { classGroupId: Id; sessionId: Id; studentId: Id }) =>
+      turmasService.reserveSession(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+      qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+    },
+  });
+}
+
+export function useCancelReserva() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { sessionId: Id; studentId: Id }) =>
+      turmasService.cancelReserva(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+      qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+    },
   });
 }

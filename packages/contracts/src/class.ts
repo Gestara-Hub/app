@@ -34,6 +34,8 @@ export interface ClassGroup {
   instructorId: Id; // = Professional (instrutor titular)
   enrollmentType: ClassEnrollmentType;
   capacity: number; // vagas (regra mole ao lotar)
+  planId?: Id; // = Plano (mensalidade padrao da turma); ausente = sem cobranca
+  sessionPriceCents?: number; // preco da aula avulsa (turmas drop-in)
   meetingSlots: ClassMeetingSlot[];
   startDate: DateISO;
   endDate?: DateISO; // sem fim = turma continua
@@ -58,6 +60,7 @@ export interface ClassGroupFilter {
 export interface ClassGroupView extends ClassGroup {
   modalityName?: string;
   instructorName: string;
+  planName?: string;
   enrolledCount: number; // matriculas ativas
   vagasRestantes: number; // capacity - enrolledCount
 }
@@ -134,5 +137,61 @@ export interface SessionRosterEntry {
 
 /** Detalhe da sessao com o roster (matriculados da turma) para marcar presenca. */
 export interface ClassSessionDetail extends ClassSessionView {
+  enrollmentType: ClassEnrollmentType; // fixo (matricula) ou drop-in (reserva)
   roster: SessionRosterEntry[];
+}
+
+// --- Fatia 3: lista de espera, reposicao e drop-in (reserva) ----------------
+
+/** Fila de espera de uma turma lotada (promocao manual ao abrir vaga). */
+export type WaitlistStatus = "waiting" | "promoted" | "canceled";
+
+export interface WaitlistEntry {
+  id: Id;
+  classGroupId: Id;
+  studentId: Id;
+  position: number;
+  status: WaitlistStatus;
+  createdAt: DateTimeISO;
+}
+
+export interface WaitlistEntryView extends WaitlistEntry {
+  studentName: string;
+}
+
+/** Reposicao de uma falta (prazo de 30 dias; `done` neutraliza a falta). */
+export type ReposicaoStatus = "pending" | "scheduled" | "done" | "expired";
+
+export interface Reposicao {
+  id: Id;
+  classGroupId: Id;
+  studentId: Id;
+  missedSessionId: Id;
+  makeupSessionId?: Id;
+  deadline: DateISO; // 30 dias apos a falta
+  status: ReposicaoStatus;
+  createdAt: DateTimeISO;
+}
+
+export interface ReposicaoView extends Reposicao {
+  studentName: string;
+  className: string;
+  missedDate: DateISO;
+  makeupDate?: DateISO;
+}
+
+/** Reserva de uma aula avulsa (turma drop-in): Aluno x Sessao. */
+export type ReservaStatus = "reserved" | "canceled";
+
+export interface Reserva {
+  id: Id;
+  classGroupId: Id;
+  sessionId: Id;
+  studentId: Id;
+  status: ReservaStatus;
+  reservedAt: DateTimeISO;
+}
+
+export interface ReservaView extends Reserva {
+  studentName: string;
 }

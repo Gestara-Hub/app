@@ -10,8 +10,10 @@ import type {
   Category,
   ClassGroup,
   Client,
+  Cobranca,
   Enrollment,
   Organization,
+  Plano,
   Professional,
   RecurrenceSeries,
   Role,
@@ -765,6 +767,11 @@ export function createInitialStore(): MockStore {
     classGroups: [],
     enrollments: [],
     attendances: [],
+    plans: [],
+    cobrancas: [],
+    waitlist: [],
+    reposicoes: [],
+    reservas: [],
   };
 }
 
@@ -813,6 +820,7 @@ function seedAcademia(): MockStore {
     { id: "cat-ac-judo", organizationId: ORG_ACADEMIA, name: "Judô", position: 1, status: "active", ...timestamps() },
     { id: "cat-ac-ingles", organizationId: ORG_ACADEMIA, name: "Inglês", position: 2, status: "active", ...timestamps() },
     { id: "cat-ac-ballet", organizationId: ORG_ACADEMIA, name: "Ballet", position: 3, status: "active", ...timestamps() },
+    { id: "cat-ac-yoga", organizationId: ORG_ACADEMIA, name: "Yoga", position: 4, status: "active", ...timestamps() },
   ];
 
   const instructor = (
@@ -882,11 +890,17 @@ function seedAcademia(): MockStore {
     aluno("cli-ac-rafa", "Rafael Aluno", "(11) 99200-0005", "Inglês B1; frequência alta."),
   ];
 
+  const plans: Plano[] = [
+    { id: "plan-ac-2x", organizationId: ORG_ACADEMIA, name: "Mensal 2x/semana", priceCents: 18000, period: "monthly", status: "active", ...timestamps() },
+    { id: "plan-ac-1x", organizationId: ORG_ACADEMIA, name: "Mensal 1x/semana", priceCents: 12000, period: "monthly", status: "active", ...timestamps() },
+  ];
+
   const turma = (
     id: string,
     name: string,
     modalityId: string,
     instructorId: string,
+    planId: string,
     capacity: number,
     meetingSlots: { weekday: Weekday; start: string; end: string }[],
   ): ClassGroup => ({
@@ -898,23 +912,40 @@ function seedAcademia(): MockStore {
     instructorId,
     enrollmentType: "fixed",
     capacity,
+    planId,
     meetingSlots,
     startDate: "2026-06-01",
     status: "active",
     ...timestamps(),
   });
   const classGroups: ClassGroup[] = [
-    turma("turma-ac-judo", "Judô Infantil A", "cat-ac-judo", "prof-ac-carlos", 12, [
+    turma("turma-ac-judo", "Judô Infantil A", "cat-ac-judo", "prof-ac-carlos", "plan-ac-2x", 12, [
       { weekday: 1, start: "18:00", end: "19:00" },
       { weekday: 3, start: "18:00", end: "19:00" },
     ]),
-    turma("turma-ac-ingles", "Inglês A1", "cat-ac-ingles", "prof-ac-marina", 10, [
+    turma("turma-ac-ingles", "Inglês A1", "cat-ac-ingles", "prof-ac-marina", "plan-ac-2x", 10, [
       { weekday: 2, start: "19:00", end: "20:00" },
       { weekday: 4, start: "19:00", end: "20:00" },
     ]),
-    turma("turma-ac-ballet", "Ballet Iniciante", "cat-ac-ballet", "prof-ac-marina", 8, [
+    turma("turma-ac-ballet", "Ballet Iniciante", "cat-ac-ballet", "prof-ac-marina", "plan-ac-1x", 8, [
       { weekday: 6, start: "09:00", end: "10:00" },
     ]),
+    // Turma drop-in (aula avulsa): sem plano, cobra por aula (sessionPriceCents).
+    {
+      id: "turma-ac-yoga",
+      organizationId: ORG_ACADEMIA,
+      unitId: UNIT_ACADEMIA,
+      name: "Yoga (aula avulsa)",
+      modalityId: "cat-ac-yoga",
+      instructorId: "prof-ac-marina",
+      enrollmentType: "dropin",
+      capacity: 15,
+      sessionPriceCents: 4000,
+      meetingSlots: [{ weekday: 6, start: "10:00", end: "11:00" }],
+      startDate: "2026-06-01",
+      status: "active",
+      ...timestamps(),
+    },
   ];
 
   const enroll = (
@@ -936,6 +967,35 @@ function seedAcademia(): MockStore {
     enroll("enr-ac-5", "turma-ac-ballet", "cli-ac-manu"),
   ];
 
+  const cobranca = (
+    id: string,
+    studentId: string,
+    classGroupId: string,
+    planId: string,
+    amountCents: number,
+    status: Cobranca["status"],
+  ): Cobranca => ({
+    id,
+    organizationId: ORG_ACADEMIA,
+    studentId,
+    kind: "mensalidade",
+    planId,
+    classGroupId,
+    competencia: "2026-06",
+    dueDate: "2026-06-10",
+    amountCents,
+    status,
+    ...(status === "paid" ? { paidAt: SEED_NOW, method: "pix" as const } : {}),
+    ...timestamps(),
+  });
+  const cobrancas: Cobranca[] = [
+    cobranca("cob-ac-1", "cli-ac-lucas", "turma-ac-judo", "plan-ac-2x", 18000, "paid"),
+    cobranca("cob-ac-2", "cli-ac-theo", "turma-ac-judo", "plan-ac-2x", 18000, "pending"),
+    cobranca("cob-ac-3", "cli-ac-bia", "turma-ac-ingles", "plan-ac-2x", 18000, "paid"),
+    cobranca("cob-ac-4", "cli-ac-rafa", "turma-ac-ingles", "plan-ac-2x", 18000, "overdue"),
+    cobranca("cob-ac-5", "cli-ac-manu", "turma-ac-ballet", "plan-ac-1x", 12000, "pending"),
+  ];
+
   return {
     organization,
     unit,
@@ -952,6 +1012,11 @@ function seedAcademia(): MockStore {
     classGroups,
     enrollments,
     attendances: [],
+    plans,
+    cobrancas,
+    waitlist: [],
+    reposicoes: [],
+    reservas: [],
   };
 }
 

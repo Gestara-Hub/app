@@ -4,8 +4,10 @@ import type {
   CategoryFilter,
   ClassGroupFilter,
   ClientFilter,
+  CobrancaFilter,
   DateISO,
   Id,
+  PlanoFilter,
   ProfessionalFilter,
   RoleFilter,
   ServiceFilter,
@@ -83,6 +85,14 @@ export const queryKeys = {
     sessions: (range: { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }) =>
       ["classes", "sessions", range] as const,
     session: (sessionId: Id) => ["classes", "session", sessionId] as const,
+    waitlist: (classGroupId: Id) => ["classes", "waitlist", classGroupId] as const,
+    reposicoes: (classGroupId?: Id) =>
+      ["classes", "reposicoes", classGroupId] as const,
+  },
+  billing: {
+    all: ["billing"] as const,
+    plans: (filter?: PlanoFilter) => ["billing", "plans", filter] as const,
+    charges: (filter?: CobrancaFilter) => ["billing", "charges", filter] as const,
   },
   organization: {
     detail: ["organization"] as const,

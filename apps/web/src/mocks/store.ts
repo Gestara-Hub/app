@@ -5,17 +5,22 @@ import type {
   Category,
   ClassGroup,
   Client,
+  Cobranca,
   Enrollment,
   Id,
   OperationalModel,
   Organization,
+  Plano,
   Professional,
   RecurrenceSeries,
+  Reposicao,
+  Reserva,
   Role,
   Service,
   TimeBlock,
   Unit,
   User,
+  WaitlistEntry,
 } from "@gestarahub/contracts";
 import { mockConfig } from "./config";
 import { createInitialWorld } from "./seed";
@@ -54,6 +59,13 @@ export interface MockStore {
   classGroups: ClassGroup[];
   enrollments: Enrollment[];
   attendances: Attendance[];
+  // Financeiro do M3 (planos + mensalidades/cobrancas).
+  plans: Plano[];
+  cobrancas: Cobranca[];
+  // M3 Fatia 3: lista de espera, reposicoes e reservas (drop-in).
+  waitlist: WaitlistEntry[];
+  reposicoes: Reposicao[];
+  reservas: Reserva[];
 }
 
 /** Mundo multi-tenant: um `MockStore` por organizationId + o tenant ativo. */
@@ -74,7 +86,9 @@ const STORAGE_KEY = "gestarahub:db";
 // v10: log de auditoria (auditLog[]).
 // v11: multi-tenant (MockWorld) + Organization.model (2o tenant classes).
 // v12: Modelo 3 (turmas) — classGroups/enrollments/attendances.
-const SEED_VERSION = 12;
+// v13: Modelo 3 Fatia 2 (financeiro) — plans/cobrancas + ClassGroup.planId.
+// v14: Modelo 3 Fatia 3 — waitlist/reposicoes/reservas + ClassGroup.sessionPriceCents.
+const SEED_VERSION = 14;
 
 interface PersistedBlob {
   v: number;
@@ -226,6 +240,11 @@ export function clearStore(): void {
     classGroups: [],
     enrollments: [],
     attendances: [],
+    plans: [],
+    cobrancas: [],
+    waitlist: [],
+    reposicoes: [],
+    reservas: [],
   };
   if (canPersist()) saveToStorage(world);
 }

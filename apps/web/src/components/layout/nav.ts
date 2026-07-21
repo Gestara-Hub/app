@@ -3,12 +3,14 @@ import {
   CalendarRange,
   Contact,
   GraduationCap,
+  Layers,
   LayoutDashboard,
   ScrollText,
   Settings,
   Tag,
   UserCog,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { can } from "@/lib/permissions";
@@ -39,6 +41,8 @@ export const MAIN_NAV: NavItem[] = [
   { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view", models: ["scheduling"], tourId: "nav-agenda" },
   { label: "Turmas", href: "/classes", icon: GraduationCap, permission: "classes:view", models: ["classes"] },
   { label: "Calendário", href: "/classes/calendar", icon: CalendarRange, permission: "classes:view", models: ["classes"] },
+  { label: "Planos", href: "/classes/plans", icon: Layers, permission: "billing:view", models: ["classes"] },
+  { label: "Mensalidades", href: "/classes/billing", icon: Wallet, permission: "billing:view", models: ["classes"] },
 ];
 
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.

@@ -30,4 +30,6 @@ export type Permission =
   | "classes:view" // ver turmas, sessoes e presenca
   | "classes:manage" // criar/editar turmas
   | "enrollment:manage" // matricular/cancelar alunos
-  | "attendance:mark"; // marcar presenca nas sessoes
+  | "attendance:mark" // marcar presenca nas sessoes
+  | "billing:view" // ver planos e mensalidades/cobrancas
+  | "billing:manage"; // criar planos, gerar cobrancas, marcar pago
