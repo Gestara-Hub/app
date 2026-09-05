@@ -71,7 +71,7 @@ export function ResetDataActions() {
                 void handleConfirm();
               }}
               disabled={reset.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {reset.isPending ? "Restaurando..." : "Restaurar"}
             </AlertDialogAction>
@@ -106,7 +106,7 @@ export function ResetDataActions() {
                 void handleClear();
               }}
               disabled={clear.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {clear.isPending ? "Zerando..." : "Zerar mock"}
             </AlertDialogAction>

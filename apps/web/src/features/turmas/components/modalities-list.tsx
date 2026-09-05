@@ -3,12 +3,12 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
-  Contact,
   Pencil,
   Power,
   PowerOff,
   RotateCw,
   Search,
+  Shapes,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -30,22 +30,16 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
-import { formatPhone } from "@gestarahub/core/format";
 import { recordStatusLabel } from "@/lib/labels";
-import type {
-  ProfessionalFilter,
-  ProfessionalView,
-  RecordStatus,
-} from "@gestarahub/contracts";
-import { useModel } from "@/features/auth";
-import { useProfessionals } from "../hooks/use-professionals";
+import type { Category, CategoryFilter, RecordStatus } from "@gestarahub/contracts";
+import { useCategories } from "@/features/categories";
 
-interface ProfessionalsListProps {
+interface ModalitiesListProps {
   canManage: boolean;
   onCreate: () => void;
-  onEdit: (professional: ProfessionalView) => void;
-  onInactivate: (professional: ProfessionalView) => void;
-  onReactivate: (professional: ProfessionalView) => void;
+  onEdit: (modality: Category) => void;
+  onInactivate: (modality: Category) => void;
+  onReactivate: (modality: Category) => void;
 }
 
 function statusPillClass(isActive: boolean): string {
@@ -54,22 +48,20 @@ function statusPillClass(isActive: boolean): string {
     : "border border-border bg-muted/40 text-muted-foreground";
 }
 
-function ProfessionalRow({
-  professional,
+function ModalityRow({
+  modality,
   canManage,
-  isClasses,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
-  professional: ProfessionalView;
+  modality: Category;
   canManage: boolean;
-  isClasses: boolean;
-  onEdit: (p: ProfessionalView) => void;
-  onInactivate: (p: ProfessionalView) => void;
-  onReactivate: (p: ProfessionalView) => void;
+  onEdit: (m: Category) => void;
+  onInactivate: (m: Category) => void;
+  onReactivate: (m: Category) => void;
 }) {
-  const isActive = professional.status === "active";
+  const isActive = modality.status === "active";
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -77,56 +69,41 @@ function ProfessionalRow({
           key: "edit",
           label: "Editar",
           icon: <Pencil className="size-4" />,
-          onSelect: () => onEdit(professional),
+          onSelect: () => onEdit(modality),
         },
         isActive
           ? {
               key: "inactivate",
               label: "Inativar",
               icon: <PowerOff className="size-4" />,
-              onSelect: () => onInactivate(professional),
+              onSelect: () => onInactivate(modality),
               destructive: true,
             }
           : {
               key: "reactivate",
               label: "Reativar",
               icon: <Power className="size-4" />,
-              onSelect: () => onReactivate(professional),
+              onSelect: () => onReactivate(modality),
             },
       ]
     : [];
 
-  const activityMeta = isClasses
-    ? `${(professional.modalityIds ?? []).length} modalidades`
-    : `${professional.serviceIds.length} serviços`;
-  const meta = [
-    professional.role?.name ?? null,
-    activityMeta,
-    `${professional.workingHours.length} dias de atendimento`,
-    professional.phone ? formatPhone(professional.phone) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   const content = (
     <ListItemCard>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{professional.name}</p>
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                statusPillClass(isActive),
-              )}
-            >
-              {recordStatusLabel(professional.status)}
-            </span>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <p className="truncate font-medium">{modality.name}</p>
+          <span
+            className={cn(
+              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+              statusPillClass(isActive),
+            )}
+          >
+            {recordStatusLabel(modality.status)}
+          </span>
         </div>
         {canManage ? (
-          <ListItemActionsMenu actions={actions} title="Ações do profissional" />
+          <ListItemActionsMenu actions={actions} title="Ações da modalidade" />
         ) : null}
       </div>
     </ListItemCard>
@@ -137,37 +114,33 @@ function ProfessionalRow({
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 4 }).map((_, i) => (
+  return Array.from({ length: 5 }).map((_, i) => (
     <div key={i} className="rounded-md border p-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-72" />
-        </div>
+        <Skeleton className="h-5 w-40" />
         {showAction ? <Skeleton className="size-8 rounded-md" /> : null}
       </div>
     </div>
   ));
 }
 
-export function ProfessionalsList({
+export function ModalitiesList({
   canManage,
   onCreate,
   onEdit,
   onInactivate,
   onReactivate,
-}: ProfessionalsListProps) {
+}: ModalitiesListProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
-  const isClasses = useModel() === "classes";
 
-  const filter: ProfessionalFilter = {
+  const filter: CategoryFilter = {
     search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
   };
 
-  const { data, isPending, isError, refetch } = useProfessionals(filter);
-  const professionals = data ?? [];
+  const { data, isPending, isError, refetch } = useCategories(filter);
+  const modalities = data ?? [];
 
   const hasSearch = Boolean(filter.search);
   const hasFilters = Boolean(filter.status);
@@ -188,7 +161,7 @@ export function ProfessionalsList({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertTriangle className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Não foi possível carregar a equipe. Tente novamente.
+          Não foi possível carregar as modalidades. Tente novamente.
         </p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RotateCw className="size-4" />
@@ -197,12 +170,11 @@ export function ProfessionalsList({
       </div>
     );
   } else {
-    items = professionals.map((professional) => (
-      <ProfessionalRow
-        key={professional.id}
-        professional={professional}
+    items = modalities.map((modality) => (
+      <ModalityRow
+        key={modality.id}
+        modality={modality}
         canManage={canManage}
-        isClasses={isClasses}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -230,14 +202,10 @@ export function ProfessionalsList({
       </div>
     ) : (
       <ModuleEmptyGuide
-        icon={<Contact className="size-8" />}
-        title="Nenhum profissional cadastrado ainda."
-        description={
-          isClasses
-            ? "Cadastre sua equipe, as modalidades que cada um leciona e a disponibilidade."
-            : "Cadastre sua equipe, os serviços que cada um realiza e a disponibilidade."
-        }
-        actionLabel={canManage ? "Cadastrar profissional" : undefined}
+        icon={<Shapes className="size-8" />}
+        title="Nenhuma modalidade cadastrada ainda."
+        description="Cadastre as modalidades oferecidas (ex.: Judô, Yoga) para organizar turmas e instrutores."
+        actionLabel={canManage ? "Cadastrar modalidade" : undefined}
         onAction={canManage ? onCreate : undefined}
       />
     );
@@ -254,10 +222,10 @@ export function ProfessionalsList({
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou cargo..."
+              placeholder="Buscar modalidade..."
               className="px-8"
               autoComplete="off"
-              aria-label="Buscar profissional"
+              aria-label="Buscar modalidade"
             />
             {search ? (
               <button
@@ -280,8 +248,8 @@ export function ProfessionalsList({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
+              <SelectItem value="active">Ativas</SelectItem>
+              <SelectItem value="inactive">Inativas</SelectItem>
             </SelectContent>
           </Select>
         </div>

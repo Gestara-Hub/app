@@ -5,7 +5,9 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { CheckCircle2, RotateCcw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { ListCard } from "@/components/shared/list-card";
 import { ListItemCard } from "@/components/shared/list-item-card";
+import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -110,14 +112,9 @@ export function BillingView() {
 
           {isLoading ? (
             <Skeleton className="h-40 w-full rounded-md" />
-          ) : list.length === 0 ? (
-            <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Sem cobranças nesta competência.
-              {canManage ? ' Use "Gerar cobranças".' : ""}
-            </p>
           ) : (
-            <div className="space-y-2">
-              {list.map((c) => (
+            <ListCard
+              items={list.map((c) => (
                 <ListItemCard key={c.id} disableHover>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -170,7 +167,20 @@ export function BillingView() {
                   </div>
                 </ListItemCard>
               ))}
-            </div>
+              emptyState={
+                <ModuleEmptyGuide
+                  icon={<Wallet className="size-8" />}
+                  title="Nenhuma cobrança nesta competência."
+                  description={
+                    canManage
+                      ? 'Gere as mensalidades do mês com "Gerar cobranças".'
+                      : "Ainda não há cobranças para o mês selecionado."
+                  }
+                  actionLabel={canManage ? "Gerar cobranças" : undefined}
+                  onAction={canManage ? generate : undefined}
+                />
+              }
+            />
           )}
         </>
       )}

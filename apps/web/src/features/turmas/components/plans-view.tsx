@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Layers, Pencil, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
+import { ListCard } from "@/components/shared/list-card";
 import { ListItemCard } from "@/components/shared/list-item-card";
+import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCents } from "@gestarahub/core/format";
@@ -49,40 +51,45 @@ export function PlansView() {
         ) : null}
       </PageHeader>
 
-      <div className="space-y-2">
-        {isLoading ? (
-          [0, 1].map((i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-md" />
-          ))
-        ) : (plans ?? []).length === 0 ? (
-          <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Nenhum plano cadastrado.
-          </p>
-        ) : (
-          (plans ?? []).map((p) => (
-            <ListItemCard key={p.id} disableHover>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCents(p.priceCents)} / mês
-                  </p>
-                </div>
-                {canManage ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Editar plano"
-                    onClick={() => openEdit(p)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </ListItemCard>
-          ))
-        )}
-      </div>
+      <ListCard
+        items={
+          isLoading
+            ? [0, 1].map((i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
+              ))
+            : (plans ?? []).map((p) => (
+                <ListItemCard key={p.id} disableHover>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCents(p.priceCents)} / mês
+                      </p>
+                    </div>
+                    {canManage ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Editar plano"
+                        onClick={() => openEdit(p)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </ListItemCard>
+              ))
+        }
+        emptyState={
+          <ModuleEmptyGuide
+            icon={<Layers className="size-8" />}
+            title="Nenhum plano cadastrado ainda."
+            description="Cadastre os planos de mensalidade usados pelas turmas."
+            actionLabel={canManage ? "Novo plano" : undefined}
+            onAction={canManage ? openNew : undefined}
+          />
+        }
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">

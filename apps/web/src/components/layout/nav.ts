@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ScrollText,
   Settings,
+  Shapes,
   Tag,
   UserCog,
   Users,
@@ -41,6 +42,7 @@ export const MAIN_NAV: NavItem[] = [
   { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view", models: ["scheduling"], tourId: "nav-agenda" },
   { label: "Turmas", href: "/classes", icon: GraduationCap, permission: "classes:view", models: ["classes"] },
   { label: "Calendário", href: "/classes/calendar", icon: CalendarRange, permission: "classes:view", models: ["classes"] },
+  { label: "Modalidades", href: "/classes/modalities", icon: Shapes, permission: "classes:manage", models: ["classes"] },
   { label: "Planos", href: "/classes/plans", icon: Layers, permission: "billing:view", models: ["classes"] },
   { label: "Mensalidades", href: "/classes/billing", icon: Wallet, permission: "billing:view", models: ["classes"] },
 ];

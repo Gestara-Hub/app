@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ProfessionalView } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { ProfessionalForm } from "./professional-form";
 
 interface ProfessionalFormDialogProps {
@@ -22,6 +23,15 @@ export function ProfessionalFormDialog({
   professional,
 }: ProfessionalFormDialogProps) {
   const isEdit = Boolean(professional);
+  const isClasses = useModel() === "classes";
+
+  const description = isClasses
+    ? isEdit
+      ? "Atualize os dados, modalidades e disponibilidade."
+      : "Cadastre um instrutor, as modalidades que leciona e a disponibilidade."
+    : isEdit
+      ? "Atualize os dados, serviços e disponibilidade."
+      : "Cadastre um profissional, os serviços que realiza e a disponibilidade.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,11 +43,7 @@ export function ProfessionalFormDialog({
           <DialogTitle>
             {isEdit ? "Editar profissional" : "Novo profissional"}
           </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Atualize os dados, serviços e disponibilidade."
-              : "Cadastre um profissional, os serviços que realiza e a disponibilidade."}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <ProfessionalForm
           key={professional?.id ?? "novo"}

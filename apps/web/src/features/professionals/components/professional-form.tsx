@@ -20,6 +20,7 @@ import type {
   ProfessionalView,
   Weekday,
 } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { useRoles } from "@/features/roles";
 import {
   useCreateProfessional,
@@ -30,6 +31,7 @@ import {
   type ProfessionalFormValues,
 } from "../professional-schema";
 import { ServiceSelectionField } from "./service-selection-field";
+import { ModalitySelectionField } from "./modality-selection-field";
 import { WorkingHoursField } from "./working-hours-field";
 
 /**
@@ -47,6 +49,7 @@ function toDefaults(
     role: roleName,
     phone: professional?.phone ?? "",
     serviceIds: professional?.serviceIds ?? [],
+    modalityIds: professional?.modalityIds ?? [],
     workingHours: professional?.workingHours ?? [],
     active: professional ? professional.status === "active" : true,
   };
@@ -64,6 +67,7 @@ export function ProfessionalForm({
   formId,
 }: ProfessionalFormProps) {
   const isEdit = Boolean(professional);
+  const isClasses = useModel() === "classes";
   const createMut = useCreateProfessional();
   const updateMut = useUpdateProfessional();
   const pending = createMut.isPending || updateMut.isPending;
@@ -112,7 +116,10 @@ export function ProfessionalForm({
       roleId,
       phone: values.phone || undefined,
       status: values.active ? "active" : "inactive",
-      serviceIds: values.serviceIds,
+      // O modelo do tenant decide qual associação é relevante: M1 grava
+      // serviços; M3 grava modalidades (a outra fica vazia e é ignorada).
+      serviceIds: isClasses ? [] : values.serviceIds,
+      modalityIds: isClasses ? values.modalityIds : [],
       workingHours: values.workingHours.map((h) => ({
         weekday: h.weekday as Weekday,
         start: h.start,
@@ -176,10 +183,17 @@ export function ProfessionalForm({
           />
         </div>
 
-        <ServiceSelectionField<ProfessionalFormValues>
-          name="serviceIds"
-          disabled={pending}
-        />
+        {isClasses ? (
+          <ModalitySelectionField<ProfessionalFormValues>
+            name="modalityIds"
+            disabled={pending}
+          />
+        ) : (
+          <ServiceSelectionField<ProfessionalFormValues>
+            name="serviceIds"
+            disabled={pending}
+          />
+        )}
 
         <WorkingHoursField<ProfessionalFormValues>
           name="workingHours"

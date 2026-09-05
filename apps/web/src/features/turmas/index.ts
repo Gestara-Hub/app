@@ -6,3 +6,4 @@ export { TurmasCalendarView } from "./components/turmas-calendar-view";
 export { SessionDetailView } from "./components/session-detail-view";
 export { PlansView } from "./components/plans-view";
 export { BillingView } from "./components/billing-view";
+export { ModalitiesView } from "./components/modalities-view";

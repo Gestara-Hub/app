@@ -15,8 +15,10 @@ export const professionalFormSchema = z.object({
     .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
       message: "Informe um telefone válido.",
     }),
-  // Serviços opcionais: podem ficar vazios (associação é informativa).
+  // Serviços (M1) / modalidades (M3) opcionais: podem ficar vazios (a
+  // associação é informativa). O form mostra um OU outro conforme o modelo.
   serviceIds: z.array(z.string()),
+  modalityIds: z.array(z.string()),
   workingHours: z
     .array(
       z.object({

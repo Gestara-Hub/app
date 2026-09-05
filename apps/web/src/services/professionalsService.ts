@@ -118,6 +118,9 @@ export const professionalsService = {
         status: payload.status ?? "active",
         workingHours: payload.workingHours ?? [],
         serviceIds: payload.serviceIds,
+        ...(payload.modalityIds && payload.modalityIds.length > 0
+          ? { modalityIds: payload.modalityIds }
+          : {}),
         createdAt: ts,
         updatedAt: ts,
       };

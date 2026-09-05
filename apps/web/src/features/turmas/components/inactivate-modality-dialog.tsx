@@ -12,46 +12,48 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Service } from "@gestarahub/contracts";
-import { useInactivateService } from "../hooks/use-services";
+import type { Category } from "@gestarahub/contracts";
+import { useInactivateCategory } from "@/features/categories";
 
-interface InactivateServiceDialogProps {
-  service: Service | null;
+interface InactivateModalityDialogProps {
+  modality: Category | null;
   onOpenChange: (open: boolean) => void;
 }
 
-export function InactivateServiceDialog({
-  service,
+export function InactivateModalityDialog({
+  modality,
   onOpenChange,
-}: InactivateServiceDialogProps) {
-  const inactivateMut = useInactivateService();
+}: InactivateModalityDialogProps) {
+  const inactivateMut = useInactivateCategory();
 
   async function handleConfirm() {
-    if (!service) return;
+    if (!modality) return;
     try {
-      await inactivateMut.mutateAsync(service.id);
-      toast.success("Serviço inativado.");
+      await inactivateMut.mutateAsync(modality.id);
+      toast.success("Modalidade inativada.");
       onOpenChange(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível inativar o serviço."));
+      toast.error(
+        getErrorMessage(error, "Não foi possível inativar a modalidade."),
+      );
     }
   }
 
   return (
     <AlertDialog
-      open={service !== null}
+      open={modality !== null}
       onOpenChange={(open) => {
         if (!open) onOpenChange(false);
       }}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Inativar serviço?</AlertDialogTitle>
+          <AlertDialogTitle>Inativar modalidade?</AlertDialogTitle>
           <AlertDialogDescription>
-            {service ? (
+            {modality ? (
               <>
-                “{service.name}” deixará de ser sugerido em novos agendamentos.
-                Você pode reativá-lo depois.
+                “{modality.name}” deixará de aparecer em novas turmas e no
+                cadastro de instrutores. Você pode reativá-la depois.
               </>
             ) : null}
           </AlertDialogDescription>

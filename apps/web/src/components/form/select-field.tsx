@@ -7,7 +7,7 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,7 @@ interface SelectFieldProps<T extends FieldValues> {
   hint?: string;
   required?: boolean;
   disabled?: boolean;
+  clearable?: boolean;
   options: SelectOption[];
   id?: string;
 }
@@ -45,6 +46,7 @@ export function SelectField<T extends FieldValues>({
   hint,
   required,
   disabled,
+  clearable = true,
   options,
   id,
 }: SelectFieldProps<T>) {
@@ -67,48 +69,64 @@ export function SelectField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <DropdownMenu open={open} onOpenChange={setOpen}>
-              <DropdownMenuTrigger asChild>
+            <div className="relative">
+              <DropdownMenu open={open} onOpenChange={setOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    ref={field.ref}
+                    role="combobox"
+                    aria-expanded={open}
+                    aria-haspopup="menu"
+                    aria-controls={menuId}
+                    onBlur={field.onBlur}
+                    disabled={disabled}
+                    aria-invalid={fieldState.invalid}
+                    className={cn(
+                      "flex h-9 w-full items-center rounded-md border border-input bg-transparent py-2 pl-3 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
+                      "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
+                      "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                      clearable && selected ? "pr-16" : "pr-8",
+                      !selected && "text-muted-foreground",
+                    )}
+                  >
+                    <span className="truncate">
+                      {selected ? selected.label : placeholder}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  id={menuId}
+                  align="start"
+                  className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
+                >
+                  {options.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onSelect={() => field.onChange(option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {clearable && selected && !disabled ? (
                 <button
                   type="button"
-                  aria-label={label}
-                  ref={field.ref}
-                  role="combobox"
-                  aria-expanded={open}
-                  aria-haspopup="menu"
-                  aria-controls={menuId}
-                  onBlur={field.onBlur}
-                  disabled={disabled}
-                  aria-invalid={fieldState.invalid}
-                  className={cn(
-                    "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
-                    "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
-                    "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
-                    "disabled:cursor-not-allowed disabled:opacity-50",
-                    !selected && "text-muted-foreground",
-                  )}
+                  aria-label={`Limpar ${label ?? "seleção"}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    field.onChange("");
+                  }}
+                  className="absolute right-7 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
-                  <span className="truncate">
-                    {selected ? selected.label : placeholder}
-                  </span>
-                  <ChevronDown className="size-4 shrink-0 opacity-50" />
+                  <X className="size-3.5" />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                id={menuId}
-                align="start"
-                className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
-              >
-                {options.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onSelect={() => field.onChange(option.value)}
-                  >
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              ) : null}
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 opacity-50" />
+            </div>
           </FieldShell>
         );
       }}

@@ -14,7 +14,8 @@ export interface Professional {
   phone?: string;
   status: RecordStatus;
   workingHours: WorkingHours[]; // respeita o funcionamento da unidade
-  serviceIds: Id[]; // servicos que o profissional realiza (pode ser vazio)
+  serviceIds: Id[]; // (M1) servicos que o profissional realiza (pode ser vazio)
+  modalityIds?: Id[]; // (M3) modalidades que o instrutor leciona — FK -> Category
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

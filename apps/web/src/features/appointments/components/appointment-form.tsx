@@ -221,18 +221,34 @@ export function AppointmentForm({
     void submit(values);
   });
 
-  // Texto da confirmacao "fora do horario": mostra a janela do profissional no
-  // dia (ou avisa que ele nao atende no dia).
-  const outsideHoursMessage = (values: AppointmentFormValues | null): string => {
-    if (!values) return "";
+  // Texto da confirmacao "fora do horario": distingue 3 casos —
+  // (1) profissional sem NENHUM horario cadastrado ainda (nao configurou a
+  //     disponibilidade, cadastro comeca vazio); (2) tem horario mas nao
+  //     trabalha nesse dia da semana; (3) trabalha no dia mas fora da janela.
+  const outsideHoursCopy = (
+    values: AppointmentFormValues | null,
+  ): { title: string; description: string } => {
+    if (!values) return { title: "", description: "" };
     const prof = (professionals ?? []).find((p) => p.id === values.professionalId);
     const name = prof?.name ?? "O profissional";
-    const window = prof?.workingHours.find(
+    if (!prof || prof.workingHours.length === 0) {
+      return {
+        title: "Agendar sem horário de trabalho cadastrado?",
+        description: `${name} ainda não tem um horário de trabalho definido. Deseja agendar mesmo assim?`,
+      };
+    }
+    const window = prof.workingHours.find(
       (w) => w.weekday === weekdayOf(values.date),
     );
     return window
-      ? `${name} atende neste dia das ${window.start} às ${window.end}, e o horário escolhido está fora desse período. Deseja agendar mesmo assim?`
-      : `${name} não atende neste dia. Deseja agendar mesmo assim?`;
+      ? {
+          title: "Agendar fora do horário do profissional?",
+          description: `${name} atende neste dia das ${window.start} às ${window.end}, e o horário escolhido está fora desse período. Deseja agendar mesmo assim?`,
+        }
+      : {
+          title: "Agendar fora do horário do profissional?",
+          description: `${name} não atende neste dia. Deseja agendar mesmo assim?`,
+        };
   };
 
   return (
@@ -418,11 +434,9 @@ export function AppointmentForm({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Agendar fora do horário do profissional?
-            </AlertDialogTitle>
+            <AlertDialogTitle>{outsideHoursCopy(confirmOutside).title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {outsideHoursMessage(confirmOutside)}
+              {outsideHoursCopy(confirmOutside).description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

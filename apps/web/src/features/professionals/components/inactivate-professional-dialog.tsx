@@ -68,7 +68,7 @@ export function InactivateProfessionalDialog({
               void handleConfirm();
             }}
             disabled={inactivateMut.isPending}
-            className="bg-destructive text-white hover:bg-destructive/90"
+            variant="destructive"
           >
             {inactivateMut.isPending ? "Inativando..." : "Inativar"}
           </AlertDialogAction>

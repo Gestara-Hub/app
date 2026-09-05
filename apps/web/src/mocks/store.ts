@@ -88,7 +88,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v12: Modelo 3 (turmas) — classGroups/enrollments/attendances.
 // v13: Modelo 3 Fatia 2 (financeiro) — plans/cobrancas + ClassGroup.planId.
 // v14: Modelo 3 Fatia 3 — waitlist/reposicoes/reservas + ClassGroup.sessionPriceCents.
-const SEED_VERSION = 14;
+// v15: seed "ambiente vazio" — cada tenant nasce so com organizacao/unidade/dono.
+const SEED_VERSION = 16;
 
 interface PersistedBlob {
   v: number;

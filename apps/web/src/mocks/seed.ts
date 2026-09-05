@@ -1,88 +1,20 @@
-import { ORG_ID, REFERENCE_DATE, UNIT_ID } from "@/config/tenant";
-import type {
-  Appointment,
-  AppointmentOrigin,
-  AppointmentStatus,
-  AuditAction,
-  AuditActor,
-  AuditLogEntry,
-  AuditTarget,
-  Category,
-  ClassGroup,
-  Client,
-  Cobranca,
-  Enrollment,
-  Organization,
-  Plano,
-  Professional,
-  RecurrenceSeries,
-  Role,
-  Service,
-  TimeBlock,
-  TimeISO,
-  Unit,
-  User,
-  Weekday,
-  WorkingHours,
-} from "@gestarahub/contracts";
-import {
-  addMinutesToTime,
-  generateOccurrenceDates,
-  minutesToTime,
-  rangesOverlap,
-  timeToMinutes,
-  weekdayOf,
-} from "@gestarahub/core/scheduling";
+import { ORG_ID, UNIT_ID } from "@/config/tenant";
+import type { Organization, Unit, User } from "@gestarahub/contracts";
 import type { MockStore, MockWorld } from "./store";
 
 /**
- * Seed do cenario canonico "Corte Nobre" (docs/product/08-barbearia-corte-nobre.md):
- * 1 organizacao, 1 unidade, 12 servicos, 4 profissionais e 20 clientes.
+ * Seed "ambiente vazio": cada organizacao nasce apenas com organizacao +
+ * unidade + o usuario proprietario. Nenhum cadastro operacional (profissionais,
+ * servicos, clientes, categorias, cargos, turmas, planos etc.) vem pre-populado
+ * — o objetivo e simular o inicio real de uso, forcando o proprietario a
+ * cadastrar tudo pela propria UI.
  *
- * Keys e enum values em ingles; texto livre (nomes, descricoes, observacoes) em
- * portugues. A data de referencia ("hoje" do cenario) e fixada aqui.
- *
- * NOTA: appointments, series e timeBlocks entram com os modulos de Agenda /
- * Agendamentos; por ora as colecoes nascem vazias.
+ * Keys e enum values em ingles; texto livre (nomes, enderecos) em portugues.
  */
 
-// "Hoje" do cenario vem do config (REFERENCE_DATE). Timestamp fixo do seed:
-const SEED_NOW = "2026-06-20T12:00:00.000Z";
-
-// IDs estaveis e legiveis dos 12 servicos (facilita a matriz professional x service).
-const S = {
-  haircut: "svc-corte-masculino",
-  fade: "svc-corte-degrade",
-  kidsCut: "svc-corte-infantil",
-  edgeUp: "svc-pezinho",
-  beard: "svc-barba",
-  razorBeard: "svc-barba-navalhada",
-  beardColor: "svc-pigmentacao-barba",
-  eyebrow: "svc-sobrancelha",
-  hairTreatment: "svc-hidratacao",
-  straightening: "svc-relaxamento",
-  comboCutBeard: "svc-combo-corte-barba",
-  comboFull: "svc-combo-completo",
-} as const;
-
-// IDs das categorias (semeadas por segmento; tenant podera editar no futuro).
-const CAT = {
-  cabelo: "cat-cabelo",
-  barba: "cat-barba",
-  cuidados: "cat-cuidados",
-  combos: "cat-combos",
-} as const;
-
-// IDs dos cargos (entidade Role). Cargos novos sao criados pelo autocomplete da
-// Equipe; aqui ficam os do cenario canonico.
-const ROLE = {
-  owner: "role-barbeiro-proprietario",
-  barber: "role-barbeiro",
-  junior: "role-barbeiro-junior",
-} as const;
-
 function timestamps() {
-  return { createdAt: SEED_NOW, updatedAt: SEED_NOW };
+  const now = new Date().toISOString();
+  return { createdAt: now, updatedAt: now };
 }
 
 // Telefone e armazenado apenas com digitos; a UI formata na exibicao.
@@ -90,59 +22,43 @@ function digits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-// --- Categorias (preset do segmento barbearia) ----------------------------
-
-function seedCategories(): Category[] {
-  const base = (id: string, name: string, position: number): Category => ({
-    id,
-    organizationId: ORG_ID,
-    name,
-    position,
-    status: "active",
-    ...timestamps(),
-  });
-
-  return [
-    base(CAT.cabelo, "Cabelo", 1),
-    base(CAT.barba, "Barba", 2),
-    base(CAT.cuidados, "Cuidados", 3),
-    base(CAT.combos, "Combos", 4),
-  ];
-}
-
-// --- Cargos (entidade Role) ------------------------------------------------
-
-function seedRoles(): Role[] {
-  const base = (id: string, name: string, position: number): Role => ({
-    id,
-    organizationId: ORG_ID,
-    name,
-    position,
-    status: "active",
-    ...timestamps(),
-  });
-
-  return [
-    base(ROLE.owner, "Barbeiro e proprietário", 1),
-    base(ROLE.barber, "Barbeiro", 2),
-    base(ROLE.junior, "Barbeiro júnior", 3),
-  ];
-}
-
-// --- Organization + Unit ---------------------------------------------------
-
-function seedOrganization(): Organization {
+function emptyStore(organization: Organization, unit: Unit, users: User[]): MockStore {
   return {
-    id: ORG_ID,
-    name: "Corte Nobre",
-    segment: "Barbearia",
-    model: "scheduling", // Modelo 1: atendimento individual
-    status: "active",
+    organization,
+    unit,
+    clients: [],
+    professionals: [],
+    users,
+    roles: [],
+    categories: [],
+    services: [],
+    appointments: [],
+    timeBlocks: [],
+    series: [],
+    auditLog: [],
+    classGroups: [],
+    enrollments: [],
+    attendances: [],
+    plans: [],
+    cobrancas: [],
+    waitlist: [],
+    reposicoes: [],
+    reservas: [],
   };
 }
 
-function seedUnit(): Unit {
-  return {
+// --- Tenant 1: "Corte Nobre" (Modelo 1 — atendimento individual) -----------
+
+function seedCorteNobre(): MockStore {
+  const organization: Organization = {
+    id: ORG_ID,
+    name: "Corte Nobre",
+    segment: "Barbearia",
+    model: "scheduling",
+    status: "active",
+  };
+
+  const unit: Unit = {
     id: UNIT_ID,
     organizationId: ORG_ID,
     name: "Corte Nobre - Matriz",
@@ -159,627 +75,23 @@ function seedUnit(): Unit {
       { weekday: 6, closed: false, start: "08:00", end: "18:00" },
     ],
   };
-}
 
-// --- Services (12) ---------------------------------------------------------
-
-function seedServices(): Service[] {
-  const base = (
-    id: string,
-    name: string,
-    categoryId: string,
-    durationMinutes: number,
-    priceCents: number,
-    description: string,
-  ): Service => ({
-    id,
-    organizationId: ORG_ID,
-    name,
-    categoryId,
-    durationMinutes,
-    priceCents,
-    description,
-    status: "active",
-    ...timestamps(),
-  });
-
-  return [
-    base(S.haircut, "Corte Masculino", CAT.cabelo, 30, 4500, "Corte clássico na tesoura e máquina."),
-    base(S.fade, "Corte Degradê", CAT.cabelo, 40, 5500, "Degradê com transição suave."),
-    base(S.kidsCut, "Corte Infantil", CAT.cabelo, 30, 4000, "Corte para crianças."),
-    base(S.edgeUp, "Pezinho / Acabamento", CAT.cabelo, 15, 2000, "Acabamento de contorno entre cortes."),
-    base(S.beard, "Barba", CAT.barba, 30, 3500, "Aparo e modelagem da barba."),
-    base(S.razorBeard, "Barba Navalhada", CAT.barba, 40, 4500, "Barba feita na navalha com toalha quente."),
-    base(S.beardColor, "Pigmentação de Barba", CAT.barba, 45, 6000, "Preenchimento e pigmentação de falhas."),
-    base(S.eyebrow, "Sobrancelha", CAT.cuidados, 15, 2000, "Design de sobrancelha masculina."),
-    base(S.hairTreatment, "Hidratação Capilar", CAT.cuidados, 30, 4000, "Hidratação e nutrição dos fios."),
-    base(S.straightening, "Relaxamento / Progressiva", CAT.cuidados, 90, 12000, "Alisamento e redução de volume."),
-    base(S.comboCutBeard, "Combo Corte + Barba", CAT.combos, 60, 7500, "Corte masculino com barba."),
-    base(S.comboFull, "Combo Completo (Corte + Barba + Sobrancelha)", CAT.combos, 75, 9000, "Corte, barba e sobrancelha."),
-  ];
-}
-
-// --- Professionals (4) -----------------------------------------------------
-
-// Horario de trabalho do profissional = funcionamento da unidade nos dias dele.
-function hoursForDay(weekday: Weekday): { start: string; end: string } {
-  return weekday === 6
-    ? { start: "08:00", end: "18:00" }
-    : { start: "09:00", end: "20:00" };
-}
-
-// Almoco padrao dos barbeiros seniores (aplicado a todos os dias trabalhados).
-const LUNCH = { start: "12:00", end: "13:00" };
-
-function workingHours(
-  days: Weekday[],
-  lunch?: { start: string; end: string },
-): WorkingHours[] {
-  return days.map((weekday) => ({
-    weekday,
-    ...hoursForDay(weekday),
-    ...(lunch ? { breakStart: lunch.start, breakEnd: lunch.end } : {}),
-  }));
-}
-
-const ALL_SERVICES = Object.values(S);
-
-function seedProfessionals(): Professional[] {
-  const base = (
-    id: string,
-    name: string,
-    roleId: string,
-    phone: string,
-    days: Weekday[],
-    serviceIds: string[],
-    lunch?: { start: string; end: string },
-  ): Professional => ({
-    id,
-    organizationId: ORG_ID,
-    unitId: UNIT_ID,
-    name,
-    roleId,
-    phone: digits(phone),
-    status: "active",
-    workingHours: workingHours(days, lunch),
-    serviceIds,
-    ...timestamps(),
-  });
-
-  return [
-    base(
-      "prof-marcelo",
-      "Marcelo Andrade",
-      ROLE.owner,
-      "(11) 98800-0001",
-      [1, 2, 3, 4, 5, 6], // Seg a Sab
-      [...ALL_SERVICES], // todos os 12
-      LUNCH,
-    ),
-    base(
-      "prof-rafael",
-      "Rafael Lima",
-      ROLE.barber,
-      "(11) 98800-0002",
-      [2, 3, 4, 5, 6], // Ter a Sab
-      ALL_SERVICES.filter((id) => id !== S.straightening),
-      LUNCH,
-    ),
-    base(
-      "prof-bruno",
-      "Bruno Costa",
-      ROLE.barber,
-      "(11) 98800-0003",
-      [1, 2, 3, 4, 5], // Seg a Sex
-      ALL_SERVICES.filter((id) => id !== S.kidsCut),
-    ),
-    base(
-      "prof-diego",
-      "Diego Santos",
-      ROLE.junior,
-      "(11) 98800-0004",
-      [3, 4, 5, 6], // Qua a Sab
-      [S.haircut, S.fade, S.kidsCut, S.edgeUp, S.beard, S.eyebrow],
-    ),
-  ];
-}
-
-// --- Users (acesso / RBAC) -------------------------------------------------
-
-// Usuarios do cenario cobrindo os 4 perfis. `professionalId` opcional: usuario
-// pode ou nao ser um profissional. Marcelo (owner) tambem atende; Patricia
-// (gerente) e Sofia (atendente) nao sao profissionais; Rafael e Diego logam
-// como Profissional vinculados. Bruno (profissional) nao tem login.
-function seedUsers(): User[] {
-  const base = (
-    id: string,
-    name: string,
-    email: string,
-    profile: User["profile"],
-    professionalId?: string,
-  ): User => ({
-    id,
-    organizationId: ORG_ID,
-    name,
-    email,
-    profile,
-    ...(professionalId ? { professionalId } : {}),
-    status: "active",
-    ...timestamps(),
-  });
-
-  return [
-    base("usr-marcelo", "Marcelo Andrade", "marcelo@cortenobre.com", "owner", "prof-marcelo"),
-    base("usr-patricia", "Patrícia Nunes", "patricia@cortenobre.com", "manager"),
-    base("usr-sofia", "Sofia Ramos", "sofia@cortenobre.com", "attendant"),
-    base("usr-rafael", "Rafael Lima", "rafael@cortenobre.com", "professional", "prof-rafael"),
-    base("usr-diego", "Diego Santos", "diego@cortenobre.com", "professional", "prof-diego"),
-  ];
-}
-
-// --- Clients (20) ----------------------------------------------------------
-
-function seedClients(): Client[] {
-  const base = (
-    id: string,
-    name: string,
-    phone: string,
-    status: Client["status"],
-    notes: string,
-  ): Client => ({
-    id,
-    organizationId: ORG_ID,
-    name,
-    phone: digits(phone),
-    notes,
-    status,
-    ...timestamps(),
-  });
-
-  return [
-    base("cli-joao-pereira", "João Pereira", "(11) 99100-0001", "active", "Cliente fiel; prefere Marcelo; corte clássico mensal."),
-    base("cli-carlos-mendes", "Carlos Mendes", "(11) 99100-0002", "active", "Combo Corte + Barba quinzenal aos sábados."),
-    base("cli-anderson-silva", "Anderson Silva", "(11) 99100-0003", "active", "Gosta de degradê; costuma agendar com Rafael."),
-    base("cli-lucas-ferreira", "Lucas Ferreira", "(11) 99100-0004", "active", "Traz o filho para o Corte Infantil."),
-    base("cli-pedro-henrique", "Pedro Henrique Alves", "(11) 99100-0005", "active", "Primeiro atendimento recente; ainda sem profissional fixo."),
-    base("cli-gustavo-rocha", "Gustavo Rocha", "(11) 99100-0006", "active", "Barba e pigmentação com Bruno."),
-    base("cli-felipe-cardoso", "Felipe Cardoso", "(11) 99100-0007", "active", "Corte Masculino mensal; flexível de profissional."),
-    base("cli-thiago-barbosa", "Thiago Barbosa", "(11) 99100-0008", "active", "Combo Completo de vez em quando; gosta de sobrancelha."),
-    base("cli-rodrigo-nunes", "Rodrigo Nunes", "(11) 99100-0009", "inactive", "Sem agendamentos há vários meses; aparece só no histórico."),
-    base("cli-marcos-vinicius", "Marcos Vinícius", "(11) 99100-0010", "active", "Degradê com Diego; agenda em horários de menor movimento."),
-    base("cli-eduardo-tavares", "Eduardo Tavares", "(11) 99100-0011", "active", "Hidratação Capilar periódica."),
-    base("cli-vinicius-ramos", "Vinícius Ramos", "(11) 99100-0012", "active", "Indicado por amigo; agendou Corte Masculino."),
-    base("cli-daniel-moreira", "Daniel Moreira", "(11) 99100-0013", "active", "Traz o filho para o Corte Infantil aos sábados."),
-    base("cli-sergio-lopes", "Sérgio Lopes", "(11) 99100-0014", "active", "Relaxamento / Progressiva; só com Marcelo ou Bruno."),
-    base("cli-andre-martins", "André Martins", "(11) 99100-0015", "active", "Barba Navalhada com Bruno."),
-    base("cli-ricardo-gomes", "Ricardo Gomes", "(11) 99100-0016", "active", "Corte + Pezinho; cliente de longa data."),
-    base("cli-fabio-souza", "Fábio Souza", "(11) 99100-0017", "active", "Cadastro recente; ainda explorando serviços."),
-    base("cli-leonardo-dias", "Leonardo Dias", "(11) 99100-0018", "inactive", "Mudou de bairro; mantido no histórico."),
-    base("cli-otavio-castro", "Otávio Castro", "(11) 99100-0019", "active", "Combo Corte + Barba mensal com Rafael."),
-    base("cli-henrique-azevedo", "Henrique Azevedo", "(11) 99100-0020", "active", "Sobrancelha e barba; agenda flexível."),
-  ];
-}
-
-// --- Agenda: bloqueios, series e agendamentos ------------------------------
-//
-// Tudo deterministico (ids sequenciais, sem random/now) para hidratar igual no
-// server e no client. Os agendamentos sao posicionados pela engine (rangesOverlap)
-// dentro do expediente, pulando bloqueios e horarios ja ocupados — sem conflito.
-
-const PROF = {
-  marcelo: "prof-marcelo",
-  rafael: "prof-rafael",
-  bruno: "prof-bruno",
-  diego: "prof-diego",
-} as const;
-const PROF_ORDER = [PROF.marcelo, PROF.rafael, PROF.bruno, PROF.diego];
-
-// Janela do cenario: semana do REFERENCE_DATE + semana seguinte (sem domingos).
-const SCHEDULE_DATES = [
-  "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27",
-  "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04",
-];
-
-interface Interval {
-  start: TimeISO;
-  end: TimeISO;
-}
-type BusyMap = Map<string, Interval[]>;
-const busyKey = (professionalId: string, date: string) => `${professionalId}|${date}`;
-
-function busyFor(busy: BusyMap, professionalId: string, date: string): Interval[] {
-  const key = busyKey(professionalId, date);
-  let arr = busy.get(key);
-  if (!arr) {
-    arr = [];
-    busy.set(key, arr);
-  }
-  return arr;
-}
-
-// Status do agendamento avulso: passado concluido (com alguns no-show/cancelado),
-// hoje em andamento/confirmado/pendente, futuro pendente/confirmado.
-function appointmentStatusFor(date: string, idx: number): AppointmentStatus {
-  if (date < REFERENCE_DATE) {
-    if (idx % 9 === 4) return "no_show";
-    if (idx % 11 === 7) return "canceled";
-    return "completed";
-  }
-  if (date === REFERENCE_DATE) {
-    const cycle = idx % 4;
-    if (cycle === 0) return "in_service";
-    if (cycle === 1) return "confirmed";
-    if (cycle === 2) return "pending";
-    return "confirmed";
-  }
-  return idx % 3 === 0 ? "pending" : "confirmed";
-}
-
-function seriesStatusFor(date: string): AppointmentStatus {
-  if (date < REFERENCE_DATE) return "completed";
-  if (date === REFERENCE_DATE) return "confirmed";
-  return "pending";
-}
-
-function makeAppointment(
-  professionalId: string,
-  serviceId: string,
-  clientId: string,
-  date: string,
-  start: TimeISO,
-  end: TimeISO,
-  status: AppointmentStatus,
-  origin: AppointmentOrigin = "manual",
-  seriesId?: string,
-): Appointment {
-  return {
-    id: "", // atribuido por indice no final
-    organizationId: ORG_ID,
-    unitId: UNIT_ID,
-    clientId,
-    professionalId,
-    serviceIds: [serviceId],
-    date,
-    start,
-    end,
-    status,
-    origin,
-    seriesId,
-    ...timestamps(),
-  };
-}
-
-// O almoco agora faz parte do WorkingHours (breakStart/breakEnd). Semeia o
-// `busy` a partir desses intervalos para que os agendamentos semeados nao caiam
-// no almoco. Bloqueios avulsos ficam vazios no seed (criados pela UI).
-function initBusyFromBreaks(professionals: Professional[]): BusyMap {
-  const busy: BusyMap = new Map();
-  for (const prof of professionals) {
-    for (const date of SCHEDULE_DATES) {
-      const w = prof.workingHours.find((x) => x.weekday === weekdayOf(date));
-      if (w?.breakStart && w?.breakEnd) {
-        busyFor(busy, prof.id, date).push({ start: w.breakStart, end: w.breakEnd });
-      }
-    }
-  }
-  return busy;
-}
-
-// 2 series recorrentes; ocorrencias entram como agendamentos origin 'recurrence'.
-function seedSeries(
-  serviceById: Map<string, Service>,
-  busy: BusyMap,
-  appts: Appointment[],
-): RecurrenceSeries[] {
-  const defs = [
+  const users: User[] = [
     {
-      id: "ser-1",
-      clientId: "cli-carlos-mendes",
-      professionalId: PROF.rafael,
-      serviceId: S.comboCutBeard,
-      frequency: "weekly",
-      startDate: "2026-06-27",
-      time: "10:00",
-      untilOccurrences: 5,
-    },
-    {
-      id: "ser-2",
-      clientId: "cli-eduardo-tavares",
-      professionalId: PROF.bruno,
-      serviceId: S.hairTreatment,
-      frequency: "biweekly",
-      startDate: "2026-06-24",
-      time: "14:00",
-      untilOccurrences: 4,
-    },
-  ] as const;
-
-  const series: RecurrenceSeries[] = [];
-  for (const def of defs) {
-    const service = serviceById.get(def.serviceId);
-    if (!service) continue;
-    series.push({
-      id: def.id,
+      id: "usr-marcelo",
       organizationId: ORG_ID,
-      unitId: UNIT_ID,
-      clientId: def.clientId,
-      professionalId: def.professionalId,
-      serviceIds: [def.serviceId],
-      frequency: def.frequency,
-      startDate: def.startDate,
-      time: def.time,
-      untilOccurrences: def.untilOccurrences,
+      name: "Marcelo Andrade",
+      email: "marcelo@cortenobre.com",
+      profile: "owner",
+      status: "active",
       ...timestamps(),
-    });
-
-    const end = addMinutesToTime(def.time, service.durationMinutes);
-    const dates = generateOccurrenceDates(def.frequency, def.startDate, {
-      untilOccurrences: def.untilOccurrences,
-    });
-    for (const date of dates) {
-      const arr = busyFor(busy, def.professionalId, date);
-      if (arr.some((b) => rangesOverlap(def.time, end, b.start, b.end))) continue;
-      appts.push(
-        makeAppointment(
-          def.professionalId,
-          def.serviceId,
-          def.clientId,
-          date,
-          def.time,
-          end,
-          seriesStatusFor(date),
-          "recurrence",
-          def.id,
-        ),
-      );
-      arr.push({ start: def.time, end });
-    }
-  }
-  return series;
-}
-
-// Agendamentos avulsos: preenche cada profissional/dia (alguns dias ficam vazios).
-function seedRegularAppointments(
-  professionals: Professional[],
-  serviceById: Map<string, Service>,
-  clients: Client[],
-  busy: BusyMap,
-  appts: Appointment[],
-): void {
-  const activeClients = clients.filter((c) => c.status === "active");
-  const byId = new Map(professionals.map((p) => [p.id, p]));
-  let counter = 0;
-
-  for (let di = 0; di < SCHEDULE_DATES.length; di++) {
-    const date = SCHEDULE_DATES[di];
-    const weekday = weekdayOf(date);
-    for (let pi = 0; pi < PROF_ORDER.length; pi++) {
-      const prof = byId.get(PROF_ORDER[pi]);
-      if (!prof) continue;
-      const working = prof.workingHours.find((w) => w.weekday === weekday);
-      if (!working) continue;
-
-      const target = (pi + di) % 4; // 0 = dia vazio
-      if (target === 0) continue;
-
-      const arr = busyFor(busy, prof.id, date);
-      const startLimit = timeToMinutes(working.start);
-      const endLimit = timeToMinutes(working.end);
-      let cursor = startLimit;
-      let placed = 0;
-      let svcCursor = pi + di;
-
-      while (placed < target) {
-        const service = serviceById.get(
-          prof.serviceIds[svcCursor % prof.serviceIds.length],
-        );
-        if (!service) break;
-        const dur = service.durationMinutes;
-        let start = cursor;
-        let done = false;
-        while (start + dur <= endLimit) {
-          const s = minutesToTime(start);
-          const e = minutesToTime(start + dur);
-          if (!arr.some((b) => rangesOverlap(s, e, b.start, b.end))) {
-            const clientId = activeClients[counter % activeClients.length].id;
-            appts.push(
-              makeAppointment(
-                prof.id,
-                service.id,
-                clientId,
-                date,
-                s,
-                e,
-                appointmentStatusFor(date, counter),
-              ),
-            );
-            arr.push({ start: s, end: e });
-            cursor = start + dur;
-            placed += 1;
-            counter += 1;
-            svcCursor += 1;
-            done = true;
-            break;
-          }
-          start += 15;
-        }
-        if (!done) break;
-      }
-    }
-  }
-}
-
-/** Constroi um store novo a partir do seed (usado no boot e no reset). */
-// --- Audit log (historico sintetico) ---------------------------------------
-
-// Atores do cenario para o historico de auditoria (snapshot de nome/perfil).
-const AUDIT_ACTORS = {
-  owner: { userId: "usr-marcelo", name: "Marcelo Andrade", profile: "owner" },
-  manager: { userId: "usr-patricia", name: "Patrícia Nunes", profile: "manager" },
-  attendant: { userId: "usr-sofia", name: "Sofia Ramos", profile: "attendant" },
-} as const satisfies Record<string, AuditActor>;
-
-function seedAuditLog(): AuditLogEntry[] {
-  let seq = 0;
-  const at = (
-    timestamp: string,
-    actor: AuditActor,
-    action: AuditAction,
-    target: AuditTarget,
-    summary: string,
-    extra?: { changes?: AuditLogEntry["changes"]; security?: boolean },
-  ): AuditLogEntry => ({
-    id: `aud-${String(++seq).padStart(4, "0")}`,
-    organizationId: ORG_ID,
-    unitId: UNIT_ID,
-    timestamp,
-    actor,
-    action,
-    target,
-    summary,
-    ...(extra?.changes ? { changes: extra.changes } : {}),
-    security: extra?.security ?? false,
-  });
-
-  const { owner, manager, attendant } = AUDIT_ACTORS;
-
-  return [
-    at(
-      "2026-06-15T13:05:00.000Z",
-      attendant,
-      "created",
-      { type: "appointment", id: "apt-0001", label: "Pedro Raul" },
-      "Sofia Ramos criou o agendamento de Pedro Raul.",
-    ),
-    at(
-      "2026-06-16T18:42:00.000Z",
-      manager,
-      "status_changed",
-      { type: "appointment", id: "apt-0002", label: "João Vitor" },
-      "Patrícia Nunes marcou o agendamento de João Vitor como Concluído.",
-      { changes: [{ field: "status", label: "Status", before: "Em atendimento", after: "Concluído" }] },
-    ),
-    at(
-      "2026-06-17T10:10:00.000Z",
-      manager,
-      "rescheduled",
-      { type: "appointment", id: "apt-0003", label: "Lucas Prado" },
-      "Patrícia Nunes remarcou o agendamento de Lucas Prado.",
-      {
-        changes: [
-          { field: "date", label: "Data", before: "17/06/2026", after: "19/06/2026" },
-          { field: "start", label: "Horário", before: "14:00", after: "16:30" },
-        ],
-      },
-    ),
-    at(
-      "2026-06-17T16:30:00.000Z",
-      attendant,
-      "cancelled",
-      { type: "appointment", id: "apt-0004", label: "Rafael Souza" },
-      "Sofia Ramos cancelou o agendamento de Rafael Souza.",
-    ),
-    at(
-      "2026-06-18T09:15:00.000Z",
-      owner,
-      "updated",
-      { type: "service", id: "svc-corte-masculino", label: "Corte Masculino" },
-      "Marcelo Andrade atualizou o serviço Corte Masculino.",
-      { changes: [{ field: "priceCents", label: "Preço", before: "R$ 40,00", after: "R$ 45,00" }] },
-    ),
-    at(
-      "2026-06-18T11:00:00.000Z",
-      owner,
-      "inactivated",
-      { type: "professional", id: "prof-diego", label: "Diego Santos" },
-      "Marcelo Andrade inativou o profissional Diego Santos.",
-    ),
-    at(
-      "2026-06-19T08:40:00.000Z",
-      owner,
-      "created",
-      { type: "user", id: "usr-sofia", label: "Sofia Ramos", profile: "attendant" },
-      "Marcelo Andrade criou o usuário Sofia Ramos (Atendente).",
-      { security: true },
-    ),
-    at(
-      "2026-06-19T08:55:00.000Z",
-      owner,
-      "updated",
-      { type: "user", id: "usr-patricia", label: "Patrícia Nunes", profile: "manager" },
-      "Marcelo Andrade alterou o perfil de Patrícia Nunes para Gerente.",
-      {
-        security: true,
-        changes: [{ field: "profile", label: "Perfil", before: "Atendente", after: "Gerente" }],
-      },
-    ),
-    at(
-      "2026-06-19T19:20:00.000Z",
-      owner,
-      "updated",
-      { type: "settings", label: "Horário de funcionamento" },
-      "Marcelo Andrade alterou o horário de funcionamento da unidade.",
-      {
-        security: true,
-        changes: [{ field: "saturday", label: "Sábado", before: "08:00–17:00", after: "08:00–18:00" }],
-      },
-    ),
+    },
   ];
+
+  return emptyStore(organization, unit, users);
 }
 
-export function createInitialStore(): MockStore {
-  const organization = seedOrganization();
-  const unit = seedUnit();
-  const clients = seedClients();
-  const professionals = seedProfessionals();
-  const users = seedUsers();
-  const roles = seedRoles();
-  const categories = seedCategories();
-  const services = seedServices();
-  const serviceById = new Map(services.map((s) => [s.id, s]));
-
-  const timeBlocks: TimeBlock[] = [];
-  const busy = initBusyFromBreaks(professionals);
-
-  const appts: Appointment[] = [];
-  const series = seedSeries(serviceById, busy, appts);
-  seedRegularAppointments(professionals, serviceById, clients, busy, appts);
-
-  // ids deterministicos por ordem de geracao (series primeiro, depois avulsos).
-  const appointments = appts.map((a, i) => ({
-    ...a,
-    id: `apt-${String(i + 1).padStart(4, "0")}`,
-  }));
-
-  return {
-    organization,
-    unit,
-    clients,
-    professionals,
-    users,
-    roles,
-    categories,
-    services,
-    appointments,
-    timeBlocks,
-    series,
-    auditLog: seedAuditLog(),
-    classGroups: [],
-    enrollments: [],
-    attendances: [],
-    plans: [],
-    cobrancas: [],
-    waitlist: [],
-    reposicoes: [],
-    reservas: [],
-  };
-}
-
-// --- 2o tenant: "Academia X" (Modelo 3 — turmas) ---------------------------
-//
-// Fundacao compartilhada apenas (org/unit/users/instrutores/modalidades/alunos).
-// As colecoes de M1 (services/appointments/series) nascem vazias; as de M3
-// (turmas/matriculas/sessoes/presenca) entram com o modulo `features/turmas`.
+// --- Tenant 2: "Academia X" (Modelo 3 — turmas) ----------------------------
 
 const ORG_ACADEMIA = "org-academia-x";
 const UNIT_ACADEMIA = "unit-academia-x";
@@ -789,7 +101,7 @@ function seedAcademia(): MockStore {
     id: ORG_ACADEMIA,
     name: "Academia X",
     segment: "Academia",
-    model: "classes", // Modelo 3: turmas e aulas
+    model: "classes",
     status: "active",
   };
 
@@ -811,218 +123,24 @@ function seedAcademia(): MockStore {
     ],
   };
 
-  const roles: Role[] = [
-    { id: "role-ac-instrutor", organizationId: ORG_ACADEMIA, name: "Instrutor", position: 1, status: "active", ...timestamps() },
-    { id: "role-ac-coord", organizationId: ORG_ACADEMIA, name: "Coordenador", position: 2, status: "active", ...timestamps() },
-  ];
-
-  const categories: Category[] = [
-    { id: "cat-ac-judo", organizationId: ORG_ACADEMIA, name: "Judô", position: 1, status: "active", ...timestamps() },
-    { id: "cat-ac-ingles", organizationId: ORG_ACADEMIA, name: "Inglês", position: 2, status: "active", ...timestamps() },
-    { id: "cat-ac-ballet", organizationId: ORG_ACADEMIA, name: "Ballet", position: 3, status: "active", ...timestamps() },
-    { id: "cat-ac-yoga", organizationId: ORG_ACADEMIA, name: "Yoga", position: 4, status: "active", ...timestamps() },
-  ];
-
-  const instructor = (
-    id: string,
-    name: string,
-    roleId: string,
-    phone: string,
-    days: Weekday[],
-  ): Professional => ({
-    id,
-    organizationId: ORG_ACADEMIA,
-    unitId: UNIT_ACADEMIA,
-    name,
-    roleId,
-    phone: digits(phone),
-    status: "active",
-    workingHours: workingHours(days),
-    serviceIds: [],
-    ...timestamps(),
-  });
-  const professionals: Professional[] = [
-    instructor("prof-ac-carlos", "Carlos Dias", "role-ac-instrutor", "(11) 98811-0001", [1, 2, 3, 4, 5, 6]),
-    instructor("prof-ac-marina", "Marina Alves", "role-ac-instrutor", "(11) 98811-0002", [1, 2, 3, 4, 5]),
-  ];
-
-  const user = (
-    id: string,
-    name: string,
-    email: string,
-    profile: User["profile"],
-    professionalId?: string,
-  ): User => ({
-    id,
-    organizationId: ORG_ACADEMIA,
-    name,
-    email,
-    profile,
-    ...(professionalId ? { professionalId } : {}),
-    status: "active",
-    ...timestamps(),
-  });
   const users: User[] = [
-    user("usr-ac-ana", "Ana Ribeiro", "ana@academiax.com", "owner"),
-    user("usr-ac-carlos", "Carlos Dias", "carlos@academiax.com", "professional", "prof-ac-carlos"),
-    user("usr-ac-paula", "Paula Souza", "paula@academiax.com", "manager"),
-  ];
-
-  const aluno = (
-    id: string,
-    name: string,
-    phone: string,
-    notes: string,
-  ): Client => ({
-    id,
-    organizationId: ORG_ACADEMIA,
-    name,
-    phone: digits(phone),
-    notes,
-    status: "active",
-    ...timestamps(),
-  });
-  const clients: Client[] = [
-    aluno("cli-ac-lucas", "Lucas Aluno", "(11) 99200-0001", "Turma de judô infantil."),
-    aluno("cli-ac-bia", "Bia Aluna", "(11) 99200-0002", "Inglês A1."),
-    aluno("cli-ac-theo", "Theo Aluno", "(11) 99200-0003", "Judô juvenil."),
-    aluno("cli-ac-manu", "Manuela Aluna", "(11) 99200-0004", "Ballet iniciante."),
-    aluno("cli-ac-rafa", "Rafael Aluno", "(11) 99200-0005", "Inglês B1; frequência alta."),
-  ];
-
-  const plans: Plano[] = [
-    { id: "plan-ac-2x", organizationId: ORG_ACADEMIA, name: "Mensal 2x/semana", priceCents: 18000, period: "monthly", status: "active", ...timestamps() },
-    { id: "plan-ac-1x", organizationId: ORG_ACADEMIA, name: "Mensal 1x/semana", priceCents: 12000, period: "monthly", status: "active", ...timestamps() },
-  ];
-
-  const turma = (
-    id: string,
-    name: string,
-    modalityId: string,
-    instructorId: string,
-    planId: string,
-    capacity: number,
-    meetingSlots: { weekday: Weekday; start: string; end: string }[],
-  ): ClassGroup => ({
-    id,
-    organizationId: ORG_ACADEMIA,
-    unitId: UNIT_ACADEMIA,
-    name,
-    modalityId,
-    instructorId,
-    enrollmentType: "fixed",
-    capacity,
-    planId,
-    meetingSlots,
-    startDate: "2026-06-01",
-    status: "active",
-    ...timestamps(),
-  });
-  const classGroups: ClassGroup[] = [
-    turma("turma-ac-judo", "Judô Infantil A", "cat-ac-judo", "prof-ac-carlos", "plan-ac-2x", 12, [
-      { weekday: 1, start: "18:00", end: "19:00" },
-      { weekday: 3, start: "18:00", end: "19:00" },
-    ]),
-    turma("turma-ac-ingles", "Inglês A1", "cat-ac-ingles", "prof-ac-marina", "plan-ac-2x", 10, [
-      { weekday: 2, start: "19:00", end: "20:00" },
-      { weekday: 4, start: "19:00", end: "20:00" },
-    ]),
-    turma("turma-ac-ballet", "Ballet Iniciante", "cat-ac-ballet", "prof-ac-marina", "plan-ac-1x", 8, [
-      { weekday: 6, start: "09:00", end: "10:00" },
-    ]),
-    // Turma drop-in (aula avulsa): sem plano, cobra por aula (sessionPriceCents).
     {
-      id: "turma-ac-yoga",
+      id: "usr-ac-ana",
       organizationId: ORG_ACADEMIA,
-      unitId: UNIT_ACADEMIA,
-      name: "Yoga (aula avulsa)",
-      modalityId: "cat-ac-yoga",
-      instructorId: "prof-ac-marina",
-      enrollmentType: "dropin",
-      capacity: 15,
-      sessionPriceCents: 4000,
-      meetingSlots: [{ weekday: 6, start: "10:00", end: "11:00" }],
-      startDate: "2026-06-01",
+      name: "Ana Ribeiro",
+      email: "ana@academiax.com",
+      profile: "owner",
       status: "active",
       ...timestamps(),
     },
   ];
 
-  const enroll = (
-    id: string,
-    classGroupId: string,
-    studentId: string,
-  ): Enrollment => ({
-    id,
-    classGroupId,
-    studentId,
-    status: "active",
-    enrolledAt: SEED_NOW,
-  });
-  const enrollments: Enrollment[] = [
-    enroll("enr-ac-1", "turma-ac-judo", "cli-ac-lucas"),
-    enroll("enr-ac-2", "turma-ac-judo", "cli-ac-theo"),
-    enroll("enr-ac-3", "turma-ac-ingles", "cli-ac-bia"),
-    enroll("enr-ac-4", "turma-ac-ingles", "cli-ac-rafa"),
-    enroll("enr-ac-5", "turma-ac-ballet", "cli-ac-manu"),
-  ];
-
-  const cobranca = (
-    id: string,
-    studentId: string,
-    classGroupId: string,
-    planId: string,
-    amountCents: number,
-    status: Cobranca["status"],
-  ): Cobranca => ({
-    id,
-    organizationId: ORG_ACADEMIA,
-    studentId,
-    kind: "mensalidade",
-    planId,
-    classGroupId,
-    competencia: "2026-06",
-    dueDate: "2026-06-10",
-    amountCents,
-    status,
-    ...(status === "paid" ? { paidAt: SEED_NOW, method: "pix" as const } : {}),
-    ...timestamps(),
-  });
-  const cobrancas: Cobranca[] = [
-    cobranca("cob-ac-1", "cli-ac-lucas", "turma-ac-judo", "plan-ac-2x", 18000, "paid"),
-    cobranca("cob-ac-2", "cli-ac-theo", "turma-ac-judo", "plan-ac-2x", 18000, "pending"),
-    cobranca("cob-ac-3", "cli-ac-bia", "turma-ac-ingles", "plan-ac-2x", 18000, "paid"),
-    cobranca("cob-ac-4", "cli-ac-rafa", "turma-ac-ingles", "plan-ac-2x", 18000, "overdue"),
-    cobranca("cob-ac-5", "cli-ac-manu", "turma-ac-ballet", "plan-ac-1x", 12000, "pending"),
-  ];
-
-  return {
-    organization,
-    unit,
-    clients,
-    professionals,
-    users,
-    roles,
-    categories,
-    services: [],
-    appointments: [],
-    timeBlocks: [],
-    series: [],
-    auditLog: [],
-    classGroups,
-    enrollments,
-    attendances: [],
-    plans,
-    cobrancas,
-    waitlist: [],
-    reposicoes: [],
-    reservas: [],
-  };
+  return emptyStore(organization, unit, users);
 }
 
 /** Mundo multi-tenant: Corte Nobre (M1) + Academia X (M3). Ativo = Corte Nobre. */
 export function createInitialWorld(): MockWorld {
-  const corteNobre = createInitialStore();
+  const corteNobre = seedCorteNobre();
   const academia = seedAcademia();
   return {
     tenants: {
