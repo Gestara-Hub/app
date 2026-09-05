@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  useForm,
-  FormProvider,
-  Controller,
-  type Path,
-} from "react-hook-form";
+import { useForm, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { ComboboxField, FieldShell, TextArea } from "@/components/form";
+import { ComboboxField, DateField, TextArea, TimeField } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogClose,
@@ -95,63 +89,10 @@ function BlockForm({
           required
           disabled={pending}
         />
-        <Controller
-          control={form.control}
-          name="date"
-          render={({ field, fieldState }) => (
-            <FieldShell id="blk-date" label="Data" required error={fieldState.error?.message}>
-              <Input
-                id="blk-date"
-                type="date"
-                ref={field.ref}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                disabled={pending}
-                aria-invalid={fieldState.invalid}
-              />
-            </FieldShell>
-          )}
-        />
+        <DateField<BlockFormValues> id="blk-date" name="date" label="Data" required disabled={pending} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Controller
-            control={form.control}
-            name="start"
-            render={({ field, fieldState }) => (
-              <FieldShell id="blk-start" label="Início" required error={fieldState.error?.message}>
-                <Input
-                  id="blk-start"
-                  type="time"
-                  step={300}
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="end"
-            render={({ field, fieldState }) => (
-              <FieldShell id="blk-end" label="Fim" required error={fieldState.error?.message}>
-                <Input
-                  id="blk-end"
-                  type="time"
-                  step={300}
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
+          <TimeField<BlockFormValues> id="blk-start" name="start" label="Início" required disabled={pending} />
+          <TimeField<BlockFormValues> id="blk-end" name="end" label="Fim" required disabled={pending} />
         </div>
         <TextArea<BlockFormValues>
           name="reason"

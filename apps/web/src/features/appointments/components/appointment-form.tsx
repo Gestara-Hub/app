@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useWatch, FormProvider, Controller, type Path } from "react-hook-form";
+import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Info, Plus } from "lucide-react";
 import {
   ComboboxField,
-  FieldShell,
+  DateField,
   MultiSelectField,
   TextArea,
+  TimeField,
 } from "@/components/form";
 import {
   AlertDialog,
@@ -23,7 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { isPastSlot } from "@gestarahub/core/date";
@@ -334,43 +334,8 @@ export function AppointmentForm({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Controller
-              control={form.control}
-              name="date"
-              render={({ field, fieldState }) => (
-                <FieldShell id="date" label="Data" required error={fieldState.error?.message}>
-                  <Input
-                    id="date"
-                    type="date"
-                    ref={field.ref}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                </FieldShell>
-              )}
-            />
-            <Controller
-              control={form.control}
-              name="start"
-              render={({ field, fieldState }) => (
-                <FieldShell id="start" label="Horário" required error={fieldState.error?.message}>
-                  <Input
-                    id="start"
-                    type="time"
-                    step={300}
-                    ref={field.ref}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                </FieldShell>
-              )}
-            />
+            <DateField<AppointmentFormValues> name="date" label="Data" required disabled={pending} />
+            <TimeField<AppointmentFormValues> name="start" label="Horário" required disabled={pending} />
           </div>
         )}
 

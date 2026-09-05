@@ -1,23 +1,17 @@
 "use client";
 
-import {
-  useForm,
-  useWatch,
-  FormProvider,
-  Controller,
-  type Path,
-} from "react-hook-form";
+import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   ComboboxField,
-  FieldShell,
+  DateField,
   InputNumber,
   MultiSelectField,
   SelectField,
+  TimeField,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogClose,
@@ -170,43 +164,8 @@ function SeriesForm({
             required
             disabled={pending}
           />
-          <Controller
-            control={form.control}
-            name="startDate"
-            render={({ field, fieldState }) => (
-              <FieldShell id="ser-date" label="Início" required error={fieldState.error?.message}>
-                <Input
-                  id="ser-date"
-                  type="date"
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="time"
-            render={({ field, fieldState }) => (
-              <FieldShell id="ser-time" label="Horário" required error={fieldState.error?.message}>
-                <Input
-                  id="ser-time"
-                  type="time"
-                  step={300}
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
-          />
+          <DateField<SeriesFormValues> id="ser-date" name="startDate" label="Início" required disabled={pending} />
+          <TimeField<SeriesFormValues> id="ser-time" name="time" label="Horário" required disabled={pending} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -225,23 +184,12 @@ function SeriesForm({
               disabled={pending}
             />
           ) : (
-            <Controller
-              control={form.control}
+            <DateField<SeriesFormValues>
+              id="ser-until"
               name="untilDate"
-              render={({ field, fieldState }) => (
-                <FieldShell id="ser-until" label="Data final" required error={fieldState.error?.message}>
-                  <Input
-                    id="ser-until"
-                    type="date"
-                    ref={field.ref}
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                </FieldShell>
-              )}
+              label="Data final"
+              required
+              disabled={pending}
             />
           )}
         </div>

@@ -1,17 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useForm,
-  useWatch,
-  FormProvider,
-  Controller,
-  type Path,
-} from "react-hook-form";
+import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { FieldShell, SelectField, TextArea } from "@/components/form";
+import { DateField, SelectField, TextArea, TimeField } from "@/components/form";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +17,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -176,43 +169,15 @@ function RescheduleForm({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {single ? (
-            <Controller
-              control={form.control}
-              name="date"
-              render={({ field, fieldState }) => (
-                <FieldShell id="rs-date" label="Data" required error={fieldState.error?.message}>
-                  <Input
-                    id="rs-date"
-                    type="date"
-                    ref={field.ref}
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                  />
-                </FieldShell>
-              )}
-            />
+            <DateField<RescheduleValues> id="rs-date" name="date" label="Data" required disabled={pending} />
           ) : null}
-          <Controller
-            control={form.control}
+          <TimeField<RescheduleValues>
+            id="rs-start"
             name="start"
-            render={({ field, fieldState }) => (
-              <FieldShell id="rs-start" label="Horário" hint={endHint} required error={fieldState.error?.message}>
-                <Input
-                  id="rs-start"
-                  type="time"
-                  step={300}
-                  ref={field.ref}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  disabled={pending}
-                  aria-invalid={fieldState.invalid}
-                />
-              </FieldShell>
-            )}
+            label="Horário"
+            hint={endHint}
+            required
+            disabled={pending}
           />
         </div>
 

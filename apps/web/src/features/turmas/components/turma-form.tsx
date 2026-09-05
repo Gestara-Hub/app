@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
+  DateField,
   FieldShell,
   InputNumber,
   InputText,
@@ -293,27 +294,7 @@ export function TurmaForm({
           disabled={pending}
         />
 
-        <Controller
-          control={form.control}
-          name="startDate"
-          render={({ field, fieldState }) => (
-            <FieldShell
-              id="startDate"
-              label="Início"
-              required
-              error={fieldState.error?.message}
-            >
-              <Input
-                id="startDate"
-                type="date"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                disabled={pending}
-              />
-            </FieldShell>
-          )}
-        />
+        <DateField<TurmaFormValues> name="startDate" label="Início" required disabled={pending} />
 
         <Controller
           control={form.control}
