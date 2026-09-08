@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
   ChevronLeft,
   Clock,
-  ListPlus,
+  GraduationCap,
   Pencil,
+  Search,
   UserCheck,
   UserPlus,
+  UserX,
   X,
 } from "lucide-react";
 import {
@@ -23,20 +25,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { ListItemCard } from "@/components/shared/list-item-card";
-import { isApiError } from "@gestarahub/contracts";
-import { getErrorMessage } from "@gestarahub/core/api-error";
+import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import {
+  ListItemActionsMenu,
+  type ListItemAction,
+} from "@/components/shared/list-item-actions-menu";
+import { cn } from "@/lib/utils";
+import { normalizeText } from "@/lib/text";
+import { userInitials } from "@/lib/session";
+import { formatPhone } from "@gestarahub/core/format";
+import type { EnrollmentView, Id } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useClients } from "@/features/clients";
 import {
-  useAddToWaitlist,
   useCancelEnrollment,
   useClassGroup,
   useConcludeReposicao,
-  useEnroll,
   useEnrollments,
   usePromoteWaitlist,
   useRemoveFromWaitlist,
@@ -44,7 +55,10 @@ import {
   useWaitlist,
 } from "../hooks/use-turmas";
 import { slotsSummary } from "./turmas-view";
+import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
+
+type Tab = "enrolled" | "waitlist" | "makeups";
 
 /** Badge de frequencia do aluno (informativo; destaque quando < 75%). */
 function FreqBadge({
@@ -76,50 +90,157 @@ function FreqBadge({
   );
 }
 
+/** Ocupacao da turma: barra + contagem. Ambar quando lotada/acima. */
+function CapacityBar({
+  enrolled,
+  capacity,
+}: {
+  enrolled: number;
+  capacity: number;
+}) {
+  const pct =
+    capacity > 0 ? Math.min(100, Math.round((enrolled / capacity) * 100)) : 0;
+  const full = enrolled >= capacity;
+  const free = Math.max(capacity - enrolled, 0);
+  return (
+    <div className="mb-6 flex items-center gap-3">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full transition-[width]",
+            full ? "bg-amber-500" : "bg-primary",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="shrink-0 text-sm text-muted-foreground">
+        {enrolled} de {capacity} vagas ·{" "}
+        <span className="font-medium text-foreground">
+          {full ? "turma lotada" : `${free} ${free === 1 ? "livre" : "livres"}`}
+        </span>
+      </p>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  count,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+      <span className="text-xs tabular-nums opacity-70">{count}</span>
+    </button>
+  );
+}
+
 export function TurmaDetailView({ id }: { id: string }) {
   const { data: turma, isLoading } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
   const { data: waitlist } = useWaitlist(id);
   const { data: reposicoes } = useReposicoes(id);
-  const enrollMut = useEnroll();
   const cancelMut = useCancelEnrollment();
-  const addWaitMut = useAddToWaitlist();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
   const concludeRepMut = useConcludeReposicao();
   const can = useCan();
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
+
   const [editOpen, setEditOpen] = useState(false);
-  const [confirmFull, setConfirmFull] = useState<{
-    studentId: string;
-    studentName: string;
-  } | null>(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("enrolled");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<Id>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+
+  const rows = useMemo(() => {
+    const term = normalizeText(search);
+    const list = enrollments ?? [];
+    if (!term) return list;
+    return list.filter((e) => normalizeText(e.studentName).includes(term));
+  }, [enrollments, search]);
+
+  const phoneOf = useMemo(() => {
+    const map = new Map((clients ?? []).map((c) => [c.id, c.phone]));
+    return (studentId: Id) => map.get(studentId);
+  }, [clients]);
 
   if (isLoading || !turma) {
     return <Skeleton className="h-40 w-full rounded-md" />;
   }
 
   const enrolledIds = new Set((enrollments ?? []).map((e) => e.studentId));
-  const available = (clients ?? []).filter((c) => !enrolledIds.has(c.id));
+  const waitlistedIds = new Set((waitlist ?? []).map((w) => w.studentId));
+  const selectedRows = rows.filter((e) => selected.has(e.id));
+  const allShownSelected =
+    rows.length > 0 && rows.every((e) => selected.has(e.id));
 
-  const doEnroll = async (studentId: string, allowOverCapacity: boolean) => {
-    try {
-      await enrollMut.mutateAsync({
-        payload: { classGroupId: id, studentId },
-        allowOverCapacity,
-      });
-      toast.success("Aluno matriculado.");
-      setConfirmFull(null);
-    } catch (error) {
-      // Capacidade e regra mole: turma lotada -> confirma e refaz.
-      if (isApiError(error) && error.code === "CLASS_FULL" && !allowOverCapacity) {
-        const c = (clients ?? []).find((x) => x.id === studentId);
-        setConfirmFull({ studentId, studentName: c?.name ?? "o aluno" });
-        return;
+  const toggleRow = (rowId: Id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowId)) next.delete(rowId);
+      else next.add(rowId);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected(allShownSelected ? new Set() : new Set(rows.map((e) => e.id)));
+  };
+
+  const cancelOne = (enrollment: EnrollmentView) => {
+    cancelMut.mutate(
+      { id: enrollment.id },
+      {
+        onSuccess: () => {
+          toast.success("Matrícula cancelada.");
+          setSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(enrollment.id);
+            return next;
+          });
+        },
+      },
+    );
+  };
+
+  const cancelSelected = async () => {
+    let ok = 0;
+    for (const row of selectedRows) {
+      try {
+        await cancelMut.mutateAsync({ id: row.id });
+        ok += 1;
+      } catch {
+        // erro individual nao interrompe o lote; o resumo conta o que passou.
       }
-      toast.error(getErrorMessage(error, "Não foi possível matricular."));
+    }
+    setConfirmBulk(false);
+    setSelected(new Set());
+    if (ok > 0) {
+      toast.success(
+        ok === 1 ? "Matrícula cancelada." : `${ok} matrículas canceladas.`,
+      );
     }
   };
 
@@ -148,205 +269,287 @@ export function TurmaDetailView({ id }: { id: string }) {
             Editar
           </Button>
         ) : null}
-        <span className="rounded-full border px-2.5 py-1 text-sm font-medium text-muted-foreground">
-          {turma.enrolledCount}/{turma.capacity} vagas
-        </span>
+        {canManage ? (
+          <Button size="sm" onClick={() => setEnrollOpen(true)}>
+            <UserPlus className="size-4" />
+            Matricular alunos
+          </Button>
+        ) : null}
       </PageHeader>
 
+      <CapacityBar enrolled={turma.enrolledCount} capacity={turma.capacity} />
+
       <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      <EnrollStudentsDialog
+        open={enrollOpen}
+        onOpenChange={setEnrollOpen}
+        turma={turma}
+        enrolledIds={enrolledIds}
+        waitlistedIds={waitlistedIds}
+      />
 
+      <div
+        role="tablist"
+        aria-label="Seções da turma"
+        className="mb-4 inline-flex gap-1 rounded-lg border bg-muted/40 p-1"
+      >
+        <TabButton
+          active={tab === "enrolled"}
+          count={(enrollments ?? []).length}
+          label="Matriculados"
+          onClick={() => setTab("enrolled")}
+        />
+        <TabButton
+          active={tab === "waitlist"}
+          count={(waitlist ?? []).length}
+          label="Lista de espera"
+          onClick={() => setTab("waitlist")}
+        />
+        <TabButton
+          active={tab === "makeups"}
+          count={(reposicoes ?? []).length}
+          label="Reposições"
+          onClick={() => setTab("makeups")}
+        />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold">
-            Matriculados ({(enrollments ?? []).length})
-          </h2>
+      {tab === "enrolled" ? (
+        <section role="tabpanel" className="space-y-3">
           {(enrollments ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum aluno matriculado.
+            <div className="rounded-lg border">
+              <ModuleEmptyGuide
+                icon={<GraduationCap className="size-8" />}
+                title="Nenhum aluno matriculado ainda."
+                description="Matricule os alunos desta turma para acompanhar frequência e mensalidades."
+                actionLabel={canManage ? "Matricular alunos" : undefined}
+                onAction={canManage ? () => setEnrollOpen(true) : undefined}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar aluno matriculado..."
+                  className="px-8"
+                  autoComplete="off"
+                  aria-label="Buscar aluno matriculado"
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Limpar busca"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+
+              {canManage && selected.size > 0 ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
+                  <span className="text-sm text-muted-foreground">
+                    {selected.size} selecionado(s)
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmBulk(true)}
+                  >
+                    <UserX className="size-4" />
+                    Cancelar matrícula
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelected(new Set())}
+                  >
+                    Limpar seleção
+                  </Button>
+                </div>
+              ) : null}
+
+              {canManage && rows.length > 0 ? (
+                <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                  <Checkbox
+                    checked={allShownSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="Selecionar todos"
+                  />
+                  Selecionar todos ({rows.length})
+                </label>
+              ) : null}
+
+              {rows.length === 0 ? (
+                <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                  Nenhum aluno encontrado para &quot;{search}&quot;.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {rows.map((e) => {
+                    const phone = phoneOf(e.studentId);
+                    const actions: ListItemAction[] = canManage
+                      ? [
+                          {
+                            key: "cancel",
+                            label: "Cancelar matrícula",
+                            icon: <UserX className="size-4" />,
+                            onSelect: () => cancelOne(e),
+                            destructive: true,
+                          },
+                        ]
+                      : [];
+                    return (
+                      <ListItemCard key={e.id} disableHover>
+                        <div className="flex items-center gap-3">
+                          {canManage ? (
+                            <Checkbox
+                              checked={selected.has(e.id)}
+                              onCheckedChange={() => toggleRow(e.id)}
+                              aria-label={`Selecionar ${e.studentName}`}
+                            />
+                          ) : null}
+                          <Avatar className="size-8">
+                            <AvatarFallback className="bg-secondary text-xs">
+                              {userInitials(e.studentName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {e.studentName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {[
+                                phone ? formatPhone(phone) : null,
+                                `desde ${format(parseISO(e.enrolledAt), "dd/MM/yy")}`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          </div>
+                          <FreqBadge
+                            rate={e.attendanceRate}
+                            present={e.presentCount}
+                            absent={e.absentCount}
+                          />
+                          {canManage ? (
+                            <ListItemActionsMenu
+                              actions={actions}
+                              title="Ações da matrícula"
+                            />
+                          ) : null}
+                        </div>
+                      </ListItemCard>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {tab === "waitlist" ? (
+        <section role="tabpanel" className="space-y-2">
+          {(waitlist ?? []).length === 0 ? (
+            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+              Ninguém na lista de espera.
             </p>
           ) : (
-            (enrollments ?? []).map((e) => (
-              <ListItemCard key={e.id} disableHover>
+            (waitlist ?? []).map((w) => (
+              <ListItemCard key={w.id} disableHover>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{e.studentName}</span>
-                  <div className="flex items-center gap-2">
-                    <FreqBadge
-                      rate={e.attendanceRate}
-                      present={e.presentCount}
-                      absent={e.absentCount}
-                    />
-                    {canManage ? (
+                  <span className="text-sm font-medium">
+                    {w.position}. {w.studentName}
+                  </span>
+                  {canManage ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          promoteMut.mutate(w.id, {
+                            onSuccess: () =>
+                              toast.success("Aluno promovido para matrícula."),
+                          })
+                        }
+                      >
+                        <UserCheck className="size-4" />
+                        Promover
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        title="Cancelar matrícula"
-                        onClick={() =>
-                          cancelMut.mutate(
-                            { id: e.id },
-                            {
-                              onSuccess: () =>
-                                toast.success("Matrícula cancelada."),
-                            },
-                          )
-                        }
+                        title="Remover da lista"
+                        onClick={() => removeWaitMut.mutate(w.id)}
                       >
                         <X className="size-4" />
                       </Button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </ListItemCard>
             ))
           )}
         </section>
+      ) : null}
 
-        {canManage ? (
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">Matricular aluno</h2>
-            {available.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Todos os alunos ativos já estão matriculados.
-              </p>
-            ) : (
-              available.map((c) => (
-                <ListItemCard key={c.id} disableHover>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm">{c.name}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={enrollMut.isPending}
-                      onClick={() => doEnroll(c.id, false)}
-                    >
-                      <UserPlus className="size-4" />
-                      Matricular
-                    </Button>
+      {tab === "makeups" ? (
+        <section role="tabpanel" className="space-y-2">
+          {(reposicoes ?? []).length === 0 ? (
+            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+              Nenhuma reposição pendente.
+            </p>
+          ) : (
+            (reposicoes ?? []).map((r) => (
+              <ListItemCard key={r.id} disableHover>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{r.studentName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Faltou em {format(parseISO(r.missedDate), "dd/MM")} · repor
+                      até {format(parseISO(r.deadline), "dd/MM")}
+                    </p>
                   </div>
-                </ListItemCard>
-              ))
-            )}
-          </section>
-        ) : null}
-      </div>
-
-      {(waitlist ?? []).length > 0 ? (
-        <section className="mt-6 space-y-2">
-          <h2 className="text-sm font-semibold">
-            Lista de espera ({(waitlist ?? []).length})
-          </h2>
-          {(waitlist ?? []).map((w) => (
-            <ListItemCard key={w.id} disableHover>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">
-                  {w.position}. {w.studentName}
-                </span>
-                {canManage ? (
-                  <div className="flex items-center gap-2">
+                  {canManage ? (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        promoteMut.mutate(w.id, {
-                          onSuccess: () =>
-                            toast.success("Aluno promovido para matrícula."),
+                        concludeRepMut.mutate(r.id, {
+                          onSuccess: () => toast.success("Reposição concluída."),
                         })
                       }
                     >
-                      <UserCheck className="size-4" />
-                      Promover
+                      <Clock className="size-4" />
+                      Marcar reposta
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Remover da lista"
-                      onClick={() => removeWaitMut.mutate(w.id)}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            </ListItemCard>
-          ))}
-        </section>
-      ) : null}
-
-      {(reposicoes ?? []).length > 0 ? (
-        <section className="mt-6 space-y-2">
-          <h2 className="text-sm font-semibold">
-            Reposições pendentes ({(reposicoes ?? []).length})
-          </h2>
-          {(reposicoes ?? []).map((r) => (
-            <ListItemCard key={r.id} disableHover>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{r.studentName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Faltou em {format(parseISO(r.missedDate), "dd/MM")} · repor
-                    até {format(parseISO(r.deadline), "dd/MM")}
-                  </p>
+                  ) : null}
                 </div>
-                {canManage ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      concludeRepMut.mutate(r.id, {
-                        onSuccess: () => toast.success("Reposição concluída."),
-                      })
-                    }
-                  >
-                    <Clock className="size-4" />
-                    Marcar reposta
-                  </Button>
-                ) : null}
-              </div>
-            </ListItemCard>
-          ))}
+              </ListItemCard>
+            ))
+          )}
         </section>
       ) : null}
 
-      <AlertDialog
-        open={confirmFull !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirmFull(null);
-        }}
-      >
+      <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Turma lotada — matricular mesmo assim?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Cancelar {selected.size} matrícula(s)?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {turma.name} já atingiu a capacidade ({turma.capacity} vagas).
-              Deseja matricular {confirmFull?.studentName} mesmo assim?
+              Os alunos saem da turma e deixam de contar nas vagas. O histórico
+              de presença é mantido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (confirmFull) {
-                  addWaitMut.mutate(
-                    { classGroupId: id, studentId: confirmFull.studentId },
-                    {
-                      onSuccess: () =>
-                        toast.success("Adicionado à lista de espera."),
-                    },
-                  );
-                  setConfirmFull(null);
-                }
-              }}
-            >
-              <ListPlus className="size-4" />
-              Pôr na lista de espera
-            </Button>
-            <AlertDialogAction
-              onClick={() => {
-                if (confirmFull) void doEnroll(confirmFull.studentId, true);
-              }}
-            >
-              Matricular mesmo assim
+            <AlertDialogAction variant="destructive" onClick={cancelSelected}>
+              Cancelar matrículas
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
