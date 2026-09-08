@@ -1,63 +1,79 @@
 import type { DateISO, DateTimeISO, Id, RecordStatus } from "./common";
 
 /**
- * Modelo 3 — Fatia 2 (financeiro). Registro/status apenas, SEM gateway de
- * pagamento (coerente com o mock). Decisoes (docs/product/11): cobranca CHEIA
- * (sem pro-rata); matricula pausada/cancelada nao gera cobranca; turma fixa =
- * mensalidade (plano), drop-in = cobranca avulsa.
+ * Billing & plans (financial). Record/status only, no payment gateway.
+ * Decisions (docs/product/11): full charge (no pro-rata); paused/canceled
+ * enrollment generates no charge; fixed class = membership charge (plan),
+ * drop-in = drop-in charge.
  */
 
-/** Plano de mensalidade (catalogo). */
-export interface Plano {
+/** Plan periodicity: monthly, biweekly, weekly, or single session. */
+export type PlanPeriod = "monthly" | "biweekly" | "weekly" | "session";
+
+/** Access or membership plan. */
+export interface Plan {
   id: Id;
   organizationId: Id;
   name: string;
   priceCents: number;
-  period: "monthly"; // MVP: mensal
+  period: PlanPeriod;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
 
-export type CreatePlano = Omit<Plano, "id" | "createdAt" | "updatedAt">;
-export type UpdatePlano = Partial<CreatePlano>;
+export type CreatePlan = Omit<Plan, "id" | "createdAt" | "updatedAt">;
+export type UpdatePlan = Partial<CreatePlan>;
 
-export interface PlanoFilter {
+export interface PlanFilter {
   search?: string;
+  period?: PlanPeriod;
   status?: RecordStatus;
 }
 
-/** Cobranca de um aluno (mensalidade recorrente ou avulsa de aula). */
-export type CobrancaKind = "mensalidade" | "avulsa";
-export type CobrancaStatus = "pending" | "paid" | "overdue" | "canceled";
-export type PaymentMethod = "dinheiro" | "pix" | "cartao" | "outro";
+/** Student charge (recurring membership or single drop-in session). */
+export type ChargeKind = "membership" | "dropin";
+export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled";
+export type PaymentMethod = "cash" | "pix" | "card" | "other";
 
-export interface Cobranca {
+export interface Charge {
   id: Id;
   organizationId: Id;
   studentId: Id;
-  kind: CobrancaKind;
-  planId?: Id; // mensalidade
+  kind: ChargeKind;
+  planId?: Id; // membership
   classGroupId?: Id;
-  competencia?: string; // "YYYY-MM" (mensalidade)
-  sessionId?: Id; // avulsa (aula reservada)
+  competence?: string; // "YYYY-MM" (membership)
+  sessionId?: Id; // dropin (reserved session)
   dueDate: DateISO;
-  amountCents: number; // cobranca cheia (sem pro-rata)
-  status: CobrancaStatus;
+  amountCents: number; // full charge (no pro-rata)
+  status: ChargeStatus;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
 
-export interface CobrancaFilter {
-  competencia?: string;
-  status?: CobrancaStatus;
+export interface ChargeFilter {
+  competence?: string;
+  kind?: ChargeKind;
+  status?: ChargeStatus;
   studentId?: Id;
 }
 
-export interface CobrancaView extends Cobranca {
+export interface ChargeView extends Charge {
   studentName: string;
   planName?: string;
   className?: string;
 }
+
+// Backward compatibility aliases during transition
+export type Plano = Plan;
+export type CreatePlano = CreatePlan;
+export type UpdatePlano = UpdatePlan;
+export type PlanoFilter = PlanFilter;
+export type CobrancaKind = ChargeKind;
+export type CobrancaStatus = ChargeStatus;
+export type Cobranca = Charge;
+export type CobrancaFilter = ChargeFilter;
+export type CobrancaView = ChargeView;

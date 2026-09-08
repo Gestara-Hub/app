@@ -2,12 +2,12 @@ import type {
   AppointmentFilter,
   AuditLogFilter,
   CategoryFilter,
+  ChargeFilter,
   ClassGroupFilter,
   ClientFilter,
-  CobrancaFilter,
   DateISO,
   Id,
-  PlanoFilter,
+  PlanFilter,
   ProfessionalFilter,
   RoleFilter,
   ServiceFilter,
@@ -86,13 +86,15 @@ export const queryKeys = {
       ["classes", "sessions", range] as const,
     session: (sessionId: Id) => ["classes", "session", sessionId] as const,
     waitlist: (classGroupId: Id) => ["classes", "waitlist", classGroupId] as const,
+    makeups: (classGroupId?: Id) =>
+      ["classes", "makeups", classGroupId] as const,
     reposicoes: (classGroupId?: Id) =>
-      ["classes", "reposicoes", classGroupId] as const,
+      ["classes", "makeups", classGroupId] as const,
   },
   billing: {
     all: ["billing"] as const,
-    plans: (filter?: PlanoFilter) => ["billing", "plans", filter] as const,
-    charges: (filter?: CobrancaFilter) => ["billing", "charges", filter] as const,
+    plans: (filter?: PlanFilter) => ["billing", "plans", filter] as const,
+    charges: (filter?: ChargeFilter) => ["billing", "charges", filter] as const,
   },
   organization: {
     detail: ["organization"] as const,

@@ -38,7 +38,7 @@ import {
 } from "@/components/shared/list";
 import { formatCents } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Plano, RecordStatus } from "@gestarahub/contracts";
+import type { Plan, RecordStatus } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import {
   useInactivatePlan,
@@ -47,6 +47,13 @@ import {
 } from "../hooks/use-billing";
 import { PlanForm } from "./plan-form";
 
+const PERIOD_LABELS: Record<string, string> = {
+  monthly: "Mensal",
+  biweekly: "Quinzenal",
+  weekly: "Semanal",
+  session: "Por aula",
+};
+
 function PlanRow({
   plan,
   canManage,
@@ -54,11 +61,11 @@ function PlanRow({
   onInactivate,
   onReactivate,
 }: {
-  plan: Plano;
+  plan: Plan;
   canManage: boolean;
-  onEdit: (p: Plano) => void;
-  onInactivate: (p: Plano) => void;
-  onReactivate: (p: Plano) => void;
+  onEdit: (p: Plan) => void;
+  onInactivate: (p: Plan) => void;
+  onReactivate: (p: Plan) => void;
 }) {
   const isActive = plan.status === "active";
 
@@ -106,6 +113,9 @@ function PlanRow({
           <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
             {plan.name}
           </p>
+          <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {PERIOD_LABELS[plan.period] || "Mensal"}
+          </span>
           <RecordStatusBadge status={plan.status} />
         </div>
 
@@ -149,9 +159,9 @@ export function PlansView() {
   const can = useCan();
   const canManage = can("billing:manage");
 
-  const [editing, setEditing] = useState<Plano | null>(null);
+  const [editing, setEditing] = useState<Plan | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [inactivating, setInactivating] = useState<Plano | null>(null);
+  const [inactivating, setInactivating] = useState<Plan | null>(null);
 
   const inactivateMut = useInactivatePlan();
   const reactivateMut = useReactivatePlan();
@@ -169,7 +179,7 @@ export function PlansView() {
     setEditing(null);
     setDialogOpen(true);
   };
-  const openEdit = (p: Plano) => {
+  const openEdit = (p: Plan) => {
     setEditing(p);
     setDialogOpen(true);
   };
@@ -187,7 +197,7 @@ export function PlansView() {
     }
   };
 
-  const handleReactivate = async (p: Plano) => {
+  const handleReactivate = async (p: Plan) => {
     try {
       await reactivateMut.mutateAsync(p.id);
       toast.success(`Plano "${p.name}" reativado.`);

@@ -1,14 +1,14 @@
 import type {
   ApiErrorField,
-  Cobranca,
-  CobrancaFilter,
-  CobrancaView,
-  CreatePlano,
+  Charge,
+  ChargeFilter,
+  ChargeView,
+  CreatePlan,
   Id,
   PaymentMethod,
-  Plano,
-  PlanoFilter,
-  UpdatePlano,
+  Plan,
+  PlanFilter,
+  UpdatePlan,
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { store } from "@/mocks/store";
@@ -46,7 +46,7 @@ function className(id?: Id): string | undefined {
   return id ? store.classGroups.find((t) => t.id === id)?.name : undefined;
 }
 
-function toCobrancaView(c: Cobranca): CobrancaView {
+function toChargeView(c: Charge): ChargeView {
   return {
     ...c,
     studentName: studentName(c.studentId),
@@ -55,7 +55,7 @@ function toCobrancaView(c: Cobranca): CobrancaView {
   };
 }
 
-function validatePlano(payload: Partial<CreatePlano>): void {
+function validatePlan(payload: Partial<CreatePlan>): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome do plano." });
@@ -68,13 +68,14 @@ function validatePlano(payload: Partial<CreatePlano>): void {
 
 export const billingService = {
   // --- Planos -------------------------------------------------------------
-  listPlans(filter?: PlanoFilter): Promise<Plano[]> {
+  listPlans(filter?: PlanFilter): Promise<Plan[]> {
     return simulateRead(() => {
       let result = store.plans;
       if (filter?.search) {
         const term = filter.search;
         result = result.filter((p) => textIncludes(p.name, term));
       }
+      if (filter?.period) result = result.filter((p) => p.period === filter.period);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
       return clone(
         [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
@@ -82,21 +83,27 @@ export const billingService = {
     });
   },
 
-  createPlan(payload: CreatePlano): Promise<Plano> {
+  createPlan(payload: CreatePlan): Promise<Plan> {
     return simulateWrite(() => {
-      validatePlano(payload);
+      validatePlan(payload);
       const ts = nowIso();
-      const plano: Plano = { ...payload, id: newId(), createdAt: ts, updatedAt: ts };
-      store.plans.push(plano);
-      return clone(plano);
+      const plan: Plan = {
+        ...payload,
+        period: payload.period || "monthly",
+        id: newId(),
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      store.plans.push(plan);
+      return clone(plan);
     });
   },
 
-  updatePlan(id: Id, payload: UpdatePlano): Promise<Plano> {
+  updatePlan(id: Id, payload: UpdatePlan): Promise<Plan> {
     return simulateWrite(() => {
       const idx = store.plans.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Plano não encontrado.");
-      validatePlano({ ...store.plans[idx], ...payload });
+      validatePlan({ ...store.plans[idx], ...payload });
       store.plans[idx] = {
         ...store.plans[idx],
         ...payload,
@@ -106,20 +113,21 @@ export const billingService = {
     });
   },
 
-  // --- Cobrancas ----------------------------------------------------------
-  listCharges(filter?: CobrancaFilter): Promise<CobrancaView[]> {
+  // --- Cobrancas (Charges) ------------------------------------------------
+  listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return simulateRead(() => {
-      let result = store.cobrancas;
-      if (filter?.competencia) {
-        result = result.filter((c) => c.competencia === filter.competencia);
+      let result = store.charges;
+      if (filter?.competence) {
+        result = result.filter((c) => c.competence === filter.competence);
       }
+      if (filter?.kind) result = result.filter((c) => c.kind === filter.kind);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);
       if (filter?.studentId) {
         result = result.filter((c) => c.studentId === filter.studentId);
       }
       return clone(
         [...result]
-          .map(toCobrancaView)
+          .map(toChargeView)
           .sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR")),
       );
     });
@@ -130,34 +138,34 @@ export const billingService = {
    * matricula ativa cuja turma tem plano. Idempotente (nao duplica por aluno x
    * turma x competencia). Vencimento no dia 10.
    */
-  generateCharges(competencia: string): Promise<{ created: number }> {
+  generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(() => {
       const today = todayISO();
-      const dueDate = `${competencia}-10`;
+      const dueDate = `${competence}-10`;
       let created = 0;
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;
         const turma = store.classGroups.find((t) => t.id === e.classGroupId);
         if (!turma || !turma.planId) continue;
-        const exists = store.cobrancas.some(
+        const exists = store.charges.some(
           (c) =>
-            c.kind === "mensalidade" &&
+            c.kind === "membership" &&
             c.studentId === e.studentId &&
             c.classGroupId === turma.id &&
-            c.competencia === competencia,
+            c.competence === competence,
         );
         if (exists) continue;
         const plan = store.plans.find((p) => p.id === turma.planId);
         if (!plan) continue;
         const ts = nowIso();
-        store.cobrancas.push({
+        store.charges.push({
           id: newId(),
           organizationId: store.organization.id,
           studentId: e.studentId,
-          kind: "mensalidade",
+          kind: "membership",
           planId: plan.id,
           classGroupId: turma.id,
-          competencia,
+          competence,
           dueDate,
           amountCents: plan.priceCents,
           status: dueDate < today ? "overdue" : "pending",
@@ -170,28 +178,29 @@ export const billingService = {
     });
   },
 
-  markPaid(id: Id, method?: PaymentMethod): Promise<CobrancaView> {
+  markPaid(id: Id, method?: PaymentMethod): Promise<ChargeView> {
     return simulateWrite(() => {
-      const c = store.cobrancas.find((x) => x.id === id);
+      const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       c.status = "paid";
       c.paidAt = nowIso();
       c.method = method;
       c.updatedAt = nowIso();
-      return clone(toCobrancaView(c));
+      return clone(toChargeView(c));
     });
   },
 
   // Desfaz o pagamento (volta a pendente/atrasado conforme o vencimento).
-  markPending(id: Id): Promise<CobrancaView> {
+  markPending(id: Id): Promise<ChargeView> {
     return simulateWrite(() => {
-      const c = store.cobrancas.find((x) => x.id === id);
+      const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       c.status = c.dueDate < todayISO() ? "overdue" : "pending";
       c.paidAt = undefined;
       c.method = undefined;
       c.updatedAt = nowIso();
-      return clone(toCobrancaView(c));
+      return clone(toChargeView(c));
     });
   },
 };
+

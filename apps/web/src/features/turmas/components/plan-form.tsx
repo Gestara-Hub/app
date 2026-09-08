@@ -1,32 +1,43 @@
 "use client";
 
-import { useForm, FormProvider, type Path } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { InputCurrency, InputText } from "@/components/form";
-import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import type { CreatePlano, Plano } from "@gestarahub/contracts";
+import {
+  DialogFormFooter,
+  InputCurrency,
+  InputText,
+  SelectField,
+} from "@/components/form";
+import { handleFormApiError } from "@/lib/form-errors";
+import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
+  period: z.enum(["monthly", "biweekly", "weekly", "session"]),
   priceCents: z.number().int().min(0, "Informe um valor válido."),
 });
 type PlanFormValues = z.infer<typeof schema>;
+
+const PERIOD_OPTIONS = [
+  { label: "Mensal", value: "monthly" },
+  { label: "Quinzenal", value: "biweekly" },
+  { label: "Semanal", value: "weekly" },
+  { label: "Por aula (Avulso)", value: "session" },
+];
 
 export function PlanForm({
   plan,
   formId,
   onSuccess,
 }: {
-  plan?: Plano;
+  plan?: Plan;
   formId: string;
   onSuccess: () => void;
-}) {
+  }) {
   const createMut = useCreatePlan();
   const updateMut = useUpdatePlan();
   const isEdit = Boolean(plan);
@@ -38,16 +49,20 @@ export function PlanForm({
     mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: plan
-      ? { name: plan.name, priceCents: plan.priceCents }
-      : { name: "", priceCents: 0 },
+      ? {
+          name: plan.name,
+          period: (plan.period || "monthly") as PlanPeriod,
+          priceCents: plan.priceCents,
+        }
+      : { name: "", period: "monthly", priceCents: 0 },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const payload: CreatePlano = {
+    const payload: CreatePlan = {
       organizationId: user.organizationId,
       name: values.name,
+      period: values.period,
       priceCents: values.priceCents,
-      period: "monthly",
       status: plan?.status ?? "active",
     };
     try {
@@ -60,14 +75,7 @@ export function PlanForm({
       }
       onSuccess();
     } catch (error) {
-      const fields = getFieldErrors(error);
-      if (fields && fields.length > 0) {
-        for (const f of fields) {
-          form.setError(f.field as Path<PlanFormValues>, { message: f.message });
-        }
-      } else {
-        toast.error(getErrorMessage(error, "Não foi possível salvar o plano."));
-      }
+      handleFormApiError(error, form, "Não foi possível salvar o plano.");
     }
   });
 
@@ -81,22 +89,27 @@ export function PlanForm({
           required
           disabled={pending}
         />
-        <InputCurrency<PlanFormValues>
-          name="priceCents"
-          label="Valor"
-          required
-          disabled={pending}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SelectField<PlanFormValues>
+            name="period"
+            label="Periodicidade"
+            options={PERIOD_OPTIONS}
+            required
+            disabled={pending}
+          />
+          <InputCurrency<PlanFormValues>
+            name="priceCents"
+            label="Valor"
+            required
+            disabled={pending}
+          />
+        </div>
+        <DialogFormFooter
+          isPending={pending}
+          isEdit={isEdit}
+          createLabel="Criar plano"
+          editLabel="Salvar"
         />
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
-              Cancelar
-            </Button>
-          </DialogClose>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : isEdit ? "Salvar" : "Criar plano"}
-          </Button>
-        </DialogFooter>
       </form>
     </FormProvider>
   );

@@ -86,7 +86,7 @@ export function EnrollStudentsDialog({
     [clients, selected],
   );
 
-  const remaining = Math.max(turma.vagasRestantes, 0);
+  const remaining = Math.max(turma.availableSpots, 0);
   const isFull = remaining <= 0;
   const overCapacity = selected.size > remaining;
 

@@ -341,6 +341,17 @@ export function useAppointments() {
 - Jornadas que as rotas/features cobrem: `docs/product/09-fluxos-principais.md`.
 - Estados vazios, de erro e validacoes (UI): `docs/product/10-estados-e-mensagens.md`.
 
+## Convencao de Idioma: English Code Standard com UI em Portugues
+
+- **Codigo (100% em Ingles)**: Todo identificador de codigo DEVE ser em ingles. Isso inclui:
+  - Tipos e interfaces (`Plan`, `Charge`, `ClassGroup`, `Enrollment`, `ClassReservation`, `MakeupClass`).
+  - Enums e keys (`ChargeKind = "membership" | "dropin"`, `PlanPeriod = "monthly" | "biweekly" | "weekly" | "session"`).
+  - Propriedades de objetos e colunas (`availableSpots`, `sessionPriceCents`, `competence`, `dueDate`, `amountCents`).
+  - Funcoes, metodos, hooks e variaveis (`useCharges`, `markChargePaid`, `isMadeUp`).
+  - Query keys (`queryKeys.billing.charges`, `queryKeys.classes.makeups`).
+- **Interface (100% em Portugues pt-BR)**: Toda string visivel para o usuario deve ser em portugues (rotulos, botoes, toasts, mensagens de erro, titulos de modal e guides).
+- Essa regra e compulsoria para todos os agentes e desenvolvedores (registrada em `CLAUDE.md` e `AGENTS.md`).
+
 ## Pendencias
 
 - Definir o contrato detalhado de cada service e os schemas Zod / tipos em `src/types` (doc proprio).

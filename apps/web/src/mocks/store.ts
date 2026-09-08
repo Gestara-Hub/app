@@ -3,18 +3,18 @@ import type {
   Attendance,
   AuditLogEntry,
   Category,
+  Charge,
   ClassGroup,
+  ClassReservation,
   Client,
-  Cobranca,
   Enrollment,
   Id,
+  MakeupClass,
   OperationalModel,
   Organization,
-  Plano,
+  Plan,
   Professional,
   RecurrenceSeries,
-  Reposicao,
-  Reserva,
   Role,
   Service,
   TimeBlock,
@@ -59,13 +59,17 @@ export interface MockStore {
   classGroups: ClassGroup[];
   enrollments: Enrollment[];
   attendances: Attendance[];
-  // Financeiro do M3 (planos + mensalidades/cobrancas).
-  plans: Plano[];
-  cobrancas: Cobranca[];
+  // Financeiro do M3 (planos + cobrancas).
+  plans: Plan[];
+  charges: Charge[];
   // M3 Fatia 3: lista de espera, reposicoes e reservas (drop-in).
   waitlist: WaitlistEntry[];
-  reposicoes: Reposicao[];
-  reservas: Reserva[];
+  makeups: MakeupClass[];
+  reservations: ClassReservation[];
+  // Deprecated backward compatibility properties
+  cobrancas?: Charge[];
+  reposicoes?: MakeupClass[];
+  reservas?: ClassReservation[];
 }
 
 /** Mundo multi-tenant: um `MockStore` por organizationId + o tenant ativo. */
@@ -107,6 +111,12 @@ function loadFromStorage(): MockWorld | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PersistedBlob>;
     if (parsed.v !== SEED_VERSION || !parsed.data) return null;
+    for (const tenant of Object.values(parsed.data.tenants)) {
+      const t = tenant as Partial<MockStore>;
+      t.charges = t.charges || t.cobrancas || [];
+      t.makeups = t.makeups || t.reposicoes || [];
+      t.reservations = t.reservations || t.reservas || [];
+    }
     return parsed.data;
   } catch {
     return null;
@@ -242,10 +252,10 @@ export function clearStore(): void {
     enrollments: [],
     attendances: [],
     plans: [],
-    cobrancas: [],
+    charges: [],
     waitlist: [],
-    reposicoes: [],
-    reservas: [],
+    makeups: [],
+    reservations: [],
   };
   if (canPersist()) saveToStorage(world);
 }

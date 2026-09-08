@@ -35,7 +35,8 @@ export interface ClassGroup {
   enrollmentType: ClassEnrollmentType;
   capacity: number; // vagas (regra mole ao lotar)
   planId?: Id; // = Plano (mensalidade padrao da turma); ausente = sem cobranca
-  sessionPriceCents?: number; // preco da aula avulsa (turmas drop-in)
+  allowDropin?: boolean; // aceita reservas de alunos avulsos na sessao
+  sessionPriceCents?: number; // preco da aula avulsa
   meetingSlots: ClassMeetingSlot[];
   startDate: DateISO;
   endDate?: DateISO; // sem fim = turma continua
@@ -62,7 +63,9 @@ export interface ClassGroupView extends ClassGroup {
   instructorName: string;
   planName?: string;
   enrolledCount: number; // matriculas ativas
-  vagasRestantes: number; // capacity - enrolledCount
+  availableSpots: number; // capacity - enrolledCount
+  /** @deprecated use availableSpots */
+  vagasRestantes?: number;
 }
 
 /** Matricula — vinculo Aluno <-> Turma (turma fixa). */
@@ -128,16 +131,24 @@ export interface Attendance {
   markedAt: DateTimeISO;
 }
 
-/** Linha do roster de uma sessao: aluno + presenca (se ja marcada). */
+/** Tipo de vinculo do aluno na sessao: matriculado fixo, avulso ou experimental. */
+export type SessionRosterKind = "enrolled" | "dropin" | "trial" | "makeup";
+
+/** Linha do roster de uma sessao: aluno + vinculo + presenca (se ja marcada). */
 export interface SessionRosterEntry {
   studentId: Id;
   studentName: string;
+  kind?: SessionRosterKind;
   attendance?: AttendanceStatus;
 }
 
-/** Detalhe da sessao com o roster (matriculados da turma) para marcar presenca. */
+/** Detalhe da sessao com o roster (matriculados e avulsos) para marcar presenca. */
 export interface ClassSessionDetail extends ClassSessionView {
   enrollmentType: ClassEnrollmentType; // fixo (matricula) ou drop-in (reserva)
+  capacity: number;
+  availableSpots: number;
+  allowDropin: boolean;
+  sessionPriceCents?: number;
   roster: SessionRosterEntry[];
 }
 
@@ -159,39 +170,53 @@ export interface WaitlistEntryView extends WaitlistEntry {
   studentName: string;
 }
 
-/** Reposicao de uma falta (prazo de 30 dias; `done` neutraliza a falta). */
-export type ReposicaoStatus = "pending" | "scheduled" | "done" | "expired";
+/** Makeup class for an absence (30-day deadline; `done` neutralizes absence). */
+export type MakeupStatus = "pending" | "scheduled" | "done" | "expired";
 
-export interface Reposicao {
+export interface MakeupClass {
   id: Id;
   classGroupId: Id;
   studentId: Id;
   missedSessionId: Id;
   makeupSessionId?: Id;
-  deadline: DateISO; // 30 dias apos a falta
-  status: ReposicaoStatus;
+  deadline: DateISO; // 30 days after absence
+  status: MakeupStatus;
   createdAt: DateTimeISO;
 }
 
-export interface ReposicaoView extends Reposicao {
+export interface MakeupView extends MakeupClass {
   studentName: string;
   className: string;
   missedDate: DateISO;
   makeupDate?: DateISO;
 }
 
-/** Reserva de uma aula avulsa (turma drop-in): Aluno x Sessao. */
-export type ReservaStatus = "reserved" | "canceled";
+/** Reservation of a drop-in class (drop-in, trial or makeup): Student x Session. */
+export type ReservationStatus = "reserved" | "canceled";
+export type ReservationKind = "dropin" | "trial" | "makeup";
 
-export interface Reserva {
+export interface ClassReservation {
   id: Id;
   classGroupId: Id;
   sessionId: Id;
   studentId: Id;
-  status: ReservaStatus;
+  kind?: ReservationKind;
+  chargeId?: Id;
+  /** @deprecated use chargeId */
+  cobrancaId?: Id;
+  status: ReservationStatus;
   reservedAt: DateTimeISO;
 }
 
-export interface ReservaView extends Reserva {
+export interface ReservationView extends ClassReservation {
   studentName: string;
 }
+
+// Backward compatibility aliases
+export type ReposicaoStatus = MakeupStatus;
+export type Reposicao = MakeupClass;
+export type ReposicaoView = MakeupView;
+export type ReservaStatus = ReservationStatus;
+export type ReservaKind = ReservationKind;
+export type Reserva = ClassReservation;
+export type ReservaView = ReservationView;

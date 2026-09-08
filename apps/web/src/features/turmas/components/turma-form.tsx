@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   useForm,
+  useWatch,
   FormProvider,
   Controller,
   type Path,
@@ -13,9 +14,11 @@ import { format } from "date-fns";
 import {
   DateField,
   FieldShell,
+  InputCurrency,
   InputNumber,
   InputText,
   SelectField,
+  SwitchField,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,6 +173,8 @@ export function TurmaForm({
           planId: turma.planId ?? "",
           instructorId: turma.instructorId,
           enrollmentType: turma.enrollmentType,
+          allowDropin: turma.allowDropin ?? true,
+          sessionPriceCents: turma.sessionPriceCents ?? 0,
           capacity: turma.capacity,
           startDate: turma.startDate,
           meetingSlots: turma.meetingSlots,
@@ -180,10 +185,17 @@ export function TurmaForm({
           planId: "",
           instructorId: "",
           enrollmentType: "fixed",
+          allowDropin: true,
+          sessionPriceCents: 0,
           capacity: 10,
           startDate: format(new Date(), "yyyy-MM-dd"),
           meetingSlots: [],
         },
+  });
+
+  const allowDropin = useWatch({
+    control: form.control,
+    name: "allowDropin",
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -195,6 +207,8 @@ export function TurmaForm({
       planId: values.planId || undefined,
       instructorId: values.instructorId,
       enrollmentType: values.enrollmentType,
+      allowDropin: values.allowDropin,
+      sessionPriceCents: values.allowDropin ? (values.sessionPriceCents || undefined) : undefined,
       capacity: values.capacity,
       meetingSlots: values.meetingSlots.map((s) => ({
         weekday: s.weekday as Weekday,
@@ -293,6 +307,23 @@ export function TurmaForm({
           options={planOptions}
           disabled={pending}
         />
+
+        <div className="space-y-3">
+          <SwitchField<TurmaFormValues>
+            name="allowDropin"
+            label="Permitir aulas avulsas nesta turma"
+            hint="Alunos poderão reservar aulas avulsas nesta turma caso haja vagas disponíveis."
+            disabled={pending}
+          />
+
+          {allowDropin ? (
+            <InputCurrency<TurmaFormValues>
+              name="sessionPriceCents"
+              label="Valor da aula avulsa"
+              disabled={pending}
+            />
+          ) : null}
+        </div>
 
         <DateField<TurmaFormValues> name="startDate" label="Início" required disabled={pending} />
 

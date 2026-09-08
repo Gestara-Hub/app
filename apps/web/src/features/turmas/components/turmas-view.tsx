@@ -64,7 +64,7 @@ function TurmaRow({
 }) {
   const router = useRouter();
   const isActive = turma.status === "active";
-  const full = turma.vagasRestantes <= 0;
+  const full = turma.availableSpots <= 0;
 
   const actions: ListItemAction[] = canManage
     ? [

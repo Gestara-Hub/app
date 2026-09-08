@@ -8,16 +8,16 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 import { billingService } from "@/services/billingService";
 import type {
-  CobrancaFilter,
-  CreatePlano,
+  ChargeFilter,
+  CreatePlan,
   Id,
   PaymentMethod,
-  PlanoFilter,
-  UpdatePlano,
+  PlanFilter,
+  UpdatePlan,
 } from "@gestarahub/contracts";
 
-// --- Planos ---------------------------------------------------------------
-export function usePlans(filter?: PlanoFilter) {
+// --- Planos (Plans) -------------------------------------------------------
+export function usePlans(filter?: PlanFilter) {
   return useQuery({
     queryKey: queryKeys.billing.plans(filter),
     queryFn: () => billingService.listPlans(filter),
@@ -27,7 +27,7 @@ export function usePlans(filter?: PlanoFilter) {
 export function useCreatePlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreatePlano) => billingService.createPlan(payload),
+    mutationFn: (payload: CreatePlan) => billingService.createPlan(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
   });
 }
@@ -35,7 +35,7 @@ export function useCreatePlan() {
 export function useUpdatePlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: Id; payload: UpdatePlano }) =>
+    mutationFn: ({ id, payload }: { id: Id; payload: UpdatePlan }) =>
       billingService.updatePlan(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
   });
@@ -59,8 +59,8 @@ export function useReactivatePlan() {
   });
 }
 
-// --- Cobrancas ------------------------------------------------------------
-export function useCharges(filter?: CobrancaFilter) {
+// --- Cobrancas (Charges) --------------------------------------------------
+export function useCharges(filter?: ChargeFilter) {
   return useQuery({
     queryKey: queryKeys.billing.charges(filter),
     queryFn: () => billingService.listCharges(filter),
@@ -70,8 +70,8 @@ export function useCharges(filter?: CobrancaFilter) {
 export function useGenerateCharges() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (competencia: string) =>
-      billingService.generateCharges(competencia),
+    mutationFn: (competence: string) =>
+      billingService.generateCharges(competence),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
   });
 }
@@ -92,3 +92,4 @@ export function useMarkChargePending() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
   });
 }
+

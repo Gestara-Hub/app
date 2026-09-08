@@ -40,10 +40,10 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     enrollments: [],
     attendances: [],
     plans: [],
-    cobrancas: [],
+    charges: [],
     waitlist: [],
-    reposicoes: [],
-    reservas: [],
+    makeups: [],
+    reservations: [],
   };
 }
 

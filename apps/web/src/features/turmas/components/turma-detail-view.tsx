@@ -47,11 +47,11 @@ import { useClients } from "@/features/clients";
 import {
   useCancelEnrollment,
   useClassGroup,
-  useConcludeReposicao,
+  useConcludeMakeup,
   useEnrollments,
+  useMakeups,
   usePromoteWaitlist,
   useRemoveFromWaitlist,
-  useReposicoes,
   useWaitlist,
 } from "../hooks/use-turmas";
 import { slotsSummary } from "./turmas-view";
@@ -158,11 +158,11 @@ export function TurmaDetailView({ id }: { id: string }) {
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
   const { data: waitlist } = useWaitlist(id);
-  const { data: reposicoes } = useReposicoes(id);
+  const { data: makeups } = useMakeups(id);
   const cancelMut = useCancelEnrollment();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
-  const concludeRepMut = useConcludeReposicao();
+  const concludeRepMut = useConcludeMakeup();
   const can = useCan();
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
@@ -307,7 +307,7 @@ export function TurmaDetailView({ id }: { id: string }) {
         />
         <TabButton
           active={tab === "makeups"}
-          count={(reposicoes ?? []).length}
+          count={(makeups ?? []).length}
           label="Reposições"
           onClick={() => setTab("makeups")}
         />
@@ -499,12 +499,12 @@ export function TurmaDetailView({ id }: { id: string }) {
 
       {tab === "makeups" ? (
         <section role="tabpanel" className="space-y-2">
-          {(reposicoes ?? []).length === 0 ? (
+          {(makeups ?? []).length === 0 ? (
             <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
               Nenhuma reposição pendente.
             </p>
           ) : (
-            (reposicoes ?? []).map((r) => (
+            (makeups ?? []).map((r) => (
               <ListItemCard key={r.id} disableHover>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">

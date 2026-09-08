@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
-import type { CobrancaStatus } from "@gestarahub/contracts";
+import type { ChargeKind, ChargeStatus } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import {
   useCharges,
@@ -25,14 +25,14 @@ import {
   useMarkChargePending,
 } from "../hooks/use-billing";
 
-const STATUS_LABEL: Record<CobrancaStatus, string> = {
+const STATUS_LABEL: Record<ChargeStatus, string> = {
   pending: "Pendente",
   paid: "Pago",
   overdue: "Atrasado",
   canceled: "Cancelado",
 };
 
-const STATUS_CLASS: Record<CobrancaStatus, string> = {
+const STATUS_CLASS: Record<ChargeStatus, string> = {
   pending: "border-border/60 bg-muted/50 text-muted-foreground",
   paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
@@ -45,10 +45,14 @@ export function BillingView() {
     () => true,
     () => false,
   );
-  const [competencia, setCompetencia] = useState(() =>
+  const [competence, setCompetence] = useState(() =>
     format(new Date(), "yyyy-MM"),
   );
-  const { data: charges, isLoading } = useCharges({ competencia });
+  const [kindFilter, setKindFilter] = useState<"all" | ChargeKind>("all");
+  const { data: charges, isLoading } = useCharges({
+    competence,
+    kind: kindFilter === "all" ? undefined : kindFilter,
+  });
   const generateMut = useGenerateCharges();
   const paidMut = useMarkChargePaid();
   const pendingMut = useMarkChargePending();
@@ -63,7 +67,7 @@ export function BillingView() {
   const overdue = list.filter((c) => c.status === "overdue").length;
 
   const generate = () =>
-    generateMut.mutate(competencia, {
+    generateMut.mutate(competence, {
       onSuccess: (r) =>
         toast.success(
           r.created > 0
@@ -91,16 +95,58 @@ export function BillingView() {
       ) : (
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Competência</span>
-              <Input
-                type="month"
-                value={competencia}
-                onChange={(e) => setCompetencia(e.target.value)}
-                className="h-9 w-40"
-                aria-label="Competência"
-              />
-            </label>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Competência</span>
+                <Input
+                  type="month"
+                  value={competence}
+                  onChange={(e) => setCompetence(e.target.value)}
+                  className="h-9 w-40"
+                  aria-label="Competência"
+                />
+              </label>
+
+              <div className="inline-flex rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setKindFilter("all")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-medium transition-colors",
+                    kindFilter === "all"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Todas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKindFilter("membership")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-medium transition-colors",
+                    kindFilter === "membership"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Mensalidades
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKindFilter("dropin")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-medium transition-colors",
+                    kindFilter === "dropin"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Aulas Avulsas
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>{list.length} cobrança(s)</span>
               <span>·</span>
@@ -198,6 +244,15 @@ export function BillingView() {
                         <p className="font-medium text-sm text-foreground truncate">
                           {c.studentName}
                         </p>
+                        {c.kind === "dropin" ? (
+                          <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
+                            Aula Avulsa
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Mensalidade
+                          </span>
+                        )}
                         <span
                           className={cn(
                             "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
@@ -213,7 +268,11 @@ export function BillingView() {
                         {c.className && c.planName ? <span>·</span> : null}
                         {c.planName ? <span>{c.planName}</span> : null}
                         <span>·</span>
-                        <span>vence {format(parseISO(c.dueDate), "dd/MM")}</span>
+                        <span>
+                          {c.kind === "dropin"
+                            ? `aula em ${format(parseISO(c.dueDate), "dd/MM")}`
+                            : `vence ${format(parseISO(c.dueDate), "dd/MM")}`}
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -12,6 +12,8 @@ export const turmaFormSchema = z.object({
   planId: z.string(),
   instructorId: z.string().min(1, "Selecione o instrutor."),
   enrollmentType: z.enum(["fixed", "dropin"]),
+  allowDropin: z.boolean(),
+  sessionPriceCents: z.number().int().min(0).optional(),
   capacity: z.number().int().min(1, "A capacidade deve ser ao menos 1."),
   startDate: z.string().min(1, "Informe a data de início."),
   meetingSlots: z

@@ -14,6 +14,7 @@ import type {
   CreateEnrollment,
   DateISO,
   Id,
+  ReservationKind,
   UpdateClassGroup,
 } from "@gestarahub/contracts";
 
@@ -165,37 +166,45 @@ export function useRemoveFromWaitlist() {
   });
 }
 
-// --- Reposicoes -----------------------------------------------------------
-export function useReposicoes(classGroupId?: Id) {
+// --- Reposicoes (Makeups) -------------------------------------------------
+export function useMakeups(classGroupId?: Id) {
   return useQuery({
-    queryKey: queryKeys.classes.reposicoes(classGroupId),
-    queryFn: () => turmasService.listReposicoes(classGroupId),
+    queryKey: queryKeys.classes.makeups(classGroupId),
+    queryFn: () => turmasService.listMakeups(classGroupId),
   });
 }
+export const useReposicoes = useMakeups;
 
-export function useScheduleReposicao() {
+export function useScheduleMakeup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, makeupSessionId }: { id: Id; makeupSessionId: Id }) =>
-      turmasService.scheduleReposicao(id, makeupSessionId),
+      turmasService.scheduleMakeup(id, makeupSessionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
   });
 }
+export const useScheduleReposicao = useScheduleMakeup;
 
-export function useConcludeReposicao() {
+export function useConcludeMakeup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: Id) => turmasService.concludeReposicao(id),
+    mutationFn: (id: Id) => turmasService.concludeMakeup(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
   });
 }
+export const useConcludeReposicao = useConcludeMakeup;
 
-// --- Reservas (drop-in) ---------------------------------------------------
+// --- Reservas (Drop-in / Reservations) ------------------------------------
 export function useReserveSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { classGroupId: Id; sessionId: Id; studentId: Id }) =>
-      turmasService.reserveSession(input),
+    mutationFn: (input: {
+      classGroupId: Id;
+      sessionId: Id;
+      studentId: Id;
+      kind?: ReservationKind;
+      amountCents?: number;
+    }) => turmasService.reserveSession(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.billing.all });
@@ -203,14 +212,16 @@ export function useReserveSession() {
   });
 }
 
-export function useCancelReserva() {
+export function useCancelReservation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: { sessionId: Id; studentId: Id }) =>
-      turmasService.cancelReserva(input),
+      turmasService.cancelReservation(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.billing.all });
     },
   });
 }
+export const useCancelReserva = useCancelReservation;
+
