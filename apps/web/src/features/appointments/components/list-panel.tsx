@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, CalendarClock, Plus, RotateCw, Search, X } from "lucide-react";
+import { AlertTriangle, CalendarClock, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/shared/combobox";
-import { ListItemCard } from "@/components/shared/list-item-card";
+import {
+  InitialsAvatar,
+  ListContainer,
+  ListRow,
+  SearchInput,
+} from "@/components/shared/list";
 import { formatCents } from "@gestarahub/core/format";
 import { appointmentStatusLabel } from "@/lib/labels";
 import { todayISO } from "@gestarahub/core/date";
@@ -117,77 +122,90 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
     );
   } else if (query.isPending) {
     body = (
-      <div className="space-y-2">
+      <ListContainer>
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-md" />
+          <div
+            key={i}
+            className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Skeleton className="h-4 w-20 shrink-0" />
+              <Skeleton className="size-7 rounded-full shrink-0" />
+              <div className="space-y-1 min-w-0 flex-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <Skeleton className="h-5 w-20 rounded-full shrink-0" />
+          </div>
         ))}
-      </div>
+      </ListContainer>
     );
   } else if (appointments.length === 0) {
     body = (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <CalendarClock className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          {hasFilters
-            ? "Nenhum resultado para os filtros aplicados."
-            : "Nenhum agendamento neste período."}
-        </p>
-        {hasFilters ? (
-          <Button variant="outline" size="sm" onClick={clearAll}>
-            Limpar filtros
-          </Button>
-        ) : canCreate ? (
-          <Button size="sm" onClick={onCreate}>
-            <Plus className="size-4" />
-            Novo agendamento
-          </Button>
-        ) : null}
-      </div>
+      <ListContainer
+        emptyState={
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <CalendarClock className="size-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {hasFilters
+                ? "Nenhum resultado para os filtros aplicados."
+                : "Nenhum agendamento neste período."}
+            </p>
+            {hasFilters ? (
+              <Button variant="outline" size="sm" onClick={clearAll}>
+                Limpar filtros
+              </Button>
+            ) : canCreate ? (
+              <Button size="sm" onClick={onCreate}>
+                <Plus className="size-4" />
+                Novo agendamento
+              </Button>
+            ) : null}
+          </div>
+        }
+      />
     );
   } else {
     body = (
       <div className="space-y-5">
         {groups.map((group) => (
-          <div key={group.date} className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">
+          <div key={group.date} className="space-y-1.5">
+            <p className="px-1 text-xs font-medium text-muted-foreground">
               {formatGroupDate(group.date)}
             </p>
-            {group.items.map((appointment) => (
-              <ListItemCard
-                key={appointment.id}
-                data-slot="appointment-row"
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelectAppointment(appointment)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelectAppointment(appointment);
+            <ListContainer>
+              {group.items.map((appointment) => (
+                <ListRow
+                  key={appointment.id}
+                  onClick={() => onSelectAppointment(appointment)}
+                  canClick
+                  actions={
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="hidden text-sm text-muted-foreground sm:inline tabular-nums">
+                        {formatCents(appointment.totalPriceCents)}
+                      </span>
+                      <AppointmentStatusBadge status={appointment.status} />
+                    </div>
                   }
-                }}
-                className="cursor-pointer"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="w-24 shrink-0 text-sm font-medium tabular-nums">
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-24 shrink-0 text-sm font-medium tabular-nums text-foreground">
                       {appointment.start}–{appointment.end}
                     </span>
+                    <InitialsAvatar name={appointment.client.name} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{appointment.client.name}</p>
+                      <p className="truncate font-medium text-sm text-foreground group-hover:text-primary transition-colors">
+                        {appointment.client.name}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {appointment.services.map((s) => s.name).join(" + ")} · {appointment.professional.name}
                       </p>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden text-sm text-muted-foreground sm:inline">
-                      {formatCents(appointment.totalPriceCents)}
-                    </span>
-                    <AppointmentStatusBadge status={appointment.status} />
-                  </div>
-                </div>
-              </ListItemCard>
-            ))}
+                </ListRow>
+              ))}
+            </ListContainer>
           </div>
         ))}
       </div>
@@ -251,27 +269,14 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
               </Select>
             </label>
           </div>
-          <div className="relative lg:w-56">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por cliente..."
-              className="px-8"
-              autoComplete="off"
-              aria-label="Buscar por cliente"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            onClear={() => setSearch("")}
+            placeholder="Buscar por cliente..."
+            aria-label="Buscar por cliente"
+            className="lg:w-56"
+          />
         </CardContent>
       </Card>
 

@@ -83,7 +83,7 @@ export function PlanForm({
         />
         <InputCurrency<PlanFormValues>
           name="priceCents"
-          label="Valor mensal"
+          label="Valor"
           required
           disabled={pending}
         />

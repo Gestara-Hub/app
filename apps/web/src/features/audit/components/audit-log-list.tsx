@@ -5,11 +5,8 @@ import {
   AlertTriangle,
   RotateCw,
   ScrollText,
-  Search,
   ShieldAlert,
-  X,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ListContainer,
+  ListEmptyState,
+  ListRow,
+  ListSummaryBar,
+  SearchInput,
+} from "@/components/shared/list";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import {
   auditActionLabel,
@@ -49,69 +53,63 @@ function AuditRow({
   onSelect: (entry: AuditLogEntry) => void;
 }) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Detalhes: ${entry.summary}`}
+    <ListRow
       onClick={() => onSelect(entry)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(entry);
-        }
-      }}
-      className="group flex items-start justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40 cursor-pointer"
+      canClick
+      aria-label={`Detalhes: ${entry.summary}`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {auditActionLabel(entry.action)}
-          </span>
-          <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {auditEntityTypeLabel(entry.target.type)}
-          </span>
-          {entry.security ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-              <ShieldAlert className="size-3" />
-              Sensível
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {auditActionLabel(entry.action)}
             </span>
+            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {auditEntityTypeLabel(entry.target.type)}
+            </span>
+            {entry.security ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                <ShieldAlert className="size-3" />
+                Sensível
+              </span>
+            ) : null}
+          </div>
+
+          <p className="mt-1 text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+            {entry.summary}
+          </p>
+
+          {entry.changes && entry.changes.length > 0 ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {entry.changes.map((c) => (
+                <span
+                  key={c.field}
+                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground"
+                >
+                  <span className="font-medium text-foreground">{c.label}:</span>
+                  <span className="line-through">{c.before}</span>
+                  <span aria-hidden>→</span>
+                  <span className="text-foreground">{c.after}</span>
+                </span>
+              ))}
+            </div>
           ) : null}
         </div>
 
-        <p className="mt-1 text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-          {entry.summary}
-        </p>
-
-        {entry.changes && entry.changes.length > 0 ? (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {entry.changes.map((c) => (
-              <span
-                key={c.field}
-                className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground"
-              >
-                <span className="font-medium text-foreground">{c.label}:</span>
-                <span className="line-through">{c.before}</span>
-                <span aria-hidden>→</span>
-                <span className="text-foreground">{c.after}</span>
-              </span>
-            ))}
-          </div>
-        ) : null}
+        <div className="shrink-0 text-right">
+          <p className="text-xs font-medium text-muted-foreground">
+            {formatDateTime(entry.timestamp)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {entry.actor.name}
+            <span className="text-muted-foreground/70">
+              {" "}
+              · {userProfileLabel(entry.actor.profile)}
+            </span>
+          </p>
+        </div>
       </div>
-
-      <div className="shrink-0 text-right">
-        <p className="text-xs font-medium text-muted-foreground">
-          {formatDateTime(entry.timestamp)}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {entry.actor.name}
-          <span className="text-muted-foreground/70">
-            {" "}
-            · {userProfileLabel(entry.actor.profile)}
-          </span>
-        </p>
-      </div>
-    </div>
+    </ListRow>
   );
 }
 
@@ -171,34 +169,20 @@ export function AuditLogList() {
       </div>
     );
   } else if (entries.length === 0) {
-    emptyState = hasSearch ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum evento para esta busca.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearSearch}>
-          Limpar busca
-        </Button>
-      </div>
-    ) : hasFilters ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum evento para os filtros aplicados.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearAll}>
-          Limpar filtros
-        </Button>
-      </div>
-    ) : (
-      <div className="py-6">
-        <ModuleEmptyGuide
-          icon={<ScrollText className="size-8" />}
-          title="Nenhum evento registrado ainda."
-          description="As ações feitas no sistema (agendamentos, cadastros, acessos) aparecem aqui."
-        />
-      </div>
+    emptyState = (
+      <ListEmptyState
+        hasSearch={hasSearch}
+        hasFilters={Boolean(filter.entityType)}
+        onClearSearch={clearSearch}
+        onClearFilters={clearAll}
+        emptyGuide={
+          <ModuleEmptyGuide
+            icon={<ScrollText className="size-8" />}
+            title="Nenhum evento registrado ainda."
+            description="As ações feitas no sistema (agendamentos, cadastros, acessos) aparecem aqui."
+          />
+        }
+      />
     );
   } else {
     items = entries.map((entry) => (
@@ -211,27 +195,13 @@ export function AuditLogList() {
       <div className="space-y-4">
         {/* Barra de Filtros */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar no histórico..."
-              className="pl-9 pr-8"
-              autoComplete="off"
-              aria-label="Buscar no log de auditoria"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            onClear={clearSearch}
+            placeholder="Buscar no histórico..."
+            aria-label="Buscar no log de auditoria"
+          />
 
           <Select
             value={entityType}
@@ -255,32 +225,19 @@ export function AuditLogList() {
 
         {/* Contador / Resumo */}
         {!isPending && !isError && entries.length > 0 ? (
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-            <span>
-              {entries.length === 1
-                ? "1 evento registrado"
-                : `${entries.length} eventos registrados`}
-            </span>
-            {hasFilters ? (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-primary hover:underline"
-              >
-                Limpar filtros
-              </button>
-            ) : null}
-          </div>
+          <ListSummaryBar
+            count={entries.length}
+            singularLabel="evento registrado"
+            pluralLabel="eventos registrados"
+            hasFilters={hasFilters}
+            onClearFilters={clearAll}
+          />
         ) : null}
 
         {/* Container Unificado da Lista */}
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
-          {emptyState ? (
-            emptyState
-          ) : (
-            <div className="divide-y divide-border/40">{items}</div>
-          )}
-        </div>
+        <ListContainer emptyState={emptyState}>
+          {items}
+        </ListContainer>
       </div>
 
       <AuditLogDetailDialog

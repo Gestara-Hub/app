@@ -30,9 +30,12 @@ import {
   ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
-import { cn } from "@/lib/utils";
+import {
+  ListContainer,
+  ListRow,
+  RecordStatusBadge,
+} from "@/components/shared/list";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import { recordStatusLabel } from "@/lib/labels";
 import type { RecordStatus } from "@gestarahub/contracts";
 
 /** Forma minima que uma entidade gerenciavel precisa ter. */
@@ -86,25 +89,6 @@ export interface EntityManagerDialogProps<T extends ManagedEntity> {
   useCreate: () => MutationLike<{ organizationId: string; name: string }>;
   useUpdate: () => MutationLike<UpdateArgs>;
   useInactivate: () => MutationLike<string>;
-}
-
-function statusPillClass(isActive: boolean): string {
-  return isActive
-    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-    : "border border-border/60 bg-muted/50 text-muted-foreground";
-}
-
-function StatusPill({ status }: { status: RecordStatus }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-        statusPillClass(status === "active"),
-      )}
-    >
-      {recordStatusLabel(status)}
-    </span>
-  );
 }
 
 // --- Formulario de criacao -------------------------------------------------
@@ -309,36 +293,24 @@ function Row<T extends ManagedEntity>({
   ];
 
   const content = (
-    <div
+    <ListRow
       onClick={() => onEdit(entity)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onEdit(entity);
-        }
-      }}
-      className="group flex items-center justify-between gap-4 px-4 py-3 sm:px-4.5 transition-colors duration-150 hover:bg-muted/40 cursor-pointer"
-    >
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
-          {entity.name}
-        </p>
-        <StatusPill status={entity.status} />
-      </div>
-
-      <div
-        className="flex items-center gap-1 shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
+      canClick
+      actions={
         <ListItemActionsMenu
           actions={actions}
           title={labels.actionsTitle}
           variant="ghost"
         />
+      }
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+          {entity.name}
+        </p>
+        <RecordStatusBadge status={entity.status} />
       </div>
-    </div>
+    </ListRow>
   );
 
   return (
@@ -457,13 +429,9 @@ function EntityList<T extends ManagedEntity>({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
-        {emptyState ? (
-          emptyState
-        ) : (
-          <div className="divide-y divide-border/40">{items}</div>
-        )}
-      </div>
+      <ListContainer emptyState={emptyState}>
+        {items}
+      </ListContainer>
     </div>
   );
 }

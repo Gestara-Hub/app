@@ -288,7 +288,7 @@ export function TurmaForm({
 
         <SelectField<TurmaFormValues>
           name="planId"
-          label="Plano (mensalidade)"
+          label="Plano"
           placeholder="Sem cobrança (opcional)"
           options={planOptions}
           disabled={pending}

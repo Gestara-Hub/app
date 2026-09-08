@@ -1,38 +1,26 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import {
-  AlertTriangle,
-  Mail,
-  Pencil,
-  Phone,
-  Power,
-  PowerOff,
-  RotateCw,
-  Search,
-  Users,
-  X,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { AlertTriangle, Mail, Pencil, Phone, Power, PowerOff, RotateCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  InitialsAvatar,
+  ListContainer,
+  ListEmptyState,
+  ListRow,
+  ListSummaryBar,
+  RecordStatusBadge,
+  SearchInput,
+  StatusFilterSelect,
+} from "@/components/shared/list";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { cn } from "@/lib/utils";
 import { formatPhone } from "@gestarahub/core/format";
-import { recordStatusLabel } from "@/lib/labels";
 import type { Client, ClientFilter, RecordStatus } from "@gestarahub/contracts";
 import { useClients } from "../hooks/use-clients";
 
@@ -42,19 +30,6 @@ interface ClientsListProps {
   onEdit: (client: Client) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
-}
-
-function statusPillClass(isActive: boolean): string {
-  return isActive
-    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-    : "border border-border/60 bg-muted/50 text-muted-foreground";
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function ClientRow({
@@ -98,36 +73,28 @@ function ClientRow({
     : [];
 
   const content = (
-    <div
-      onClick={() => {
-        if (canManage) onEdit(client);
-      }}
-      className={cn(
-        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150",
-        "hover:bg-muted/40",
-        canManage && "cursor-pointer",
-      )}
+    <ListRow
+      onClick={() => onEdit(client)}
+      canClick={canManage}
+      actions={
+        canManage ? (
+          <ListItemActionsMenu
+            actions={actions}
+            title="Ações do cliente"
+            variant="ghost"
+          />
+        ) : null
+      }
     >
-      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <Avatar className="size-9 shrink-0 border border-border/50 bg-muted/60 text-xs font-semibold text-foreground/80 select-none">
-          <AvatarFallback className="bg-muted/70 text-foreground text-xs font-semibold">
-            {getInitials(client.name)}
-          </AvatarFallback>
-        </Avatar>
+      <div className="flex items-center gap-3.5 min-w-0">
+        <InitialsAvatar name={client.name} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
               {client.name}
             </p>
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                statusPillClass(isActive),
-              )}
-            >
-              {recordStatusLabel(client.status)}
-            </span>
+            <RecordStatusBadge status={client.status} />
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
@@ -152,17 +119,7 @@ function ClientRow({
           </div>
         </div>
       </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        {canManage ? (
-          <ListItemActionsMenu
-            actions={actions}
-            title="Ações do cliente"
-            variant="ghost"
-          />
-        ) : null}
-      </div>
-    </div>
+    </ListRow>
   );
 
   if (!canManage) return content;
@@ -206,7 +163,7 @@ export function ClientsList({
   const clients = data ?? [];
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.status);
+  const hasFilters = status !== "all";
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
@@ -233,36 +190,22 @@ export function ClientsList({
       </div>
     );
   } else if (clients.length === 0) {
-    emptyState = hasSearch ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum resultado para esta busca.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearSearch}>
-          Limpar busca
-        </Button>
-      </div>
-    ) : hasFilters ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum resultado para os filtros aplicados.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearAll}>
-          Limpar filtros
-        </Button>
-      </div>
-    ) : (
-      <div className="py-6">
-        <ModuleEmptyGuide
-          icon={<Users className="size-8" />}
-          title="Nenhum cliente cadastrado ainda."
-          description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
-          actionLabel={canManage ? "Cadastrar cliente" : undefined}
-          onAction={canManage ? onCreate : undefined}
-        />
-      </div>
+    emptyState = (
+      <ListEmptyState
+        hasSearch={hasSearch}
+        hasFilters={hasFilters}
+        onClearSearch={clearSearch}
+        onClearFilters={clearAll}
+        emptyGuide={
+          <ModuleEmptyGuide
+            icon={<Users className="size-8" />}
+            title="Nenhum cliente cadastrado ainda."
+            description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
+            actionLabel={canManage ? "Cadastrar cliente" : undefined}
+            onAction={canManage ? onCreate : undefined}
+          />
+        }
+      />
     );
   } else {
     items = clients.map((client) => (
@@ -281,71 +224,29 @@ export function ClientsList({
     <div className="space-y-4">
       {/* Barra de Filtros */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nome ou telefone..."
-            className="pl-9 pr-8"
-            autoComplete="off"
-            aria-label="Buscar cliente"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="Limpar busca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          ) : null}
-        </div>
-
-        <Select
-          value={status}
-          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
-        >
-          <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="active">Ativos</SelectItem>
-            <SelectItem value="inactive">Inativos</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por nome ou telefone..."
+          aria-label="Buscar cliente"
+        />
+        <StatusFilterSelect value={status} onChange={setStatus} />
       </div>
 
       {/* Contador / Resumo */}
       {!isPending && !isError && clients.length > 0 ? (
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-          <span>
-            {clients.length === 1
-              ? "1 cliente cadastrado"
-              : `${clients.length} clientes cadastrados`}
-          </span>
-          {hasSearch || hasFilters ? (
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-primary hover:underline"
-            >
-              Limpar filtros
-            </button>
-          ) : null}
-        </div>
+        <ListSummaryBar
+          count={clients.length}
+          singularLabel="cliente cadastrado"
+          pluralLabel="clientes cadastrados"
+          hasFilters={hasSearch || hasFilters}
+          onClearFilters={clearAll}
+        />
       ) : null}
 
       {/* Container Unificado da Lista */}
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
-        {emptyState ? (
-          emptyState
-        ) : (
-          <div className="divide-y divide-border/40">{items}</div>
-        )}
-      </div>
+      <ListContainer emptyState={emptyState}>{items}</ListContainer>
     </div>
   );
 }
+

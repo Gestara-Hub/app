@@ -7,28 +7,25 @@ import {
   Power,
   PowerOff,
   RotateCw,
-  Search,
   Shapes,
-  X,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ListContainer,
+  ListEmptyState,
+  ListRow,
+  ListSummaryBar,
+  RecordStatusBadge,
+  SearchInput,
+  StatusFilterSelect,
+} from "@/components/shared/list";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { cn } from "@/lib/utils";
-import { recordStatusLabel } from "@/lib/labels";
 import type { Category, CategoryFilter, RecordStatus } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories";
 
@@ -38,12 +35,6 @@ interface ModalitiesListProps {
   onEdit: (modality: Category) => void;
   onInactivate: (modality: Category) => void;
   onReactivate: (modality: Category) => void;
-}
-
-function statusPillClass(isActive: boolean): string {
-  return isActive
-    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-    : "border border-border/60 bg-muted/50 text-muted-foreground";
 }
 
 function ModalityRow({
@@ -87,48 +78,26 @@ function ModalityRow({
     : [];
 
   const content = (
-    <div
-      onClick={() => canManage && onEdit(modality)}
-      role={canManage ? "button" : undefined}
-      tabIndex={canManage ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (canManage && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onEdit(modality);
-        }
-      }}
-      className={cn(
-        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40",
-        canManage && "cursor-pointer",
-      )}
-    >
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
-          {modality.name}
-        </p>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-            statusPillClass(isActive),
-          )}
-        >
-          {recordStatusLabel(modality.status)}
-        </span>
-      </div>
-
-      <div
-        className="flex items-center gap-1 shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {canManage ? (
+    <ListRow
+      onClick={() => onEdit(modality)}
+      canClick={canManage}
+      actions={
+        canManage ? (
           <ListItemActionsMenu
             actions={actions}
             title="Ações da modalidade"
             variant="ghost"
           />
-        ) : null}
+        ) : null
+      }
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+          {modality.name}
+        </p>
+        <RecordStatusBadge status={modality.status} />
       </div>
-    </div>
+    </ListRow>
   );
 
   if (!canManage) return content;
@@ -195,36 +164,22 @@ export function ModalitiesList({
       </div>
     );
   } else if (modalities.length === 0) {
-    emptyState = hasSearch ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum resultado para esta busca.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearSearch}>
-          Limpar busca
-        </Button>
-      </div>
-    ) : hasFilters ? (
-      <div className="flex flex-col items-center gap-3 py-12 text-center">
-        <Search className="size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          Nenhum resultado para os filtros aplicados.
-        </p>
-        <Button variant="outline" size="sm" onClick={clearAll}>
-          Limpar filtros
-        </Button>
-      </div>
-    ) : (
-      <div className="py-6">
-        <ModuleEmptyGuide
-          icon={<Shapes className="size-8" />}
-          title="Nenhuma modalidade cadastrada ainda."
-          description="Cadastre as modalidades oferecidas (ex.: Judô, Yoga) para organizar turmas e instrutores."
-          actionLabel={canManage ? "Cadastrar modalidade" : undefined}
-          onAction={canManage ? onCreate : undefined}
-        />
-      </div>
+    emptyState = (
+      <ListEmptyState
+        hasSearch={hasSearch}
+        hasFilters={hasFilters}
+        onClearSearch={clearSearch}
+        onClearFilters={clearAll}
+        emptyGuide={
+          <ModuleEmptyGuide
+            icon={<Shapes className="size-8" />}
+            title="Nenhuma modalidade cadastrada ainda."
+            description="Cadastre as modalidades oferecidas (ex.: Judô, Yoga) para organizar turmas e instrutores."
+            actionLabel={canManage ? "Cadastrar modalidade" : undefined}
+            onAction={canManage ? onCreate : undefined}
+          />
+        }
+      />
     );
   } else {
     items = modalities.map((modality) => (
@@ -243,71 +198,36 @@ export function ModalitiesList({
     <div className="space-y-4">
       {/* Barra de Filtros */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar modalidade..."
-            className="pl-9 pr-8"
-            autoComplete="off"
-            aria-label="Buscar modalidade"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="Limpar busca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          ) : null}
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          onClear={clearSearch}
+          placeholder="Buscar modalidade..."
+          aria-label="Buscar modalidade"
+        />
 
-        <Select
+        <StatusFilterSelect
           value={status}
-          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
-        >
-          <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="active">Ativas</SelectItem>
-            <SelectItem value="inactive">Inativas</SelectItem>
-          </SelectContent>
-        </Select>
+          onChange={setStatus}
+          gender="female"
+        />
       </div>
 
       {/* Contador / Resumo */}
       {!isPending && !isError && modalities.length > 0 ? (
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-          <span>
-            {modalities.length === 1
-              ? "1 modalidade cadastrada"
-              : `${modalities.length} modalidades cadastradas`}
-          </span>
-          {hasSearch || hasFilters ? (
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-primary hover:underline"
-            >
-              Limpar filtros
-            </button>
-          ) : null}
-        </div>
+        <ListSummaryBar
+          count={modalities.length}
+          singularLabel="modalidade cadastrada"
+          pluralLabel="modalidades cadastradas"
+          hasFilters={hasSearch || hasFilters}
+          onClearFilters={clearAll}
+        />
       ) : null}
 
       {/* Container Unificado da Lista */}
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
-        {emptyState ? (
-          emptyState
-        ) : (
-          <div className="divide-y divide-border/40">{items}</div>
-        )}
-      </div>
+      <ListContainer emptyState={emptyState}>
+        {items}
+      </ListContainer>
     </div>
   );
 }

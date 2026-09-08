@@ -1,16 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Professional } from "@gestarahub/contracts";
 import { useInactivateProfessional } from "../hooks/use-professionals";
@@ -40,40 +31,24 @@ export function InactivateProfessionalDialog({
   }
 
   return (
-    <AlertDialog
+    <ConfirmActionDialog
       open={professional !== null}
       onOpenChange={(open) => {
         if (!open) onOpenChange(false);
       }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Inativar profissional?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {professional ? (
-              <>
-                “{professional.name}” deixará de ser sugerido em novos
-                agendamentos. Você pode reativá-lo depois.
-              </>
-            ) : null}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={inactivateMut.isPending}>
-            Voltar
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(event) => {
-              event.preventDefault();
-              void handleConfirm();
-            }}
-            disabled={inactivateMut.isPending}
-            variant="destructive"
-          >
-            {inactivateMut.isPending ? "Inativando..." : "Inativar"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      title="Inativar profissional?"
+      description={
+        professional ? (
+          <>
+            “{professional.name}” deixará de ser sugerido em novos
+            agendamentos. Você pode reativá-lo depois.
+          </>
+        ) : null
+      }
+      cancelLabel="Voltar"
+      confirmLabel="Inativar"
+      isPending={inactivateMut.isPending}
+      onConfirm={handleConfirm}
+    />
   );
 }
