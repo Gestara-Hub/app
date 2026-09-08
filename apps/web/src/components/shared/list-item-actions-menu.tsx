@@ -69,16 +69,18 @@ function ActionItems({
 export function ListItemActionsMenu({
   actions,
   title,
+  variant = "outline",
 }: {
   actions: ListItemAction[];
   title: string;
+  variant?: "outline" | "ghost";
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
           type="button"
-          variant="outline"
+          variant={variant}
           size="icon-sm"
           title={title}
           aria-label={title}

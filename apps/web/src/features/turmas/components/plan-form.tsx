@@ -48,7 +48,7 @@ export function PlanForm({
       name: values.name,
       priceCents: values.priceCents,
       period: "monthly",
-      status: "active",
+      status: plan?.status ?? "active",
     };
     try {
       if (isEdit && plan) {

@@ -3,7 +3,9 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Mail,
   Pencil,
+  Phone,
   Power,
   PowerOff,
   RotateCw,
@@ -14,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -21,8 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ListCard } from "@/components/shared/list-card";
-import { ListItemCard } from "@/components/shared/list-item-card";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -45,8 +46,15 @@ interface ClientsListProps {
 
 function statusPillClass(isActive: boolean): string {
   return isActive
-    ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
-    : "border border-border bg-muted/40 text-muted-foreground";
+    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : "border border-border/60 bg-muted/50 text-muted-foreground";
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function ClientRow({
@@ -89,32 +97,72 @@ function ClientRow({
       ]
     : [];
 
-  const meta = [formatPhone(client.phone), client.email, client.notes]
-    .filter(Boolean)
-    .join(" · ");
-
   const content = (
-    <ListItemCard>
-      <div className="flex items-start justify-between gap-3">
+    <div
+      onClick={() => {
+        if (canManage) onEdit(client);
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150",
+        "hover:bg-muted/40",
+        canManage && "cursor-pointer",
+      )}
+    >
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <Avatar className="size-9 shrink-0 border border-border/50 bg-muted/60 text-xs font-semibold text-foreground/80 select-none">
+          <AvatarFallback className="bg-muted/70 text-foreground text-xs font-semibold">
+            {getInitials(client.name)}
+          </AvatarFallback>
+        </Avatar>
+
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{client.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+              {client.name}
+            </p>
             <span
               className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
                 statusPillClass(isActive),
               )}
             >
               {recordStatusLabel(client.status)}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+            {client.phone ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone className="size-3 text-muted-foreground/60" />
+                <span>{formatPhone(client.phone)}</span>
+              </span>
+            ) : null}
+            {client.email ? (
+              <span className="inline-flex items-center gap-1.5 truncate">
+                <Mail className="size-3 text-muted-foreground/60" />
+                <span className="truncate">{client.email}</span>
+              </span>
+            ) : null}
+            {client.notes ? (
+              <span className="inline-flex items-center gap-1.5 truncate text-muted-foreground/70 max-w-sm">
+                <span className="text-muted-foreground/30">·</span>
+                <span className="truncate italic">{client.notes}</span>
+              </span>
+            ) : null}
+          </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-1 shrink-0">
         {canManage ? (
-          <ListItemActionsMenu actions={actions} title="Ações do cliente" />
+          <ListItemActionsMenu
+            actions={actions}
+            title="Ações do cliente"
+            variant="ghost"
+          />
         ) : null}
       </div>
-    </ListItemCard>
+    </div>
   );
 
   if (!canManage) return content;
@@ -122,15 +170,19 @@ function ClientRow({
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 6 }).map((_, i) => (
-    <div key={i} className="rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-56" />
+  return Array.from({ length: 5 }).map((_, i) => (
+    <div
+      key={i}
+      className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
+    >
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <Skeleton className="size-9 rounded-full shrink-0" />
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-48" />
         </div>
-        {showAction ? <Skeleton className="size-8 rounded-md" /> : null}
       </div>
+      {showAction ? <Skeleton className="size-8 rounded-md shrink-0" /> : null}
     </div>
   ));
 }
@@ -180,17 +232,7 @@ export function ClientsList({
         </Button>
       </div>
     );
-  } else {
-    items = clients.map((client) => (
-      <ClientRow
-        key={client.id}
-        client={client}
-        canManage={canManage}
-        onEdit={onEdit}
-        onInactivate={onInactivate}
-        onReactivate={onReactivate}
-      />
-    ));
+  } else if (clients.length === 0) {
     emptyState = hasSearch ? (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Search className="size-8 text-muted-foreground" />
@@ -212,59 +254,98 @@ export function ClientsList({
         </Button>
       </div>
     ) : (
-      <ModuleEmptyGuide
-        icon={<Users className="size-8" />}
-        title="Nenhum cliente cadastrado ainda."
-        description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
-        actionLabel={canManage ? "Cadastrar cliente" : undefined}
-        onAction={canManage ? onCreate : undefined}
-      />
+      <div className="py-6">
+        <ModuleEmptyGuide
+          icon={<Users className="size-8" />}
+          title="Nenhum cliente cadastrado ainda."
+          description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
+          actionLabel={canManage ? "Cadastrar cliente" : undefined}
+          onAction={canManage ? onCreate : undefined}
+        />
+      </div>
     );
+  } else {
+    items = clients.map((client) => (
+      <ClientRow
+        key={client.id}
+        client={client}
+        canManage={canManage}
+        onEdit={onEdit}
+        onInactivate={onInactivate}
+        onReactivate={onReactivate}
+      />
+    ));
   }
 
   return (
-    <ListCard
-      items={items}
-      emptyState={emptyState}
-      filters={
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou telefone..."
-              className="px-8"
-              autoComplete="off"
-              aria-label="Buscar cliente"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
-
-          <Select
-            value={status}
-            onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
-          >
-            <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-4">
+      {/* Barra de Filtros */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="pl-9 pr-8"
+            autoComplete="off"
+            aria-label="Buscar cliente"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="Limpar busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
-      }
-    />
+
+        <Select
+          value={status}
+          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
+        >
+          <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Contador / Resumo */}
+      {!isPending && !isError && clients.length > 0 ? (
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <span>
+            {clients.length === 1
+              ? "1 cliente cadastrado"
+              : `${clients.length} clientes cadastrados`}
+          </span>
+          {hasSearch || hasFilters ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-primary hover:underline"
+            >
+              Limpar filtros
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Container Unificado da Lista */}
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
+        {emptyState ? (
+          emptyState
+        ) : (
+          <div className="divide-y divide-border/40">{items}</div>
+        )}
+      </div>
+    </div>
   );
 }

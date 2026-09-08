@@ -41,6 +41,24 @@ export function useUpdatePlan() {
   });
 }
 
+export function useInactivatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) =>
+      billingService.updatePlan(id, { status: "inactive" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+  });
+}
+
+export function useReactivatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) =>
+      billingService.updatePlan(id, { status: "active" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+  });
+}
+
 // --- Cobrancas ------------------------------------------------------------
 export function useCharges(filter?: CobrancaFilter) {
   return useQuery({

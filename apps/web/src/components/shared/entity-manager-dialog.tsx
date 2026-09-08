@@ -25,8 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ListCard } from "@/components/shared/list-card";
-import { ListItemCard } from "@/components/shared/list-item-card";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -92,15 +90,15 @@ export interface EntityManagerDialogProps<T extends ManagedEntity> {
 
 function statusPillClass(isActive: boolean): string {
   return isActive
-    ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
-    : "border border-border bg-muted/40 text-muted-foreground";
+    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : "border border-border/60 bg-muted/50 text-muted-foreground";
 }
 
 function StatusPill({ status }: { status: RecordStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
         statusPillClass(status === "active"),
       )}
     >
@@ -218,7 +216,7 @@ function RowEditor<T extends ManagedEntity>({
   }
 
   return (
-    <ListItemCard isActive disableHover>
+    <div className="bg-muted/20 px-3.5 py-2.5 sm:px-4">
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
@@ -244,6 +242,7 @@ function RowEditor<T extends ManagedEntity>({
         <Button
           type="button"
           size="icon-sm"
+          className="size-8"
           title="Salvar"
           aria-label="Salvar"
           disabled={pending}
@@ -255,6 +254,7 @@ function RowEditor<T extends ManagedEntity>({
           type="button"
           variant="outline"
           size="icon-sm"
+          className="size-8"
           title="Cancelar"
           aria-label="Cancelar"
           disabled={pending}
@@ -264,7 +264,7 @@ function RowEditor<T extends ManagedEntity>({
         </Button>
       </div>
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
-    </ListItemCard>
+    </div>
   );
 }
 
@@ -309,15 +309,36 @@ function Row<T extends ManagedEntity>({
   ];
 
   const content = (
-    <ListItemCard>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <p className="truncate font-medium">{entity.name}</p>
-          <StatusPill status={entity.status} />
-        </div>
-        <ListItemActionsMenu actions={actions} title={labels.actionsTitle} />
+    <div
+      onClick={() => onEdit(entity)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(entity);
+        }
+      }}
+      className="group flex items-center justify-between gap-4 px-4 py-3 sm:px-4.5 transition-colors duration-150 hover:bg-muted/40 cursor-pointer"
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+          {entity.name}
+        </p>
+        <StatusPill status={entity.status} />
       </div>
-    </ListItemCard>
+
+      <div
+        className="flex items-center gap-1 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ListItemActionsMenu
+          actions={actions}
+          title={labels.actionsTitle}
+          variant="ghost"
+        />
+      </div>
+    </div>
   );
 
   return (
@@ -334,11 +355,12 @@ function Row<T extends ManagedEntity>({
 
 function SkeletonRows() {
   return Array.from({ length: 3 }).map((_, i) => (
-    <div key={i} className="rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="size-8 rounded-md" />
-      </div>
+    <div
+      key={i}
+      className="flex items-center justify-between gap-4 px-4 py-3 sm:px-4.5"
+    >
+      <Skeleton className="h-4 w-36" />
+      <Skeleton className="size-7 rounded-md shrink-0" />
     </div>
   ));
 }
@@ -392,6 +414,12 @@ function EntityList<T extends ManagedEntity>({
         </Button>
       </div>
     );
+  } else if (entities.length === 0) {
+    emptyState = (
+      <p className="py-10 text-center text-sm text-muted-foreground">
+        {labels.empty}
+      </p>
+    );
   } else {
     items = entities.map((entity) =>
       entity.id === editingId ? (
@@ -414,14 +442,30 @@ function EntityList<T extends ManagedEntity>({
         />
       ),
     );
-    emptyState = (
-      <p className="py-10 text-center text-sm text-muted-foreground">
-        {labels.empty}
-      </p>
-    );
   }
 
-  return <ListCard items={items} emptyState={emptyState} />;
+  return (
+    <div>
+      {!isPending && !isError && entities.length > 0 ? (
+        <div className="mb-2 px-1 text-xs text-muted-foreground">
+          <span>
+            {entities.length}{" "}
+            {entities.length === 1
+              ? "registro cadastrado"
+              : "registros cadastrados"}
+          </span>
+        </div>
+      ) : null}
+
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
+        {emptyState ? (
+          emptyState
+        ) : (
+          <div className="divide-y divide-border/40">{items}</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**

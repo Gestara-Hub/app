@@ -50,6 +50,22 @@ export function useUpdateClassGroup() {
   });
 }
 
+export function useDeactivateClassGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => turmasService.deactivate(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
+export function useReactivateClassGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => turmasService.reactivate(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+  });
+}
+
 // --- Matriculas -----------------------------------------------------------
 export function useEnrollments(classGroupId: Id) {
   return useQuery({

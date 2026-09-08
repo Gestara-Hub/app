@@ -135,7 +135,71 @@ function seedAcademia(): MockStore {
     },
   ];
 
-  return emptyStore(organization, unit, users);
+  const store = emptyStore(organization, unit, users);
+
+  // Seed com alguns profissionais e turmas para teste
+  store.professionals.push(
+    {
+      id: "prof-carlos",
+      organizationId: ORG_ACADEMIA,
+      unitId: UNIT_ACADEMIA,
+      name: "Carlos Antonio",
+      phone: digits("(11) 98765-4321"),
+      status: "active",
+      workingHours: [],
+      serviceIds: [],
+      ...timestamps(),
+    },
+    {
+      id: "prof-aron",
+      organizationId: ORG_ACADEMIA,
+      unitId: UNIT_ACADEMIA,
+      name: "Aron Bezerra",
+      phone: digits("(11) 99876-5432"),
+      status: "active",
+      workingHours: [],
+      serviceIds: [],
+      ...timestamps(),
+    }
+  );
+
+  store.classGroups.push(
+    {
+      id: "class-judo-adulto",
+      organizationId: ORG_ACADEMIA,
+      unitId: UNIT_ACADEMIA,
+      name: "Judô adulto",
+      instructorId: "prof-carlos",
+      enrollmentType: "fixed",
+      capacity: 10,
+      meetingSlots: [
+        { weekday: 2, start: "18:00", end: "19:00" },
+        { weekday: 4, start: "18:00", end: "19:00" },
+      ],
+      startDate: "2026-09-08",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "class-judo-infantil",
+      organizationId: ORG_ACADEMIA,
+      unitId: UNIT_ACADEMIA,
+      name: "Judô infantil",
+      instructorId: "prof-aron",
+      enrollmentType: "fixed",
+      capacity: 20,
+      meetingSlots: [
+        { weekday: 1, start: "18:00", end: "19:00" },
+        { weekday: 3, start: "18:00", end: "19:00" },
+        { weekday: 5, start: "18:00", end: "19:00" },
+      ],
+      startDate: "2026-09-08",
+      status: "active",
+      ...timestamps(),
+    }
+  );
+
+  return store;
 }
 
 /** Mundo multi-tenant: Corte Nobre (M1) + Academia X (M3). Ativo = Corte Nobre. */

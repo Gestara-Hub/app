@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Banknote,
+  Clock,
   Pencil,
   Power,
   PowerOff,
@@ -21,8 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ListCard } from "@/components/shared/list-card";
-import { ListItemCard } from "@/components/shared/list-item-card";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -46,8 +46,8 @@ interface ServicesListProps {
 
 function statusPillClass(isActive: boolean): string {
   return isActive
-    ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
-    : "border border-border bg-muted/40 text-muted-foreground";
+    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : "border border-border/60 bg-muted/50 text-muted-foreground";
 }
 
 function ServiceRow({
@@ -93,32 +93,71 @@ function ServiceRow({
     : [];
 
   const content = (
-    <ListItemCard>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{service.name}</p>
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                statusPillClass(isActive),
-              )}
-            >
-              {recordStatusLabel(service.status)}
-            </span>
-            <span className="text-xs text-muted-foreground">{categoryName}</span>
-          </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {formatDuration(service.durationMinutes)} ·{" "}
-            {formatCents(service.priceCents)}
-            {service.description ? ` · ${service.description}` : ""}
+    <div
+      onClick={() => canManage && onEdit(service)}
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (canManage && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onEdit(service);
+        }
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40",
+        canManage && "cursor-pointer",
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+            {service.name}
           </p>
+          {categoryName ? (
+            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {categoryName}
+            </span>
+          ) : null}
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
+              statusPillClass(isActive),
+            )}
+          >
+            {recordStatusLabel(service.status)}
+          </span>
         </div>
+
+        <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="size-3 text-muted-foreground/60" />
+            {formatDuration(service.durationMinutes)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Banknote className="size-3 text-muted-foreground/60" />
+            {formatCents(service.priceCents)}
+          </span>
+          {service.description ? (
+            <span className="truncate max-w-md text-muted-foreground/75">
+              · {service.description}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div
+        className="flex items-center gap-1 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
         {canManage ? (
-          <ListItemActionsMenu actions={actions} title="Ações do serviço" />
+          <ListItemActionsMenu
+            actions={actions}
+            title="Ações do serviço"
+            variant="ghost"
+          />
         ) : null}
       </div>
-    </ListItemCard>
+    </div>
   );
 
   if (!canManage) return content;
@@ -126,15 +165,16 @@ function ServiceRow({
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 5 }).map((_, i) => (
-    <div key={i} className="rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        {showAction ? <Skeleton className="size-8 rounded-md" /> : null}
+  return Array.from({ length: 4 }).map((_, i) => (
+    <div
+      key={i}
+      className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
+    >
+      <div className="space-y-1.5 min-w-0 flex-1">
+        <Skeleton className="h-4 w-44" />
+        <Skeleton className="h-3 w-64" />
       </div>
+      {showAction ? <Skeleton className="size-8 rounded-md shrink-0" /> : null}
     </div>
   ));
 }
@@ -165,7 +205,7 @@ export function ServicesList({
   );
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.categoryId || filter.status);
+  const hasFilters = Boolean(filter.categoryId || status !== "all");
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
@@ -192,22 +232,7 @@ export function ServicesList({
         </Button>
       </div>
     );
-  } else {
-    items = services.map((service) => (
-      <ServiceRow
-        key={service.id}
-        service={service}
-        categoryName={
-          service.categoryId
-            ? (categoryNameById.get(service.categoryId) ?? "—")
-            : "Sem categoria"
-        }
-        canManage={canManage}
-        onEdit={onEdit}
-        onInactivate={onInactivate}
-        onReactivate={onReactivate}
-      />
-    ));
+  } else if (services.length === 0) {
     emptyState = hasSearch ? (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Search className="size-8 text-muted-foreground" />
@@ -229,76 +254,120 @@ export function ServicesList({
         </Button>
       </div>
     ) : (
-      <ModuleEmptyGuide
-        icon={<Tag className="size-8" />}
-        title="Nenhum serviço cadastrado ainda."
-        description="Cadastre os serviços do seu catálogo para usá-los nos agendamentos."
-        actionLabel={canManage ? "Cadastrar serviço" : undefined}
-        onAction={canManage ? onCreate : undefined}
-      />
+      <div className="py-6">
+        <ModuleEmptyGuide
+          icon={<Tag className="size-8" />}
+          title="Nenhum serviço cadastrado ainda."
+          description="Cadastre os serviços do seu catálogo para usá-los nos agendamentos."
+          actionLabel={canManage ? "Cadastrar serviço" : undefined}
+          onAction={canManage ? onCreate : undefined}
+        />
+      </div>
     );
+  } else {
+    items = services.map((service) => (
+      <ServiceRow
+        key={service.id}
+        service={service}
+        categoryName={
+          service.categoryId
+            ? (categoryNameById.get(service.categoryId) ?? "")
+            : ""
+        }
+        canManage={canManage}
+        onEdit={onEdit}
+        onInactivate={onInactivate}
+        onReactivate={onReactivate}
+      />
+    ));
   }
 
   return (
-    <ListCard
-      items={items}
-      emptyState={emptyState}
-      filters={
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou descrição..."
-              className="px-8"
-              autoComplete="off"
-              aria-label="Buscar serviço"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
-
-          <Select
-            value={categoryId}
-            onValueChange={(value) => setCategoryId(value)}
-          >
-            <SelectTrigger className="sm:w-48" aria-label="Filtrar por categoria">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={status}
-            onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
-          >
-            <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-4">
+      {/* Barra de Filtros */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nome ou descrição..."
+            className="pl-9 pr-8"
+            autoComplete="off"
+            aria-label="Buscar serviço"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="Limpar busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
-      }
-    />
+
+        <Select
+          value={categoryId}
+          onValueChange={(value) => setCategoryId(value)}
+        >
+          <SelectTrigger className="sm:w-48" aria-label="Filtrar por categoria">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {(categories ?? []).map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={status}
+          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
+        >
+          <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Contador / Resumo */}
+      {!isPending && !isError && services.length > 0 ? (
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <span>
+            {services.length === 1
+              ? "1 serviço cadastrado"
+              : `${services.length} serviços cadastrados`}
+          </span>
+          {hasSearch || hasFilters ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-primary hover:underline"
+            >
+              Limpar filtros
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Container Unificado da Lista */}
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
+        {emptyState ? (
+          emptyState
+        ) : (
+          <div className="divide-y divide-border/40">{items}</div>
+        )}
+      </div>
+    </div>
   );
 }

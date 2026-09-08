@@ -4,17 +4,20 @@ import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   Contact,
+  Mail,
   Pencil,
   Power,
   PowerOff,
   RotateCw,
   Search,
   ShieldCheck,
+  User,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -22,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ListCard } from "@/components/shared/list-card";
-import { ListItemCard } from "@/components/shared/list-item-card";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -47,8 +48,15 @@ interface UsersListProps {
 
 function statusPillClass(isActive: boolean): string {
   return isActive
-    ? "border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
-    : "border border-border bg-muted/40 text-muted-foreground";
+    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : "border border-border/60 bg-muted/50 text-muted-foreground";
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function UserRow({
@@ -94,44 +102,83 @@ function UserRow({
       ]
     : [];
 
-  const meta = [
-    user.email,
-    user.professional ? `Profissional: ${user.professional.name}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   const content = (
-    <ListItemCard>
-      <div className="flex items-start justify-between gap-3">
+    <div
+      onClick={() => {
+        if (canManage) onEdit(user);
+      }}
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (canManage && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onEdit(user);
+        }
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40",
+        canManage && "cursor-pointer",
+      )}
+    >
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <Avatar className="size-9 shrink-0 border border-border/50 bg-muted/60 text-xs font-semibold text-foreground/80 select-none">
+          <AvatarFallback className="bg-muted/70 text-foreground text-xs font-semibold">
+            {getInitials(user.name)}
+          </AvatarFallback>
+        </Avatar>
+
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{user.name}</p>
-            <span className="inline-flex rounded-full border bg-muted/40 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+              {user.name}
+            </p>
+            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
               {userProfileLabel(user.profile)}
             </span>
             {user.professional ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400">
+              <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
                 <Contact className="size-3" />
                 Equipe
               </span>
             ) : null}
             <span
               className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
                 statusPillClass(isActive),
               )}
             >
               {recordStatusLabel(user.status)}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 truncate">
+              <Mail className="size-3 text-muted-foreground/60" />
+              <span className="truncate">{user.email}</span>
+            </span>
+            {user.professional ? (
+              <span className="inline-flex items-center gap-1.5">
+                <User className="size-3 text-muted-foreground/60" />
+                <span>{user.professional.name}</span>
+              </span>
+            ) : null}
+          </div>
         </div>
+      </div>
+
+      <div
+        className="flex items-center gap-1 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
         {canManage ? (
-          <ListItemActionsMenu actions={actions} title="Ações do usuário" />
+          <ListItemActionsMenu
+            actions={actions}
+            title="Ações do usuário"
+            variant="ghost"
+          />
         ) : null}
       </div>
-    </ListItemCard>
+    </div>
   );
 
   if (!canManage) return content;
@@ -139,15 +186,19 @@ function UserRow({
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 5 }).map((_, i) => (
-    <div key={i} className="rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1.5">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-4 w-64" />
+  return Array.from({ length: 4 }).map((_, i) => (
+    <div
+      key={i}
+      className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
+    >
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <Skeleton className="size-9 rounded-full shrink-0" />
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-48" />
         </div>
-        {showAction ? <Skeleton className="size-8 rounded-md" /> : null}
       </div>
+      {showAction ? <Skeleton className="size-8 rounded-md shrink-0" /> : null}
     </div>
   ));
 }
@@ -169,14 +220,14 @@ export function UsersList({
   };
 
   const { data, isPending, isError, refetch } = useUsers(filter);
-  // So exibe usuarios que o usuario atual pode gerenciar (Gerente ve apenas
-  // Atendente/Profissional; Owner ve todos). Reforca a restricao de perfis-alvo.
+  // Só exibe usuários que o usuário atual pode gerenciar (Gerente vê apenas
+  // Atendente/Profissional; Owner vê todos). Reforça a restrição de perfis-alvo.
   const users = (data ?? []).filter((u) =>
     canManageProfile(currentUser, u.profile),
   );
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.status);
+  const hasFilters = status !== "all";
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
@@ -202,18 +253,7 @@ export function UsersList({
         </Button>
       </div>
     );
-  } else {
-    items = users.map((user) => (
-      <UserRow
-        key={user.id}
-        user={user}
-        canManage={canManage}
-        isSelf={user.id === currentUser.id}
-        onEdit={onEdit}
-        onInactivate={onInactivate}
-        onReactivate={onReactivate}
-      />
-    ));
+  } else if (users.length === 0) {
     emptyState = hasSearch ? (
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Search className="size-8 text-muted-foreground" />
@@ -235,59 +275,99 @@ export function UsersList({
         </Button>
       </div>
     ) : (
-      <ModuleEmptyGuide
-        icon={<ShieldCheck className="size-8" />}
-        title="Nenhum usuário cadastrado ainda."
-        description="Cadastre quem pode acessar o sistema e defina o perfil de acesso."
-        actionLabel={canManage ? "Cadastrar usuário" : undefined}
-        onAction={canManage ? onCreate : undefined}
-      />
+      <div className="py-6">
+        <ModuleEmptyGuide
+          icon={<ShieldCheck className="size-8" />}
+          title="Nenhum usuário cadastrado ainda."
+          description="Cadastre quem pode acessar o sistema e defina o perfil de acesso."
+          actionLabel={canManage ? "Cadastrar usuário" : undefined}
+          onAction={canManage ? onCreate : undefined}
+        />
+      </div>
     );
+  } else {
+    items = users.map((user) => (
+      <UserRow
+        key={user.id}
+        user={user}
+        canManage={canManage}
+        isSelf={user.id === currentUser.id}
+        onEdit={onEdit}
+        onInactivate={onInactivate}
+        onReactivate={onReactivate}
+      />
+    ));
   }
 
   return (
-    <ListCard
-      items={items}
-      emptyState={emptyState}
-      filters={
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome ou e-mail..."
-              className="px-8"
-              autoComplete="off"
-              aria-label="Buscar usuário"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Limpar busca"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
-
-          <Select
-            value={status}
-            onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
-          >
-            <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="active">Ativos</SelectItem>
-              <SelectItem value="inactive">Inativos</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-4">
+      {/* Barra de Filtros */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nome ou e-mail..."
+            className="pl-9 pr-8"
+            autoComplete="off"
+            aria-label="Buscar usuário"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label="Limpar busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
-      }
-    />
+
+        <Select
+          value={status}
+          onValueChange={(value) => setStatus(value as "all" | RecordStatus)}
+        >
+          <SelectTrigger className="sm:w-36" aria-label="Filtrar por status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Contador / Resumo */}
+      {!isPending && !isError && users.length > 0 ? (
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <span>
+            {users.length === 1
+              ? "1 usuário cadastrado"
+              : `${users.length} usuários cadastrados`}
+          </span>
+          {hasSearch || hasFilters ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-primary hover:underline"
+            >
+              Limpar filtros
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Container Unificado da Lista */}
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs">
+        {emptyState ? (
+          emptyState
+        ) : (
+          <div className="divide-y divide-border/40">{items}</div>
+        )}
+      </div>
+    </div>
   );
 }

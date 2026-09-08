@@ -187,7 +187,65 @@ function ensureReposicaoForAbsence(
   }
 }
 
-function validateGroup(payload: Partial<CreateClassGroup>): void {
+// Verifica se dois horários se sobrepõem (qualquer minuto em comum é conflito).
+function timesOverlap(
+  start1: TimeISO,
+  end1: TimeISO,
+  start2: TimeISO,
+  end2: TimeISO,
+): boolean {
+  return start1 < end2 && end1 > start2;
+}
+
+// Valida conflito de horário: instrutor não pode estar em duas turmas no mesmo dia/hora.
+function validateInstructorScheduleConflict(
+  payload: Partial<CreateClassGroup>,
+  currentGroupId?: Id,
+): void {
+  const fields: ApiErrorField[] = [];
+  if (!payload.instructorId || !payload.meetingSlots) return;
+
+  const instructor = store.professionals.find((p) => p.id === payload.instructorId);
+  const instructorName = instructor?.name ?? "Instrutor";
+
+  for (const slot of payload.meetingSlots) {
+    // Procura outras turmas ATIVAS do mesmo instrutor no mesmo dia.
+    const conflicts = store.classGroups.filter(
+      (g) =>
+        g.id !== currentGroupId && // Não compara com ela mesma (ao editar).
+        g.status === "active" &&
+        g.instructorId === payload.instructorId &&
+        g.meetingSlots.some((s) => {
+          if (s.weekday !== slot.weekday) return false; // Dia diferente.
+          // Mesmo dia: verifica sobreposição de horário.
+          return timesOverlap(slot.start, slot.end, s.start, s.end);
+        }),
+    );
+
+    if (conflicts.length > 0) {
+      const conflict = conflicts[0];
+      const conflictSlot = conflict.meetingSlots.find(
+        (s) =>
+          s.weekday === slot.weekday &&
+          timesOverlap(slot.start, slot.end, s.start, s.end),
+      );
+      if (conflictSlot) {
+        const dayName = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][
+          slot.weekday
+        ];
+        fields.push({
+          field: "meetingSlots",
+          message: `${instructorName} já tem aula ${dayName} ${conflictSlot.start}-${conflictSlot.end} em "${conflict.name}".`,
+        });
+        break; // Mostra só o primeiro conflito.
+      }
+    }
+  }
+
+  if (fields.length > 0) throw validationError(fields);
+}
+
+function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome da turma." });
@@ -202,6 +260,9 @@ function validateGroup(payload: Partial<CreateClassGroup>): void {
     fields.push({ field: "capacity", message: "A capacidade deve ser ao menos 1." });
   }
   if (fields.length > 0) throw validationError(fields);
+
+  // Valida conflito de horário do instrutor (executado após validações básicas).
+  validateInstructorScheduleConflict(payload, currentGroupId);
 }
 
 export const turmasService = {
@@ -239,7 +300,7 @@ export const turmasService = {
 
   create(payload: CreateClassGroup): Promise<ClassGroupView> {
     return simulateWrite(() => {
-      validateGroup(payload);
+      validateGroup(payload, undefined);
       const ts = nowIso();
       const g: ClassGroup = { ...payload, id: newId(), createdAt: ts, updatedAt: ts };
       store.classGroups.push(g);
@@ -251,10 +312,45 @@ export const turmasService = {
     return simulateWrite(() => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
-      validateGroup({ ...store.classGroups[idx], ...payload });
+      validateGroup({ ...store.classGroups[idx], ...payload }, id);
       store.classGroups[idx] = {
         ...store.classGroups[idx],
         ...payload,
+        updatedAt: nowIso(),
+      };
+      return clone(toGroupView(store.classGroups[idx]));
+    });
+  },
+
+  // Desativa uma turma (soft delete): preserva histórico, impede novas sessões.
+  deactivate(id: Id): Promise<ClassGroupView> {
+    return simulateWrite(() => {
+      const idx = store.classGroups.findIndex((x) => x.id === id);
+      if (idx === -1) throw notFoundError("Turma não encontrada.");
+      const g = store.classGroups[idx];
+      if (g.status === "inactive") {
+        throw validationError([
+          { field: "status", message: "Turma já foi desativada." },
+        ]);
+      }
+      store.classGroups[idx] = {
+        ...g,
+        status: "inactive",
+        updatedAt: nowIso(),
+      };
+      return clone(toGroupView(store.classGroups[idx]));
+    });
+  },
+
+  // Reativa uma turma desativada.
+  reactivate(id: Id): Promise<ClassGroupView> {
+    return simulateWrite(() => {
+      const idx = store.classGroups.findIndex((x) => x.id === id);
+      if (idx === -1) throw notFoundError("Turma não encontrada.");
+      const g = store.classGroups[idx];
+      store.classGroups[idx] = {
+        ...g,
+        status: "active",
         updatedAt: nowIso(),
       };
       return clone(toGroupView(store.classGroups[idx]));
