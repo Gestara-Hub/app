@@ -40,11 +40,18 @@ export function useCreateAppointment() {
       payload,
       allowBreak,
       allowOutsideHours,
+      allowOutsideBusinessHours,
     }: {
       payload: CreateAppointment;
       allowBreak?: boolean;
       allowOutsideHours?: boolean;
-    }) => appointmentsService.create(payload, { allowBreak, allowOutsideHours }),
+      allowOutsideBusinessHours?: boolean;
+    }) =>
+      appointmentsService.create(payload, {
+        allowBreak,
+        allowOutsideHours,
+        allowOutsideBusinessHours,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }
@@ -57,12 +64,19 @@ export function useUpdateAppointment() {
       payload,
       allowBreak,
       allowOutsideHours,
+      allowOutsideBusinessHours,
     }: {
       id: Id;
       payload: UpdateAppointment;
       allowBreak?: boolean;
       allowOutsideHours?: boolean;
-    }) => appointmentsService.update(id, payload, { allowBreak, allowOutsideHours }),
+      allowOutsideBusinessHours?: boolean;
+    }) =>
+      appointmentsService.update(id, payload, {
+        allowBreak,
+        allowOutsideHours,
+        allowOutsideBusinessHours,
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
   });
 }

@@ -4,11 +4,11 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { InputPhone, InputText } from "@/components/form";
+import { InputPhone, InputText, SelectField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Organization, Unit } from "@gestarahub/contracts";
+import type { OperationalModel, Organization, Unit } from "@gestarahub/contracts";
 import {
   useOrganization,
   useUnit,
@@ -19,6 +19,8 @@ import {
 const schema = z.object({
   organizationName: z.string().trim().min(1, "Informe o nome da organização."),
   unitName: z.string().trim().min(1, "Informe o nome da unidade."),
+  segment: z.string().trim().optional(),
+  model: z.enum(["scheduling", "classes"]),
   address: z.string().optional(),
   phone: z
     .string()
@@ -29,6 +31,17 @@ const schema = z.object({
     }),
 });
 type OrgUnitValues = z.infer<typeof schema>;
+
+const MODEL_OPTIONS: { value: OperationalModel; label: string }[] = [
+  {
+    value: "scheduling",
+    label: "Atendimento individual (Agenda — Barbearia, Salão, Estética)",
+  },
+  {
+    value: "classes",
+    label: "Turmas e aulas (Grade — Academia, Studio, Lutas, Pilates)",
+  },
+];
 
 function OrgUnitForm({
   organization,
@@ -48,6 +61,8 @@ function OrgUnitForm({
     defaultValues: {
       organizationName: organization.name,
       unitName: unit.name,
+      segment: organization.segment ?? "",
+      model: (organization.model === "delivery" ? "scheduling" : organization.model) as "scheduling" | "classes",
       address: unit.address ?? "",
       phone: unit.phone ?? "",
     },
@@ -55,7 +70,12 @@ function OrgUnitForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await updateOrg.mutateAsync({ name: values.organizationName });
+      const modelChanged = values.model !== organization.model;
+      await updateOrg.mutateAsync({
+        name: values.organizationName,
+        segment: values.segment,
+        model: values.model,
+      });
       await updateUnit.mutateAsync({
         name: values.unitName,
         address: values.address ?? "",
@@ -63,8 +83,14 @@ function OrgUnitForm({
       });
       toast.success("Configurações salvas.");
       form.reset(values);
+
+      if (modelChanged && typeof window !== "undefined") {
+        window.location.reload();
+      }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível salvar as configurações."));
+      toast.error(
+        getErrorMessage(error, "Não foi possível salvar as configurações."),
+      );
     }
   });
 
@@ -77,6 +103,21 @@ function OrgUnitForm({
           required
           disabled={pending}
         />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <InputText<OrgUnitValues>
+            name="segment"
+            label="Segmento / Ramo"
+            placeholder="Ex: Barbearia, Academia, Studio..."
+            disabled={pending}
+          />
+          <SelectField<OrgUnitValues>
+            name="model"
+            label="Modelo operacional"
+            options={MODEL_OPTIONS}
+            required
+            disabled={pending}
+          />
+        </div>
         <InputText<OrgUnitValues>
           name="unitName"
           label="Nome da unidade"
@@ -89,7 +130,11 @@ function OrgUnitForm({
           placeholder="Rua, número - bairro"
           disabled={pending}
         />
-        <InputPhone<OrgUnitValues> name="phone" label="Telefone" disabled={pending} />
+        <InputPhone<OrgUnitValues>
+          name="phone"
+          label="Telefone"
+          disabled={pending}
+        />
         <div className="flex justify-end">
           <Button type="submit" disabled={pending}>
             {pending ? "Salvando..." : "Salvar"}

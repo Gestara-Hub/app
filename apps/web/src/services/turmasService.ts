@@ -1,6 +1,7 @@
 import type {
   ApiErrorField,
   AttendanceStatus,
+  AttendanceSummary,
   Charge,
   ClassGroup,
   ClassGroupFilter,
@@ -551,6 +552,28 @@ export const turmasService = {
         });
       }
       ensureMakeupForAbsence(input.sessionId, input.studentId, input.status);
+    });
+  },
+
+  getAttendanceSummary(date: DateISO): Promise<AttendanceSummary> {
+    return simulateRead(() => {
+      let present = 0;
+      let absent = 0;
+      let justified = 0;
+      for (const a of store.attendances) {
+        const p = parseSessionId(a.sessionId);
+        if (p && p.date === date) {
+          if (a.status === "present") present += 1;
+          else if (a.status === "absent") absent += 1;
+          else if (a.status === "justified") justified += 1;
+        }
+      }
+      return {
+        present,
+        absent,
+        justified,
+        total: present + absent + justified,
+      };
     });
   },
 

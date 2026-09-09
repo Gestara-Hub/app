@@ -132,6 +132,14 @@ export function useMarkAttendance() {
   });
 }
 
+export function useAttendanceSummary(date: DateISO) {
+  return useQuery({
+    queryKey: queryKeys.classes.attendanceSummary(date),
+    queryFn: () => turmasService.getAttendanceSummary(date),
+    enabled: Boolean(date),
+  });
+}
+
 // --- Lista de espera ------------------------------------------------------
 export function useWaitlist(classGroupId: Id) {
   return useQuery({

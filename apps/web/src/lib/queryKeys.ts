@@ -90,6 +90,8 @@ export const queryKeys = {
       ["classes", "makeups", classGroupId] as const,
     reposicoes: (classGroupId?: Id) =>
       ["classes", "makeups", classGroupId] as const,
+    attendanceSummary: (date: DateISO) =>
+      ["classes", "attendanceSummary", date] as const,
   },
   billing: {
     all: ["billing"] as const,

@@ -35,7 +35,7 @@ export interface NavItem {
 // scheduling (M1) ve Agenda/Serviços; classes (M3) ve Turmas/Calendário; os
 // compartilhados (sem `models`) aparecem em todos.
 export const MAIN_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view", models: ["scheduling"] },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view" },
   { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view" },
   { label: "Equipe", href: "/team", icon: Contact, permission: "team:view" },
   { label: "Serviços", href: "/services", icon: Tag, permission: "services:view", models: ["scheduling"], tourId: "nav-services" },
@@ -89,7 +89,7 @@ export function firstAllowedRoute(
   subject: Pick<User, "profile">,
   model: OperationalModel,
 ): string {
-  if (model === "scheduling" && can(subject, "dashboard:view")) return "/";
+  if (can(subject, "dashboard:view")) return "/";
   const core = MAIN_NAV.find((i) => i.href === coreRouteFor(model));
   if (core && can(subject, core.permission)) return core.href;
   const item = navForModel(MAIN_NAV, model).find((i) =>

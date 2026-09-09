@@ -87,23 +87,29 @@ export function checkSlotAvailability(
   end: TimeISO,
   ctx: SlotContext,
   // Overrides confirmados pelo usuario (regras "moles"): `allowBreak` pula a
-  // checagem de almoco; `allowOutsideHours` pula a do horario do profissional
-  // (dia nao atendido ou fora da janela dele). Expediente da unidade, bloqueio e
+  // checagem de almoco; `allowOutsideHours` pula a do horario do profissional;
+  // `allowOutsideBusinessHours` pula a do expediente da unidade. Bloqueios e
   // sobreposicao NUNCA sao pulados.
-  opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
+  opts: {
+    allowBreak?: boolean;
+    allowOutsideHours?: boolean;
+    allowOutsideBusinessHours?: boolean;
+  } = {},
 ): SlotCheck {
   const weekday = weekdayOf(date);
   const startMin = timeToMinutes(start);
   const endMin = timeToMinutes(end);
 
-  // Expediente da unidade: fechada ou fora do horario de funcionamento — o
-  // motivo e a unidade, independe do profissional (regra rigida).
-  const business = ctx.businessHours.find((b) => b.weekday === weekday);
-  if (!business || business.closed || !business.start || !business.end) {
-    return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
-  }
-  if (startMin < timeToMinutes(business.start) || endMin > timeToMinutes(business.end)) {
-    return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+  // Expediente da unidade: checado quando configurado. Pode ser pulado via
+  // override administrativo (allowOutsideBusinessHours) para atender excecoes.
+  if (ctx.businessHours.length > 0 && !opts.allowOutsideBusinessHours) {
+    const business = ctx.businessHours.find((b) => b.weekday === weekday);
+    if (!business || business.closed || !business.start || !business.end) {
+      return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+    }
+    if (startMin < timeToMinutes(business.start) || endMin > timeToMinutes(business.end)) {
+      return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+    }
   }
 
   // Disponibilidade do profissional: dia nao atendido ou fora do horario dele —

@@ -131,6 +131,13 @@ export interface Attendance {
   markedAt: DateTimeISO;
 }
 
+export interface AttendanceSummary {
+  present: number;
+  absent: number;
+  justified: number;
+  total: number;
+}
+
 /** Tipo de vinculo do aluno na sessao: matriculado fixo, avulso ou experimental. */
 export type SessionRosterKind = "enrolled" | "dropin" | "trial" | "makeup";
 

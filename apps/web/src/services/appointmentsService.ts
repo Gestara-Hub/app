@@ -110,7 +110,12 @@ function totalDuration(serviceIds: Id[]): number {
  */
 function resolveAndValidate(
   values: SlotValues,
-  opts: { excludeId?: Id; allowBreak?: boolean; allowOutsideHours?: boolean },
+  opts: {
+    excludeId?: Id;
+    allowBreak?: boolean;
+    allowOutsideHours?: boolean;
+    allowOutsideBusinessHours?: boolean;
+  },
 ) {
   const fields = [];
   if (!values.clientId) fields.push({ field: "clientId", message: "Selecione um cliente." });
@@ -155,6 +160,7 @@ function resolveAndValidate(
   const slot = checkSlotAvailability(values.date, values.start, end, ctx, {
     allowBreak: opts.allowBreak,
     allowOutsideHours: opts.allowOutsideHours,
+    allowOutsideBusinessHours: opts.allowOutsideBusinessHours,
   });
   if (!slot.ok) throw slotError(slot.code, professional.name);
 
@@ -235,12 +241,17 @@ export const appointmentsService = {
 
   create(
     payload: CreateAppointment,
-    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
+    opts: {
+      allowBreak?: boolean;
+      allowOutsideHours?: boolean;
+      allowOutsideBusinessHours?: boolean;
+    } = {},
   ): Promise<AppointmentView> {
     return simulateWrite(() => {
       const { end } = resolveAndValidate(payload, {
         allowBreak: opts.allowBreak,
         allowOutsideHours: opts.allowOutsideHours,
+        allowOutsideBusinessHours: opts.allowOutsideBusinessHours,
       });
       const ts = nowIso();
       const appointment: Appointment = {
@@ -274,7 +285,11 @@ export const appointmentsService = {
   update(
     id: Id,
     payload: UpdateAppointment,
-    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
+    opts: {
+      allowBreak?: boolean;
+      allowOutsideHours?: boolean;
+      allowOutsideBusinessHours?: boolean;
+    } = {},
   ): Promise<AppointmentView> {
     return simulateWrite(() => {
       const idx = store.appointments.findIndex((a) => a.id === id);
@@ -285,6 +300,7 @@ export const appointmentsService = {
         excludeId: id,
         allowBreak: opts.allowBreak,
         allowOutsideHours: opts.allowOutsideHours,
+        allowOutsideBusinessHours: opts.allowOutsideBusinessHours,
       });
       const updated: Appointment = {
         ...current,

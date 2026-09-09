@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   addDays,
   addMonths,
@@ -178,11 +179,12 @@ export function CalendarPanel({
     professionalsQuery.isError ||
     appointmentsQuery.isError ||
     blocksQuery.isError;
-  const businessDay = unitQuery.data?.businessHours.find(
-    (b) => b.weekday === weekday,
-  );
+  const businessHours = unitQuery.data?.businessHours ?? [];
+  const hasConfiguredHours = businessHours.some((b) => !b.closed);
+  const businessDay = businessHours.find((b) => b.weekday === weekday);
   const isClosed =
-    !businessDay || businessDay.closed || !businessDay.start || !businessDay.end;
+    hasConfiguredHours &&
+    (!businessDay || businessDay.closed || !businessDay.start || !businessDay.end);
   const appointmentCount = appointments.filter((a) => a.status !== "canceled").length;
   const emptyMessage =
     mode === "day"
@@ -289,6 +291,20 @@ export function CalendarPanel({
               <p className="text-sm text-muted-foreground">
                 Selecione ao menos um profissional no filtro para ver a agenda.
               </p>
+            </div>
+          ) : mode === "day" && !hasConfiguredHours ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/20 py-16 text-center">
+              <CalendarClock className="size-8 text-muted-foreground" />
+              <p className="text-sm font-medium">
+                Horário de funcionamento ainda não configurado.
+              </p>
+              <p className="max-w-md text-xs text-muted-foreground">
+                Configure os dias e horários de funcionamento da unidade para
+                abrir a grade visual da agenda.
+              </p>
+              <Button asChild size="sm" variant="outline" className="mt-2">
+                <Link href="/settings?tab=horarios">Configurar horários</Link>
+              </Button>
             </div>
           ) : mode === "day" && isClosed ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed bg-muted/20 py-16 text-center">

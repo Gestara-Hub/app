@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type { Organization, Unit, User } from "@gestarahub/contracts";
 import type { MockStore, MockWorld } from "./store";
@@ -65,15 +66,7 @@ function seedCorteNobre(): MockStore {
     address: "Rua das Tesouras, 120 - Centro",
     phone: digits("(11) 4002-8922"),
     status: "active",
-    businessHours: [
-      { weekday: 0, closed: true },
-      { weekday: 1, closed: false, start: "09:00", end: "20:00" },
-      { weekday: 2, closed: false, start: "09:00", end: "20:00" },
-      { weekday: 3, closed: false, start: "09:00", end: "20:00" },
-      { weekday: 4, closed: false, start: "09:00", end: "20:00" },
-      { weekday: 5, closed: false, start: "09:00", end: "20:00" },
-      { weekday: 6, closed: false, start: "08:00", end: "18:00" },
-    ],
+    businessHours: [],
   };
 
   const users: User[] = [
@@ -112,15 +105,7 @@ function seedAcademia(): MockStore {
     address: "Av. das Modalidades, 300 - Centro",
     phone: digits("(11) 4003-1000"),
     status: "active",
-    businessHours: [
-      { weekday: 0, closed: true },
-      { weekday: 1, closed: false, start: "07:00", end: "22:00" },
-      { weekday: 2, closed: false, start: "07:00", end: "22:00" },
-      { weekday: 3, closed: false, start: "07:00", end: "22:00" },
-      { weekday: 4, closed: false, start: "07:00", end: "22:00" },
-      { weekday: 5, closed: false, start: "07:00", end: "22:00" },
-      { weekday: 6, closed: false, start: "08:00", end: "14:00" },
-    ],
+    businessHours: [],
   };
 
   const users: User[] = [
@@ -137,7 +122,49 @@ function seedAcademia(): MockStore {
 
   const store = emptyStore(organization, unit, users);
 
-  // Seed com alguns profissionais e turmas para teste
+  // Modalidades (categorias)
+  store.categories.push(
+    {
+      id: "cat-judo",
+      organizationId: ORG_ACADEMIA,
+      name: "Judô",
+      position: 1,
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "cat-pilates",
+      organizationId: ORG_ACADEMIA,
+      name: "Pilates",
+      position: 2,
+      status: "active",
+      ...timestamps(),
+    }
+  );
+
+  // Planos de mensalidade
+  store.plans.push(
+    {
+      id: "plan-judo-mensal",
+      organizationId: ORG_ACADEMIA,
+      name: "Plano Mensal Judô",
+      priceCents: 22000,
+      period: "monthly",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "plan-livre",
+      organizationId: ORG_ACADEMIA,
+      name: "Plano Livre Academia",
+      priceCents: 29000,
+      period: "monthly",
+      status: "active",
+      ...timestamps(),
+    }
+  );
+
+  // Profissionais / Instrutores
   store.professionals.push(
     {
       id: "prof-carlos",
@@ -163,15 +190,18 @@ function seedAcademia(): MockStore {
     }
   );
 
+  // Turmas
   store.classGroups.push(
     {
       id: "class-judo-adulto",
       organizationId: ORG_ACADEMIA,
       unitId: UNIT_ACADEMIA,
       name: "Judô adulto",
+      modalityId: "cat-judo",
       instructorId: "prof-carlos",
       enrollmentType: "fixed",
       capacity: 10,
+      planId: "plan-judo-mensal",
       meetingSlots: [
         { weekday: 2, start: "18:00", end: "19:00" },
         { weekday: 4, start: "18:00", end: "19:00" },
@@ -185,9 +215,11 @@ function seedAcademia(): MockStore {
       organizationId: ORG_ACADEMIA,
       unitId: UNIT_ACADEMIA,
       name: "Judô infantil",
+      modalityId: "cat-judo",
       instructorId: "prof-aron",
       enrollmentType: "fixed",
       capacity: 20,
+      planId: "plan-judo-mensal",
       meetingSlots: [
         { weekday: 1, start: "18:00", end: "19:00" },
         { weekday: 3, start: "18:00", end: "19:00" },
@@ -195,6 +227,170 @@ function seedAcademia(): MockStore {
       ],
       startDate: "2026-09-08",
       status: "active",
+      ...timestamps(),
+    }
+  );
+
+  // Alunos (Clientes)
+  store.clients.push(
+    {
+      id: "cli-lucas",
+      organizationId: ORG_ACADEMIA,
+      name: "Lucas Ferreira",
+      phone: digits("(11) 98111-2233"),
+      email: "lucas.ferreira@email.com",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "cli-mariana",
+      organizationId: ORG_ACADEMIA,
+      name: "Mariana Costa",
+      phone: digits("(11) 98222-3344"),
+      email: "mariana.costa@email.com",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "cli-gabriel",
+      organizationId: ORG_ACADEMIA,
+      name: "Gabriel Lima",
+      phone: digits("(11) 98333-4455"),
+      email: "gabriel.lima@email.com",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "cli-beatriz",
+      organizationId: ORG_ACADEMIA,
+      name: "Beatriz Souza",
+      phone: digits("(11) 98444-5566"),
+      email: "beatriz.souza@email.com",
+      status: "active",
+      ...timestamps(),
+    },
+    {
+      id: "cli-pedro",
+      organizationId: ORG_ACADEMIA,
+      name: "Pedro Rocha",
+      phone: digits("(11) 98555-6677"),
+      email: "pedro.rocha@email.com",
+      status: "active",
+      ...timestamps(),
+    }
+  );
+
+  // Matrículas ativas
+  store.enrollments.push(
+    {
+      id: "enr-lucas",
+      classGroupId: "class-judo-infantil",
+      studentId: "cli-lucas",
+      status: "active",
+      enrolledAt: "2026-09-01T10:00:00.000Z",
+    },
+    {
+      id: "enr-mariana",
+      classGroupId: "class-judo-infantil",
+      studentId: "cli-mariana",
+      status: "active",
+      enrolledAt: "2026-09-01T10:00:00.000Z",
+    },
+    {
+      id: "enr-gabriel",
+      classGroupId: "class-judo-infantil",
+      studentId: "cli-gabriel",
+      status: "active",
+      enrolledAt: "2026-09-02T10:00:00.000Z",
+    },
+    {
+      id: "enr-beatriz",
+      classGroupId: "class-judo-adulto",
+      studentId: "cli-beatriz",
+      status: "active",
+      enrolledAt: "2026-09-01T10:00:00.000Z",
+    },
+    {
+      id: "enr-pedro",
+      classGroupId: "class-judo-adulto",
+      studentId: "cli-pedro",
+      status: "active",
+      enrolledAt: "2026-09-03T10:00:00.000Z",
+    }
+  );
+
+  // Cobranças da competência corrente
+  const curComp = format(new Date(), "yyyy-MM");
+  store.charges.push(
+    {
+      id: "chg-1",
+      organizationId: ORG_ACADEMIA,
+      studentId: "cli-lucas",
+      kind: "membership",
+      planId: "plan-judo-mensal",
+      classGroupId: "class-judo-infantil",
+      competence: curComp,
+      dueDate: `${curComp}-10`,
+      amountCents: 22000,
+      status: "paid",
+      paidAt: `${curComp}-05T14:00:00.000Z`,
+      method: "pix",
+      ...timestamps(),
+    },
+    {
+      id: "chg-2",
+      organizationId: ORG_ACADEMIA,
+      studentId: "cli-mariana",
+      kind: "membership",
+      planId: "plan-judo-mensal",
+      classGroupId: "class-judo-infantil",
+      competence: curComp,
+      dueDate: `${curComp}-10`,
+      amountCents: 22000,
+      status: "paid",
+      paidAt: `${curComp}-08T11:30:00.000Z`,
+      method: "card",
+      ...timestamps(),
+    },
+    {
+      id: "chg-3",
+      organizationId: ORG_ACADEMIA,
+      studentId: "cli-gabriel",
+      kind: "membership",
+      planId: "plan-judo-mensal",
+      classGroupId: "class-judo-infantil",
+      competence: curComp,
+      dueDate: `${curComp}-15`,
+      amountCents: 22000,
+      status: "pending",
+      ...timestamps(),
+    },
+    {
+      id: "chg-4",
+      organizationId: ORG_ACADEMIA,
+      studentId: "cli-beatriz",
+      kind: "membership",
+      planId: "plan-judo-mensal",
+      classGroupId: "class-judo-adulto",
+      competence: curComp,
+      dueDate: `${curComp}-10`,
+      amountCents: 22000,
+      status: "paid",
+      paidAt: `${curComp}-06T09:00:00.000Z`,
+      method: "pix",
+      ...timestamps(),
+    },
+    {
+      id: "chg-5",
+      organizationId: ORG_ACADEMIA,
+      studentId: "cli-pedro",
+      kind: "membership",
+      planId: "plan-judo-mensal",
+      classGroupId: "class-judo-adulto",
+      competence: curComp,
+      dueDate: `${curComp}-12`,
+      amountCents: 22000,
+      status: "pending",
       ...timestamps(),
     }
   );

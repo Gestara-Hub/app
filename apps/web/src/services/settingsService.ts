@@ -7,7 +7,7 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-export type UpdateOrganization = Partial<Pick<Organization, "name" | "segment">>;
+export type UpdateOrganization = Partial<Pick<Organization, "name" | "segment" | "model">>;
 export type UpdateUnit = Partial<{
   name: string;
   address: string;
@@ -30,6 +30,11 @@ export const settingsService = {
         ...store.organization,
         ...payload,
         name: payload.name?.trim() || store.organization.name,
+        segment:
+          payload.segment !== undefined
+            ? payload.segment.trim() || store.organization.segment
+            : store.organization.segment,
+        model: payload.model || store.organization.model,
       };
       auditLogService.record({
         action: "updated",

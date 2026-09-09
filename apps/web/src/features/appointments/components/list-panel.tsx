@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertTriangle, CalendarClock, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,11 +19,13 @@ import {
   InitialsAvatar,
   ListContainer,
   ListRow,
+  ListSummaryBar,
   SearchInput,
 } from "@/components/shared/list";
 import { formatCents } from "@gestarahub/core/format";
 import { appointmentStatusLabel } from "@/lib/labels";
 import { todayISO } from "@gestarahub/core/date";
+import { cn } from "@/lib/utils";
 import type { AppointmentStatus, AppointmentView } from "@gestarahub/contracts";
 import { useCan, useCurrentUser, scopedProfessionalId } from "@/features/auth";
 import { useProfessionals } from "@/features/professionals";
@@ -70,12 +71,11 @@ interface ListPanelProps {
  */
 export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
   const today = todayISO();
-  const [dateFrom, setDateFrom] = useState(
-    format(addDays(parseISO(today), -5), "yyyy-MM-dd"),
-  );
-  const [dateTo, setDateTo] = useState(
-    format(addDays(parseISO(today), 7), "yyyy-MM-dd"),
-  );
+  const defaultDateFrom = format(addDays(parseISO(today), -5), "yyyy-MM-dd");
+  const defaultDateTo = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
+
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom);
+  const [dateTo, setDateTo] = useState(defaultDateTo);
   const [professionalId, setProfessionalId] = useState("all");
   const [status, setStatus] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
@@ -99,11 +99,18 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
   const groups = groupByDate(appointments);
 
   const hasFilters =
-    professionalId !== "all" || status !== "all" || Boolean(search.trim());
+    professionalId !== "all" ||
+    status !== "all" ||
+    Boolean(search.trim()) ||
+    dateFrom !== defaultDateFrom ||
+    dateTo !== defaultDateTo;
+
   const clearAll = () => {
     setProfessionalId("all");
     setStatus("all");
     setSearch("");
+    setDateFrom(defaultDateFrom);
+    setDateTo(defaultDateTo);
   };
 
   let body: ReactNode;
@@ -213,74 +220,156 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
   }
 
   return (
-    <>
-      <Card className="mb-4">
-        <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              De
-              <Input
-                type="date"
-                aria-label="Data inicial"
-                value={dateFrom}
-                onChange={(e) => e.target.value && setDateFrom(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Até
-              <Input
-                type="date"
-                aria-label="Data final"
-                value={dateTo}
-                onChange={(e) => e.target.value && setDateTo(e.target.value)}
-              />
-            </label>
-            {scoped ? null : (
-              <div className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                Profissional
-                <Combobox
-                  value={professionalId}
-                  onChange={setProfessionalId}
-                  options={[
-                    { label: "Todos", value: "all" },
-                    ...(professionals ?? []).map((p) => ({ label: p.name, value: p.id })),
-                  ]}
-                  placeholder="Todos"
-                  searchPlaceholder="Buscar profissional..."
-                  emptyMessage="Nenhum profissional."
-                  ariaLabel="Filtrar por profissional"
-                />
-              </div>
-            )}
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-              Status
-              <Select value={status} onValueChange={(v) => setStatus(v as "all" | AppointmentStatus)}>
-                <SelectTrigger className="w-full" aria-label="Filtrar por status">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {STATUS_VALUES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {appointmentStatusLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
+    <div className="space-y-4">
+      {/* Barra de Filtros */}
+      <div className="space-y-3">
+        {/* Linha 1: Busca e Seletores de Profissional e Status */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <SearchInput
             value={search}
             onChange={setSearch}
             onClear={() => setSearch("")}
             placeholder="Buscar por cliente..."
             aria-label="Buscar por cliente"
-            className="lg:w-56"
+            className="flex-1"
           />
-        </CardContent>
-      </Card>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {scoped ? null : (
+              <div className="w-full sm:w-48">
+                <Combobox
+                  value={professionalId}
+                  onChange={setProfessionalId}
+                  options={[
+                    { label: "Todos os profissionais", value: "all" },
+                    ...(professionals ?? []).map((p) => ({
+                      label: p.name,
+                      value: p.id,
+                    })),
+                  ]}
+                  placeholder="Todos os profissionais"
+                  searchPlaceholder="Buscar profissional..."
+                  emptyMessage="Nenhum profissional."
+                  ariaLabel="Filtrar por profissional"
+                />
+              </div>
+            )}
+
+            <Select
+              value={status}
+              onValueChange={(v) =>
+                setStatus(v as "all" | AppointmentStatus)
+              }
+            >
+              <SelectTrigger
+                className="w-full sm:w-44"
+                aria-label="Filtrar por status"
+              >
+                <SelectValue placeholder="Todos os status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                {STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {appointmentStatusLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Linha 2: Intervalo de Datas, Atalhos Rápidos e Resumo */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-xs font-medium text-muted-foreground shrink-0">
+              Período:
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                aria-label="Data inicial"
+                value={dateFrom}
+                onChange={(e) => e.target.value && setDateFrom(e.target.value)}
+                className="h-9 w-36 sm:w-40"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">até</span>
+              <Input
+                type="date"
+                aria-label="Data final"
+                value={dateTo}
+                onChange={(e) => e.target.value && setDateTo(e.target.value)}
+                className="h-9 w-36 sm:w-40"
+              />
+            </div>
+
+            <div className="hidden sm:inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom(today);
+                  setDateTo(today);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-sm font-medium transition-colors",
+                  dateFrom === today && dateTo === today
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Hoje
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom(today);
+                  setDateTo(format(addDays(parseISO(today), 7), "yyyy-MM-dd"));
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-sm font-medium transition-colors",
+                  dateFrom === today &&
+                    dateTo === format(addDays(parseISO(today), 7), "yyyy-MM-dd")
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Próximos 7 dias
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const parsed = parseISO(today);
+                  setDateFrom(format(startOfMonth(parsed), "yyyy-MM-dd"));
+                  setDateTo(format(endOfMonth(parsed), "yyyy-MM-dd"));
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-sm font-medium transition-colors",
+                  dateFrom ===
+                    format(startOfMonth(parseISO(today)), "yyyy-MM-dd") &&
+                    dateTo === format(endOfMonth(parseISO(today)), "yyyy-MM-dd")
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Este mês
+              </button>
+            </div>
+          </div>
+
+          {!query.isPending && !query.isError && appointments.length > 0 ? (
+            <ListSummaryBar
+              count={appointments.length}
+              singularLabel="agendamento"
+              pluralLabel="agendamentos"
+              hasFilters={hasFilters}
+              onClearFilters={clearAll}
+              className="flex items-center gap-3 text-xs text-muted-foreground"
+            />
+          ) : null}
+        </div>
+      </div>
 
       {body}
-    </>
+    </div>
   );
 }

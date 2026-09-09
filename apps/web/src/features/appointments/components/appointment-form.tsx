@@ -148,6 +148,9 @@ export function AppointmentForm({
   // Idem quando o slot cai fora do horario de atendimento do profissional.
   const [confirmOutside, setConfirmOutside] =
     useState<AppointmentFormValues | null>(null);
+  // Idem quando o slot cai fora do horario de funcionamento da unidade (regra mole: confirma).
+  const [confirmOutsideBusiness, setConfirmOutsideBusiness] =
+    useState<AppointmentFormValues | null>(null);
   // Idem quando o slot escolhido esta no passado (regra mole: confirma).
   const [confirmPast, setConfirmPast] = useState<AppointmentFormValues | null>(
     null,
@@ -155,7 +158,11 @@ export function AppointmentForm({
 
   const submit = async (
     values: AppointmentFormValues,
-    opts: { allowBreak?: boolean; allowOutsideHours?: boolean } = {},
+    opts: {
+      allowBreak?: boolean;
+      allowOutsideHours?: boolean;
+      allowOutsideBusinessHours?: boolean;
+    } = {},
   ) => {
     const payload: CreateAppointment = {
       organizationId: ORG_ID,
@@ -178,9 +185,15 @@ export function AppointmentForm({
       onSuccess();
     } catch (error) {
       // Regras "moles": em vez de barrar, pedem confirmacao para agendar mesmo
-      // assim. Expediente da unidade, bloqueio e sobreposicao seguem como erro
-      // normal. Almoco e horario do profissional sao mutuamente exclusivos (o
-      // almoco fica dentro da janela), entao nao ha risco de laco de confirmacao.
+      // assim. Bloqueio e sobreposicao seguem como erro normal.
+      if (
+        !opts.allowOutsideBusinessHours &&
+        isApiError(error) &&
+        error.code === "OUTSIDE_BUSINESS_HOURS"
+      ) {
+        setConfirmOutsideBusiness(values);
+        return;
+      }
       if (
         !opts.allowOutsideHours &&
         isApiError(error) &&
@@ -411,6 +424,38 @@ export function AppointmentForm({
               onClick={() => {
                 const values = confirmOutside;
                 if (values) void submit(values, { allowOutsideHours: true });
+              }}
+            >
+              Agendar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmOutsideBusiness !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmOutsideBusiness(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Agendar fora do expediente da unidade?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O horário escolhido está fora do horário de funcionamento da unidade
+              (ou a unidade está marcada como fechada neste dia). Deseja registrar o
+              agendamento mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => {
+                const values = confirmOutsideBusiness;
+                if (values) {
+                  void submit(values, { allowOutsideBusinessHours: true });
+                }
               }}
             >
               Agendar mesmo assim
