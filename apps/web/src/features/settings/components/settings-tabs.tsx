@@ -25,7 +25,7 @@ const TABS: { value: Tab; label: string; description: string }[] = [
     value: "dados",
     label: "Dados de exemplo",
     description:
-      "Suas alterações ficam salvas no navegador (localStorage). Ao zerar os mocks, todo o armazenamento local é redefinido, mantendo apenas os proprietários da Barbearia e da Academia para você cadastrar tudo do zero.",
+      "Suas alterações ficam salvas no navegador (localStorage). Ao zerar os mocks, todo o armazenamento local é redefinido, mantendo apenas os proprietários iniciais para você cadastrar tudo do zero.",
   },
 ];
 

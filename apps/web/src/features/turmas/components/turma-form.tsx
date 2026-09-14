@@ -254,8 +254,8 @@ export function TurmaForm({
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<TurmaFormValues>
           name="name"
-          label="Nome"
-          placeholder="Ex.: Judô Infantil A"
+          label="Nome da turma"
+          placeholder="Ex.: Inglês Básico, Dança Kids, Turma A"
           required
           disabled={pending}
         />
@@ -263,14 +263,14 @@ export function TurmaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectField<TurmaFormValues>
             name="modalityId"
-            label="Modalidade"
+            label="Modalidade / Curso"
             placeholder="Selecione (opcional)"
             options={categoryOptions}
             disabled={pending}
           />
           <SelectField<TurmaFormValues>
             name="instructorId"
-            label="Instrutor"
+            label="Professor / Instrutor"
             placeholder="Selecione"
             options={instructorOptions}
             required

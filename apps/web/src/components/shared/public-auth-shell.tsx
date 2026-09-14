@@ -1,6 +1,13 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
-import { Briefcase, CalendarClock, ShieldCheck, Store, Users } from "lucide-react";
+import {
+  Briefcase,
+  CalendarClock,
+  GraduationCap,
+  Store,
+  Users,
+  Wallet,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,14 +25,51 @@ type PublicAuthShellProps = {
 };
 
 const BASE_MODULES = [
-  { icon: ShieldCheck, label: "Acessos", colorClass: "border-blue-500/40 hover:border-blue-500/60", iconClass: "bg-blue-500/10 text-blue-500" },
-  { icon: Users, label: "Clientes", colorClass: "border-emerald-500/40 hover:border-emerald-500/60", iconClass: "bg-emerald-500/10 text-emerald-500" },
-  { icon: Briefcase, label: "Equipe", colorClass: "border-violet-500/40 hover:border-violet-500/60", iconClass: "bg-violet-500/10 text-violet-500" },
-  { icon: Store, label: "Serviços", colorClass: "border-rose-500/40 hover:border-rose-500/60", iconClass: "bg-rose-500/10 text-rose-500" },
-  { icon: CalendarClock, label: "Agenda", colorClass: "border-amber-500/40 hover:border-amber-500/60", iconClass: "bg-amber-500/10 text-amber-500" },
+  {
+    icon: CalendarClock,
+    label: "Agenda",
+    colorClass: "border-amber-500/40 hover:border-amber-500/60",
+    iconClass: "bg-amber-500/10 text-amber-500",
+  },
+  {
+    icon: GraduationCap,
+    label: "Turmas & Aulas",
+    colorClass: "border-indigo-500/40 hover:border-indigo-500/60",
+    iconClass: "bg-indigo-500/10 text-indigo-500",
+  },
+  {
+    icon: Users,
+    label: "Clientes & Alunos",
+    colorClass: "border-emerald-500/40 hover:border-emerald-500/60",
+    iconClass: "bg-emerald-500/10 text-emerald-500",
+  },
+  {
+    icon: Briefcase,
+    label: "Equipe",
+    colorClass: "border-violet-500/40 hover:border-violet-500/60",
+    iconClass: "bg-violet-500/10 text-violet-500",
+  },
+  {
+    icon: Store,
+    label: "Serviços & Modalidades",
+    colorClass: "border-rose-500/40 hover:border-rose-500/60",
+    iconClass: "bg-rose-500/10 text-rose-500",
+  },
+  {
+    icon: Wallet,
+    label: "Mensalidades & Planos",
+    colorClass: "border-cyan-500/40 hover:border-cyan-500/60",
+    iconClass: "bg-cyan-500/10 text-cyan-500",
+  },
 ];
 
-const ADDON_MODULES = ["Financeiro", "Comunicação", "Analytics", "Verticais por segmento"];
+const ADDON_MODULES = [
+  "Comunicação & Notificações",
+  "Analytics & Relatórios",
+  "Controle de Caixa & Despesas",
+  "Pagamentos Online & Pix",
+  "Múltiplas Unidades",
+];
 
 export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellProps) {
   return (
@@ -44,8 +88,8 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
                 GestaraHub
               </h1>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Gestão completa do seu negócio — agenda, clientes, equipe e
-                serviços, em um só lugar.
+                Gestão completa do seu negócio — agenda, turmas, clientes, equipe e
+                mensalidades, em um só lugar.
               </p>
             </div>
 
@@ -75,7 +119,7 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
                   <span className="cursor-help font-medium text-foreground underline decoration-dotted underline-offset-2">
                     ver mais
                   </span>
-                  <span className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 translate-y-1 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                  <span className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-72 translate-y-1 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
                     <strong className="block pb-1 text-[11px] tracking-wide text-muted-foreground">
                       Complementos
                     </strong>

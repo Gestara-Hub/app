@@ -39,7 +39,7 @@ const MODEL_OPTIONS: { value: OperationalModel; label: string }[] = [
   },
   {
     value: "classes",
-    label: "Turmas e aulas (Grade — Academia, Studio, Lutas, Pilates)",
+    label: "Turmas e aulas coletivas (Grade — Cursos, Idiomas, Dança, Academias, Studios)",
   },
 ];
 
@@ -107,7 +107,7 @@ function OrgUnitForm({
           <InputText<OrgUnitValues>
             name="segment"
             label="Segmento / Ramo"
-            placeholder="Ex: Barbearia, Academia, Studio..."
+            placeholder="Ex: Idiomas, Cursos, Barbearia, Academia, Studio..."
             disabled={pending}
           />
           <SelectField<OrgUnitValues>

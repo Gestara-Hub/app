@@ -77,9 +77,9 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<ModalityFormValues>
           name="name"
-          label="Nome da modalidade"
-          placeholder="Ex.: Judô"
-          hint="O tipo de aula que a unidade oferece (ex.: Judô, Yoga, Ballet). As turmas e os instrutores se organizam por ela."
+          label="Nome da modalidade / curso"
+          placeholder="Ex.: Inglês, Dança, Natação"
+          hint="O tipo de aula, curso ou modalidade que a unidade oferece. As turmas e os professores se organizam por ela."
           required
           disabled={pending}
         />

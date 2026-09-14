@@ -65,20 +65,28 @@ export function useOnboardingSteps() {
         done: hoursSet,
       },
       {
-        id: "team",
-        label: "Cadastrar instrutores",
-        description: "Cadastre os professores que ministram as aulas.",
-        href: "/team",
-        cta: "Adicionar",
-        done: (professionalsQuery.data?.length ?? 0) > 0,
-      },
-      {
         id: "modalities",
         label: "Cadastrar modalidades",
-        description: "Adicione as modalidades da academia (ex: Judô, Pilates).",
+        description: "Adicione as modalidades ou cursos oferecidos (ex: Inglês, Dança, Natação).",
         href: "/classes/modalities",
         cta: "Adicionar",
         done: (categoriesQuery.data?.length ?? 0) > 0,
+      },
+      {
+        id: "plans",
+        label: "Criar planos de mensalidade",
+        description: "Defina os planos para cobrança dos alunos.",
+        href: "/classes/plans",
+        cta: "Criar",
+        done: (plansQuery.data?.length ?? 0) > 0,
+      },
+      {
+        id: "team",
+        label: "Cadastrar professores e instrutores",
+        description: "Cadastre os professores e instrutores que ministram as aulas.",
+        href: "/team",
+        cta: "Adicionar",
+        done: (professionalsQuery.data?.length ?? 0) > 0,
       },
       {
         id: "classes",
@@ -96,14 +104,6 @@ export function useOnboardingSteps() {
         href: "/clients",
         cta: "Adicionar",
         done: (clientsQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "plans",
-        label: "Criar planos de mensalidade",
-        description: "Defina os planos para cobrança dos alunos.",
-        href: "/classes/plans",
-        cta: "Criar",
-        done: (plansQuery.data?.length ?? 0) > 0,
       },
     ];
   } else {

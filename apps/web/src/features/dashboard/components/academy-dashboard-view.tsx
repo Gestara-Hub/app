@@ -140,7 +140,7 @@ export function AcademyDashboardView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Dashboard"
-          description={`Visão geral da academia · ${todayLabel}`}
+          description={`Visão geral das turmas · ${todayLabel}`}
         />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>

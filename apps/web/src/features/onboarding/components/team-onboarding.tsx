@@ -16,7 +16,7 @@ const STEPS_DEFAULT: TourStep[] = [
 const STEPS_CLASSES: TourStep[] = [
   {
     target: '[data-tour="team-new"]',
-    title: "Adicione seus instrutores",
+    title: "Adicione seus professores e instrutores",
     body: "Cadastre os professores e instrutores aqui. As modalidades lecionadas indicam quais aulas cada professor costuma ministrar.",
   },
 ];

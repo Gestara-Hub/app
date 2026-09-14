@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface TourStep {
   /** Seletor CSS do alvo destacado (ex.: '[data-tour="nav-agenda"]'). */
@@ -150,15 +151,24 @@ export function ProductTour({
         className="absolute w-[min(20rem,calc(100vw-2rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
         style={tooltipStyle}
       >
-        <p className="text-xs font-medium text-muted-foreground">
-          Passo {index + 1} de {steps.length}
-        </p>
+        {steps.length > 1 ? (
+          <p className="text-xs font-medium text-muted-foreground">
+            Passo {index + 1} de {steps.length}
+          </p>
+        ) : null}
         <h3 className="mt-0.5 text-sm font-semibold">{step.title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{step.body}</p>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Pular
-          </Button>
+        <div
+          className={cn(
+            "mt-4 flex items-center gap-2",
+            steps.length > 1 ? "justify-between" : "justify-end",
+          )}
+        >
+          {steps.length > 1 ? (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Pular
+            </Button>
+          ) : null}
           <div className="flex gap-2">
             {index > 0 ? (
               <Button

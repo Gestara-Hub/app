@@ -14,9 +14,9 @@ interface ModalitySelectionFieldProps<T extends FieldValues> {
 }
 
 /**
- * Multi-select das modalidades que o instrutor leciona (M3). Reaproveita a
- * entidade Category — no modelo de turmas, "modalidade" É a categoria (Judô,
- * Yoga...). Associação informativa: não restringe as turmas.
+ * Multi-select das modalidades que o professor/instrutor leciona (M3). Reaproveita a
+ * entidade Category — no modelo de turmas, "modalidade" É a categoria (Inglês,
+ * Dança, Natação...). Associação informativa: não restringe as turmas.
  */
 export function ModalitySelectionField<T extends FieldValues>({
   name,
@@ -37,7 +37,7 @@ export function ModalitySelectionField<T extends FieldValues>({
       placeholder="Selecione as modalidades (opcional)"
       searchPlaceholder="Buscar modalidade..."
       emptyMessage="Nenhuma modalidade cadastrada."
-      hint="Informa o que o instrutor leciona — não limita as turmas."
+      hint="Informa o que o professor ou instrutor leciona — não limita as turmas."
       options={options}
       required={required}
       disabled={disabled}

@@ -49,9 +49,9 @@ export function ResetDataActions() {
             <AlertDialogTitle>Zerar mocks?</AlertDialogTitle>
             <AlertDialogDescription>
               Remove todos os cadastros e redefine o armazenamento local
-              (localStorage). Apenas os proprietários da Barbearia e da
-              Academia são mantidos para cadastrar tudo do zero. Esta ação
-              não pode ser desfeita.
+              (localStorage). Apenas os proprietários iniciais (atendimento
+              individual e turmas) são mantidos para cadastrar tudo do zero.
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

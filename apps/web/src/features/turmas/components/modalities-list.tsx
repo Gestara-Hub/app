@@ -174,7 +174,7 @@ export function ModalitiesList({
           <ModuleEmptyGuide
             icon={<Shapes className="size-8" />}
             title="Nenhuma modalidade cadastrada ainda."
-            description="Cadastre as modalidades oferecidas (ex.: Judô, Yoga) para organizar turmas e instrutores."
+            description="Cadastre as modalidades ou cursos oferecidos (ex.: Inglês, Dança, Natação) para organizar turmas e professores."
             actionLabel={canManage ? "Cadastrar modalidade" : undefined}
             onAction={canManage ? onCreate : undefined}
           />

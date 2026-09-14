@@ -7,7 +7,7 @@ const STEPS: TourStep[] = [
   {
     target: '[data-tour="modalities-new"]',
     title: "Cadastre suas modalidades",
-    body: "Adicione as modalidades oferecidas (ex.: Judô, Pilates, Dança). As turmas e os professores são organizados a partir delas.",
+    body: "Adicione as modalidades ou cursos oferecidos (ex.: Inglês, Dança, Natação). As turmas e os professores são organizados a partir delas.",
   },
 ];
 
