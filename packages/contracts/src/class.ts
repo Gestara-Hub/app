@@ -32,7 +32,8 @@ export interface ClassGroup {
   name: string;
   modalityId?: Id; // = Category (modalidade)
   instructorId: Id; // = Professional (instrutor titular)
-  enrollmentType: ClassEnrollmentType;
+  /** @deprecated mantido para retrocompatibilidade; todas as turmas sao regulares (padrao "fixed"). */
+  enrollmentType?: ClassEnrollmentType;
   capacity: number; // vagas (regra mole ao lotar)
   planId?: Id; // = Plano (mensalidade padrao da turma); ausente = sem cobranca
   allowDropin?: boolean; // aceita reservas de alunos avulsos na sessao
@@ -151,7 +152,8 @@ export interface SessionRosterEntry {
 
 /** Detalhe da sessao com o roster (matriculados e avulsos) para marcar presenca. */
 export interface ClassSessionDetail extends ClassSessionView {
-  enrollmentType: ClassEnrollmentType; // fixo (matricula) ou drop-in (reserva)
+  /** @deprecated mantido para retrocompatibilidade */
+  enrollmentType?: ClassEnrollmentType;
   capacity: number;
   availableSpots: number;
   allowDropin: boolean;

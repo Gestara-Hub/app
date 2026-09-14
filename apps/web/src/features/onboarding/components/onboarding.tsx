@@ -8,9 +8,8 @@ import { ProductTour, type TourStep } from "./product-tour";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 
-// Passos do tour: alvos estaveis do app shell (sidebar) + o checklist no
-// Dashboard. Alvos ausentes sao ignorados pelo motor (cai para balao central).
-const TOUR_STEPS: TourStep[] = [
+// Passos do tour para agendamento individual (Barbearia, Clínica, etc.)
+const TOUR_STEPS_DEFAULT: TourStep[] = [
   {
     target: '[data-tour="sidebar-nav"]',
     title: "O menu ao lado",
@@ -38,6 +37,35 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+// Passos do tour para turmas e aulas coletivas (Escola de Idiomas, Cursos, Academia, etc.)
+const TOUR_STEPS_CLASSES: TourStep[] = [
+  {
+    target: '[data-tour="sidebar-nav"]',
+    title: "O menu ao lado",
+    body: "É por aqui que você anda no dia a dia: alunos, equipe, modalidades, turmas e mensalidades ficam todos neste menu.",
+  },
+  {
+    target: '[data-tour="nav-classes"]',
+    title: "Turmas",
+    body: "Aqui você organiza as turmas, horários das aulas, limites de vagas e matrículas.",
+  },
+  {
+    target: '[data-tour="nav-users"]',
+    title: "Usuários",
+    body: "Cadastre quem vai usar o GestaraHub e defina o que cada pessoa pode ver e fazer.",
+  },
+  {
+    target: '[data-tour="nav-settings"]',
+    title: "Configurações",
+    body: "Aqui você ajusta o horário de funcionamento e outras opções do seu negócio.",
+  },
+  {
+    target: '[data-tour="onboarding-checklist"]',
+    title: "Primeiros passos",
+    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
+  },
+];
+
 /**
  * Orquestra o onboarding (modal de boas-vindas + tour + checklist). Montado no
  * Dashboard; so aparece para o Proprietario enquanto a conta nao esta
@@ -47,7 +75,8 @@ const TOUR_STEPS: TourStep[] = [
 export function Onboarding() {
   const user = useCurrentUser();
   const [state, update] = useOnboardingState();
-  const { steps, doneCount, total, isReady, isComplete } = useOnboardingSteps();
+  const { steps, doneCount, total, isReady, isComplete, isClasses } =
+    useOnboardingSteps();
   const [tourOpen, setTourOpen] = useState(false);
 
   if (!isReady || user.profile !== "owner") return null;
@@ -64,6 +93,7 @@ export function Onboarding() {
           steps={steps}
           doneCount={doneCount}
           total={total}
+          isClasses={isClasses}
           onDismiss={() => update({ dismissed: true })}
           onStartTour={() => setTourOpen(true)}
         />
@@ -82,7 +112,10 @@ export function Onboarding() {
       />
 
       {tourOpen ? (
-        <ProductTour steps={TOUR_STEPS} onClose={() => setTourOpen(false)} />
+        <ProductTour
+          steps={isClasses ? TOUR_STEPS_CLASSES : TOUR_STEPS_DEFAULT}
+          onClose={() => setTourOpen(false)}
+        />
       ) : null}
     </>
   );

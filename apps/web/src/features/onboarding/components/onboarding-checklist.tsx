@@ -6,19 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "../hooks/use-onboarding-steps";
 
-// Rotulo curto por passo, para o texto "Requer: ...".
-const STEP_SHORT: Record<string, string> = {
-  hours: "horário",
-  categories: "categorias",
-  services: "serviços",
-  roles: "cargos",
-  team: "equipe",
-  clients: "clientes",
-  appointment: "agendamento",
-};
-
-// Fases do setup: agrupam os passos e dao hierarquia (evita a "parede" de cards).
-const GROUPS = [
+// Fases do setup para agendamento individual (Barbearia, Clínica, etc.)
+const GROUPS_DEFAULT = [
   {
     id: "config",
     label: "Configuração",
@@ -39,6 +28,28 @@ const GROUPS = [
   },
 ] as const;
 
+// Fases do setup para turmas e aulas coletivas (Escola de Idiomas, Cursos, Academia, etc.)
+const GROUPS_CLASSES = [
+  {
+    id: "config",
+    label: "Configuração",
+    description: "Horário de funcionamento, modalidades e planos.",
+    stepIds: ["hours", "modalities", "plans"],
+  },
+  {
+    id: "team",
+    label: "Equipe",
+    description: "Professores e instrutores.",
+    stepIds: ["team"],
+  },
+  {
+    id: "ops",
+    label: "Turmas & Alunos",
+    description: "Criação de turmas e matrículas de alunos.",
+    stepIds: ["classes", "clients"],
+  },
+] as const;
+
 /**
  * "Primeiros passos" no estilo setup guiado: um "próximo passo" em destaque no
  * topo, progresso geral, e os passos agrupados por fase em cartões numerados
@@ -48,15 +59,31 @@ export function OnboardingChecklist({
   steps,
   doneCount,
   total,
+  isClasses = false,
   onDismiss,
   onStartTour,
 }: {
   steps: OnboardingStep[];
   doneCount: number;
   total: number;
+  isClasses?: boolean;
   onDismiss: () => void;
   onStartTour: () => void;
 }) {
+  const groups = isClasses ? GROUPS_CLASSES : GROUPS_DEFAULT;
+
+  const stepShort: Record<string, string> = {
+    hours: "horário",
+    categories: "categorias",
+    services: "serviços",
+    modalities: "modalidades",
+    roles: "cargos",
+    team: isClasses ? "instrutores" : "equipe",
+    classes: "turmas",
+    plans: "planos",
+    clients: isClasses ? "alunos" : "clientes",
+    appointment: "agendamento",
+  };
   const pct = Math.round((doneCount / total) * 100);
   const doneById = Object.fromEntries(steps.map((s) => [s.id, s.done]));
   const stepById = Object.fromEntries(steps.map((s) => [s.id, s]));
@@ -65,7 +92,7 @@ export function OnboardingChecklist({
   const missingOf = (step: OnboardingStep) =>
     (step.requires ?? [])
       .filter((id) => !doneById[id])
-      .map((id) => STEP_SHORT[id] ?? id);
+      .map((id) => stepShort[id] ?? id);
 
   // Proximo passo = primeiro disponivel (nao concluido e sem pre-requisito pendente).
   const nextStep = steps.find((s) => !s.done && missingOf(s).length === 0);
@@ -126,7 +153,7 @@ export function OnboardingChecklist({
       </div>
 
       <div className="space-y-5">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <section key={group.id}>
             <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { can as canFn } from "@/lib/permissions";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { setActiveOrganization } from "@/mocks/store";
@@ -33,12 +34,21 @@ export function SessionProvider({
   model: OperationalModel;
   children: ReactNode;
 }) {
-  // O tenant ativo do mock segue o usuario logado: assim, logar/trocar para um
-  // usuario de outra organizacao faz os services enxergarem os dados dela.
+  const queryClient = useQueryClient();
+  const prevOrgRef = useRef(user.organizationId);
+
   // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
   if (typeof window !== "undefined") {
     setActiveOrganization(user.organizationId);
   }
+
+  // Se a organização mudou, limpa o cache de queries para não vazar dados
+  useEffect(() => {
+    if (prevOrgRef.current !== user.organizationId) {
+      prevOrgRef.current = user.organizationId;
+      queryClient.clear();
+    }
+  }, [user.organizationId, queryClient]);
   const value = useMemo<SessionContextValue>(
     () => ({ user, can: (permission) => canFn(user, permission), model }),
     [user, model],

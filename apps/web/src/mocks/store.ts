@@ -95,7 +95,9 @@ const STORAGE_KEY = "gestarahub:db";
 // v16: seed "ambiente vazio" — cada tenant nasce so com organizacao/unidade/dono.
 // v17: seed enriquecido para Modelo 3 (Academia X com modalidades, alunos, planos e matriculas).
 // v18: horario de funcionamento nasce vazio no 1o acesso (onboarding pendente) + regra flexivel (soft-confirm).
-const SEED_VERSION = 18;
+// v19: Modelo 3 — unificação de turmas regulares (remoção de enrollmentType do formulário e de PlanPeriod "session" nos planos).
+// v20: seed vazio para Barbearia e Academia — apenas os proprietários são criados.
+const SEED_VERSION = 20;
 
 interface PersistedBlob {
   v: number;
@@ -217,47 +219,30 @@ export function persist(): void {
   if (canPersist()) saveToStorage(world);
 }
 
-/** Reseta o mundo inteiro ao seed e re-grava no localStorage. */
+/**
+ * Reseta o localStorage completo e reinicializa os mocks deixando apenas
+ * os proprietários da Barbearia (Corte Nobre) e da Academia (Academia X).
+ */
 export function resetStore(): void {
   const fresh = createInitialWorld();
+  const currentActive = world.activeOrganizationId;
   world.tenants = fresh.tenants;
-  world.activeOrganizationId = fresh.activeOrganizationId;
+  world.activeOrganizationId = fresh.tenants[currentActive]
+    ? currentActive
+    : fresh.activeOrganizationId;
+
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.clear();
+    } catch {
+      // Ignora falha de localStorage (ex: privado/sandbox)
+    }
+  }
+
   if (canPersist()) saveToStorage(world);
 }
 
-/**
- * Esvazia o tenant ATIVO para simular a configuracao inicial (onboarding):
- * mantem organizacao, unidade e apenas o usuario Proprietario (owner). Todo o
- * resto e limpo, para cadastrar do zero. Re-grava no localStorage.
- */
+/** Esvazia os mocks mantendo apenas os proprietários (alias para resetStore). */
 export function clearStore(): void {
-  const base = createInitialWorld().tenants[world.activeOrganizationId];
-  if (!base) return;
-  const owner = base.users.find((u) => u.profile === "owner");
-  // No setup inicial ainda nao ha equipe: remove o vinculo do Proprietario com
-  // um profissional para nao deixar uma referencia pendurada.
-  if (owner) delete owner.professionalId;
-  world.tenants[world.activeOrganizationId] = {
-    organization: base.organization,
-    unit: base.unit,
-    clients: [],
-    professionals: [],
-    users: owner ? [owner] : base.users,
-    roles: [],
-    categories: [],
-    services: [],
-    appointments: [],
-    timeBlocks: [],
-    series: [],
-    auditLog: [],
-    classGroups: [],
-    enrollments: [],
-    attendances: [],
-    plans: [],
-    charges: [],
-    waitlist: [],
-    makeups: [],
-    reservations: [],
-  };
-  if (canPersist()) saveToStorage(world);
+  resetStore();
 }

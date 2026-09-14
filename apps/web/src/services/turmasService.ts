@@ -483,18 +483,17 @@ export const turmasService = {
       const view = toSessionView(g, p.date, slot);
 
       // Roster unificado (híbrido):
-      // 1. Alunos matriculados da turma (se não for turma exclusivamente drop-in)
-      const enrolledEntries: SessionRosterEntry[] =
-        g.enrollmentType === "dropin"
-          ? []
-          : activeEnrollments(g.id).map((e) => ({
-              studentId: e.studentId,
-              studentName: studentName(e.studentId),
-              kind: "enrolled" as const,
-              attendance: store.attendances.find(
-                (a) => a.sessionId === id && a.studentId === e.studentId,
-              )?.status,
-            }));
+      // 1. Alunos matriculados da turma
+      const enrolledEntries: SessionRosterEntry[] = activeEnrollments(g.id).map(
+        (e) => ({
+          studentId: e.studentId,
+          studentName: studentName(e.studentId),
+          kind: "enrolled" as const,
+          attendance: store.attendances.find(
+            (a) => a.sessionId === id && a.studentId === e.studentId,
+          )?.status,
+        }),
+      );
 
       // 2. Alunos com reserva na sessão específica (avulsos, experimentais, reposição)
       const reservedEntries: SessionRosterEntry[] = store.reservations

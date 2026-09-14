@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { useCurrentUser } from "@/features/auth";
 
-// Estado do onboarding, persistido no navegador (separado do mock e do tema).
-// Mesma abordagem de `use-calendar-professional-filter` (useSyncExternalStore +
-// cache de referencia estavel + sync entre abas).
-const STORAGE_KEY = "gestarahub:onboarding";
+// Estado do onboarding, persistido no navegador por organização (isolado por tenant).
+const STORAGE_PREFIX = "gestarahub:onboarding";
 
 export interface OnboardingState {
   /** Modal de boas-vindas ja respondido: nao reabrir sozinho. */
@@ -22,27 +21,28 @@ const DEFAULT_STATE: OnboardingState = {
   tours: {},
 };
 
-let cachedRaw: string | null = null;
-let cachedValue: OnboardingState = DEFAULT_STATE;
+const cache = new Map<string, { raw: string | null; value: OnboardingState }>();
 const listeners = new Set<() => void>();
 
-function read(): OnboardingState {
+function read(key: string): OnboardingState {
   if (typeof window === "undefined") return DEFAULT_STATE;
   let raw: string | null = null;
   try {
-    raw = window.localStorage.getItem(STORAGE_KEY);
+    raw = window.localStorage.getItem(key);
   } catch {
     return DEFAULT_STATE;
   }
-  if (raw === cachedRaw) return cachedValue;
-  cachedRaw = raw;
+  const entry = cache.get(key);
+  if (entry && entry.raw === raw) return entry.value;
+
   if (raw === null) {
-    cachedValue = DEFAULT_STATE;
-    return cachedValue;
+    const next = DEFAULT_STATE;
+    cache.set(key, { raw: null, value: next });
+    return next;
   }
   try {
     const parsed = JSON.parse(raw) as Partial<OnboardingState>;
-    cachedValue = {
+    const next: OnboardingState = {
       seen: Boolean(parsed.seen),
       dismissed: Boolean(parsed.dismissed),
       tours:
@@ -50,40 +50,58 @@ function read(): OnboardingState {
           ? (parsed.tours as Record<string, boolean>)
           : {},
     };
+    cache.set(key, { raw, value: next });
+    return next;
   } catch {
-    cachedValue = DEFAULT_STATE;
+    cache.set(key, { raw, value: DEFAULT_STATE });
+    return DEFAULT_STATE;
   }
-  return cachedValue;
 }
 
-function write(next: OnboardingState): void {
+function write(key: string, next: OnboardingState): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    window.localStorage.setItem(key, JSON.stringify(next));
   } catch {
     // ignora falha de escrita (modo privado, quota, etc.).
   }
-  cachedRaw = JSON.stringify(next);
-  cachedValue = next;
+  cache.set(key, { raw: JSON.stringify(next), value: next });
   listeners.forEach((notify) => notify());
 }
 
 export function useOnboardingState() {
-  const subscribe = useCallback((onChange: () => void) => {
-    listeners.add(onChange);
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) onChange();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => {
-      listeners.delete(onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  let orgId = "";
+  try {
+    const user = useCurrentUser();
+    orgId = user.organizationId;
+  } catch {
+    // fora de SessionProvider
+  }
+  const storageKey = orgId ? `${STORAGE_PREFIX}:${orgId}` : STORAGE_PREFIX;
 
-  const state = useSyncExternalStore(subscribe, read, () => DEFAULT_STATE);
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      listeners.add(onChange);
+      const onStorage = (event: StorageEvent) => {
+        if (event.key === storageKey) onChange();
+      };
+      window.addEventListener("storage", onStorage);
+      return () => {
+        listeners.delete(onChange);
+        window.removeEventListener("storage", onStorage);
+      };
+    },
+    [storageKey],
+  );
+
+  const state = useSyncExternalStore(
+    subscribe,
+    () => read(storageKey),
+    () => DEFAULT_STATE,
+  );
   const update = useCallback(
-    (patch: Partial<OnboardingState>) => write({ ...read(), ...patch }),
-    [],
+    (patch: Partial<OnboardingState>) =>
+      write(storageKey, { ...read(storageKey), ...patch }),
+    [storageKey],
   );
   return [state, update] as const;
 }

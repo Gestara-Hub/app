@@ -36,11 +36,12 @@ export interface NavItem {
 // compartilhados (sem `models`) aparecem em todos.
 export const MAIN_NAV: NavItem[] = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view" },
-  { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view" },
+  { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view", models: ["scheduling", "delivery"] },
+  { label: "Alunos", href: "/clients", icon: Users, permission: "clients:view", models: ["classes"] },
   { label: "Equipe", href: "/team", icon: Contact, permission: "team:view" },
   { label: "Serviços", href: "/services", icon: Tag, permission: "services:view", models: ["scheduling"], tourId: "nav-services" },
   { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view", models: ["scheduling"], tourId: "nav-agenda" },
-  { label: "Turmas", href: "/classes", icon: GraduationCap, permission: "classes:view", models: ["classes"] },
+  { label: "Turmas", href: "/classes", icon: GraduationCap, permission: "classes:view", models: ["classes"], tourId: "nav-classes" },
   { label: "Calendário", href: "/classes/calendar", icon: CalendarRange, permission: "classes:view", models: ["classes"] },
   { label: "Modalidades", href: "/classes/modalities", icon: Shapes, permission: "classes:manage", models: ["classes"] },
   { label: "Planos", href: "/classes/plans", icon: Layers, permission: "billing:view", models: ["classes"] },

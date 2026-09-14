@@ -12,6 +12,7 @@ import { useUpdateCategory } from "@/features/categories";
 import { ModalitiesList } from "./modalities-list";
 import { ModalityFormDialog } from "./modality-form-dialog";
 import { InactivateModalityDialog } from "./inactivate-modality-dialog";
+import { ModalitiesOnboarding } from "@/features/onboarding";
 
 export function ModalitiesView() {
   const [formState, setFormState] = useState<{
@@ -47,7 +48,7 @@ export function ModalitiesView() {
         description="Os tipos de aula que a unidade oferece. As turmas e os instrutores se organizam por elas."
       >
         {canManage ? (
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} data-tour="modalities-new">
             <Plus className="size-4" />
             Nova modalidade
           </Button>
@@ -76,6 +77,8 @@ export function ModalitiesView() {
           if (!open) setInactivating(null);
         }}
       />
+
+      <ModalitiesOnboarding />
     </>
   );
 }

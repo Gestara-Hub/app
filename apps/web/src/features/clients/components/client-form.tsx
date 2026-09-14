@@ -9,6 +9,7 @@ import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { ORG_ID } from "@/config/tenant";
 import type { Client, CreateClient } from "@gestarahub/contracts";
+import { useCurrentUser, useModel } from "@/features/auth";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
 
@@ -30,6 +31,8 @@ interface ClientFormProps {
 
 export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const isEdit = Boolean(client);
+  const isClasses = useModel() === "classes";
+  const user = useCurrentUser();
   const createMut = useCreateClient();
   const updateMut = useUpdateClient();
   const pending = createMut.isPending || updateMut.isPending;
@@ -43,7 +46,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateClient = {
-      organizationId: client?.organizationId ?? ORG_ID,
+      organizationId: client?.organizationId ?? user.organizationId ?? ORG_ID,
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -54,10 +57,18 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     try {
       if (isEdit && client) {
         await updateMut.mutateAsync({ id: client.id, payload });
-        toast.success("Cliente atualizado com sucesso.");
+        toast.success(
+          isClasses
+            ? "Aluno atualizado com sucesso."
+            : "Cliente atualizado com sucesso.",
+        );
       } else {
         await createMut.mutateAsync(payload);
-        toast.success("Cliente criado com sucesso.");
+        toast.success(
+          isClasses
+            ? "Aluno criado com sucesso."
+            : "Cliente criado com sucesso.",
+        );
       }
       onSuccess();
     } catch (error) {
@@ -69,7 +80,14 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
           });
         }
       } else {
-        toast.error(getErrorMessage(error, "Não foi possível salvar o cliente."));
+        toast.error(
+          getErrorMessage(
+            error,
+            isClasses
+              ? "Não foi possível salvar o aluno."
+              : "Não foi possível salvar o cliente.",
+          ),
+        );
       }
     }
   });
@@ -79,7 +97,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<ClientFormValues>
           name="name"
-          label="Nome"
+          label={isClasses ? "Nome do aluno" : "Nome"}
           placeholder="Ex.: João Pereira"
           required
           disabled={pending}
@@ -96,7 +114,11 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
             name="email"
             type="email"
             label="E-mail"
-            placeholder="cliente@email.com (opcional)"
+            placeholder={
+              isClasses
+                ? "aluno@email.com (opcional)"
+                : "cliente@email.com (opcional)"
+            }
             disabled={pending}
           />
         </div>
@@ -111,8 +133,12 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
         {isEdit ? (
           <SwitchField<ClientFormValues>
             name="active"
-            label="Cliente ativo"
-            hint="Clientes inativos não são sugeridos em novos agendamentos."
+            label={isClasses ? "Aluno ativo" : "Cliente ativo"}
+            hint={
+              isClasses
+                ? "Alunos inativos não aparecem para matrícula em novas turmas."
+                : "Clientes inativos não são sugeridos em novos agendamentos."
+            }
             disabled={pending}
           />
         ) : null}
@@ -124,7 +150,13 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar cliente"}
+            {pending
+              ? "Salvando..."
+              : isEdit
+                ? "Salvar alterações"
+                : isClasses
+                  ? "Cadastrar aluno"
+                  : "Criar cliente"}
           </Button>
         </DialogFooter>
       </form>

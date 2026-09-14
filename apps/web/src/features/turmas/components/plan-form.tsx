@@ -17,7 +17,7 @@ import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
-  period: z.enum(["monthly", "biweekly", "weekly", "session"]),
+  period: z.enum(["monthly", "biweekly", "weekly"]),
   priceCents: z.number().int().min(0, "Informe um valor válido."),
 });
 type PlanFormValues = z.infer<typeof schema>;
@@ -26,7 +26,6 @@ const PERIOD_OPTIONS = [
   { label: "Mensal", value: "monthly" },
   { label: "Quinzenal", value: "biweekly" },
   { label: "Semanal", value: "weekly" },
-  { label: "Por aula (Avulso)", value: "session" },
 ];
 
 export function PlanForm({

@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Client } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { ClientForm } from "./client-form";
 
 interface ClientFormDialogProps {
@@ -21,6 +22,7 @@ export function ClientFormDialog({
   onOpenChange,
   client,
 }: ClientFormDialogProps) {
+  const isClasses = useModel() === "classes";
   const isEdit = Boolean(client);
 
   return (
@@ -30,11 +32,23 @@ export function ClientFormDialog({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar cliente" : "Novo cliente"}</DialogTitle>
+          <DialogTitle>
+            {isEdit
+              ? isClasses
+                ? "Editar aluno"
+                : "Editar cliente"
+              : isClasses
+                ? "Novo aluno"
+                : "Novo cliente"}
+          </DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Atualize os dados do cliente."
-              : "Cadastre um novo cliente."}
+              ? isClasses
+                ? "Atualize os dados do aluno."
+                : "Atualize os dados do cliente."
+              : isClasses
+                ? "Cadastre um novo aluno."
+                : "Cadastre um novo cliente."}
           </DialogDescription>
         </DialogHeader>
         <ClientForm

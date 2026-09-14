@@ -42,6 +42,7 @@ import {
   useReactivateClassGroup,
 } from "../hooks/use-turmas";
 import { TurmaFormDialog } from "./turma-form-dialog";
+import { TurmasOnboarding } from "@/features/onboarding";
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -222,7 +223,7 @@ export function TurmasView() {
           </Link>
         </Button>
         {canManage ? (
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)} data-tour="classes-new">
             <Plus className="size-4" />
             Nova turma
           </Button>
@@ -316,6 +317,8 @@ export function TurmasView() {
           )}
         </ListContainer>
       </div>
+
+      <TurmasOnboarding />
     </>
   );
 }

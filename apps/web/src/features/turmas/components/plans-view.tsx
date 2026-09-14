@@ -46,6 +46,7 @@ import {
   useReactivatePlan,
 } from "../hooks/use-billing";
 import { PlanForm } from "./plan-form";
+import { PlansOnboarding } from "@/features/onboarding";
 
 const PERIOD_LABELS: Record<string, string> = {
   monthly: "Mensal",
@@ -251,7 +252,7 @@ export function PlansView() {
         description="Planos usados pelas turmas."
       >
         {canManage ? (
-          <Button onClick={openNew}>
+          <Button onClick={openNew} data-tour="plans-new">
             <Plus className="size-4" />
             Novo plano
           </Button>
@@ -327,6 +328,8 @@ export function PlansView() {
         isPending={inactivateMut.isPending}
         onConfirm={handleInactivate}
       />
+
+      <PlansOnboarding />
     </>
   );
 }

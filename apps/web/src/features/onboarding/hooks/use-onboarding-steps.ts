@@ -4,7 +4,7 @@ import { useClients } from "@/features/clients";
 import { useServices } from "@/features/services";
 import { useProfessionals } from "@/features/professionals";
 import { useAppointments } from "@/features/appointments";
-import { useUnit, useOrganization } from "@/features/settings";
+import { useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useClassGroups, usePlans } from "@/features/turmas";
@@ -29,7 +29,6 @@ export interface OnboardingStep {
 export function useOnboardingSteps() {
   const model = useModel();
   const unitQuery = useUnit();
-  const orgQuery = useOrganization();
   const servicesQuery = useServices();
   const professionalsQuery = useProfessionals();
   const clientsQuery = useClients();
@@ -38,15 +37,7 @@ export function useOnboardingSteps() {
   const classGroupsQuery = useClassGroups();
   const plansQuery = usePlans();
 
-  const organization = orgQuery.data;
-  const unit = unitQuery.data;
-
-  const isClasses =
-    model === "classes" ||
-    organization?.model === "classes" ||
-    organization?.segment?.toLowerCase().includes("academia") ||
-    organization?.name?.toLowerCase().includes("academia") ||
-    unit?.name?.toLowerCase().includes("academia");
+  const isClasses = model === "classes";
 
   const hoursSet = Boolean(
     unitQuery.data?.businessHours?.some((day) => !day.closed),
@@ -176,5 +167,6 @@ export function useOnboardingSteps() {
     total: steps.length,
     isReady,
     isComplete: doneCount === steps.length,
+    isClasses,
   };
 }

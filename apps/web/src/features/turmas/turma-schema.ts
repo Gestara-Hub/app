@@ -11,7 +11,6 @@ export const turmaFormSchema = z.object({
   // Plano de mensalidade opcional; vazio = turma sem cobranca.
   planId: z.string(),
   instructorId: z.string().min(1, "Selecione o instrutor."),
-  enrollmentType: z.enum(["fixed", "dropin"]),
   allowDropin: z.boolean(),
   sessionPriceCents: z.number().int().min(0).optional(),
   capacity: z.number().int().min(1, "A capacidade deve ser ao menos 1."),

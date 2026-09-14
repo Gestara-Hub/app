@@ -172,8 +172,7 @@ export function TurmaForm({
           modalityId: turma.modalityId ?? "",
           planId: turma.planId ?? "",
           instructorId: turma.instructorId,
-          enrollmentType: turma.enrollmentType,
-          allowDropin: turma.allowDropin ?? true,
+          allowDropin: turma.allowDropin ?? false,
           sessionPriceCents: turma.sessionPriceCents ?? 0,
           capacity: turma.capacity,
           startDate: turma.startDate,
@@ -184,8 +183,7 @@ export function TurmaForm({
           modalityId: "",
           planId: "",
           instructorId: "",
-          enrollmentType: "fixed",
-          allowDropin: true,
+          allowDropin: false,
           sessionPriceCents: 0,
           capacity: 10,
           startDate: format(new Date(), "yyyy-MM-dd"),
@@ -206,7 +204,6 @@ export function TurmaForm({
       modalityId: values.modalityId || undefined,
       planId: values.planId || undefined,
       instructorId: values.instructorId,
-      enrollmentType: values.enrollmentType,
       allowDropin: values.allowDropin,
       sessionPriceCents: values.allowDropin ? (values.sessionPriceCents || undefined) : undefined,
       capacity: values.capacity,
@@ -282,37 +279,26 @@ export function TurmaForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField<TurmaFormValues>
-            name="enrollmentType"
-            label="Inscrição"
-            options={[
-              { label: "Turma fixa (matrícula)", value: "fixed" },
-              { label: "Aula avulsa (reserva)", value: "dropin" },
-            ]}
-            required
-            disabled={pending}
-          />
           <InputNumber<TurmaFormValues>
             name="capacity"
             label="Capacidade (vagas)"
             min={1}
             disabled={pending}
           />
+          <SelectField<TurmaFormValues>
+            name="planId"
+            label="Plano de mensalidade"
+            placeholder="Sem cobrança (opcional)"
+            options={planOptions}
+            disabled={pending}
+          />
         </div>
 
-        <SelectField<TurmaFormValues>
-          name="planId"
-          label="Plano"
-          placeholder="Sem cobrança (opcional)"
-          options={planOptions}
-          disabled={pending}
-        />
-
-        <div className="space-y-3">
+        <div className="space-y-3 rounded-lg border p-3.5 bg-muted/20">
           <SwitchField<TurmaFormValues>
             name="allowDropin"
             label="Permitir aulas avulsas nesta turma"
-            hint="Alunos poderão reservar aulas avulsas nesta turma caso haja vagas disponíveis."
+            hint="Alunos poderão reservar aulas avulsas nas vagas restantes desta turma."
             disabled={pending}
           />
 

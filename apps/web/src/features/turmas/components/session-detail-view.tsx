@@ -72,7 +72,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     return <Skeleton className="h-40 w-full rounded-md" />;
   }
 
-  const isDropin = session.enrollmentType === "dropin";
   const rosterIds = new Set(session.roster.map((r) => r.studentId));
   const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
 
@@ -180,7 +179,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       ) : (
         <ListContainer>
           {session.roster.map((r) => {
-            const isEnrolled = r.kind === "enrolled" || (!r.kind && !isDropin);
+            const isEnrolled = r.kind === "enrolled" || !r.kind;
             const isTrial = r.kind === "trial";
 
             return (

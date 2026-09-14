@@ -25,7 +25,7 @@ export default async function AppLayout({
 
   return (
     <SessionProvider user={user} model={model}>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
         <AppSidebar />
         <SidebarInset>
           <AppTopbar />

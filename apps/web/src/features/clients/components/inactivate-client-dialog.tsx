@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { useInactivateClient } from "../hooks/use-clients";
 
 interface InactivateClientDialogProps {
@@ -15,16 +16,24 @@ export function InactivateClientDialog({
   client,
   onOpenChange,
 }: InactivateClientDialogProps) {
+  const isClasses = useModel() === "classes";
   const inactivateMut = useInactivateClient();
 
   async function handleConfirm() {
     if (!client) return;
     try {
       await inactivateMut.mutateAsync(client.id);
-      toast.success("Cliente inativado.");
+      toast.success(isClasses ? "Aluno inativado." : "Cliente inativado.");
       onOpenChange(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível inativar o cliente."));
+      toast.error(
+        getErrorMessage(
+          error,
+          isClasses
+            ? "Não foi possível inativar o aluno."
+            : "Não foi possível inativar o cliente.",
+        ),
+      );
     }
   }
 
@@ -34,12 +43,13 @@ export function InactivateClientDialog({
       onOpenChange={(open) => {
         if (!open) onOpenChange(false);
       }}
-      title="Inativar cliente?"
+      title={isClasses ? "Inativar aluno?" : "Inativar cliente?"}
       description={
         client ? (
           <>
-            “{client.name}” deixará de ser sugerido em novos agendamentos.
-            O histórico é mantido e você pode reativá-lo depois.
+            “{client.name}” deixará de ser sugerido em{" "}
+            {isClasses ? "novas matrículas" : "novos agendamentos"}. O histórico
+            é mantido e você pode reativá-lo depois.
           </>
         ) : null
       }

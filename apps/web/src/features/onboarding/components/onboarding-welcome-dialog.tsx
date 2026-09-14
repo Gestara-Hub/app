@@ -35,7 +35,7 @@ export function OnboardingWelcomeDialog({
           </div>
           <DialogTitle>Bem-vindo ao GestaraHub 👋</DialogTitle>
           <DialogDescription>
-            Vamos deixar seu negócio pronto para os primeiros agendamentos.
+            Vamos deixar tudo pronto para o seu negócio começar a operar.
             Prefere um tour rápido pela tela ou já começar a configurar?
           </DialogDescription>
         </DialogHeader>

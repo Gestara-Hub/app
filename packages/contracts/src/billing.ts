@@ -7,8 +7,8 @@ import type { DateISO, DateTimeISO, Id, RecordStatus } from "./common";
  * drop-in = drop-in charge.
  */
 
-/** Plan periodicity: monthly, biweekly, weekly, or single session. */
-export type PlanPeriod = "monthly" | "biweekly" | "weekly" | "session";
+/** Plan periodicity: monthly, biweekly, or weekly (recurring memberships). */
+export type PlanPeriod = "monthly" | "biweekly" | "weekly";
 
 /** Access or membership plan. */
 export interface Plan {

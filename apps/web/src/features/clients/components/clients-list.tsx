@@ -22,6 +22,7 @@ import {
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { formatPhone } from "@gestarahub/core/format";
 import type { Client, ClientFilter, RecordStatus } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { useClients } from "../hooks/use-clients";
 
 interface ClientsListProps {
@@ -35,12 +36,14 @@ interface ClientsListProps {
 function ClientRow({
   client,
   canManage,
+  isClasses,
   onEdit,
   onInactivate,
   onReactivate,
 }: {
   client: Client;
   canManage: boolean;
+  isClasses: boolean;
   onEdit: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
@@ -80,7 +83,7 @@ function ClientRow({
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações do cliente"
+            title={isClasses ? "Ações do aluno" : "Ações do cliente"}
             variant="ghost"
           />
         ) : null
@@ -151,6 +154,7 @@ export function ClientsList({
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
+  const isClasses = useModel() === "classes";
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
 
@@ -181,7 +185,9 @@ export function ClientsList({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertTriangle className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Não foi possível carregar os clientes. Tente novamente.
+          {isClasses
+            ? "Não foi possível carregar os alunos. Tente novamente."
+            : "Não foi possível carregar os clientes. Tente novamente."}
         </p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
           <RotateCw className="size-4" />
@@ -199,9 +205,23 @@ export function ClientsList({
         emptyGuide={
           <ModuleEmptyGuide
             icon={<Users className="size-8" />}
-            title="Nenhum cliente cadastrado ainda."
-            description="Cadastre seus clientes para agendá-los e acompanhar o histórico."
-            actionLabel={canManage ? "Cadastrar cliente" : undefined}
+            title={
+              isClasses
+                ? "Nenhum aluno cadastrado ainda."
+                : "Nenhum cliente cadastrado ainda."
+            }
+            description={
+              isClasses
+                ? "Cadastre seus alunos para matriculá-los em turmas e acompanhar mensalidades."
+                : "Cadastre seus clientes para agendá-los e acompanhar o histórico."
+            }
+            actionLabel={
+              canManage
+                ? isClasses
+                  ? "Cadastrar aluno"
+                  : "Cadastrar cliente"
+                : undefined
+            }
             onAction={canManage ? onCreate : undefined}
           />
         }
@@ -213,6 +233,7 @@ export function ClientsList({
         key={client.id}
         client={client}
         canManage={canManage}
+        isClasses={isClasses}
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
@@ -228,7 +249,7 @@ export function ClientsList({
           value={search}
           onChange={setSearch}
           placeholder="Buscar por nome ou telefone..."
-          aria-label="Buscar cliente"
+          aria-label={isClasses ? "Buscar aluno" : "Buscar cliente"}
         />
         <StatusFilterSelect value={status} onChange={setStatus} />
       </div>
@@ -237,8 +258,8 @@ export function ClientsList({
       {!isPending && !isError && clients.length > 0 ? (
         <ListSummaryBar
           count={clients.length}
-          singularLabel="cliente cadastrado"
-          pluralLabel="clientes cadastrados"
+          singularLabel={isClasses ? "aluno cadastrado" : "cliente cadastrado"}
+          pluralLabel={isClasses ? "alunos cadastrados" : "clientes cadastrados"}
           hasFilters={hasSearch || hasFilters}
           onClearFilters={clearAll}
         />

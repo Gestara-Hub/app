@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth";
+import { useCan, useModel } from "@/features/auth";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
+import { ClientsOnboarding } from "@/features/onboarding";
 
 export function ClientsView() {
+  const isClasses = useModel() === "classes";
   const [formState, setFormState] = useState<{
     open: boolean;
     client?: Client;
@@ -32,22 +34,33 @@ export function ClientsView() {
         id: client.id,
         payload: { status: "active" },
       });
-      toast.success("Cliente reativado.");
+      toast.success(isClasses ? "Aluno reativado." : "Cliente reativado.");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível reativar o cliente."));
+      toast.error(
+        getErrorMessage(
+          error,
+          isClasses
+            ? "Não foi possível reativar o aluno."
+            : "Não foi possível reativar o cliente.",
+        ),
+      );
     }
   }
 
   return (
     <>
       <PageHeader
-        title="Clientes"
-        description="Cadastro e histórico de clientes."
+        title={isClasses ? "Alunos" : "Clientes"}
+        description={
+          isClasses
+            ? "Cadastro e histórico de alunos."
+            : "Cadastro e histórico de clientes."
+        }
       >
         {canManage ? (
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} data-tour="clients-new">
             <Plus className="size-4" />
-            Novo cliente
+            {isClasses ? "Novo aluno" : "Novo cliente"}
           </Button>
         ) : null}
       </PageHeader>
@@ -74,6 +87,8 @@ export function ClientsView() {
           if (!open) setInactivating(null);
         }}
       />
+
+      <ClientsOnboarding />
     </>
   );
 }
