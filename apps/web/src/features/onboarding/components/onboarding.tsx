@@ -84,7 +84,7 @@ export function Onboarding() {
   // Estado derivado (sem efeito): abre as boas-vindas ate serem respondidas.
   // Qualquer acao de fechar grava `seen`, o que fecha o modal naturalmente.
   const welcomeOpen = !state.seen && !isComplete;
-  const showChecklist = !state.dismissed && !isComplete;
+  const showChecklist = !isComplete;
 
   return (
     <>
@@ -94,7 +94,6 @@ export function Onboarding() {
           doneCount={doneCount}
           total={total}
           isClasses={isClasses}
-          onDismiss={() => update({ dismissed: true })}
           onStartTour={() => setTourOpen(true)}
         />
       ) : null}

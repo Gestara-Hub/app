@@ -7,6 +7,16 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import {
   ListItemActionsMenu,
@@ -42,7 +52,6 @@ import {
   useReactivateClassGroup,
 } from "../hooks/use-turmas";
 import { TurmaFormDialog } from "./turma-form-dialog";
-import { TurmasOnboarding } from "@/features/onboarding";
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -165,6 +174,7 @@ function SkeletonRows({ showAction }: { showAction: boolean }) {
 }
 
 export function TurmasView() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
   const { data: turmas, isLoading } = useClassGroups({
@@ -174,6 +184,7 @@ export function TurmasView() {
   const can = useCan();
   const canManage = can("classes:manage");
   const [createOpen, setCreateOpen] = useState(false);
+  const [createdTurmaForEnroll, setCreatedTurmaForEnroll] = useState<ClassGroupView | null>(null);
   const [deactivatingTurma, setDeactivatingTurma] = useState<ClassGroupView | null>(null);
 
   const deactivate = useDeactivateClassGroup();
@@ -223,14 +234,45 @@ export function TurmasView() {
           </Link>
         </Button>
         {canManage ? (
-          <Button onClick={() => setCreateOpen(true)} data-tour="classes-new">
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Nova turma
           </Button>
         ) : null}
       </PageHeader>
 
-      <TurmaFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <TurmaFormDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(created) => setCreatedTurmaForEnroll(created)}
+      />
+
+      <AlertDialog
+        open={createdTurmaForEnroll !== null}
+        onOpenChange={(open) => !open && setCreatedTurmaForEnroll(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turma criada com sucesso!</AlertDialogTitle>
+            <AlertDialogDescription>
+              A turma <strong>&ldquo;{createdTurmaForEnroll?.name}&rdquo;</strong> foi cadastrada.
+              Agora você pode matricular os alunos nesta turma para iniciar as atividades e acompanhar a frequência.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Fazer isso mais tarde</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (createdTurmaForEnroll) {
+                  router.push(`/classes/${createdTurmaForEnroll.id}?enroll=true`);
+                }
+              }}
+            >
+              Matricular alunos agora
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmActionDialog
         open={deactivatingTurma !== null}
@@ -317,8 +359,6 @@ export function TurmasView() {
           )}
         </ListContainer>
       </div>
-
-      <TurmasOnboarding />
     </>
   );
 }

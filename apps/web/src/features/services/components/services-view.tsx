@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Service } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { ServicesOnboarding } from "@/features/onboarding";
 import { CategoryManagerDialog } from "@/features/categories";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
@@ -57,12 +56,11 @@ export function ServicesView() {
             <Button
               variant="outline"
               onClick={() => setCategoriesOpen(true)}
-              data-tour="services-categories"
             >
               <Tags className="size-4" />
               Categorias
             </Button>
-            <Button onClick={openCreate} data-tour="services-new">
+            <Button onClick={openCreate}>
               <Plus className="size-4" />
               Novo serviço
             </Button>
@@ -97,8 +95,6 @@ export function ServicesView() {
         open={categoriesOpen}
         onOpenChange={setCategoriesOpen}
       />
-
-      <ServicesOnboarding />
     </>
   );
 }

@@ -24,7 +24,6 @@ import {
   useMarkChargePaid,
   useMarkChargePending,
 } from "../hooks/use-billing";
-import { BillingOnboarding } from "@/features/onboarding";
 
 const STATUS_LABEL: Record<ChargeStatus, string> = {
   pending: "Pendente",
@@ -87,7 +86,6 @@ export function BillingView() {
           <Button
             onClick={generate}
             disabled={generateMut.isPending}
-            data-tour="billing-generate"
           >
             <Wallet className="size-4" />
             Gerar cobranças
@@ -287,8 +285,6 @@ export function BillingView() {
           </ListContainer>
         </div>
       )}
-
-      <BillingOnboarding />
     </>
   );
 }

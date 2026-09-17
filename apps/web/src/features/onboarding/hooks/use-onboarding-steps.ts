@@ -89,21 +89,21 @@ export function useOnboardingSteps() {
         done: (professionalsQuery.data?.length ?? 0) > 0,
       },
       {
+        id: "clients",
+        label: "Cadastrar alunos",
+        description: "Cadastre os alunos que frequentarão as turmas.",
+        href: "/clients",
+        cta: "Adicionar",
+        done: (clientsQuery.data?.length ?? 0) > 0,
+      },
+      {
         id: "classes",
         label: "Criar a primeira turma",
         description: "Defina os horários, capacidade e dias das aulas.",
         href: "/classes",
         cta: "Criar",
         done: (classGroupsQuery.data?.length ?? 0) > 0,
-        requires: ["team"],
-      },
-      {
-        id: "clients",
-        label: "Cadastrar alunos",
-        description: "Comece a cadastrar e matricular os alunos.",
-        href: "/clients",
-        cta: "Adicionar",
-        done: (clientsQuery.data?.length ?? 0) > 0,
+        requires: ["team", "clients"],
       },
     ];
   } else {
@@ -160,6 +160,10 @@ export function useOnboardingSteps() {
   }
 
   const doneCount = steps.filter((step) => step.done).length;
+  const doneById = Object.fromEntries(steps.map((s) => [s.id, s.done]));
+  const isLocked = (step: OnboardingStep) =>
+    (step.requires ?? []).some((id) => !doneById[id]);
+  const nextStep = steps.find((step) => !step.done && !isLocked(step)) ?? null;
 
   return {
     steps,
@@ -168,5 +172,6 @@ export function useOnboardingSteps() {
     isReady,
     isComplete: doneCount === steps.length,
     isClasses,
+    nextStep,
   };
 }

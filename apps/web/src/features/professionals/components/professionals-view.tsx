@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ProfessionalView } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { TeamOnboarding } from "@/features/onboarding";
 import { RoleManagerDialog } from "@/features/roles";
 import { useUpdateProfessional } from "../hooks/use-professionals";
 import { ProfessionalsList } from "./professionals-list";
@@ -62,12 +61,11 @@ export function ProfessionalsView() {
             <Button
               variant="outline"
               onClick={() => setRolesOpen(true)}
-              data-tour="team-roles"
             >
               <Briefcase className="size-4" />
               Cargos
             </Button>
-            <Button onClick={openCreate} data-tour="team-new">
+            <Button onClick={openCreate}>
               <Plus className="size-4" />
               Novo profissional
             </Button>
@@ -99,8 +97,6 @@ export function ProfessionalsView() {
       />
 
       <RoleManagerDialog open={rolesOpen} onOpenChange={setRolesOpen} />
-
-      <TeamOnboarding />
     </>
   );
 }

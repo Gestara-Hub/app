@@ -14,10 +14,12 @@ export function TurmaFormDialog({
   open,
   onOpenChange,
   turma,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   turma?: ClassGroupView;
+  onCreated?: (created: ClassGroupView) => void;
 }) {
   const isEdit = Boolean(turma);
   return (
@@ -38,7 +40,12 @@ export function TurmaFormDialog({
           key={turma?.id ?? (open ? "open" : "closed")}
           turma={turma}
           formId="turma-form"
-          onSuccess={() => onOpenChange(false)}
+          onSuccess={(created) => {
+            onOpenChange(false);
+            if (!isEdit && created && onCreated) {
+              onCreated(created);
+            }
+          }}
         />
       </DialogContent>
     </Dialog>

@@ -12,8 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { FieldShell } from "@/components/form/field-shell";
+import type { Unit } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 
-interface WorkingHour {
+export interface WorkingHour {
   weekday: number;
   start: string;
   end: string;
@@ -31,7 +33,7 @@ const WEEKDAYS: { value: number; short: string; label: string }[] = [
   { value: 6, short: "Sáb", label: "Sábado" },
 ];
 
-interface Schedule {
+export interface Schedule {
   start: string;
   end: string;
   lunch: boolean;
@@ -39,25 +41,46 @@ interface Schedule {
   breakEnd: string;
 }
 
-// Estado inicial "limpo": sem horario. So e preenchido quando o usuario ativa
-// um dia (ver ensureTimes) — assim o cadastro novo abre sem nada definido.
 const DEFAULT_SCHEDULE: Schedule = {
-  start: "",
-  end: "",
+  start: "09:00",
+  end: "18:00",
   lunch: false,
   breakStart: "12:00",
   breakEnd: "13:00",
 };
 
-/** Preenche o horario padrao quando ainda vazio (ao ativar um dia). */
+/**
+ * Retorna os horários padrão ao criar um novo profissional:
+ * Prioriza os dias abertos e horários configurados na unidade;
+ * Se a unidade não tiver horários cadastrados, usa Segunda a Sexta das 09:00 às 18:00.
+ */
+export function getDefaultWorkingHours(unit?: Unit): WorkingHour[] {
+  const openDays = (unit?.businessHours ?? []).filter(
+    (d) => !d.closed && d.start && d.end,
+  );
+  if (openDays.length > 0) {
+    return openDays.map((d) => ({
+      weekday: d.weekday,
+      start: d.start ?? "09:00",
+      end: d.end ?? "18:00",
+    }));
+  }
+  return [1, 2, 3, 4, 5].map((weekday) => ({
+    weekday,
+    start: "09:00",
+    end: "18:00",
+  }));
+}
+
+/** Preenche o horário padrão quando ainda vazio. */
 function ensureTimes(s: Schedule): Schedule {
   return { ...s, start: s.start || "09:00", end: s.end || "18:00" };
 }
 
 function toSchedule(h: WorkingHour): Schedule {
   return {
-    start: h.start,
-    end: h.end,
+    start: h.start || "09:00",
+    end: h.end || "18:00",
     lunch: Boolean(h.breakStart && h.breakEnd),
     breakStart: h.breakStart ?? "12:00",
     breakEnd: h.breakEnd ?? "13:00",
@@ -67,27 +90,27 @@ function toSchedule(h: WorkingHour): Schedule {
 function toWorkingHour(weekday: number, s: Schedule): WorkingHour {
   return {
     weekday,
-    start: s.start,
-    end: s.end,
+    start: s.start || "09:00",
+    end: s.end || "18:00",
     ...(s.lunch ? { breakStart: s.breakStart, breakEnd: s.breakEnd } : {}),
   };
 }
 
-/** Horario "representativo" para o modo unico: 1o dia + o primeiro almoco achado. */
+/** Horário "representativo" para o modo único: 1º dia + o primeiro almoço achado. */
 function deriveUniform(hours: WorkingHour[] | undefined): Schedule {
   const first = hours?.[0];
   if (!first) return DEFAULT_SCHEDULE;
   const withBreak = hours?.find((h) => h.breakStart && h.breakEnd);
   return {
-    start: first.start,
-    end: first.end,
+    start: first.start || "09:00",
+    end: first.end || "18:00",
     lunch: Boolean(withBreak),
     breakStart: withBreak?.breakStart ?? "12:00",
     breakEnd: withBreak?.breakEnd ?? "13:00",
   };
 }
 
-/** Dias ativos com horario ou almoco diferentes entre si — exige o editor por dia. */
+/** Dias ativos com horário ou almoço diferentes entre si — exige o editor por dia. */
 function isHeterogeneous(hours: WorkingHour[] | undefined): boolean {
   if (!hours || hours.length <= 1) return false;
   const key = (h: WorkingHour) =>
@@ -95,6 +118,7 @@ function isHeterogeneous(hours: WorkingHour[] | undefined): boolean {
   const first = key(hours[0]);
   return hours.some((h) => key(h) !== first);
 }
+
 
 const byWeekday = (list: WorkingHour[]) =>
   [...list].sort((a, b) => a.weekday - b.weekday);
@@ -146,11 +170,10 @@ export function WorkingHoursField<T extends FieldValues>({
   label = "Disponibilidade",
   disabled,
 }: WorkingHoursFieldProps<T>) {
+  const isClasses = useModel() === "classes";
   const { control, getValues } = useFormContext<T>();
   const initial = getValues(name) as WorkingHour[] | undefined;
   const [perDay, setPerDay] = useState<boolean>(() => isHeterogeneous(initial));
-  // Modelo do modo unico: horario base aplicado a todo dia marcado. Mantido em
-  // estado para sobreviver a desmarcar/marcar dias (o campo pode ficar vazio).
   const [uniform, setUniform] = useState<Schedule>(() => deriveUniform(initial));
 
   return (
@@ -162,17 +185,18 @@ export function WorkingHoursField<T extends FieldValues>({
         const activeDays = new Set(hours.map((h) => h.weekday));
         const byDay = new Map(hours.map((h) => [h.weekday, h] as const));
 
-        // ---- Modo unico -------------------------------------------------
+        // Mantém o schedule uniforme sincronizado se os horários mudarem
         const commitUniform = (next: Schedule, days: Set<number>) => {
-          // Com dias marcados, garante horario valido; sem dias, mantem vazio.
           const filled = days.size > 0 ? ensureTimes(next) : next;
           setUniform(filled);
           field.onChange(
             [...days].sort((a, b) => a - b).map((w) => toWorkingHour(w, filled)),
           );
         };
+
         const patchUniform = (patch: Partial<Schedule>) =>
           commitUniform({ ...uniform, ...patch }, activeDays);
+
         const toggleUniformDay = (weekday: number) => {
           const next = new Set(activeDays);
           if (next.has(weekday)) next.delete(weekday);
@@ -192,6 +216,7 @@ export function WorkingHoursField<T extends FieldValues>({
             field.onChange(hours.filter((h) => h.weekday !== weekday));
           }
         };
+
         const patchDay = (weekday: number, patch: Partial<Schedule>) => {
           const current = byDay.get(weekday);
           if (!current) return;
@@ -202,13 +227,12 @@ export function WorkingHoursField<T extends FieldValues>({
           );
         };
 
-        // ---- Alternancia de modo ----------------------------------------
+        // ---- Alternância de modo ----------------------------------------
         const setPerDayMode = (on: boolean) => {
           if (on) {
             setPerDay(true);
             return;
           }
-          // Voltar ao horario unico = unificar os dias marcados num so horario.
           const uni = deriveUniform(hours);
           setUniform(uni);
           setPerDay(false);
@@ -220,189 +244,226 @@ export function WorkingHoursField<T extends FieldValues>({
         };
 
         return (
-          <FieldShell
-            label={label}
-            error={fieldState.error?.message}
-            hint={
-              perDay
-                ? "Cada dia marcado tem o próprio horário e almoço."
-                : "O horário vale para todos os dias marcados."
-            }
-          >
-            <div className="space-y-3 rounded-md border p-3">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={perDay}
-                  onCheckedChange={setPerDayMode}
-                  disabled={disabled}
-                  aria-label="Personalizar horário por dia"
-                />
-                <span className="text-muted-foreground">
-                  Personalizar horário por dia
-                </span>
-              </label>
-
+          <FieldShell label={label} error={fieldState.error?.message}>
+            <div className="space-y-4 rounded-xl border bg-card p-3.5 shadow-2xs sm:p-4">
               {perDay ? (
-                <div className="divide-y divide-border overflow-hidden rounded-md border">
-                  {WEEKDAYS.map((d) => {
-                    const on = activeDays.has(d.value);
-                    const entry = byDay.get(d.value);
-                    const s = entry ? toSchedule(entry) : null;
-                    return (
-                      <div key={d.value} className="px-3 py-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 shrink-0 font-medium">
-                            {d.short}
-                          </span>
-                          <Switch
-                            checked={on}
-                            onCheckedChange={(v) => setDayActive(d.value, v)}
-                            disabled={disabled}
-                            aria-label={`${d.label} — atende`}
-                          />
-                          {on && s ? (
-                            <>
-                              <TimeInput
-                                value={s.start}
-                                onChange={(v) => patchDay(d.value, { start: v })}
-                                disabled={disabled}
-                                ariaLabel={`${d.label}: início do atendimento`}
-                                className="w-28"
-                              />
-                              <span className="text-muted-foreground">às</span>
-                              <TimeInput
-                                value={s.end}
-                                onChange={(v) => patchDay(d.value, { end: v })}
-                                disabled={disabled}
-                                ariaLabel={`${d.label}: fim do atendimento`}
-                                className="w-28"
-                              />
-                            </>
-                          ) : (
-                            <span className="text-muted-foreground">
-                              Não atende
+                /* MODO AVANÇADO: HORÁRIOS POR DIA */
+                <div className="space-y-3">
+                  <div className="divide-y divide-border overflow-hidden rounded-lg border bg-background">
+                    {WEEKDAYS.map((d) => {
+                      const on = activeDays.has(d.value);
+                      const entry = byDay.get(d.value);
+                      const s = entry ? toSchedule(entry) : null;
+                      return (
+                        <div key={d.value} className="px-3 py-2.5 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="w-8 shrink-0 font-medium">
+                              {d.short}
                             </span>
-                          )}
-                        </div>
-
-                        {on && s ? (
-                          <div className="mt-2 flex items-center gap-2 pl-10 text-muted-foreground">
-                            <label className="flex items-center gap-1.5">
-                              <Checkbox
-                                checked={s.lunch}
-                                onCheckedChange={(c) =>
-                                  patchDay(d.value, { lunch: Boolean(c) })
-                                }
-                                disabled={disabled}
-                              />
-                              Almoço
-                            </label>
-                            {s.lunch ? (
+                            <Switch
+                              checked={on}
+                              onCheckedChange={(v) => setDayActive(d.value, v)}
+                              disabled={disabled}
+                              aria-label={`${d.label} — atende`}
+                            />
+                            {on && s ? (
                               <>
                                 <TimeInput
-                                  value={s.breakStart}
+                                  value={s.start}
                                   onChange={(v) =>
-                                    patchDay(d.value, { breakStart: v })
+                                    patchDay(d.value, { start: v })
                                   }
                                   disabled={disabled}
-                                  ariaLabel={`${d.label}: início do almoço`}
-                                  className="w-28"
+                                  ariaLabel={`${d.label}: início`}
                                 />
-                                <span>às</span>
+                                <span className="text-muted-foreground">às</span>
                                 <TimeInput
-                                  value={s.breakEnd}
+                                  value={s.end}
                                   onChange={(v) =>
-                                    patchDay(d.value, { breakEnd: v })
+                                    patchDay(d.value, { end: v })
                                   }
                                   disabled={disabled}
-                                  ariaLabel={`${d.label}: fim do almoço`}
-                                  className="w-28"
+                                  ariaLabel={`${d.label}: término`}
                                 />
                               </>
-                            ) : null}
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Não atende
+                              </span>
+                            )}
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+
+                          {on && s ? (
+                            <div className="mt-2 flex items-center gap-2 pl-10 text-xs text-muted-foreground">
+                              <label className="flex cursor-pointer items-center gap-1.5">
+                                <Checkbox
+                                  checked={s.lunch}
+                                  onCheckedChange={(c) =>
+                                    patchDay(d.value, { lunch: Boolean(c) })
+                                  }
+                                  disabled={disabled}
+                                />
+                                {isClasses ? "Intervalo" : "Almoço"}
+                              </label>
+                              {s.lunch ? (
+                                <>
+                                  <TimeInput
+                                    value={s.breakStart}
+                                    onChange={(v) =>
+                                      patchDay(d.value, { breakStart: v })
+                                    }
+                                    disabled={disabled}
+                                    ariaLabel={`${d.label}: início do almoço`}
+                                    className="w-24"
+                                  />
+                                  <span>às</span>
+                                  <TimeInput
+                                    value={s.breakEnd}
+                                    onChange={(v) =>
+                                      patchDay(d.value, { breakEnd: v })
+                                    }
+                                    disabled={disabled}
+                                    ariaLabel={`${d.label}: término do almoço`}
+                                    className="w-24"
+                                  />
+                                </>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <label className="flex cursor-pointer items-center justify-between gap-4">
+                      <span className="text-sm font-medium text-foreground">
+                        Personalizar horário por dia
+                      </span>
+                      <Switch
+                        checked={perDay}
+                        onCheckedChange={setPerDayMode}
+                        disabled={disabled}
+                        aria-label="Personalizar horário por dia"
+                      />
+                    </label>
+                  </div>
                 </div>
               ) : (
-                <>
+                /* MODO UNIFICADO (PADRÃO): DIAS -> HORÁRIOS -> ALMOÇO */
+                <div className="space-y-4">
+                  {/* DIAS */}
+                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                    {WEEKDAYS.map((d) => {
+                      const on = activeDays.has(d.value);
+                      return (
+                        <button
+                          key={d.value}
+                          type="button"
+                          onClick={() => toggleUniformDay(d.value)}
+                          disabled={disabled}
+                          aria-pressed={on}
+                          title={`${d.label}: clique para ${on ? "desmarcar" : "marcar"}`}
+                          className={cn(
+                            "flex h-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all select-none disabled:opacity-50",
+                            on
+                              ? "border-primary bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/20"
+                              : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          <span>{d.short}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* HORÁRIOS */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Atende das</span>
+                    <span className="text-muted-foreground">
+                      {isClasses ? "Disponível das" : "Atende das"}
+                    </span>
                     <TimeInput
                       value={uniform.start}
                       onChange={(v) => patchUniform({ start: v })}
-                      disabled={disabled}
-                      ariaLabel="Início do atendimento"
+                      disabled={disabled || activeDays.size === 0}
+                      ariaLabel={
+                        isClasses
+                          ? "Início da disponibilidade"
+                          : "Início do atendimento"
+                      }
                     />
                     <span className="text-muted-foreground">às</span>
                     <TimeInput
                       value={uniform.end}
                       onChange={(v) => patchUniform({ end: v })}
-                      disabled={disabled}
-                      ariaLabel="Fim do atendimento"
+                      disabled={disabled || activeDays.size === 0}
+                      ariaLabel={
+                        isClasses
+                          ? "Fim da disponibilidade"
+                          : "Fim do atendimento"
+                      }
                     />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <label className="flex items-center gap-1.5 text-muted-foreground">
+                  {/* ALMOÇO / INTERVALO */}
+                  <div className="space-y-2">
+                    <label
+                      className={cn(
+                        "inline-flex items-center gap-2 text-sm",
+                        activeDays.size === 0
+                          ? "cursor-not-allowed opacity-60"
+                          : "cursor-pointer",
+                      )}
+                    >
                       <Checkbox
                         checked={uniform.lunch}
                         onCheckedChange={(c) =>
                           patchUniform({ lunch: Boolean(c) })
                         }
-                        disabled={disabled}
+                        disabled={disabled || activeDays.size === 0}
                       />
-                      Almoço
+                      <span className="text-foreground">
+                        {isClasses
+                          ? "Adicionar intervalo de descanso"
+                          : "Adicionar horário de almoço"}
+                      </span>
                     </label>
-                    {uniform.lunch ? (
-                      <>
+
+                    {uniform.lunch && activeDays.size > 0 ? (
+                      <div className="flex flex-wrap items-center gap-2 pl-6 text-sm text-muted-foreground">
+                        <span>Das</span>
                         <TimeInput
                           value={uniform.breakStart}
                           onChange={(v) => patchUniform({ breakStart: v })}
                           disabled={disabled}
-                          ariaLabel="Início do almoço"
+                          ariaLabel="Início do intervalo"
                         />
-                        <span className="text-muted-foreground">às</span>
+                        <span>às</span>
                         <TimeInput
                           value={uniform.breakEnd}
                           onChange={(v) => patchUniform({ breakEnd: v })}
                           disabled={disabled}
-                          ariaLabel="Fim do almoço"
+                          ariaLabel="Fim do intervalo"
                         />
-                      </>
+                      </div>
                     ) : null}
                   </div>
 
-                  <div>
-                    <p className="mb-1.5 text-xs text-muted-foreground">
-                      Dias de atendimento
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {WEEKDAYS.map((d) => {
-                        const on = activeDays.has(d.value);
-                        return (
-                          <button
-                            key={d.value}
-                            type="button"
-                            onClick={() => toggleUniformDay(d.value)}
-                            disabled={disabled}
-                            aria-pressed={on}
-                            className={cn(
-                              "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
-                              on
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-input bg-background text-muted-foreground hover:bg-accent",
-                            )}
-                          >
-                            {d.short}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  {/* PERSONALIZAR POR DIA */}
+                  <div className="border-t pt-3">
+                    <label className="flex cursor-pointer items-center justify-between gap-4">
+                      <span className="text-sm font-medium text-foreground">
+                        Personalizar horários por dia
+                      </span>
+                      <Switch
+                        checked={perDay}
+                        onCheckedChange={setPerDayMode}
+                        disabled={disabled}
+                        aria-label="Personalizar horário por dia"
+                      />
+                    </label>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </FieldShell>

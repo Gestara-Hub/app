@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useForm,
   useWatch,
@@ -60,28 +60,42 @@ function MeetingSlotsEditor({
   disabled?: boolean;
   error?: string;
 }) {
-  const [tmpl, setTmpl] = useState(() => ({
+  const [fallbackTime, setFallbackTime] = useState(() => ({
     start: value[0]?.start ?? "18:00",
     end: value[0]?.end ?? "19:00",
   }));
   const days = new Set(value.map((s) => s.weekday));
 
-  const write = (nextDays: Set<number>, t: { start: string; end: string }) =>
+  const currentStart = value[0]?.start ?? fallbackTime.start;
+  const currentEnd = value[0]?.end ?? fallbackTime.end;
+
+  const setTime = (patch: Partial<{ start: string; end: string }>) => {
+    const next = {
+      start: patch.start ?? currentStart,
+      end: patch.end ?? currentEnd,
+    };
+    setFallbackTime(next);
+    if (value.length > 0) {
+      onChange(
+        value.map((s) => ({
+          ...s,
+          start: next.start,
+          end: next.end,
+        })),
+      );
+    }
+  };
+
+  const toggleDay = (weekday: number) => {
+    const nextDays = new Set(days);
+    if (nextDays.has(weekday)) nextDays.delete(weekday);
+    else nextDays.add(weekday);
+
     onChange(
       [...nextDays]
         .sort((a, b) => a - b)
-        .map((weekday) => ({ weekday, start: t.start, end: t.end })),
+        .map((w) => ({ weekday: w, start: currentStart, end: currentEnd })),
     );
-  const setTime = (patch: Partial<{ start: string; end: string }>) => {
-    const t = { ...tmpl, ...patch };
-    setTmpl(t);
-    write(days, t);
-  };
-  const toggleDay = (weekday: number) => {
-    const next = new Set(days);
-    if (next.has(weekday)) next.delete(weekday);
-    else next.add(weekday);
-    write(next, tmpl);
   };
 
   return (
@@ -96,7 +110,7 @@ function MeetingSlotsEditor({
           <Input
             type="time"
             step={300}
-            value={tmpl.start}
+            value={currentStart}
             onChange={(e) => setTime({ start: e.target.value })}
             disabled={disabled}
             aria-label="Início do encontro"
@@ -106,7 +120,7 @@ function MeetingSlotsEditor({
           <Input
             type="time"
             step={300}
-            value={tmpl.end}
+            value={currentEnd}
             onChange={(e) => setTime({ end: e.target.value })}
             disabled={disabled}
             aria-label="Fim do encontro"
@@ -115,7 +129,7 @@ function MeetingSlotsEditor({
         </div>
         <div>
           <p className="mb-1.5 text-xs text-muted-foreground">Dias</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
             {WEEKDAYS.map((d) => {
               const on = days.has(d.value);
               return (
@@ -125,14 +139,15 @@ function MeetingSlotsEditor({
                   onClick={() => toggleDay(d.value)}
                   disabled={disabled}
                   aria-pressed={on}
+                  title={`${d.short}: clique para ${on ? "desmarcar" : "marcar"}`}
                   className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                    "flex h-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all select-none disabled:opacity-50",
                     on
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input bg-background text-muted-foreground hover:bg-accent",
+                      ? "border-primary bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/20"
+                      : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
-                  {d.short}
+                  <span>{d.short}</span>
                 </button>
               );
             })}
@@ -150,7 +165,7 @@ export function TurmaForm({
 }: {
   turma?: ClassGroupView;
   formId: string;
-  onSuccess: () => void;
+  onSuccess?: (created?: ClassGroupView) => void;
 }) {
   const createMut = useCreateClassGroup();
   const updateMut = useUpdateClassGroup();
@@ -196,12 +211,87 @@ export function TurmaForm({
     name: "allowDropin",
   });
 
+  const modalityId = useWatch({
+    control: form.control,
+    name: "modalityId",
+  });
+
+  const instructorId = useWatch({
+    control: form.control,
+    name: "instructorId",
+  });
+
+  // Rastreia a última modalidade para detectar mudanças
+  const prevModalityRef = useRef<string>(turma?.modalityId ?? "");
+
+  // Ao alterar a modalidade, valida se o instrutor atual continua elegível ou auto-seleciona se houver apenas 1
+  useEffect(() => {
+    if (prevModalityRef.current === modalityId) return;
+    prevModalityRef.current = modalityId;
+
+    if (!modalityId) {
+      if (instructorId) {
+        form.setValue("instructorId", "", { shouldValidate: true });
+      }
+      return;
+    }
+
+    const eligible = (professionals ?? []).filter((p) =>
+      (p.modalityIds ?? []).includes(modalityId),
+    );
+
+    if (instructorId && !eligible.some((p) => p.id === instructorId)) {
+      form.setValue("instructorId", "", { shouldValidate: true });
+    } else if (!instructorId && eligible.length === 1) {
+      form.setValue("instructorId", eligible[0].id, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [modalityId, instructorId, professionals, form]);
+
+  // Rastreia o último instrutor carregado para não sobrescrever em loop nem
+  // alterar slots já salvos na abertura de edição de uma turma existente.
+  const lastLoadedInstructorRef = useRef<string>(turma?.instructorId ?? "");
+
+  useEffect(() => {
+    if (!instructorId) {
+      lastLoadedInstructorRef.current = "";
+      return;
+    }
+
+    if (lastLoadedInstructorRef.current === instructorId) {
+      return;
+    }
+
+    const prof = (professionals ?? []).find((p) => p.id === instructorId);
+    if (!prof) return;
+
+    lastLoadedInstructorRef.current = instructorId;
+
+    const validHours = (prof.workingHours ?? []).filter(
+      (wh) => wh.start && wh.end && wh.start < wh.end,
+    );
+
+    if (validHours.length > 0) {
+      const slots = validHours.map((wh) => ({
+        weekday: wh.weekday,
+        start: wh.start,
+        end: wh.end,
+      }));
+      form.setValue("meetingSlots", slots, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+  }, [instructorId, professionals, form]);
+
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateClassGroup = {
       organizationId: user.organizationId,
       unitId: unit?.id ?? "",
       name: values.name,
-      modalityId: values.modalityId || undefined,
+      modalityId: values.modalityId,
       planId: values.planId || undefined,
       instructorId: values.instructorId,
       allowDropin: values.allowDropin,
@@ -219,11 +309,12 @@ export function TurmaForm({
       if (isEdit && turma) {
         await updateMut.mutateAsync({ id: turma.id, payload });
         toast.success("Turma atualizada com sucesso.");
+        onSuccess?.();
       } else {
-        await createMut.mutateAsync(payload);
+        const created = await createMut.mutateAsync(payload);
         toast.success("Turma criada com sucesso.");
+        onSuccess?.(created);
       }
-      onSuccess();
     } catch (error) {
       const fields = getFieldErrors(error);
       if (fields && fields.length > 0) {
@@ -240,7 +331,10 @@ export function TurmaForm({
     label: c.name,
     value: c.id,
   }));
-  const instructorOptions = (professionals ?? []).map((p) => ({
+  const eligibleInstructors = (professionals ?? []).filter((p) =>
+    modalityId ? (p.modalityIds ?? []).includes(modalityId) : false,
+  );
+  const instructorOptions = eligibleInstructors.map((p) => ({
     label: p.name,
     value: p.id,
   }));
@@ -264,17 +358,24 @@ export function TurmaForm({
           <SelectField<TurmaFormValues>
             name="modalityId"
             label="Modalidade / Curso"
-            placeholder="Selecione (opcional)"
+            placeholder="Selecione a modalidade"
             options={categoryOptions}
+            required
             disabled={pending}
           />
           <SelectField<TurmaFormValues>
             name="instructorId"
             label="Professor / Instrutor"
-            placeholder="Selecione"
+            placeholder={
+              !modalityId
+                ? "Selecione a modalidade primeiro"
+                : instructorOptions.length === 0
+                  ? "Nenhum professor leciona esta modalidade"
+                  : "Selecione o professor"
+            }
             options={instructorOptions}
             required
-            disabled={pending}
+            disabled={pending || !modalityId || instructorOptions.length === 0}
           />
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
@@ -167,12 +168,22 @@ export function TurmaDetailView({ id }: { id: string }) {
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
 
+  const searchParams = useSearchParams();
   const [editOpen, setEditOpen] = useState(false);
-  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollOpen, setEnrollOpen] = useState(
+    () => searchParams?.get("enroll") === "true",
+  );
   const [tab, setTab] = useState<Tab>("enrolled");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+
+  const handleEnrollOpenChange = (open: boolean) => {
+    setEnrollOpen(open);
+    if (!open && typeof window !== "undefined" && window.location.search.includes("enroll=")) {
+      window.history.replaceState(null, "", `/classes/${id}`);
+    }
+  };
 
   const rows = useMemo(() => {
     const term = normalizeText(search);
@@ -282,7 +293,7 @@ export function TurmaDetailView({ id }: { id: string }) {
       <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
       <EnrollStudentsDialog
         open={enrollOpen}
-        onOpenChange={setEnrollOpen}
+        onOpenChange={handleEnrollOpenChange}
         turma={turma}
         enrolledIds={enrolledIds}
         waitlistedIds={waitlistedIds}

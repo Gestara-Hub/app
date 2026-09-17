@@ -34,10 +34,14 @@ export function ModalitySelectionField<T extends FieldValues>({
     <MultiSelectField<T>
       name={name}
       label="Modalidades que leciona"
-      placeholder="Selecione as modalidades (opcional)"
+      placeholder={
+        required
+          ? "Selecione ao menos uma modalidade"
+          : "Selecione as modalidades (opcional)"
+      }
       searchPlaceholder="Buscar modalidade..."
       emptyMessage="Nenhuma modalidade cadastrada."
-      hint="Informa o que o professor ou instrutor leciona — não limita as turmas."
+      hint="Define as modalidades que este profissional leciona nas turmas."
       options={options}
       required={required}
       disabled={disabled}

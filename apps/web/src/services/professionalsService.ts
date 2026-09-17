@@ -56,7 +56,15 @@ function validateProfessional(
   if (has("roleId") && payload.roleId && !store.roles.some((r) => r.id === payload.roleId)) {
     fields.push({ field: "roleId", message: "Cargo inválido." });
   }
-  // serviceIds e opcional (pode ser vazio).
+  // No modelo de turmas (classes), ao menos uma modalidade é obrigatória.
+  if (store.organization.model === "classes" && (!partial || has("modalityIds"))) {
+    if (!payload.modalityIds || payload.modalityIds.length === 0) {
+      fields.push({
+        field: "modalityIds",
+        message: "Selecione ao menos uma modalidade que o profissional leciona.",
+      });
+    }
+  }
   if (has("workingHours") && payload.workingHours) {
     const invalid = payload.workingHours.some((h) => h.start >= h.end);
     if (invalid) {

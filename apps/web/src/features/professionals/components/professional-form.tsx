@@ -1,16 +1,17 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { useForm, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import {
   AutocompleteField,
   InputPhone,
   InputText,
   SwitchField,
 } from "@/components/form";
-import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
@@ -18,31 +19,33 @@ import type {
   CreateProfessional,
   Professional,
   ProfessionalView,
+  Unit,
   Weekday,
 } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
 import { useRoles } from "@/features/roles";
+import { useUnit } from "@/features/settings";
 import {
   useCreateProfessional,
   useUpdateProfessional,
 } from "../hooks/use-professionals";
 import {
-  professionalFormSchema,
+  getProfessionalFormSchema,
   type ProfessionalFormValues,
 } from "../professional-schema";
 import { ServiceSelectionField } from "./service-selection-field";
 import { ModalitySelectionField } from "./modality-selection-field";
-import { WorkingHoursField } from "./working-hours-field";
+import { getDefaultWorkingHours, WorkingHoursField } from "./working-hours-field";
 
 /**
- * Disponibilidade e OPCIONAL no cadastro: um profissional novo comeca sem
- * horario (campos limpos) e o usuario define se/quando quiser; na edicao mantem
- * o que ja tem. Quando fica vazio, a agenda apenas pede confirmacao ao agendar
- * (o horario do profissional e regra "mole").
+ * Ao cadastrar um novo profissional, os dias e horários padrão são pré-preenchidos
+ * a partir do expediente da unidade (ou Segunda a Sexta das 09:00 às 18:00 se a unidade ainda não tiver horário).
+ * Na edição, preserva rigorosamente o que o profissional já tem salvo.
  */
 function toDefaults(
   professional: Professional | undefined,
   roleName: string,
+  unit?: Unit,
 ): ProfessionalFormValues {
   return {
     name: professional?.name ?? "",
@@ -50,7 +53,9 @@ function toDefaults(
     phone: professional?.phone ?? "",
     serviceIds: professional?.serviceIds ?? [],
     modalityIds: professional?.modalityIds ?? [],
-    workingHours: professional?.workingHours ?? [],
+    workingHours: professional
+      ? professional.workingHours
+      : getDefaultWorkingHours(unit),
     active: professional ? professional.status === "active" : true,
   };
 }
@@ -68,6 +73,7 @@ export function ProfessionalForm({
 }: ProfessionalFormProps) {
   const isEdit = Boolean(professional);
   const isClasses = useModel() === "classes";
+  const { data: unit } = useUnit();
   const createMut = useCreateProfessional();
   const updateMut = useUpdateProfessional();
   const pending = createMut.isPending || updateMut.isPending;
@@ -85,12 +91,27 @@ export function ProfessionalForm({
       ? [...activeRoleNames, currentRoleName]
       : activeRoleNames;
 
+  const schema = useMemo(() => getProfessionalFormSchema(isClasses), [isClasses]);
+
   const form = useForm<ProfessionalFormValues>({
-    resolver: zodResolver(professionalFormSchema),
+    resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(professional, currentRoleName),
+    defaultValues: toDefaults(professional, currentRoleName, unit),
   });
+
+  // Se os dados da unidade carregarem após o primeiro render e o usuário ainda não
+  // tiver alterado a disponibilidade, sincroniza com os dias abertos da unidade.
+  useEffect(() => {
+    if (!isEdit && unit && !form.formState.isDirty) {
+      const openDays = (unit.businessHours ?? []).filter((d) => !d.closed);
+      if (openDays.length > 0) {
+        form.setValue("workingHours", getDefaultWorkingHours(unit), {
+          shouldDirty: false,
+        });
+      }
+    }
+  }, [unit, isEdit, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     const organizationId = professional?.organizationId ?? ORG_ID;
@@ -186,6 +207,7 @@ export function ProfessionalForm({
         {isClasses ? (
           <ModalitySelectionField<ProfessionalFormValues>
             name="modalityIds"
+            required={isClasses}
             disabled={pending}
           />
         ) : (

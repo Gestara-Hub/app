@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, Compass, Lock, Sparkles, X } from "lucide-react";
+import { ArrowRight, Check, Compass, Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "../hooks/use-onboarding-steps";
@@ -37,16 +37,16 @@ const GROUPS_CLASSES = [
     stepIds: ["hours", "modalities", "plans"],
   },
   {
-    id: "team",
-    label: "Equipe",
-    description: "Professores e instrutores.",
-    stepIds: ["team"],
+    id: "people",
+    label: "Pessoas",
+    description: "Professores, instrutores e alunos.",
+    stepIds: ["team", "clients"],
   },
   {
     id: "ops",
-    label: "Turmas & Alunos",
+    label: "Turmas & Matrículas",
     description: "Criação de turmas e matrículas de alunos.",
-    stepIds: ["classes", "clients"],
+    stepIds: ["classes"],
   },
 ] as const;
 
@@ -60,14 +60,12 @@ export function OnboardingChecklist({
   doneCount,
   total,
   isClasses = false,
-  onDismiss,
   onStartTour,
 }: {
   steps: OnboardingStep[];
   doneCount: number;
   total: number;
   isClasses?: boolean;
-  onDismiss: () => void;
   onStartTour: () => void;
 }) {
   const groups = isClasses ? GROUPS_CLASSES : GROUPS_DEFAULT;
@@ -78,7 +76,7 @@ export function OnboardingChecklist({
     services: "serviços",
     modalities: "modalidades",
     roles: "cargos",
-    team: isClasses ? "instrutores" : "equipe",
+    team: isClasses ? "professores" : "equipe",
     classes: "turmas",
     plans: "planos",
     clients: isClasses ? "alunos" : "clientes",
@@ -100,35 +98,51 @@ export function OnboardingChecklist({
   return (
     <div
       data-tour="onboarding-checklist"
-      className="mb-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5"
+      className="mb-8 space-y-5"
     >
-      <div className="mb-3 flex items-center justify-end gap-0.5">
-        <Button variant="ghost" size="sm" onClick={onStartTour}>
-          <Compass className="size-4" />
-          Tour
-        </Button>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Primeiros passos
+          </p>
+          <span className="text-xs text-muted-foreground">·</span>
+          <p className="text-xs font-medium text-muted-foreground tabular-nums">
+            {doneCount}/{total} concluídos
+          </p>
+        </div>
         <Button
           variant="ghost"
-          size="icon-sm"
-          aria-label="Ocultar primeiros passos"
-          onClick={onDismiss}
+          size="sm"
+          onClick={onStartTour}
+          className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
-          <X className="size-4" />
+          <Compass className="size-3.5" />
+          Tour
         </Button>
       </div>
 
+      <div className="h-1.5 overflow-hidden rounded-full bg-fuchsia-100/70 dark:bg-fuchsia-950/60">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-600 transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
       {nextStep ? (
-        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-fuchsia-200/90 bg-gradient-to-r from-fuchsia-50/80 via-pink-50/40 to-card p-4 shadow-xs dark:border-fuchsia-900/50 dark:from-fuchsia-950/30 dark:via-pink-950/15 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-400">
               <Sparkles className="size-3.5" />
               Próximo passo
             </p>
-            <p className="mt-1 truncate text-lg font-semibold">
+            <p className="mt-1 truncate text-lg font-semibold text-foreground">
               {nextStep.label}
             </p>
           </div>
-          <Button asChild className="shrink-0">
+          <Button
+            asChild
+            className="shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700"
+          >
             <Link href={nextStep.href}>
               Continuar
               <ArrowRight className="size-4" />
@@ -136,21 +150,6 @@ export function OnboardingChecklist({
           </Button>
         </div>
       ) : null}
-
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Primeiros passos
-        </p>
-        <p className="text-xs font-medium text-muted-foreground tabular-nums">
-          {doneCount}/{total} concluídos
-        </p>
-      </div>
-      <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
 
       <div className="space-y-5">
         {groups.map((group) => (
@@ -174,11 +173,11 @@ export function OnboardingChecklist({
                 const num = String(numberById[id]).padStart(2, "0");
 
                 const classes = cn(
-                  "flex items-start gap-3 rounded-lg border p-3.5 transition-colors",
-                  active && "border-primary/40 bg-primary/5",
+                  "flex items-start gap-3 rounded-xl border bg-card p-3.5 shadow-xs transition-colors",
+                  active && "border-fuchsia-300/90 bg-fuchsia-50/40 dark:border-fuchsia-800/60 dark:bg-fuchsia-950/20",
                   step.done && "bg-muted/30",
                   locked && "opacity-70",
-                  actionable && "hover:border-primary/40 hover:bg-accent",
+                  actionable && "hover:border-fuchsia-300 hover:bg-accent",
                 );
 
                 const inner = (
@@ -187,9 +186,9 @@ export function OnboardingChecklist({
                       className={cn(
                         "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
                         step.done
-                          ? "bg-primary/15 text-primary"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : active
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-gradient-to-br from-fuchsia-600 to-pink-600 text-white shadow-xs"
                             : "bg-muted text-muted-foreground",
                       )}
                     >
@@ -200,13 +199,13 @@ export function OnboardingChecklist({
                         <p
                           className={cn(
                             "truncate text-sm font-medium",
-                            active && "text-primary",
+                            active && "font-semibold text-fuchsia-950 dark:text-fuchsia-200",
                           )}
                         >
                           {step.label}
                         </p>
                         {active ? (
-                          <span className="shrink-0 rounded-full border border-primary/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          <span className="shrink-0 rounded-full border border-fuchsia-300 bg-fuchsia-50/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-300">
                             Atual
                           </span>
                         ) : null}

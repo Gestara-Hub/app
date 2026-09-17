@@ -12,7 +12,6 @@ import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
-import { ClientsOnboarding } from "@/features/onboarding";
 
 export function ClientsView() {
   const isClasses = useModel() === "classes";
@@ -58,7 +57,7 @@ export function ClientsView() {
         }
       >
         {canManage ? (
-          <Button onClick={openCreate} data-tour="clients-new">
+          <Button onClick={openCreate}>
             <Plus className="size-4" />
             {isClasses ? "Novo aluno" : "Novo cliente"}
           </Button>
@@ -87,8 +86,6 @@ export function ClientsView() {
           if (!open) setInactivating(null);
         }}
       />
-
-      <ClientsOnboarding />
     </>
   );
 }

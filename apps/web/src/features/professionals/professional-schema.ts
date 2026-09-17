@@ -50,3 +50,19 @@ export const professionalFormSchema = z.object({
 });
 
 export type ProfessionalFormValues = z.infer<typeof professionalFormSchema>;
+
+/**
+ * Retorna o schema apropriado para o modelo operacional ativo.
+ * No modelo de turmas (classes), ao menos uma modalidade é obrigatória.
+ */
+export function getProfessionalFormSchema(isClasses: boolean) {
+  return professionalFormSchema.superRefine((data, ctx) => {
+    if (isClasses && (!data.modalityIds || data.modalityIds.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["modalityIds"],
+        message: "Selecione ao menos uma modalidade que o profissional leciona.",
+      });
+    }
+  });
+}

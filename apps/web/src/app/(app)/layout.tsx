@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -6,6 +7,7 @@ import { AppTopbar } from "@/components/layout/app-topbar";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { organizationModelById } from "@/mocks/store";
+import { OnboardingTopBanner } from "@/features/onboarding";
 
 export default async function AppLayout({
   children,
@@ -29,6 +31,9 @@ export default async function AppLayout({
         <AppSidebar />
         <SidebarInset>
           <AppTopbar />
+          <Suspense fallback={null}>
+            <OnboardingTopBanner />
+          </Suspense>
           <div className="min-w-0 flex-1 p-4 md:p-6">{children}</div>
         </SidebarInset>
       </SidebarProvider>

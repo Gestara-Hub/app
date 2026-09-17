@@ -254,6 +254,9 @@ function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id):
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome da turma." });
   }
+  if (!payload.modalityId) {
+    fields.push({ field: "modalityId", message: "Selecione a modalidade da turma." });
+  }
   if (!payload.instructorId) {
     fields.push({ field: "instructorId", message: "Selecione o instrutor." });
   }
