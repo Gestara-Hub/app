@@ -27,8 +27,8 @@ export function ProfessionalFormDialog({
 
   const description = isClasses
     ? isEdit
-      ? "Atualize os dados, modalidades e disponibilidade."
-      : "Cadastre um instrutor, as modalidades que leciona e a disponibilidade."
+      ? "Atualize os dados e modalidades do instrutor."
+      : "Cadastre um instrutor e as modalidades que leciona."
     : isEdit
       ? "Atualize os dados, serviços e disponibilidade."
       : "Cadastre um profissional, os serviços que realiza e a disponibilidade.";
@@ -36,10 +36,12 @@ export function ProfessionalFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[88vh] overflow-y-auto sm:max-w-xl"
+        className="max-h-[88vh] sm:max-w-xl flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="professional"
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-20">
           <DialogTitle>
             {isEdit ? "Editar profissional" : "Novo profissional"}
           </DialogTitle>

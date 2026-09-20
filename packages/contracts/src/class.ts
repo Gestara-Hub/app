@@ -10,8 +10,8 @@ import type {
 /**
  * Modelo 3 (Turmas e aulas). Fatia 1: turma + matricula + sessao + presenca.
  * Aluno = Client, Instrutor = Professional, Modalidade = Category (reusados —
- * ver docs/technical/01 e docs/product/11). Reserva/drop-in, mensalidade,
- * reposicao e lista de espera entram nas fatias seguintes.
+ * ver docs/technical/01 e docs/product/11). Reserva/drop-in, mensalidade
+ * e lista de espera entram nas fatias seguintes.
  */
 
 /** Como o aluno se vincula: matricula fixa no roster, ou reserva por sessao. */
@@ -115,10 +115,27 @@ export interface ClassSessionFilter {
   dateTo?: DateISO;
 }
 
+export interface ClassSessionOverride {
+  sessionId: Id;
+  instructorId?: Id;
+  reason?: string;
+  createdAt: DateTimeISO;
+  updatedAt: DateTimeISO;
+}
+
+export type SubstituteInstructorPayload = {
+  instructorId: Id;
+  reason?: string;
+};
+
 export interface ClassSessionView extends ClassSession {
   className: string;
   modalityName?: string;
   instructorName: string;
+  primaryInstructorId?: Id;
+  primaryInstructorName?: string;
+  isSubstitute?: boolean;
+  substitutionReason?: string;
 }
 
 /** Presenca — por (Sessao x Aluno). */
@@ -140,7 +157,7 @@ export interface AttendanceSummary {
 }
 
 /** Tipo de vinculo do aluno na sessao: matriculado fixo, avulso ou experimental. */
-export type SessionRosterKind = "enrolled" | "dropin" | "trial" | "makeup";
+export type SessionRosterKind = "enrolled" | "dropin" | "trial";
 
 /** Linha do roster de uma sessao: aluno + vinculo + presenca (se ja marcada). */
 export interface SessionRosterEntry {
@@ -161,7 +178,7 @@ export interface ClassSessionDetail extends ClassSessionView {
   roster: SessionRosterEntry[];
 }
 
-// --- Fatia 3: lista de espera, reposicao e drop-in (reserva) ----------------
+// --- Fatia 3: lista de espera e drop-in (reserva) ---------------------------
 
 /** Fila de espera de uma turma lotada (promocao manual ao abrir vaga). */
 export type WaitlistStatus = "waiting" | "promoted" | "canceled";
@@ -179,30 +196,9 @@ export interface WaitlistEntryView extends WaitlistEntry {
   studentName: string;
 }
 
-/** Makeup class for an absence (30-day deadline; `done` neutralizes absence). */
-export type MakeupStatus = "pending" | "scheduled" | "done" | "expired";
-
-export interface MakeupClass {
-  id: Id;
-  classGroupId: Id;
-  studentId: Id;
-  missedSessionId: Id;
-  makeupSessionId?: Id;
-  deadline: DateISO; // 30 days after absence
-  status: MakeupStatus;
-  createdAt: DateTimeISO;
-}
-
-export interface MakeupView extends MakeupClass {
-  studentName: string;
-  className: string;
-  missedDate: DateISO;
-  makeupDate?: DateISO;
-}
-
-/** Reservation of a drop-in class (drop-in, trial or makeup): Student x Session. */
+/** Reservation of a drop-in or trial class: Student x Session. */
 export type ReservationStatus = "reserved" | "canceled";
-export type ReservationKind = "dropin" | "trial" | "makeup";
+export type ReservationKind = "dropin" | "trial";
 
 export interface ClassReservation {
   id: Id;
@@ -222,9 +218,6 @@ export interface ReservationView extends ClassReservation {
 }
 
 // Backward compatibility aliases
-export type ReposicaoStatus = MakeupStatus;
-export type Reposicao = MakeupClass;
-export type ReposicaoView = MakeupView;
 export type ReservaStatus = ReservationStatus;
 export type ReservaKind = ReservationKind;
 export type Reserva = ClassReservation;

@@ -6,10 +6,10 @@ import type {
   Charge,
   ClassGroup,
   ClassReservation,
+  ClassSessionOverride,
   Client,
   Enrollment,
   Id,
-  MakeupClass,
   OperationalModel,
   Organization,
   Plan,
@@ -62,13 +62,12 @@ export interface MockStore {
   // Financeiro do M3 (planos + cobrancas).
   plans: Plan[];
   charges: Charge[];
-  // M3 Fatia 3: lista de espera, reposicoes e reservas (drop-in).
+  // M3 Fatia 3: lista de espera e reservas (drop-in).
   waitlist: WaitlistEntry[];
-  makeups: MakeupClass[];
   reservations: ClassReservation[];
+  sessionOverrides?: ClassSessionOverride[];
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];
-  reposicoes?: MakeupClass[];
   reservas?: ClassReservation[];
 }
 
@@ -148,7 +147,6 @@ function loadFromStorage(): MockWorld | null {
     for (const tenant of Object.values(worldData.tenants)) {
       const t = tenant as Partial<MockStore>;
       t.charges = t.charges || t.cobrancas || [];
-      t.makeups = t.makeups || t.reposicoes || [];
       t.reservations = t.reservations || t.reservas || [];
     }
     return worldData;

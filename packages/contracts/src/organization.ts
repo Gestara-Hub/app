@@ -21,11 +21,17 @@ export interface Organization {
   status: RecordStatus;
 }
 
+export interface BusinessHoursShift {
+  start: TimeISO;
+  end: TimeISO;
+}
+
 export interface BusinessHoursDay {
   weekday: Weekday;
   closed: boolean; // domingo = true
-  start?: TimeISO; // presente quando closed = false
-  end?: TimeISO; // presente quando closed = false
+  start?: TimeISO; // presente quando closed = false (retrocompatibilidade: primeiro turno)
+  end?: TimeISO; // presente quando closed = false (retrocompatibilidade: ultimo turno)
+  shifts?: BusinessHoursShift[]; // turnos/intervalos de funcionamento
 }
 
 export interface Unit {

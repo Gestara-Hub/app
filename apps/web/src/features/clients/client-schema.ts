@@ -53,7 +53,18 @@ export const clientFormSchema = z.object({
     .min(0, "O desconto não pode ser negativo.")
     .nullish(),
   discountReason: z.string().trim().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.hasDiscount && data.discountType === "percentage") {
+      return (data.discountValue ?? 0) <= 100;
+    }
+    return true;
+  },
+  {
+    message: "O desconto percentual não pode ser superior a 100%.",
+    path: ["discountValue"],
+  },
+);
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;
 

@@ -8,6 +8,11 @@ import {
   type Path,
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { normalizeText } from "@/lib/text";
 import { FieldShell } from "./field-shell";
 
@@ -34,7 +39,7 @@ interface AutocompleteFieldProps<T extends FieldValues> {
 /**
  * Campo de texto com sugestoes (autocomplete) e filtro conforme se digita. Em
  * modo `strict`, funciona como um select com busca: so aceita valores das
- * `suggestions`.
+ * `suggestions`. Usa Popover com Portal para abrir por cima de modais.
  */
 export function AutocompleteField<T extends FieldValues>({
   name,
@@ -81,59 +86,70 @@ export function AutocompleteField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <div className="relative">
-              <Input
-                id={fieldId}
-                ref={field.ref}
-                name={field.name}
-                value={value}
-                placeholder={placeholder}
-                disabled={disabled}
-                autoComplete="off"
-                aria-invalid={fieldState.invalid}
-                onChange={(event) => {
-                  field.onChange(event.target.value);
-                  setOpen(true);
-                }}
-                onFocus={() => setOpen(true)}
-                onBlur={() => {
-                  field.onBlur();
-                  setOpen(false);
-                  // strict: ao sair, alinha ao valor canonico ou limpa se invalido.
-                  if (strict && value.trim() !== "") {
-                    const canonical = suggestions.find(
-                      (s) => normalizeText(s) === query,
-                    );
-                    if (canonical !== value) field.onChange(canonical ?? "");
+            <Popover open={showList} onOpenChange={setOpen}>
+              <PopoverAnchor asChild>
+                <Input
+                  id={fieldId}
+                  ref={field.ref}
+                  name={field.name}
+                  value={value}
+                  placeholder={placeholder}
+                  disabled={disabled}
+                  autoComplete="off"
+                  aria-invalid={fieldState.invalid}
+                  onChange={(event) => {
+                    field.onChange(event.target.value);
+                    setOpen(true);
+                  }}
+                  onFocus={() => setOpen(true)}
+                  onBlur={() => {
+                    field.onBlur();
+                    // strict: ao sair, alinha ao valor canonico ou limpa se invalido.
+                    if (strict && value.trim() !== "") {
+                      const canonical = suggestions.find(
+                        (s) => normalizeText(s) === query,
+                      );
+                      if (canonical !== value) field.onChange(canonical ?? "");
+                    }
+                  }}
+                />
+              </PopoverAnchor>
+              <PopoverContent
+                align="start"
+                sideOffset={4}
+                onOpenAutoFocus={(event) => event.preventDefault()}
+                onCloseAutoFocus={(event) => event.preventDefault()}
+                onPointerDownOutside={(event) => {
+                  const target = event.target as HTMLElement | null;
+                  if (target?.id === fieldId || target?.closest(`#${fieldId}`)) {
+                    event.preventDefault();
                   }
                 }}
-              />
-              {showList ? (
-                <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto overscroll-contain rounded-md border bg-popover py-1 text-popover-foreground shadow-md">
-                  {matches.map((suggestion) => (
-                    <button
-                      type="button"
-                      key={suggestion}
-                      // mousedown preventDefault mantem o foco no input (sem blur);
-                      // a selecao acontece no click.
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => {
-                        field.onChange(suggestion);
-                        setOpen(false);
-                      }}
-                      className="flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                  {showEmpty ? (
-                    <p className="px-3 py-1.5 text-sm text-muted-foreground">
-                      {emptyMessage}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+                className="w-[var(--radix-popover-trigger-width)] max-h-56 overflow-y-auto overscroll-contain p-1"
+              >
+                {matches.map((suggestion) => (
+                  <button
+                    type="button"
+                    key={suggestion}
+                    // mousedown preventDefault mantem o foco no input (sem blur);
+                    // a selecao acontece no click.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      field.onChange(suggestion);
+                      setOpen(false);
+                    }}
+                    className="flex w-full cursor-pointer items-center rounded-sm px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showEmpty ? (
+                  <p className="px-3 py-1.5 text-sm text-muted-foreground">
+                    {emptyMessage}
+                  </p>
+                ) : null}
+              </PopoverContent>
+            </Popover>
           </FieldShell>
         );
       }}

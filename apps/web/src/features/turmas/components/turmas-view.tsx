@@ -55,8 +55,8 @@ import { TurmaFormDialog } from "./turma-form-dialog";
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-export function slotsSummary(slots: ClassMeetingSlot[]): string {
-  return slots
+export function slotsSummary(slots?: ClassMeetingSlot[]): string {
+  return (slots ?? [])
     .map((s) => `${WEEKDAY_SHORT[s.weekday]} ${s.start}`)
     .join(" · ");
 }

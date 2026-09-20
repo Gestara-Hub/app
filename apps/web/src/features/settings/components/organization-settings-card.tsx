@@ -4,11 +4,31 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { AddressFields, InputNumber, InputPhone, InputText, SelectField } from "@/components/form";
+import {
+  Building2,
+  CalendarDays,
+  Info,
+  Loader2,
+  MapPin,
+  Save,
+} from "lucide-react";
+import {
+  AddressFields,
+  InputNumber,
+  InputPhone,
+  InputText,
+} from "@/components/form";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Address, OperationalModel, Organization, Unit } from "@gestarahub/contracts";
+import type { Address, Organization, Unit } from "@gestarahub/contracts";
 import {
   useOrganization,
   useUnit,
@@ -27,16 +47,16 @@ const addressSchema = z.object({
 });
 
 const schema = z.object({
-  organizationName: z.string().trim().min(1, "Informe o nome da organização."),
+  organizationName: z
+    .string()
+    .trim()
+    .min(1, "Informe o nome da organização ou academia."),
   unitName: z.string().trim().min(1, "Informe o nome da unidade."),
-  segment: z.string().trim().optional(),
-  model: z.enum(["scheduling", "classes"]),
   defaultDueDay: z
     .number({ error: "Informe o dia de vencimento padrão (1 a 31)." })
     .int("Dia de vencimento deve ser um número inteiro.")
     .min(1, "Dia deve ser entre 1 e 31.")
     .max(31, "Dia deve ser entre 1 e 31."),
-  address: addressSchema.optional(),
   phone: z
     .string()
     .trim()
@@ -44,19 +64,9 @@ const schema = z.object({
     .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
       message: "Telefone inválido.",
     }),
+  address: addressSchema.optional(),
 });
 type OrgUnitValues = z.infer<typeof schema>;
-
-const MODEL_OPTIONS: { value: OperationalModel; label: string }[] = [
-  {
-    value: "scheduling",
-    label: "Atendimento individual (Agenda — Barbearia, Salão, Estética)",
-  },
-  {
-    value: "classes",
-    label: "Turmas e aulas coletivas (Grade — Cursos, Idiomas, Dança, Academias, Studios)",
-  },
-];
 
 function parseUnitAddress(addr: Unit["address"]): OrgUnitValues["address"] {
   if (!addr) {
@@ -111,21 +121,16 @@ function OrgUnitForm({
     defaultValues: {
       organizationName: organization.name,
       unitName: unit.name,
-      segment: organization.segment ?? "",
-      model: (organization.model === "delivery" ? "scheduling" : organization.model) as "scheduling" | "classes",
       defaultDueDay: organization.settings?.defaultDueDay ?? 10,
-      address: parseUnitAddress(unit.address),
       phone: unit.phone ?? "",
+      address: parseUnitAddress(unit.address),
     },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const modelChanged = values.model !== organization.model;
       await updateOrg.mutateAsync({
         name: values.organizationName,
-        segment: values.segment,
-        model: values.model,
         settings: {
           ...organization.settings,
           defaultDueDay: values.defaultDueDay,
@@ -138,10 +143,6 @@ function OrgUnitForm({
       });
       toast.success("Configurações salvas.");
       form.reset(values);
-
-      if (modelChanged && typeof window !== "undefined") {
-        window.location.reload();
-      }
     } catch (error) {
       toast.error(
         getErrorMessage(error, "Não foi possível salvar as configurações."),
@@ -152,73 +153,138 @@ function OrgUnitForm({
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-foreground">Identificação do Negócio</h3>
-          <InputText<OrgUnitValues>
-            name="organizationName"
-            label="Nome da organização"
-            required
-            disabled={pending}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Card 1: Identificação do Negócio */}
+        <Card className="border-border/60 shadow-xs">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Dados do Negócio</CardTitle>
+                <CardDescription>
+                  Nome principal exibido para alunos, em comprovantes e relatórios.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
             <InputText<OrgUnitValues>
-              name="segment"
-              label="Segmento / Ramo"
-              placeholder="Ex: Lutas, Idiomas, Cursos, Barbearia, Academia, Studio..."
-              disabled={pending}
-            />
-            <SelectField<OrgUnitValues>
-              name="model"
-              label="Modelo operacional"
-              options={MODEL_OPTIONS}
+              name="organizationName"
+              label="Nome da organização / academia"
+              placeholder="Ex: Academia Gracie Barra, Studio Pilates..."
               required
               disabled={pending}
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-4 pt-2 border-t">
-          <h3 className="text-sm font-medium text-foreground">Regras Financeiras</h3>
-          <div className="max-w-xs">
-            <InputNumber<OrgUnitValues>
-              name="defaultDueDay"
-              label="Dia padrão de vencimento"
-              hint="Dia do mês (1 a 31) usado como padrão ao matricular novos alunos."
-              min={1}
-              max={31}
-              required
-              disabled={pending}
-            />
-          </div>
-        </div>
+        {/* Card 2: Unidade & Contato */}
+        <Card className="border-border/60 shadow-xs">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <MapPin className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Unidade & Contato</CardTitle>
+                <CardDescription>
+                  Identificação da sede física e canais para os alunos e clientes entrarem em contato.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <InputText<OrgUnitValues>
+                name="unitName"
+                label="Nome da unidade"
+                placeholder="Ex: Matriz, Unidade Centro..."
+                required
+                disabled={pending}
+              />
+              <InputPhone<OrgUnitValues>
+                name="phone"
+                label="Telefone de contato"
+                placeholder="(11) 99999-9999"
+                disabled={pending}
+              />
+            </div>
 
-        <div className="space-y-4 pt-2 border-t">
-          <h3 className="text-sm font-medium text-foreground">Dados da Unidade</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputText<OrgUnitValues>
-              name="unitName"
-              label="Nome da unidade"
-              required
-              disabled={pending}
-            />
-            <InputPhone<OrgUnitValues>
-              name="phone"
-              label="Telefone da unidade"
-              disabled={pending}
-            />
-          </div>
+            <div className="space-y-3 pt-3 border-t border-border/50">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Endereço da Unidade
+              </h4>
+              <AddressFields<OrgUnitValues> prefix="address" disabled={pending} />
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="pt-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Endereço da Unidade
-            </h4>
-            <AddressFields<OrgUnitValues> prefix="address" disabled={pending} />
-          </div>
-        </div>
+        {/* Card 3: Regras Financeiras */}
+        <Card className="border-border/60 shadow-xs">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CalendarDays className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Regras de Cobrança</CardTitle>
+                <CardDescription>
+                  Configurações financeiras padrão para matrículas e planos de acesso.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+              <div>
+                <InputNumber<OrgUnitValues>
+                  name="defaultDueDay"
+                  label="Dia padrão de vencimento"
+                  min={1}
+                  max={31}
+                  required
+                  disabled={pending}
+                />
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
+                <Info className="size-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-semibold text-foreground">Vencimento sugerido:</strong>
+                  <p className="mt-0.5">
+                    Este dia virá pré-preenchido automaticamente na matrícula de novos alunos ou ao gerar cobranças. Você ainda poderá alterá-lo individualmente para cada aluno.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="flex justify-end pt-4 border-t">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Salvar alterações"}
+        {/* Rodapé com botão de ação */}
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-muted-foreground">
+            {form.formState.isDirty ? (
+              <span className="text-amber-600 dark:text-amber-400 font-medium">
+                ● Alterações não salvas
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Todas as alterações estão salvas
+              </span>
+            )}
+          </p>
+          <Button type="submit" disabled={pending} className="min-w-36">
+            {pending ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 size-4" />
+                Salvar alterações
+              </>
+            )}
           </Button>
         </div>
       </form>
@@ -234,8 +300,8 @@ export function OrganizationSettingsForm() {
   if (loading || !orgQuery.data || !unitQuery.data) {
     return (
       <div className="space-y-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-full" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
         ))}
       </div>
     );

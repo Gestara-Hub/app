@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useForm, FormProvider, type Path } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useForm,
+  FormProvider,
+  useWatch,
+  type Path,
+  type FieldErrors,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import {
-  AutocompleteField,
+  AddressFields,
+  CollapsibleSection,
+  ComboboxField,
   InputPhone,
   InputText,
   SwitchField,
@@ -16,6 +25,7 @@ import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { normalizeText } from "@/lib/text";
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
+  Address,
   CreateProfessional,
   Professional,
   ProfessionalView,
@@ -46,16 +56,30 @@ function toDefaults(
   professional: Professional | undefined,
   roleName: string,
   unit?: Unit,
+  isClasses?: boolean,
 ): ProfessionalFormValues {
   return {
     name: professional?.name ?? "",
     role: roleName,
     phone: professional?.phone ?? "",
+    address: professional?.address
+      ? {
+          postalCode: professional.address.postalCode ?? "",
+          street: professional.address.street ?? "",
+          number: professional.address.number ?? "",
+          complement: professional.address.complement ?? "",
+          neighborhood: professional.address.neighborhood ?? "",
+          city: professional.address.city ?? "",
+          state: professional.address.state ?? "",
+        }
+      : undefined,
     serviceIds: professional?.serviceIds ?? [],
     modalityIds: professional?.modalityIds ?? [],
     workingHours: professional
       ? professional.workingHours
-      : getDefaultWorkingHours(unit),
+      : isClasses
+        ? []
+        : getDefaultWorkingHours(unit),
     active: professional ? professional.status === "active" : true,
   };
 }
@@ -73,6 +97,13 @@ export function ProfessionalForm({
 }: ProfessionalFormProps) {
   const isEdit = Boolean(professional);
   const isClasses = useModel() === "classes";
+  const [addressOpen, setAddressOpen] = useState(
+    Boolean(
+      professional?.address?.postalCode ||
+        professional?.address?.street ||
+        professional?.address?.city,
+    ),
+  );
   const { data: unit } = useUnit();
   const createMut = useCreateProfessional();
   const updateMut = useUpdateProfessional();
@@ -82,14 +113,17 @@ export function ProfessionalForm({
   // existente (select com filtro), nao cria. Sugestoes = cargos ativos; inclui
   // o cargo atual do profissional mesmo se inativo, para nao perde-lo ao editar.
   const { data: roles } = useRoles();
-  const activeRoleNames = (roles ?? [])
-    .filter((r) => r.status === "active")
-    .map((r) => r.name);
   const currentRoleName = professional?.role?.name ?? "";
-  const roleSuggestions =
-    currentRoleName && !activeRoleNames.includes(currentRoleName)
-      ? [...activeRoleNames, currentRoleName]
-      : activeRoleNames;
+  const roleOptions = useMemo(() => {
+    const activeRoleNames = (roles ?? [])
+      .filter((r) => r.status === "active")
+      .map((r) => r.name);
+    const suggestions =
+      currentRoleName && !activeRoleNames.includes(currentRoleName)
+        ? [...activeRoleNames, currentRoleName]
+        : activeRoleNames;
+    return suggestions.map((name) => ({ label: name, value: name }));
+  }, [roles, currentRoleName]);
 
   const schema = useMemo(() => getProfessionalFormSchema(isClasses), [isClasses]);
 
@@ -97,13 +131,53 @@ export function ProfessionalForm({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(professional, currentRoleName, unit),
+    defaultValues: toDefaults(professional, currentRoleName, unit, isClasses),
   });
 
+  const [workingHoursOpen, setWorkingHoursOpen] = useState(false);
+
+  const addressValues = useWatch({
+    control: form.control,
+    name: "address",
+  });
+  const workingHours = useWatch({
+    control: form.control,
+    name: "workingHours",
+  });
+
+  const hasAddressData = Boolean(
+    addressValues?.street?.trim() ||
+      addressValues?.postalCode?.trim() ||
+      addressValues?.city?.trim(),
+  );
+  const addressBadge = hasAddressData
+    ? addressValues?.city?.trim()
+      ? `${addressValues.city.trim()}${addressValues.state ? `/${addressValues.state}` : ""}`
+      : "Preenchido"
+    : undefined;
+
+  const activeDaysCount = (workingHours ?? []).length;
+  const workingHoursBadge =
+    activeDaysCount > 0
+      ? `${activeDaysCount} ${activeDaysCount === 1 ? "dia configurado" : "dias configurados"}`
+      : "Nenhum dia ativo";
+
+  const onInvalid = useCallback(
+    (errors: FieldErrors<ProfessionalFormValues>) => {
+      if (errors.address) {
+        setAddressOpen(true);
+      }
+      if (errors.workingHours) {
+        setWorkingHoursOpen(true);
+      }
+    },
+    [],
+  );
+
   // Se os dados da unidade carregarem após o primeiro render e o usuário ainda não
-  // tiver alterado a disponibilidade, sincroniza com os dias abertos da unidade.
+  // tiver alterado a disponibilidade, sincroniza com os dias abertos da unidade (apenas para M1 - agendamento individual).
   useEffect(() => {
-    if (!isEdit && unit && !form.formState.isDirty) {
+    if (!isClasses && !isEdit && unit && !form.formState.isDirty) {
       const openDays = (unit.businessHours ?? []).filter((d) => !d.closed);
       if (openDays.length > 0) {
         form.setValue("workingHours", getDefaultWorkingHours(unit), {
@@ -111,9 +185,9 @@ export function ProfessionalForm({
         });
       }
     }
-  }, [unit, isEdit, form]);
+  }, [unit, isEdit, form, isClasses]);
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const onSubmit = async (values: ProfessionalFormValues) => {
     const organizationId = professional?.organizationId ?? ORG_ID;
 
     // Cargo e opcional: se preenchido, resolve para um Role (FK) existente; se um
@@ -130,12 +204,31 @@ export function ProfessionalForm({
     }
     const roleId = selectedRole?.id;
 
+    const hasAddress =
+      values.address &&
+      (Boolean(values.address.street) ||
+        Boolean(values.address.postalCode) ||
+        Boolean(values.address.city));
+
+    const addressPayload: Address | undefined = hasAddress
+      ? {
+          postalCode: values.address?.postalCode || "",
+          street: values.address?.street || "",
+          number: values.address?.number || "",
+          complement: values.address?.complement || undefined,
+          neighborhood: values.address?.neighborhood || "",
+          city: values.address?.city || "",
+          state: values.address?.state || "",
+        }
+      : undefined;
+
     const payload: CreateProfessional = {
       organizationId,
       unitId: professional?.unitId ?? UNIT_ID,
       name: values.name,
       roleId,
       phone: values.phone || undefined,
+      address: addressPayload,
       status: values.active ? "active" : "inactive",
       // O modelo do tenant decide qual associação é relevante: M1 grava
       // serviços; M3 grava modalidades (a outra fica vazia e é ignorada).
@@ -167,6 +260,12 @@ export function ProfessionalForm({
           form.setError(f.field as Path<ProfessionalFormValues>, {
             message: f.message,
           });
+          if (f.field.startsWith("address")) {
+            setAddressOpen(true);
+          }
+          if (f.field.startsWith("workingHours")) {
+            setWorkingHoursOpen(true);
+          }
         }
       } else {
         toast.error(
@@ -174,35 +273,24 @@ export function ProfessionalForm({
         );
       }
     }
-  });
+  };
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <InputText<ProfessionalFormValues>
+      <form
+        id={formId}
+        onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          <InputText<ProfessionalFormValues>
           name="name"
           label="Nome"
           placeholder="Ex.: Marcelo Andrade"
           required
           disabled={pending}
         />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <AutocompleteField<ProfessionalFormValues>
-            name="role"
-            label="Cargo"
-            placeholder="Selecione um cargo (opcional)"
-            suggestions={roleSuggestions}
-            strict
-            emptyMessage="Nenhum cargo encontrado."
-            disabled={pending}
-          />
-          <InputPhone<ProfessionalFormValues>
-            name="phone"
-            label="Telefone"
-            disabled={pending}
-          />
-        </div>
 
         {isClasses ? (
           <ModalitySelectionField<ProfessionalFormValues>
@@ -217,10 +305,54 @@ export function ProfessionalForm({
           />
         )}
 
-        <WorkingHoursField<ProfessionalFormValues>
-          name="workingHours"
-          disabled={pending}
-        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ComboboxField<ProfessionalFormValues>
+            name="role"
+            label="Cargo"
+            placeholder="Selecione um cargo (opcional)"
+            searchPlaceholder="Buscar cargo..."
+            emptyMessage="Nenhum cargo encontrado."
+            options={roleOptions}
+            clearable
+            disabled={pending}
+          />
+          <InputPhone<ProfessionalFormValues>
+            name="phone"
+            label="Telefone"
+            disabled={pending}
+          />
+        </div>
+
+        {/* Bloco: Endereço Estruturado (Opcional) */}
+        <CollapsibleSection
+          title="Endereço (opcional)"
+          icon={<MapPin className="h-4 w-4" />}
+          badge={addressBadge}
+          open={addressOpen}
+          onOpenChange={setAddressOpen}
+        >
+          <AddressFields<ProfessionalFormValues>
+            prefix="address"
+            disabled={pending}
+          />
+        </CollapsibleSection>
+
+        {!isClasses ? (
+          <CollapsibleSection
+            title="Horários de trabalho & Disponibilidade"
+            icon={<Clock className="h-4 w-4" />}
+            badge={workingHoursBadge}
+            open={workingHoursOpen}
+            onOpenChange={setWorkingHoursOpen}
+          >
+            <WorkingHoursField<ProfessionalFormValues>
+              name="workingHours"
+              label=""
+              borderless
+              disabled={pending}
+            />
+          </CollapsibleSection>
+        ) : null}
 
         {isEdit ? (
           <SwitchField<ProfessionalFormValues>
@@ -230,8 +362,9 @@ export function ProfessionalForm({
             disabled={pending}
           />
         ) : null}
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

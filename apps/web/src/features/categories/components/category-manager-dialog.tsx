@@ -51,6 +51,7 @@ export function CategoryManagerDialog({
       onOpenChange={onOpenChange}
       organizationId={ORG_ID}
       labels={labels}
+      storageKey="categories"
       useList={useCategories}
       useCreate={useCreateCategory}
       useUpdate={useUpdateCategory}

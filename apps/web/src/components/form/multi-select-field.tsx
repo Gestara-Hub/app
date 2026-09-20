@@ -83,21 +83,8 @@ export function MultiSelectField<T extends FieldValues>({
 }: MultiSelectFieldProps<T>) {
   const { control } = useFormContext<T>();
   const [open, setOpen] = useState(false);
-  // Quando aberto dentro de um Dialog, porta o conteudo PARA DENTRO do dialog,
-  // senao o react-remove-scroll do Dialog bloqueia o scroll da lista. Fora de
-  // dialog (container null), o Portal usa o body (padrao).
-  const [container, setContainer] = useState<HTMLElement | null>(null);
   const fieldId = id ?? String(name);
   const listId = useId();
-
-  const handleOpenChange = (next: boolean) => {
-    if (next && typeof document !== "undefined") {
-      setContainer(
-        document.querySelector('[data-slot="dialog-content"]') as HTMLElement | null,
-      );
-    }
-    setOpen(next);
-  };
 
   // Indicadores de scroll (a lista do cmdk nao tem setas nativas como o Select):
   // mostram uma setinha no topo/base quando ha mais conteudo a rolar.
@@ -164,7 +151,7 @@ export function MultiSelectField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <Popover open={open} onOpenChange={handleOpenChange}>
+            <Popover modal={true} open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -225,7 +212,6 @@ export function MultiSelectField<T extends FieldValues>({
                 </button>
               </PopoverTrigger>
               <PopoverContent
-                container={container}
                 align="start"
                 className="w-[var(--radix-popover-trigger-width)] p-0"
               >

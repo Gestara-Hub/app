@@ -184,7 +184,11 @@ export function CalendarPanel({
   const businessDay = businessHours.find((b) => b.weekday === weekday);
   const isClosed =
     hasConfiguredHours &&
-    (!businessDay || businessDay.closed || !businessDay.start || !businessDay.end);
+    (!businessDay ||
+      businessDay.closed ||
+      (businessDay.shifts
+        ? businessDay.shifts.length === 0
+        : !businessDay.start || !businessDay.end));
   const appointmentCount = appointments.filter((a) => a.status !== "canceled").length;
   const emptyMessage =
     mode === "day"

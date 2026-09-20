@@ -16,18 +16,18 @@ import type {
   Enrollment,
   EnrollmentView,
   Id,
-  MakeupView,
   ReservationKind,
   ReservationView,
   SessionRosterEntry,
   SessionRosterKind,
+  SubstituteInstructorPayload,
   TimeISO,
   UpdateClassGroup,
   WaitlistEntry,
   WaitlistEntryView,
 } from "@gestarahub/contracts";
 import { addDays, format, parseISO } from "date-fns";
-import { weekdayOf } from "@gestarahub/core/scheduling";
+import { checkSlotWithinBusinessHours, weekdayOf } from "@gestarahub/core/scheduling";
 import { store } from "@/mocks/store";
 import {
   apiError,
@@ -81,16 +81,7 @@ function frequencyOf(
   for (const a of store.attendances) {
     if (a.studentId !== studentId || !a.sessionId.startsWith(prefix)) continue;
     if (a.status === "present") present += 1;
-    else if (a.status === "absent") {
-      // Falta com reposicao concluida nao penaliza a frequencia.
-      const isMadeUp = store.makeups.some(
-        (r) =>
-          r.missedSessionId === a.sessionId &&
-          r.studentId === studentId &&
-          r.status === "done",
-      );
-      if (!isMadeUp) absent += 1;
-    }
+    else if (a.status === "absent") absent += 1;
   }
   const total = present + absent;
   return {
@@ -133,19 +124,32 @@ function toSessionView(
   date: DateISO,
   slot: ClassMeetingSlot,
 ): ClassSessionView {
+  const sessionId = makeSessionId(g.id, date, slot.start);
+  const overrides = store.sessionOverrides || [];
+  const override = overrides.find((o) => o.sessionId === sessionId);
+
+  const effectiveInstructorId = override?.instructorId ?? g.instructorId;
+  const isSubstitute = Boolean(
+    override?.instructorId && override.instructorId !== g.instructorId,
+  );
+
   return {
-    id: makeSessionId(g.id, date, slot.start),
+    id: sessionId,
     classGroupId: g.id,
     date,
     start: slot.start,
     end: slot.end,
-    instructorId: g.instructorId,
+    instructorId: effectiveInstructorId,
     status: date < todayISO() ? "done" : "scheduled",
     createdAt: g.createdAt,
-    updatedAt: g.updatedAt,
+    updatedAt: override?.updatedAt ?? g.updatedAt,
     className: g.name,
     modalityName: modalityName(g.modalityId),
-    instructorName: instructorName(g.instructorId),
+    instructorName: instructorName(effectiveInstructorId),
+    primaryInstructorId: g.instructorId,
+    primaryInstructorName: instructorName(g.instructorId),
+    isSubstitute,
+    substitutionReason: override?.reason,
   };
 }
 
@@ -161,35 +165,6 @@ function datesBetween(from: DateISO, to: DateISO): DateISO[] {
   return out;
 }
 
-// Falta gera reposicao pendente (prazo 30d); presenca/justificada desfaz a
-// pendente. Concluida (done) e mantida (neutraliza a falta na frequencia).
-function ensureMakeupForAbsence(
-  sessionId: Id,
-  studentId: Id,
-  status: AttendanceStatus,
-): void {
-  const existing = store.makeups.find(
-    (r) => r.missedSessionId === sessionId && r.studentId === studentId,
-  );
-  if (status === "absent") {
-    if (existing) return;
-    const p = parseSessionId(sessionId);
-    if (!p) return;
-    const g = store.classGroups.find((x) => x.id === p.classGroupId);
-    if (!g) return;
-    store.makeups.push({
-      id: newId(),
-      classGroupId: g.id,
-      studentId,
-      missedSessionId: sessionId,
-      deadline: format(addDays(parseISO(p.date), 30), "yyyy-MM-dd"),
-      status: "pending",
-      createdAt: nowIso(),
-    });
-  } else if (existing && existing.status === "pending") {
-    store.makeups.splice(store.makeups.indexOf(existing), 1);
-  }
-}
 
 // Verifica se dois horários se sobrepõem (qualquer minuto em comum é conflito).
 function timesOverlap(
@@ -294,6 +269,30 @@ function validateStudentScheduleConflict(
   }
 }
 
+// Valida se os encontros da turma estão dentro do expediente da unidade.
+function validateMeetingSlotsBusinessHours(slots?: ClassMeetingSlot[]): void {
+  if (!slots || slots.length === 0) return;
+  const businessHours = store.unit.businessHours;
+  if (!businessHours || businessHours.length === 0) return;
+
+  for (const slot of slots) {
+    const check = checkSlotWithinBusinessHours(
+      slot.weekday,
+      slot.start,
+      slot.end,
+      businessHours,
+    );
+    if (!check.valid && check.message) {
+      throw validationError([
+        {
+          field: "meetingSlots",
+          message: check.message,
+        },
+      ]);
+    }
+  }
+}
+
 function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
@@ -313,8 +312,67 @@ function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id):
   }
   if (fields.length > 0) throw validationError(fields);
 
+  // Valida se os encontros estão dentro do expediente da unidade.
+  validateMeetingSlotsBusinessHours(payload.meetingSlots);
+
   // Valida conflito de horário do instrutor (executado após validações básicas).
   validateInstructorScheduleConflict(payload, currentGroupId);
+}
+
+function buildSessionDetail(id: Id): ClassSessionDetail {
+  const p = parseSessionId(id);
+  const g = p
+    ? store.classGroups.find((x) => x.id === p.classGroupId)
+    : undefined;
+  if (!p || !g) throw notFoundError("Aula não encontrada.");
+  const slot = g.meetingSlots.find((s) => s.start === p.start);
+  if (!slot) throw notFoundError("Aula não encontrada.");
+  const view = toSessionView(g, p.date, slot);
+
+  // Roster unificado (híbrido):
+  // 1. Alunos matriculados da turma
+  const enrolledEntries: SessionRosterEntry[] = activeEnrollments(g.id).map(
+    (e) => ({
+      studentId: e.studentId,
+      studentName: studentName(e.studentId),
+      kind: "enrolled" as const,
+      attendance: store.attendances.find(
+        (a) => a.sessionId === id && a.studentId === e.studentId,
+      )?.status,
+    }),
+  );
+
+  // 2. Alunos com reserva na sessão específica (avulsos, experimentais)
+  const reservedEntries: SessionRosterEntry[] = store.reservations
+    .filter((r) => r.sessionId === id && r.status === "reserved")
+    .filter((r) => !enrolledEntries.some((e) => e.studentId === r.studentId))
+    .map((r) => ({
+      studentId: r.studentId,
+      studentName: studentName(r.studentId),
+      kind: (r.kind || "dropin") as SessionRosterKind,
+      attendance: store.attendances.find(
+        (a) => a.sessionId === id && a.studentId === r.studentId,
+      )?.status,
+    }));
+
+  const roster: SessionRosterEntry[] = [
+    ...enrolledEntries,
+    ...reservedEntries,
+  ].sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
+
+  const capacity = g.capacity;
+  const availableSpots = Math.max(0, capacity - roster.length);
+  const allowDropin = g.allowDropin ?? true;
+
+  return {
+    ...view,
+    enrollmentType: g.enrollmentType,
+    capacity,
+    availableSpots,
+    allowDropin,
+    sessionPriceCents: g.sessionPriceCents,
+    roster,
+  };
 }
 
 export const turmasService = {
@@ -521,61 +579,7 @@ export const turmasService = {
   },
 
   getSession(id: Id): Promise<ClassSessionDetail> {
-    return simulateRead(() => {
-      const p = parseSessionId(id);
-      const g = p
-        ? store.classGroups.find((x) => x.id === p.classGroupId)
-        : undefined;
-      if (!p || !g) throw notFoundError("Aula não encontrada.");
-      const slot = g.meetingSlots.find((s) => s.start === p.start);
-      if (!slot) throw notFoundError("Aula não encontrada.");
-      const view = toSessionView(g, p.date, slot);
-
-      // Roster unificado (híbrido):
-      // 1. Alunos matriculados da turma
-      const enrolledEntries: SessionRosterEntry[] = activeEnrollments(g.id).map(
-        (e) => ({
-          studentId: e.studentId,
-          studentName: studentName(e.studentId),
-          kind: "enrolled" as const,
-          attendance: store.attendances.find(
-            (a) => a.sessionId === id && a.studentId === e.studentId,
-          )?.status,
-        }),
-      );
-
-      // 2. Alunos com reserva na sessão específica (avulsos, experimentais, reposição)
-      const reservedEntries: SessionRosterEntry[] = store.reservations
-        .filter((r) => r.sessionId === id && r.status === "reserved")
-        .filter((r) => !enrolledEntries.some((e) => e.studentId === r.studentId))
-        .map((r) => ({
-          studentId: r.studentId,
-          studentName: studentName(r.studentId),
-          kind: (r.kind || "dropin") as SessionRosterKind,
-          attendance: store.attendances.find(
-            (a) => a.sessionId === id && a.studentId === r.studentId,
-          )?.status,
-        }));
-
-      const roster: SessionRosterEntry[] = [
-        ...enrolledEntries,
-        ...reservedEntries,
-      ].sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
-
-      const capacity = g.capacity;
-      const availableSpots = Math.max(0, capacity - roster.length);
-      const allowDropin = g.allowDropin ?? true;
-
-      return clone({
-        ...view,
-        enrollmentType: g.enrollmentType,
-        capacity,
-        availableSpots,
-        allowDropin,
-        sessionPriceCents: g.sessionPriceCents,
-        roster,
-      });
-    });
+    return simulateRead(() => clone(buildSessionDetail(id)));
   },
 
   markAttendance(input: {
@@ -599,7 +603,6 @@ export const turmasService = {
           markedAt: nowIso(),
         });
       }
-      ensureMakeupForAbsence(input.sessionId, input.studentId, input.status);
     });
   },
 
@@ -622,6 +625,64 @@ export const turmasService = {
         justified,
         total: present + absent + justified,
       };
+    });
+  },
+
+  substituteInstructor(
+    sessionId: Id,
+    payload: SubstituteInstructorPayload,
+  ): Promise<ClassSessionDetail> {
+    return simulateWrite(() => {
+      const p = parseSessionId(sessionId);
+      if (!p) throw notFoundError("Aula não encontrada.");
+      const g = store.classGroups.find((x) => x.id === p.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+
+      const instructor = store.professionals.find((x) => x.id === payload.instructorId);
+      if (!instructor) throw notFoundError("Instrutor não encontrado.");
+
+      if (!store.sessionOverrides) {
+        store.sessionOverrides = [];
+      }
+
+      const existingIndex = store.sessionOverrides.findIndex(
+        (o) => o.sessionId === sessionId,
+      );
+      const ts = nowIso();
+
+      if (existingIndex !== -1) {
+        store.sessionOverrides[existingIndex] = {
+          sessionId,
+          instructorId: payload.instructorId,
+          reason: payload.reason?.trim() || undefined,
+          createdAt: store.sessionOverrides[existingIndex].createdAt,
+          updatedAt: ts,
+        };
+      } else {
+        store.sessionOverrides.push({
+          sessionId,
+          instructorId: payload.instructorId,
+          reason: payload.reason?.trim() || undefined,
+          createdAt: ts,
+          updatedAt: ts,
+        });
+      }
+
+      return clone(buildSessionDetail(sessionId));
+    });
+  },
+
+  restorePrimaryInstructor(sessionId: Id): Promise<ClassSessionDetail> {
+    return simulateWrite(() => {
+      if (store.sessionOverrides) {
+        const idx = store.sessionOverrides.findIndex(
+          (o) => o.sessionId === sessionId,
+        );
+        if (idx !== -1) {
+          store.sessionOverrides.splice(idx, 1);
+        }
+      }
+      return clone(buildSessionDetail(sessionId));
     });
   },
 
@@ -707,64 +768,6 @@ export const turmasService = {
       if (!w) throw notFoundError("Registro não encontrado.");
       w.status = "canceled";
     });
-  },
-
-  // --- Makeups (Reposições) -----------------------------------------------
-  listMakeups(classGroupId?: Id): Promise<MakeupView[]> {
-    return simulateRead(() => {
-      const rows = store.makeups.filter(
-        (r) =>
-          (r.status === "pending" || r.status === "scheduled") &&
-          (!classGroupId || r.classGroupId === classGroupId),
-      );
-      return clone(
-        rows
-          .map((r) => {
-            const missed = parseSessionId(r.missedSessionId);
-            const makeup = r.makeupSessionId
-              ? parseSessionId(r.makeupSessionId)
-              : null;
-            return {
-              ...r,
-              studentName: studentName(r.studentId),
-              className:
-                store.classGroups.find((g) => g.id === r.classGroupId)?.name ??
-                "",
-              missedDate: missed?.date ?? r.missedSessionId,
-              makeupDate: makeup?.date,
-            };
-          })
-          .sort((a, b) => a.missedDate.localeCompare(b.missedDate)),
-      );
-    });
-  },
-
-  scheduleMakeup(id: Id, makeupSessionId: Id): Promise<void> {
-    return simulateWrite(() => {
-      const r = store.makeups.find((x) => x.id === id);
-      if (!r) throw notFoundError("Reposição não encontrada.");
-      r.makeupSessionId = makeupSessionId;
-      r.status = "scheduled";
-    });
-  },
-
-  concludeMakeup(id: Id): Promise<void> {
-    return simulateWrite(() => {
-      const r = store.makeups.find((x) => x.id === id);
-      if (!r) throw notFoundError("Reposição não encontrada.");
-      r.status = "done";
-    });
-  },
-
-  // Backward compatibility aliases
-  listReposicoes(classGroupId?: Id): Promise<MakeupView[]> {
-    return this.listMakeups(classGroupId);
-  },
-  scheduleReposicao(id: Id, makeupSessionId: Id): Promise<void> {
-    return this.scheduleMakeup(id, makeupSessionId);
-  },
-  concludeReposicao(id: Id): Promise<void> {
-    return this.concludeMakeup(id);
   },
 
   // --- Reservations (Drop-in) ---------------------------------------------

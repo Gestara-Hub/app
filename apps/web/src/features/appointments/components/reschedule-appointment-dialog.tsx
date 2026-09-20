@@ -255,10 +255,12 @@ export function RescheduleDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-md"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-md"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="appointment-reschedule"
       >
-        <DialogHeader>
+        <DialogHeader className="pr-14">
           <DialogTitle>Remarcar agendamento</DialogTitle>
           <DialogDescription>
             {appointment.client.name} - {appointment.services.map((s) => s.name).join(" + ")}

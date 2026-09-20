@@ -28,10 +28,12 @@ export function ClientFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-lg"
+        className="max-h-[90vh] sm:max-w-xl flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="client"
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-20">
           <DialogTitle>
             {isEdit
               ? isClasses

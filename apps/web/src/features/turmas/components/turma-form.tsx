@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   useForm,
   useWatch,
@@ -10,7 +10,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import {
   DateField,
   FieldShell,
@@ -22,12 +22,19 @@ import {
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import {
+  addMinutesToTime,
+  checkSlotWithinBusinessHours,
+  weekdayOf,
+} from "@gestarahub/core/scheduling";
 import type {
   ClassGroupView,
   CreateClassGroup,
+  Unit,
   Weekday,
 } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
@@ -35,7 +42,10 @@ import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
 import { useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
-import { turmaFormSchema, type TurmaFormValues } from "../turma-schema";
+import {
+  getTurmaFormSchema,
+  type TurmaFormValues,
+} from "../turma-schema";
 
 const WEEKDAYS = [
   { value: 0, short: "Dom" },
@@ -47,111 +57,447 @@ const WEEKDAYS = [
   { value: 6, short: "Sáb" },
 ];
 
-/** Editor de encontros: um horario aplicado aos dias marcados (gera os slots). */
+const WEEKDAY_NAMES_PT = [
+  "domingos",
+  "segundas-feiras",
+  "terças-feiras",
+  "quartas-feiras",
+  "quintas-feiras",
+  "sextas-feiras",
+  "sábados",
+];
+
+export function getInitialStartDate(unit?: Unit): string {
+  const today = new Date();
+  const todayIso = format(today, "yyyy-MM-dd");
+  if (!unit?.businessHours || unit.businessHours.length === 0) {
+    return todayIso;
+  }
+
+  // Encontra o primeiro dia aberto a partir de hoje
+  for (let i = 0; i < 7; i++) {
+    const candidateDate = addDays(today, i);
+    const candidateIso = format(candidateDate, "yyyy-MM-dd");
+    const weekday = weekdayOf(candidateIso);
+    const dayConfig = unit.businessHours.find((b) => b.weekday === weekday);
+    if (!dayConfig || !dayConfig.closed) {
+      return candidateIso;
+    }
+  }
+
+  return todayIso;
+}
+
+export function getUnitTimesForWeekday(
+  weekday: number,
+  unit?: Unit,
+): { start: string; end: string } {
+  const fallback = { start: "19:00", end: "20:00" };
+  if (!unit?.businessHours || unit.businessHours.length === 0) {
+    return fallback;
+  }
+
+  const dayConfig = unit.businessHours.find((b) => b.weekday === weekday);
+  if (dayConfig && !dayConfig.closed) {
+    const shift = dayConfig.shifts?.[0];
+    const start = shift?.start ?? dayConfig.start;
+    const shiftEnd = shift?.end ?? dayConfig.end;
+    if (start) {
+      const calculatedEnd = addMinutesToTime(start, 60);
+      const end = shiftEnd && shiftEnd < calculatedEnd ? shiftEnd : calculatedEnd;
+      return { start, end };
+    }
+  }
+
+  // Se o dia específico estiver fechado, busca o primeiro dia aberto configurado na unidade
+  const firstOpen = unit.businessHours.find(
+    (b) => !b.closed && ((b.shifts && b.shifts.length > 0) || b.start),
+  );
+  if (firstOpen) {
+    const shift = firstOpen.shifts?.[0];
+    const start = shift?.start ?? firstOpen.start;
+    const shiftEnd = shift?.end ?? firstOpen.end;
+    if (start) {
+      const calculatedEnd = addMinutesToTime(start, 60);
+      const end = shiftEnd && shiftEnd < calculatedEnd ? shiftEnd : calculatedEnd;
+      return { start, end };
+    }
+  }
+
+  return fallback;
+}
+
+interface ScheduleBlock {
+  id: string;
+  start: string;
+  end: string;
+  days: number[];
+}
+
+function slotsToBlocks(
+  slots: TurmaFormValues["meetingSlots"],
+  unit?: Unit,
+  startDate?: string,
+): ScheduleBlock[] {
+  if (!slots || slots.length === 0) {
+    const initialDate = startDate || format(new Date(), "yyyy-MM-dd");
+    const weekday = weekdayOf(initialDate);
+    const times = getUnitTimesForWeekday(weekday, unit);
+    const dayConfig = unit?.businessHours?.find((b) => b.weekday === weekday);
+    const isDayOpen = !dayConfig || !dayConfig.closed;
+    return [
+      {
+        id: "block-1",
+        start: times.start,
+        end: times.end,
+        days: isDayOpen ? [weekday] : [],
+      },
+    ];
+  }
+
+  const groupMap = new Map<string, { start: string; end: string; days: number[] }>();
+  for (const slot of slots) {
+    const key = `${slot.start}__${slot.end}`;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { start: slot.start, end: slot.end, days: [] });
+    }
+    const group = groupMap.get(key)!;
+    if (!group.days.includes(slot.weekday)) {
+      group.days.push(slot.weekday);
+    }
+  }
+
+  const blocks: ScheduleBlock[] = [];
+  let index = 1;
+  for (const group of groupMap.values()) {
+    blocks.push({
+      id: `block-${index++}`,
+      start: group.start,
+      end: group.end,
+      days: group.days.sort((a, b) => a - b),
+    });
+  }
+
+  return blocks.length > 0
+    ? blocks
+    : [{ id: "block-1", start: "19:00", end: "20:00", days: [] }];
+}
+
+function blocksToSlots(blocks: ScheduleBlock[]): TurmaFormValues["meetingSlots"] {
+  const slots: TurmaFormValues["meetingSlots"] = [];
+  for (const block of blocks) {
+    for (const weekday of block.days) {
+      slots.push({
+        weekday,
+        start: block.start,
+        end: block.end,
+      });
+    }
+  }
+  return slots.sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start));
+}
+
+/** Editor de encontros: suporta horário principal e horários adicionais opcionais (ex: Sábado). */
 function MeetingSlotsEditor({
   value,
   onChange,
   disabled,
   error,
+  unit,
+  startDate,
 }: {
   value: TurmaFormValues["meetingSlots"];
   onChange: (v: TurmaFormValues["meetingSlots"]) => void;
   disabled?: boolean;
   error?: string;
+  unit?: Unit;
+  startDate?: string;
 }) {
-  const [fallbackTime, setFallbackTime] = useState(() => ({
-    start: value[0]?.start ?? "18:00",
-    end: value[0]?.end ?? "19:00",
-  }));
-  const days = new Set(value.map((s) => s.weekday));
+  const [blocks, setBlocks] = useState<ScheduleBlock[]>(() =>
+    slotsToBlocks(value, unit, startDate),
+  );
+  const lastEmittedRef = useRef<string>(JSON.stringify(blocksToSlots(blocks)));
 
-  const currentStart = value[0]?.start ?? fallbackTime.start;
-  const currentEnd = value[0]?.end ?? fallbackTime.end;
-
-  const setTime = (patch: Partial<{ start: string; end: string }>) => {
-    const next = {
-      start: patch.start ?? currentStart,
-      end: patch.end ?? currentEnd,
-    };
-    setFallbackTime(next);
-    if (value.length > 0) {
-      onChange(
-        value.map((s) => ({
-          ...s,
-          start: next.start,
-          end: next.end,
-        })),
-      );
+  useEffect(() => {
+    const currentValJson = JSON.stringify(value ?? []);
+    if (currentValJson !== lastEmittedRef.current) {
+      const parsed = slotsToBlocks(value, unit, startDate);
+      setBlocks(parsed);
+      lastEmittedRef.current = JSON.stringify(blocksToSlots(parsed));
     }
+  }, [value, unit, startDate]);
+
+  const emitChange = (nextBlocks: ScheduleBlock[]) => {
+    const nextSlots = blocksToSlots(nextBlocks);
+    lastEmittedRef.current = JSON.stringify(nextSlots);
+    onChange(nextSlots);
   };
 
-  const toggleDay = (weekday: number) => {
-    const nextDays = new Set(days);
-    if (nextDays.has(weekday)) nextDays.delete(weekday);
-    else nextDays.add(weekday);
-
-    onChange(
-      [...nextDays]
-        .sort((a, b) => a - b)
-        .map((w) => ({ weekday: w, start: currentStart, end: currentEnd })),
+  const updateBlockTime = (blockId: string, patch: Partial<{ start: string; end: string }>) => {
+    const next = blocks.map((b) =>
+      b.id === blockId ? { ...b, ...patch } : b,
     );
+    setBlocks(next);
+    emitChange(next);
   };
+
+  const toggleDay = (blockId: string, weekday: number) => {
+    const next = blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      const hasDay = b.days.includes(weekday);
+      const nextDays = hasDay
+        ? b.days.filter((d) => d !== weekday)
+        : [...b.days, weekday].sort((a, b) => a - b);
+      return { ...b, days: nextDays };
+    });
+    setBlocks(next);
+    emitChange(next);
+  };
+
+  const addBlock = () => {
+    const usedDays = new Set(blocks.flatMap((b) => b.days));
+    const openDays = (unit?.businessHours ?? [])
+      .filter((b) => !b.closed && ((b.shifts && b.shifts.length > 0) || b.start))
+      .map((b) => b.weekday);
+
+    // Prioriza o próximo dia aberto que ainda não foi alocado
+    const nextOpenDay = openDays.find((d) => !usedDays.has(d));
+    const fallbackDay = WEEKDAYS.find((d) => !usedDays.has(d.value))?.value;
+    const nextDay = nextOpenDay !== undefined ? nextOpenDay : fallbackDay;
+
+    const times =
+      nextDay !== undefined
+        ? getUnitTimesForWeekday(nextDay, unit)
+        : { start: "18:00", end: "19:00" };
+
+    const maxNum = blocks.reduce(
+      (max, b) => Math.max(max, parseInt(b.id.replace(/\D/g, "") || "0", 10)),
+      0,
+    );
+    const next: ScheduleBlock[] = [
+      ...blocks,
+      {
+        id: `block-${maxNum + 1}`,
+        start: times.start,
+        end: times.end,
+        days: nextDay !== undefined ? [nextDay] : [],
+      },
+    ];
+    setBlocks(next);
+    emitChange(next);
+  };
+
+  const removeBlock = (blockId: string) => {
+    const next = blocks.filter((b) => b.id !== blockId);
+    setBlocks(next);
+    emitChange(next);
+  };
+
+  const isDayUsedElsewhere = (weekday: number, currentBlockId: string) => {
+    return blocks.some((b) => b.id !== currentBlockId && b.days.includes(weekday));
+  };
+
+  const allSelectedDaysCount = blocks.flatMap((b) => b.days).length;
 
   return (
     <FieldShell
-      label="Encontros"
-      error={error}
-      hint="A turma se reúne nesses dias, no mesmo horário — gera as aulas."
+      label="Encontros e Horários"
+      hint="Dias e horários em que a turma se reúne no tatame."
     >
-      <div className="space-y-3 rounded-md border p-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Das</span>
-          <Input
-            type="time"
-            step={300}
-            value={currentStart}
-            onChange={(e) => setTime({ start: e.target.value })}
-            disabled={disabled}
-            aria-label="Início do encontro"
-            className="h-8 w-28"
-          />
-          <span className="text-muted-foreground">às</span>
-          <Input
-            type="time"
-            step={300}
-            value={currentEnd}
-            onChange={(e) => setTime({ end: e.target.value })}
-            disabled={disabled}
-            aria-label="Fim do encontro"
-            className="h-8 w-28"
-          />
-        </div>
-        <div>
-          <p className="mb-1.5 text-xs text-muted-foreground">Dias</p>
-          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-            {WEEKDAYS.map((d) => {
-              const on = days.has(d.value);
-              return (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => toggleDay(d.value)}
-                  disabled={disabled}
-                  aria-pressed={on}
-                  title={`${d.short}: clique para ${on ? "desmarcar" : "marcar"}`}
-                  className={cn(
-                    "flex h-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all select-none disabled:opacity-50",
-                    on
-                      ? "border-primary bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/20"
-                      : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <span>{d.short}</span>
-                </button>
+      <div className="space-y-3">
+        {blocks.map((block, index) => {
+          const isMain = index === 0;
+          const isTimeInverted = Boolean(
+            block.start && block.end && block.start >= block.end,
+          );
+
+          // Valida se o horário ultrapassa o expediente da unidade em qualquer um dos dias selecionados
+          let businessHoursError: string | undefined;
+          if (
+            !isTimeInverted &&
+            block.start &&
+            block.end &&
+            block.days.length > 0 &&
+            unit?.businessHours?.length
+          ) {
+            for (const day of block.days) {
+              const check = checkSlotWithinBusinessHours(
+                day as Weekday,
+                block.start,
+                block.end,
+                unit.businessHours,
               );
-            })}
-          </div>
-        </div>
+              if (!check.valid && check.message) {
+                businessHoursError = check.message;
+                break;
+              }
+            }
+          }
+
+          let blockError: string | undefined;
+          if (isTimeInverted) {
+            blockError =
+              "Horário inválido: informe início e fim (o início deve ser antes do fim).";
+          } else if (businessHoursError) {
+            blockError = businessHoursError;
+          } else if (error && block.days.length === 0) {
+            blockError = "Selecione ao menos um dia da semana para este horário.";
+          }
+
+          const isCardInvalid = Boolean(
+            blockError ||
+              (error && (
+                blocks.length === 1 ||
+                block.days.length === 0 ||
+                !blocks.some((b) => b.days.length === 0 || (b.start && b.end && b.start >= b.end))
+              )),
+          );
+          return (
+            <div
+              key={block.id}
+              aria-invalid={isCardInvalid}
+              className={cn(
+                "space-y-3 rounded-lg border bg-muted/15 p-3.5 transition-colors",
+                isCardInvalid ? "border-destructive" : "border-border",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1.5 min-w-0">
+                  {blocks.length > 1 && (
+                    <span className="text-xs font-semibold text-muted-foreground block">
+                      {isMain ? "Horário principal:" : "Horário adicional:"}
+                    </span>
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <span className="w-28">Início</span>
+                      <span className="invisible text-sm select-none">às</span>
+                      <span className="w-28">Fim</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        step={300}
+                        value={block.start}
+                        onChange={(e) =>
+                          updateBlockTime(block.id, { start: e.target.value })
+                        }
+                        disabled={disabled}
+                        aria-invalid={isTimeInverted}
+                        aria-label="Início do encontro"
+                        className={cn(
+                          "h-8 w-28 bg-background",
+                          isTimeInverted &&
+                            "border-destructive focus-visible:ring-destructive/40",
+                        )}
+                      />
+                      <span className="text-sm text-muted-foreground">às</span>
+                      <Input
+                        type="time"
+                        step={300}
+                        value={block.end}
+                        onChange={(e) =>
+                          updateBlockTime(block.id, { end: e.target.value })
+                        }
+                        disabled={disabled}
+                        aria-invalid={isTimeInverted}
+                        aria-label="Fim do encontro"
+                        className={cn(
+                          "h-8 w-28 bg-background",
+                          isTimeInverted &&
+                            "border-destructive focus-visible:ring-destructive/40",
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {!isMain && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removeBlock(block.id)}
+                    disabled={disabled}
+                    title="Remover horário"
+                    aria-label="Remover horário"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 mt-0.5"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div>
+                <p className="mb-1.5 text-xs text-muted-foreground">
+                  {blocks.length > 1 ? "Dias deste horário" : "Dias da semana"}
+                </p>
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                  {WEEKDAYS.map((d) => {
+                    const on = block.days.includes(d.value);
+                    const usedElsewhere = isDayUsedElsewhere(d.value, block.id);
+                    const dayConfig = unit?.businessHours?.find((b) => b.weekday === d.value);
+                    const isClosed = Boolean(dayConfig && dayConfig.closed);
+                    return (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => toggleDay(block.id, d.value)}
+                        disabled={disabled || usedElsewhere}
+                        aria-pressed={on}
+                        title={
+                          usedElsewhere
+                            ? `${d.short}: já marcado em outro horário`
+                            : isClosed
+                              ? `${d.short}: Unidade fechada neste dia (configurações da academia)`
+                              : `${d.short}: clique para ${on ? "desmarcar" : "marcar"}`
+                        }
+                        className={cn(
+                          "flex h-9 items-center justify-center rounded-lg border text-xs font-semibold select-none transition-all disabled:opacity-35",
+                          on
+                            ? "border-primary bg-primary text-primary-foreground shadow-xs ring-1 ring-primary/20"
+                            : isClosed
+                              ? "border-dashed border-muted-foreground/30 bg-muted/20 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
+                              : "border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        <div className="flex flex-col items-center justify-center leading-tight">
+                          <span>{d.short}</span>
+                          {isClosed && (
+                            <span className="text-[8px] font-normal tracking-tight opacity-75">
+                              fechado
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {blockError && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{blockError}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {allSelectedDaysCount < 7 && blocks.length < 7 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addBlock}
+            disabled={disabled}
+            className="w-full border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Adicionar horário diferente (ex: Sábado ou manhã)
+          </Button>
+        )}
       </div>
     </FieldShell>
   );
@@ -175,8 +521,21 @@ export function TurmaForm({
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
 
+  const openStartDate = useMemo(() => getInitialStartDate(unit), [unit]);
+  const initialWeekday = useMemo(() => weekdayOf(openStartDate), [openStartDate]);
+  const initialTimes = useMemo(
+    () => getUnitTimesForWeekday(initialWeekday, unit),
+    [initialWeekday, unit],
+  );
+  const isInitialDayOpen = useMemo(() => {
+    const dayConfig = unit?.businessHours?.find((b) => b.weekday === initialWeekday);
+    return !dayConfig || !dayConfig.closed;
+  }, [unit, initialWeekday]);
+
+  const schema = useMemo(() => getTurmaFormSchema(unit), [unit]);
+
   const form = useForm<TurmaFormValues>({
-    resolver: zodResolver(turmaFormSchema),
+    resolver: zodResolver(schema),
     mode: "onSubmit",
     reValidateMode: "onChange",
     defaultValues: turma
@@ -199,10 +558,102 @@ export function TurmaForm({
           allowDropin: false,
           sessionPriceCents: 0,
           capacity: 10,
-          startDate: format(new Date(), "yyyy-MM-dd"),
-          meetingSlots: [],
+          startDate: openStartDate,
+          meetingSlots: isInitialDayOpen
+            ? [
+                {
+                  weekday: initialWeekday,
+                  start: initialTimes.start,
+                  end: initialTimes.end,
+                },
+              ]
+            : [],
         },
   });
+
+  const startDate = useWatch({
+    control: form.control,
+    name: "startDate",
+  });
+  const prevStartDateRef = useRef(startDate);
+
+  // Sincroniza a data inicial e horários quando os dados da unidade chegam pela primeira vez (se pristine)
+  const unitLoadedRef = useRef(false);
+  useEffect(() => {
+    if (isEdit || !unit?.businessHours || unit.businessHours.length === 0 || unitLoadedRef.current) {
+      return;
+    }
+    unitLoadedRef.current = true;
+
+    const currentStartDate = form.getValues("startDate");
+    const openDate = getInitialStartDate(unit);
+    if (currentStartDate !== openDate && !form.formState.dirtyFields.startDate) {
+      form.setValue("startDate", openDate);
+    }
+
+    const currentSlots = form.getValues("meetingSlots") ?? [];
+    if (currentSlots.length === 0 && !form.formState.dirtyFields.meetingSlots) {
+      const weekday = weekdayOf(openDate);
+      const times = getUnitTimesForWeekday(weekday, unit);
+      const dayConfig = unit.businessHours.find((b) => b.weekday === weekday);
+      if (!dayConfig || !dayConfig.closed) {
+        form.setValue("meetingSlots", [
+          {
+            weekday,
+            start: times.start,
+            end: times.end,
+          },
+        ]);
+      }
+    }
+  }, [unit, isEdit, form]);
+
+  // Ao alterar a data de início da turma, atualiza os horários para refletir a configuração da unidade no novo dia da semana
+  useEffect(() => {
+    if (isEdit || !startDate || prevStartDateRef.current === startDate) return;
+    const oldStartDate = prevStartDateRef.current;
+    prevStartDateRef.current = startDate;
+
+    const newWeekday = weekdayOf(startDate);
+    const oldWeekday = oldStartDate ? weekdayOf(oldStartDate) : null;
+    const times = getUnitTimesForWeekday(newWeekday, unit);
+    const dayConfig = unit?.businessHours?.find((b) => b.weekday === newWeekday);
+    const isNewDayOpen = !dayConfig || !dayConfig.closed;
+
+    const currentSlots = form.getValues("meetingSlots") ?? [];
+    const isSingleDefaultSlot =
+      currentSlots.length === 0 ||
+      (currentSlots.length === 1 && currentSlots[0].weekday === oldWeekday);
+
+    if (isSingleDefaultSlot) {
+      form.setValue(
+        "meetingSlots",
+        isNewDayOpen
+          ? [
+              {
+                weekday: newWeekday,
+                start: times.start,
+                end: times.end,
+              },
+            ]
+          : [],
+      );
+    }
+  }, [startDate, unit, isEdit, form]);
+
+  const startDateWeekday = startDate ? weekdayOf(startDate) : null;
+  const isStartDateClosed = useMemo(() => {
+    if (startDateWeekday === null || !unit?.businessHours || unit.businessHours.length === 0) {
+      return false;
+    }
+    const dayConfig = unit.businessHours.find((b) => b.weekday === startDateWeekday);
+    return Boolean(dayConfig && dayConfig.closed);
+  }, [startDateWeekday, unit]);
+
+  const startDateHint =
+    isStartDateClosed && startDateWeekday !== null
+      ? `Atenção: a unidade está configurada como fechada aos ${WEEKDAY_NAMES_PT[startDateWeekday]}.`
+      : undefined;
 
   const allowDropin = useWatch({
     control: form.control,
@@ -248,43 +699,23 @@ export function TurmaForm({
     }
   }, [modalityId, instructorId, professionals, form]);
 
-  // Rastreia o último instrutor carregado para não sobrescrever em loop nem
-  // alterar slots já salvos na abertura de edição de uma turma existente.
-  const lastLoadedInstructorRef = useRef<string>(turma?.instructorId ?? "");
-
-  useEffect(() => {
-    if (!instructorId) {
-      lastLoadedInstructorRef.current = "";
-      return;
-    }
-
-    if (lastLoadedInstructorRef.current === instructorId) {
-      return;
-    }
-
-    const prof = (professionals ?? []).find((p) => p.id === instructorId);
-    if (!prof) return;
-
-    lastLoadedInstructorRef.current = instructorId;
-
-    const validHours = (prof.workingHours ?? []).filter(
-      (wh) => wh.start && wh.end && wh.start < wh.end,
-    );
-
-    if (validHours.length > 0) {
-      const slots = validHours.map((wh) => ({
-        weekday: wh.weekday,
-        start: wh.start,
-        end: wh.end,
-      }));
-      form.setValue("meetingSlots", slots, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-    }
-  }, [instructorId, professionals, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
+    if (unit?.businessHours && unit.businessHours.length > 0) {
+      for (const slot of values.meetingSlots) {
+        const check = checkSlotWithinBusinessHours(
+          slot.weekday as Weekday,
+          slot.start,
+          slot.end,
+          unit.businessHours,
+        );
+        if (!check.valid && check.message) {
+          form.setError("meetingSlots", { message: check.message });
+          return;
+        }
+      }
+    }
+
     const payload: CreateClassGroup = {
       organizationId: user.organizationId,
       unitId: unit?.id ?? "",
@@ -338,8 +769,14 @@ export function TurmaForm({
   }));
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <InputText<TurmaFormValues>
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          <InputText<TurmaFormValues>
           name="name"
           label="Nome da turma"
           placeholder="Ex.: Jiu-Jitsu Fundamentos, No-Gi Avançado, Kids A"
@@ -382,6 +819,7 @@ export function TurmaForm({
           <DateField<TurmaFormValues>
             name="startDate"
             label="Data de início da turma"
+            hint={startDateHint}
             required
             disabled={pending}
           />
@@ -413,11 +851,14 @@ export function TurmaForm({
               onChange={field.onChange}
               disabled={pending}
               error={fieldState.error?.message}
+              unit={unit}
+              startDate={startDate}
             />
           )}
         />
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

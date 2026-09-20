@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   useFormContext,
   type FieldValues,
@@ -28,73 +28,93 @@ export function AddressFields<T extends FieldValues = FieldValues>({
 }: AddressFieldsProps<T>) {
   const { setValue, watch, getFieldState } = useFormContext<T>();
   const [loading, setLoading] = useState(false);
+  const lastSearchedCep = useRef<string>("");
 
-  const getFieldName = (field: string): Path<T> => {
-    return (prefix ? `${String(prefix)}.${field}` : field) as Path<T>;
-  };
+  const getFieldName = useCallback(
+    (field: string): Path<T> => {
+      return (prefix ? `${String(prefix)}.${field}` : field) as Path<T>;
+    },
+    [prefix],
+  );
 
   const postalCodeField = getFieldName("postalCode");
   const postalCodeValue = (watch(postalCodeField) as string) ?? "";
   const postalCodeState = getFieldState(postalCodeField);
 
-  const handleLookup = async () => {
-    const clean = postalCodeValue.replace(/\D/g, "");
-    if (clean.length !== 8) {
-      toast.error("Informe um CEP válido com 8 dígitos.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await fetchAddressByCep(clean);
-      if (result) {
-        setValue(
-          getFieldName("street"),
-          result.street as PathValue<T, Path<T>>,
-          { shouldValidate: true, shouldDirty: true },
-        );
-        setValue(
-          getFieldName("neighborhood"),
-          result.neighborhood as PathValue<T, Path<T>>,
-          { shouldValidate: true, shouldDirty: true },
-        );
-        setValue(
-          getFieldName("city"),
-          result.city as PathValue<T, Path<T>>,
-          { shouldValidate: true, shouldDirty: true },
-        );
-        setValue(
-          getFieldName("state"),
-          result.state as PathValue<T, Path<T>>,
-          { shouldValidate: true, shouldDirty: true },
-        );
-        toast.success("Endereço encontrado.");
-        const numberInput = document.getElementById(getFieldName("number"));
-        numberInput?.focus();
-      } else {
-        toast.info("CEP não localizado. Preencha o endereço manualmente.");
+  const executeLookup = useCallback(
+    async (rawCep: string, isManual = false) => {
+      const clean = rawCep.replace(/\D/g, "");
+      if (clean.length !== 8) {
+        if (isManual) {
+          toast.error("Informe um CEP válido com 8 dígitos.");
+        }
+        return;
       }
-    } catch {
-      toast.error("Erro ao consultar CEP.");
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      if (!isManual && lastSearchedCep.current === clean) {
+        return;
+      }
+
+      lastSearchedCep.current = clean;
+      setLoading(true);
+      try {
+        const result = await fetchAddressByCep(clean);
+        if (result) {
+          setValue(
+            getFieldName("street"),
+            result.street as PathValue<T, Path<T>>,
+            { shouldValidate: true, shouldDirty: true },
+          );
+          setValue(
+            getFieldName("neighborhood"),
+            result.neighborhood as PathValue<T, Path<T>>,
+            { shouldValidate: true, shouldDirty: true },
+          );
+          setValue(
+            getFieldName("city"),
+            result.city as PathValue<T, Path<T>>,
+            { shouldValidate: true, shouldDirty: true },
+          );
+          setValue(
+            getFieldName("state"),
+            result.state as PathValue<T, Path<T>>,
+            { shouldValidate: true, shouldDirty: true },
+          );
+          toast.success("Endereço preenchido pelo CEP.");
+          const numberInput = document.getElementById(getFieldName("number"));
+          numberInput?.focus();
+        } else {
+          toast.info("CEP não localizado. Preencha o endereço manualmente.");
+        }
+      } catch {
+        toast.error("Erro ao consultar CEP.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [getFieldName, setValue],
+  );
 
   const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+    const clean = raw;
     if (raw.length > 5) {
       raw = `${raw.slice(0, 5)}-${raw.slice(5)}`;
     }
     setValue(postalCodeField, raw as PathValue<T, Path<T>>, {
       shouldDirty: true,
+      shouldValidate: true,
     });
 
-    if (raw.replace(/\D/g, "").length === 8) {
-      setTimeout(() => {
-        handleLookup();
-      }, 100);
+    if (clean.length === 8) {
+      void executeLookup(clean, false);
+    } else {
+      lastSearchedCep.current = "";
     }
+  };
+
+  const handleManualSearch = () => {
+    void executeLookup(postalCodeValue, true);
   };
 
   return (
@@ -121,7 +141,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
                 variant="outline"
                 size="icon"
                 disabled={disabled || loading}
-                onClick={handleLookup}
+                onClick={handleManualSearch}
                 title="Buscar CEP"
               >
                 {loading ? (

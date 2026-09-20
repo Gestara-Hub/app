@@ -86,10 +86,6 @@ export const queryKeys = {
       ["classes", "sessions", range] as const,
     session: (sessionId: Id) => ["classes", "session", sessionId] as const,
     waitlist: (classGroupId: Id) => ["classes", "waitlist", classGroupId] as const,
-    makeups: (classGroupId?: Id) =>
-      ["classes", "makeups", classGroupId] as const,
-    reposicoes: (classGroupId?: Id) =>
-      ["classes", "makeups", classGroupId] as const,
     attendanceSummary: (date: DateISO) =>
       ["classes", "attendanceSummary", date] as const,
   },

@@ -177,8 +177,13 @@ export function EnrollStudentsDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+        onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="enroll-students"
+      >
+        <DialogHeader className="pr-14">
           <DialogTitle>Matricular alunos</DialogTitle>
           <DialogDescription>
             {turma.name} ·{" "}

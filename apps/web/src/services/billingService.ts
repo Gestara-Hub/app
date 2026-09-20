@@ -46,9 +46,47 @@ function className(id?: Id): string | undefined {
   return id ? store.classGroups.find((t) => t.id === id)?.name : undefined;
 }
 
+function getCycleDueDate(
+  competence: string,
+  dueDay: number,
+  cycle: number,
+  totalCycles: number,
+): string {
+  if (totalCycles === 1) {
+    const pad = String(Math.min(Math.max(dueDay, 1), 31)).padStart(2, "0");
+    return `${competence}-${pad}`;
+  }
+  if (totalCycles === 2) {
+    // Quinzenal: dia dueDay (até 15) e dia + 15
+    const base = Math.min(Math.max(dueDay, 1), 15);
+    const day = cycle === 1 ? base : Math.min(base + 15, 28);
+    const pad = String(day).padStart(2, "0");
+    return `${competence}-${pad}`;
+  }
+  // Semanal: 4 ciclos no mês, espaçados em 7 dias
+  const baseDay = Math.min(Math.max(dueDay % 7 || 7, 1), 7);
+  const day = baseDay + (cycle - 1) * 7;
+  const pad = String(Math.min(day, 28)).padStart(2, "0");
+  return `${competence}-${pad}`;
+}
+
 function toChargeView(c: Charge): ChargeView {
+  const plan = c.planId ? store.plans.find((p) => p.id === c.planId) : undefined;
+  const inferredTotal =
+    c.cycleTotal ??
+    (plan
+      ? plan.period === "weekly"
+        ? 4
+        : plan.period === "biweekly"
+          ? 2
+          : 1
+      : 1);
+  const inferredIndex = c.cycleIndex ?? 1;
+
   return {
     ...c,
+    cycleIndex: inferredIndex,
+    cycleTotal: inferredTotal,
     studentName: studentName(c.studentId),
     planName: planName(c.planId),
     className: className(c.classGroupId),
@@ -150,16 +188,20 @@ export const billingService = {
         if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
         if (!student.planId) continue;
 
-        const exists = store.charges.some(
-          (c) =>
-            c.kind === "membership" &&
-            c.studentId === student.id &&
-            c.competence === competence,
-        );
-        if (exists) continue;
+        // Data de ingresso/matrícula do aluno
+        const studentJoinDate = student.createdAt ? student.createdAt.slice(0, 10) : today;
+        const studentJoinMonth = studentJoinDate.slice(0, 7);
+
+        // Se o aluno ingressou em um mês futuro em relação à competência, não é cobrado neste mês
+        if (studentJoinMonth > competence) continue;
+
+        const isJoinMonth = studentJoinMonth === competence;
 
         const plan = store.plans.find((p) => p.id === student.planId);
         if (!plan) continue;
+
+        const period = plan.period || "monthly";
+        const totalCycles = period === "weekly" ? 4 : period === "biweekly" ? 2 : 1;
 
         let amountCents = plan.priceCents;
         if (student.discount && student.discount.value > 0) {
@@ -172,24 +214,66 @@ export const billingService = {
         }
 
         const dueDay = student.dueDay ?? defaultDay;
-        const padDay = String(Math.min(Math.max(dueDay, 1), 31)).padStart(2, "0");
-        const dueDate = `${competence}-${padDay}`;
-        const ts = nowIso();
 
-        store.charges.push({
-          id: newId(),
-          organizationId: store.organization.id,
-          studentId: student.id,
-          kind: "membership",
-          planId: plan.id,
-          competence,
-          dueDate,
-          amountCents,
-          status: dueDate < today ? "overdue" : "pending",
-          createdAt: ts,
-          updatedAt: ts,
-        });
-        created += 1;
+        for (let cycle = 1; cycle <= totalCycles; cycle++) {
+          let dueDate = getCycleDueDate(competence, dueDay, cycle, totalCycles);
+
+          // No mês de ingresso do aluno:
+          if (isJoinMonth) {
+            // Ciclos semanais/quinzenais anteriores à matrícula não são gerados
+            if (totalCycles > 1 && dueDate < studentJoinDate) {
+              continue;
+            }
+            // Para plano mensal: se a data padrão já passou da matrícula, o 1º vencimento é ajustado para a data da matrícula
+            if (totalCycles === 1 && dueDate < studentJoinDate) {
+              dueDate = studentJoinDate;
+            }
+          }
+
+          const exists = store.charges.some(
+            (c) =>
+              c.kind === "membership" &&
+              c.studentId === student.id &&
+              c.competence === competence &&
+              (c.cycleIndex === cycle || (totalCycles === 1 && !c.cycleIndex)),
+          );
+          if (exists) continue;
+
+          // Se existe cobrança legada de 1 ciclo sem cycleIndex, migra ela para o ciclo 1
+          if (cycle === 1 && totalCycles > 1) {
+            const legacy = store.charges.find(
+              (c) =>
+                c.kind === "membership" &&
+                c.studentId === student.id &&
+                c.competence === competence &&
+                !c.cycleIndex,
+            );
+            if (legacy) {
+              legacy.cycleIndex = 1;
+              legacy.cycleTotal = totalCycles;
+              continue;
+            }
+          }
+
+          const ts = nowIso();
+
+          store.charges.push({
+            id: newId(),
+            organizationId: store.organization.id,
+            studentId: student.id,
+            kind: "membership",
+            planId: plan.id,
+            competence,
+            dueDate,
+            amountCents,
+            status: dueDate < today ? "overdue" : "pending",
+            cycleIndex: cycle,
+            cycleTotal: totalCycles,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+          created += 1;
+        }
       }
 
       // 2. Fallback de retrocompatibilidade: alunos matriculados em turmas com planId antigo
@@ -198,38 +282,61 @@ export const billingService = {
         const student = store.clients.find((c) => c.id === e.studentId);
         if (!student || student.planId) continue; // Já tratado acima se tiver plano direto
 
+        const studentJoinDate = student.createdAt ? student.createdAt.slice(0, 10) : today;
+        const studentJoinMonth = studentJoinDate.slice(0, 7);
+        if (studentJoinMonth > competence) continue;
+        const isJoinMonth = studentJoinMonth === competence;
+
         const turma = store.classGroups.find((t) => t.id === e.classGroupId);
         if (!turma || !turma.planId) continue;
-
-        const exists = store.charges.some(
-          (c) =>
-            c.kind === "membership" &&
-            c.studentId === e.studentId &&
-            c.competence === competence,
-        );
-        if (exists) continue;
 
         const plan = store.plans.find((p) => p.id === turma.planId);
         if (!plan) continue;
 
-        const dueDate = `${competence}-10`;
-        const ts = nowIso();
+        const period = plan.period || "monthly";
+        const totalCycles = period === "weekly" ? 4 : period === "biweekly" ? 2 : 1;
 
-        store.charges.push({
-          id: newId(),
-          organizationId: store.organization.id,
-          studentId: e.studentId,
-          kind: "membership",
-          planId: plan.id,
-          classGroupId: turma.id,
-          competence,
-          dueDate,
-          amountCents: plan.priceCents,
-          status: dueDate < today ? "overdue" : "pending",
-          createdAt: ts,
-          updatedAt: ts,
-        });
-        created += 1;
+        for (let cycle = 1; cycle <= totalCycles; cycle++) {
+          let dueDate = getCycleDueDate(competence, 10, cycle, totalCycles);
+
+          if (isJoinMonth) {
+            if (totalCycles > 1 && dueDate < studentJoinDate) {
+              continue;
+            }
+            if (totalCycles === 1 && dueDate < studentJoinDate) {
+              dueDate = studentJoinDate;
+            }
+          }
+
+          const exists = store.charges.some(
+            (c) =>
+              c.kind === "membership" &&
+              c.studentId === e.studentId &&
+              c.competence === competence &&
+              (c.cycleIndex === cycle || (totalCycles === 1 && !c.cycleIndex)),
+          );
+          if (exists) continue;
+
+          const ts = nowIso();
+
+          store.charges.push({
+            id: newId(),
+            organizationId: store.organization.id,
+            studentId: e.studentId,
+            kind: "membership",
+            planId: plan.id,
+            classGroupId: turma.id,
+            competence,
+            dueDate,
+            amountCents: plan.priceCents,
+            status: dueDate < today ? "overdue" : "pending",
+            cycleIndex: cycle,
+            cycleTotal: totalCycles,
+            createdAt: ts,
+            updatedAt: ts,
+          });
+          created += 1;
+        }
       }
 
       return { created };
@@ -258,6 +365,43 @@ export const billingService = {
       c.method = undefined;
       c.updatedAt = nowIso();
       return clone(toChargeView(c));
+    });
+  },
+
+  // Cancela a cobrança (mantém o título no histórico sem compor o total a receber).
+  cancelCharge(id: Id): Promise<ChargeView> {
+    return simulateWrite(() => {
+      const c = store.charges.find((x) => x.id === id);
+      if (!c) throw notFoundError("Cobrança não encontrada.");
+      c.status = "canceled";
+      c.paidAt = undefined;
+      c.method = undefined;
+      c.updatedAt = nowIso();
+      return clone(toChargeView(c));
+    });
+  },
+
+  // Reverte o cancelamento da cobrança (restaura para pendente ou atrasado conforme vencimento).
+  reopenCharge(id: Id): Promise<ChargeView> {
+    return simulateWrite(() => {
+      const c = store.charges.find((x) => x.id === id);
+      if (!c) throw notFoundError("Cobrança não encontrada.");
+      c.status = c.dueDate < todayISO() ? "overdue" : "pending";
+      c.updatedAt = nowIso();
+      return clone(toChargeView(c));
+    });
+  },
+
+  // Limpa cobranças da competência selecionada (para fins de teste/regeração).
+  clearCharges(competence?: string): Promise<{ deleted: number }> {
+    return simulateWrite(() => {
+      const initialCount = store.charges.length;
+      if (competence) {
+        store.charges = store.charges.filter((c) => c.competence !== competence);
+      } else {
+        store.charges = [];
+      }
+      return { deleted: initialCount - store.charges.length };
     });
   },
 };

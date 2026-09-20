@@ -12,7 +12,7 @@ import {
   TextArea,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -105,8 +105,14 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <InputText<ServiceFormValues>
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          <InputText<ServiceFormValues>
           name="name"
           label="Nome"
           placeholder="Ex.: Atendimento padrão"
@@ -188,8 +194,9 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
             disabled={pending}
           />
         ) : null}
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

@@ -56,13 +56,13 @@ const DEFAULT_SCHEDULE: Schedule = {
  */
 export function getDefaultWorkingHours(unit?: Unit): WorkingHour[] {
   const openDays = (unit?.businessHours ?? []).filter(
-    (d) => !d.closed && d.start && d.end,
+    (d) => !d.closed && ((d.start && d.end) || (d.shifts && d.shifts.length > 0)),
   );
   if (openDays.length > 0) {
     return openDays.map((d) => ({
       weekday: d.weekday,
-      start: d.start ?? "09:00",
-      end: d.end ?? "18:00",
+      start: d.start ?? d.shifts?.[0]?.start ?? "09:00",
+      end: d.end ?? d.shifts?.[d.shifts.length - 1]?.end ?? "18:00",
     }));
   }
   return [1, 2, 3, 4, 5].map((weekday) => ({
@@ -153,6 +153,7 @@ interface WorkingHoursFieldProps<T extends FieldValues> {
   name: Path<T>;
   label?: string;
   disabled?: boolean;
+  borderless?: boolean;
 }
 
 /**
@@ -169,6 +170,7 @@ export function WorkingHoursField<T extends FieldValues>({
   name,
   label = "Disponibilidade",
   disabled,
+  borderless = false,
 }: WorkingHoursFieldProps<T>) {
   const isClasses = useModel() === "classes";
   const { control, getValues } = useFormContext<T>();
@@ -245,7 +247,13 @@ export function WorkingHoursField<T extends FieldValues>({
 
         return (
           <FieldShell label={label} error={fieldState.error?.message}>
-            <div className="space-y-4 rounded-xl border bg-card p-3.5 shadow-2xs sm:p-4">
+            <div
+              className={cn(
+                "space-y-4",
+                !borderless &&
+                  "rounded-xl border bg-card p-3.5 shadow-2xs sm:p-4",
+              )}
+            >
               {perDay ? (
                 /* MODO AVANÇADO: HORÁRIOS POR DIA */
                 <div className="space-y-3">

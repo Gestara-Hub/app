@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, UserPlus, Users, X } from "lucide-react";
+import { ChevronLeft, RotateCcw, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,9 @@ import {
   useClassSession,
   useMarkAttendance,
   useReserveSession,
+  useRestorePrimaryInstructor,
 } from "../hooks/use-turmas";
+import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   {
@@ -62,11 +64,14 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const markMut = useMarkAttendance();
   const reserveMut = useReserveSession();
   const cancelReservationMut = useCancelReservation();
+  const restoreMut = useRestorePrimaryInstructor();
   const can = useCan();
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
+  const canManage = can("classes:manage");
 
   const [addOpen, setAddOpen] = useState(false);
+  const [substituteOpen, setSubstituteOpen] = useState(false);
 
   if (isLoading || !session) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -78,7 +83,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const meta = [
     session.modalityName,
     `${format(parseISO(session.date), "dd/MM/yyyy")} · ${session.start}–${session.end}`,
-    `Instrutor: ${session.instructorName}`,
+    session.isSubstitute
+      ? `Instrutor substituto: ${session.instructorName} (Titular: ${session.primaryInstructorName})`
+      : `Instrutor: ${session.instructorName}`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -121,7 +128,59 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         </Link>
       </Button>
 
-      <PageHeader title={session.className} description={meta} />
+      <PageHeader title={session.className} description={meta}>
+        {canManage && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSubstituteOpen(true)}
+          >
+            <UserCheck className="size-4" />
+            {session.isSubstitute ? "Alterar substituto" : "Trocar instrutor"}
+          </Button>
+        )}
+      </PageHeader>
+
+      {/* Banner de Instrutor Substituto */}
+      {session.isSubstitute && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-700 dark:text-amber-300">
+              !
+            </span>
+            <div>
+              <p className="font-semibold text-foreground">
+                Instrutor substituto nesta aula: {session.instructorName}
+              </p>
+              <p className="text-muted-foreground">
+                Titular da turma: {session.primaryInstructorName}
+                {session.substitutionReason
+                  ? ` · Motivo: "${session.substitutionReason}"`
+                  : ""}
+              </p>
+            </div>
+          </div>
+          {canManage && (
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={async () => {
+                try {
+                  await restoreMut.mutateAsync(session.id);
+                  toast.success("Instrutor titular restaurado com sucesso.");
+                } catch {
+                  toast.error("Erro ao restaurar titular.");
+                }
+              }}
+              disabled={restoreMut.isPending}
+              className="gap-1.5"
+            >
+              <RotateCcw className="size-3.5" />
+              Restaurar titular
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Cabeçalho da Lista de Chamada e Ação de Adicionar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -272,6 +331,13 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         onAdd={handleAddStudent}
         isPending={reserveMut.isPending}
       />
+
+      {/* Diálogo para Trocar Instrutor (Substituto) */}
+      <SubstituteInstructorDialog
+        open={substituteOpen}
+        onOpenChange={setSubstituteOpen}
+        session={session}
+      />
     </>
   );
 }
@@ -314,8 +380,13 @@ function AddStudentSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="session-add-student"
+      >
+        <DialogHeader className="pr-14">
           <DialogTitle>Adicionar aluno nesta aula</DialogTitle>
           <DialogDescription>
             Inscreva um aluno como aula avulsa ou experimental para o dia{" "}

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { FieldShell, InputText, SelectField, SwitchField } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { userProfileLabel } from "@/lib/labels";
@@ -114,8 +114,14 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <Controller
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          <Controller
           control={form.control}
           name="name"
           render={({ field, fieldState }) => {
@@ -236,8 +242,9 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
             disabled={pending}
           />
         ) : null}
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

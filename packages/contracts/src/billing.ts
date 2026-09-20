@@ -50,6 +50,8 @@ export interface Charge {
   status: ChargeStatus;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
+  cycleIndex?: number;
+  cycleTotal?: number;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { Unit, Weekday } from "@gestarahub/contracts";
+import { checkSlotWithinBusinessHours } from "@gestarahub/core/scheduling";
 
 /**
  * Schema do formulario de Turma (Modelo 3). Mensagens alinhadas ao turmasService.
@@ -27,9 +29,37 @@ export const turmaFormSchema = z.object({
       }),
     )
     .min(1, "Marque ao menos um dia de encontro.")
-    .refine((slots) => slots.every((s) => s.start < s.end), {
-      message: "Horário inválido: o início deve ser antes do fim.",
+    .refine((slots) => slots.every((s) => s.start && s.end && s.start < s.end), {
+      message: "Horário inválido: informe início e fim (o início deve ser antes do fim).",
     }),
 });
 
 export type TurmaFormValues = z.infer<typeof turmaFormSchema>;
+
+/**
+ * Cria o schema de validação para turmas considerando os horários de
+ * funcionamento da unidade (businessHours).
+ */
+export function getTurmaFormSchema(unit?: Unit) {
+  return turmaFormSchema.superRefine((data, ctx) => {
+    if (!unit?.businessHours || unit.businessHours.length === 0) return;
+    for (const slot of data.meetingSlots) {
+      if (!slot.start || !slot.end || slot.start >= slot.end) continue;
+      const check = checkSlotWithinBusinessHours(
+        slot.weekday as Weekday,
+        slot.start,
+        slot.end,
+        unit.businessHours,
+      );
+      if (!check.valid && check.message) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["meetingSlots"],
+          message: check.message,
+        });
+        return;
+      }
+    }
+  });
+}
+

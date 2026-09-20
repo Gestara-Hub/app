@@ -223,8 +223,10 @@ export function SeriesFormDialog({
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="appointment-series"
       >
-        <DialogHeader>
+        <DialogHeader className="pr-14">
           <DialogTitle>Nova série recorrente</DialogTitle>
           <DialogDescription>
             Repete um compromisso (mesmo cliente, profissional e serviço).

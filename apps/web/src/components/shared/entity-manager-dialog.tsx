@@ -85,6 +85,7 @@ export interface EntityManagerDialogProps<T extends ManagedEntity> {
   onOpenChange: (open: boolean) => void;
   organizationId: string;
   labels: EntityManagerLabels;
+  storageKey?: string;
   useList: () => QueryLike<T>;
   useCreate: () => MutationLike<{ organizationId: string; name: string }>;
   useUpdate: () => MutationLike<UpdateArgs>;
@@ -446,6 +447,7 @@ export function EntityManagerDialog<T extends ManagedEntity>({
   onOpenChange,
   organizationId,
   labels,
+  storageKey = "entity-manager",
   useList,
   useCreate,
   useUpdate,
@@ -461,8 +463,10 @@ export function EntityManagerDialog<T extends ManagedEntity>({
       <DialogContent
         className="flex max-h-[85vh] flex-col gap-4 sm:max-w-lg"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey={storageKey}
       >
-        <DialogHeader>
+        <DialogHeader className="pr-14">
           <DialogTitle>{labels.title}</DialogTitle>
           <DialogDescription>{labels.description}</DialogDescription>
         </DialogHeader>

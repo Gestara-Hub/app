@@ -1,6 +1,7 @@
 import { addDays, addMonths, addWeeks, getDay, parseISO } from "date-fns";
 import type {
   BusinessHoursDay,
+  BusinessHoursShift,
   DateISO,
   Frequency,
   TimeISO,
@@ -44,6 +45,93 @@ export function rangesOverlap(
 
 export function weekdayOf(date: DateISO): Weekday {
   return getDay(parseISO(date)) as Weekday;
+}
+
+export const WEEKDAY_LABELS_PT: Record<Weekday, string> = {
+  0: "Domingo",
+  1: "Segunda",
+  2: "Terça",
+  3: "Quarta",
+  4: "Quinta",
+  5: "Sexta",
+  6: "Sábado",
+};
+
+export const WEEKDAY_PLURAL_PT: Record<Weekday, string> = {
+  0: "domingos",
+  1: "segundas-feiras",
+  2: "terças-feiras",
+  3: "quartas-feiras",
+  4: "quintas-feiras",
+  5: "sextas-feiras",
+  6: "sábados",
+};
+
+export interface SlotBusinessHoursCheck {
+  valid: boolean;
+  reason?: "CLOSED" | "OUTSIDE_SHIFTS" | "NO_SHIFTS";
+  message?: string;
+}
+
+/**
+ * Verifica se um slot recorrente ou aula [start, end] está totalmente
+ * contido em um dos turnos de funcionamento da unidade no dia da semana.
+ */
+export function checkSlotWithinBusinessHours(
+  weekday: Weekday,
+  start: TimeISO,
+  end: TimeISO,
+  businessHours?: BusinessHoursDay[],
+): SlotBusinessHoursCheck {
+  if (!businessHours || businessHours.length === 0) {
+    return { valid: true };
+  }
+
+  const business = businessHours.find((b) => b.weekday === weekday);
+  const dayLabel = WEEKDAY_LABELS_PT[weekday];
+
+  if (!business || business.closed) {
+    return {
+      valid: false,
+      reason: "CLOSED",
+      message: `A unidade está configurada como fechada aos ${WEEKDAY_PLURAL_PT[weekday]}.`,
+    };
+  }
+
+  const shifts: BusinessHoursShift[] =
+    business.shifts && business.shifts.length > 0
+      ? business.shifts
+      : business.start && business.end
+        ? [{ start: business.start, end: business.end }]
+        : [];
+
+  if (shifts.length === 0) {
+    return {
+      valid: false,
+      reason: "NO_SHIFTS",
+      message: `Nenhum turno de funcionamento configurado para ${dayLabel}.`,
+    };
+  }
+
+  const startMin = timeToMinutes(start);
+  const endMin = timeToMinutes(end);
+
+  const fitsInAnyShift = shifts.some(
+    (s) => startMin >= timeToMinutes(s.start) && endMin <= timeToMinutes(s.end),
+  );
+
+  if (!fitsInAnyShift) {
+    const formattedShifts = shifts
+      .map((s) => `${s.start} às ${s.end}`)
+      .join(" e ");
+    return {
+      valid: false,
+      reason: "OUTSIDE_SHIFTS",
+      message: `Horário fora do expediente da unidade (${dayLabel} funciona das ${formattedShifts}).`,
+    };
+  }
+
+  return { valid: true };
 }
 
 // --- Disponibilidade de slot -----------------------------------------------
@@ -104,10 +192,23 @@ export function checkSlotAvailability(
   // override administrativo (allowOutsideBusinessHours) para atender excecoes.
   if (ctx.businessHours.length > 0 && !opts.allowOutsideBusinessHours) {
     const business = ctx.businessHours.find((b) => b.weekday === weekday);
-    if (!business || business.closed || !business.start || !business.end) {
+    if (!business || business.closed) {
       return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
     }
-    if (startMin < timeToMinutes(business.start) || endMin > timeToMinutes(business.end)) {
+    const shifts: BusinessHoursShift[] =
+      business.shifts && business.shifts.length > 0
+        ? business.shifts
+        : business.start && business.end
+          ? [{ start: business.start, end: business.end }]
+          : [];
+
+    if (shifts.length === 0) {
+      return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
+    }
+    const fitsInAnyShift = shifts.some(
+      (s) => startMin >= timeToMinutes(s.start) && endMin <= timeToMinutes(s.end),
+    );
+    if (!fitsInAnyShift) {
       return { ok: false, code: "OUTSIDE_BUSINESS_HOURS" };
     }
   }

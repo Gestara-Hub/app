@@ -295,8 +295,13 @@ export function PlansView() {
 
       {/* Dialog Criar / Editar Plano */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto sm:max-w-md"
+          onInteractOutside={(event) => event.preventDefault()}
+          expandable
+          storageKey="plan"
+        >
+          <DialogHeader className="pr-14">
             <DialogTitle>{editing ? "Editar plano" : "Novo plano"}</DialogTitle>
             <DialogDescription>Nome e valor do plano.</DialogDescription>
           </DialogHeader>

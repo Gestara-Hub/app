@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
   ChevronLeft,
-  Clock,
   GraduationCap,
   Pencil,
   Search,
@@ -48,9 +47,7 @@ import { useClients } from "@/features/clients";
 import {
   useCancelEnrollment,
   useClassGroup,
-  useConcludeMakeup,
   useEnrollments,
-  useMakeups,
   usePromoteWaitlist,
   useRemoveFromWaitlist,
   useWaitlist,
@@ -59,7 +56,7 @@ import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
 
-type Tab = "enrolled" | "waitlist" | "makeups";
+type Tab = "enrolled" | "waitlist";
 
 /** Badge de frequencia do aluno (informativo; destaque quando < 75%). */
 function FreqBadge({
@@ -159,11 +156,9 @@ export function TurmaDetailView({ id }: { id: string }) {
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
   const { data: waitlist } = useWaitlist(id);
-  const { data: makeups } = useMakeups(id);
   const cancelMut = useCancelEnrollment();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
-  const concludeRepMut = useConcludeMakeup();
   const can = useCan();
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
@@ -315,12 +310,6 @@ export function TurmaDetailView({ id }: { id: string }) {
           count={(waitlist ?? []).length}
           label="Lista de espera"
           onClick={() => setTab("waitlist")}
-        />
-        <TabButton
-          active={tab === "makeups"}
-          count={(makeups ?? []).length}
-          label="Reposições"
-          onClick={() => setTab("makeups")}
         />
       </div>
 
@@ -508,43 +497,6 @@ export function TurmaDetailView({ id }: { id: string }) {
         </section>
       ) : null}
 
-      {tab === "makeups" ? (
-        <section role="tabpanel" className="space-y-2">
-          {(makeups ?? []).length === 0 ? (
-            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-              Nenhuma reposição pendente.
-            </p>
-          ) : (
-            (makeups ?? []).map((r) => (
-              <ListItemCard key={r.id} disableHover>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{r.studentName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Faltou em {format(parseISO(r.missedDate), "dd/MM")} · repor
-                      até {format(parseISO(r.deadline), "dd/MM")}
-                    </p>
-                  </div>
-                  {canManage ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        concludeRepMut.mutate(r.id, {
-                          onSuccess: () => toast.success("Reposição concluída."),
-                        })
-                      }
-                    >
-                      <Clock className="size-4" />
-                      Marcar reposta
-                    </Button>
-                  ) : null}
-                </div>
-              </ListItemCard>
-            ))
-          )}
-        </section>
-      ) : null}
 
       <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
         <AlertDialogContent>

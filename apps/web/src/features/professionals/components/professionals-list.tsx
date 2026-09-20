@@ -128,7 +128,7 @@ function ProfessionalRow({
               <Briefcase className="size-3 text-muted-foreground/60" />
               <span>{activityMeta}</span>
             </span>
-            {professional.workingHours.length > 0 ? (
+            {!isClasses && professional.workingHours.length > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="size-3 text-muted-foreground/60" />
                 <span>

@@ -262,7 +262,13 @@ export function TurmasCalendarView() {
                               <p className="text-sm font-medium">{s.className}</p>
                               <p className="truncate text-xs text-muted-foreground">
                                 {s.modalityName ? `${s.modalityName} · ` : ""}
-                                {s.instructorName}
+                                {s.isSubstitute ? (
+                                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                                    {s.instructorName} (Subst.)
+                                  </span>
+                                ) : (
+                                  s.instructorName
+                                )}
                                 {occ
                                   ? ` · ${occ.enrolled}/${occ.capacity} vagas`
                                   : ""}

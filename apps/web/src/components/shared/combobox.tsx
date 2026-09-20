@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useId, useState, type Ref } from "react";
-import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ChevronsUpDown, X } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -34,6 +34,7 @@ interface ComboboxProps {
   ariaLabel?: string;
   invalid?: boolean;
   disabled?: boolean;
+  clearable?: boolean;
   onBlur?: () => void;
   triggerRef?: Ref<HTMLButtonElement>;
 }
@@ -55,6 +56,7 @@ export function Combobox({
   ariaLabel,
   invalid,
   disabled,
+  clearable,
   onBlur,
   triggerRef,
 }: ComboboxProps) {
@@ -77,7 +79,7 @@ export function Combobox({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -102,14 +104,30 @@ export function Combobox({
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
             {selected ? selected.label : placeholder}
           </span>
-          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          <span className="flex items-center gap-1">
+            {clearable && selected && !disabled ? (
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label={`Limpar ${ariaLabel ?? "seleção"}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onChange("");
+                }}
+                className="pointer-events-auto rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </span>
+            ) : null}
+            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={8}
-        onWheel={(event) => event.stopPropagation()}
-        className="relative w-[var(--radix-popover-trigger-width)] p-0"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
@@ -117,7 +135,6 @@ export function Combobox({
             id={listId}
             ref={setListNode}
             onScroll={(event) => updateScrollIndicators(event.currentTarget)}
-            onWheel={(event) => event.stopPropagation()}
             className="max-h-[min(16rem,var(--radix-popover-content-available-height))]"
           >
             <CommandEmpty>{emptyMessage}</CommandEmpty>
@@ -127,7 +144,7 @@ export function Combobox({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onChange(option.value);
+                    onChange(clearable && option.value === value ? "" : option.value);
                     setOpen(false);
                   }}
                 >

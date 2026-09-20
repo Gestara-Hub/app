@@ -16,4 +16,5 @@ export {
 export { SwitchField } from "./switch-field";
 export { DialogFormFooter } from "./dialog-form-footer";
 export { AddressFields } from "./address-fields";
+export { CollapsibleSection } from "./collapsible-section";
 

@@ -48,6 +48,7 @@ export function RoleManagerDialog({ open, onOpenChange }: RoleManagerDialogProps
       onOpenChange={onOpenChange}
       organizationId={ORG_ID}
       labels={labels}
+      storageKey="roles"
       useList={useRoles}
       useCreate={useCreateRole}
       useUpdate={useUpdateRole}

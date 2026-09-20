@@ -18,6 +18,7 @@ interface ComboboxFieldProps<T extends FieldValues> {
   hint?: string;
   required?: boolean;
   disabled?: boolean;
+  clearable?: boolean;
   options: ComboboxOption[];
   id?: string;
 }
@@ -37,6 +38,7 @@ export function ComboboxField<T extends FieldValues>({
   hint,
   required,
   disabled,
+  clearable,
   options,
   id,
 }: ComboboxFieldProps<T>) {
@@ -67,6 +69,7 @@ export function ComboboxField<T extends FieldValues>({
             ariaLabel={label}
             invalid={fieldState.invalid}
             disabled={disabled}
+            clearable={clearable}
           />
         </FieldShell>
       )}

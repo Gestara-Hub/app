@@ -4,6 +4,16 @@ import { z } from "zod";
  * Schema de formulario do Professional. Mensagens alinhadas ao
  * professionalsService. Validacao no submit, revalida no change.
  */
+const addressSchema = z.object({
+  postalCode: z.string().optional(),
+  street: z.string().optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+});
+
 export const professionalFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do profissional."),
   // Cargo opcional: campo pode ficar vazio.
@@ -15,6 +25,8 @@ export const professionalFormSchema = z.object({
     .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
       message: "Informe um telefone válido.",
     }),
+  // Endereço opcional
+  address: addressSchema.optional(),
   // Serviços (M1) / modalidades (M3) opcionais: podem ficar vazios (a
   // associação é informativa). O form mostra um OU outro conforme o modelo.
   serviceIds: z.array(z.string()),

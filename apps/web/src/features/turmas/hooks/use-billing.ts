@@ -93,3 +93,28 @@ export function useMarkChargePending() {
   });
 }
 
+export function useCancelCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => billingService.cancelCharge(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+  });
+}
+
+export function useRevertCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: Id) => billingService.reopenCharge(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+  });
+}
+
+export function useClearCharges() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (competence?: string) => billingService.clearCharges(competence),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+  });
+}
+
+

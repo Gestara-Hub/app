@@ -110,7 +110,13 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                               {session.start}–{session.end}
                             </p>
                             <p className="truncate text-[0.7rem] leading-tight text-muted-foreground">
-                              {session.instructorName}
+                              {session.isSubstitute ? (
+                                <span className="font-medium text-amber-600 dark:text-amber-400">
+                                  {session.instructorName} (Subst.)
+                                </span>
+                              ) : (
+                                session.instructorName
+                              )}
                             </p>
                           </Link>
                         );

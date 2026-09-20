@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useForm, FormProvider, useWatch, type Path } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useForm,
+  FormProvider,
+  useWatch,
+  type Path,
+  type FieldErrors,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, MapPin, Wallet } from "lucide-react";
+import { FileText, MapPin, Percent, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import {
   AddressFields,
+  CollapsibleSection,
   InputCurrency,
   InputNumber,
   InputPhone,
@@ -16,7 +23,8 @@ import {
   TextArea,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { ORG_ID } from "@/config/tenant";
@@ -61,11 +69,7 @@ function toDefaults(client?: Client, defaultDueDay: number = 10): ClientFormValu
     membershipStatus: client?.membershipStatus ?? "active",
     hasDiscount,
     discountType: client?.discount?.type ?? "fixed",
-    discountValue: client?.discount
-      ? client.discount.type === "fixed"
-        ? client.discount.value / 100
-        : client.discount.value
-      : 0,
+    discountValue: client?.discount?.value ?? 0,
     discountReason: client?.discount?.reason ?? "",
   };
 }
@@ -116,7 +120,22 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     control: form.control,
     name: "discountType",
   });
+  const discountValue = useWatch({
+    control: form.control,
+    name: "discountValue",
+  });
+  const addressValues = useWatch({
+    control: form.control,
+    name: "address",
+  });
+  const notesValue = useWatch({
+    control: form.control,
+    name: "notes",
+  });
 
+  const [planOpen, setPlanOpen] = useState(
+    () => (client ? Boolean(client.planId) : true),
+  );
   const [addressOpen, setAddressOpen] = useState(
     Boolean(
       client?.address?.street ||
@@ -124,8 +143,71 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
         client?.address?.city,
     ),
   );
+  const [notesOpen, setNotesOpen] = useState(Boolean(client?.notes?.trim()));
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const selectedPlan = useMemo(
+    () => plans?.find((p) => p.id === selectedPlanId),
+    [plans, selectedPlanId],
+  );
+
+  const planBadge = selectedPlan
+    ? `${selectedPlan.name} • ${formatCents(selectedPlan.priceCents)}/mês`
+    : selectedPlanId
+      ? "Plano selecionado"
+      : undefined;
+
+  const prevDiscountTypeRef = useRef(discountType);
+  useEffect(() => {
+    if (prevDiscountTypeRef.current !== discountType) {
+      prevDiscountTypeRef.current = discountType;
+      form.setValue("discountValue", 0);
+    }
+  }, [discountType, form]);
+
+  const discountBadge = useMemo(() => {
+    if (!hasDiscount || !selectedPlanId) return null;
+    const numValue = Number(discountValue);
+    if (!numValue || numValue <= 0 || isNaN(numValue)) {
+      return null;
+    }
+    if (discountType === "percentage") {
+      return `-${numValue}%`;
+    }
+    return `-${formatCents(Math.round(numValue))}`;
+  }, [hasDiscount, selectedPlanId, discountValue, discountType]);
+
+  const hasAddressData = Boolean(
+    addressValues?.street?.trim() ||
+      addressValues?.postalCode?.trim() ||
+      addressValues?.city?.trim(),
+  );
+  const addressBadge = hasAddressData
+    ? addressValues?.city?.trim()
+      ? `${addressValues.city.trim()}${addressValues.state ? `/${addressValues.state}` : ""}`
+      : "Preenchido"
+    : undefined;
+
+  const notesBadge = notesValue?.trim() ? "Preenchido" : undefined;
+
+  const onInvalid = useCallback((errors: FieldErrors<ClientFormValues>) => {
+    if (errors.address) {
+      setAddressOpen(true);
+    }
+    if (
+      errors.planId ||
+      errors.dueDay ||
+      errors.membershipStatus ||
+      errors.discountValue ||
+      errors.discountReason
+    ) {
+      setPlanOpen(true);
+    }
+    if (errors.notes) {
+      setNotesOpen(true);
+    }
+  }, []);
+
+  const onSubmit = async (values: ClientFormValues) => {
     const hasAddr =
       values.address &&
       (Boolean(values.address.street) ||
@@ -153,10 +235,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     const discountPayload = hasDiscountVal
       ? {
           type: values.discountType ?? "fixed",
-          value:
-            values.discountType === "fixed"
-              ? Math.round((values.discountValue ?? 0) * 100)
-              : Math.round(values.discountValue ?? 0),
+          value: Math.round(values.discountValue ?? 0),
           reason: values.discountReason?.trim() || undefined,
         }
       : undefined;
@@ -199,6 +278,19 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
           form.setError(f.field as Path<ClientFormValues>, {
             message: f.message,
           });
+          if (f.field.startsWith("address")) {
+            setAddressOpen(true);
+          }
+          if (
+            f.field === "planId" ||
+            f.field === "dueDay" ||
+            f.field.startsWith("discount")
+          ) {
+            setPlanOpen(true);
+          }
+          if (f.field === "notes") {
+            setNotesOpen(true);
+          }
         }
       } else {
         toast.error(
@@ -211,12 +303,18 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
         );
       }
     }
-  });
+  };
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-5">
-        {/* Bloco 1: Dados de Identificação */}
+      <form
+        id={formId}
+        onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          {/* Bloco 1: Dados de Identificação */}
         <div className="space-y-4">
           <InputText<ClientFormValues>
             name="name"
@@ -249,52 +347,87 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
 
         {/* Bloco 2: Plano & Mensalidade (específico de classes/academia) */}
         {isClasses ? (
-          <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Wallet className="h-4 w-4 text-primary" />
-              <span>Plano & Mensalidade</span>
-            </div>
-
-            <SelectField<ClientFormValues>
-              name="planId"
-              label="Plano de Acesso"
-              hint="O plano determina o valor cobrado mensalmente do aluno."
-              options={planOptions}
-              disabled={pending}
-            />
-
-            {selectedPlanId ? (
-              <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <InputNumber<ClientFormValues>
-                    name="dueDay"
-                    label="Dia de vencimento da mensalidade"
-                    hint="Dia do mês (1 a 31) para a cobrança."
-                    min={1}
-                    max={31}
-                    required
-                    disabled={pending}
-                  />
-
+          <CollapsibleSection
+            title="Plano & Mensalidade"
+            icon={<Wallet className="h-4 w-4" />}
+            badge={
+              planBadge || discountBadge ? (
+                <>
+                  {planBadge && (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {planBadge}
+                    </span>
+                  )}
+                  {discountBadge && (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {discountBadge}
+                    </span>
+                  )}
+                </>
+              ) : undefined
+            }
+            open={planOpen}
+            onOpenChange={setPlanOpen}
+          >
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className={selectedPlanId ? "sm:col-span-2" : "sm:col-span-3"}>
                   <SelectField<ClientFormValues>
-                    name="membershipStatus"
-                    label="Situação da assinatura"
-                    options={MEMBERSHIP_STATUS_OPTIONS}
+                    name="planId"
+                    label="Plano de acesso"
+                    options={planOptions}
                     disabled={pending}
                   />
                 </div>
 
-                {/* Desconto Opcional */}
-                <div className="pt-2 border-t space-y-3">
-                  <SwitchField<ClientFormValues>
-                    name="hasDiscount"
-                    label="Conceder desconto nesta mensalidade"
-                    hint="Útil para desconto família, bolsista ou atleta."
-                    disabled={pending}
-                  />
+                {selectedPlanId ? (
+                  <div>
+                    <InputNumber<ClientFormValues>
+                      name="dueDay"
+                      label="Dia do vencimento"
+                      placeholder="10"
+                      min={1}
+                      max={31}
+                      required
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+
+                {selectedPlanId && isEdit ? (
+                  <div className="sm:col-span-3">
+                    <SelectField<ClientFormValues>
+                      name="membershipStatus"
+                      label="Situação da assinatura"
+                      options={MEMBERSHIP_STATUS_OPTIONS}
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              {selectedPlanId ? (
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between py-1">
+                    <label
+                      htmlFor="client-has-discount"
+                      className="text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer select-none"
+                    >
+                      <Percent className="size-3.5 text-muted-foreground" />
+                      <span>Conceder desconto na mensalidade</span>
+                    </label>
+                    <Switch
+                      id="client-has-discount"
+                      checked={Boolean(hasDiscount)}
+                      onCheckedChange={(checked) =>
+                        form.setValue("hasDiscount", checked, { shouldDirty: true })
+                      }
+                      disabled={pending}
+                    />
+                  </div>
 
                   {hasDiscount ? (
-                    <div className="space-y-3 pl-2 border-l-2 border-primary/40 pt-1">
+                    <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3 animate-in fade-in-50 duration-150">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <SelectField<ClientFormValues>
                           name="discountType"
@@ -305,7 +438,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                         {discountType === "percentage" ? (
                           <InputNumber<ClientFormValues>
                             name="discountValue"
-                            label="Porcentagem de desconto (%)"
+                            label="Desconto (%)"
                             placeholder="Ex: 10"
                             min={0}
                             max={100}
@@ -323,52 +456,45 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                       <InputText<ClientFormValues>
                         name="discountReason"
                         label="Motivo do desconto"
-                        placeholder="Ex: Desconto família (irmãos treinando juntos)"
+                        placeholder="Ex: Desconto família, atleta ou bolsa"
                         disabled={pending}
                       />
                     </div>
                   ) : null}
                 </div>
-              </>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          </CollapsibleSection>
         ) : null}
 
         {/* Bloco 3: Endereço Estruturado (Opcional) */}
-        <div className="rounded-lg border p-3 space-y-3">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-sm font-medium text-foreground hover:text-primary transition-colors"
-            onClick={() => setAddressOpen(!addressOpen)}
-          >
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>Endereço (opcional)</span>
-            </div>
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                addressOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+        <CollapsibleSection
+          title="Endereço (opcional)"
+          icon={<MapPin className="h-4 w-4" />}
+          badge={addressBadge}
+          open={addressOpen}
+          onOpenChange={setAddressOpen}
+        >
+          <AddressFields<ClientFormValues>
+            prefix="address"
+            disabled={pending}
+          />
+        </CollapsibleSection>
 
-          {addressOpen ? (
-            <div className="pt-2 border-t">
-              <AddressFields<ClientFormValues>
-                prefix="address"
-                disabled={pending}
-              />
-            </div>
-          ) : null}
-        </div>
-
-        {/* Observações e Ativo */}
-        <TextArea<ClientFormValues>
-          name="notes"
-          label="Observações"
-          placeholder="Histórico, restrições médicas, preferências, etc. (opcional)"
-          disabled={pending}
-        />
+        {/* Bloco 4: Observações e restrições (Opcional) */}
+        <CollapsibleSection
+          title="Observações e restrições (opcional)"
+          icon={<FileText className="h-4 w-4" />}
+          badge={notesBadge}
+          open={notesOpen}
+          onOpenChange={setNotesOpen}
+        >
+          <TextArea<ClientFormValues>
+            name="notes"
+            placeholder="Histórico, restrições médicas, preferências, etc. (opcional)"
+            disabled={pending}
+          />
+        </CollapsibleSection>
 
         {isEdit ? (
           <SwitchField<ClientFormValues>
@@ -382,8 +508,9 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
             disabled={pending}
           />
         ) : null}
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

@@ -26,10 +26,12 @@ export function ModalityFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-lg"
+        className="max-h-[90vh] sm:max-w-lg flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="modality"
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-20">
           <DialogTitle>
             {isEdit ? "Editar modalidade" : "Nova modalidade"}
           </DialogTitle>

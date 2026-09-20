@@ -35,8 +35,10 @@ export function AppointmentFormDialog({
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="appointment"
       >
-        <DialogHeader>
+        <DialogHeader className="pr-14">
           <DialogTitle>
             {isEdit ? "Editar agendamento" : "Novo agendamento"}
           </DialogTitle>

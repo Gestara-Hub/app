@@ -42,7 +42,6 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     plans: [],
     charges: [],
     waitlist: [],
-    makeups: [],
     reservations: [],
   };
 }

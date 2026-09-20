@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { InputText, SwitchField } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import type { Category, CreateCategory } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
@@ -74,26 +74,33 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <InputText<ModalityFormValues>
-          name="name"
-          label="Nome da modalidade / curso"
-          placeholder="Ex.: Inglês, Dança, Natação"
-          hint="O tipo de aula, curso ou modalidade que a unidade oferece. As turmas e os professores se organizam por ela."
-          required
-          disabled={pending}
-        />
-
-        {isEdit ? (
-          <SwitchField<ModalityFormValues>
-            name="active"
-            label="Modalidade ativa"
-            hint="Modalidades inativas não aparecem em novas turmas nem no cadastro de instrutores."
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          <InputText<ModalityFormValues>
+            name="name"
+            label="Nome da modalidade / curso"
+            placeholder="Ex.: Inglês, Dança, Natação"
+            hint="O tipo de aula, curso ou modalidade que a unidade oferece. As turmas e os professores se organizam por ela."
+            required
             disabled={pending}
           />
-        ) : null}
 
-        <DialogFooter>
+          {isEdit ? (
+            <SwitchField<ModalityFormValues>
+              name="active"
+              label="Modalidade ativa"
+              hint="Modalidades inativas não aparecem em novas turmas nem no cadastro de instrutores."
+              disabled={pending}
+            />
+          ) : null}
+        </DialogBody>
+
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar

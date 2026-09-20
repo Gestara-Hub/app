@@ -31,7 +31,6 @@ import {
   useCharges,
   useClassGroups,
   useClassSessions,
-  useMakeups,
 } from "@/features/turmas";
 import { Onboarding } from "@/features/onboarding";
 
@@ -81,7 +80,6 @@ export function AcademyDashboardView() {
   const groupsQuery = useClassGroups();
   const chargesQuery = useCharges({ competence: currentCompetence });
   const attendanceQuery = useAttendanceSummary(todayDate);
-  const makeupsQuery = useMakeups();
 
   const sessions = sessionsQuery.data ?? [];
   const groups = groupsQuery.data ?? [];
@@ -92,7 +90,6 @@ export function AcademyDashboardView() {
     justified: 0,
     total: 0,
   };
-  const makeups = makeupsQuery.data ?? [];
 
   const activeGroups = groups.filter((g) => g.status === "active");
   const totalEnrolled = activeGroups.reduce(
@@ -123,9 +120,6 @@ export function AcademyDashboardView() {
     (sum, c) => sum + c.amountCents,
     0,
   );
-
-  // Reposições pendentes
-  const pendingMakeups = makeups.filter((m) => m.status === "pending");
 
   const isPending =
     sessionsQuery.isPending ||
@@ -461,26 +455,6 @@ export function AcademyDashboardView() {
                         <strong>{overdueCharges.length}</strong> mensalidade(s)
                         em atraso ({formatCents(overdueRevenue)}).
                       </span>
-                    </div>
-                  ) : null}
-
-                  {pendingMakeups.length > 0 ? (
-                    <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs">
-                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                        <AlertTriangle className="size-4 shrink-0" />
-                        <span>
-                          <strong>{pendingMakeups.length}</strong> reposição(ões)
-                          pendente(s)
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-1.5 text-xs"
-                        asChild
-                      >
-                        <Link href="/classes">Ver</Link>
-                      </Button>
                     </div>
                   ) : null}
                 </CardContent>

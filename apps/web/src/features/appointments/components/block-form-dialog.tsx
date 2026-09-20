@@ -127,10 +127,12 @@ export function BlockFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-lg"
+        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="appointment-block"
       >
-        <DialogHeader>
+        <DialogHeader className="pr-14">
           <DialogTitle>Bloquear horário</DialogTitle>
           <DialogDescription>
             O horário bloqueado não aceita agendamento e aparece destacado na

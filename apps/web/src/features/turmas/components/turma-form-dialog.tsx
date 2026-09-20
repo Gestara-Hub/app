@@ -25,10 +25,12 @@ export function TurmaFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[88vh] overflow-y-auto sm:max-w-xl"
+        className="max-h-[88vh] sm:max-w-xl flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
+        expandable
+        storageKey="turma"
       >
-        <DialogHeader>
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-20">
           <DialogTitle>{isEdit ? "Editar turma" : "Nova turma"}</DialogTitle>
           <DialogDescription>
             {isEdit

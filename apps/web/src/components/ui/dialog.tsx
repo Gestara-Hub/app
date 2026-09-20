@@ -1,11 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
+import { ChevronDown, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+
+interface DialogExpandedContextValue {
+  isExpanded: boolean
+  toggleExpand: () => void
+  expandable: boolean
+}
+
+const DialogExpandedContext = React.createContext<DialogExpandedContextValue>({
+  isExpanded: false,
+  toggleExpand: () => {},
+  expandable: false,
+})
+
+const useDialogExpanded = () => React.useContext(DialogExpandedContext)
 
 function Dialog({
   ...props
@@ -47,37 +61,120 @@ function DialogOverlay({
   )
 }
 
+const MODAL_EXPANDED_STORAGE_PREFIX = "gestarahub:modal-expanded:"
+
+function getSavedExpandedState(storageKey?: string): boolean {
+  if (!storageKey || typeof window === "undefined") return false
+  try {
+    return window.localStorage.getItem(`${MODAL_EXPANDED_STORAGE_PREFIX}${storageKey}`) === "true"
+  } catch {
+    return false
+  }
+}
+
+function saveExpandedState(storageKey: string, isExpanded: boolean): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(`${MODAL_EXPANDED_STORAGE_PREFIX}${storageKey}`, String(isExpanded))
+  } catch {
+    // Ignora restricoes de sandbox ou cotas de armazenamento
+  }
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  expandable = false,
+  storageKey,
+  expanded: controlledExpanded,
+  onExpandedChange,
+  expandedClassName = "sm:max-w-4xl lg:max-w-5xl h-[92vh] max-h-[92vh]",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  expandable?: boolean
+  storageKey?: string
+  expanded?: boolean
+  onExpandedChange?: (expanded: boolean) => void
+  expandedClassName?: string
 }) {
+  const [uncontrolledExpanded, setUncontrolledExpanded] = React.useState<boolean>(
+    () => (expandable && storageKey ? getSavedExpandedState(storageKey) : false)
+  )
+  const isExpanded =
+    controlledExpanded !== undefined ? controlledExpanded : uncontrolledExpanded
+
+  React.useEffect(() => {
+    if (expandable && storageKey && controlledExpanded === undefined) {
+      setUncontrolledExpanded(getSavedExpandedState(storageKey))
+    }
+  }, [expandable, storageKey, controlledExpanded])
+
+  const handleToggle = React.useCallback(
+    (next?: boolean) => {
+      const resolved = next !== undefined ? next : !isExpanded
+      if (controlledExpanded === undefined) {
+        setUncontrolledExpanded(resolved)
+      }
+      if (expandable && storageKey) {
+        saveExpandedState(storageKey, resolved)
+      }
+      onExpandedChange?.(resolved)
+    },
+    [isExpanded, controlledExpanded, onExpandedChange, expandable, storageKey]
+  )
+
+  const contextValue = React.useMemo(
+    () => ({ isExpanded, toggleExpand: () => handleToggle(), expandable }),
+    [isExpanded, handleToggle, expandable]
+  )
+
   return (
-    <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
-    </DialogPortal>
+    <DialogExpandedContext.Provider value={contextValue}>
+      <DialogPortal data-slot="dialog-portal">
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(
+            "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[min(90vh,calc(100dvh-3rem))] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 outline-none transition-[max-width,width,height,max-height] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+            className,
+            isExpanded && expandedClassName
+          )}
+          {...props}
+        >
+          {children}
+          {(showCloseButton || expandable) && (
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5">
+              {expandable && (
+                <button
+                  type="button"
+                  data-slot="dialog-expand"
+                  onClick={() => handleToggle()}
+                  className="rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
+                  title={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
+                  aria-label={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
+                >
+                  {isExpanded ? <Minimize2Icon /> : <Maximize2Icon />}
+                  <span className="sr-only">
+                    {isExpanded ? "Reduzir modal" : "Aumentar modal"}
+                  </span>
+                </button>
+              )}
+              {showCloseButton && (
+                <DialogPrimitive.Close
+                  data-slot="dialog-close"
+                  className="rounded-xs p-1 text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer"
+                >
+                  <XIcon />
+                  <span className="sr-only">Close</span>
+                </DialogPrimitive.Close>
+              )}
+            </div>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </DialogExpandedContext.Provider>
   )
 }
 
@@ -144,8 +241,137 @@ function DialogDescription({
   )
 }
 
+function DialogBody({
+  className,
+  contentClassName,
+  children,
+  showScrollCue = true,
+  scrollCueLabel = "Mais campos abaixo",
+  ...props
+}: React.ComponentProps<"div"> & {
+  contentClassName?: string
+  showScrollCue?: boolean
+  scrollCueLabel?: string
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const contentRef = React.useRef<HTMLDivElement>(null)
+  const [canScrollUp, setCanScrollUp] = React.useState(false)
+  const [canScrollDown, setCanScrollDown] = React.useState(false)
+
+  const checkScroll = React.useCallback(() => {
+    const el = containerRef.current
+    if (!el) return
+    const hasUp = el.scrollTop > 6
+    const hasDown = el.scrollHeight - el.scrollTop - el.clientHeight > 6
+    setCanScrollUp(hasUp)
+    setCanScrollDown(hasDown)
+  }, [])
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    const content = contentRef.current
+    if (!container) return
+
+    // Observa o container de rolagem e o wrapper do conteúdo interno
+    const resizeObserver = new ResizeObserver(() => {
+      checkScroll()
+    })
+    resizeObserver.observe(container)
+    if (content) {
+      resizeObserver.observe(content)
+    }
+
+    // MutationObserver para capturar inclusão/remoção de elementos (ex.: seções colapsáveis abrindo)
+    const mutationObserver = new MutationObserver(() => {
+      checkScroll()
+    })
+    mutationObserver.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    })
+
+    const rafId = requestAnimationFrame(() => {
+      checkScroll()
+    })
+    const timerId = setTimeout(() => {
+      checkScroll()
+    }, 250)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(timerId)
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+    }
+  }, [checkScroll])
+
+  const scrollToBottom = () => {
+    const el = containerRef.current
+    if (!el) return
+    el.scrollBy({ top: 200, behavior: "smooth" })
+  }
+
+  return (
+    <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
+      {/* Indicador superior (sombra quando houver conteúdo acima) */}
+      <div
+        className={cn(
+          "pointer-events-none absolute top-0 left-0 right-0 z-10 h-4 bg-gradient-to-b from-black/10 to-transparent transition-opacity duration-200 dark:from-black/40",
+          canScrollUp ? "opacity-100" : "opacity-0"
+        )}
+      />
+
+      {/* Área rolável principal */}
+      <div
+        ref={containerRef}
+        onScroll={checkScroll}
+        data-slot="dialog-body"
+        className={cn("flex-1 overflow-y-auto min-h-0 p-6", className)}
+        {...props}
+      >
+        <div ref={contentRef} className={cn("space-y-4", contentClassName)}>
+          {children}
+        </div>
+      </div>
+
+      {/* Indicador inferior (gradiente suave quando houver conteúdo abaixo) */}
+      <div
+        className={cn(
+          "pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-7 bg-gradient-to-t from-background/90 via-background/40 to-transparent transition-opacity duration-200",
+          canScrollDown ? "opacity-100" : "opacity-0"
+        )}
+      />
+
+      {/* Pill flutuante indicativo de rolagem para baixo */}
+      {showScrollCue && (
+        <div
+          className={cn(
+            "absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-auto",
+            canScrollDown
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2 pointer-events-none"
+          )}
+        >
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            aria-label="Rolar para ver mais campos"
+            className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 px-3 py-1 text-xs font-medium text-muted-foreground shadow-md backdrop-blur-xs transition-all hover:bg-accent hover:text-foreground hover:border-border cursor-pointer select-none active:scale-95"
+            title="Clique para rolar e ver mais opções"
+          >
+            <span>{scrollCueLabel}</span>
+            <ChevronDown className="h-3.5 w-3.5 animate-bounce text-primary" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -155,4 +381,5 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  useDialogExpanded,
 }

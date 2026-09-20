@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Building2, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResetDataActions } from "@/features/system";
 import { OrganizationSettingsForm } from "./organization-settings-card";
@@ -9,21 +10,30 @@ import { BusinessHoursForm } from "./business-hours-card";
 
 type Tab = "geral" | "horarios" | "dados";
 
-const TABS: { value: Tab; label: string; description: string }[] = [
+const TABS: {
+  value: Tab;
+  label: string;
+  icon: typeof Building2;
+  description: string;
+}[] = [
   {
     value: "geral",
     label: "Geral",
-    description: "Dados gerais da organização e da unidade, exibidos no sistema.",
+    icon: Building2,
+    description:
+      "Identificação do negócio, canais de contato, endereço da unidade e regras padrão de cobrança.",
   },
   {
     value: "horarios",
     label: "Horários",
+    icon: Clock,
     description:
-      "Define o expediente da unidade — usado para validar os agendamentos.",
+      "Define o expediente e os turnos de funcionamento da unidade — usado para validar os agendamentos.",
   },
   {
     value: "dados",
     label: "Dados de exemplo",
+    icon: Database,
     description:
       "Suas alterações ficam salvas no navegador (localStorage). Ao zerar os mocks, todo o armazenamento local é redefinido, mantendo apenas os proprietários iniciais para você cadastrar tudo do zero.",
   },
@@ -47,7 +57,7 @@ export function SettingsTabs() {
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <div
         role="tablist"
         aria-label="Seções de configurações"
@@ -55,6 +65,7 @@ export function SettingsTabs() {
       >
         {TABS.map((t) => {
           const active = t.value === tab;
+          const Icon = t.icon;
           return (
             <button
               key={t.value}
@@ -65,12 +76,13 @@ export function SettingsTabs() {
               aria-controls={`settings-panel-${t.value}`}
               onClick={() => setTab(t.value)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
+              <Icon className="size-4 shrink-0" />
               {t.label}
             </button>
           );
