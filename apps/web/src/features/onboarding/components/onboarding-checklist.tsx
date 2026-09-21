@@ -33,8 +33,8 @@ const GROUPS_CLASSES = [
   {
     id: "config",
     label: "Configuração",
-    description: "Horário de funcionamento, modalidades e planos.",
-    stepIds: ["hours", "modalities", "plans"],
+    description: "Horário de funcionamento, regras de cobrança, modalidades e planos.",
+    stepIds: ["hours", "billing", "modalities", "plans"],
   },
   {
     id: "people",
@@ -72,6 +72,7 @@ export function OnboardingChecklist({
 
   const stepShort: Record<string, string> = {
     hours: "horário",
+    billing: "regras de cobrança",
     categories: "categorias",
     services: "serviços",
     modalities: "modalidades",

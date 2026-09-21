@@ -9,7 +9,7 @@ import {
   type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, FileText, MapPin, Percent, Wallet } from "lucide-react";
+import { CalendarClock, FileText, MapPin, Percent, SlidersHorizontal, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import {
   AddressFields,
@@ -29,14 +29,13 @@ import { Switch } from "@/components/ui/switch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { ORG_ID } from "@/config/tenant";
-import type { Address, Client, CreateClient } from "@gestarahub/contracts";
+import type { Address, Client, CreateClient, OrganizationSettings } from "@gestarahub/contracts";
 import { useCurrentUser, useModel } from "@/features/auth";
 import { usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
 import { addDays, addMonths, format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils";
 
 const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "active", label: "Ativa (treinando normalmente)" },
@@ -55,10 +54,12 @@ function computeBillingCalculation({
   plan,
   planStartDate,
   basePriceCents,
+  defaultDueDay = 10,
 }: {
   plan?: { period?: string; priceCents: number };
   planStartDate?: string;
   basePriceCents: number;
+  defaultDueDay?: number;
 }) {
   if (!plan) return null;
 
@@ -100,6 +101,15 @@ function computeBillingCalculation({
     nextCycleDateISO = format(addMonths(validDate, 1), "yyyy-MM-dd");
   }
 
+  // Próximo vencimento padrão da academia (usado no modo proporcional pós-pago)
+  let nextStandardDueDate = new Date(year, month - 1, Math.min(defaultDueDay, daysInMonth));
+  if (nextStandardDueDate <= validDate) {
+    const nextM = addMonths(validDate, 1);
+    const daysInNextM = new Date(nextM.getFullYear(), nextM.getMonth() + 1, 0).getDate();
+    nextStandardDueDate = new Date(nextM.getFullYear(), nextM.getMonth(), Math.min(defaultDueDay, daysInNextM));
+  }
+  const nextStandardDueDateISO = format(nextStandardDueDate, "yyyy-MM-dd");
+
   const isFirstDay = day === 1;
   const proratedAmountCents = Math.round((basePriceCents / totalPeriodDays) * remainingDays);
 
@@ -115,16 +125,18 @@ function computeBillingCalculation({
     proratedAmountCents,
     fullAmountCents: basePriceCents,
     nextCycleDateISO,
+    nextStandardDueDateISO,
     startDateISO: dateStr,
   };
 }
 
-function toDefaults(client?: Client, defaultDueDay: number = 10): ClientFormValues {
+function toDefaults(client?: Client, orgSettings?: OrganizationSettings): ClientFormValues {
   const addr = client?.address;
   const hasDiscount = Boolean(client?.discount && client.discount.value > 0);
   const initialStartDate = client?.planStartDate || todayDateISO;
-  const initialStrategy = client?.billingStrategy || "prorated";
-  const initialTiming = client?.cyclePaymentTiming || "postpaid";
+  const initialStrategy = client?.billingStrategy || orgSettings?.midMonthStrategy || "prorated";
+  const initialTiming = client?.cyclePaymentTiming || orgSettings?.billingTiming || "prepaid";
+  const defaultDueDay = client?.dueDay ?? orgSettings?.defaultDueDay ?? 10;
 
   return {
     name: client?.name ?? "",
@@ -147,7 +159,7 @@ function toDefaults(client?: Client, defaultDueDay: number = 10): ClientFormValu
     cyclePaymentTiming: initialTiming,
     firstChargeAmount: undefined,
     firstChargeDueDate: initialStartDate,
-    dueDay: client?.dueDay ?? defaultDueDay,
+    dueDay: defaultDueDay,
     membershipStatus: client?.membershipStatus ?? "active",
     hasDiscount,
     discountType: client?.discount?.type ?? "fixed",
@@ -171,7 +183,11 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const pending = createMut.isPending || updateMut.isPending;
 
   const orgQuery = useOrganization();
-  const defaultDueDay = orgQuery.data?.settings?.defaultDueDay ?? 10;
+  const orgSettings = orgQuery.data?.settings;
+  const defaultDueDay = orgSettings?.defaultDueDay ?? 10;
+  const orgBillingTiming = orgSettings?.billingTiming ?? "prepaid";
+
+  const [showAdvancedBilling, setShowAdvancedBilling] = useState(false);
 
   const { data: plans } = usePlans({ status: "active" });
 
@@ -187,7 +203,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     resolver: zodResolver(clientFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(client, defaultDueDay),
+    defaultValues: toDefaults(client, orgSettings),
   });
 
   const selectedPlanId = useWatch({
@@ -205,6 +221,10 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const cyclePaymentTiming = useWatch({
     control: form.control,
     name: "cyclePaymentTiming",
+  });
+  const dueDayValue = useWatch({
+    control: form.control,
+    name: "dueDay",
   });
   const hasDiscount = useWatch({
     control: form.control,
@@ -230,6 +250,23 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     control: form.control,
     name: "firstChargeAmount",
   });
+
+  // Se o form montou antes do orgSettings resolver do backend/cache:
+  const orgSettingsLoadedRef = useRef(false);
+  useEffect(() => {
+    if (orgSettings && !orgSettingsLoadedRef.current && !client) {
+      orgSettingsLoadedRef.current = true;
+      if (orgSettings.midMonthStrategy) {
+        form.setValue("billingStrategy", orgSettings.midMonthStrategy);
+      }
+      if (orgSettings.billingTiming) {
+        form.setValue("cyclePaymentTiming", orgSettings.billingTiming);
+      }
+      if (orgSettings.defaultDueDay) {
+        form.setValue("dueDay", orgSettings.defaultDueDay);
+      }
+    }
+  }, [orgSettings, client, form]);
 
   const [planOpen, setPlanOpen] = useState(
     () => (client ? Boolean(client.planId) : true),
@@ -293,8 +330,9 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
       plan: selectedPlan,
       planStartDate,
       basePriceCents,
+      defaultDueDay,
     });
-  }, [selectedPlan, planStartDate, basePriceCents]);
+  }, [selectedPlan, planStartDate, basePriceCents, defaultDueDay]);
 
   const prevDateRef = useRef(planStartDate);
   const prevPlanRef = useRef(selectedPlanId);
@@ -324,35 +362,32 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
         form.setValue("dueDay", billingCalculation.day, { shouldDirty: true });
         form.setValue("firstChargeAmount", billingCalculation.fullAmountCents, { shouldDirty: true });
         const targetDueDate =
-          (cyclePaymentTiming ?? "postpaid") === "postpaid"
+          (cyclePaymentTiming ?? orgBillingTiming) === "postpaid"
             ? billingCalculation.nextCycleDateISO
             : billingCalculation.startDateISO;
         form.setValue("firstChargeDueDate", targetDueDate, { shouldDirty: true });
       } else {
+        form.setValue("dueDay", defaultDueDay, { shouldDirty: true });
         form.setValue("firstChargeAmount", billingCalculation.proratedAmountCents, { shouldDirty: true });
-        form.setValue("firstChargeDueDate", billingCalculation.startDateISO, { shouldDirty: true });
+        const targetDueDate =
+          (cyclePaymentTiming ?? orgBillingTiming) === "postpaid"
+            ? billingCalculation.nextStandardDueDateISO
+            : billingCalculation.startDateISO;
+        form.setValue("firstChargeDueDate", targetDueDate, { shouldDirty: true });
       }
     }
-  }, [planStartDate, selectedPlanId, billingStrategy, cyclePaymentTiming, basePriceCents, billingCalculation, form, firstChargeAmount]);
-
-  const handleSelectStrategy = useCallback((strategy: "prorated" | "full_cycle") => {
-    form.setValue("billingStrategy", strategy, { shouldDirty: true });
-    if (!billingCalculation) return;
-
-    if (strategy === "prorated") {
-      form.setValue("dueDay", defaultDueDay, { shouldDirty: true });
-      form.setValue("firstChargeAmount", billingCalculation.proratedAmountCents, { shouldDirty: true });
-      form.setValue("firstChargeDueDate", billingCalculation.startDateISO, { shouldDirty: true });
-    } else {
-      form.setValue("dueDay", billingCalculation.day, { shouldDirty: true });
-      form.setValue("firstChargeAmount", billingCalculation.fullAmountCents, { shouldDirty: true });
-      const targetDueDate =
-        (form.getValues("cyclePaymentTiming") ?? "postpaid") === "postpaid"
-          ? billingCalculation.nextCycleDateISO
-          : billingCalculation.startDateISO;
-      form.setValue("firstChargeDueDate", targetDueDate, { shouldDirty: true });
-    }
-  }, [billingCalculation, defaultDueDay, form]);
+  }, [
+    planStartDate,
+    selectedPlanId,
+    billingStrategy,
+    cyclePaymentTiming,
+    basePriceCents,
+    billingCalculation,
+    defaultDueDay,
+    orgBillingTiming,
+    form,
+    firstChargeAmount,
+  ]);
 
   const hasAddressData = Boolean(
     addressValues?.street?.trim() ||
@@ -610,180 +645,90 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                       <CalendarClock className="size-3.5 text-primary" />
                       Cobrança da 1ª mensalidade
                     </span>
-                    {billingCalculation && !billingCalculation.isFirstDay ? (
-                      <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                        Início no meio do {billingCalculation.periodLabel}
-                      </span>
-                    ) : null}
+                    <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
+                      Padrão da academia: {billingStrategy === "prorated" ? "Proporcional" : "Ciclo 30d"} •{" "}
+                      {cyclePaymentTiming === "postpaid" ? "Pós-pago" : "Pré-pago"}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    {/* Opção 1: Pró-rata */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectStrategy("prorated")}
-                      className={cn(
-                        "flex flex-col items-start p-3 rounded-lg border text-left transition-all relative select-none cursor-pointer",
-                        billingStrategy === "prorated"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
-                          : "border-border/60 hover:border-border hover:bg-muted/30",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-semibold text-foreground">
-                          Cobrar proporcional
-                        </span>
-                        <span className="text-xs font-bold text-primary">
-                          {formatCents(billingCalculation?.proratedAmountCents ?? basePriceCents)}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">
-                        {billingCalculation
-                          ? `${billingCalculation.remainingDays} dias restantes no ${billingCalculation.periodLabel}. Mantém vencimento no dia padrão (${defaultDueDay}).`
-                          : "Calcula apenas os dias restantes do período atual."}
-                      </p>
-                    </button>
-
-                    {/* Opção 2: Ciclo Completo */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectStrategy("full_cycle")}
-                      className={cn(
-                        "flex flex-col items-start p-3 rounded-lg border text-left transition-all relative select-none cursor-pointer",
-                        billingStrategy === "full_cycle"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary shadow-xs"
-                          : "border-border/60 hover:border-border hover:bg-muted/30",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-semibold text-foreground">
-                          Ciclo completo ({billingCalculation?.periodLabel ?? "mês"})
-                        </span>
-                        <span className="text-xs font-bold text-primary">
-                          {formatCents(billingCalculation?.fullAmountCents ?? basePriceCents)}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">
-                        {billingCalculation
-                          ? `Vencimento fixado no dia de início (dia ${billingCalculation.day}). Ciclo a partir da matrícula.`
-                          : "Cobra o valor integral com ciclo a partir da data de início."}
-                      </p>
-                    </button>
-                  </div>
-
-                  {billingStrategy === "full_cycle" ? (
-                    <div className="space-y-1.5 p-3 rounded-lg border border-border/60 bg-muted/20 animate-in fade-in-50 duration-150">
-                      <span className="text-xs font-medium text-foreground block">
-                        Momento do 1º pagamento:
-                      </span>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            form.setValue("cyclePaymentTiming", "postpaid", { shouldDirty: true });
-                            if (billingCalculation) {
-                              form.setValue("firstChargeDueDate", billingCalculation.nextCycleDateISO, { shouldDirty: true });
-                            }
-                          }}
-                          className={cn(
-                            "flex flex-col items-start p-2.5 rounded-md border text-left transition-all select-none cursor-pointer",
-                            (cyclePaymentTiming ?? "postpaid") === "postpaid"
-                              ? "border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary/40 shadow-2xs"
-                              : "border-border/50 hover:bg-muted/40 text-muted-foreground",
-                          )}
-                          disabled={pending}
-                        >
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span
-                              className={cn(
-                                "size-2 rounded-full shrink-0",
-                                (cyclePaymentTiming ?? "postpaid") === "postpaid"
-                                  ? "bg-primary"
-                                  : "bg-muted-foreground/30",
-                              )}
-                            />
-                            <span className="font-semibold text-foreground">
-                              Ao final do ciclo (Pós-pago)
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground mt-1 pl-3.5 leading-snug">
-                            Vence em{" "}
-                            <span className="font-medium text-foreground">
-                              {billingCalculation ? format(parseISO(billingCalculation.nextCycleDateISO), "dd/MM/yyyy") : ""}
-                            </span>{" "}
-                            após cursar as aulas.
-                          </p>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            form.setValue("cyclePaymentTiming", "prepaid", { shouldDirty: true });
-                            if (billingCalculation) {
-                              form.setValue("firstChargeDueDate", billingCalculation.startDateISO, { shouldDirty: true });
-                            }
-                          }}
-                          className={cn(
-                            "flex flex-col items-start p-2.5 rounded-md border text-left transition-all select-none cursor-pointer",
-                            cyclePaymentTiming === "prepaid"
-                              ? "border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary/40 shadow-2xs"
-                              : "border-border/50 hover:bg-muted/40 text-muted-foreground",
-                          )}
-                          disabled={pending}
-                        >
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span
-                              className={cn(
-                                "size-2 rounded-full shrink-0",
-                                cyclePaymentTiming === "prepaid"
-                                  ? "bg-primary"
-                                  : "bg-muted-foreground/30",
-                              )}
-                            />
-                            <span className="font-semibold text-foreground">
-                              No ato da matrícula (Pré-pago)
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground mt-1 pl-3.5 leading-snug">
-                            Vence em{" "}
-                            <span className="font-medium text-foreground">
-                              {billingCalculation ? format(parseISO(billingCalculation.startDateISO), "dd/MM/yyyy") : ""}
-                            </span>{" "}
-                            para liberar o acesso.
-                          </p>
-                        </button>
-                      </div>
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <InputCurrency<ClientFormValues>
+                        name="firstChargeAmount"
+                        label="Valor da 1ª cobrança"
+                        placeholder={
+                          billingCalculation
+                            ? (
+                                (billingStrategy === "full_cycle"
+                                  ? billingCalculation.fullAmountCents
+                                  : billingCalculation.proratedAmountCents) / 100
+                              ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+                            : "0,00"
+                        }
+                        disabled={pending}
+                        hint={
+                          billingStrategy === "prorated"
+                            ? `Calculado automaticamente para os ${billingCalculation?.remainingDays ?? 0} dias restantes no mês.`
+                            : "Valor integral do primeiro ciclo de 30 dias."
+                        }
+                      />
+                      <DateField<ClientFormValues>
+                        name="firstChargeDueDate"
+                        label="Vencimento da 1ª cobrança"
+                        disabled={pending}
+                        hint={
+                          cyclePaymentTiming === "postpaid"
+                            ? "Vence ao término do período (Pós-pago)."
+                            : "Vence no ato da matrícula (Pré-pago)."
+                        }
+                      />
                     </div>
-                  ) : null}
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-lg border border-border/50 bg-muted/20 p-3">
-                    <InputCurrency<ClientFormValues>
-                      name="firstChargeAmount"
-                      label="Valor da 1ª cobrança"
-                      placeholder={
-                        billingCalculation
-                          ? (
-                              (billingStrategy === "full_cycle"
-                                ? billingCalculation.fullAmountCents
-                                : billingCalculation.proratedAmountCents) / 100
-                            ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-                          : "0,00"
-                      }
-                      disabled={pending}
-                      hint={
-                        billingStrategy === "prorated"
-                          ? "Valor proporcional sugerido (editável para ajuste ou cortesia)."
-                          : "Valor integral do primeiro ciclo."
-                      }
-                    />
-                    <DateField<ClientFormValues>
-                      name="firstChargeDueDate"
-                      label="Vencimento da 1ª cobrança"
-                      disabled={pending}
-                      hint="Data de vencimento para o primeiro pagamento."
-                    />
+                    {/* Rodapé explicativo e link sutil para personalização opcional */}
+                    <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        {billingStrategy === "prorated"
+                          ? `Próximas mensalidades vencerão todo dia ${dueDayValue ?? defaultDueDay}.`
+                          : `Próximas mensalidades vencerão todo dia ${dueDayValue ?? defaultDueDay} a cada 30 dias.`}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedBilling((prev) => !prev)}
+                        className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                      >
+                        <SlidersHorizontal className="size-3" />
+                        {showAdvancedBilling ? "Ocultar ajustes" : "Personalizar regra deste aluno"}
+                      </button>
+                    </div>
+
+                    {showAdvancedBilling ? (
+                      <div className="space-y-3 pt-3 border-t border-border/40 animate-in fade-in-50 duration-150">
+                        <span className="text-xs font-semibold text-foreground block">
+                          Sobrescrever regra da academia apenas para este aluno:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <SelectField<ClientFormValues>
+                            name="billingStrategy"
+                            label="Cálculo da entrada"
+                            options={[
+                              { value: "prorated", label: "Cobrar proporcional (Pró-rata)" },
+                              { value: "full_cycle", label: "Ciclo corrido (30 dias)" },
+                            ]}
+                            disabled={pending}
+                          />
+                          <SelectField<ClientFormValues>
+                            name="cyclePaymentTiming"
+                            label="Momento do pagamento"
+                            options={[
+                              { value: "prepaid", label: "No ato da matrícula (Pré-pago)" },
+                              { value: "postpaid", label: "Ao final do ciclo (Pós-pago)" },
+                            ]}
+                            disabled={pending}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

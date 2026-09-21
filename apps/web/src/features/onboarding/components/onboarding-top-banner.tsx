@@ -33,7 +33,9 @@ export function OnboardingTopBanner() {
     nextStep &&
       (nextStep.id === "hours"
         ? pathname === "/settings" && tab === "horarios"
-        : pathname === nextStep.href || pathname.startsWith(`${nextStep.href}/`)),
+        : nextStep.id === "billing"
+          ? pathname === "/settings" && (tab === "geral" || !tab)
+          : pathname === nextStep.href || pathname.startsWith(`${nextStep.href}/`)),
   );
   const pct = Math.round((doneCount / total) * 100);
 

@@ -57,7 +57,7 @@ const TOUR_STEPS_CLASSES: TourStep[] = [
   {
     target: '[data-tour="nav-settings"]',
     title: "Configurações",
-    body: "Aqui você ajusta o horário de funcionamento e outras opções do seu negócio.",
+    body: "Aqui você ajusta o horário de funcionamento, regras de cobrança das mensalidades e outras opções do seu negócio.",
   },
   {
     target: '[data-tour="onboarding-checklist"]',

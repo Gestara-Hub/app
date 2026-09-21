@@ -4,7 +4,7 @@ import { useClients } from "@/features/clients";
 import { useServices } from "@/features/services";
 import { useProfessionals } from "@/features/professionals";
 import { useAppointments } from "@/features/appointments";
-import { useUnit } from "@/features/settings";
+import { useOrganization, useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useClassGroups, usePlans } from "@/features/turmas";
@@ -29,6 +29,7 @@ export interface OnboardingStep {
 export function useOnboardingSteps() {
   const model = useModel();
   const unitQuery = useUnit();
+  const orgQuery = useOrganization();
   const servicesQuery = useServices();
   const professionalsQuery = useProfessionals();
   const clientsQuery = useClients();
@@ -42,6 +43,7 @@ export function useOnboardingSteps() {
   const hoursSet = Boolean(
     unitQuery.data?.businessHours?.some((day) => !day.closed),
   );
+  const billingSet = Boolean(orgQuery.data?.settings?.billingTiming);
 
   let steps: OnboardingStep[] = [];
   let isReady = false;
@@ -49,6 +51,7 @@ export function useOnboardingSteps() {
   if (isClasses) {
     isReady =
       !unitQuery.isPending &&
+      !orgQuery.isPending &&
       !professionalsQuery.isPending &&
       !categoriesQuery.isPending &&
       !classGroupsQuery.isPending &&
@@ -63,6 +66,14 @@ export function useOnboardingSteps() {
         href: "/settings?tab=horarios",
         cta: "Configurar",
         done: hoursSet,
+      },
+      {
+        id: "billing",
+        label: "Definir regras de cobrança",
+        description: "Configure o regime padrão (pré/pós-pago) e vencimentos.",
+        href: "/settings?tab=geral",
+        cta: "Configurar",
+        done: billingSet,
       },
       {
         id: "modalities",

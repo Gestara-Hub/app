@@ -54,7 +54,11 @@ function seedCorteNobre(): MockStore {
     name: "Corte Nobre",
     segment: "Barbearia",
     model: "scheduling",
-    settings: { defaultDueDay: 10 },
+    settings: {
+      defaultDueDay: 10,
+      billingTiming: "prepaid",
+      midMonthStrategy: "prorated",
+    },
     status: "active",
   };
 
@@ -94,7 +98,9 @@ function seedAcademia(): MockStore {
     name: "Academia X",
     segment: "Academia",
     model: "classes",
-    settings: { defaultDueDay: 10 },
+    settings: {
+      defaultDueDay: 10,
+    },
     status: "active",
   };
 
