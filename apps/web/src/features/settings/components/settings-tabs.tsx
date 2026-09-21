@@ -98,7 +98,9 @@ export function SettingsTabs() {
           hidden={t.value !== tab}
           className="space-y-4"
         >
-          <p className="text-sm text-muted-foreground">{t.description}</p>
+          {t.value !== "geral" ? (
+            <p className="text-sm text-muted-foreground">{t.description}</p>
+          ) : null}
           {t.value === "geral" ? <OrganizationSettingsForm /> : null}
           {t.value === "horarios" ? <BusinessHoursForm /> : null}
           {t.value === "dados" ? <ResetDataActions /> : null}

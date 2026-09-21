@@ -141,6 +141,16 @@ function DialogContent({
             className,
             isExpanded && expandedClassName
           )}
+          onPointerDownOutside={(e) => {
+            const target = e.target as HTMLElement | null
+            if (
+              target?.closest?.("[data-sonner-toaster]") ||
+              target?.closest?.("[data-sonner-toast]")
+            ) {
+              e.preventDefault()
+            }
+            props.onPointerDownOutside?.(e)
+          }}
           {...props}
         >
           {children}

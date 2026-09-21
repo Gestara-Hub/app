@@ -4,14 +4,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import {
-  Building2,
-  CalendarDays,
-  Info,
-  Loader2,
-  MapPin,
-  Save,
-} from "lucide-react";
+import { Building2, CalendarDays, Loader2, MapPin, Save } from "lucide-react";
 import {
   AddressFields,
   InputNumber,
@@ -19,13 +12,6 @@ import {
   InputText,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Address, Organization, Unit } from "@gestarahub/contracts";
@@ -91,7 +77,6 @@ function parseUnitAddress(addr: Unit["address"]): OrgUnitValues["address"] {
       state: addr.state ?? "",
     };
   }
-  // Se for string legado, joga no logradouro
   return {
     postalCode: "",
     street: addr,
@@ -152,23 +137,25 @@ function OrgUnitForm({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-6">
-        {/* Card 1: Identificação do Negócio */}
-        <Card className="border-border/60 shadow-xs">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Building2 className="size-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Dados do Negócio</CardTitle>
-                <CardDescription>
-                  Nome principal exibido para alunos, em comprovantes e relatórios.
-                </CardDescription>
-              </div>
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="rounded-xl border border-border/70 bg-card p-6 sm:p-7 shadow-xs space-y-7"
+      >
+        {/* Seção 1: Identificação da Empresa & Unidade */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Building2 className="size-4" />
             </div>
-          </CardHeader>
-          <CardContent>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">
+                Identificação do Negócio
+              </h3>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-1">
             <InputText<OrgUnitValues>
               name="organizationName"
               label="Nome da organização / academia"
@@ -176,26 +163,8 @@ function OrgUnitForm({
               required
               disabled={pending}
             />
-          </CardContent>
-        </Card>
 
-        {/* Card 2: Unidade & Contato */}
-        <Card className="border-border/60 shadow-xs">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <MapPin className="size-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Unidade & Contato</CardTitle>
-                <CardDescription>
-                  Identificação da sede física e canais para os alunos e clientes entrarem em contato.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputText<OrgUnitValues>
                 name="unitName"
                 label="Nome da unidade"
@@ -205,63 +174,71 @@ function OrgUnitForm({
               />
               <InputPhone<OrgUnitValues>
                 name="phone"
-                label="Telefone de contato"
+                label="Telefone / WhatsApp"
                 placeholder="(11) 99999-9999"
                 disabled={pending}
               />
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-3 pt-3 border-t border-border/50">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        {/* Seção 2: Endereço da Unidade */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <MapPin className="size-4" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">
                 Endereço da Unidade
-              </h4>
-              <AddressFields<OrgUnitValues> prefix="address" disabled={pending} />
+              </h3>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Card 3: Regras Financeiras */}
-        <Card className="border-border/60 shadow-xs">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <CalendarDays className="size-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Regras de Cobrança</CardTitle>
-                <CardDescription>
-                  Configurações financeiras padrão para matrículas e planos de acesso.
-                </CardDescription>
-              </div>
+          <div className="pt-1">
+            <AddressFields<OrgUnitValues> prefix="address" disabled={pending} />
+          </div>
+        </div>
+
+        {/* Seção 3: Regras de Cobrança */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <CalendarDays className="size-4" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-              <div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">
+                Regras de Cobrança
+              </h3>
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+              <div className="space-y-0.5">
+                <span className="text-sm font-medium text-foreground">
+                  Dia de vencimento padrão
+                </span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Dia do mês sugerido automaticamente ao matricular novos alunos. Pode ser alterado individualmente.
+                </p>
+              </div>
+              <div className="w-24 shrink-0">
                 <InputNumber<OrgUnitValues>
                   name="defaultDueDay"
-                  label="Dia padrão de vencimento"
+                  label=""
                   min={1}
                   max={31}
                   required
                   disabled={pending}
                 />
               </div>
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3.5 flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
-                <Info className="size-4 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <strong className="font-semibold text-foreground">Vencimento sugerido:</strong>
-                  <p className="mt-0.5">
-                    Este dia virá pré-preenchido automaticamente na matrícula de novos alunos ou ao gerar cobranças. Você ainda poderá alterá-lo individualmente para cada aluno.
-                  </p>
-                </div>
-              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Rodapé com botão de ação */}
-        <div className="flex items-center justify-between pt-2">
+        {/* Rodapé de Ação */}
+        <div className="flex items-center justify-between pt-4 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
             {form.formState.isDirty ? (
               <span className="text-amber-600 dark:text-amber-400 font-medium">
@@ -299,10 +276,10 @@ export function OrganizationSettingsForm() {
 
   if (loading || !orgQuery.data || !unitQuery.data) {
     return (
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-xl" />
-        ))}
+      <div className="rounded-xl border border-border/60 bg-card p-7 space-y-6">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-24 w-full" />
       </div>
     );
   }

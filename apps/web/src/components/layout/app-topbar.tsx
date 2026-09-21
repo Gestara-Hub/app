@@ -2,6 +2,7 @@
 
 import { Building2, Check, LogOut, Moon, Sun, Users } from "lucide-react";
 import { useTheme } from "next-themes";
+import { ThemeCustomizer } from "@/components/theme/theme-customizer";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,8 @@ export function AppTopbar() {
         {unit?.name ?? ""}
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <ThemeCustomizer />
         <Button
           type="button"
           variant="ghost"
