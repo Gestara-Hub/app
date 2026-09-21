@@ -46,12 +46,15 @@ export interface Charge {
   competence?: string; // "YYYY-MM" (membership)
   sessionId?: Id; // dropin (reserved session)
   dueDate: DateISO;
-  amountCents: number; // full charge (no pro-rata)
+  amountCents: number;
   status: ChargeStatus;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
   cycleIndex?: number;
   cycleTotal?: number;
+  isProrated?: boolean;
+  proratedDays?: number;
+  notes?: string;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

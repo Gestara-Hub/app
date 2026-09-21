@@ -39,6 +39,14 @@ export const clientFormSchema = z.object({
 
   // Plano e Mensalidade (vínculo no aluno)
   planId: z.string().optional(),
+  planStartDate: z.string().optional(),
+  billingStrategy: z.enum(["prorated", "full_cycle"]).optional(),
+  cyclePaymentTiming: z.enum(["prepaid", "postpaid"]).optional(),
+  firstChargeAmount: z
+    .number({ error: "O valor da 1ª mensalidade não pode ser negativo." })
+    .min(0, "O valor da 1ª mensalidade não pode ser negativo.")
+    .nullish(),
+  firstChargeDueDate: z.string().optional(),
   dueDay: z
     .number({ error: "Dia deve ser entre 1 e 31." })
     .int("Dia deve ser um número inteiro.")

@@ -91,6 +91,9 @@ export const clientsService = {
         notes: payload.notes?.trim() || undefined,
         address: payload.address,
         planId: payload.planId || undefined,
+        planStartDate: payload.planStartDate || undefined,
+        billingStrategy: payload.billingStrategy || undefined,
+        cyclePaymentTiming: payload.cyclePaymentTiming || undefined,
         dueDay: payload.dueDay || store.organization.settings?.defaultDueDay || 10,
         discount: payload.discount,
         membershipStatus: payload.membershipStatus ?? "active",
@@ -99,6 +102,39 @@ export const clientsService = {
         updatedAt: ts,
       };
       store.clients.push(client);
+
+      // Se possui plano e foi configurada cobrança inicial, gera imediatamente no store.charges
+      if (
+        client.planId &&
+        payload.initialCharge &&
+        payload.initialCharge.amountCents > 0
+      ) {
+        const todayStr = ts.slice(0, 10);
+        const chargeDueDate = payload.initialCharge.dueDate || todayStr;
+        const competence = chargeDueDate.slice(0, 7);
+
+        store.charges.push({
+          id: newId(),
+          organizationId: store.organization.id,
+          studentId: client.id,
+          kind: "membership",
+          planId: client.planId,
+          competence,
+          dueDate: chargeDueDate,
+          amountCents: payload.initialCharge.amountCents,
+          status: chargeDueDate < todayStr ? "overdue" : "pending",
+          cycleIndex: 1,
+          cycleTotal: 1,
+          isProrated: payload.initialCharge.isProrated,
+          proratedDays: payload.initialCharge.proratedDays,
+          notes: payload.initialCharge.isProrated
+            ? `Mensalidade proporcional (${payload.initialCharge.proratedDays ?? 0} dias)`
+            : "1ª Mensalidade (ciclo completo)",
+          createdAt: ts,
+          updatedAt: ts,
+        });
+      }
+
       auditLogService.record({
         action: "created",
         target: { type: "client", id: client.id, label: client.name },
@@ -114,12 +150,55 @@ export const clientsService = {
       if (idx === -1) throw notFoundError(NOT_FOUND);
       validateClient(payload, { partial: true });
       const current = store.clients[idx];
+      const ts = nowIso();
       const updated: Client = {
         ...current,
         ...payload,
-        updatedAt: nowIso(),
+        updatedAt: ts,
       };
       store.clients[idx] = updated;
+
+      // Se foi vinculada uma cobrança inicial na transição de plano
+      if (
+        updated.planId &&
+        payload.initialCharge &&
+        payload.initialCharge.amountCents > 0
+      ) {
+        const todayStr = ts.slice(0, 10);
+        const chargeDueDate = payload.initialCharge.dueDate || todayStr;
+        const competence = chargeDueDate.slice(0, 7);
+
+        const exists = store.charges.some(
+          (c) =>
+            c.kind === "membership" &&
+            c.studentId === updated.id &&
+            c.competence === competence,
+        );
+
+        if (!exists) {
+          store.charges.push({
+            id: newId(),
+            organizationId: store.organization.id,
+            studentId: updated.id,
+            kind: "membership",
+            planId: updated.planId,
+            competence,
+            dueDate: chargeDueDate,
+            amountCents: payload.initialCharge.amountCents,
+            status: chargeDueDate < todayStr ? "overdue" : "pending",
+            cycleIndex: 1,
+            cycleTotal: 1,
+            isProrated: payload.initialCharge.isProrated,
+            proratedDays: payload.initialCharge.proratedDays,
+            notes: payload.initialCharge.isProrated
+              ? `Mensalidade proporcional (${payload.initialCharge.proratedDays ?? 0} dias)`
+              : "1ª Mensalidade (ciclo completo)",
+            createdAt: ts,
+            updatedAt: ts,
+          });
+        }
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "client", id: updated.id, label: updated.name },

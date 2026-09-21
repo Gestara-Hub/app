@@ -156,6 +156,11 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
 }
 
 function getCycleTitle(c: ChargeView): string {
+  if (c.isProrated) {
+    return c.proratedDays
+      ? `Proporcional (${c.proratedDays} dias)`
+      : "Proporcional";
+  }
   if (c.cycleTotal === 4) {
     return `Semana ${c.cycleIndex ?? 1}/4`;
   }
@@ -865,6 +870,12 @@ export function BillingView() {
                           {c.kind === "dropin" ? (
                             <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                               Aula Avulsa
+                            </span>
+                          ) : c.isProrated ? (
+                            <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                              {c.proratedDays
+                                ? `Proporcional (${c.proratedDays}d)`
+                                : "Proporcional"}
                             </span>
                           ) : (
                             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">

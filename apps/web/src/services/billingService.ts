@@ -189,7 +189,7 @@ export const billingService = {
         if (!student.planId) continue;
 
         // Data de ingresso/matrícula do aluno
-        const studentJoinDate = student.createdAt ? student.createdAt.slice(0, 10) : today;
+        const studentJoinDate = student.planStartDate || (student.createdAt ? student.createdAt.slice(0, 10) : today);
         const studentJoinMonth = studentJoinDate.slice(0, 7);
 
         // Se o aluno ingressou em um mês futuro em relação à competência, não é cobrado neste mês
@@ -203,13 +203,13 @@ export const billingService = {
         const period = plan.period || "monthly";
         const totalCycles = period === "weekly" ? 4 : period === "biweekly" ? 2 : 1;
 
-        let amountCents = plan.priceCents;
+        let baseAmountCents = plan.priceCents;
         if (student.discount && student.discount.value > 0) {
           if (student.discount.type === "fixed") {
-            amountCents = Math.max(0, amountCents - student.discount.value);
+            baseAmountCents = Math.max(0, baseAmountCents - student.discount.value);
           } else if (student.discount.type === "percentage") {
-            const discountAmount = Math.round((amountCents * student.discount.value) / 100);
-            amountCents = Math.max(0, amountCents - discountAmount);
+            const discountAmount = Math.round((baseAmountCents * student.discount.value) / 100);
+            baseAmountCents = Math.max(0, baseAmountCents - discountAmount);
           }
         }
 
@@ -217,6 +217,9 @@ export const billingService = {
 
         for (let cycle = 1; cycle <= totalCycles; cycle++) {
           let dueDate = getCycleDueDate(competence, dueDay, cycle, totalCycles);
+          let cycleAmountCents = baseAmountCents;
+          let isProrated = false;
+          let proratedDays: number | undefined;
 
           // No mês de ingresso do aluno:
           if (isJoinMonth) {
@@ -227,6 +230,19 @@ export const billingService = {
             // Para plano mensal: se a data padrão já passou da matrícula, o 1º vencimento é ajustado para a data da matrícula
             if (totalCycles === 1 && dueDate < studentJoinDate) {
               dueDate = studentJoinDate;
+            }
+
+            // Fallback para cobrança proporcional se o aluno foi configurado com 'prorated'
+            if (totalCycles === 1 && student.billingStrategy === "prorated") {
+              const [y, m] = competence.split("-").map(Number);
+              const daysInMonth = new Date(y, m, 0).getDate();
+              const startDay = Number(studentJoinDate.slice(8, 10));
+              if (startDay > 1) {
+                const rem = Math.max(1, daysInMonth - startDay + 1);
+                cycleAmountCents = Math.round((baseAmountCents / daysInMonth) * rem);
+                isProrated = true;
+                proratedDays = rem;
+              }
             }
           }
 
@@ -265,10 +281,13 @@ export const billingService = {
             planId: plan.id,
             competence,
             dueDate,
-            amountCents,
+            amountCents: cycleAmountCents,
             status: dueDate < today ? "overdue" : "pending",
             cycleIndex: cycle,
             cycleTotal: totalCycles,
+            isProrated,
+            proratedDays,
+            notes: isProrated ? `Mensalidade proporcional (${proratedDays} dias)` : undefined,
             createdAt: ts,
             updatedAt: ts,
           });

@@ -1,4 +1,4 @@
-import type { Address, DateTimeISO, Id, RecordStatus } from "./common";
+import type { Address, DateISO, DateTimeISO, Id, RecordStatus } from "./common";
 
 export type DiscountType = "percentage" | "fixed";
 
@@ -10,6 +10,9 @@ export interface StudentDiscount {
 
 export type MembershipStatus = "active" | "paused" | "canceled";
 
+export type StudentBillingStrategy = "prorated" | "full_cycle";
+export type StudentCyclePaymentTiming = "prepaid" | "postpaid";
+
 export interface Client {
   id: Id;
   organizationId: Id;
@@ -20,6 +23,9 @@ export interface Client {
   address?: Address;
   // Gestão de planos e mensalidade (vínculo no aluno)
   planId?: Id;
+  planStartDate?: DateISO; // Data de início da vigência do plano (ex: '2026-09-21')
+  billingStrategy?: StudentBillingStrategy; // Estratégia de cobrança inicial: proporcional ou ciclo completo
+  cyclePaymentTiming?: StudentCyclePaymentTiming; // No ciclo completo: 'postpaid' (ao final dos 30 dias) ou 'prepaid' (no ato)
   dueDay?: number; // 1 a 31 (dia preferencial de vencimento da mensalidade)
   discount?: StudentDiscount;
   membershipStatus?: MembershipStatus;
@@ -28,7 +34,16 @@ export interface Client {
   updatedAt: DateTimeISO;
 }
 
-export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt">;
+export interface CreateClientInitialCharge {
+  amountCents: number;
+  dueDate: DateISO;
+  isProrated?: boolean;
+  proratedDays?: number;
+}
+
+export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt"> & {
+  initialCharge?: CreateClientInitialCharge;
+};
 export type UpdateClient = Partial<CreateClient>;
 
 export interface ClientFilter {
