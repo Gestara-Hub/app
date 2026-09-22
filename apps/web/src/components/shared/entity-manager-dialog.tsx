@@ -84,11 +84,10 @@ type UpdateArgs = { id: string; payload: { name?: string; status?: RecordStatus 
 export interface EntityManagerDialogProps<T extends ManagedEntity> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  organizationId: string;
   labels: EntityManagerLabels;
   storageKey?: string;
   useList: () => QueryLike<T>;
-  useCreate: () => MutationLike<{ organizationId: string; name: string }>;
+  useCreate: () => MutationLike<{ name: string }>;
   useUpdate: () => MutationLike<UpdateArgs>;
   useInactivate: () => MutationLike<string>;
 }
@@ -96,13 +95,11 @@ export interface EntityManagerDialogProps<T extends ManagedEntity> {
 // --- Formulario de criacao -------------------------------------------------
 
 function CreateForm({
-  organizationId,
   labels,
   createMut,
 }: {
-  organizationId: string;
   labels: EntityManagerLabels;
-  createMut: MutationLike<{ organizationId: string; name: string }>;
+  createMut: MutationLike<{ name: string }>;
 }) {
   type Values = { name: string };
   const schema = z.object({ name: z.string().trim().min(1, labels.nameRequired) });
@@ -115,7 +112,7 @@ function CreateForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await createMut.mutateAsync({ organizationId, name: values.name });
+      await createMut.mutateAsync({ name: values.name });
       toast.success(labels.createdToast);
       form.reset({ name: "" });
     } catch (error) {
@@ -461,7 +458,6 @@ function EntityList<T extends ManagedEntity>({
 export function EntityManagerDialog<T extends ManagedEntity>({
   open,
   onOpenChange,
-  organizationId,
   labels,
   storageKey = "entity-manager",
   useList,
@@ -488,7 +484,6 @@ export function EntityManagerDialog<T extends ManagedEntity>({
         </DialogHeader>
 
         <CreateForm
-          organizationId={organizationId}
           labels={labels}
           createMut={createMut}
         />

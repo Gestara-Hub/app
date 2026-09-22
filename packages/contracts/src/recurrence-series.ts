@@ -1,4 +1,4 @@
-import type { DateISO, DateTimeISO, Frequency, Id, TimeISO } from "./common";
+import type { DateISO, DateTimeISO, Frequency, Id, TimeISO, TenantScopeFields } from "./common";
 
 export interface RecurrenceSeries {
   id: Id;
@@ -20,5 +20,5 @@ export interface RecurrenceSeries {
 
 export type CreateRecurrenceSeries = Omit<
   RecurrenceSeries,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | TenantScopeFields
 >;

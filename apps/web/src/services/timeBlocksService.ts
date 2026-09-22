@@ -70,8 +70,8 @@ export const timeBlocksService = {
       const ts = nowIso();
       const block: TimeBlock = {
         id: newId(),
-        organizationId: payload.organizationId ?? store.organization.id,
-        unitId: payload.unitId ?? store.unit.id,
+        organizationId: store.organization.id,
+        unitId: store.unit.id,
         professionalId: payload.professionalId,
         date: payload.date,
         start: payload.start,

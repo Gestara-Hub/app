@@ -1,4 +1,4 @@
-import type { DateISO, DateTimeISO, Id, TimeISO } from "./common";
+import type { DateISO, DateTimeISO, Id, TimeISO, TenantScopeFields } from "./common";
 
 export interface TimeBlock {
   id: Id;
@@ -15,7 +15,7 @@ export interface TimeBlock {
 
 export type CreateTimeBlock = Omit<
   TimeBlock,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | TenantScopeFields
 >;
 export type UpdateTimeBlock = Partial<CreateTimeBlock>;
 

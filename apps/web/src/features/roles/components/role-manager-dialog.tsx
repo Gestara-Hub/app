@@ -4,7 +4,6 @@ import {
   EntityManagerDialog,
   type EntityManagerLabels,
 } from "@/components/shared/entity-manager-dialog";
-import { ORG_ID } from "@/config/tenant";
 import type { Role } from "@gestarahub/contracts";
 import {
   useCreateRole,
@@ -46,7 +45,6 @@ export function RoleManagerDialog({ open, onOpenChange }: RoleManagerDialogProps
     <EntityManagerDialog<Role>
       open={open}
       onOpenChange={onOpenChange}
-      organizationId={ORG_ID}
       labels={labels}
       storageKey="roles"
       useList={useRoles}

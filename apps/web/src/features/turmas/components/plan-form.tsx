@@ -12,7 +12,6 @@ import {
 } from "@/components/form";
 import { handleFormApiError } from "@/lib/form-errors";
 import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
-import { useCurrentUser } from "@/features/auth";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 
 const schema = z.object({
@@ -44,7 +43,6 @@ export function PlanForm({
   const updateMut = useUpdatePlan();
   const isEdit = Boolean(plan);
   const pending = createMut.isPending || updateMut.isPending;
-  const user = useCurrentUser();
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(schema),
@@ -61,7 +59,6 @@ export function PlanForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreatePlan = {
-      organizationId: user.organizationId,
       name: values.name,
       period: values.period,
       priceCents: values.priceCents,

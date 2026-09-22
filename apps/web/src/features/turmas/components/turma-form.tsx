@@ -37,7 +37,6 @@ import type {
   Unit,
   Weekday,
 } from "@gestarahub/contracts";
-import { useCurrentUser } from "@/features/auth";
 import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
@@ -516,7 +515,6 @@ export function TurmaForm({
   const updateMut = useUpdateClassGroup();
   const isEdit = Boolean(turma);
   const pending = createMut.isPending || updateMut.isPending;
-  const user = useCurrentUser();
   const { data: unit } = useUnit();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
@@ -723,8 +721,6 @@ export function TurmaForm({
     }
 
     const payload: CreateClassGroup = {
-      organizationId: user.organizationId,
-      unitId: unit?.id ?? "",
       name: values.name,
       modalityId: values.modalityId,
       planId: values.planId || undefined,

@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type { CreateTimeBlock } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals";
 import { useCreateTimeBlock } from "../hooks/use-time-blocks";
@@ -52,8 +51,6 @@ function BlockForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateTimeBlock = {
-      organizationId: ORG_ID,
-      unitId: UNIT_ID,
       professionalId: values.professionalId,
       date: values.date,
       start: values.start,

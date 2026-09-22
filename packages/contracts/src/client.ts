@@ -1,4 +1,4 @@
-import type { Address, DateISO, DateTimeISO, Id, RecordStatus } from "./common";
+import type { Address, DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 export type DiscountType = "percentage" | "fixed";
 
@@ -43,7 +43,7 @@ export interface CreateClientInitialCharge {
   proratedDays?: number;
 }
 
-export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt"> & {
+export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt" | TenantScopeFields> & {
   initialCharge?: CreateClientInitialCharge;
 };
 export type UpdateClient = Partial<CreateClient>;

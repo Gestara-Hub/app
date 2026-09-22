@@ -436,7 +436,14 @@ export const turmasService = {
     return simulateWrite(() => {
       validateGroup(payload, undefined);
       const ts = nowIso();
-      const g: ClassGroup = { ...payload, id: newId(), createdAt: ts, updatedAt: ts };
+      const g: ClassGroup = {
+        ...payload,
+        organizationId: store.organization.id,
+        unitId: store.unit.id,
+        id: newId(),
+        createdAt: ts,
+        updatedAt: ts,
+      };
       store.classGroups.push(g);
       auditLogService.record({
         action: "created",
@@ -876,6 +883,7 @@ export const turmasService = {
           organizationId: store.organization.id,
           studentId: input.studentId,
           kind: "dropin",
+          unitId: g.unitId,
           classGroupId: g.id,
           sessionId: input.sessionId,
           competence: sessionDate.slice(0, 7),

@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { frequencyLabel } from "@/lib/labels";
-import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type { CreateRecurrenceSeries, Frequency } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
 import { useProfessionals } from "@/features/professionals";
@@ -85,8 +84,6 @@ function SeriesForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateRecurrenceSeries = {
-      organizationId: ORG_ID,
-      unitId: UNIT_ID,
       clientId: values.clientId,
       professionalId: values.professionalId,
       serviceIds: values.serviceIds,

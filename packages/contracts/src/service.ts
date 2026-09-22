@@ -1,4 +1,4 @@
-import type { DateTimeISO, Id, RecordStatus } from "./common";
+import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 export interface Service {
   id: Id;
@@ -13,7 +13,7 @@ export interface Service {
   updatedAt: DateTimeISO;
 }
 
-export type CreateService = Omit<Service, "id" | "createdAt" | "updatedAt">;
+export type CreateService = Omit<Service, "id" | "createdAt" | "updatedAt" | TenantScopeFields>;
 export type UpdateService = Partial<CreateService>;
 
 export interface ServiceFilter {

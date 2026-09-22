@@ -28,9 +28,8 @@ import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
-import { ORG_ID } from "@/config/tenant";
 import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } from "@gestarahub/contracts";
-import { useCurrentUser, useModel } from "@/features/auth";
+import { useModel } from "@/features/auth";
 import { usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
@@ -111,7 +110,6 @@ interface ClientFormProps {
 export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
-  const user = useCurrentUser();
   const createMut = useCreateClient();
   const updateMut = useUpdateClient();
   const pending = createMut.isPending || updateMut.isPending;
@@ -423,7 +421,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     }
 
     const payload: CreateClient = {
-      organizationId: client?.organizationId ?? user.organizationId ?? ORG_ID,
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,

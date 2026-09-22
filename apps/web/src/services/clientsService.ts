@@ -52,6 +52,7 @@ function initialMembershipCharge(client: Client, input: CreateClientInitialCharg
   return {
     id: newId(),
     organizationId: store.organization.id,
+    unitId: store.unit.id,
     studentId: client.id,
     kind: "membership",
     planId: client.planId,

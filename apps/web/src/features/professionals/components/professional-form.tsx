@@ -23,7 +23,6 @@ import {
 } from "@/components/form";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { normalizeText } from "@/lib/text";
-import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
   Address,
   CreateProfessional,
@@ -188,8 +187,6 @@ export function ProfessionalForm({
   }, [unit, isEdit, form, isClasses]);
 
   const onSubmit = async (values: ProfessionalFormValues) => {
-    const organizationId = professional?.organizationId ?? ORG_ID;
-
     // Cargo e opcional: se preenchido, resolve para um Role (FK) existente; se um
     // texto sem correspondencia for digitado, avisa. Vazio -> sem cargo.
     const typedRole = values.role.trim();
@@ -223,8 +220,6 @@ export function ProfessionalForm({
       : undefined;
 
     const payload: CreateProfessional = {
-      organizationId,
-      unitId: professional?.unitId ?? UNIT_ID,
       name: values.name,
       roleId,
       phone: values.phone || undefined,

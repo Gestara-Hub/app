@@ -4,7 +4,6 @@ import {
   EntityManagerDialog,
   type EntityManagerLabels,
 } from "@/components/shared/entity-manager-dialog";
-import { ORG_ID } from "@/config/tenant";
 import type { Category } from "@gestarahub/contracts";
 import {
   useCategories,
@@ -49,7 +48,6 @@ export function CategoryManagerDialog({
     <EntityManagerDialog<Category>
       open={open}
       onOpenChange={onOpenChange}
-      organizationId={ORG_ID}
       labels={labels}
       storageKey="categories"
       useList={useCategories}

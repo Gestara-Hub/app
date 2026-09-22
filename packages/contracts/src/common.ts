@@ -108,3 +108,9 @@ export function isApiError(e: unknown): e is ApiError {
     "message" in e
   );
 }
+
+/**
+ * Campos de escopo do tenant. Nunca vem do cliente: o servidor (hoje, o mock)
+ * carimba a partir da sessao, como a API real fara a partir do usuario logado.
+ */
+export type TenantScopeFields = "organizationId" | "unitId";

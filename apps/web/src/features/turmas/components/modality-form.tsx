@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import type { Category, CreateCategory } from "@gestarahub/contracts";
-import { useCurrentUser } from "@/features/auth";
 import { useCreateCategory, useUpdateCategory } from "@/features/categories";
 import { modalityFormSchema, type ModalityFormValues } from "../modality-schema";
 
@@ -27,7 +26,6 @@ interface ModalityFormProps {
 
 export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps) {
   const isEdit = Boolean(modality);
-  const organizationId = useCurrentUser().organizationId;
   const createMut = useCreateCategory();
   const updateMut = useUpdateCategory();
   const pending = createMut.isPending || updateMut.isPending;
@@ -51,7 +49,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
         });
         toast.success("Modalidade atualizada com sucesso.");
       } else {
-        const payload: CreateCategory = { organizationId, name: values.name };
+        const payload: CreateCategory = { name: values.name };
         await createMut.mutateAsync(payload);
         toast.success("Modalidade criada com sucesso.");
       }

@@ -256,8 +256,8 @@ export const appointmentsService = {
       const ts = nowIso();
       const appointment: Appointment = {
         id: newId(),
-        organizationId: payload.organizationId ?? store.organization.id,
-        unitId: payload.unitId ?? store.unit.id,
+        organizationId: store.organization.id,
+        unitId: store.unit.id,
         clientId: payload.clientId,
         professionalId: payload.professionalId,
         serviceIds: payload.serviceIds,

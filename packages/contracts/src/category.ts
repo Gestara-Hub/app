@@ -1,4 +1,4 @@
-import type { DateTimeISO, Id, RecordStatus } from "./common";
+import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 /**
  * Categoria de servico — entidade da organizacao (nao mais um enum fixo).
@@ -19,7 +19,7 @@ export interface Category {
 // service atribui a proxima position e status "active".
 export type CreateCategory = Omit<
   Category,
-  "id" | "position" | "status" | "createdAt" | "updatedAt"
+  "id" | "position" | "status" | "createdAt" | "updatedAt" | TenantScopeFields
 > & {
   position?: number;
   status?: RecordStatus;

@@ -1,4 +1,4 @@
-import type { DateTimeISO, Id, RecordStatus } from "./common";
+import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 /**
  * Cargo do profissional — entidade da organizacao (nao mais texto livre).
@@ -21,7 +21,7 @@ export interface Role {
 // o nome; o service atribui a proxima position e status "active".
 export type CreateRole = Omit<
   Role,
-  "id" | "position" | "status" | "createdAt" | "updatedAt"
+  "id" | "position" | "status" | "createdAt" | "updatedAt" | TenantScopeFields
 > & {
   position?: number;
   status?: RecordStatus;

@@ -6,6 +6,7 @@ import type {
   Id,
   RecordStatus,
   TimeISO,
+  TenantScopeFields,
 } from "./common";
 
 export interface Appointment {
@@ -33,7 +34,7 @@ export interface Appointment {
 // Agendamento manual: 'end' e derivado da duracao; 'origin' fixado como 'manual'.
 export type CreateAppointment = Omit<
   Appointment,
-  "id" | "end" | "origin" | "status" | "createdAt" | "updatedAt"
+  "id" | "end" | "origin" | "status" | "createdAt" | "updatedAt" | TenantScopeFields
 > & {
   status?: AppointmentStatus; // default 'pending'
 };

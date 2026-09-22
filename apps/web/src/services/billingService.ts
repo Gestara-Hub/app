@@ -137,6 +137,7 @@ function membershipCharge(
   return {
     id: newId(),
     organizationId: store.organization.id,
+    unitId: store.unit.id,
     studentId,
     kind: "membership",
     planId: plan.id,
@@ -222,6 +223,7 @@ export const billingService = {
       const ts = nowIso();
       const plan: Plan = {
         ...payload,
+        organizationId: store.organization.id,
         period: payload.period || "monthly",
         id: newId(),
         createdAt: ts,

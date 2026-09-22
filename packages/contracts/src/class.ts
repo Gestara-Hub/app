@@ -5,6 +5,7 @@ import type {
   RecordStatus,
   TimeISO,
   Weekday,
+  TenantScopeFields,
 } from "./common";
 
 /**
@@ -48,7 +49,7 @@ export interface ClassGroup {
 
 export type CreateClassGroup = Omit<
   ClassGroup,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | TenantScopeFields
 >;
 export type UpdateClassGroup = Partial<CreateClassGroup>;
 

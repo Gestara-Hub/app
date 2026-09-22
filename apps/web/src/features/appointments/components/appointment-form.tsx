@@ -30,7 +30,6 @@ import { isPastSlot } from "@gestarahub/core/date";
 import { format, parseISO } from "date-fns";
 import { formatCents } from "@gestarahub/core/format";
 import { addMinutesToTime, weekdayOf } from "@gestarahub/core/scheduling";
-import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import { isApiError } from "@gestarahub/contracts";
 import type { AppointmentView, CreateAppointment } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
@@ -165,8 +164,6 @@ export function AppointmentForm({
     } = {},
   ) => {
     const payload: CreateAppointment = {
-      organizationId: ORG_ID,
-      unitId: UNIT_ID,
       clientId: values.clientId,
       professionalId: values.professionalId,
       serviceIds: values.serviceIds,

@@ -4,6 +4,7 @@ import type {
   Id,
   RecordStatus,
   WorkingHours,
+  TenantScopeFields,
 } from "./common";
 
 export interface Professional {
@@ -24,7 +25,7 @@ export interface Professional {
 
 export type CreateProfessional = Omit<
   Professional,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | TenantScopeFields
 >;
 export type UpdateProfessional = Partial<CreateProfessional>;
 

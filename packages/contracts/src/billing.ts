@@ -1,4 +1,4 @@
-import type { DateISO, DateTimeISO, Id, RecordStatus } from "./common";
+import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 /**
  * Billing & plans (financial). Record/status only, no payment gateway.
@@ -22,7 +22,7 @@ export interface Plan {
   updatedAt: DateTimeISO;
 }
 
-export type CreatePlan = Omit<Plan, "id" | "createdAt" | "updatedAt">;
+export type CreatePlan = Omit<Plan, "id" | "createdAt" | "updatedAt" | TenantScopeFields>;
 export type UpdatePlan = Partial<CreatePlan>;
 
 export interface PlanFilter {
@@ -39,6 +39,7 @@ export type PaymentMethod = "cash" | "pix" | "card" | "other";
 export interface Charge {
   id: Id;
   organizationId: Id;
+  unitId?: Id; // unidade onde a cobranca nasceu (relatorios por unidade); ausente em dados antigos
   studentId: Id;
   kind: ChargeKind;
   planId?: Id; // membership

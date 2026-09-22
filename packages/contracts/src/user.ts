@@ -1,4 +1,4 @@
-import type { DateTimeISO, Id, RecordStatus } from "./common";
+import type { DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
 /**
  * Perfil de acesso do usuario (RBAC). Codigos em ingles; rotulos PT via
@@ -22,7 +22,7 @@ export interface User {
   updatedAt: DateTimeISO;
 }
 
-export type CreateUser = Omit<User, "id" | "createdAt" | "updatedAt">;
+export type CreateUser = Omit<User, "id" | "createdAt" | "updatedAt" | TenantScopeFields>;
 export type UpdateUser = Partial<CreateUser>;
 
 export interface UserFilter {

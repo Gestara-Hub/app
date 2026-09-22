@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { userProfileLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
-import { ORG_ID } from "@/config/tenant";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals";
@@ -83,7 +82,6 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
 
   const onSubmit = form.handleSubmit(async (values) => {
     const payload: CreateUser = {
-      organizationId: user?.organizationId ?? ORG_ID,
       name: values.name,
       email: values.email,
       profile: values.profile as UserProfile,
