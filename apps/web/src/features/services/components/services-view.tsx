@@ -14,6 +14,7 @@ import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
 import { ServiceFormDialog } from "./service-form-dialog";
 import { InactivateServiceDialog } from "./inactivate-service-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ServicesView() {
   const [formState, setFormState] = useState<{
@@ -33,7 +34,17 @@ export function ServicesView() {
   const openCreate = () => setFormState({ open: true });
   const openEdit = (service: Service) => setFormState({ open: true, service });
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(service: Service) {
+    if (
+      !(await confirmAction({
+        title: "Reativar serviço?",
+        description: `“${service.name}” volta a aparecer em novos agendamentos.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateMut.mutateAsync({
         id: service.id,
@@ -47,6 +58,7 @@ export function ServicesView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Serviços"
         description="Catálogo de serviços da unidade."

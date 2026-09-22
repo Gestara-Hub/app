@@ -14,6 +14,7 @@ import { useUpdateProfessional } from "../hooks/use-professionals";
 import { ProfessionalsList } from "./professionals-list";
 import { ProfessionalFormDialog } from "./professional-form-dialog";
 import { InactivateProfessionalDialog } from "./inactivate-professional-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ProfessionalsView() {
   const [formState, setFormState] = useState<{
@@ -36,7 +37,17 @@ export function ProfessionalsView() {
   const openEdit = (professional: ProfessionalView) =>
     setFormState({ open: true, professional });
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(professional: ProfessionalView) {
+    if (
+      !(await confirmAction({
+        title: "Reativar profissional?",
+        description: `“${professional.name}” volta a aparecer nas escalas e atribuições.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateMut.mutateAsync({
         id: professional.id,
@@ -52,6 +63,7 @@ export function ProfessionalsView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Equipe"
         description="Profissionais da unidade e a disponibilidade de cada um."

@@ -37,6 +37,7 @@ import {
 } from "@/components/shared/list";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import type { RecordStatus } from "@gestarahub/contracts";
+import { useConfirmAction } from "./confirm-action-dialog";
 
 /** Forma minima que uma entidade gerenciavel precisa ter. */
 export interface ManagedEntity {
@@ -352,8 +353,16 @@ function EntityList<T extends ManagedEntity>({
   const { data, isPending, isError, refetch } = query;
   const entities = data ?? [];
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
 
   async function inactivate(entity: T) {
+    const ok = await confirmAction({
+      title: `Inativar “${entity.name}”?`,
+      description: "Deixa de ser sugerido em novos cadastros. Os vínculos existentes são mantidos e você pode reativar depois.",
+      confirmLabel: "Inativar",
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await inactivateMut.mutateAsync(entity.id);
       toast.success(labels.inactivatedToast);
@@ -363,6 +372,12 @@ function EntityList<T extends ManagedEntity>({
   }
 
   async function reactivate(entity: T) {
+    const ok = await confirmAction({
+      title: `Reativar “${entity.name}”?`,
+      description: "Volta a ser sugerido em novos cadastros.",
+      confirmLabel: "Reativar",
+    });
+    if (!ok) return;
     try {
       await updateMut.mutateAsync({ id: entity.id, payload: { status: "active" } });
       toast.success(labels.reactivatedToast);
@@ -419,6 +434,7 @@ function EntityList<T extends ManagedEntity>({
 
   return (
     <div>
+      {confirmDialog}
       {!isPending && !isError && entities.length > 0 ? (
         <div className="mb-2 px-1 text-xs text-muted-foreground">
           <span>

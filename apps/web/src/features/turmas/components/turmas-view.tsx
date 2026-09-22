@@ -52,6 +52,7 @@ import {
   useReactivateClassGroup,
 } from "../hooks/use-turmas";
 import { TurmaFormDialog } from "./turma-form-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -212,7 +213,17 @@ export function TurmasView() {
     }
   };
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const handleReactivate = async (turma: ClassGroupView) => {
+    if (
+      !(await confirmAction({
+        title: "Reativar turma?",
+        description: `“${turma.name}” volta a gerar aulas no calendário.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await reactivate.mutateAsync(turma.id);
       toast.success(`Turma "${turma.name}" reativada.`);
@@ -223,6 +234,7 @@ export function TurmasView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Turmas"
         description="Turmas, matrículas e frequência dos alunos."

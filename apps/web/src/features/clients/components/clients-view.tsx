@@ -12,6 +12,7 @@ import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ClientsView() {
   const isClasses = useModel() === "classes";
@@ -27,7 +28,17 @@ export function ClientsView() {
   const openCreate = () => setFormState({ open: true });
   const openEdit = (client: Client) => setFormState({ open: true, client });
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(client: Client) {
+    if (
+      !(await confirmAction({
+        title: `Reativar ${isClasses ? "aluno" : "cliente"}?`,
+        description: `“${client.name}” volta a aparecer em ${isClasses ? "novas matrículas" : "novos agendamentos"}.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateMut.mutateAsync({
         id: client.id,
@@ -48,6 +59,7 @@ export function ClientsView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title={isClasses ? "Alunos" : "Clientes"}
         description={

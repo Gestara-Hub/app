@@ -12,6 +12,7 @@ import { useUpdateUser } from "../hooks/use-users";
 import { UsersList } from "./users-list";
 import { UserFormDialog } from "./user-form-dialog";
 import { InactivateUserDialog } from "./inactivate-user-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function UsersView() {
   const [formState, setFormState] = useState<{
@@ -26,7 +27,17 @@ export function UsersView() {
   const openCreate = () => setFormState({ open: true });
   const openEdit = (user: UserView) => setFormState({ open: true, user });
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(user: UserView) {
+    if (
+      !(await confirmAction({
+        title: "Reativar usuário?",
+        description: `“${user.name}” volta a ter acesso ao sistema com o perfil atual.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateMut.mutateAsync({ id: user.id, payload: { status: "active" } });
       toast.success("Usuário reativado.");
@@ -37,6 +48,7 @@ export function UsersView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Usuários"
         description="Quem acessa o sistema e o perfil de acesso."

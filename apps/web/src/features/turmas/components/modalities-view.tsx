@@ -12,6 +12,7 @@ import { useUpdateCategory } from "@/features/categories";
 import { ModalitiesList } from "./modalities-list";
 import { ModalityFormDialog } from "./modality-form-dialog";
 import { InactivateModalityDialog } from "./inactivate-modality-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ModalitiesView() {
   const [formState, setFormState] = useState<{
@@ -26,7 +27,17 @@ export function ModalitiesView() {
   const openCreate = () => setFormState({ open: true });
   const openEdit = (modality: Category) => setFormState({ open: true, modality });
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(modality: Category) {
+    if (
+      !(await confirmAction({
+        title: "Reativar modalidade?",
+        description: `“${modality.name}” volta a aparecer para turmas e professores.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await updateMut.mutateAsync({
         id: modality.id,
@@ -42,6 +53,7 @@ export function ModalitiesView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Modalidades"
         description="Os tipos de aula que a unidade oferece. As turmas e os instrutores se organizam por elas."

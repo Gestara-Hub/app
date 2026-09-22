@@ -55,6 +55,7 @@ import {
 import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 type Tab = "enrolled" | "waitlist";
 
@@ -159,6 +160,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const cancelMut = useCancelEnrollment();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const can = useCan();
   const canManage = can("enrollment:manage");
   const canEditTurma = can("classes:manage");
@@ -215,7 +217,14 @@ export function TurmaDetailView({ id }: { id: string }) {
     setSelected(allShownSelected ? new Set() : new Set(rows.map((e) => e.id)));
   };
 
-  const cancelOne = (enrollment: EnrollmentView) => {
+  const cancelOne = async (enrollment: EnrollmentView) => {
+    const ok = await confirmAction({
+      title: "Cancelar matrícula?",
+      description: `${enrollment.studentName} sai da turma e deixa de aparecer na lista de chamada. A mensalidade do aluno não muda.`,
+      confirmLabel: "Cancelar matrícula",
+      variant: "destructive",
+    });
+    if (!ok) return;
     cancelMut.mutate(
       { id: enrollment.id },
       {
@@ -261,6 +270,7 @@ export function TurmaDetailView({ id }: { id: string }) {
 
   return (
     <>
+      {confirmDialog}
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
         <Link href="/classes">
           <ChevronLeft className="size-4" />
@@ -470,12 +480,18 @@ export function TurmaDetailView({ id }: { id: string }) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: "Promover da lista de espera?",
+                            description: `${w.studentName} será matriculado na turma, mesmo que ela esteja lotada.`,
+                            confirmLabel: "Matricular",
+                          });
+                          if (!ok) return;
                           promoteMut.mutate(w.id, {
                             onSuccess: () =>
                               toast.success("Aluno promovido para matrícula."),
-                          })
-                        }
+                          });
+                        }}
                       >
                         <UserCheck className="size-4" />
                         Promover
@@ -484,7 +500,18 @@ export function TurmaDetailView({ id }: { id: string }) {
                         variant="ghost"
                         size="icon-sm"
                         title="Remover da lista"
-                        onClick={() => removeWaitMut.mutate(w.id)}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: "Remover da lista de espera?",
+                            description: `${w.studentName} perde a posição ${w.position} na fila.`,
+                            confirmLabel: "Remover",
+                            variant: "destructive",
+                          });
+                          if (!ok) return;
+                          removeWaitMut.mutate(w.id, {
+                            onSuccess: () => toast.success("Aluno removido da lista de espera."),
+                          });
+                        }}
                       >
                         <X className="size-4" />
                       </Button>

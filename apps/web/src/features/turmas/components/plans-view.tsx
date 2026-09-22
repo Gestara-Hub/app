@@ -46,6 +46,7 @@ import {
   useReactivatePlan,
 } from "../hooks/use-billing";
 import { PlanForm } from "./plan-form";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const PERIOD_LABELS: Record<string, string> = {
   monthly: "Mensal",
@@ -197,7 +198,17 @@ export function PlansView() {
     }
   };
 
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const handleReactivate = async (p: Plan) => {
+    if (
+      !(await confirmAction({
+        title: "Reativar plano?",
+        description: `“${p.name}” volta a aparecer no cadastro de alunos.`,
+        confirmLabel: "Reativar",
+      }))
+    ) {
+      return;
+    }
     try {
       await reactivateMut.mutateAsync(p.id);
       toast.success(`Plano "${p.name}" reativado.`);
@@ -246,6 +257,7 @@ export function PlansView() {
 
   return (
     <>
+      {confirmDialog}
       <PageHeader
         title="Planos"
         description="Planos usados pelas turmas."
@@ -322,9 +334,9 @@ export function PlansView() {
         description={
           inactivating ? (
             <>
-              O plano &ldquo;{inactivating.name}&rdquo; não poderá mais ser
-              vinculado a novas turmas. Você pode reativá-lo a qualquer
-              momento.
+              O plano &ldquo;{inactivating.name}&rdquo; deixa de aparecer no
+              cadastro de novos alunos. Quem já tem este plano continua sendo
+              cobrado normalmente. Você pode reativá-lo a qualquer momento.
             </>
           ) : null
         }
