@@ -97,7 +97,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v18: horario de funcionamento nasce vazio no 1o acesso (onboarding pendente) + regra flexivel (soft-confirm).
 // v19: Modelo 3 — unificação de turmas regulares (remoção de enrollmentType do formulário e de PlanPeriod "session" nos planos).
 // v20: seed vazio para Barbearia e Academia — apenas os proprietários são criados.
-const SEED_VERSION = 20;
+// v21: endereço estruturado + planos/vencimento/desconto no aluno (migração suave sem perda de dados).
+const SEED_VERSION = 21;
 
 interface PersistedBlob {
   v: number;
@@ -108,20 +109,49 @@ function canPersist(): boolean {
   return mockConfig.persistence && typeof window !== "undefined";
 }
 
+function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
+  if (fromVersion < 21) {
+    for (const tenant of Object.values(data.tenants)) {
+      if (!tenant.organization.settings) {
+        tenant.organization.settings = { defaultDueDay: 10 };
+      } else if (!tenant.organization.settings.defaultDueDay) {
+        tenant.organization.settings.defaultDueDay = 10;
+      }
+      for (const client of tenant.clients) {
+        if (!client.membershipStatus) {
+          client.membershipStatus = client.status === "active" ? "active" : "paused";
+        }
+        if (!client.dueDay) {
+          client.dueDay = 10;
+        }
+      }
+    }
+  }
+  return data;
+}
+
 function loadFromStorage(): MockWorld | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PersistedBlob>;
-    if (parsed.v !== SEED_VERSION || !parsed.data) return null;
-    for (const tenant of Object.values(parsed.data.tenants)) {
+    if (!parsed.data || typeof parsed.v !== "number") return null;
+    if (parsed.v < 20) return null; // versões muito antigas reiniciam limpas
+
+    let worldData = parsed.data;
+    if (parsed.v < SEED_VERSION) {
+      worldData = migrateWorld(worldData, parsed.v);
+      saveToStorage(worldData);
+    }
+
+    for (const tenant of Object.values(worldData.tenants)) {
       const t = tenant as Partial<MockStore>;
       t.charges = t.charges || t.cobrancas || [];
       t.makeups = t.makeups || t.reposicoes || [];
       t.reservations = t.reservations || t.reservas || [];
     }
-    return parsed.data;
+    return worldData;
   } catch {
     return null;
   }

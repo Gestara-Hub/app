@@ -133,7 +133,7 @@ export function EnrollStudentsDialog({
       );
       close();
     }
-    if (lastError && ok === 0) {
+    if (lastError) {
       toast.error(getErrorMessage(lastError, "Não foi possível matricular."));
     }
   };

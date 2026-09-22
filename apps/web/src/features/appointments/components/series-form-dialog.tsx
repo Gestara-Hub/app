@@ -93,7 +93,7 @@ function SeriesForm({
       frequency: values.frequency,
       startDate: values.startDate,
       time: values.time,
-      untilOccurrences: values.endMode === "count" ? values.untilOccurrences : undefined,
+      untilOccurrences: values.endMode === "count" ? (values.untilOccurrences ?? undefined) : undefined,
       untilDate: values.endMode === "date" ? values.untilDate : undefined,
     };
     try {

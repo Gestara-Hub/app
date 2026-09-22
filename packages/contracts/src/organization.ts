@@ -1,4 +1,4 @@
-import type { Id, RecordStatus, TimeISO, Weekday } from "./common";
+import type { Address, Id, RecordStatus, TimeISO, Weekday } from "./common";
 
 /**
  * Modelo operacional do tenant (estrutural — define o app inteiro). Ortogonal ao
@@ -8,11 +8,16 @@ import type { Id, RecordStatus, TimeISO, Weekday } from "./common";
  */
 export type OperationalModel = "scheduling" | "classes" | "delivery";
 
+export interface OrganizationSettings {
+  defaultDueDay?: number; // dia padrão de vencimento de mensalidades (ex: 10)
+}
+
 export interface Organization {
   id: Id;
   name: string; // 'Corte Nobre'
   segment: string; // 'Barbearia' (vertical/rotulo — nao confundir com `model`)
   model: OperationalModel; // modelo operacional (estrutural)
+  settings?: OrganizationSettings;
   status: RecordStatus;
 }
 
@@ -27,8 +32,9 @@ export interface Unit {
   id: Id;
   organizationId: Id;
   name: string; // 'Corte Nobre - Matriz'
-  address?: string;
+  address?: Address | string;
   phone?: string;
   status: RecordStatus;
   businessHours: BusinessHoursDay[]; // horario de funcionamento da unidade
 }
+

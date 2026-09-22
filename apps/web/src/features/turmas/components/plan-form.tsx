@@ -18,7 +18,10 @@ import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
   period: z.enum(["monthly", "biweekly", "weekly"]),
-  priceCents: z.number().int().min(0, "Informe um valor válido."),
+  priceCents: z
+    .number({ error: "Informe um valor válido." })
+    .int("Informe um valor válido.")
+    .min(0, "Informe um valor válido."),
 });
 type PlanFormValues = z.infer<typeof schema>;
 

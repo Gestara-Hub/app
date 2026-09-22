@@ -135,29 +135,86 @@ export const billingService = {
 
   /**
    * Gera as mensalidades de uma competencia (`YYYY-MM`): uma cobranca por
-   * matricula ativa cuja turma tem plano. Idempotente (nao duplica por aluno x
-   * turma x competencia). Vencimento no dia 10.
+   * aluno ativo com plano contratado (calculando desconto e dia de vencimento
+   * individual). Idempotente (uma fatura por aluno x competencia).
    */
   generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(() => {
       const today = todayISO();
-      const dueDate = `${competence}-10`;
+      const defaultDay = store.organization.settings?.defaultDueDay ?? 10;
       let created = 0;
+
+      // 1. Gera cobrança para alunos que possuem plano associado diretamente
+      for (const student of store.clients) {
+        if (student.status !== "active") continue;
+        if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
+        if (!student.planId) continue;
+
+        const exists = store.charges.some(
+          (c) =>
+            c.kind === "membership" &&
+            c.studentId === student.id &&
+            c.competence === competence,
+        );
+        if (exists) continue;
+
+        const plan = store.plans.find((p) => p.id === student.planId);
+        if (!plan) continue;
+
+        let amountCents = plan.priceCents;
+        if (student.discount && student.discount.value > 0) {
+          if (student.discount.type === "fixed") {
+            amountCents = Math.max(0, amountCents - student.discount.value);
+          } else if (student.discount.type === "percentage") {
+            const discountAmount = Math.round((amountCents * student.discount.value) / 100);
+            amountCents = Math.max(0, amountCents - discountAmount);
+          }
+        }
+
+        const dueDay = student.dueDay ?? defaultDay;
+        const padDay = String(Math.min(Math.max(dueDay, 1), 31)).padStart(2, "0");
+        const dueDate = `${competence}-${padDay}`;
+        const ts = nowIso();
+
+        store.charges.push({
+          id: newId(),
+          organizationId: store.organization.id,
+          studentId: student.id,
+          kind: "membership",
+          planId: plan.id,
+          competence,
+          dueDate,
+          amountCents,
+          status: dueDate < today ? "overdue" : "pending",
+          createdAt: ts,
+          updatedAt: ts,
+        });
+        created += 1;
+      }
+
+      // 2. Fallback de retrocompatibilidade: alunos matriculados em turmas com planId antigo
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;
+        const student = store.clients.find((c) => c.id === e.studentId);
+        if (!student || student.planId) continue; // Já tratado acima se tiver plano direto
+
         const turma = store.classGroups.find((t) => t.id === e.classGroupId);
         if (!turma || !turma.planId) continue;
+
         const exists = store.charges.some(
           (c) =>
             c.kind === "membership" &&
             c.studentId === e.studentId &&
-            c.classGroupId === turma.id &&
             c.competence === competence,
         );
         if (exists) continue;
+
         const plan = store.plans.find((p) => p.id === turma.planId);
         if (!plan) continue;
+
+        const dueDate = `${competence}-10`;
         const ts = nowIso();
+
         store.charges.push({
           id: newId(),
           organizationId: store.organization.id,
@@ -174,6 +231,7 @@ export const billingService = {
         });
         created += 1;
       }
+
       return { created };
     });
   },

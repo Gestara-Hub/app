@@ -1,5 +1,9 @@
 # MVP Barbearia
 
+> ⏸️ **STATUS: CONGELADO / STANDBY (Pós-MVP)**
+> O foco ativo do MVP foi redirecionado para o **Modelo 3 (Turmas & Aulas / Academia de Lutas)** com base em validação com usuário real (design partner). Este documento e o cenário "Corte Nobre" permanecem preservados como referência arquitetural para o Modelo 1 (atendimento individual 1:1), mas o desenvolvimento ativo deste nicho está pausado.
+> Ver especificação do MVP ativo em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md).
+
 ## Decisao
 
 O primeiro MVP do GestaraHub sera uma experiencia frontend mockada baseada em uma barbearia ficticia.

@@ -35,7 +35,6 @@ import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
 import { useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
-import { usePlans } from "../hooks/use-billing";
 import { turmaFormSchema, type TurmaFormValues } from "../turma-schema";
 
 const WEEKDAYS = [
@@ -175,7 +174,6 @@ export function TurmaForm({
   const { data: unit } = useUnit();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
-  const { data: plans } = usePlans({ status: "active" });
 
   const form = useForm<TurmaFormValues>({
     resolver: zodResolver(turmaFormSchema),
@@ -338,18 +336,13 @@ export function TurmaForm({
     label: p.name,
     value: p.id,
   }));
-  const planOptions = (plans ?? []).map((p) => ({
-    label: p.name,
-    value: p.id,
-  }));
-
   return (
     <FormProvider {...form}>
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<TurmaFormValues>
           name="name"
           label="Nome da turma"
-          placeholder="Ex.: Inglês Básico, Dança Kids, Turma A"
+          placeholder="Ex.: Jiu-Jitsu Fundamentos, No-Gi Avançado, Kids A"
           required
           disabled={pending}
         />
@@ -357,7 +350,7 @@ export function TurmaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectField<TurmaFormValues>
             name="modalityId"
-            label="Modalidade / Curso"
+            label="Modalidade / Arte Marcial"
             placeholder="Selecione a modalidade"
             options={categoryOptions}
             required
@@ -382,15 +375,14 @@ export function TurmaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <InputNumber<TurmaFormValues>
             name="capacity"
-            label="Capacidade (vagas)"
+            label="Capacidade (vagas no tatame)"
             min={1}
             disabled={pending}
           />
-          <SelectField<TurmaFormValues>
-            name="planId"
-            label="Plano de mensalidade"
-            placeholder="Sem cobrança (opcional)"
-            options={planOptions}
+          <DateField<TurmaFormValues>
+            name="startDate"
+            label="Data de início da turma"
+            required
             disabled={pending}
           />
         </div>
@@ -398,21 +390,19 @@ export function TurmaForm({
         <div className="space-y-3 rounded-lg border p-3.5 bg-muted/20">
           <SwitchField<TurmaFormValues>
             name="allowDropin"
-            label="Permitir aulas avulsas nesta turma"
-            hint="Alunos poderão reservar aulas avulsas nas vagas restantes desta turma."
+            label="Permitir alunos avulsos nesta turma"
+            hint="Alunos poderão reservar aulas avulsas ou experimentais nas vagas restantes desta turma."
             disabled={pending}
           />
 
           {allowDropin ? (
             <InputCurrency<TurmaFormValues>
               name="sessionPriceCents"
-              label="Valor da aula avulsa"
+              label="Valor da aula avulsa / diária"
               disabled={pending}
             />
           ) : null}
         </div>
-
-        <DateField<TurmaFormValues> name="startDate" label="Início" required disabled={pending} />
 
         <Controller
           control={form.control}

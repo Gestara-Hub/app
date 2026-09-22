@@ -1,5 +1,9 @@
 # Barbearia Corte Nobre (Cenario Canonico)
 
+> ⏸️ **STATUS: CONGELADO / STANDBY (Pós-MVP)**
+> Este cenário de dados mockados pertence ao Modelo 1 (agendamento 1:1 de barbearia), que está atualmente em standby. O foco ativo do MVP é o **Modelo 3 (Turmas / Academia de Lutas)**.
+> Ver especificação do foco ativo em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md).
+
 ## Decisao / Objetivo
 
 Este documento e o CENARIO CANONICO do GestaraHub: a fonte unica de verdade para todos os dados mockados do MVP.

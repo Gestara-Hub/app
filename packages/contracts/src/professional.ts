@@ -1,4 +1,5 @@
 import type {
+  Address,
   DateTimeISO,
   Id,
   RecordStatus,
@@ -12,6 +13,7 @@ export interface Professional {
   name: string;
   roleId?: Id; // FK -> Role (cargo/especialidade) — OPCIONAL; nome via store.roles
   phone?: string;
+  address?: Address;
   status: RecordStatus;
   workingHours: WorkingHours[]; // respeita o funcionamento da unidade
   serviceIds: Id[]; // (M1) servicos que o profissional realiza (pode ser vazio)

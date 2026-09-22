@@ -1,4 +1,4 @@
-import type { BusinessHoursDay, Organization, Unit } from "@gestarahub/contracts";
+import type { Address, BusinessHoursDay, Organization, Unit } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import { simulateRead, simulateWrite } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
@@ -7,10 +7,12 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-export type UpdateOrganization = Partial<Pick<Organization, "name" | "segment" | "model">>;
+export type UpdateOrganization = Partial<
+  Pick<Organization, "name" | "segment" | "model" | "settings">
+>;
 export type UpdateUnit = Partial<{
   name: string;
-  address: string;
+  address: Address | string;
   phone: string;
   businessHours: BusinessHoursDay[];
 }>;
@@ -35,6 +37,7 @@ export const settingsService = {
             ? payload.segment.trim() || store.organization.segment
             : store.organization.segment,
         model: payload.model || store.organization.model,
+        settings: payload.settings !== undefined ? payload.settings : store.organization.settings,
       };
       auditLogService.record({
         action: "updated",
@@ -52,8 +55,8 @@ export const settingsService = {
         ...store.unit,
         ...payload,
         name: payload.name?.trim() || store.unit.name,
-        address: payload.address !== undefined ? payload.address.trim() || undefined : store.unit.address,
-        phone: payload.phone !== undefined ? payload.phone.trim() || undefined : store.unit.phone,
+        address: payload.address !== undefined ? payload.address : store.unit.address,
+        phone: payload.phone !== undefined ? (typeof payload.phone === "string" ? payload.phone.trim() || undefined : payload.phone) : store.unit.phone,
       };
       // Distingue alteracao do expediente (o caso mais sensivel) dos demais dados.
       const changedHours = payload.businessHours !== undefined;

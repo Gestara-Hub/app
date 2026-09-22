@@ -14,13 +14,13 @@ import { FieldShell } from "./field-shell";
  * (precoCentavos). Cada digito digitado e um centavo; nunca aceita negativo.
  */
 
-function digitsToCentavos(raw: string): number | undefined {
+function digitsToCentavos(raw: string): number | null {
   const digits = raw.replace(/\D/g, "");
-  if (!digits) return undefined;
+  if (!digits) return null;
   return Number(digits);
 }
 
-function formatCentavos(centavos: number | undefined): string {
+function formatCentavos(centavos: number | null | undefined): string {
   if (centavos === undefined || centavos === null || Number.isNaN(centavos)) {
     return "";
   }
@@ -74,7 +74,7 @@ export function InputCurrency<T extends FieldValues>({
               placeholder={placeholder}
               disabled={disabled}
               className="pl-9"
-              value={formatCentavos(field.value as number | undefined)}
+              value={formatCentavos(field.value as number | null | undefined)}
               onChange={(event) =>
                 field.onChange(digitsToCentavos(event.target.value))
               }

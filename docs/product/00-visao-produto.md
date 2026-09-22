@@ -1,12 +1,15 @@
 # Visao do Produto
 
+> 🚀 **DIRETRIZ ATUAL DO MVP:**
+> O primeiro ciclo de validação e lançamento do GestaraHub foi priorizado para o **Modelo 3 (Turmas & Aulas / Academia de Lutas)**, guiado por um parceiro de design real no tatame (Jiu-Jitsu).
+> O cenário do Modelo 1 (Barbearia "Corte Nobre") permanece implementado como base arquitetural de atendimento individual, mas está com escopo **congelado** em standby.
+> Ver especificação do foco ativo em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md) e [11-modelo-3-turmas.md](11-modelo-3-turmas.md).
+
 ## Decisao
 
-GestaraHub e uma plataforma de gestao operacional para pequenos e medios negocios organizarem agenda, clientes, equipe, servicos e compromissos.
+GestaraHub e uma plataforma de gestao operacional multi-tenant para pequenos e medios negocios organizarem compromissos, turmas, clientes/alunos, equipe e cobrancas.
 
-O produto nasce com foco em atendimentos individuais, usando a barbearia ficticia Corte Nobre como cenario base do MVP, mas deve manter uma estrutura conceitual preparada para evoluir para entregas/encomendas, turmas/aulas, unidades e modulos gerenciais.
-
-O cenario completo da barbearia ficticia (organizacao, unidade, profissionais, servicos, clientes e agendamentos mock) esta detalhado em `docs/product/08-barbearia-corte-nobre.md` e e a fonte unica de verdade para os dados de exemplo.
+A plataforma suporta tres modelos operacionais distintos (`scheduling`, `classes` e `delivery`). O MVP ativo esta concentrado em **Turmas & Aulas (Modelo 3)** para academias de artes marciais, mantendo fundacao compartilhada e contratos neutros.
 
 ### Decisao de linguagem (hibrida)
 

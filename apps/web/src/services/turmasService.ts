@@ -249,6 +249,51 @@ function validateInstructorScheduleConflict(
   if (fields.length > 0) throw validationError(fields);
 }
 
+// Valida se o aluno já está em outra turma com horário conflitante (mesmo dia/hora).
+function validateStudentScheduleConflict(
+  studentId: Id,
+  targetClassGroupId: Id,
+): void {
+  const targetGroup = store.classGroups.find((g) => g.id === targetClassGroupId);
+  if (!targetGroup || targetGroup.status !== "active") return;
+
+  const student = store.clients.find((c) => c.id === studentId);
+  const studentName = student?.name ?? "Aluno";
+
+  const otherActiveEnrollments = store.enrollments.filter(
+    (e) =>
+      e.studentId === studentId &&
+      e.status === "active" &&
+      e.classGroupId !== targetClassGroupId,
+  );
+
+  for (const slot of targetGroup.meetingSlots) {
+    for (const enrollment of otherActiveEnrollments) {
+      const otherGroup = store.classGroups.find(
+        (g) => g.id === enrollment.classGroupId && g.status === "active",
+      );
+      if (!otherGroup) continue;
+
+      const conflictSlot = otherGroup.meetingSlots.find(
+        (s) =>
+          s.weekday === slot.weekday &&
+          timesOverlap(slot.start, slot.end, s.start, s.end),
+      );
+
+      if (conflictSlot) {
+        const dayName = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][
+          slot.weekday
+        ];
+        throw apiError(
+          "CLASS_SCHEDULE_CONFLICT",
+          `${studentName} já possui aula ${dayName} (${conflictSlot.start}-${conflictSlot.end}) na turma "${otherGroup.name}".`,
+          { httpStatus: 409 },
+        );
+      }
+    }
+  }
+}
+
 function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
@@ -409,6 +454,7 @@ export const turmasService = {
           { field: "studentId", message: "Aluno já matriculado nesta turma." },
         ]);
       }
+      validateStudentScheduleConflict(payload.studentId, g.id);
       if (!opts.allowOverCapacity && activeEnrollments(g.id).length >= g.capacity) {
         throw apiError("CLASS_FULL", `Turma lotada (${g.capacity} vagas).`, {
           httpStatus: 409,

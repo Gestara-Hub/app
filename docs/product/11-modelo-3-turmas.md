@@ -1,5 +1,9 @@
 # Modelo 3: Turmas e aulas — especificacao
 
+> 🚀 **STATUS: ATIVO — NÚCLEO OPERACIONAL DO MVP**
+> O Modelo 3 é a base do MVP ativo do GestaraHub, sendo validado no tatame com uma academia de Jiu-Jitsu.
+> Ver especificações de extensibilidade, neutralidade e nicho em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md).
+>
 > Spec dev-ready do Modelo 3. Segue a "Regra de evolucao" ([02-modelos-operacionais.md](02-modelos-operacionais.md)) e o ADR de extensao ([../technical/01-extensao-modelos-operacionais.md](../technical/01-extensao-modelos-operacionais.md)): entra como **modulo separado** (`features/turmas`), reusa a fundacao, **nao** genericiza o nucleo do Modelo 1. Um tenant e de um modelo so — um tenant de turmas **nao** tem a agenda 1:1 do Modelo 1.
 
 ## Decisao

@@ -9,7 +9,7 @@ export const seriesFormSchema = z
     startDate: z.string().min(1, "Selecione a data de início."),
     time: z.string().min(1, "Selecione o horário."),
     endMode: z.enum(["count", "date"]),
-    untilOccurrences: z.number().int().min(1).optional(),
+    untilOccurrences: z.number().int().min(1).nullish(),
     untilDate: z.string().optional(),
   })
   .superRefine((v, ctx) => {

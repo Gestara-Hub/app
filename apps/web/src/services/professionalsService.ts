@@ -123,6 +123,7 @@ export const professionalsService = {
         name: payload.name.trim(),
         roleId: payload.roleId,
         phone: payload.phone?.trim() || undefined,
+        address: payload.address,
         status: payload.status ?? "active",
         workingHours: payload.workingHours ?? [],
         serviceIds: payload.serviceIds,

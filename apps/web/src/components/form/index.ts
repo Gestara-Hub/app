@@ -15,3 +15,5 @@ export {
 } from "./multi-select-field";
 export { SwitchField } from "./switch-field";
 export { DialogFormFooter } from "./dialog-form-footer";
+export { AddressFields } from "./address-fields";
+

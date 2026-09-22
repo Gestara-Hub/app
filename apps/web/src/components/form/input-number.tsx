@@ -45,7 +45,7 @@ export function InputNumber<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field, fieldState }) => {
-        const value = field.value as number | undefined;
+        const value = field.value as number | null | undefined;
         return (
           <FieldShell
             id={fieldId}
@@ -68,7 +68,12 @@ export function InputNumber<T extends FieldValues>({
                 value={value ?? ""}
                 onChange={(event) => {
                   const raw = event.target.value;
-                  field.onChange(raw === "" ? undefined : Number(raw));
+                  if (raw === "") {
+                    field.onChange(null);
+                    return;
+                  }
+                  const num = Number(raw);
+                  field.onChange(Number.isNaN(num) ? null : num);
                 }}
                 onBlur={field.onBlur}
                 name={field.name}

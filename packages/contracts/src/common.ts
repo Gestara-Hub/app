@@ -22,6 +22,17 @@ export type DateTimeISO = string;
 // Status generico de cadastro (Client, Professional, Service, Organization, Unit).
 export type RecordStatus = "active" | "inactive";
 
+/** Endereço estruturado compartilhado entre unidades, clientes e profissionais. */
+export interface Address {
+  postalCode: string; // CEP (apenas números ou formatado '00000-000')
+  street: string; // Logradouro (rua, avenida)
+  number: string; // Número
+  complement?: string; // Complemento (apto, bloco, sala)
+  neighborhood: string; // Bairro
+  city: string; // Cidade
+  state: string; // UF (SP, RJ, MG...)
+}
+
 // Status de agendamento (codigos canonicos).
 export type AppointmentStatus =
   | "pending"
@@ -71,7 +82,8 @@ export type ApiErrorCode =
   | "PROFESSIONAL_INACTIVE"
   | "SERVICE_INACTIVE"
   // Regras de negocio (turmas — Modelo 3)
-  | "CLASS_FULL"; // turma lotada (regra mole: confirma para matricular mesmo assim)
+  | "CLASS_FULL" // turma lotada (regra mole: confirma para matricular mesmo assim)
+  | "CLASS_SCHEDULE_CONFLICT"; // conflito de horário (aluno já em outra turma no mesmo horário)
 
 export interface ApiErrorField {
   field: string; // ex.: 'name', 'priceCents'

@@ -8,12 +8,15 @@ export const turmaFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome da turma."),
   // Modalidade (= Category) obrigatória.
   modalityId: z.string().min(1, "Selecione a modalidade da turma."),
-  // Plano de mensalidade opcional; vazio = turma sem cobranca.
-  planId: z.string(),
+  // Plano de mensalidade legado/opcional (agora gerenciado no Aluno).
+  planId: z.string().optional(),
   instructorId: z.string().min(1, "Selecione o instrutor."),
   allowDropin: z.boolean(),
-  sessionPriceCents: z.number().int().min(0).optional(),
-  capacity: z.number().int().min(1, "A capacidade deve ser ao menos 1."),
+  sessionPriceCents: z.number().int().min(0).nullish(),
+  capacity: z
+    .number({ error: "Informe a capacidade da turma (ao menos 1 vaga)." })
+    .int("A capacidade deve ser um número inteiro.")
+    .min(1, "A capacidade deve ser ao menos 1."),
   startDate: z.string().min(1, "Informe a data de início."),
   meetingSlots: z
     .array(
