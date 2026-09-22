@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,13 +8,10 @@ import { toast } from "sonner";
 import {
   Building2,
   CalendarDays,
-  CreditCard,
   Loader2,
   MapPin,
-  RotateCcw,
   Save,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   Accordion,
   AccordionContent,
@@ -26,6 +23,8 @@ import {
   InputNumber,
   InputPhone,
   InputText,
+  SegmentedChoiceField,
+  type SegmentedChoiceOption,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +37,7 @@ import {
   useUpdateOrganization,
   useUpdateUnit,
 } from "../hooks/use-settings";
+import { BillingRulesPreview } from "./billing-rules-preview";
 
 const addressSchema = z.object({
   postalCode: z.string().optional(),
@@ -49,17 +49,20 @@ const addressSchema = z.object({
   state: z.string().optional(),
 });
 
+const MAX_DEFAULT_DUE_DAY = 28;
+
 const schema = z.object({
   organizationName: z
     .string()
     .trim()
     .min(1, "Informe o nome da organização ou academia."),
   unitName: z.string().trim().min(1, "Informe o nome da unidade."),
+  // Limitado a 28 para existir em todos os meses, inclusive fevereiro
   defaultDueDay: z
-    .number({ error: "Informe o dia de vencimento padrão (1 a 31)." })
-    .int("Dia de vencimento deve ser um número inteiro.")
-    .min(1, "Dia deve ser entre 1 e 31.")
-    .max(31, "Dia deve ser entre 1 e 31."),
+    .number({ error: "Use um dia de 1 a 28." })
+    .int("Use um dia de 1 a 28.")
+    .min(1, "Use um dia de 1 a 28.")
+    .max(MAX_DEFAULT_DUE_DAY, "Use um dia de 1 a 28."),
   billingTiming: z.enum(["prepaid", "postpaid"]),
   midMonthStrategy: z.enum(["prorated", "full_cycle"]),
   phone: z
@@ -72,6 +75,36 @@ const schema = z.object({
   address: addressSchema.optional(),
 });
 type OrgUnitValues = z.infer<typeof schema>;
+
+const BILLING_TIMING_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "prepaid", label: "Antecipado", description: "Paga antes das aulas" },
+  { value: "postpaid", label: "Depois do uso", description: "Paga ao fim do período" },
+];
+
+const MID_MONTH_STRATEGY_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "prorated", label: "Proporcional", description: "Só os dias restantes" },
+  { value: "full_cycle", label: "Mês cheio", description: "Ciclo a partir da entrada" },
+];
+
+function SettingRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-3 py-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:items-center sm:gap-6">
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 function parseUnitAddress(addr: Unit["address"]): OrgUnitValues["address"] {
   if (!addr) {
@@ -125,7 +158,7 @@ function OrgUnitForm({
     defaultValues: {
       organizationName: organization.name,
       unitName: unit.name,
-      defaultDueDay: organization.settings?.defaultDueDay ?? 10,
+      defaultDueDay: Math.min(organization.settings?.defaultDueDay ?? 10, MAX_DEFAULT_DUE_DAY),
       billingTiming: organization.settings?.billingTiming ?? "prepaid",
       midMonthStrategy: organization.settings?.midMonthStrategy ?? "prorated",
       phone: unit.phone ?? "",
@@ -161,13 +194,14 @@ function OrgUnitForm({
     [streetPart, areaPart].filter(Boolean).join(" • ") ||
     "Endereço e localização da unidade";
 
-  const timingSummary = currentTiming === "postpaid" ? "Paga depois (Pós-pago)" : "Paga antecipado (Pré-pago)";
-  const strategySummary =
-    currentStrategy === "full_cycle" ? "Ciclo de 30 dias" : "Cobrança proporcional (pró-rata)";
+  const timingSummary = currentTiming === "postpaid" ? "Depois do uso" : "Antecipado";
+  const strategySummary = currentStrategy === "full_cycle" ? "Mês cheio" : "Proporcional";
+  const isValidDueDay =
+    Number.isInteger(currentDueDay) && currentDueDay >= 1 && currentDueDay <= MAX_DEFAULT_DUE_DAY;
   const dueSummary =
     currentStrategy === "full_cycle"
-      ? "Vencimento no dia da entrada"
-      : `Vencimento todo dia ${currentDueDay || 10}`;
+      ? "Vence no dia da entrada"
+      : `Vence todo dia ${isValidDueDay ? currentDueDay : 10}`;
   const billingSummary = `${timingSummary} • ${strategySummary} • ${dueSummary}`;
 
   // Se a URL possuir #billing-rules, abre a seção de regras de cobrança; senão, abre a de identificação
@@ -206,26 +240,41 @@ function OrgUnitForm({
     }
     if (toOpen.length > 0) {
       setOpenSections((prev) => Array.from(new Set([...prev, ...toOpen])));
-      toast.error("Existem campos obrigatórios não preenchidos.");
+      toast.error("Revise os campos destacados.");
     }
   };
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Grava so o que mudou, para cada salvamento virar um unico evento na auditoria.
+    const dirty = form.formState.dirtyFields;
+    const orgDirty = Boolean(
+      dirty.organizationName ||
+        dirty.defaultDueDay ||
+        dirty.billingTiming ||
+        dirty.midMonthStrategy ||
+        // 1o salvamento grava as regras padrao (o onboarding depende delas).
+        !organization.settings?.billingTiming,
+    );
+    const unitDirty = Boolean(dirty.unitName || dirty.phone || dirty.address);
     try {
-      await updateOrg.mutateAsync({
-        name: values.organizationName,
-        settings: {
-          ...organization.settings,
-          defaultDueDay: values.defaultDueDay,
-          billingTiming: values.billingTiming,
-          midMonthStrategy: values.midMonthStrategy,
-        },
-      });
-      await updateUnit.mutateAsync({
-        name: values.unitName,
-        address: values.address as Address,
-        phone: values.phone ?? "",
-      });
+      if (orgDirty) {
+        await updateOrg.mutateAsync({
+          name: values.organizationName,
+          settings: {
+            ...organization.settings,
+            defaultDueDay: values.defaultDueDay,
+            billingTiming: values.billingTiming,
+            midMonthStrategy: values.midMonthStrategy,
+          },
+        });
+      }
+      if (unitDirty) {
+        await updateUnit.mutateAsync({
+          name: values.unitName,
+          address: values.address as Address,
+          phone: values.phone ?? "",
+        });
+      }
       toast.success("Configurações salvas.");
       form.reset(values);
     } catch (error) {
@@ -335,7 +384,7 @@ function OrgUnitForm({
                   </div>
                   <div className="min-w-0 text-left">
                     <h3 className="font-semibold text-foreground text-sm leading-tight">
-                      Regras de Cobrança das Mensalidades
+                      Regras de Cobrança
                     </h3>
                     <p className="text-xs text-muted-foreground truncate mt-0.5 font-normal">
                       {billingSummary}
@@ -343,201 +392,50 @@ function OrgUnitForm({
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pt-2 pb-5 space-y-5 border-t border-border/40 mt-1">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Defina como sua academia prefere cobrar as mensalidades. Essas regras serão aplicadas automaticamente nas novas matrículas para evitar erros na recepção.
+              <AccordionContent className="pb-5 border-t border-border/40 mt-1">
+                <p className="pt-3 pb-1 text-xs text-muted-foreground">
+                  Como as mensalidades são cobradas nas novas matrículas.
                 </p>
-
-                {/* Opção 1: Quando o aluno paga */}
-                <div className="space-y-2 pt-1">
-                  <div className="space-y-0.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <CreditCard className="size-3.5 text-primary" />
-                      Quando o aluno deve pagar a mensalidade?
-                    </label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Define se o aluno paga antes de fazer as aulas ou se paga depois de cursar o período.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => form.setValue("billingTiming", "prepaid", { shouldDirty: true })}
-                      className={cn(
-                        "flex flex-col items-start p-3.5 rounded-lg border text-left transition-all select-none cursor-pointer",
-                        currentTiming === "prepaid"
-                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-2xs"
-                          : "border-border/60 hover:bg-muted/40 text-muted-foreground",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "size-2.5 rounded-full shrink-0",
-                              currentTiming === "prepaid" ? "bg-primary" : "bg-muted-foreground/30",
-                            )}
-                          />
-                          <span className="text-xs font-semibold text-foreground">
-                            Pagar antecipado (Pré-pago)
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5">
-                          Padrão
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 pl-4.5 leading-relaxed">
-                        O aluno paga no ato da matrícula para liberar o acesso às aulas.
-                      </p>
-                      <p className="text-[11px] text-foreground/80 mt-1 pl-4.5 font-medium">
-                        💡 Ex: Se entrar dia 05, paga a 1ª mensalidade no dia 05 para ter o mês liberado.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => form.setValue("billingTiming", "postpaid", { shouldDirty: true })}
-                      className={cn(
-                        "flex flex-col items-start p-3.5 rounded-lg border text-left transition-all select-none cursor-pointer",
-                        currentTiming === "postpaid"
-                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-2xs"
-                          : "border-border/60 hover:bg-muted/40 text-muted-foreground",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "size-2.5 rounded-full shrink-0",
-                            currentTiming === "postpaid" ? "bg-primary" : "bg-muted-foreground/30",
-                          )}
-                        />
-                        <span className="text-xs font-semibold text-foreground">
-                          Pagar depois de usar (Pós-pago)
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 pl-4.5 leading-relaxed">
-                        O aluno faz as aulas do mês primeiro e a mensalidade vence ao término do período.
-                      </p>
-                      <p className="text-[11px] text-foreground/80 mt-1 pl-4.5 font-medium">
-                        💡 Ex: Cursa as aulas o mês todo e a fatura vence ao término do ciclo.
-                      </p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Opção 2: Matrículas no meio do mês */}
-                <div className="space-y-2">
-                  <div className="space-y-0.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <RotateCcw className="size-3.5 text-primary" />
-                      Como cobrar quem entra no meio do mês?
-                    </label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Se um aluno se matricular fora do início do mês (ex: dia 20), como calcular a primeira cobrança?
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => form.setValue("midMonthStrategy", "prorated", { shouldDirty: true })}
-                      className={cn(
-                        "flex flex-col items-start p-3.5 rounded-lg border text-left transition-all select-none cursor-pointer",
-                        currentStrategy === "prorated"
-                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-2xs"
-                          : "border-border/60 hover:bg-muted/40 text-muted-foreground",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "size-2.5 rounded-full shrink-0",
-                              currentStrategy === "prorated" ? "bg-primary" : "bg-muted-foreground/30",
-                            )}
-                          />
-                          <span className="text-xs font-semibold text-foreground">
-                            Cobrar apenas os dias restantes (Proporcional)
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 pl-4.5 leading-relaxed">
-                        Cobra só pelos dias que faltam para acabar o mês. As próximas faturas vencem todas no dia padrão da academia.
-                      </p>
-                      <p className="text-[11px] text-foreground/80 mt-1 pl-4.5 font-medium">
-                        💡 Ex: Se entrar dia 20 num plano de R$ 150, paga só ~R$ 50 pelos 10 dias restantes.
-                      </p>
-                      <div className="mt-2 pl-4.5">
-                        <span className="text-[10px] text-primary bg-primary/10 rounded px-1.5 py-0.5 font-medium">
-                          ⭐ Todos os alunos vencem no mesmo dia
-                        </span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => form.setValue("midMonthStrategy", "full_cycle", { shouldDirty: true })}
-                      className={cn(
-                        "flex flex-col items-start p-3.5 rounded-lg border text-left transition-all select-none cursor-pointer",
-                        currentStrategy === "full_cycle"
-                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40 shadow-2xs"
-                          : "border-border/60 hover:bg-muted/40 text-muted-foreground",
-                      )}
-                      disabled={pending}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "size-2.5 rounded-full shrink-0",
-                              currentStrategy === "full_cycle" ? "bg-primary" : "bg-muted-foreground/30",
-                            )}
-                          />
-                          <span className="text-xs font-semibold text-foreground">
-                            Cobrar o mês inteiro (Ciclo de 30 dias)
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 pl-4.5 leading-relaxed">
-                        Cobra a mensalidade cheia já na entrada. O período de 30 dias dele passa a contar a partir da data de matrícula.
-                      </p>
-                      <p className="text-[11px] text-foreground/80 mt-1 pl-4.5 font-medium">
-                        💡 Ex: Se entrar dia 20, paga o valor cheio e os próximos vencimentos dele serão sempre todo dia 20.
-                      </p>
-                      <div className="mt-2 pl-4.5">
-                        <span className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 font-medium">
-                          ⭐ O aluno sempre paga o mês cheio desde o início
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Opção 3: Dia de vencimento padrão */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 p-4">
-                  <div className="space-y-1">
-                    <span className="text-sm font-medium text-foreground">
-                      Dia padrão de vencimento
-                    </span>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {currentStrategy === "prorated"
-                        ? "Dia do mês em que vencem as mensalidades de todos os alunos (ex: dia 10). Ideal para concentrar recebimentos e simplificar o caixa."
-                        : "No ciclo de 30 dias, cada aluno vence no dia em que entrou. Este número será sugerido apenas caso queira ajustar manualmente."}
-                    </p>
-                  </div>
-                  <div className="w-24 shrink-0">
-                    <InputNumber<OrgUnitValues>
-                      name="defaultDueDay"
-                      label=""
-                      min={1}
-                      max={31}
-                      required
+                <div className="divide-y divide-border/40">
+                  <SettingRow label="Momento do pagamento" hint="Quando a mensalidade vence.">
+                    <SegmentedChoiceField<OrgUnitValues>
+                      name="billingTiming"
+                      ariaLabel="Momento do pagamento"
+                      options={BILLING_TIMING_OPTIONS}
                       disabled={pending}
                     />
-                  </div>
+                  </SettingRow>
+                  <SettingRow label="Entrada no meio do mês" hint="Como fica a 1ª cobrança.">
+                    <SegmentedChoiceField<OrgUnitValues>
+                      name="midMonthStrategy"
+                      ariaLabel="Entrada no meio do mês"
+                      options={MID_MONTH_STRATEGY_OPTIONS}
+                      disabled={pending}
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    label="Dia de vencimento"
+                    hint={
+                      currentStrategy === "full_cycle"
+                        ? "Cada aluno vence no dia em que entrou."
+                        : "Todos os alunos vencem nesse dia (1 a 28)."
+                    }
+                  >
+                    <div className="sm:w-44">
+                      <InputNumber<OrgUnitValues>
+                        name="defaultDueDay"
+                        min={1}
+                        max={MAX_DEFAULT_DUE_DAY}
+                        disabled={pending || currentStrategy === "full_cycle"}
+                      />
+                    </div>
+                  </SettingRow>
                 </div>
+                <BillingRulesPreview
+                  billingTiming={currentTiming}
+                  midMonthStrategy={currentStrategy}
+                  defaultDueDay={isValidDueDay ? currentDueDay : 10}
+                />
               </AccordionContent>
             </AccordionItem>
           ) : null}

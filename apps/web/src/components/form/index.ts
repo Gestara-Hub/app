@@ -14,6 +14,10 @@ export {
   type MultiSelectOption,
 } from "./multi-select-field";
 export { SwitchField } from "./switch-field";
+export {
+  SegmentedChoiceField,
+  type SegmentedChoiceOption,
+} from "./segmented-choice-field";
 export { DialogFormFooter } from "./dialog-form-footer";
 export { AddressFields } from "./address-fields";
 export { CollapsibleSection } from "./collapsible-section";
