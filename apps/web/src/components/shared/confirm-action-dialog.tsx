@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 
 export interface ConfirmActionDialogProps {
   open: boolean;
@@ -53,10 +52,7 @@ export function ConfirmActionDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isPending}
-            className={cn(
-              variant === "destructive" &&
-                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-            )}
+            variant={variant === "destructive" ? "destructive" : "default"}
           >
             {isPending ? "Processando..." : confirmLabel}
           </AlertDialogAction>
@@ -64,4 +60,51 @@ export function ConfirmActionDialog({
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+export interface ConfirmActionOptions {
+  title: string;
+  description: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "destructive" | "default";
+}
+
+/**
+ * Confirmacao imperativa para acoes pontuais (reativar, desfazer pagamento...):
+ * `if (!(await confirm({...}))) return;`. Renderize `dialog` uma vez no componente.
+ */
+export function useConfirmAction() {
+  const [pending, setPending] = useState<{
+    options: ConfirmActionOptions;
+    resolve: (confirmed: boolean) => void;
+  } | null>(null);
+
+  const confirm = useCallback(
+    (options: ConfirmActionOptions) =>
+      new Promise<boolean>((resolve) => setPending({ options, resolve })),
+    [],
+  );
+
+  const settle = (confirmed: boolean) => {
+    pending?.resolve(confirmed);
+    setPending(null);
+  };
+
+  const dialog = (
+    <ConfirmActionDialog
+      open={pending !== null}
+      onOpenChange={(open) => {
+        if (!open) settle(false);
+      }}
+      title={pending?.options.title ?? ""}
+      description={pending?.options.description ?? null}
+      confirmLabel={pending?.options.confirmLabel}
+      cancelLabel={pending?.options.cancelLabel ?? "Voltar"}
+      variant={pending?.options.variant ?? "default"}
+      onConfirm={() => settle(true)}
+    />
+  );
+
+  return { confirm, dialog };
 }

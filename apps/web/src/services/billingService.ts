@@ -2,7 +2,9 @@ import type {
   ApiErrorField,
   Charge,
   ChargeFilter,
+  ChargeStatus,
   ChargeView,
+  Client,
   CreatePlan,
   Id,
   PaymentMethod,
@@ -10,6 +12,12 @@ import type {
   PlanFilter,
   UpdatePlan,
 } from "@gestarahub/contracts";
+import {
+  chargesDueIn,
+  resolveMembershipTerms,
+  type CompetenceCharge,
+} from "@gestarahub/core/billing";
+import { formatCents } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import { store } from "@/mocks/store";
 import {
@@ -21,11 +29,13 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { auditLogService } from "./auditLogService";
 
 /**
- * Modelo 3 — Fatia 2 (financeiro). Registro/status, sem gateway. Turma fixa gera
- * mensalidade (plano da turma) por competencia; cobranca CHEIA; matricula
- * pausada/cancelada nao gera.
+ * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem
+ * as Regras de Cobranca (antecipado/depois do uso x proporcional/mes cheio),
+ * calculadas pelo motor unico em @gestarahub/core/billing. Assinatura pausada
+ * ou cancelada nao gera cobranca.
  */
 
 function clone<T>(value: T): T {
@@ -39,58 +49,58 @@ function todayISO(): string {
 function studentName(id: Id): string {
   return store.clients.find((c) => c.id === id)?.name ?? "";
 }
-function planName(id?: Id): string | undefined {
-  return id ? store.plans.find((p) => p.id === id)?.name : undefined;
+function planOf(id?: Id): Plan | undefined {
+  return id ? store.plans.find((p) => p.id === id) : undefined;
 }
 function className(id?: Id): string | undefined {
   return id ? store.classGroups.find((t) => t.id === id)?.name : undefined;
 }
 
-function getCycleDueDate(
-  competence: string,
-  dueDay: number,
-  cycle: number,
-  totalCycles: number,
-): string {
-  if (totalCycles === 1) {
-    const pad = String(Math.min(Math.max(dueDay, 1), 31)).padStart(2, "0");
-    return `${competence}-${pad}`;
+/** "2026-10" -> "10/2026". */
+function competenceLabel(competence: string): string {
+  const [year, month] = competence.split("-");
+  return `${month}/${year}`;
+}
+
+/**
+ * Atraso e derivado na leitura: uma cobranca em aberto com vencimento passado
+ * esta atrasada hoje, mesmo que tenha sido gravada como pendente.
+ */
+function effectiveStatus(c: Charge): ChargeStatus {
+  if (c.status === "pending" || c.status === "overdue") {
+    return c.dueDate < todayISO() ? "overdue" : "pending";
   }
-  if (totalCycles === 2) {
-    // Quinzenal: dia dueDay (até 15) e dia + 15
-    const base = Math.min(Math.max(dueDay, 1), 15);
-    const day = cycle === 1 ? base : Math.min(base + 15, 28);
-    const pad = String(day).padStart(2, "0");
-    return `${competence}-${pad}`;
-  }
-  // Semanal: 4 ciclos no mês, espaçados em 7 dias
-  const baseDay = Math.min(Math.max(dueDay % 7 || 7, 1), 7);
-  const day = baseDay + (cycle - 1) * 7;
-  const pad = String(Math.min(day, 28)).padStart(2, "0");
-  return `${competence}-${pad}`;
+  return c.status;
 }
 
 function toChargeView(c: Charge): ChargeView {
-  const plan = c.planId ? store.plans.find((p) => p.id === c.planId) : undefined;
-  const inferredTotal =
-    c.cycleTotal ??
-    (plan
-      ? plan.period === "weekly"
-        ? 4
-        : plan.period === "biweekly"
-          ? 2
-          : 1
-      : 1);
-  const inferredIndex = c.cycleIndex ?? 1;
-
   return {
     ...c,
-    cycleIndex: inferredIndex,
-    cycleTotal: inferredTotal,
+    status: effectiveStatus(c),
+    cycleIndex: c.cycleIndex ?? 1,
+    cycleTotal: c.cycleTotal ?? 1,
     studentName: studentName(c.studentId),
-    planName: planName(c.planId),
+    planName: planOf(c.planId)?.name,
+    planPeriod: planOf(c.planId)?.period,
     className: className(c.classGroupId),
   };
+}
+
+function chargeLabel(c: Charge): string {
+  const who = studentName(c.studentId);
+  return c.kind === "dropin" ? `aula avulsa de ${who}` : `mensalidade de ${who}`;
+}
+
+function recordChargeEvent(
+  c: Charge,
+  action: "status_changed" | "cancelled",
+  verb: string,
+): void {
+  auditLogService.record({
+    action,
+    target: { type: "charge", id: c.id, label: chargeLabel(c) },
+    predicate: `${verb} ${chargeLabel(c)} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})`,
+  });
 }
 
 function validatePlan(payload: Partial<CreatePlan>): void {
@@ -98,10 +108,95 @@ function validatePlan(payload: Partial<CreatePlan>): void {
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome do plano." });
   }
-  if (payload.priceCents === undefined || payload.priceCents < 0) {
-    fields.push({ field: "priceCents", message: "Informe um valor válido." });
+  if (payload.priceCents === undefined || payload.priceCents <= 0) {
+    fields.push({ field: "priceCents", message: "Informe um valor maior que zero." });
   }
   if (fields.length > 0) throw validationError(fields);
+}
+
+/** Ja existe cobranca deste aluno/plano para o periodo planejado? */
+function hasMembershipCharge(studentId: Id, planId: Id, planned: CompetenceCharge): boolean {
+  return store.charges.some(
+    (c) =>
+      c.kind === "membership" &&
+      c.studentId === studentId &&
+      c.planId === planId &&
+      (c.periodStart
+        ? c.periodStart === planned.periodStart
+        : c.competence === planned.competence && (c.cycleIndex ?? 1) === planned.cycleIndex),
+  );
+}
+
+function membershipCharge(
+  studentId: Id,
+  plan: Plan,
+  planned: CompetenceCharge,
+  classGroupId?: Id,
+): Charge {
+  const ts = nowIso();
+  return {
+    id: newId(),
+    organizationId: store.organization.id,
+    studentId,
+    kind: "membership",
+    planId: plan.id,
+    classGroupId,
+    competence: planned.competence,
+    periodStart: planned.periodStart,
+    periodEnd: planned.periodEnd,
+    dueDate: planned.dueDate,
+    amountCents: planned.amountCents,
+    status: "pending",
+    cycleIndex: planned.cycleIndex,
+    cycleTotal: planned.cycleTotal,
+    isProrated: planned.isProrated,
+    proratedDays: planned.proratedDays,
+    notes: planned.isProrated ? `Mensalidade proporcional (${planned.proratedDays} dias)` : undefined,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
+
+/** Termos de cobranca do aluno: a regra dele prevalece sobre a da academia. */
+export function studentMembershipTerms(student: Client, plan: Plan) {
+  return resolveMembershipTerms(
+    {
+      period: plan.period,
+      planPriceCents: plan.priceCents,
+      startDate: student.planStartDate || student.createdAt.slice(0, 10),
+      strategy: student.billingStrategy,
+      timing: student.cyclePaymentTiming,
+      dueDay: student.dueDay,
+      discount: student.discount,
+    },
+    store.organization.settings,
+  );
+}
+
+/**
+ * Cancela as mensalidades em aberto de um aluno cujo periodo comeca a partir
+ * de `fromDate` (troca de plano, inativacao). Pagas e ja canceladas ficam como
+ * estao. Uso interno de outros services, dentro da propria escrita deles.
+ */
+export function cancelOpenMembershipCharges(
+  studentId: Id,
+  fromDate: string,
+  note: string,
+  opts: { inclusive?: boolean } = {},
+): number {
+  let count = 0;
+  for (const c of store.charges) {
+    if (c.kind !== "membership" || c.studentId !== studentId) continue;
+    if (c.status !== "pending" && c.status !== "overdue") continue;
+    const start = c.periodStart ?? c.dueDate;
+    const affected = opts.inclusive ? start >= fromDate : start > fromDate;
+    if (!affected) continue;
+    c.status = "canceled";
+    c.notes = note;
+    c.updatedAt = nowIso();
+    count += 1;
+  }
+  return count;
 }
 
 export const billingService = {
@@ -133,6 +228,11 @@ export const billingService = {
         updatedAt: ts,
       };
       store.plans.push(plan);
+      auditLogService.record({
+        action: "created",
+        target: { type: "plan", id: plan.id, label: plan.name },
+        predicate: `criou o plano ${plan.name} (${formatCents(plan.priceCents)})`,
+      });
       return clone(plan);
     });
   },
@@ -141,20 +241,41 @@ export const billingService = {
     return simulateWrite(() => {
       const idx = store.plans.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Plano não encontrado.");
-      validatePlan({ ...store.plans[idx], ...payload });
+      const before = store.plans[idx];
+      validatePlan({ ...before, ...payload });
       store.plans[idx] = {
-        ...store.plans[idx],
+        ...before,
         ...payload,
         updatedAt: nowIso(),
       };
-      return clone(store.plans[idx]);
+      const after = store.plans[idx];
+      auditLogService.record({
+        action: before.status !== after.status ? (after.status === "active" ? "activated" : "inactivated") : "updated",
+        target: { type: "plan", id, label: after.name },
+        predicate:
+          before.status !== after.status
+            ? `${after.status === "active" ? "reativou" : "inativou"} o plano ${after.name}`
+            : `atualizou o plano ${after.name}`,
+        changes:
+          before.priceCents !== after.priceCents
+            ? [
+                {
+                  field: "priceCents",
+                  label: "Valor",
+                  before: formatCents(before.priceCents),
+                  after: formatCents(after.priceCents),
+                },
+              ]
+            : undefined,
+      });
+      return clone(after);
     });
   },
 
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return simulateRead(() => {
-      let result = store.charges;
+      let result = store.charges.map(toChargeView);
       if (filter?.competence) {
         result = result.filter((c) => c.competence === filter.competence);
       }
@@ -164,200 +285,62 @@ export const billingService = {
         result = result.filter((c) => c.studentId === filter.studentId);
       }
       return clone(
-        [...result]
-          .map(toChargeView)
-          .sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR")),
+        result.sort(
+          (a, b) =>
+            a.studentName.localeCompare(b.studentName, "pt-BR") ||
+            a.dueDate.localeCompare(b.dueDate),
+        ),
       );
     });
   },
 
   /**
-   * Gera as mensalidades de uma competencia (`YYYY-MM`): uma cobranca por
-   * aluno ativo com plano contratado (calculando desconto e dia de vencimento
-   * individual). Idempotente (uma fatura por aluno x competencia).
+   * Gera as mensalidades que vencem na competencia (`YYYY-MM`) para cada aluno
+   * ativo com plano, pela regra de cobranca dele. Idempotente: um periodo de
+   * uso nunca gera duas cobrancas (inclusive a 1a, criada no cadastro).
    */
   generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(() => {
-      const today = todayISO();
-      const defaultDay = store.organization.settings?.defaultDueDay ?? 10;
       let created = 0;
 
-      // 1. Gera cobrança para alunos que possuem plano associado diretamente
       for (const student of store.clients) {
         if (student.status !== "active") continue;
         if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
         if (!student.planId) continue;
-
-        // Data de ingresso/matrícula do aluno
-        const studentJoinDate = student.planStartDate || (student.createdAt ? student.createdAt.slice(0, 10) : today);
-        const studentJoinMonth = studentJoinDate.slice(0, 7);
-
-        // Se o aluno ingressou em um mês futuro em relação à competência, não é cobrado neste mês
-        if (studentJoinMonth > competence) continue;
-
-        const isJoinMonth = studentJoinMonth === competence;
-
         const plan = store.plans.find((p) => p.id === student.planId);
         if (!plan) continue;
 
-        const period = plan.period || "monthly";
-        const totalCycles = period === "weekly" ? 4 : period === "biweekly" ? 2 : 1;
-
-        let baseAmountCents = plan.priceCents;
-        if (student.discount && student.discount.value > 0) {
-          if (student.discount.type === "fixed") {
-            baseAmountCents = Math.max(0, baseAmountCents - student.discount.value);
-          } else if (student.discount.type === "percentage") {
-            const discountAmount = Math.round((baseAmountCents * student.discount.value) / 100);
-            baseAmountCents = Math.max(0, baseAmountCents - discountAmount);
-          }
-        }
-
-        const dueDay = student.dueDay ?? defaultDay;
-
-        for (let cycle = 1; cycle <= totalCycles; cycle++) {
-          let dueDate = getCycleDueDate(competence, dueDay, cycle, totalCycles);
-          let cycleAmountCents = baseAmountCents;
-          let isProrated = false;
-          let proratedDays: number | undefined;
-
-          // No mês de ingresso do aluno:
-          if (isJoinMonth) {
-            // Ciclos semanais/quinzenais anteriores à matrícula não são gerados
-            if (totalCycles > 1 && dueDate < studentJoinDate) {
-              continue;
-            }
-            // Para plano mensal: se a data padrão já passou da matrícula, o 1º vencimento é ajustado para a data da matrícula
-            if (totalCycles === 1 && dueDate < studentJoinDate) {
-              dueDate = studentJoinDate;
-            }
-
-            // Fallback para cobrança proporcional se o aluno foi configurado com 'prorated'
-            if (totalCycles === 1 && student.billingStrategy === "prorated") {
-              const [y, m] = competence.split("-").map(Number);
-              const daysInMonth = new Date(y, m, 0).getDate();
-              const startDay = Number(studentJoinDate.slice(8, 10));
-              if (startDay > 1) {
-                const rem = Math.max(1, daysInMonth - startDay + 1);
-                cycleAmountCents = Math.round((baseAmountCents / daysInMonth) * rem);
-                isProrated = true;
-                proratedDays = rem;
-              }
-            }
-          }
-
-          const exists = store.charges.some(
-            (c) =>
-              c.kind === "membership" &&
-              c.studentId === student.id &&
-              c.competence === competence &&
-              (c.cycleIndex === cycle || (totalCycles === 1 && !c.cycleIndex)),
-          );
-          if (exists) continue;
-
-          // Se existe cobrança legada de 1 ciclo sem cycleIndex, migra ela para o ciclo 1
-          if (cycle === 1 && totalCycles > 1) {
-            const legacy = store.charges.find(
-              (c) =>
-                c.kind === "membership" &&
-                c.studentId === student.id &&
-                c.competence === competence &&
-                !c.cycleIndex,
-            );
-            if (legacy) {
-              legacy.cycleIndex = 1;
-              legacy.cycleTotal = totalCycles;
-              continue;
-            }
-          }
-
-          const ts = nowIso();
-
-          store.charges.push({
-            id: newId(),
-            organizationId: store.organization.id,
-            studentId: student.id,
-            kind: "membership",
-            planId: plan.id,
-            competence,
-            dueDate,
-            amountCents: cycleAmountCents,
-            status: dueDate < today ? "overdue" : "pending",
-            cycleIndex: cycle,
-            cycleTotal: totalCycles,
-            isProrated,
-            proratedDays,
-            notes: isProrated ? `Mensalidade proporcional (${proratedDays} dias)` : undefined,
-            createdAt: ts,
-            updatedAt: ts,
-          });
+        for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
+          if (hasMembershipCharge(student.id, plan.id, planned)) continue;
+          store.charges.push(membershipCharge(student.id, plan, planned));
           created += 1;
         }
       }
 
-      // 2. Fallback de retrocompatibilidade: alunos matriculados em turmas com planId antigo
+      // Retrocompatibilidade: aluno sem plano proprio matriculado em turma com
+      // plano (dado legado) segue a regra da academia a partir do cadastro.
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;
         const student = store.clients.find((c) => c.id === e.studentId);
-        if (!student || student.planId) continue; // Já tratado acima se tiver plano direto
-
-        const studentJoinDate = student.createdAt ? student.createdAt.slice(0, 10) : today;
-        const studentJoinMonth = studentJoinDate.slice(0, 7);
-        if (studentJoinMonth > competence) continue;
-        const isJoinMonth = studentJoinMonth === competence;
-
+        if (!student || student.planId || student.status !== "active") continue;
         const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-        if (!turma || !turma.planId) continue;
+        const plan = turma?.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
+        if (!turma || !plan) continue;
 
-        const plan = store.plans.find((p) => p.id === turma.planId);
-        if (!plan) continue;
-
-        const period = plan.period || "monthly";
-        const totalCycles = period === "weekly" ? 4 : period === "biweekly" ? 2 : 1;
-
-        for (let cycle = 1; cycle <= totalCycles; cycle++) {
-          let dueDate = getCycleDueDate(competence, 10, cycle, totalCycles);
-
-          if (isJoinMonth) {
-            if (totalCycles > 1 && dueDate < studentJoinDate) {
-              continue;
-            }
-            if (totalCycles === 1 && dueDate < studentJoinDate) {
-              dueDate = studentJoinDate;
-            }
-          }
-
-          const exists = store.charges.some(
-            (c) =>
-              c.kind === "membership" &&
-              c.studentId === e.studentId &&
-              c.competence === competence &&
-              (c.cycleIndex === cycle || (totalCycles === 1 && !c.cycleIndex)),
-          );
-          if (exists) continue;
-
-          const ts = nowIso();
-
-          store.charges.push({
-            id: newId(),
-            organizationId: store.organization.id,
-            studentId: e.studentId,
-            kind: "membership",
-            planId: plan.id,
-            classGroupId: turma.id,
-            competence,
-            dueDate,
-            amountCents: plan.priceCents,
-            status: dueDate < today ? "overdue" : "pending",
-            cycleIndex: cycle,
-            cycleTotal: totalCycles,
-            createdAt: ts,
-            updatedAt: ts,
-          });
+        for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
+          if (hasMembershipCharge(student.id, plan.id, planned)) continue;
+          store.charges.push(membershipCharge(student.id, plan, planned, turma.id));
           created += 1;
         }
       }
 
+      if (created > 0) {
+        auditLogService.record({
+          action: "created",
+          target: { type: "charge", label: `Competência ${competenceLabel(competence)}` },
+          predicate: `gerou ${created} mensalidade(s) da competência ${competenceLabel(competence)}`,
+        });
+      }
       return { created };
     });
   },
@@ -370,19 +353,21 @@ export const billingService = {
       c.paidAt = nowIso();
       c.method = method;
       c.updatedAt = nowIso();
+      recordChargeEvent(c, "status_changed", "registrou o pagamento da");
       return clone(toChargeView(c));
     });
   },
 
-  // Desfaz o pagamento (volta a pendente/atrasado conforme o vencimento).
+  // Desfaz o pagamento (volta a ficar em aberto; o atraso e derivado na leitura).
   markPending(id: Id): Promise<ChargeView> {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
-      c.status = c.dueDate < todayISO() ? "overdue" : "pending";
+      c.status = "pending";
       c.paidAt = undefined;
       c.method = undefined;
       c.updatedAt = nowIso();
+      recordChargeEvent(c, "status_changed", "desfez o pagamento da");
       return clone(toChargeView(c));
     });
   },
@@ -396,32 +381,44 @@ export const billingService = {
       c.paidAt = undefined;
       c.method = undefined;
       c.updatedAt = nowIso();
+      recordChargeEvent(c, "cancelled", "cancelou a");
       return clone(toChargeView(c));
     });
   },
 
-  // Reverte o cancelamento da cobrança (restaura para pendente ou atrasado conforme vencimento).
+  // Reverte o cancelamento da cobrança (volta a ficar em aberto).
   reopenCharge(id: Id): Promise<ChargeView> {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
-      c.status = c.dueDate < todayISO() ? "overdue" : "pending";
+      c.status = "pending";
       c.updatedAt = nowIso();
+      recordChargeEvent(c, "status_changed", "reabriu a");
       return clone(toChargeView(c));
     });
   },
 
-  // Limpa cobranças da competência selecionada (para fins de teste/regeração).
-  clearCharges(competence?: string): Promise<{ deleted: number }> {
+  /**
+   * Remove as cobrancas em aberto ou canceladas da competencia, para gerar de
+   * novo. Cobrancas pagas nunca sao apagadas (sao registro de recebimento).
+   */
+  clearCharges(competence: string): Promise<{ deleted: number; keptPaid: number }> {
     return simulateWrite(() => {
-      const initialCount = store.charges.length;
-      if (competence) {
-        store.charges = store.charges.filter((c) => c.competence !== competence);
-      } else {
-        store.charges = [];
+      const inCompetence = store.charges.filter((c) => c.competence === competence);
+      const keptPaid = inCompetence.filter((c) => c.status === "paid").length;
+      store.charges = store.charges.filter(
+        (c) => c.competence !== competence || c.status === "paid",
+      );
+      const deleted = inCompetence.length - keptPaid;
+      if (deleted > 0) {
+        auditLogService.record({
+          action: "deleted",
+          target: { type: "charge", label: `Competência ${competenceLabel(competence)}` },
+          predicate: `removeu ${deleted} cobrança(s) em aberto da competência ${competenceLabel(competence)}`,
+          security: true,
+        });
       }
-      return { deleted: initialCount - store.charges.length };
+      return { deleted, keptPaid };
     });
   },
 };
-

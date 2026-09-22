@@ -655,6 +655,12 @@ export function TurmaForm({
       ? `Atenção: a unidade está configurada como fechada aos ${WEEKDAY_NAMES_PT[startDateWeekday]}.`
       : undefined;
 
+  const capacityValue = useWatch({ control: form.control, name: "capacity" });
+  // Lotacao e regra flexivel: reduzir abaixo dos matriculados so avisa.
+  const overCapacityHint =
+    turma && typeof capacityValue === "number" && capacityValue < turma.enrolledCount
+      ? `A turma tem ${turma.enrolledCount} matriculados: com ${capacityValue} vaga(s), ela ficará acima da capacidade.`
+      : undefined;
   const allowDropin = useWatch({
     control: form.control,
     name: "allowDropin",
@@ -814,6 +820,7 @@ export function TurmaForm({
             name="capacity"
             label="Capacidade (vagas no tatame)"
             min={1}
+            hint={overCapacityHint}
             disabled={pending}
           />
           <DateField<TurmaFormValues>

@@ -36,6 +36,7 @@ import {
   useRestorePrimaryInstructor,
 } from "../hooks/use-turmas";
 import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
   {
@@ -65,6 +66,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const reserveMut = useReserveSession();
   const cancelReservationMut = useCancelReservation();
   const restoreMut = useRestorePrimaryInstructor();
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const can = useCan();
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
@@ -78,6 +80,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   }
 
   const rosterIds = new Set(session.roster.map((r) => r.studentId));
+  // Presenca so faz sentido para aula que ja aconteceu (ou acontece hoje).
+  const isFutureSession = session.date > format(new Date(), "yyyy-MM-dd");
   const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
 
   const meta = [
@@ -121,6 +125,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
   return (
     <>
+      {confirmDialog}
       <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
         <Link href="/classes/calendar">
           <ChevronLeft className="size-4" />
@@ -206,6 +211,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                 : "Turma lotada"}
             </span>
           </div>
+          {isFutureSession ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              A presença fica liberada no dia da aula.
+            </p>
+          ) : null}
         </div>
 
         {canEnroll && (session.allowDropin || session.availableSpots > 0) ? (
@@ -275,7 +285,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         <button
                           key={s.value}
                           type="button"
-                          disabled={!canMark || markMut.isPending}
+                          disabled={!canMark || isFutureSession || markMut.isPending}
                           onClick={() =>
                             markMut.mutate({
                               sessionId,
@@ -301,15 +311,22 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         size="icon-sm"
                         title="Remover da aula"
                         disabled={cancelReservationMut.isPending}
-                        onClick={() =>
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: "Remover da aula?",
+                            description: `${r.studentName} sai desta aula. Se houver cobrança avulsa em aberto, ela é cancelada.`,
+                            confirmLabel: "Remover",
+                            variant: "destructive",
+                          });
+                          if (!ok) return;
                           cancelReservationMut.mutate(
                             { sessionId, studentId: r.studentId },
                             {
                               onSuccess: () =>
-                                toast.success("Reserva cancelada."),
+                                toast.success("Aluno removido da aula."),
                             },
-                          )
-                        }
+                          );
+                        }}
                       >
                         <X className="size-4" />
                       </Button>

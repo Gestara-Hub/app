@@ -17,11 +17,11 @@ import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
-  period: z.enum(["monthly", "biweekly", "weekly"]),
+  period: z.enum(["monthly", "biweekly", "weekly"], { error: "Selecione a periodicidade." }),
   priceCents: z
     .number({ error: "Informe um valor válido." })
     .int("Informe um valor válido.")
-    .min(0, "Informe um valor válido."),
+    .min(1, "Informe um valor maior que zero."),
 });
 type PlanFormValues = z.infer<typeof schema>;
 
@@ -96,6 +96,7 @@ export function PlanForm({
             name="period"
             label="Periodicidade"
             options={PERIOD_OPTIONS}
+            clearable={false}
             required
             disabled={pending}
           />

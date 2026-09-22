@@ -5,10 +5,10 @@ export const seriesFormSchema = z
     clientId: z.string().min(1, "Selecione um cliente."),
     professionalId: z.string().min(1, "Selecione um profissional."),
     serviceIds: z.array(z.string()).min(1, "Selecione ao menos um serviço."),
-    frequency: z.enum(["weekly", "biweekly", "monthly"]),
+    frequency: z.enum(["weekly", "biweekly", "monthly"], { error: "Selecione a frequência." }),
     startDate: z.string().min(1, "Selecione a data de início."),
     time: z.string().min(1, "Selecione o horário."),
-    endMode: z.enum(["count", "date"]),
+    endMode: z.enum(["count", "date"], { error: "Selecione como a série termina." }),
     untilOccurrences: z.number().int().min(1).nullish(),
     untilDate: z.string().optional(),
   })

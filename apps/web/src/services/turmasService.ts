@@ -28,7 +28,9 @@ import type {
 } from "@gestarahub/contracts";
 import { addDays, format, parseISO } from "date-fns";
 import { checkSlotWithinBusinessHours, weekdayOf } from "@gestarahub/core/scheduling";
+import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
+import { auditLogService } from "./auditLogService";
 import {
   apiError,
   newId,
@@ -66,6 +68,19 @@ function studentName(id: Id): string {
 function activeEnrollments(classGroupId: Id): Enrollment[] {
   return store.enrollments.filter(
     (e) => e.classGroupId === classGroupId && e.status === "active",
+  );
+}
+
+/**
+ * Matriculas vigentes numa data: matriculado ate o dia e nao cancelado antes
+ * dele. Aulas passadas mostram quem estava na turma naquele dia, nao hoje.
+ */
+function enrollmentsOn(classGroupId: Id, date: DateISO): Enrollment[] {
+  return store.enrollments.filter(
+    (e) =>
+      e.classGroupId === classGroupId &&
+      e.enrolledAt.slice(0, 10) <= date &&
+      (e.status === "active" || (e.canceledAt !== undefined && e.canceledAt.slice(0, 10) > date)),
   );
 }
 
@@ -331,7 +346,16 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
 
   // Roster unificado (híbrido):
   // 1. Alunos matriculados da turma
-  const enrolledEntries: SessionRosterEntry[] = activeEnrollments(g.id).map(
+  // Quem tem presenca registrada nesta aula continua na lista, mesmo que a
+  // matricula tenha mudado depois.
+  const marked = new Set(
+    store.attendances.filter((a) => a.sessionId === id).map((a) => a.studentId),
+  );
+  const onDate = enrollmentsOn(g.id, p.date);
+  const extra = store.enrollments.filter(
+    (e) => e.classGroupId === g.id && marked.has(e.studentId) && !onDate.some((o) => o.studentId === e.studentId),
+  );
+  const enrolledEntries: SessionRosterEntry[] = [...onDate, ...extra].map(
     (e) => ({
       studentId: e.studentId,
       studentName: studentName(e.studentId),
@@ -414,6 +438,11 @@ export const turmasService = {
       const ts = nowIso();
       const g: ClassGroup = { ...payload, id: newId(), createdAt: ts, updatedAt: ts };
       store.classGroups.push(g);
+      auditLogService.record({
+        action: "created",
+        target: { type: "class_group", id: g.id, label: g.name },
+        predicate: `criou a turma ${g.name}`,
+      });
       return clone(toGroupView(g));
     });
   },
@@ -428,6 +457,11 @@ export const turmasService = {
         ...payload,
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "updated",
+        target: { type: "class_group", id, label: store.classGroups[idx].name },
+        predicate: `atualizou a turma ${store.classGroups[idx].name}`,
+      });
       return clone(toGroupView(store.classGroups[idx]));
     });
   },
@@ -448,6 +482,11 @@ export const turmasService = {
         status: "inactive",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "inactivated",
+        target: { type: "class_group", id, label: g.name },
+        predicate: `desativou a turma ${g.name}`,
+      });
       return clone(toGroupView(store.classGroups[idx]));
     });
   },
@@ -463,6 +502,11 @@ export const turmasService = {
         status: "active",
         updatedAt: nowIso(),
       };
+      auditLogService.record({
+        action: "activated",
+        target: { type: "class_group", id, label: g.name },
+        predicate: `reativou a turma ${g.name}`,
+      });
       return clone(toGroupView(store.classGroups[idx]));
     });
   },
@@ -526,6 +570,11 @@ export const turmasService = {
         enrolledAt: nowIso(),
       };
       store.enrollments.push(enrollment);
+      auditLogService.record({
+        action: "created",
+        target: { type: "enrollment", id: enrollment.id, label: `${student.name} em ${g.name}` },
+        predicate: `matriculou ${student.name} na turma ${g.name}`,
+      });
       return clone({
         ...enrollment,
         studentName: student.name,
@@ -544,6 +593,12 @@ export const turmasService = {
       e.status = "canceled";
       e.canceledAt = nowIso();
       e.cancellationReason = reason?.trim() || undefined;
+      const turma = store.classGroups.find((g) => g.id === e.classGroupId)?.name ?? "";
+      auditLogService.record({
+        action: "cancelled",
+        target: { type: "enrollment", id, label: `${studentName(e.studentId)} em ${turma}` },
+        predicate: `cancelou a matrícula de ${studentName(e.studentId)} na turma ${turma}`,
+      });
     });
   },
 
@@ -588,6 +643,12 @@ export const turmasService = {
     status: AttendanceStatus;
   }): Promise<void> {
     return simulateWrite(() => {
+      const date = parseSessionId(input.sessionId)?.date;
+      if (date && date > todayISO()) {
+        throw apiError("VALIDATION", "A chamada só pode ser feita no dia da aula ou depois.", {
+          httpStatus: 422,
+        });
+      }
       const existing = store.attendances.find(
         (a) => a.sessionId === input.sessionId && a.studentId === input.studentId,
       );
@@ -840,6 +901,11 @@ export const turmasService = {
         reservedAt: ts,
       };
       store.reservations.push(reservation);
+      auditLogService.record({
+        action: "created",
+        target: { type: "enrollment", id: reservation.id, label: `${studentName(input.studentId)} em ${g.name}` },
+        predicate: `inscreveu ${studentName(input.studentId)} na aula de ${sessionDate.split("-").reverse().join("/")} da turma ${g.name}${chargeId ? ` (cobrança avulsa de ${formatCents(price)})` : ""}`,
+      });
 
       return clone({
         ...reservation,
@@ -873,6 +939,11 @@ export const turmasService = {
         charge.status = "canceled";
         charge.updatedAt = nowIso();
       }
+      auditLogService.record({
+        action: "cancelled",
+        target: { type: "enrollment", id: r.id, label: studentName(input.studentId) },
+        predicate: `removeu ${studentName(input.studentId)} da aula${charge ? " e cancelou a cobrança avulsa" : ""}`,
+      });
     });
   },
 

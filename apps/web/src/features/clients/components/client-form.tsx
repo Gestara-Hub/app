@@ -29,13 +29,14 @@ import { Switch } from "@/components/ui/switch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { ORG_ID } from "@/config/tenant";
-import type { Address, Client, CreateClient, OrganizationSettings } from "@gestarahub/contracts";
+import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } from "@gestarahub/contracts";
 import { useCurrentUser, useModel } from "@/features/auth";
 import { usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
-import { addDays, addMonths, format, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
 const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "active", label: "Ativa (treinando normalmente)" },
@@ -43,92 +44,23 @@ const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "canceled", label: "Cancelada (desistente/saída)" },
 ];
 
+const PERIOD_SUFFIX: Record<PlanPeriod, string> = {
+  monthly: "mês",
+  biweekly: "quinzena",
+  weekly: "semana",
+};
+
+const STRATEGY_LABEL = { prorated: "Proporcional", full_cycle: "Mês cheio" } as const;
+const TIMING_LABEL = { prepaid: "Antecipado", postpaid: "Depois do uso" } as const;
+
+const shortDate = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
+
 const DISCOUNT_TYPE_OPTIONS = [
   { value: "fixed", label: "Valor fixo em reais (R$)" },
   { value: "percentage", label: "Porcentagem sobre a mensalidade (%)" },
 ];
 
 const todayDateISO = format(new Date(), "yyyy-MM-dd");
-
-function computeBillingCalculation({
-  plan,
-  planStartDate,
-  basePriceCents,
-  defaultDueDay = 10,
-}: {
-  plan?: { period?: string; priceCents: number };
-  planStartDate?: string;
-  basePriceCents: number;
-  defaultDueDay?: number;
-}) {
-  if (!plan) return null;
-
-  const dateStr = planStartDate || todayDateISO;
-  const parsedDate = parseISO(dateStr);
-  const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-  const year = validDate.getFullYear();
-  const month = validDate.getMonth() + 1;
-  const day = validDate.getDate();
-
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const period = plan.period || "monthly";
-
-  let remainingDays = Math.max(1, daysInMonth - day + 1);
-  let totalPeriodDays = daysInMonth;
-  let periodLabel = "mês";
-  let nextCycleDateISO = "";
-
-  if (period === "weekly") {
-    totalPeriodDays = 7;
-    remainingDays = Math.max(1, 7 - ((day - 1) % 7));
-    periodLabel = "semana";
-    nextCycleDateISO = format(addDays(validDate, 7), "yyyy-MM-dd");
-  } else if (period === "biweekly") {
-    totalPeriodDays = 15;
-    if (day <= 15) {
-      remainingDays = Math.max(1, 15 - day + 1);
-    } else {
-      totalPeriodDays = Math.max(1, daysInMonth - 15);
-      remainingDays = Math.max(1, daysInMonth - day + 1);
-    }
-    periodLabel = "quinzena";
-    nextCycleDateISO = format(addDays(validDate, 15), "yyyy-MM-dd");
-  } else {
-    // monthly
-    totalPeriodDays = daysInMonth;
-    remainingDays = Math.max(1, daysInMonth - day + 1);
-    periodLabel = "mês";
-    nextCycleDateISO = format(addMonths(validDate, 1), "yyyy-MM-dd");
-  }
-
-  // Próximo vencimento padrão da academia (usado no modo proporcional pós-pago)
-  let nextStandardDueDate = new Date(year, month - 1, Math.min(defaultDueDay, daysInMonth));
-  if (nextStandardDueDate <= validDate) {
-    const nextM = addMonths(validDate, 1);
-    const daysInNextM = new Date(nextM.getFullYear(), nextM.getMonth() + 1, 0).getDate();
-    nextStandardDueDate = new Date(nextM.getFullYear(), nextM.getMonth(), Math.min(defaultDueDay, daysInNextM));
-  }
-  const nextStandardDueDateISO = format(nextStandardDueDate, "yyyy-MM-dd");
-
-  const isFirstDay = day === 1;
-  const proratedAmountCents = Math.round((basePriceCents / totalPeriodDays) * remainingDays);
-
-  return {
-    day,
-    month,
-    year,
-    daysInMonth,
-    remainingDays,
-    totalPeriodDays,
-    periodLabel,
-    isFirstDay,
-    proratedAmountCents,
-    fullAmountCents: basePriceCents,
-    nextCycleDateISO,
-    nextStandardDueDateISO,
-    startDateISO: dateStr,
-  };
-}
 
 function toDefaults(client?: Client, orgSettings?: OrganizationSettings): ClientFormValues {
   const addr = client?.address;
@@ -172,9 +104,11 @@ interface ClientFormProps {
   client?: Client;
   onSuccess: () => void;
   formId: string;
+  /** Avisa o diálogo se há alterações não salvas (para confirmar o descarte). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
+export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
   const user = useCurrentUser();
@@ -185,7 +119,6 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const orgQuery = useOrganization();
   const orgSettings = orgQuery.data?.settings;
   const defaultDueDay = orgSettings?.defaultDueDay ?? 10;
-  const orgBillingTiming = orgSettings?.billingTiming ?? "prepaid";
 
   const [showAdvancedBilling, setShowAdvancedBilling] = useState(false);
 
@@ -194,7 +127,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const planOptions = useMemo(() => {
     const list = (plans ?? []).map((p) => ({
       value: p.id,
-      label: `${p.name} — ${formatCents(p.priceCents)}/mês`,
+      label: `${p.name} — ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
     }));
     return [{ value: "", label: "Nenhum plano (sem mensalidade fixa)" }, ...list];
   }, [plans]);
@@ -205,6 +138,11 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     reValidateMode: "onChange",
     defaultValues: toDefaults(client, orgSettings),
   });
+
+  const isDirty = form.formState.isDirty;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const selectedPlanId = useWatch({
     control: form.control,
@@ -221,10 +159,6 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   const cyclePaymentTiming = useWatch({
     control: form.control,
     name: "cyclePaymentTiming",
-  });
-  const dueDayValue = useWatch({
-    control: form.control,
-    name: "dueDay",
   });
   const hasDiscount = useWatch({
     control: form.control,
@@ -286,7 +220,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
   );
 
   const planBadge = selectedPlan
-    ? `${selectedPlan.name} • ${formatCents(selectedPlan.priceCents)}/mês`
+    ? `${selectedPlan.name} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
     : selectedPlanId
       ? "Plano selecionado"
       : undefined;
@@ -325,14 +259,35 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     return price;
   }, [selectedPlan, hasDiscount, discountType, discountValue]);
 
+  // Mesmo motor da geracao em lote e da previa das Configuracoes.
   const billingCalculation = useMemo(() => {
-    return computeBillingCalculation({
-      plan: selectedPlan,
-      planStartDate,
-      basePriceCents,
-      defaultDueDay,
-    });
-  }, [selectedPlan, planStartDate, basePriceCents, defaultDueDay]);
+    if (!selectedPlan) return null;
+    const terms = resolveMembershipTerms(
+      {
+        period: selectedPlan.period,
+        planPriceCents: basePriceCents,
+        startDate: planStartDate || todayDateISO,
+        strategy: billingStrategy,
+        timing: cyclePaymentTiming,
+        dueDay: billingStrategy === "full_cycle" ? undefined : defaultDueDay,
+      },
+      orgSettings,
+    );
+    const [first, next] = upcomingCharges(terms, 2);
+    return { terms, first, next };
+  }, [selectedPlan, basePriceCents, planStartDate, billingStrategy, cyclePaymentTiming, defaultDueDay, orgSettings]);
+
+  // A 1a cobranca aparece no cadastro e quando o aluno troca de plano.
+  const showFirstCharge = Boolean(selectedPlanId && (!isEdit || selectedPlanId !== client?.planId));
+  const usesOrgRule =
+    billingStrategy === (orgSettings?.midMonthStrategy ?? "prorated") &&
+    cyclePaymentTiming === (orgSettings?.billingTiming ?? "prepaid");
+  const periodNoun = { monthly: "do mês", biweekly: "da quinzena", weekly: "da semana" }[
+    selectedPlan?.period ?? "monthly"
+  ];
+  const firstChargeHint = billingCalculation?.first.isProrated
+    ? `Proporcional aos ${billingCalculation.first.proratedDays} dias restantes ${periodNoun}.`
+    : `Valor cheio do primeiro período (${periodNoun.replace(/^d[oa] /, "")}).`;
 
   const prevDateRef = useRef(planStartDate);
   const prevPlanRef = useRef(selectedPlanId);
@@ -355,26 +310,13 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     prevPriceRef.current = basePriceCents;
 
     if (
+      showFirstCharge &&
       (dateChanged || planChanged || strategyChanged || timingChanged || priceChanged || isUninitialized) &&
       billingCalculation
     ) {
-      if (billingStrategy === "full_cycle") {
-        form.setValue("dueDay", billingCalculation.day, { shouldDirty: true });
-        form.setValue("firstChargeAmount", billingCalculation.fullAmountCents, { shouldDirty: true });
-        const targetDueDate =
-          (cyclePaymentTiming ?? orgBillingTiming) === "postpaid"
-            ? billingCalculation.nextCycleDateISO
-            : billingCalculation.startDateISO;
-        form.setValue("firstChargeDueDate", targetDueDate, { shouldDirty: true });
-      } else {
-        form.setValue("dueDay", defaultDueDay, { shouldDirty: true });
-        form.setValue("firstChargeAmount", billingCalculation.proratedAmountCents, { shouldDirty: true });
-        const targetDueDate =
-          (cyclePaymentTiming ?? orgBillingTiming) === "postpaid"
-            ? billingCalculation.nextStandardDueDateISO
-            : billingCalculation.startDateISO;
-        form.setValue("firstChargeDueDate", targetDueDate, { shouldDirty: true });
-      }
+      form.setValue("dueDay", billingCalculation.terms.dueDay, { shouldDirty: true });
+      form.setValue("firstChargeAmount", billingCalculation.first.amountCents, { shouldDirty: true });
+      form.setValue("firstChargeDueDate", billingCalculation.first.dueDate, { shouldDirty: true });
     }
   }, [
     planStartDate,
@@ -383,8 +325,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
     cyclePaymentTiming,
     basePriceCents,
     billingCalculation,
-    defaultDueDay,
-    orgBillingTiming,
+    showFirstCharge,
     form,
     firstChargeAmount,
   ]);
@@ -457,24 +398,26 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
         }
       : undefined;
 
-    const isNewPlanAssignment = Boolean(values.planId && (!isEdit || !client?.planId));
+    const isNewPlanAssignment = Boolean(
+      values.planId && (!isEdit || values.planId !== client?.planId),
+    );
     let initialChargePayload: CreateClient["initialCharge"] | undefined;
 
     if (isNewPlanAssignment && billingCalculation) {
-      const isProrated = values.billingStrategy === "prorated";
+      const { first } = billingCalculation;
       const chosenAmount =
         values.firstChargeAmount !== undefined && values.firstChargeAmount !== null
           ? Math.round(values.firstChargeAmount)
-          : isProrated
-            ? billingCalculation.proratedAmountCents
-            : billingCalculation.fullAmountCents;
+          : first.amountCents;
 
       if (chosenAmount > 0) {
         initialChargePayload = {
           amountCents: chosenAmount,
-          dueDate: values.firstChargeDueDate || values.planStartDate || todayDateISO,
-          isProrated,
-          proratedDays: isProrated ? billingCalculation.remainingDays : undefined,
+          dueDate: values.firstChargeDueDate || first.dueDate,
+          periodStart: first.periodStart,
+          periodEnd: first.periodEnd,
+          isProrated: first.isProrated,
+          proratedDays: first.proratedDays,
         };
       }
     }
@@ -489,10 +432,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
       planId: values.planId || undefined,
       planStartDate: values.planId ? values.planStartDate || todayDateISO : undefined,
       billingStrategy: values.planId ? values.billingStrategy || "prorated" : undefined,
-      cyclePaymentTiming:
-        values.planId && values.billingStrategy === "full_cycle"
-          ? values.cyclePaymentTiming || "postpaid"
-          : undefined,
+      cyclePaymentTiming: values.planId ? values.cyclePaymentTiming || "prepaid" : undefined,
       dueDay: values.planId ? values.dueDay || defaultDueDay : undefined,
       membershipStatus: values.planId ? values.membershipStatus || "active" : undefined,
       discount: values.planId ? discountPayload : undefined,
@@ -638,16 +578,17 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                 ) : null}
               </div>
 
-              {selectedPlanId && (!isEdit || !client?.planId) ? (
+              {showFirstCharge && billingCalculation ? (
                 <div className="space-y-3 pt-2 border-t border-border/40 animate-in fade-in-50 duration-150">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <CalendarClock className="size-3.5 text-primary" />
                       Cobrança da 1ª mensalidade
                     </span>
                     <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
-                      Padrão da academia: {billingStrategy === "prorated" ? "Proporcional" : "Ciclo 30d"} •{" "}
-                      {cyclePaymentTiming === "postpaid" ? "Pós-pago" : "Pré-pago"}
+                      {usesOrgRule ? "Regra da academia" : "Regra deste aluno"}:{" "}
+                      {TIMING_LABEL[billingCalculation.terms.timing]} •{" "}
+                      {STRATEGY_LABEL[billingCalculation.terms.strategy]}
                     </span>
                   </div>
 
@@ -656,40 +597,23 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                       <InputCurrency<ClientFormValues>
                         name="firstChargeAmount"
                         label="Valor da 1ª cobrança"
-                        placeholder={
-                          billingCalculation
-                            ? (
-                                (billingStrategy === "full_cycle"
-                                  ? billingCalculation.fullAmountCents
-                                  : billingCalculation.proratedAmountCents) / 100
-                              ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-                            : "0,00"
-                        }
                         disabled={pending}
-                        hint={
-                          billingStrategy === "prorated"
-                            ? `Calculado automaticamente para os ${billingCalculation?.remainingDays ?? 0} dias restantes no mês.`
-                            : "Valor integral do primeiro ciclo de 30 dias."
-                        }
+                        hint={firstChargeHint}
                       />
                       <DateField<ClientFormValues>
                         name="firstChargeDueDate"
                         label="Vencimento da 1ª cobrança"
                         disabled={pending}
-                        hint={
-                          cyclePaymentTiming === "postpaid"
-                            ? "Vence ao término do período (Pós-pago)."
-                            : "Vence no ato da matrícula (Pré-pago)."
-                        }
+                        hint={`Referente a ${shortDate(billingCalculation.first.periodStart)} a ${shortDate(billingCalculation.first.periodEnd)}.`}
                       />
                     </div>
 
-                    {/* Rodapé explicativo e link sutil para personalização opcional */}
+                    {/* Rodapé: próxima cobrança e personalização opcional */}
                     <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <p className="text-[11px] text-muted-foreground">
-                        {billingStrategy === "prorated"
-                          ? `Próximas mensalidades vencerão todo dia ${dueDayValue ?? defaultDueDay}.`
-                          : `Próximas mensalidades vencerão todo dia ${dueDayValue ?? defaultDueDay} a cada 30 dias.`}
+                        {billingCalculation.next
+                          ? `Próxima: ${shortDate(billingCalculation.next.dueDate)} · ${formatCents(billingCalculation.next.amountCents)}, referente a ${shortDate(billingCalculation.next.periodStart)} a ${shortDate(billingCalculation.next.periodEnd)}.`
+                          : null}
                       </p>
 
                       <button
@@ -705,24 +629,26 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                     {showAdvancedBilling ? (
                       <div className="space-y-3 pt-3 border-t border-border/40 animate-in fade-in-50 duration-150">
                         <span className="text-xs font-semibold text-foreground block">
-                          Sobrescrever regra da academia apenas para este aluno:
+                          Regra só para este aluno:
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <SelectField<ClientFormValues>
-                            name="billingStrategy"
-                            label="Cálculo da entrada"
+                            name="cyclePaymentTiming"
+                            label="Momento do pagamento"
+                            clearable={false}
                             options={[
-                              { value: "prorated", label: "Cobrar proporcional (Pró-rata)" },
-                              { value: "full_cycle", label: "Ciclo corrido (30 dias)" },
+                              { value: "prepaid", label: "Antecipado (paga antes das aulas)" },
+                              { value: "postpaid", label: "Depois do uso (paga ao fim do período)" },
                             ]}
                             disabled={pending}
                           />
                           <SelectField<ClientFormValues>
-                            name="cyclePaymentTiming"
-                            label="Momento do pagamento"
+                            name="billingStrategy"
+                            label="Entrada no meio do período"
+                            clearable={false}
                             options={[
-                              { value: "prepaid", label: "No ato da matrícula (Pré-pago)" },
-                              { value: "postpaid", label: "Ao final do ciclo (Pós-pago)" },
+                              { value: "prorated", label: "Proporcional (só os dias restantes)" },
+                              { value: "full_cycle", label: "Mês cheio (ciclo a partir da entrada)" },
                             ]}
                             disabled={pending}
                           />
@@ -745,8 +671,8 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                     disabled={pending}
                     hint={
                       billingStrategy === "full_cycle"
-                        ? "Ajustado para o dia de início do plano."
-                        : `Dia do mês para os próximos ciclos de cobrança (padrão: ${defaultDueDay}).`
+                        ? "No mês cheio, é o dia de início do ciclo. Dia inexistente cai no último dia do mês."
+                        : `Dia do mês das próximas mensalidades (padrão da academia: ${defaultDueDay}).`
                     }
                   />
 
@@ -755,6 +681,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                       name="membershipStatus"
                       label="Situação da assinatura"
                       options={MEMBERSHIP_STATUS_OPTIONS}
+                      clearable={false}
                       disabled={pending}
                     />
                   ) : null}
@@ -788,6 +715,7 @@ export function ClientForm({ client, onSuccess, formId }: ClientFormProps) {
                           name="discountType"
                           label="Tipo de desconto"
                           options={DISCOUNT_TYPE_OPTIONS}
+                          clearable={false}
                           disabled={pending}
                         />
                         {discountType === "percentage" ? (

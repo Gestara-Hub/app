@@ -112,7 +112,7 @@ export function useRevertCharge() {
 export function useClearCharges() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (competence?: string) => billingService.clearCharges(competence),
+    mutationFn: (competence: string) => billingService.clearCharges(competence),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
   });
 }

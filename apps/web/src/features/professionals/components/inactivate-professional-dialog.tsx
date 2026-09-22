@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Professional } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { useInactivateProfessional } from "../hooks/use-professionals";
 
 interface InactivateProfessionalDialogProps {
@@ -16,6 +17,7 @@ export function InactivateProfessionalDialog({
   onOpenChange,
 }: InactivateProfessionalDialogProps) {
   const inactivateMut = useInactivateProfessional();
+  const isClasses = useModel() === "classes";
 
   async function handleConfirm() {
     if (!professional) return;
@@ -40,8 +42,11 @@ export function InactivateProfessionalDialog({
       description={
         professional ? (
           <>
-            “{professional.name}” deixará de ser sugerido em novos
-            agendamentos. Você pode reativá-lo depois.
+            “{professional.name}” deixará de ser sugerido{" "}
+            {isClasses
+              ? "como instrutor em novas turmas e substituições. As turmas atuais mantêm o instrutor"
+              : "em novos agendamentos"}
+            . Você pode reativá-lo depois.
           </>
         ) : null
       }

@@ -15,6 +15,9 @@ import type {
   Unit,
   Weekday,
 } from "@gestarahub/contracts";
+import { checkSlotWithinBusinessHours } from "@gestarahub/core/scheduling";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { useClassGroups } from "@/features/turmas";
 import { useUnit, useUpdateUnit } from "../hooks/use-settings";
 
 const WEEKDAYS: { weekday: Weekday; label: string }[] = [
@@ -60,6 +63,9 @@ function normalize(businessHours: BusinessHoursDay[]): NormalizedDay[] {
 function BusinessHoursEditor({ unit }: { unit: Unit }) {
   const updateUnit = useUpdateUnit();
   const pending = updateUnit.isPending;
+  // Turmas ativas: o novo expediente nao pode deixar aulas "orfas" sem aviso.
+  const { data: activeGroups } = useClassGroups({ status: "active" });
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const [days, setDays] = useState<NormalizedDay[]>(() =>
     normalize(unit.businessHours),
   );
@@ -263,6 +269,25 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
       };
     });
 
+    const outside = (activeGroups ?? []).flatMap((g) =>
+      g.meetingSlots
+        .filter((slot) => !checkSlotWithinBusinessHours(slot.weekday, slot.start, slot.end, businessHours).valid)
+        .map((slot) => `${g.name} (${WEEKDAYS[slot.weekday].label} ${slot.start})`),
+    );
+    if (outside.length > 0) {
+      const ok = await confirmAction({
+        title: "Há aulas fora do novo horário",
+        description: (
+          <>
+            Estas aulas ficam fora do expediente e continuarão no calendário até você
+            ajustar as turmas: <strong className="text-foreground">{outside.join(", ")}</strong>.
+          </>
+        ),
+        confirmLabel: "Salvar mesmo assim",
+      });
+      if (!ok) return;
+    }
+
     try {
       await updateUnit.mutateAsync({ businessHours });
       toast.success("Horários de funcionamento salvos.");
@@ -410,6 +435,7 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
         })}
       </div>
 
+      {confirmDialog}
       <div className="flex justify-end pt-1">
         <Button onClick={save} disabled={pending}>
           {pending ? "Salvando..." : "Salvar horários"}

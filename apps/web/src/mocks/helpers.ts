@@ -92,3 +92,13 @@ export function normalizeText(value: string): string {
 export function textIncludes(haystack: string, needle: string): boolean {
   return normalizeText(haystack).includes(normalizeText(needle));
 }
+
+/**
+ * Busca de telefone pelos digitos: "(11) 97777-6603", "97777-6603" e
+ * "977776603" encontram o mesmo numero, gravado so com digitos.
+ */
+export function phoneIncludes(phone: string | undefined, needle: string): boolean {
+  const digits = needle.replace(/\D/g, "");
+  if (!phone || digits.length < 3) return false;
+  return phone.replace(/\D/g, "").includes(digits);
+}

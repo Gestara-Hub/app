@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { format, parseISO } from "date-fns";
+import { addMonths, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   AlertCircle,
   Ban,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   RotateCcw,
   Wallet,
 } from "lucide-react";
@@ -21,7 +24,8 @@ import { ListItemActionsMenu } from "@/components/shared/list-item-actions-menu"
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { paymentMethodLabel } from "@/lib/labels";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
@@ -29,6 +33,8 @@ import type {
   ChargeKind,
   ChargeStatus,
   ChargeView,
+  PaymentMethod,
+  PlanPeriod,
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import {
@@ -40,6 +46,7 @@ import {
   useMarkChargePending,
   useRevertCharge,
 } from "../hooks/use-billing";
+import { RegisterPaymentDialog } from "./register-payment-dialog";
 
 const STATUS_LABEL: Record<ChargeStatus, string> = {
   pending: "Pendente",
@@ -65,6 +72,7 @@ interface StudentBillingGroup {
   isMultiCycle: boolean;
   totalCycles: number;
   periodLabel?: string;
+  planPeriod?: PlanPeriod;
   unitPriceCents: number;
   activeTotalCents: number;
   paidCents: number;
@@ -86,12 +94,7 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
 
     if (!map.has(key)) {
       const isMulti = (c.cycleTotal ?? 1) > 1;
-      const periodLabel =
-        c.cycleTotal === 4
-          ? "semana"
-          : c.cycleTotal === 2
-            ? "quinzena"
-            : undefined;
+      const periodLabel = c.planPeriod ? PERIOD_UNIT[c.planPeriod] : undefined;
 
       map.set(key, {
         key,
@@ -103,6 +106,7 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
         isMultiCycle: isMulti,
         totalCycles: c.cycleTotal ?? 1,
         periodLabel,
+        planPeriod: c.planPeriod,
         unitPriceCents: c.amountCents,
         activeTotalCents: 0,
         paidCents: 0,
@@ -118,6 +122,8 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
 
     const group = map.get(key)!;
     group.charges.push(c);
+    // Valor de referencia do plano: a maior parcela (a 1a pode ser proporcional).
+    group.unitPriceCents = Math.max(group.unitPriceCents, c.amountCents);
 
     if (group.charges.length > 1) {
       group.isMultiCycle = true;
@@ -142,12 +148,7 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
 
   // Ordena as sub-cobranças por ciclo e vencimento
   for (const group of map.values()) {
-    group.charges.sort((a, b) => {
-      if (a.cycleIndex !== undefined && b.cycleIndex !== undefined) {
-        return a.cycleIndex - b.cycleIndex;
-      }
-      return a.dueDate.localeCompare(b.dueDate);
-    });
+    group.charges.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }
 
   return Array.from(map.values()).sort((a, b) =>
@@ -155,18 +156,37 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
   );
 }
 
+const PERIOD_UNIT: Record<PlanPeriod, string> = {
+  monthly: "mês",
+  biweekly: "quinzena",
+  weekly: "semana",
+};
+
+const PERIOD_NAME: Record<PlanPeriod, string> = {
+  monthly: "Mensal",
+  biweekly: "Quinzenal",
+  weekly: "Semanal",
+};
+
+const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
+
+/** "2026-09" -> "Setembro de 2026". */
+function competenceLabel(competence: string): string {
+  const label = format(parseISO(`${competence}-01`), "MMMM 'de' yyyy", { locale: ptBR });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** Periodo de uso que a cobranca paga, quando conhecido ("01/10 a 31/10"). */
+function referenceLabel(c: ChargeView): string | null {
+  return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
+}
+
 function getCycleTitle(c: ChargeView): string {
   if (c.isProrated) {
-    return c.proratedDays
-      ? `Proporcional (${c.proratedDays} dias)`
-      : "Proporcional";
+    return c.proratedDays ? `Proporcional (${c.proratedDays} dias)` : "Proporcional";
   }
-  if (c.cycleTotal === 4) {
-    return `Semana ${c.cycleIndex ?? 1}/4`;
-  }
-  if (c.cycleTotal === 2) {
-    return `${c.cycleIndex ?? 1}ª Quinzena`;
-  }
+  const ref = referenceLabel(c);
+  if (ref && c.planPeriod && c.planPeriod !== "monthly") return ref;
   if ((c.cycleTotal ?? 1) > 1) {
     return `Parcela ${c.cycleIndex ?? 1}/${c.cycleTotal}`;
   }
@@ -220,7 +240,14 @@ export function BillingView() {
   const canceledList = list.filter((c) => c.status === "canceled");
   const canceledCents = canceledList.reduce((s, c) => s + c.amountCents, 0);
 
-  const generate = () =>
+  const generate = async () => {
+    const ok = await confirmAction({
+      title: `Gerar cobranças de ${competenceLabel(competence)}?`,
+      description:
+        "Cria as mensalidades que vencem neste mês para os alunos ativos, pela regra de cobrança de cada um. Cobranças já existentes não são duplicadas.",
+      confirmLabel: "Gerar cobranças",
+    });
+    if (!ok) return;
     generateMut.mutate(competence, {
       onSuccess: (r) =>
         toast.success(
@@ -229,17 +256,48 @@ export function BillingView() {
             : "Nenhuma cobrança nova (já geradas).",
         ),
     });
-
-  const handleClear = () => {
-    clearMut.mutate(competence, {
-      onSuccess: (r) =>
-        toast.success(
-          r.deleted > 0
-            ? `${r.deleted} cobrança(s) removida(s). Você já pode clicar em "Gerar cobranças".`
-            : "Nenhuma cobrança para remover nesta competência.",
-        ),
-    });
   };
+
+  const shiftCompetence = (delta: number) =>
+    setCompetence((prev) => format(addMonths(parseISO(`${prev}-01`), delta), "yyyy-MM"));
+
+  const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+
+  const pay = (c: ChargeView, method: PaymentMethod) =>
+    paidMut.mutate(
+      { id: c.id, method },
+      {
+        onSuccess: () => {
+          toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
+          setChargeToPay(null);
+        },
+      },
+    );
+
+  const undoPayment = async (c: ChargeView) => {
+    const ok = await confirmAction({
+      title: "Desfazer pagamento?",
+      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a ficar em aberto${c.method ? ` e o registro via ${paymentMethodLabel(c.method)} é apagado` : ""}.`,
+      confirmLabel: "Desfazer pagamento",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    pendingMut.mutate(c.id, { onSuccess: () => toast.success("Pagamento desfeito.") });
+  };
+
+  const revertCancel = async (c: ChargeView) => {
+    const ok = await confirmAction({
+      title: "Reabrir cobrança?",
+      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a compor o total a receber.`,
+      confirmLabel: "Reabrir cobrança",
+    });
+    if (!ok) return;
+    revertMut.mutate(c.id, { onSuccess: () => toast.success("Cobrança reaberta.") });
+  };
+
+  const [confirmClear, setConfirmClear] = useState(false);
+  const openCount = list.filter((c) => c.status !== "paid").length;
 
   return (
     <>
@@ -252,7 +310,7 @@ export function BillingView() {
             {list.length > 0 ? (
               <Button
                 variant="outline"
-                onClick={handleClear}
+                onClick={() => setConfirmClear(true)}
                 disabled={clearMut.isPending}
                 className="text-muted-foreground hover:border-destructive/30 hover:text-destructive"
                 title="Remover cobranças desta competência para testar nova geração"
@@ -386,7 +444,7 @@ export function BillingView() {
                     Cancelado
                   </span>
                   {!isLoading && canceledList.length > 0 ? (
-                    <span className="inline-flex items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                    <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">
                       Não cobrado
                     </span>
                   ) : null}
@@ -427,16 +485,35 @@ export function BillingView() {
           {/* Filters Bar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Competência</span>
-                <Input
-                  type="month"
-                  value={competence}
-                  onChange={(e) => setCompetence(e.target.value)}
-                  className="h-9 w-40"
-                  aria-label="Competência"
-                />
-              </label>
+                <div className="inline-flex items-center rounded-md border border-border/70 bg-background">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-9 rounded-r-none"
+                    aria-label="Competência anterior"
+                    onClick={() => shiftCompetence(-1)}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <span
+                    className="min-w-36 px-2 text-center font-medium tabular-nums"
+                    aria-live="polite"
+                  >
+                    {competenceLabel(competence)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-9 rounded-l-none"
+                    aria-label="Próxima competência"
+                    onClick={() => shiftCompetence(1)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
 
               <div className="inline-flex rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
                 <button
@@ -529,9 +606,9 @@ export function BillingView() {
                       {/* Linha Consolidada do Aluno */}
                       <div
                         onClick={() => toggleExpand(group.key)}
-                        className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5"
+                        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap sm:px-5"
                       >
-                        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                        <div className="flex min-w-0 flex-1 basis-full items-center gap-3.5 sm:basis-0">
                           <InitialsAvatar name={group.studentName} />
 
                           <div className="min-w-0 flex-1">
@@ -543,9 +620,7 @@ export function BillingView() {
                                 Mensalidade
                               </span>
                               <span className="inline-flex items-center rounded-md border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-                                {group.totalCycles === 4
-                                  ? "Semanal"
-                                  : "Quinzenal"}
+                                {group.planPeriod ? PERIOD_NAME[group.planPeriod] : "Parcelas"}
                               </span>
 
                               {/* Progresso de pagamento do mês */}
@@ -590,7 +665,7 @@ export function BillingView() {
                         </div>
 
                         {/* Totais do Aluno e Botão de Expandir */}
-                        <div className="flex items-center gap-3">
+                        <div className="ml-auto flex items-center gap-3">
                           <div className="text-right">
                             <span
                               className={cn(
@@ -644,7 +719,7 @@ export function BillingView() {
                             {group.charges.map((c) => (
                               <div
                                 key={c.id}
-                                className="flex items-center justify-between gap-3 px-3.5 py-2.5 sm:px-4"
+                                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2.5 sm:flex-nowrap sm:px-4"
                               >
                                 <div className="flex items-center gap-2.5">
                                   <span className="text-xs font-semibold text-foreground">
@@ -654,8 +729,10 @@ export function BillingView() {
                                     ·
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    vence{" "}
-                                    {format(parseISO(c.dueDate), "dd/MM")}
+                                    vence {shortDate(c.dueDate)}
+                                    {c.status === "paid" && c.method
+                                      ? ` · ${paymentMethodLabel(c.method)}`
+                                      : ""}
                                   </span>
                                   <span
                                     className={cn(
@@ -685,14 +762,7 @@ export function BillingView() {
                                         variant="outline"
                                         size="xs"
                                         disabled={revertMut.isPending}
-                                        onClick={() => {
-                                          revertMut.mutate(c.id, {
-                                            onSuccess: () =>
-                                              toast.success(
-                                                "Cancelamento revertido com sucesso.",
-                                              ),
-                                          });
-                                        }}
+                                        onClick={() => revertCancel(c)}
                                         title="Reverter cancelamento"
                                       >
                                         <RotateCcw className="size-3.5" />
@@ -704,14 +774,7 @@ export function BillingView() {
                                         size="icon-xs"
                                         className="size-7"
                                         title="Desfazer pagamento"
-                                        onClick={() => {
-                                          pendingMut.mutate(c.id, {
-                                            onSuccess: () =>
-                                              toast.success(
-                                                "Pagamento desfeito.",
-                                              ),
-                                          });
-                                        }}
+                                        onClick={() => undoPayment(c)}
                                       >
                                         <RotateCcw className="size-3.5" />
                                       </Button>
@@ -720,18 +783,7 @@ export function BillingView() {
                                         <Button
                                           variant="outline"
                                           size="xs"
-                                          disabled={paidMut.isPending}
-                                          onClick={() => {
-                                            paidMut.mutate(
-                                              { id: c.id },
-                                              {
-                                                onSuccess: () =>
-                                                  toast.success(
-                                                    "Cobrança marcada como paga.",
-                                                  ),
-                                              },
-                                            );
-                                          }}
+                                          onClick={() => setChargeToPay(c)}
                                         >
                                           <CheckCircle2 className="size-3.5" />
                                           Marcar pago
@@ -771,6 +823,8 @@ export function BillingView() {
                 return (
                   <ListRow
                     key={group.key}
+                    // No celular, valor e ações descem para baixo do texto.
+                    className="flex-wrap gap-y-2 sm:flex-nowrap [&>div:first-child]:basis-full sm:[&>div:first-child]:basis-0 [&>div:last-child]:ml-auto"
                     actions={
                       <div className="flex items-center gap-2">
                         <span
@@ -790,14 +844,7 @@ export function BillingView() {
                               variant="outline"
                               size="sm"
                               disabled={revertMut.isPending}
-                              onClick={() => {
-                                revertMut.mutate(c.id, {
-                                  onSuccess: () =>
-                                    toast.success(
-                                      "Cancelamento revertido com sucesso.",
-                                    ),
-                                });
-                              }}
+                              onClick={() => revertCancel(c)}
                               title="Reverter cancelamento"
                             >
                               <RotateCcw className="size-4" />
@@ -809,12 +856,7 @@ export function BillingView() {
                               size="icon-sm"
                               className="size-8"
                               title="Desfazer pagamento"
-                              onClick={() => {
-                                pendingMut.mutate(c.id, {
-                                  onSuccess: () =>
-                                    toast.success("Pagamento desfeito."),
-                                });
-                              }}
+                              onClick={() => undoPayment(c)}
                             >
                               <RotateCcw className="size-4" />
                             </Button>
@@ -823,18 +865,7 @@ export function BillingView() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={paidMut.isPending}
-                                onClick={() => {
-                                  paidMut.mutate(
-                                    { id: c.id },
-                                    {
-                                      onSuccess: () =>
-                                        toast.success(
-                                          "Cobrança marcada como paga.",
-                                        ),
-                                    },
-                                  );
-                                }}
+                                onClick={() => setChargeToPay(c)}
                               >
                                 <CheckCircle2 className="size-4" />
                                 Marcar pago
@@ -899,9 +930,21 @@ export function BillingView() {
                           <span>·</span>
                           <span>
                             {c.kind === "dropin"
-                              ? `aula em ${format(parseISO(c.dueDate), "dd/MM")}`
-                              : `vence ${format(parseISO(c.dueDate), "dd/MM")}`}
+                              ? `aula em ${shortDate(c.dueDate)}`
+                              : `vence ${shortDate(c.dueDate)}`}
                           </span>
+                          {c.kind === "membership" && referenceLabel(c) ? (
+                            <>
+                              <span>·</span>
+                              <span>referente a {referenceLabel(c)}</span>
+                            </>
+                          ) : null}
+                          {c.status === "paid" && c.method ? (
+                            <>
+                              <span>·</span>
+                              <span>pago via {paymentMethodLabel(c.method)}</span>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -912,6 +955,43 @@ export function BillingView() {
           </ListContainer>
         </div>
       )}
+
+      {confirmDialog}
+      <RegisterPaymentDialog
+        charge={chargeToPay}
+        isPending={paidMut.isPending}
+        onOpenChange={(open) => {
+          if (!open) setChargeToPay(null);
+        }}
+        onConfirm={(method) => chargeToPay && pay(chargeToPay, method)}
+      />
+
+      {/* Confirmação do reset: pagas nunca são apagadas */}
+      <ConfirmActionDialog
+        open={confirmClear}
+        onOpenChange={setConfirmClear}
+        title="Resetar cobranças da competência"
+        description={
+          <>
+            Remove as{" "}
+            <strong className="text-foreground">{openCount} cobrança(s) em aberto ou canceladas</strong>{" "}
+            desta competência para gerar de novo. Cobranças pagas são mantidas.
+          </>
+        }
+        confirmLabel="Resetar cobranças"
+        cancelLabel="Voltar"
+        variant="destructive"
+        isPending={clearMut.isPending}
+        onConfirm={async () => {
+          const r = await clearMut.mutateAsync(competence);
+          toast.success(
+            r.deleted > 0
+              ? `${r.deleted} cobrança(s) removida(s)${r.keptPaid > 0 ? `, ${r.keptPaid} paga(s) mantida(s)` : ""}.`
+              : "Nenhuma cobrança em aberto para remover.",
+          );
+          setConfirmClear(false);
+        }}
+      />
 
       {/* Confirmação de cancelamento da cobrança */}
       <ConfirmActionDialog

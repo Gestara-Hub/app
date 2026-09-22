@@ -50,6 +50,13 @@ export function InactivateClientDialog({
             “{client.name}” deixará de ser sugerido em{" "}
             {isClasses ? "novas matrículas" : "novos agendamentos"}. O histórico
             é mantido e você pode reativá-lo depois.
+            {isClasses && client.planId ? (
+              <>
+                {" "}
+                Mensalidades em aberto de períodos que ainda não começaram serão
+                canceladas; as já vencidas continuam a receber.
+              </>
+            ) : null}
           </>
         ) : null
       }

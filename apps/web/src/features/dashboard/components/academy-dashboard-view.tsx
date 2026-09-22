@@ -379,12 +379,12 @@ export function AcademyDashboardView() {
                   ) : (
                     <ul className="space-y-3.5">
                       {activeGroups.slice(0, 4).map((g) => {
-                        const pct = Math.min(
-                          100,
-                          Math.round(
-                            (g.enrolledCount / Math.max(1, g.capacity)) * 100,
-                          ),
+                        // O numero mostra a ocupacao real (pode passar de 100%);
+                        // so a barra e limitada ao trilho.
+                        const pct = Math.round(
+                          (g.enrolledCount / Math.max(1, g.capacity)) * 100,
                         );
+                        const isOverCapacity = pct > 100;
                         const isAlmostFull = pct >= 85;
                         return (
                           <li key={g.id} className="space-y-1.5">
@@ -392,17 +392,29 @@ export function AcademyDashboardView() {
                               <span className="font-medium truncate max-w-[170px]">
                                 {g.name}
                               </span>
-                              <span className="tabular-nums text-muted-foreground">
+                              <span
+                                className={cn(
+                                  "tabular-nums",
+                                  isOverCapacity
+                                    ? "font-medium text-red-600 dark:text-red-400"
+                                    : "text-muted-foreground",
+                                )}
+                              >
                                 {g.enrolledCount}/{g.capacity} ({pct}%)
+                                {isOverCapacity ? " · acima da capacidade" : ""}
                               </span>
                             </div>
                             <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                               <div
                                 className={cn(
                                   "h-full rounded-full transition-all",
-                                  isAlmostFull ? "bg-amber-500" : "bg-primary",
+                                  isOverCapacity
+                                    ? "bg-red-500"
+                                    : isAlmostFull
+                                      ? "bg-amber-500"
+                                      : "bg-primary",
                                 )}
-                                style={{ width: `${pct}%` }}
+                                style={{ width: `${Math.min(pct, 100)}%` }}
                               />
                             </div>
                           </li>

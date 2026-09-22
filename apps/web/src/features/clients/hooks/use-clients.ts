@@ -28,7 +28,11 @@ export function useCreateClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateClient) => clientsService.create(payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.clients.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+      // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.
+      qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+    },
   });
 }
 
@@ -37,7 +41,11 @@ export function useUpdateClient() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateClient }) =>
       clientsService.update(id, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.clients.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+      // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.
+      qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+    },
   });
 }
 
@@ -45,6 +53,10 @@ export function useInactivateClient() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: Id) => clientsService.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.clients.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+      // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.
+      qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+    },
   });
 }

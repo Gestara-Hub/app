@@ -40,8 +40,8 @@ export const clientFormSchema = z.object({
   // Plano e Mensalidade (vínculo no aluno)
   planId: z.string().optional(),
   planStartDate: z.string().optional(),
-  billingStrategy: z.enum(["prorated", "full_cycle"]).optional(),
-  cyclePaymentTiming: z.enum(["prepaid", "postpaid"]).optional(),
+  billingStrategy: z.enum(["prorated", "full_cycle"], { error: "Selecione como cobrar a entrada." }).optional(),
+  cyclePaymentTiming: z.enum(["prepaid", "postpaid"], { error: "Selecione o momento do pagamento." }).optional(),
   firstChargeAmount: z
     .number({ error: "O valor da 1ª mensalidade não pode ser negativo." })
     .min(0, "O valor da 1ª mensalidade não pode ser negativo.")
@@ -53,9 +53,9 @@ export const clientFormSchema = z.object({
     .min(1, "Dia deve ser entre 1 e 31.")
     .max(31, "Dia deve ser entre 1 e 31.")
     .nullish(),
-  membershipStatus: z.enum(["active", "paused", "canceled"]).optional(),
+  membershipStatus: z.enum(["active", "paused", "canceled"], { error: "Selecione a situação da assinatura." }).optional(),
   hasDiscount: z.boolean().optional(),
-  discountType: z.enum(["percentage", "fixed"]).optional(),
+  discountType: z.enum(["percentage", "fixed"], { error: "Selecione o tipo de desconto." }).optional(),
   discountValue: z
     .number({ error: "O desconto não pode ser negativo." })
     .min(0, "O desconto não pode ser negativo.")
