@@ -25,7 +25,7 @@ export interface Client {
   planId?: Id;
   planStartDate?: DateISO; // Data de início da vigência do plano (ex: '2026-09-21')
   billingStrategy?: StudentBillingStrategy; // Estratégia de cobrança inicial: proporcional ou ciclo completo
-  cyclePaymentTiming?: StudentCyclePaymentTiming; // No ciclo completo: 'postpaid' (ao final dos 30 dias) ou 'prepaid' (no ato)
+  cyclePaymentTiming?: StudentCyclePaymentTiming; // 'prepaid' (antes do período) ou 'postpaid' (depois do uso)
   dueDay?: number; // 1 a 31 (dia preferencial de vencimento da mensalidade)
   discount?: StudentDiscount;
   membershipStatus?: MembershipStatus;
@@ -37,6 +37,8 @@ export interface Client {
 export interface CreateClientInitialCharge {
   amountCents: number;
   dueDate: DateISO;
+  periodStart?: DateISO;
+  periodEnd?: DateISO;
   isProrated?: boolean;
   proratedDays?: number;
 }

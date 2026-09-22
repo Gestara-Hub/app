@@ -7,10 +7,14 @@
     "./scheduling": "./src/scheduling.ts",
     "./date": "./src/date.ts",
     "./format": "./src/format.ts",
-    "./api-error": "./src/api-error.ts"
+    "./api-error": "./src/api-error.ts",
+    "./billing": "./src/billing.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
     "date-fns": "^4.4.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
   }
 }

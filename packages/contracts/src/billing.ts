@@ -2,9 +2,9 @@ import type { DateISO, DateTimeISO, Id, RecordStatus } from "./common";
 
 /**
  * Billing & plans (financial). Record/status only, no payment gateway.
- * Decisions (docs/product/11): full charge (no pro-rata); paused/canceled
- * enrollment generates no charge; fixed class = membership charge (plan),
- * drop-in = drop-in charge.
+ * Membership charges follow the organization's billing rules (prepaid or
+ * postpaid, prorated or full cycle), computed by @gestarahub/core/billing.
+ * Paused/canceled memberships generate no charge; drop-in = drop-in charge.
  */
 
 /** Plan periodicity: monthly, biweekly, or weekly (recurring memberships). */
@@ -43,7 +43,9 @@ export interface Charge {
   kind: ChargeKind;
   planId?: Id; // membership
   classGroupId?: Id;
-  competence?: string; // "YYYY-MM" (membership)
+  competence?: string; // "YYYY-MM" of the due date (membership)
+  periodStart?: DateISO; // usage period this membership charge pays for
+  periodEnd?: DateISO;
   sessionId?: Id; // dropin (reserved session)
   dueDate: DateISO;
   amountCents: number;
@@ -69,6 +71,7 @@ export interface ChargeFilter {
 export interface ChargeView extends Charge {
   studentName: string;
   planName?: string;
+  planPeriod?: PlanPeriod;
   className?: string;
 }
 
