@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResetDataActions } from "@/features/system";
@@ -49,12 +49,32 @@ function isTab(value: string | null): value is Tab {
 }
 
 export function SettingsTabs() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  // Deep-link: `/settings?tab=horarios` (ex.: passo do onboarding) abre a aba.
-  const initialTab: Tab = isTab(searchParams.get("tab"))
-    ? (searchParams.get("tab") as Tab)
-    : "geral";
-  const [tab, setTab] = useState<Tab>(initialTab);
+
+  // Deep-link: `/settings?tab=horarios` ou `/settings?tab=geral` deriva diretamente da URL
+  const paramTab = searchParams.get("tab");
+  const tab: Tab = isTab(paramTab) ? paramTab : "geral";
+
+  // Rola até a seção com âncora hash (ex.: #billing-rules) quando a aba Geral estiver ativa
+  useEffect(() => {
+    if (tab === "geral" && typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash.slice(1);
+      const el = document.getElementById(hash);
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
+    }
+  }, [tab]);
+
+  const handleTabChange = (nextTab: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextTab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="max-w-3xl">
@@ -74,9 +94,9 @@ export function SettingsTabs() {
               id={`settings-tab-${t.value}`}
               aria-selected={active}
               aria-controls={`settings-panel-${t.value}`}
-              onClick={() => setTab(t.value)}
+              onClick={() => handleTabChange(t.value)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+                "inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
                 active
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",

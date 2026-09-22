@@ -71,7 +71,7 @@ export function useOnboardingSteps() {
         id: "billing",
         label: "Definir regras de cobrança",
         description: "Configure o regime padrão (pré/pós-pago) e vencimentos.",
-        href: "/settings?tab=geral",
+        href: "/settings?tab=geral#billing-rules",
         cta: "Configurar",
         done: billingSet,
       },
