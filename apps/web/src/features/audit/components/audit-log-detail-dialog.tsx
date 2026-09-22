@@ -21,6 +21,7 @@ import {
 } from "@/lib/labels";
 import { formatDateTime } from "@gestarahub/core/format";
 import type { AuditLogEntry } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 
 // Chip discreto (rótulo neutro).
 function Chip({ children }: { children: React.ReactNode }) {
@@ -42,6 +43,7 @@ export function AuditLogDetailDialog({
   open,
   onOpenChange,
 }: AuditLogDetailDialogProps) {
+  const model = useModel();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTech, setShowTech] = useState(false);
   // Afordância de scroll: fade+chevron quando há conteúdo além da dobra.
@@ -110,7 +112,7 @@ export function AuditLogDetailDialog({
               </DialogTitle>
               <DialogDescription className="mt-1 text-left text-sm text-foreground">
                 {auditActionLabel(entry.action)} ·{" "}
-                {auditEntityTypeLabel(entry.target.type)}
+                {auditEntityTypeLabel(entry.target.type, model)}
               </DialogDescription>
               <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {formatDateTime(entry.timestamp)}

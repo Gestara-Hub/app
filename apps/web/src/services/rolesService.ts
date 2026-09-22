@@ -129,9 +129,9 @@ export const rolesService = {
       };
       store.roles[idx] = updated;
       auditLogService.record({
-        action: "updated",
+        action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
         target: { type: "role", id: updated.id, label: updated.name },
-        predicate: `atualizou o cargo ${updated.name}`,
+        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} o cargo ${updated.name}`,
       });
       return clone(updated);
     });

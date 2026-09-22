@@ -18,6 +18,7 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
+import { categoryNoun } from "./nouns";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -43,7 +44,7 @@ function validateCategory(
 
   if (!partial || has("name")) {
     if (!payload.name || !payload.name.trim()) {
-      fields.push({ field: "name", message: "Informe o nome da categoria." });
+      fields.push({ field: "name", message: `Informe o nome da ${categoryNoun()}.` });
     }
   }
 
@@ -84,7 +85,7 @@ export const categoriesService = {
       validateCategory(payload, { partial: false });
       if (isDuplicateName(payload.name)) {
         throw validationError([
-          { field: "name", message: "Já existe uma categoria com esse nome." },
+          { field: "name", message: `Já existe uma ${categoryNoun()} com esse nome.` },
         ]);
       }
       const ts = nowIso();
@@ -104,7 +105,7 @@ export const categoriesService = {
       auditLogService.record({
         action: "created",
         target: { type: "category", id: category.id, label: category.name },
-        predicate: `criou a categoria ${category.name}`,
+        predicate: `criou a ${categoryNoun()} ${category.name}`,
       });
       return clone(category);
     });
@@ -117,7 +118,7 @@ export const categoriesService = {
       validateCategory(payload, { partial: true });
       if (payload.name !== undefined && isDuplicateName(payload.name, id)) {
         throw validationError([
-          { field: "name", message: "Já existe uma categoria com esse nome." },
+          { field: "name", message: `Já existe uma ${categoryNoun()} com esse nome.` },
         ]);
       }
       const current = store.categories[idx];
@@ -129,9 +130,9 @@ export const categoriesService = {
       };
       store.categories[idx] = updated;
       auditLogService.record({
-        action: "updated",
+        action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
         target: { type: "category", id: updated.id, label: updated.name },
-        predicate: `atualizou a categoria ${updated.name}`,
+        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} a ${categoryNoun()} ${updated.name}`,
       });
       return clone(updated);
     });
@@ -151,7 +152,7 @@ export const categoriesService = {
       auditLogService.record({
         action: "inactivated",
         target: { type: "category", id, label: name },
-        predicate: `inativou a categoria ${name}`,
+        predicate: `inativou a ${categoryNoun()} ${name}`,
       });
     });
   },

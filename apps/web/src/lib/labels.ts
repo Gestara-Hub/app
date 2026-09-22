@@ -3,6 +3,8 @@ import type {
   AuditAction,
   AuditEntityType,
   Frequency,
+  OperationalModel,
+  PaymentMethod,
   RecordStatus,
   UserProfile,
 } from "@gestarahub/contracts";
@@ -82,8 +84,34 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   professional: "Profissional",
   user: "Usuário",
   settings: "Configurações",
+  plan: "Plano",
+  charge: "Mensalidade",
+  class_group: "Turma",
+  enrollment: "Matrícula",
 };
 
-export function auditEntityTypeLabel(type: AuditEntityType): string {
-  return AUDIT_ENTITY_TYPE_LABEL[type];
+// No modelo de turmas, cliente e aluno e categoria e modalidade.
+const CLASSES_ENTITY_TYPE_LABEL: Partial<Record<AuditEntityType, string>> = {
+  client: "Aluno",
+  category: "Modalidade",
+};
+
+export function auditEntityTypeLabel(
+  type: AuditEntityType,
+  model?: OperationalModel,
+): string {
+  return (model === "classes" && CLASSES_ENTITY_TYPE_LABEL[type]) || AUDIT_ENTITY_TYPE_LABEL[type];
+}
+
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  pix: "Pix",
+  cash: "Dinheiro",
+  card: "Cartão",
+  other: "Outro",
+};
+
+export const PAYMENT_METHODS: PaymentMethod[] = ["pix", "cash", "card", "other"];
+
+export function paymentMethodLabel(method: PaymentMethod): string {
+  return PAYMENT_METHOD_LABEL[method];
 }

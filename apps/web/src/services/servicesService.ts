@@ -186,9 +186,9 @@ export const servicesService = {
         });
       }
       auditLogService.record({
-        action: "updated",
+        action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
         target: { type: "service", id: updated.id, label: updated.name },
-        predicate: `atualizou o serviço ${updated.name}`,
+        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} o serviço ${updated.name}`,
         changes,
       });
       return clone(updated);

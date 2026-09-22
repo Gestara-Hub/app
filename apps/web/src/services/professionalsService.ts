@@ -119,7 +119,8 @@ export const professionalsService = {
       const professional: Professional = {
         id: newId(),
         organizationId: store.organization.id,
-        unitId: payload.unitId ?? store.unit.id,
+        // A unidade vem do tenant ativo (a sessao), nunca de um id fixo da UI.
+        unitId: store.unit.id,
         name: payload.name.trim(),
         roleId: payload.roleId,
         phone: payload.phone?.trim() || undefined,

@@ -30,20 +30,26 @@ import {
   userProfileLabel,
 } from "@/lib/labels";
 import { formatDateTime } from "@gestarahub/core/format";
-import type { AuditEntityType, AuditLogEntry } from "@gestarahub/contracts";
+import type { AuditEntityType, AuditLogEntry, OperationalModel } from "@gestarahub/contracts";
+import { useModel } from "@/features/auth";
 import { useAuditLog } from "../hooks/use-audit-log";
 import { AuditLogDetailDialog } from "./audit-log-detail-dialog";
 
-const ENTITY_TYPES: AuditEntityType[] = [
-  "appointment",
-  "client",
-  "service",
-  "category",
-  "role",
-  "professional",
-  "user",
-  "settings",
-];
+const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
+  scheduling: ["appointment", "client", "service", "category", "role", "professional", "user", "settings"],
+  classes: [
+    "client",
+    "category",
+    "class_group",
+    "enrollment",
+    "plan",
+    "charge",
+    "professional",
+    "user",
+    "settings",
+  ],
+  delivery: ["client", "service", "category", "role", "professional", "user", "settings"],
+};
 
 function AuditRow({
   entry,
@@ -52,6 +58,7 @@ function AuditRow({
   entry: AuditLogEntry;
   onSelect: (entry: AuditLogEntry) => void;
 }) {
+  const model = useModel();
   return (
     <ListRow
       onClick={() => onSelect(entry)}
@@ -65,7 +72,7 @@ function AuditRow({
               {auditActionLabel(entry.action)}
             </span>
             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {auditEntityTypeLabel(entry.target.type)}
+              {auditEntityTypeLabel(entry.target.type, model)}
             </span>
             {entry.security ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
@@ -129,6 +136,7 @@ function SkeletonRows() {
 }
 
 export function AuditLogList() {
+  const model = useModel();
   const [search, setSearch] = useState("");
   const [entityType, setEntityType] = useState<"all" | AuditEntityType>("all");
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
@@ -214,9 +222,9 @@ export function AuditLogList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tipos</SelectItem>
-              {ENTITY_TYPES.map((type) => (
+              {ENTITY_TYPES_BY_MODEL[model].map((type) => (
                 <SelectItem key={type} value={type}>
-                  {auditEntityTypeLabel(type)}
+                  {auditEntityTypeLabel(type, model)}
                 </SelectItem>
               ))}
             </SelectContent>

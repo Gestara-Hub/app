@@ -27,6 +27,7 @@ export type AuditAction =
   | "inactivated"; // cadastro inativado
 
 // Tipo da entidade alvo do evento. `settings` cobre o expediente da unidade.
+// plan/charge/class_group/enrollment pertencem ao Modelo 3 (turmas).
 export type AuditEntityType =
   | "appointment"
   | "client"
@@ -35,7 +36,11 @@ export type AuditEntityType =
   | "role"
   | "professional"
   | "user"
-  | "settings";
+  | "settings"
+  | "plan"
+  | "charge"
+  | "class_group"
+  | "enrollment";
 
 // Autor do evento (snapshot no momento — nome/perfil podem mudar depois).
 export interface AuditActor {
