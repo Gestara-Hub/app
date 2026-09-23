@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { ResetDataActions } from "@/features/system";
 import { OrganizationSettingsForm, hashTargets } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
+import { useBeforeUnloadGuard } from "./unsaved-changes";
 
 type Tab = "geral" | "horarios" | "dados";
 
@@ -32,10 +34,10 @@ const TABS: {
   },
   {
     value: "dados",
-    label: "Dados de exemplo",
+    label: "Dados",
     icon: Database,
     description:
-      "Suas alterações ficam salvas no navegador (localStorage). Ao zerar os mocks, todo o armazenamento local é redefinido, mantendo apenas os proprietários iniciais para você cadastrar tudo do zero.",
+      "Os dados desta demonstração ficam salvos neste navegador. Apagar tudo remove alunos, turmas, cobranças e demais cadastros e mantém só os proprietários iniciais.",
   },
 ];
 
@@ -70,7 +72,32 @@ export function SettingsTabs() {
     }
   }, [tab]);
 
-  const handleTabChange = (nextTab: Tab) => {
+  // Abas com alteracoes nao salvas (Geral e Horarios avisam via onDirtyChange)
+  const [dirtyTabs, setDirtyTabs] = useState<Partial<Record<Tab, boolean>>>({});
+  const setGeralDirty = useCallback(
+    (dirty: boolean) => setDirtyTabs((prev) => (prev.geral === dirty ? prev : { ...prev, geral: dirty })),
+    [],
+  );
+  const setHorariosDirty = useCallback(
+    (dirty: boolean) =>
+      setDirtyTabs((prev) => (prev.horarios === dirty ? prev : { ...prev, horarios: dirty })),
+    [],
+  );
+  useBeforeUnloadGuard(Boolean(dirtyTabs.geral || dirtyTabs.horarios));
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
+
+  const handleTabChange = async (nextTab: Tab) => {
+    if (nextTab === tab) return;
+    if (dirtyTabs[tab]) {
+      const current = TABS.find((t) => t.value === tab)?.label ?? "";
+      const ok = await confirm({
+        title: "Alterações não salvas",
+        description: `Você alterou a aba ${current} e ainda não salvou. As alterações ficam guardadas até você sair da página, mas não valem enquanto não forem salvas.`,
+        confirmLabel: "Trocar de aba",
+        cancelLabel: "Continuar editando",
+      });
+      if (!ok) return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", nextTab);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -94,7 +121,7 @@ export function SettingsTabs() {
               id={`settings-tab-${t.value}`}
               aria-selected={active}
               aria-controls={`settings-panel-${t.value}`}
-              onClick={() => handleTabChange(t.value)}
+              onClick={() => void handleTabChange(t.value)}
               className={cn(
                 "inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
                 active
@@ -104,6 +131,12 @@ export function SettingsTabs() {
             >
               <Icon className="size-4 shrink-0" />
               {t.label}
+              {dirtyTabs[t.value] ? (
+                <>
+                  <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
+                  <span className="sr-only">(alterações não salvas)</span>
+                </>
+              ) : null}
             </button>
           );
         })}
@@ -121,11 +154,12 @@ export function SettingsTabs() {
           {t.value !== "geral" ? (
             <p className="text-sm text-muted-foreground">{t.description}</p>
           ) : null}
-          {t.value === "geral" ? <OrganizationSettingsForm /> : null}
-          {t.value === "horarios" ? <BusinessHoursForm /> : null}
+          {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={setGeralDirty} /> : null}
+          {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={setHorariosDirty} /> : null}
           {t.value === "dados" ? <ResetDataActions /> : null}
         </div>
       ))}
+      {confirmDialog}
     </div>
   );
 }

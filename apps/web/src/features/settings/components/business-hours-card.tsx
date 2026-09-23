@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import { checkSlotWithinBusinessHours } from "@gestarahub/core/scheduling";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useClassGroups } from "@/features/turmas";
 import { useUnit, useUpdateUnit } from "../hooks/use-settings";
+import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
 
 const WEEKDAYS: { weekday: Weekday; label: string }[] = [
   { weekday: 0, label: "Domingo" },
@@ -128,6 +129,19 @@ function normalize(businessHours: BusinessHoursDay[]): NormalizedDay[] {
       shifts,
     };
   });
+}
+
+/** Forma canonica do expediente para comparar rascunho x salvo (dia fechado ignora turnos). */
+function hoursSignature(days: NormalizedDay[]): string {
+  return days
+    .map((d) =>
+      d.closed
+        ? `${d.weekday}:fechado`
+        : `${d.weekday}:${sortShifts(d.shifts)
+            .map((s) => `${s.start}-${s.end}`)
+            .join(",")}`,
+    )
+    .join("|");
 }
 
 /**
@@ -259,13 +273,17 @@ function DayShiftsDialog({
         <div className="space-y-2 border-t pt-4">
           <p className="text-sm font-medium">Aplicar também a</p>
           <div className="flex flex-wrap gap-1.5">
-            {WEEKDAYS.filter((w) => w.weekday !== day.weekday).map((w) => {
-              const on = alsoWeekdays.has(w.weekday);
+            {WEEKDAYS.map((w) => {
+              // O dia em edicao aparece marcado e travado: os turnos ja valem para ele.
+              const isCurrent = w.weekday === day.weekday;
+              const on = isCurrent || alsoWeekdays.has(w.weekday);
               return (
                 <button
                   key={w.weekday}
                   type="button"
                   aria-pressed={on}
+                  disabled={isCurrent}
+                  title={isCurrent ? `${label} é o dia em edição` : undefined}
                   onClick={() =>
                     setAlsoWeekdays((prev) => {
                       const next = new Set(prev);
@@ -275,7 +293,7 @@ function DayShiftsDialog({
                     })
                   }
                   className={cn(
-                    "h-8 cursor-pointer rounded-md border px-2.5 text-xs font-medium transition-colors",
+                    "h-8 cursor-pointer rounded-md border px-2.5 text-xs font-medium transition-colors disabled:cursor-default disabled:opacity-60",
                     on
                       ? "border-primary bg-primary text-primary-foreground"
                       : "bg-background text-muted-foreground hover:text-foreground",
@@ -301,15 +319,29 @@ function DayShiftsDialog({
   );
 }
 
-function BusinessHoursEditor({ unit }: { unit: Unit }) {
+function BusinessHoursEditor({
+  unit,
+  onDirtyChange,
+}: {
+  unit: Unit;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const updateUnit = useUpdateUnit();
   const pending = updateUnit.isPending;
   // Turmas ativas: o novo expediente nao pode deixar aulas "orfas" sem aviso.
-  const { data: activeGroups } = useClassGroups({ status: "active" });
+  // Salvar espera as turmas carregarem: senao o aviso de aulas fora do novo
+  // horario seria pulado (lista vazia) e o dia fecharia sem avisar.
+  const { data: activeGroups, isPending: groupsPending } = useClassGroups({ status: "active" });
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const [days, setDays] = useState<NormalizedDay[]>(() =>
     normalize(unit.businessHours),
   );
+  // Sujo = rascunho diferente do expediente salvo na unidade
+  const dirty = useMemo(
+    () => hoursSignature(days) !== hoursSignature(normalize(unit.businessHours)),
+    [days, unit.businessHours],
+  );
+  useReportDirty(dirty, onDirtyChange);
   const [dayErrors, setDayErrors] = useState<Partial<Record<Weekday, string>>>({});
   // Horario ainda nao definido (1o passo do onboarding): a lista pulsa ate o
   // usuario clicar nela.
@@ -501,8 +533,9 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
       ) : null}
 
       {confirmDialog}
-      <div className="flex justify-end pt-1">
-        <Button onClick={save} disabled={pending}>
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <UnsavedChangesStatus dirty={dirty} />
+        <Button onClick={save} disabled={pending || groupsPending}>
           {pending ? "Salvando..." : "Salvar horários"}
         </Button>
       </div>
@@ -510,7 +543,12 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
   );
 }
 
-export function BusinessHoursForm() {
+export function BusinessHoursForm({
+  onDirtyChange,
+}: {
+  /** Avisa as abas quando ha alteracoes nao salvas. */
+  onDirtyChange?: (dirty: boolean) => void;
+} = {}) {
   const unitQuery = useUnit();
 
   if (unitQuery.isPending || !unitQuery.data) {
@@ -528,5 +566,5 @@ export function BusinessHoursForm() {
     );
   }
 
-  return <BusinessHoursEditor unit={unitQuery.data} />;
+  return <BusinessHoursEditor unit={unitQuery.data} onDirtyChange={onDirtyChange} />;
 }

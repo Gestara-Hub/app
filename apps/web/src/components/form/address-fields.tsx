@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fetchAddressByCep } from "@/lib/cep";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 import { InputText } from "./input-text";
 
 interface AddressFieldsProps<T extends FieldValues = FieldValues> {
@@ -135,6 +135,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
                 value={postalCodeValue}
                 onChange={handlePostalCodeChange}
                 maxLength={9}
+                {...fieldAria(postalCodeField, postalCodeState.error?.message)}
               />
               <Button
                 type="button"

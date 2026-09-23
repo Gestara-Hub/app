@@ -8,6 +8,7 @@ import {
 } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { fieldHintId } from "./field-shell";
 
 interface SwitchFieldProps<T extends FieldValues> {
   name: Path<T>;
@@ -37,7 +38,9 @@ export function SwitchField<T extends FieldValues>({
           <div className="space-y-0.5">
             <Label htmlFor={fieldId}>{label}</Label>
             {hint ? (
-              <p className="text-xs text-muted-foreground">{hint}</p>
+              <p id={fieldHintId(fieldId)} className="text-xs text-muted-foreground">
+                {hint}
+              </p>
             ) : null}
           </div>
           <Switch
@@ -45,6 +48,7 @@ export function SwitchField<T extends FieldValues>({
             checked={Boolean(field.value)}
             onCheckedChange={field.onChange}
             disabled={disabled}
+            aria-describedby={hint ? fieldHintId(fieldId) : undefined}
             ref={field.ref}
           />
         </div>

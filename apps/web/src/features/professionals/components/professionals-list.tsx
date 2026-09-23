@@ -30,7 +30,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { formatPhone } from "@gestarahub/core/format";
+import { formatPhone, plural } from "@gestarahub/core/format";
 import type {
   ProfessionalFilter,
   ProfessionalView,
@@ -90,8 +90,8 @@ function ProfessionalRow({
     : [];
 
   const activityMeta = isClasses
-    ? `${(professional.modalityIds ?? []).length} ${(professional.modalityIds ?? []).length === 1 ? "modalidade" : "modalidades"}`
-    : `${professional.serviceIds.length} ${professional.serviceIds.length === 1 ? "serviço" : "serviços"}`;
+    ? plural((professional.modalityIds ?? []).length, "modalidade", "modalidades")
+    : plural(professional.serviceIds.length, "serviço", "serviços");
 
   const content = (
     <ListRow
@@ -102,6 +102,7 @@ function ProfessionalRow({
           <ListItemActionsMenu
             actions={actions}
             title="Ações do profissional"
+            ariaLabel={`Ações de ${professional.name}`}
             variant="ghost"
           />
         ) : null

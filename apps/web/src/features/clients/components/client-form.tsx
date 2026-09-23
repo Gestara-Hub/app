@@ -20,7 +20,6 @@ import {
   InputPhone,
   InputText,
   SelectField,
-  SwitchField,
   TextArea,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,6 @@ function toDefaults(client?: Client, orgSettings?: OrganizationSettings): Client
     phone: client?.phone ?? "",
     email: client?.email ?? "",
     notes: client?.notes ?? "",
-    active: client ? client.status === "active" : true,
     address: {
       postalCode: addr?.postalCode ?? "",
       street: addr?.street ?? "",
@@ -420,7 +418,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       }
     }
 
-    const payload: CreateClient = {
+    // Sem status: ativar/inativar so pelo menu da linha (com confirmacao).
+    const payload: Omit<CreateClient, "status"> = {
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -433,7 +432,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       dueDay: values.planId ? values.dueDay || defaultDueDay : undefined,
       membershipStatus: values.planId ? values.membershipStatus || "active" : undefined,
       discount: values.planId ? discountPayload : undefined,
-      status: values.active ? "active" : "inactive",
       initialCharge: initialChargePayload,
     };
 
@@ -446,7 +444,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             : "Cliente atualizado com sucesso.",
         );
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ ...payload, status: "active" });
         toast.success(
           isClasses
             ? "Aluno criado com sucesso."
@@ -775,19 +773,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             disabled={pending}
           />
         </CollapsibleSection>
-
-        {isEdit ? (
-          <SwitchField<ClientFormValues>
-            name="active"
-            label={isClasses ? "Aluno ativo" : "Cliente ativo"}
-            hint={
-              isClasses
-                ? "Alunos inativos não aparecem para matrícula em novas turmas."
-                : "Clientes inativos não são sugeridos em novos agendamentos."
-            }
-            disabled={pending}
-          />
-        ) : null}
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">

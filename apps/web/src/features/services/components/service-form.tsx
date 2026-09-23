@@ -8,7 +8,6 @@ import {
   InputNumber,
   InputText,
   SelectField,
-  SwitchField,
   TextArea,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,6 @@ function toDefaults(service?: Service): ServiceFormValues {
     // undefined ate o usuario digitar (campo de preco vazio).
     priceCents: service?.priceCents ?? (undefined as unknown as number),
     description: service?.description ?? "",
-    active: service ? service.status === "active" : true,
   };
 }
 
@@ -69,13 +67,13 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const payload: CreateService = {
+    // Sem status: ativar/inativar so pelo menu da linha (com confirmacao).
+    const payload: Omit<CreateService, "status"> = {
       name: values.name,
       categoryId: values.categoryId || undefined,
       durationMinutes: values.durationMinutes,
       priceCents: values.priceCents,
       description: values.description || undefined,
-      status: values.active ? "active" : "inactive",
     };
 
     try {
@@ -83,7 +81,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
         await updateMut.mutateAsync({ id: service.id, payload });
         toast.success("Serviço atualizado com sucesso.");
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ ...payload, status: "active" });
         toast.success("Serviço criado com sucesso.");
       }
       onSuccess();
@@ -184,14 +182,6 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           disabled={pending}
         />
 
-        {isEdit ? (
-          <SwitchField<ServiceFormValues>
-            name="active"
-            label="Serviço ativo"
-            hint="Serviços inativos não são sugeridos em novos agendamentos."
-            disabled={pending}
-          />
-        ) : null}
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">

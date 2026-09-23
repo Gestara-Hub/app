@@ -25,10 +25,10 @@ export function ResetDataActions() {
   async function handleConfirm() {
     try {
       await reset.mutateAsync();
-      toast.success("Mocks zerados — apenas os proprietários foram mantidos.");
+      toast.success("Dados da demonstração apagados. Só os proprietários iniciais foram mantidos.");
       setOpen(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível zerar os mocks."));
+      toast.error(getErrorMessage(error, "Não foi possível apagar os dados da demonstração."));
     }
   }
 
@@ -41,17 +41,17 @@ export function ResetDataActions() {
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <Eraser className="size-4" />
-            Zerar mocks
+            Apagar dados da demonstração
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Zerar mocks?</AlertDialogTitle>
+            <AlertDialogTitle>Apagar dados da demonstração?</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove todos os cadastros e redefine o armazenamento local
-              (localStorage). Apenas os proprietários iniciais (atendimento
-              individual e turmas) são mantidos para cadastrar tudo do zero.
-              Esta ação não pode ser desfeita.
+              Remove alunos, clientes, turmas, agendamentos, cobranças e demais
+              cadastros deste navegador. Só os proprietários iniciais são
+              mantidos, para você cadastrar tudo do zero. Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -66,7 +66,7 @@ export function ResetDataActions() {
               disabled={reset.isPending}
               variant="destructive"
             >
-              {reset.isPending ? "Zerando..." : "Zerar mocks"}
+              {reset.isPending ? "Apagando..." : "Apagar tudo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

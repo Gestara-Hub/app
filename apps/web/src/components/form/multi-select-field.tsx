@@ -23,7 +23,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 export interface MultiSelectOption {
   label: string;
@@ -163,7 +163,7 @@ export function MultiSelectField<T extends FieldValues>({
                   aria-controls={listId}
                   onBlur={field.onBlur}
                   disabled={disabled}
-                  aria-invalid={fieldState.invalid}
+                  {...fieldAria(fieldId, fieldState.error?.message, hint)}
                   className={cn(
                     "flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
                     "focus:border-ring focus:ring-[3px] focus:ring-ring/50",

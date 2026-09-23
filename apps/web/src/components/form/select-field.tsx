@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 export interface SelectOption {
   label: string;
@@ -82,7 +82,7 @@ export function SelectField<T extends FieldValues>({
                     aria-controls={menuId}
                     onBlur={field.onBlur}
                     disabled={disabled}
-                    aria-invalid={fieldState.invalid}
+                    {...fieldAria(fieldId, fieldState.error?.message, hint)}
                     className={cn(
                       "flex h-9 w-full items-center rounded-md border border-input bg-transparent py-2 pl-3 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
                       "focus:border-ring focus:ring-[3px] focus:ring-ring/50",

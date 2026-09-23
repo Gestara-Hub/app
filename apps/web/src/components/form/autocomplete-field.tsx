@@ -14,7 +14,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { normalizeText } from "@/lib/text";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface AutocompleteFieldProps<T extends FieldValues> {
   name: Path<T>;
@@ -96,7 +96,7 @@ export function AutocompleteField<T extends FieldValues>({
                   placeholder={placeholder}
                   disabled={disabled}
                   autoComplete="off"
-                  aria-invalid={fieldState.invalid}
+                  {...fieldAria(fieldId, fieldState.error?.message, hint)}
                   onChange={(event) => {
                     field.onChange(event.target.value);
                     setOpen(true);

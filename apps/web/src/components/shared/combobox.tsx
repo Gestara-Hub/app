@@ -32,6 +32,8 @@ interface ComboboxProps {
   className?: string;
   id?: string;
   ariaLabel?: string;
+  /** Id do texto de erro/ajuda do campo (FieldShell). */
+  ariaDescribedBy?: string;
   invalid?: boolean;
   disabled?: boolean;
   clearable?: boolean;
@@ -54,6 +56,7 @@ export function Combobox({
   className,
   id,
   ariaLabel,
+  ariaDescribedBy,
   invalid,
   disabled,
   clearable,
@@ -89,7 +92,8 @@ export function Combobox({
           aria-expanded={open}
           aria-controls={listId}
           aria-label={ariaLabel}
-          aria-invalid={invalid}
+          aria-invalid={invalid || undefined}
+          aria-describedby={ariaDescribedBy}
           disabled={disabled}
           onBlur={onBlur}
           className={cn(

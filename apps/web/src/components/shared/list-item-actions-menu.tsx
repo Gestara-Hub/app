@@ -69,10 +69,13 @@ function ActionItems({
 export function ListItemActionsMenu({
   actions,
   title,
+  ariaLabel,
   variant = "outline",
 }: {
   actions: ListItemAction[];
   title: string;
+  /** Rotulo acessivel com o nome da linha (ex.: "Ações de Ana Clara"); cai no `title`. */
+  ariaLabel?: string;
   variant?: "outline" | "ghost";
 }) {
   return (
@@ -83,7 +86,7 @@ export function ListItemActionsMenu({
           variant={variant}
           size="icon-sm"
           title={title}
-          aria-label={title}
+          aria-label={ariaLabel ?? title}
         >
           <MoreVertical className="size-4" />
         </Button>

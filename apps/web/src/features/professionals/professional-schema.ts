@@ -58,7 +58,6 @@ export const professionalFormSchema = z.object({
         }),
       { message: "Almoço inválido: deve ficar dentro do expediente do dia." },
     ),
-  active: z.boolean(),
 });
 
 export type ProfessionalFormValues = z.infer<typeof professionalFormSchema>;

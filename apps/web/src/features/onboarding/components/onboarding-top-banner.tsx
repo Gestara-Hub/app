@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/features/auth";
 import { useOnboardingSteps, type OnboardingStep } from "../hooks/use-onboarding-steps";
@@ -16,6 +17,10 @@ import { useOnboardingSteps, type OnboardingStep } from "../hooks/use-onboarding
 function isStepPage(step: OnboardingStep, pathname: string): boolean {
   return pathname === step.href.split(/[?#]/)[0];
 }
+
+const ASIDE_CLASS = "px-4 pt-3 pb-1 md:px-6 md:pt-4";
+// CTA menor no celular; tamanho padrao a partir de sm
+const CTA_CLASS = "shrink-0 sm:h-9 sm:px-4 sm:has-[>svg]:px-3";
 
 export function OnboardingTopBanner() {
   const user = useCurrentUser();
@@ -44,14 +49,19 @@ export function OnboardingTopBanner() {
   }, [nudgeCount]);
 
   // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
-  if (
-    !isReady ||
-    user.profile !== "owner" ||
-    isComplete ||
-    pathname === "/"
-  ) {
-    return null;
+  if (user.profile !== "owner" || pathname === "/") return null;
+
+  // Enquanto os passos carregam, reserva a altura do banner para o conteudo
+  // nao ser empurrado quando ele aparece (layout shift).
+  if (!isReady) {
+    return (
+      <div aria-hidden className={ASIDE_CLASS}>
+        <Skeleton className="h-16 rounded-xl bg-muted sm:h-[72px]" />
+      </div>
+    );
   }
+
+  if (isComplete) return null;
 
   const nextStepIndex = nextStep
     ? steps.findIndex((s) => s.id === nextStep.id)
@@ -71,7 +81,7 @@ export function OnboardingTopBanner() {
   return (
     <aside
       aria-label="Progresso da configuração inicial"
-      className="px-4 pt-3.5 pb-1 md:px-6 md:pt-4"
+      className={ASIDE_CLASS}
     >
       <div
         className={cn(
@@ -81,28 +91,28 @@ export function OnboardingTopBanner() {
             : "border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.07]",
         )}
       >
-        <div className="flex items-center justify-between gap-4 p-3.5 sm:px-5 sm:py-3">
+        <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:gap-4 sm:px-5 sm:py-3">
           {/* Lado esquerdo: Próximo passo objetivo alinhado ao padrão da dashboard */}
           <div className="min-w-0 flex-1">
             {nextStep ? (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                <p className="flex items-center gap-1.5 text-[11px] leading-4 font-semibold uppercase tracking-wide text-primary sm:text-xs">
                   <Sparkles className="size-3.5" />
                   <span>
                     {isOnNextStepPage ? "Passo atual" : "Próximo passo"} · Passo {nextStepIndex + 1} de {total}
                   </span>
                 </p>
-                <p className="mt-0.5 truncate text-base font-semibold text-foreground">
+                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1 sm:text-base">
                   {nextStep.label}
                 </p>
               </div>
             ) : (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                <p className="flex items-center gap-1.5 text-[11px] leading-4 font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 sm:text-xs">
                   <Check className="size-3.5 stroke-[3]" />
                   <span>Configuração concluída · 100%</span>
                 </p>
-                <p className="mt-0.5 truncate text-base font-semibold text-foreground">
+                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1 sm:text-base">
                   Todas as etapas foram concluídas!
                 </p>
               </div>
@@ -114,8 +124,9 @@ export function OnboardingTopBanner() {
             {nextStep ? (
               <Button
                 asChild
+                size="sm"
                 className={cn(
-                  "shrink-0",
+                  CTA_CLASS,
                   pulse && "motion-safe:animate-attention-loop",
                 )}
               >
@@ -125,7 +136,7 @@ export function OnboardingTopBanner() {
                 </Link>
               </Button>
             ) : (
-              <Button asChild variant="outline" className="shrink-0">
+              <Button asChild size="sm" variant="outline" className={CTA_CLASS}>
                 <Link href="/">Concluir na Dashboard</Link>
               </Button>
             )}

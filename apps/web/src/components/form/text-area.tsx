@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface TextAreaProps<T extends FieldValues> {
   name: Path<T>;
@@ -55,7 +55,7 @@ export function TextArea<T extends FieldValues>({
             onBlur={field.onBlur}
             name={field.name}
             ref={field.ref}
-            aria-invalid={fieldState.invalid}
+            {...fieldAria(fieldId, fieldState.error?.message, hint)}
           />
         </FieldShell>
       )}

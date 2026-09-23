@@ -32,7 +32,6 @@ export const clientFormSchema = z.object({
       message: "Informe um e-mail válido.",
     }),
   notes: z.string().trim().optional(),
-  active: z.boolean(),
 
   // Endereço estruturado (opcional)
   address: addressSchema.optional(),

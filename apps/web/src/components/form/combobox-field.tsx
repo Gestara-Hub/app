@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Combobox, type ComboboxOption } from "@/components/shared/combobox";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface ComboboxFieldProps<T extends FieldValues> {
   name: Path<T>;
@@ -66,7 +66,9 @@ export function ComboboxField<T extends FieldValues>({
             placeholder={placeholder}
             searchPlaceholder={searchPlaceholder}
             emptyMessage={emptyMessage}
+            id={fieldId}
             ariaLabel={label}
+            ariaDescribedBy={fieldAria(fieldId, fieldState.error?.message, hint)["aria-describedby"]}
             invalid={fieldState.invalid}
             disabled={disabled}
             clearable={clearable}

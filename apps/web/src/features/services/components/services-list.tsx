@@ -99,6 +99,7 @@ function ServiceRow({
           <ListItemActionsMenu
             actions={actions}
             title="Ações do serviço"
+            ariaLabel={`Ações de ${service.name}`}
             variant="ghost"
           />
         ) : null

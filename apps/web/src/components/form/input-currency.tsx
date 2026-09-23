@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 /**
  * Campo monetario: exibe em reais (R$ 45,00) e ARMAZENA em centavos
@@ -81,7 +81,7 @@ export function InputCurrency<T extends FieldValues>({
               onBlur={field.onBlur}
               name={field.name}
               ref={field.ref}
-              aria-invalid={fieldState.invalid}
+              {...fieldAria(fieldId, fieldState.error?.message, hint)}
             />
           </div>
         </FieldShell>

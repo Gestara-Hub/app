@@ -18,7 +18,6 @@ export const serviceFormSchema = z.object({
     .int()
     .min(0, "O preço não pode ser negativo."),
   description: z.string().trim().optional(),
-  active: z.boolean(),
 });
 
 export type ServiceFormValues = z.infer<typeof serviceFormSchema>;

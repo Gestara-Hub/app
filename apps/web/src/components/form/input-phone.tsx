@@ -8,7 +8,7 @@ import {
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { formatPhone } from "@gestarahub/core/format";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface InputPhoneProps<T extends FieldValues> {
   name: Path<T>;
@@ -62,7 +62,7 @@ export function InputPhone<T extends FieldValues>({
             onBlur={field.onBlur}
             name={field.name}
             ref={field.ref}
-            aria-invalid={fieldState.invalid}
+            {...fieldAria(fieldId, fieldState.error?.message, hint)}
           />
         </FieldShell>
       )}

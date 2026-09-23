@@ -12,6 +12,21 @@ interface FieldShellProps {
   children: ReactNode;
 }
 
+/** Ids do texto de erro/ajuda, para ligar ao controle via aria-describedby. */
+export const fieldErrorId = (id: string) => `${id}-error`;
+export const fieldHintId = (id: string) => `${id}-hint`;
+
+/**
+ * Props de acessibilidade do controle: `aria-invalid` e `aria-describedby`
+ * apontando para o erro (ou para o hint quando nao ha erro), igual ao shell.
+ */
+export function fieldAria(id: string, error?: string, hint?: string) {
+  return {
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": error ? fieldErrorId(id) : hint ? fieldHintId(id) : undefined,
+  } as const;
+}
+
 /**
  * Shell de campo consistente: label (+ asterisco se obrigatorio) -> controle ->
  * hint/erro abaixo. Erro tem precedencia sobre hint. O texto do erro vem do
@@ -42,9 +57,17 @@ export function FieldShell({
       ) : null}
       {children}
       {error ? (
-        <p className="text-xs text-destructive">{error}</p>
+        <p
+          id={id ? fieldErrorId(id) : undefined}
+          role="alert"
+          className="text-xs text-destructive"
+        >
+          {error}
+        </p>
       ) : hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p id={id ? fieldHintId(id) : undefined} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

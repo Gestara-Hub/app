@@ -1,5 +1,7 @@
 "use client";
 
+import { plural } from "@gestarahub/core/format";
+
 export interface ListSummaryBarProps {
   count: number;
   singularLabel: string;
@@ -20,7 +22,7 @@ export function ListSummaryBar({
   return (
     <div className={className}>
       <span>
-        {count === 1 ? `1 ${singularLabel}` : `${count} ${pluralLabel}`}
+        {plural(count, singularLabel, pluralLabel)}
       </span>
       {hasFilters && onClearFilters ? (
         <button

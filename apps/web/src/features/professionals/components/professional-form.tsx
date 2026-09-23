@@ -19,7 +19,6 @@ import {
   ComboboxField,
   InputPhone,
   InputText,
-  SwitchField,
 } from "@/components/form";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { normalizeText } from "@/lib/text";
@@ -45,6 +44,7 @@ import {
 import { ServiceSelectionField } from "./service-selection-field";
 import { ModalitySelectionField } from "./modality-selection-field";
 import { getDefaultWorkingHours, WorkingHoursField } from "./working-hours-field";
+import { plural } from "@gestarahub/core/format";
 
 /**
  * Ao cadastrar um novo profissional, os dias e horários padrão são pré-preenchidos
@@ -79,7 +79,6 @@ function toDefaults(
       : isClasses
         ? []
         : getDefaultWorkingHours(unit),
-    active: professional ? professional.status === "active" : true,
   };
 }
 
@@ -158,7 +157,7 @@ export function ProfessionalForm({
   const activeDaysCount = (workingHours ?? []).length;
   const workingHoursBadge =
     activeDaysCount > 0
-      ? `${activeDaysCount} ${activeDaysCount === 1 ? "dia configurado" : "dias configurados"}`
+      ? plural(activeDaysCount, "dia configurado", "dias configurados")
       : "Nenhum dia ativo";
 
   const onInvalid = useCallback(
@@ -219,12 +218,12 @@ export function ProfessionalForm({
         }
       : undefined;
 
-    const payload: CreateProfessional = {
+    // Sem status: ativar/inativar so pelo menu da linha (com confirmacao).
+    const payload: Omit<CreateProfessional, "status"> = {
       name: values.name,
       roleId,
       phone: values.phone || undefined,
       address: addressPayload,
-      status: values.active ? "active" : "inactive",
       // O modelo do tenant decide qual associação é relevante: M1 grava
       // serviços; M3 grava modalidades (a outra fica vazia e é ignorada).
       serviceIds: isClasses ? [] : values.serviceIds,
@@ -244,7 +243,7 @@ export function ProfessionalForm({
         await updateMut.mutateAsync({ id: professional.id, payload });
         toast.success("Profissional atualizado com sucesso.");
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ ...payload, status: "active" });
         toast.success("Profissional criado com sucesso.");
       }
       onSuccess();
@@ -349,14 +348,6 @@ export function ProfessionalForm({
           </CollapsibleSection>
         ) : null}
 
-        {isEdit ? (
-          <SwitchField<ProfessionalFormValues>
-            name="active"
-            label="Profissional ativo"
-            hint="Profissionais inativos não são sugeridos em novos agendamentos."
-            disabled={pending}
-          />
-        ) : null}
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">

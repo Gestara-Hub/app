@@ -7,6 +7,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +25,7 @@ import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {
   const user = useCurrentUser();
-  const { data: unit } = useUnit();
+  const { data: unit, isError: unitError } = useUnit();
   const { data: switchOptions } = useSwitchableUsers();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -35,7 +36,12 @@ export function AppTopbar() {
 
       <div className="hidden items-center gap-2 text-sm font-medium sm:flex">
         <Building2 className="size-4 text-muted-foreground" />
-        {unit?.name ?? ""}
+        {/* Esqueleto enquanto a unidade carrega, para o nome nao "pular" */}
+        {unit || unitError ? (
+          <span className="truncate">{unit?.name ?? ""}</span>
+        ) : (
+          <Skeleton className="h-4 w-32" aria-hidden />
+        )}
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">

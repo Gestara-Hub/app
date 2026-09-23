@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface DateFieldProps<T extends FieldValues> {
   name: Path<T>;
@@ -57,7 +57,7 @@ export function DateField<T extends FieldValues>({
             onChange={field.onChange}
             onBlur={field.onBlur}
             disabled={disabled}
-            aria-invalid={fieldState.invalid}
+            {...fieldAria(fieldId, fieldState.error?.message, hint)}
           />
         </FieldShell>
       )}

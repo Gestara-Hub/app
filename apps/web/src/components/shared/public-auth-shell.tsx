@@ -25,42 +25,12 @@ type PublicAuthShellProps = {
 };
 
 const BASE_MODULES = [
-  {
-    icon: CalendarClock,
-    label: "Agenda",
-    colorClass: "border-amber-500/40 hover:border-amber-500/60",
-    iconClass: "bg-amber-500/10 text-amber-500",
-  },
-  {
-    icon: GraduationCap,
-    label: "Turmas & Aulas",
-    colorClass: "border-indigo-500/40 hover:border-indigo-500/60",
-    iconClass: "bg-indigo-500/10 text-indigo-500",
-  },
-  {
-    icon: Users,
-    label: "Clientes & Alunos",
-    colorClass: "border-emerald-500/40 hover:border-emerald-500/60",
-    iconClass: "bg-emerald-500/10 text-emerald-500",
-  },
-  {
-    icon: Briefcase,
-    label: "Equipe",
-    colorClass: "border-violet-500/40 hover:border-violet-500/60",
-    iconClass: "bg-violet-500/10 text-violet-500",
-  },
-  {
-    icon: Store,
-    label: "Serviços & Modalidades",
-    colorClass: "border-rose-500/40 hover:border-rose-500/60",
-    iconClass: "bg-rose-500/10 text-rose-500",
-  },
-  {
-    icon: Wallet,
-    label: "Mensalidades & Planos",
-    colorClass: "border-cyan-500/40 hover:border-cyan-500/60",
-    iconClass: "bg-cyan-500/10 text-cyan-500",
-  },
+  { icon: CalendarClock, label: "Agenda" },
+  { icon: GraduationCap, label: "Turmas & Aulas" },
+  { icon: Users, label: "Clientes & Alunos" },
+  { icon: Briefcase, label: "Equipe" },
+  { icon: Store, label: "Serviços & Modalidades" },
+  { icon: Wallet, label: "Mensalidades & Planos" },
 ];
 
 const ADDON_MODULES = [
@@ -94,24 +64,20 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Lista informativa dos modulos: sem borda nem hover, nao e clicavel */}
+              <ul className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
                 {BASE_MODULES.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <div
-                      key={item.label}
-                      className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.colorClass}`}
-                    >
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${item.iconClass}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-medium text-foreground">
-                        {item.label}
+                    <li key={item.label} className="flex items-center gap-2.5">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <Icon className="size-4" aria-hidden />
                       </span>
-                    </div>
+                      <span className="text-sm text-foreground">{item.label}</span>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
 
               <div className="pt-1 text-sm text-muted-foreground">
                 <span>Complementos: </span>
@@ -142,7 +108,7 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
           </div>
 
           <div className="relative">
-            <div className="pointer-events-none absolute -inset-[1px] rounded-[1.1rem] bg-gradient-to-r from-primary/25 via-cyan-500/20 to-fuchsia-500/20 opacity-40 blur-sm motion-safe:animate-pulse dark:opacity-60" />
+            <div className="pointer-events-none absolute -inset-[1px] rounded-[1.1rem] bg-gradient-to-r from-primary/25 via-primary/15 to-primary/20 opacity-40 blur-sm motion-safe:animate-pulse dark:opacity-60" />
             <Card className="relative border-border/70 bg-card/95 shadow-lg backdrop-blur">
               <CardHeader className="space-y-2 pb-4">
                 <CardTitle className="text-3xl font-semibold tracking-tight">

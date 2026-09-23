@@ -7,7 +7,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { Input } from "@/components/ui/input";
-import { FieldShell } from "./field-shell";
+import { FieldShell, fieldAria } from "./field-shell";
 
 interface InputNumberProps<T extends FieldValues> {
   name: Path<T>;
@@ -78,7 +78,7 @@ export function InputNumber<T extends FieldValues>({
                 onBlur={field.onBlur}
                 name={field.name}
                 ref={field.ref}
-                aria-invalid={fieldState.invalid}
+                {...fieldAria(fieldId, fieldState.error?.message, hint)}
               />
               {suffix ? (
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

@@ -84,6 +84,7 @@ function ClientRow({
           <ListItemActionsMenu
             actions={actions}
             title={isClasses ? "Ações do aluno" : "Ações do cliente"}
+            ariaLabel={`Ações de ${client.name}`}
             variant="ghost"
           />
         ) : null

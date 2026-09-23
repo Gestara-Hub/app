@@ -40,6 +40,7 @@ import {
   useUpdateUnit,
 } from "../hooks/use-settings";
 import { BillingRulesPreview } from "./billing-rules-preview";
+import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
 
 const addressSchema = z.object({
   postalCode: z.string().optional(),
@@ -153,9 +154,11 @@ export function hashTargets(hash: string): string[] {
 function OrgUnitForm({
   organization,
   unit,
+  onDirtyChange,
 }: {
   organization: Organization;
   unit: Unit;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const updateOrg = useUpdateOrganization();
   const updateUnit = useUpdateUnit();
@@ -177,6 +180,7 @@ function OrgUnitForm({
   });
 
   const isClasses = organization.model === "classes";
+  useReportDirty(form.formState.isDirty, onDirtyChange);
 
   // Watch fields para compor resumos dinâmicos nas barras dos accordions
   const orgName = useWatch({ control: form.control, name: "organizationName" });
@@ -475,17 +479,7 @@ function OrgUnitForm({
 
         {/* Rodapé de Ação */}
         <div className="flex items-center justify-between p-4 sm:p-5 rounded-xl border border-border/70 bg-card shadow-xs">
-          <p className="text-xs text-muted-foreground">
-            {form.formState.isDirty ? (
-              <span className="text-amber-600 dark:text-amber-400 font-medium">
-                ● Alterações não salvas
-              </span>
-            ) : (
-              <span className="text-muted-foreground">
-                Todas as alterações estão salvas
-              </span>
-            )}
-          </p>
+          <UnsavedChangesStatus dirty={form.formState.isDirty} />
           <Button type="submit" disabled={pending} className="min-w-36">
             {pending ? (
               <>
@@ -505,7 +499,12 @@ function OrgUnitForm({
   );
 }
 
-export function OrganizationSettingsForm() {
+export function OrganizationSettingsForm({
+  onDirtyChange,
+}: {
+  /** Avisa as abas quando ha alteracoes nao salvas. */
+  onDirtyChange?: (dirty: boolean) => void;
+} = {}) {
   const orgQuery = useOrganization();
   const unitQuery = useUnit();
   const loading = orgQuery.isPending || unitQuery.isPending;
@@ -520,5 +519,11 @@ export function OrganizationSettingsForm() {
     );
   }
 
-  return <OrgUnitForm organization={orgQuery.data} unit={unitQuery.data} />;
+  return (
+    <OrgUnitForm
+      organization={orgQuery.data}
+      unit={unitQuery.data}
+      onDirtyChange={onDirtyChange}
+    />
+  );
 }

@@ -299,6 +299,7 @@ function Row<T extends ManagedEntity>({
         <ListItemActionsMenu
           actions={actions}
           title={labels.actionsTitle}
+          ariaLabel={`Ações de ${entity.name}`}
           variant="ghost"
         />
       }

@@ -33,7 +33,7 @@ export function OnboardingWelcomeDialog({
           <div className="mb-1 flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Rocket className="size-5" />
           </div>
-          <DialogTitle>Bem-vindo ao GestaraHub 👋</DialogTitle>
+          <DialogTitle>Bem-vindo ao GestaraHub</DialogTitle>
           <DialogDescription>
             Vamos deixar tudo pronto para o seu negócio começar a operar.
             Prefere um tour rápido pela tela ou já começar a configurar?

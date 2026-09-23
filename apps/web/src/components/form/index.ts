@@ -1,4 +1,4 @@
-export { FieldShell } from "./field-shell";
+export { FieldShell, fieldAria } from "./field-shell";
 export { InputText } from "./input-text";
 export { InputPhone } from "./input-phone";
 export { AutocompleteField } from "./autocomplete-field";
