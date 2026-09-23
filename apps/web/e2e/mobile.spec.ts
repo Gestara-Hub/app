@@ -15,11 +15,16 @@ test("mensalidades no celular: sem rolagem lateral e linha legível", async ({ p
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("horários no celular: dia com dois turnos cabe sem rolagem lateral", async ({ page }) => {
+test("horários no celular: modal e dia com dois turnos cabem sem rolagem lateral", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings?tab=horarios");
+  await page.getByRole("button", { name: "Editar horários de Segunda" }).click();
+  await page.getByLabel("Segunda turno 1 fim").fill("12:00");
   await page.getByRole("button", { name: "Adicionar turno em Segunda" }).click();
   await expect(page.getByLabel("Segunda turno 2 fim")).toBeVisible();
+  const dialogOverflow = await page.getByRole("dialog").evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(dialogOverflow).toBeLessThanOrEqual(0);
+  await page.getByRole("button", { name: "Aplicar" }).click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });

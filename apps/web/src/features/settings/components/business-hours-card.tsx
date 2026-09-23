@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy, Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -58,6 +66,46 @@ function suggestNextShift(shifts: BusinessHoursShift[]): BusinessHoursShift | nu
   return { start: toTime(start), end: toTime(Math.min(start + 240, LAST_MINUTE)) };
 }
 
+interface ShiftsValidation {
+  message?: string;
+  /** Campos invalidos, chave `${indice}-start` ou `${indice}-end`. */
+  invalid: Set<string>;
+}
+
+/** Valida os turnos de um dia: preenchidos, inicio antes do fim e sem sobreposicao. */
+function validateShifts(shifts: BusinessHoursShift[]): ShiftsValidation {
+  const invalid = new Set<string>();
+  if (shifts.length === 0) {
+    return { message: "Configure pelo menos um turno de funcionamento.", invalid };
+  }
+  let message: string | undefined;
+  shifts.forEach((s, i) => {
+    if (!s.start) invalid.add(`${i}-start`);
+    if (!s.end) invalid.add(`${i}-end`);
+    if (!s.start || !s.end) {
+      message ??= "Preencha os horários de início e fim.";
+    } else if (s.start >= s.end) {
+      invalid.add(`${i}-start`).add(`${i}-end`);
+      message ??= "O horário de início deve ser anterior ao de fim.";
+    }
+  });
+  if (message) return { message, invalid };
+
+  const sorted = shifts
+    .map((s, index) => ({ ...s, index }))
+    .sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i].end > sorted[i + 1].start) {
+      invalid.add(`${sorted[i].index}-end`).add(`${sorted[i + 1].index}-start`);
+      return { message: "Os turnos não podem se sobrepor.", invalid };
+    }
+  }
+  return { invalid };
+}
+
+const sortShifts = (shifts: BusinessHoursShift[]) =>
+  [...shifts].sort((a, b) => a.start.localeCompare(b.start));
+
 function normalize(businessHours: BusinessHoursDay[]): NormalizedDay[] {
   return WEEKDAYS.map(({ weekday }) => {
     const found = businessHours.find((b) => b.weekday === weekday);
@@ -82,6 +130,177 @@ function normalize(businessHours: BusinessHoursDay[]): NormalizedDay[] {
   });
 }
 
+/**
+ * Modal de edicao dos turnos de um dia. Os turnos podem ser aplicados a outros
+ * dias de uma vez. "Aplicar" so altera o rascunho: quem grava e "Salvar horarios".
+ */
+function DayShiftsDialog({
+  day,
+  showErrors,
+  onApply,
+  onClose,
+}: {
+  day: NormalizedDay;
+  /** Abriu por erro no salvar: ja mostra a validacao. */
+  showErrors: boolean;
+  onApply: (shifts: BusinessHoursShift[], alsoWeekdays: Weekday[]) => void;
+  onClose: () => void;
+}) {
+  const label = WEEKDAYS[day.weekday].label;
+  const [shifts, setShifts] = useState<BusinessHoursShift[]>(() =>
+    day.shifts.map((s) => ({ ...s })),
+  );
+  const [validation, setValidation] = useState<ShiftsValidation>(() =>
+    showErrors ? validateShifts(day.shifts) : { invalid: new Set() },
+  );
+  const [alsoWeekdays, setAlsoWeekdays] = useState<Set<Weekday>>(() => new Set());
+  const noRoom = suggestNextShift(shifts) === null;
+
+  const edit = (next: BusinessHoursShift[]) => {
+    setShifts(next);
+    setValidation({ invalid: new Set() });
+  };
+
+  function apply() {
+    const result = validateShifts(shifts);
+    if (result.message) {
+      setValidation(result);
+      const first = [...result.invalid][0];
+      if (first) {
+        const [idx, field] = first.split("-");
+        document.getElementById(`shift-${idx}-${field}`)?.focus();
+      }
+      return;
+    }
+    onApply(sortShifts(shifts), [...alsoWeekdays]);
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Horários de {label}</DialogTitle>
+          <DialogDescription>Turnos em que a unidade funciona neste dia.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          {shifts.map((shift, idx) => {
+            const startInvalid = validation.invalid.has(`${idx}-start`);
+            const endInvalid = validation.invalid.has(`${idx}-end`);
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="w-14 shrink-0 text-xs text-muted-foreground max-sm:hidden">
+                  Turno {idx + 1}
+                </span>
+                <Input
+                  id={`shift-${idx}-start`}
+                  type="time"
+                  step={300}
+                  value={shift.start}
+                  aria-label={`${label} turno ${idx + 1} início`}
+                  aria-invalid={startInvalid}
+                  className={cn("w-28 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1", startInvalid && "border-destructive")}
+                  onChange={(e) =>
+                    edit(shifts.map((s, i) => (i === idx ? { ...s, start: e.target.value } : s)))
+                  }
+                />
+                <span className="text-sm text-muted-foreground">até</span>
+                <Input
+                  id={`shift-${idx}-end`}
+                  type="time"
+                  step={300}
+                  value={shift.end}
+                  aria-label={`${label} turno ${idx + 1} fim`}
+                  aria-invalid={endInvalid}
+                  className={cn("w-28 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1", endInvalid && "border-destructive")}
+                  onChange={(e) =>
+                    edit(shifts.map((s, i) => (i === idx ? { ...s, end: e.target.value } : s)))
+                  }
+                />
+                {shifts.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remover turno ${idx + 1} de ${label}`}
+                    onClick={() => edit(shifts.filter((_, i) => i !== idx))}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                ) : null}
+              </div>
+            );
+          })}
+
+          <span title={noRoom ? "Sem espaço depois do último turno" : undefined}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={noRoom}
+              aria-label={`Adicionar turno em ${label}`}
+              onClick={() => {
+                const next = suggestNextShift(shifts);
+                if (next) edit([...shifts, next]);
+              }}
+              className="px-2 text-primary hover:text-primary"
+            >
+              <Plus className="size-4" />
+              Adicionar turno
+            </Button>
+          </span>
+
+          {validation.message ? (
+            <p className="text-xs font-medium text-destructive">{validation.message}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2 border-t pt-4">
+          <p className="text-sm font-medium">Aplicar também a</p>
+          <div className="flex flex-wrap gap-1.5">
+            {WEEKDAYS.filter((w) => w.weekday !== day.weekday).map((w) => {
+              const on = alsoWeekdays.has(w.weekday);
+              return (
+                <button
+                  key={w.weekday}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setAlsoWeekdays((prev) => {
+                      const next = new Set(prev);
+                      if (on) next.delete(w.weekday);
+                      else next.add(w.weekday);
+                      return next;
+                    })
+                  }
+                  className={cn(
+                    "h-8 cursor-pointer rounded-md border px-2.5 text-xs font-medium transition-colors",
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {w.label.slice(0, 3)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={apply}>
+            Aplicar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function BusinessHoursEditor({ unit }: { unit: Unit }) {
   const updateUnit = useUpdateUnit();
   const pending = updateUnit.isPending;
@@ -92,185 +311,76 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
     normalize(unit.businessHours),
   );
   const [dayErrors, setDayErrors] = useState<Partial<Record<Weekday, string>>>({});
-  const [invalidFields, setInvalidFields] = useState<Record<string, boolean>>({});
+  // Horario ainda nao definido (1o passo do onboarding): a lista pulsa ate o
+  // usuario clicar nela.
+  const [highlight, setHighlight] = useState(
+    () => !unit.businessHours.some((day) => !day.closed),
+  );
+  const [editing, setEditing] = useState<{ weekday: Weekday; showErrors: boolean } | null>(
+    null,
+  );
 
-  function clearError(weekday?: Weekday) {
-    if (weekday !== undefined) {
-      setDayErrors((prev) => {
-        if (!prev[weekday]) return prev;
-        const copy = { ...prev };
-        delete copy[weekday];
-        return copy;
-      });
-      setInvalidFields((prev) => {
-        const prefix = `${weekday}-`;
-        const hasKey = Object.keys(prev).some((k) => k.startsWith(prefix));
-        if (!hasKey) return prev;
-        const next = { ...prev };
-        for (const k of Object.keys(next)) {
-          if (k.startsWith(prefix)) delete next[k];
-        }
-        return next;
-      });
-    } else {
-      setDayErrors({});
-      setInvalidFields({});
-    }
+  function clearError(weekdays: Weekday[]) {
+    setDayErrors((prev) => {
+      if (!weekdays.some((w) => prev[w])) return prev;
+      const next = { ...prev };
+      for (const w of weekdays) delete next[w];
+      return next;
+    });
   }
 
   function toggleOpen(weekday: Weekday, open: boolean) {
-    clearError(weekday);
+    clearError([weekday]);
     setDays((prev) =>
       prev.map((d) => {
         if (d.weekday !== weekday) return d;
         const shifts =
           d.shifts.length > 0 ? d.shifts : [{ start: "08:00", end: "18:00" }];
-        return {
-          ...d,
-          closed: !open,
-          shifts,
-        };
+        return { ...d, closed: !open, shifts };
       }),
     );
   }
 
-  function addShift(weekday: Weekday) {
-    clearError(weekday);
+  function applyShifts(weekday: Weekday, shifts: BusinessHoursShift[], alsoWeekdays: Weekday[]) {
+    const targets = [weekday, ...alsoWeekdays];
+    clearError(targets);
     setDays((prev) =>
-      prev.map((d) => {
-        if (d.weekday !== weekday) return d;
-        const next = suggestNextShift(d.shifts);
-        if (!next) return d;
-        return { ...d, shifts: [...d.shifts, next] };
-      }),
+      prev.map((d) =>
+        targets.includes(d.weekday)
+          ? { ...d, closed: false, shifts: shifts.map((s) => ({ ...s })) }
+          : d,
+      ),
     );
-  }
-
-  function removeShift(weekday: Weekday, index: number) {
-    clearError(weekday);
-    setDays((prev) =>
-      prev.map((d) => {
-        if (d.weekday !== weekday) return d;
-        if (d.shifts.length <= 1) return d;
-        return {
-          ...d,
-          shifts: d.shifts.filter((_, i) => i !== index),
-        };
-      }),
-    );
-  }
-
-  function updateShift(
-    weekday: Weekday,
-    index: number,
-    field: "start" | "end",
-    value: string,
-  ) {
-    clearError(weekday);
-    setDays((prev) =>
-      prev.map((d) => {
-        if (d.weekday !== weekday) return d;
-        const nextShifts = d.shifts.map((shift, i) =>
-          i === index ? { ...shift, [field]: value } : shift,
-        );
-        return { ...d, shifts: nextShifts };
-      }),
-    );
-  }
-
-  function copyMondayToWeekdays() {
-    clearError();
-    const monday = days.find((d) => d.weekday === 1);
-    if (!monday) return;
-    setDays((prev) =>
-      prev.map((d) => {
-        if (d.weekday >= 2 && d.weekday <= 5) {
-          return {
-            ...d,
-            closed: monday.closed,
-            shifts: monday.shifts.map((s) => ({ ...s })),
-          };
-        }
-        return d;
-      }),
-    );
-    toast.success("Horários de segunda-feira copiados para terça a sexta.");
+    setEditing(null);
+    if (alsoWeekdays.length > 0) {
+      const names = alsoWeekdays
+        .sort((a, b) => a - b)
+        .map((w) => WEEKDAYS[w].label)
+        .join(", ");
+      toast.success(`Horários aplicados também a ${names}.`);
+    }
   }
 
   async function save() {
     const nextErrors: Partial<Record<Weekday, string>> = {};
-    const nextInvalidFields: Record<string, boolean> = {};
-    let firstInvalidId: string | null = null;
-
     for (const day of days) {
       if (day.closed) continue;
-      if (day.shifts.length === 0) {
-        nextErrors[day.weekday] = "Configure pelo menos um turno de funcionamento.";
-        continue;
-      }
-      let hasInvalidTime = false;
-      for (let i = 0; i < day.shifts.length; i++) {
-        const s = day.shifts[i];
-        if (!s.start) {
-          nextErrors[day.weekday] = "Preencha os horários de início e fim.";
-          nextInvalidFields[`${day.weekday}-${i}-start`] = true;
-          if (!firstInvalidId) firstInvalidId = `time-input-${day.weekday}-${i}-start`;
-          hasInvalidTime = true;
-        }
-        if (!s.end) {
-          nextErrors[day.weekday] = "Preencha os horários de início e fim.";
-          nextInvalidFields[`${day.weekday}-${i}-end`] = true;
-          if (!firstInvalidId) firstInvalidId = `time-input-${day.weekday}-${i}-end`;
-          hasInvalidTime = true;
-        }
-        if (s.start && s.end && s.start >= s.end) {
-          nextErrors[day.weekday] = "O horário de início deve ser anterior ao de fim.";
-          nextInvalidFields[`${day.weekday}-${i}-start`] = true;
-          nextInvalidFields[`${day.weekday}-${i}-end`] = true;
-          if (!firstInvalidId) firstInvalidId = `time-input-${day.weekday}-${i}-end`;
-          hasInvalidTime = true;
-        }
-      }
-      if (hasInvalidTime) continue;
-
-      const sortedWithIndex = day.shifts
-        .map((s, idx) => ({ ...s, originalIndex: idx }))
-        .sort((a, b) => a.start.localeCompare(b.start));
-
-      for (let i = 0; i < sortedWithIndex.length - 1; i++) {
-        const curr = sortedWithIndex[i];
-        const next = sortedWithIndex[i + 1];
-        if (curr.end > next.start) {
-          nextErrors[day.weekday] = "Os turnos não podem se sobrepor.";
-          nextInvalidFields[`${day.weekday}-${curr.originalIndex}-end`] = true;
-          nextInvalidFields[`${day.weekday}-${next.originalIndex}-start`] = true;
-          if (!firstInvalidId) {
-            firstInvalidId = `time-input-${day.weekday}-${next.originalIndex}-start`;
-          }
-          break;
-        }
-      }
+      const { message } = validateShifts(day.shifts);
+      if (message) nextErrors[day.weekday] = message;
     }
-
-    if (Object.keys(nextErrors).length > 0) {
+    const firstError = days.find((d) => nextErrors[d.weekday]);
+    if (firstError) {
       setDayErrors(nextErrors);
-      setInvalidFields(nextInvalidFields);
-      if (firstInvalidId) {
-        const el = document.getElementById(firstInvalidId);
-        if (el) {
-          el.focus();
-        }
-      }
+      setEditing({ weekday: firstError.weekday, showErrors: true });
       return;
     }
     setDayErrors({});
-    setInvalidFields({});
 
     const businessHours: BusinessHoursDay[] = days.map((d) => {
       if (d.closed) {
         return { weekday: d.weekday, closed: true, shifts: [] };
       }
-      const sorted = [...d.shifts].sort((a, b) => a.start.localeCompare(b.start));
+      const sorted = sortShifts(d.shifts);
       return {
         weekday: d.weekday,
         closed: false,
@@ -307,31 +417,24 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
     }
   }
 
+  const editingDay = editing ? days.find((d) => d.weekday === editing.weekday) : undefined;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={copyMondayToWeekdays}
-          disabled={pending}
-          className="text-xs"
-        >
-          <Copy className="mr-1.5 size-3.5" />
-          Copiar Segunda para Ter–Sex
-        </Button>
-      </div>
-
-      <div className="divide-y rounded-lg border bg-card">
+      <div
+        onPointerDownCapture={() => setHighlight(false)}
+        className={cn(
+          "divide-y rounded-lg border bg-card transition-colors",
+          highlight && "border-primary/60 motion-safe:animate-attention-ring",
+        )}
+      >
         {days.map((day) => {
-          const label = WEEKDAYS.find((w) => w.weekday === day.weekday)!.label;
+          const label = WEEKDAYS[day.weekday].label;
           const dayError = dayErrors[day.weekday];
-          const noRoom = suggestNextShift(day.shifts) === null;
           return (
             <div
               key={day.weekday}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2"
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5"
             >
               <label className="flex w-32 shrink-0 cursor-pointer items-center gap-2.5">
                 <Switch
@@ -341,117 +444,61 @@ function BusinessHoursEditor({ unit }: { unit: Unit }) {
                   onCheckedChange={(open) => toggleOpen(day.weekday, open)}
                 />
                 <span
-                  className={cn(
-                    "text-sm font-medium",
-                    day.closed && "text-muted-foreground",
-                  )}
+                  className={cn("text-sm font-medium", day.closed && "text-muted-foreground")}
                 >
                   {label}
                 </span>
               </label>
 
-              {day.closed ? (
-                <span className="flex h-8 items-center text-sm text-muted-foreground">
-                  Fechado
-                </span>
-              ) : (
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 max-sm:basis-full">
-                  {day.shifts.map((shift, idx) => {
-                    const isStartInvalid = Boolean(
-                      invalidFields[`${day.weekday}-${idx}-start`],
-                    );
-                    const isEndInvalid = Boolean(
-                      invalidFields[`${day.weekday}-${idx}-end`],
-                    );
-                    const invalid = isStartInvalid || isEndInvalid;
-                    return (
-                      // Cada turno e um bloco proprio (inicio, fim e remover juntos).
-                      <div
-                        key={idx}
-                        role="group"
-                        aria-label={`${label} turno ${idx + 1}`}
-                        className={cn(
-                          "flex items-center gap-1 rounded-lg border bg-muted/50 p-1",
-                          invalid && "border-destructive/60 bg-destructive/5",
-                        )}
-                      >
-                        <Input
-                          id={`time-input-${day.weekday}-${idx}-start`}
-                          type="time"
-                          step={300}
-                          value={shift.start}
-                          disabled={pending}
-                          aria-label={`${label} turno ${idx + 1} início`}
-                          aria-invalid={isStartInvalid}
-                          className={cn(
-                            "h-7 w-[5.75rem] bg-background px-1.5 shadow-none",
-                            isStartInvalid &&
-                              "border-destructive focus-visible:ring-destructive/40",
-                          )}
-                          onChange={(e) =>
-                            updateShift(day.weekday, idx, "start", e.target.value)
-                          }
-                        />
-                        <span className="px-0.5 text-xs text-muted-foreground">até</span>
-                        <Input
-                          id={`time-input-${day.weekday}-${idx}-end`}
-                          type="time"
-                          step={300}
-                          value={shift.end}
-                          disabled={pending}
-                          aria-label={`${label} turno ${idx + 1} fim`}
-                          aria-invalid={isEndInvalid}
-                          className={cn(
-                            "h-7 w-[5.75rem] bg-background px-1.5 shadow-none",
-                            isEndInvalid &&
-                              "border-destructive focus-visible:ring-destructive/40",
-                          )}
-                          onChange={(e) =>
-                            updateShift(day.weekday, idx, "end", e.target.value)
-                          }
-                        />
-                        {day.shifts.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            disabled={pending}
-                            aria-label={`Remover turno ${idx + 1} de ${label}`}
-                            onClick={() => removeShift(day.weekday, idx)}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <X />
-                          </Button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                  <span title={noRoom ? "Sem espaço depois do último turno" : undefined}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={pending || noRoom}
-                      aria-label={`Adicionar turno em ${label}`}
-                      onClick={() => addShift(day.weekday)}
-                      className="h-8 px-2 text-xs text-primary hover:text-primary"
+              <div
+                data-testid={`hours-summary-${day.weekday}`}
+                className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full"
+              >
+                {day.closed ? (
+                  <span className="text-sm text-muted-foreground">Fechado</span>
+                ) : (
+                  sortShifts(day.shifts).map((shift, idx) => (
+                    <span
+                      key={idx}
+                      className="rounded-md border bg-muted/50 px-2 py-0.5 text-sm tabular-nums"
                     >
-                      <Plus className="size-3.5" />
-                      Turno
-                    </Button>
-                  </span>
-                </div>
-              )}
+                      {shift.start}–{shift.end}
+                    </span>
+                  ))
+                )}
+                {dayError ? (
+                  <span className="text-xs font-medium text-destructive">{dayError}</span>
+                ) : null}
+              </div>
 
-              {dayError ? (
-                <p className="basis-full pl-[8.5rem] text-xs font-medium text-destructive max-sm:pl-0">
-                  {dayError}
-                </p>
+              {!day.closed ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  aria-label={`Editar horários de ${label}`}
+                  onClick={() => setEditing({ weekday: day.weekday, showErrors: false })}
+                  className="ml-auto h-8 text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="size-3.5" />
+                  Editar
+                </Button>
               ) : null}
             </div>
           );
         })}
       </div>
+
+      {editingDay && editing ? (
+        <DayShiftsDialog
+          key={editing.weekday}
+          day={editingDay}
+          showErrors={editing.showErrors}
+          onApply={(shifts, also) => applyShifts(editingDay.weekday, shifts, also)}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
 
       {confirmDialog}
       <div className="flex justify-end pt-1">

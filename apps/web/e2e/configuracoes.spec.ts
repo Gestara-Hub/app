@@ -91,6 +91,11 @@ test("salvar o horário no onboarding leva ao topo e destaca o Continuar", async
   await expect(billing).toHaveAttribute("aria-expanded", "true");
   await expect(billing).toBeFocused();
   await expect(page.getByRole("radio", { name: /^Antecipado/ })).toBeVisible();
+  // O cartao pulsa ate o usuario clicar nele.
+  const billingCard = page.locator("#billing-rules");
+  await expect(billingCard).toHaveClass(/animate-attention-ring/);
+  await page.getByRole("radio", { name: /^Depois do uso/ }).click();
+  await expect(billingCard).not.toHaveClass(/animate-attention-ring/);
   await expect(cont).not.toHaveClass(/animate-attention-loop/);
 });
 
@@ -135,6 +140,7 @@ test("+ Turno sugere depois do último turno e desabilita sem espaço", async ({
   await seedAcademy(page);
   await page.goto("/settings?tab=horarios");
   // Segunda do seed: 06:00 até 22:00. Deixa o 1o turno terminar as 12:00.
+  await page.getByRole("button", { name: "Editar horários de Segunda" }).click();
   await page.getByLabel("Segunda turno 1 fim").fill("12:00");
   const add = page.getByRole("button", { name: "Adicionar turno em Segunda" });
   await add.click();
@@ -147,4 +153,33 @@ test("+ Turno sugere depois do último turno e desabilita sem espaço", async ({
   await expect(page.getByLabel("Segunda turno 4 início")).toHaveValue("23:00");
   await expect(page.getByLabel("Segunda turno 4 fim")).toHaveValue("23:55");
   await expect(add).toBeDisabled();
+});
+
+test("horários: resumo por dia, edição em modal e aplicar a outros dias", async ({ page }) => {
+  await seedAcademy(page);
+  await page.goto("/settings?tab=horarios");
+  const summary = (weekday: number) => page.getByTestId(`hours-summary-${weekday}`);
+  await expect(summary(1)).toHaveText("06:00–22:00");
+  await expect(page.getByLabel("Segunda turno 1 início")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Editar horários de Segunda" }).click();
+  const dialog = page.getByRole("dialog", { name: "Horários de Segunda" });
+  await dialog.getByLabel("Segunda turno 1 fim").fill("12:00");
+  await dialog.getByRole("button", { name: "Adicionar turno em Segunda" }).click();
+  await dialog.getByRole("button", { name: "Ter", exact: true }).click();
+  await dialog.getByRole("button", { name: "Aplicar" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(summary(1)).toHaveText("06:00–12:0013:00–17:00");
+  await expect(summary(2)).toHaveText("06:00–12:0013:00–17:00");
+  await expect(summary(3)).toHaveText("06:00–22:00");
+
+  // Turno invalido nao aplica: a validacao fica no modal.
+  await page.getByRole("button", { name: "Editar horários de Quarta" }).click();
+  const wednesday = page.getByRole("dialog", { name: "Horários de Quarta" });
+  await wednesday.getByLabel("Quarta turno 1 fim").fill("05:00");
+  await wednesday.getByRole("button", { name: "Aplicar" }).click();
+  await expect(wednesday.getByText("O horário de início deve ser anterior ao de fim.")).toBeVisible();
+  await expect(wednesday.getByLabel("Quarta turno 1 início")).toBeFocused();
+  await wednesday.getByRole("button", { name: "Cancelar" }).click();
+  await expect(summary(3)).toHaveText("06:00–22:00");
 });
