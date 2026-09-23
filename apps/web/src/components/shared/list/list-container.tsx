@@ -20,7 +20,9 @@ export function ListContainer({
       )}
     >
       {emptyState ? (
-        emptyState
+        <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200">
+          {emptyState}
+        </div>
       ) : (
         <div className="divide-y divide-border/40">{children}</div>
       )}

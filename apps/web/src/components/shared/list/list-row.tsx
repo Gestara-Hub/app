@@ -42,7 +42,8 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
       onKeyDown={handleKeyDown}
       aria-label={ariaLabel}
       className={cn(
-        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40",
+        // Entra com fade ao substituir o skeleton (a duration-150 vale para os dois).
+        "group flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5 transition-colors duration-150 hover:bg-muted/40 motion-safe:animate-in motion-safe:fade-in",
         canClick && "cursor-pointer",
         className,
       )}

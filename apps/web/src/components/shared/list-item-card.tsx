@@ -20,7 +20,7 @@ export function ListItemCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-md border p-3 text-sm",
+        "group relative overflow-hidden rounded-md border p-3 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200",
         !disableHover &&
           "transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md",
         isActive && "-translate-y-0.5 border-foreground/20 shadow-md",
