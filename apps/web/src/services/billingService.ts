@@ -17,10 +17,11 @@ import {
   resolveMembershipTerms,
   type CompetenceCharge,
 } from "@gestarahub/core/billing";
-import { formatCents } from "@gestarahub/core/format";
-import { format } from "date-fns";
+import { formatCents, plural } from "@gestarahub/core/format";
+import { addMonths, format, parseISO } from "date-fns";
 import { store } from "@/mocks/store";
 import {
+  apiError,
   newId,
   notFoundError,
   nowIso,
@@ -114,17 +115,48 @@ function validatePlan(payload: Partial<CreatePlan>): void {
   if (fields.length > 0) throw validationError(fields);
 }
 
-/** Ja existe cobranca deste aluno/plano para o periodo planejado? */
+/**
+ * A cobranca existente ja cobre o periodo planejado? Com periodo completo vale a
+ * sobreposicao (depois de mudar a regra os periodos podem nao bater o inicio, e
+ * o mesmo dia nunca e cobrado duas vezes); dado antigo compara inicio/competencia.
+ */
+function coversPeriod(c: Charge, planned: CompetenceCharge): boolean {
+  if (c.periodStart && c.periodEnd) {
+    return c.periodStart <= planned.periodEnd && c.periodEnd >= planned.periodStart;
+  }
+  if (c.periodStart) return c.periodStart === planned.periodStart;
+  return c.competence === planned.competence && (c.cycleIndex ?? 1) === planned.cycleIndex;
+}
+
+/**
+ * Ja existe cobranca deste aluno/plano para o periodo planejado? Canceladas nao
+ * contam: o periodo cancelado pode ser gerado de novo.
+ */
 function hasMembershipCharge(studentId: Id, planId: Id, planned: CompetenceCharge): boolean {
   return store.charges.some(
     (c) =>
       c.kind === "membership" &&
       c.studentId === studentId &&
       c.planId === planId &&
-      (c.periodStart
-        ? c.periodStart === planned.periodStart
-        : c.competence === planned.competence && (c.cycleIndex ?? 1) === planned.cycleIndex),
+      c.status !== "canceled" &&
+      coversPeriod(c, planned),
   );
+}
+
+/** Alunos ativos no plano (inclui o legado: sem plano proprio, em turma com o plano). */
+function activeStudentsInPlan(planId: Id): number {
+  const ids = new Set<Id>();
+  for (const c of store.clients) {
+    if (c.status === "active" && c.planId === planId) ids.add(c.id);
+  }
+  for (const e of store.enrollments) {
+    if (e.status !== "active") continue;
+    const turma = store.classGroups.find((t) => t.id === e.classGroupId);
+    if (turma?.planId !== planId) continue;
+    const student = store.clients.find((c) => c.id === e.studentId);
+    if (student && student.status === "active" && !student.planId) ids.add(student.id);
+  }
+  return ids.size;
 }
 
 function membershipCharge(
@@ -164,7 +196,7 @@ export function studentMembershipTerms(student: Client, plan: Plan) {
     {
       period: plan.period,
       planPriceCents: plan.priceCents,
-      startDate: student.planStartDate || student.createdAt.slice(0, 10),
+      startDate: student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd"), // data local, nao UTC
       strategy: student.billingStrategy,
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
@@ -193,11 +225,39 @@ export function cancelOpenMembershipCharges(
     const affected = opts.inclusive ? start >= fromDate : start > fromDate;
     if (!affected) continue;
     c.status = "canceled";
+    c.canceledBy = "system";
     c.notes = note;
     c.updatedAt = nowIso();
     count += 1;
   }
   return count;
+}
+
+/**
+ * Garante a mensalidade dos periodos ja iniciados ate `untilDate` que ainda nao
+ * foram gerados (ex.: aluno "depois do uso" inativado antes da geracao do mes
+ * do vencimento). Olha as competencias de `untilDate` em diante, onde vencem os
+ * periodos em uso; o valor e o vencimento vem do motor. Retorna quantas criou.
+ */
+export function chargeStartedMembershipPeriods(student: Client, untilDate: string): number {
+  if (!student.planId) return 0;
+  if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") return 0;
+  const plan = planOf(student.planId);
+  if (!plan) return 0;
+  const terms = studentMembershipTerms(student, plan);
+  const base = parseISO(`${untilDate.slice(0, 7)}-01`);
+  let created = 0;
+  // O periodo em uso vence no maximo 2 meses depois (mensal "depois do uso").
+  for (let k = 0; k <= 2; k++) {
+    const competence = format(addMonths(base, k), "yyyy-MM");
+    for (const planned of chargesDueIn(terms, competence)) {
+      if (planned.periodStart > untilDate) continue;
+      if (hasMembershipCharge(student.id, plan.id, planned)) continue;
+      store.charges.push(membershipCharge(student.id, plan, planned));
+      created += 1;
+    }
+  }
+  return created;
 }
 
 export const billingService = {
@@ -245,6 +305,16 @@ export const billingService = {
       if (idx === -1) throw notFoundError("Plano não encontrado.");
       const before = store.plans[idx];
       validatePlan({ ...before, ...payload });
+      // Mudar a periodicidade reinterpretaria os periodos ja cobrados dos alunos.
+      if (payload.period && payload.period !== before.period && activeStudentsInPlan(id) > 0) {
+        throw validationError([
+          {
+            field: "period",
+            message:
+              "Não é possível mudar a periodicidade de um plano com alunos ativos. Crie um novo plano.",
+          },
+        ]);
+      }
       store.plans[idx] = {
         ...before,
         ...payload,
@@ -340,7 +410,7 @@ export const billingService = {
         auditLogService.record({
           action: "created",
           target: { type: "charge", label: `Competência ${competenceLabel(competence)}` },
-          predicate: `gerou ${created} mensalidade(s) da competência ${competenceLabel(competence)}`,
+          predicate: `gerou ${plural(created, "mensalidade", "mensalidades")} da competência ${competenceLabel(competence)}`,
         });
       }
       return { created };
@@ -380,6 +450,7 @@ export const billingService = {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       c.status = "canceled";
+      c.canceledBy = "user";
       c.paidAt = undefined;
       c.method = undefined;
       c.updatedAt = nowIso();
@@ -388,12 +459,25 @@ export const billingService = {
     });
   },
 
-  // Reverte o cancelamento da cobrança (volta a ficar em aberto).
+  // Reverte o cancelamento manual da cobrança (volta a ficar em aberto). Cancelada
+  // pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre:
+  // voltaria a cobrar um periodo que o novo arranjo ja cobre.
   reopenCharge(id: Id): Promise<ChargeView> {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      if (c.status !== "canceled") {
+        throw apiError("VALIDATION", "Só é possível reabrir uma cobrança cancelada.", { httpStatus: 409 });
+      }
+      if (c.canceledBy === "system") {
+        throw apiError(
+          "VALIDATION",
+          "Esta cobrança foi cancelada automaticamente pelo sistema e não pode ser reaberta.",
+          { httpStatus: 409 },
+        );
+      }
       c.status = "pending";
+      c.canceledBy = undefined;
       c.updatedAt = nowIso();
       recordChargeEvent(c, "status_changed", "reabriu a");
       return clone(toChargeView(c));
@@ -401,22 +485,24 @@ export const billingService = {
   },
 
   /**
-   * Remove as cobrancas em aberto ou canceladas da competencia, para gerar de
-   * novo. Cobrancas pagas nunca sao apagadas (sao registro de recebimento).
+   * Remove as mensalidades em aberto ou canceladas da competencia, para gerar de
+   * novo. Pagas nunca sao apagadas (sao registro de recebimento) e aulas
+   * avulsas ficam (nao sao recriadas pela geracao).
    */
   clearCharges(competence: string): Promise<{ deleted: number; keptPaid: number }> {
     return simulateWrite(() => {
-      const inCompetence = store.charges.filter((c) => c.competence === competence);
-      const keptPaid = inCompetence.filter((c) => c.status === "paid").length;
-      store.charges = store.charges.filter(
-        (c) => c.competence !== competence || c.status === "paid",
+      const inCompetence = store.charges.filter(
+        (c) => c.kind === "membership" && c.competence === competence,
       );
-      const deleted = inCompetence.length - keptPaid;
+      const keptPaid = inCompetence.filter((c) => c.status === "paid").length;
+      const removed = new Set(inCompetence.filter((c) => c.status !== "paid").map((c) => c.id));
+      store.charges = store.charges.filter((c) => !removed.has(c.id));
+      const deleted = removed.size;
       if (deleted > 0) {
         auditLogService.record({
           action: "deleted",
           target: { type: "charge", label: `Competência ${competenceLabel(competence)}` },
-          predicate: `removeu ${deleted} cobrança(s) em aberto da competência ${competenceLabel(competence)}`,
+          predicate: `removeu ${plural(deleted, "mensalidade em aberto ou cancelada", "mensalidades em aberto ou canceladas")} da competência ${competenceLabel(competence)}`,
           security: true,
         });
       }

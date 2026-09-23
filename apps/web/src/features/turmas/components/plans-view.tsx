@@ -103,7 +103,7 @@ function PlanRow({
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações do plano"
+            title={`Ações de ${plan.name}`}
             variant="ghost"
           />
         ) : null

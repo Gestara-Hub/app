@@ -23,8 +23,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, plural, pluralWord } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
 import {
   useAttendanceSummary,
@@ -51,11 +52,13 @@ function Kpi({
         <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           {icon}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold tabular-nums">{value}</p>
+          <p className="break-words text-xl font-semibold leading-tight tabular-nums xl:text-2xl">
+            {value}
+          </p>
           {hint ? (
-            <p className="truncate text-xs text-muted-foreground">{hint}</p>
+            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{hint}</p>
           ) : null}
         </div>
       </CardContent>
@@ -64,6 +67,8 @@ function Kpi({
 }
 
 export function AcademyDashboardView() {
+  // A data de "hoje" vem do relogio do usuario: so no client (sem erro de hidratacao).
+  const isClient = useIsClient();
   const todayDate = todayISO();
   const currentCompetence = format(parseISO(todayDate), "yyyy-MM");
   const todayLabel = (() => {
@@ -78,7 +83,8 @@ export function AcademyDashboardView() {
     dateTo: todayDate,
   });
   const groupsQuery = useClassGroups();
-  const chargesQuery = useCharges({ competence: currentCompetence });
+  // So mensalidades: aula avulsa nao entra em "Mensalidades recebidas".
+  const chargesQuery = useCharges({ competence: currentCompetence, kind: "membership" });
   const attendanceQuery = useAttendanceSummary(todayDate);
 
   const sessions = sessionsQuery.data ?? [];
@@ -102,6 +108,14 @@ export function AcademyDashboardView() {
   const scheduledSessions = sessions.filter(
     (s) => s.status === "scheduled",
   ).length;
+  const canceledSessions = sessions.filter((s) => s.status === "canceled").length;
+  const sessionsHint = [
+    completedSessions > 0 ? plural(completedSessions, "concluída", "concluídas") : null,
+    scheduledSessions > 0 ? plural(scheduledSessions, "agendada", "agendadas") : null,
+    canceledSessions > 0 ? plural(canceledSessions, "cancelada", "canceladas") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const upcomingSessions = [...sessions].sort((a, b) =>
     a.start.localeCompare(b.start),
   );
@@ -120,6 +134,14 @@ export function AcademyDashboardView() {
     (sum, c) => sum + c.amountCents,
     0,
   );
+  // "Quitadas" so quando ha mensalidade no mes e nenhuma em aberto.
+  const billedCharges = charges.filter((c) => c.status !== "canceled");
+  const revenueHint =
+    pendingRevenue > 0 || overdueRevenue > 0
+      ? `${formatCents(pendingRevenue)} pendente${overdueRevenue > 0 ? ` · ${formatCents(overdueRevenue)} em atraso` : ""}`
+      : billedCharges.length === 0
+        ? "Nenhuma mensalidade gerada no mês"
+        : "Todas as mensalidades quitadas";
 
   const isPending =
     sessionsQuery.isPending ||
@@ -134,7 +156,7 @@ export function AcademyDashboardView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Dashboard"
-          description={`Visão geral das turmas · ${todayLabel}`}
+          description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
         />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
@@ -176,7 +198,7 @@ export function AcademyDashboardView() {
         </div>
       ) : isPending ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-20 w-full rounded-lg" />
             ))}
@@ -186,7 +208,7 @@ export function AcademyDashboardView() {
       ) : (
         <div className="space-y-4">
           {/* Top 4 KPI Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Kpi
               icon={<GraduationCap className="size-5" />}
               label="Aulas hoje"
@@ -194,14 +216,14 @@ export function AcademyDashboardView() {
               hint={
                 sessions.length === 0
                   ? "Nenhuma aula hoje"
-                  : `${completedSessions} concluída(s) · ${scheduledSessions} agendada(s)`
+                  : sessionsHint
               }
             />
             <Kpi
               icon={<Users className="size-5" />}
               label="Alunos matriculados"
               value={String(totalEnrolled)}
-              hint={`Em ${activeGroups.length} turma(s) ativa(s)`}
+              hint={`Em ${plural(activeGroups.length, "turma ativa", "turmas ativas")}`}
             />
             <Kpi
               icon={<CheckCheck className="size-5" />}
@@ -215,7 +237,7 @@ export function AcademyDashboardView() {
               }
               hint={
                 attendance.total > 0
-                  ? `${attendance.absent} falta(s) · ${attendance.justified} justificada(s)`
+                  ? `${plural(attendance.absent, "falta", "faltas")} · ${plural(attendance.justified, "justificada", "justificadas")}`
                   : sessions.length > 0
                     ? "Chamada aberta para hoje"
                     : "Nenhuma aula programada"
@@ -225,11 +247,7 @@ export function AcademyDashboardView() {
               icon={<Wallet className="size-5" />}
               label="Mensalidades recebidas"
               value={formatCents(paidRevenue)}
-              hint={
-                pendingRevenue > 0 || overdueRevenue > 0
-                  ? `${formatCents(pendingRevenue)} pendente${overdueRevenue > 0 ? ` · ${formatCents(overdueRevenue)} em atraso` : ""}`
-                  : "Todas as cobranças quitadas"
-              }
+              hint={revenueHint}
             />
           </div>
 
@@ -280,12 +298,13 @@ export function AcademyDashboardView() {
                         (g) => g.id === s.classGroupId,
                       );
                       const isDone = s.status === "done";
+                      const isCanceled = s.status === "canceled";
                       return (
                         <li
                           key={s.id}
                           className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between"
                         >
-                          <div className="flex items-start gap-3 min-w-0">
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
                             <div className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-center shrink-0">
                               <span className="text-xs font-semibold tabular-nums block">
                                 {s.start}
@@ -294,9 +313,9 @@ export function AcademyDashboardView() {
                                 {s.end}
                               </span>
                             </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-semibold truncate">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <p className="min-w-0 break-words text-sm font-semibold">
                                   {s.className}
                                 </p>
                                 {s.modalityName ? (
@@ -316,7 +335,7 @@ export function AcademyDashboardView() {
                                     · {classGroup.enrolledCount}/
                                     {classGroup.capacity} alunos (
                                     {classGroup.availableSpots > 0
-                                      ? `${classGroup.availableSpots} vagas`
+                                      ? plural(classGroup.availableSpots, "vaga", "vagas")
                                       : "lotada"}
                                     )
                                   </span>
@@ -333,12 +352,19 @@ export function AcademyDashboardView() {
                               >
                                 Concluída
                               </Badge>
+                            ) : isCanceled ? (
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-normal text-muted-foreground line-through"
+                              >
+                                Cancelada
+                              </Badge>
                             ) : (
                               <Badge
                                 variant="outline"
                                 className="text-xs font-normal border-primary/40 text-primary bg-primary/5"
                               >
-                                Programada
+                                Agendada
                               </Badge>
                             )}
                             <Button variant="outline" size="sm" asChild>
@@ -446,7 +472,7 @@ export function AcademyDashboardView() {
                         {formatCents(paidRevenue)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {paidCharges.length} pagamento(s)
+                        {plural(paidCharges.length, "pagamento", "pagamentos")}
                       </p>
                     </div>
                     <div className="rounded-md border p-2.5 bg-muted/20">
@@ -455,7 +481,7 @@ export function AcademyDashboardView() {
                         {formatCents(pendingRevenue)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {pendingCharges.length} cobrança(s)
+                        {plural(pendingCharges.length, "mensalidade", "mensalidades")}
                       </p>
                     </div>
                   </div>
@@ -464,8 +490,9 @@ export function AcademyDashboardView() {
                     <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
                       <AlertCircle className="size-4 shrink-0" />
                       <span>
-                        <strong>{overdueCharges.length}</strong> mensalidade(s)
-                        em atraso ({formatCents(overdueRevenue)}).
+                        <strong>{overdueCharges.length}</strong>{" "}
+                        {pluralWord(overdueCharges.length, "mensalidade", "mensalidades")} em
+                        atraso ({formatCents(overdueRevenue)}).
                       </span>
                     </div>
                   ) : null}

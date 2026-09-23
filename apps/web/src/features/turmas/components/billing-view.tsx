@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  RotateCw,
   Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -28,7 +29,8 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { paymentMethodLabel } from "@/lib/labels";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, plural } from "@gestarahub/core/format";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type {
   ChargeKind,
   ChargeStatus,
@@ -170,6 +172,11 @@ const PERIOD_NAME: Record<PlanPeriod, string> = {
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
+/** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
+const SYSTEM_CANCELED_HINT =
+  "Cancelada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
+const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
+
 /** "2026-09" -> "Setembro de 2026". */
 function competenceLabel(competence: string): string {
   const label = format(parseISO(`${competence}-01`), "MMMM 'de' yyyy", { locale: ptBR });
@@ -210,10 +217,17 @@ export function BillingView() {
     setExpandedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const { data: charges, isLoading } = useCharges({
+  const {
+    data: charges,
+    isLoading,
+    isError,
+    refetch,
+  } = useCharges({
     competence,
     kind: kindFilter === "all" ? undefined : kindFilter,
   });
+  // O reset atua so nas mensalidades da competencia, qualquer que seja o filtro.
+  const { data: competenceMemberships } = useCharges({ competence, kind: "membership" });
 
   const generateMut = useGenerateCharges();
   const paidMut = useMarkChargePaid();
@@ -252,9 +266,11 @@ export function BillingView() {
       onSuccess: (r) =>
         toast.success(
           r.created > 0
-            ? `${r.created} cobrança(s) gerada(s).`
+            ? `${plural(r.created, "cobrança gerada", "cobranças geradas")}.`
             : "Nenhuma cobrança nova (já geradas).",
         ),
+      onError: (err) =>
+        toast.error(getErrorMessage(err, "Não foi possível gerar as cobranças.")),
     });
   };
 
@@ -272,6 +288,8 @@ export function BillingView() {
           toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
           setChargeToPay(null);
         },
+        onError: (err) =>
+          toast.error(getErrorMessage(err, "Não foi possível registrar o pagamento.")),
       },
     );
 
@@ -283,7 +301,11 @@ export function BillingView() {
       variant: "destructive",
     });
     if (!ok) return;
-    pendingMut.mutate(c.id, { onSuccess: () => toast.success("Pagamento desfeito.") });
+    pendingMut.mutate(c.id, {
+      onSuccess: () => toast.success("Pagamento desfeito."),
+      onError: (err) =>
+        toast.error(getErrorMessage(err, "Não foi possível desfazer o pagamento.")),
+    });
   };
 
   const revertCancel = async (c: ChargeView) => {
@@ -293,11 +315,16 @@ export function BillingView() {
       confirmLabel: "Reabrir cobrança",
     });
     if (!ok) return;
-    revertMut.mutate(c.id, { onSuccess: () => toast.success("Cobrança reaberta.") });
+    revertMut.mutate(c.id, {
+      onSuccess: () => toast.success("Cobrança reaberta."),
+      onError: (err) =>
+        toast.error(getErrorMessage(err, "Não foi possível reabrir a cobrança.")),
+    });
   };
 
   const [confirmClear, setConfirmClear] = useState(false);
-  const openCount = list.filter((c) => c.status !== "paid").length;
+  // Mesmo conjunto que o reset remove: mensalidades em aberto ou canceladas.
+  const resetCount = (competenceMemberships ?? []).filter((c) => c.status !== "paid").length;
 
   return (
     <>
@@ -355,7 +382,7 @@ export function BillingView() {
                   </div>
                 )}
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : `${activeList.length} ativa(s)`}
+                  {isLoading ? "—" : plural(activeList.length, "ativa", "ativas")}
                 </p>
               </div>
             </div>
@@ -379,7 +406,7 @@ export function BillingView() {
                   </div>
                 )}
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : `${paidList.length} paga(s)`}
+                  {isLoading ? "—" : plural(paidList.length, "paga", "pagas")}
                 </p>
               </div>
             </div>
@@ -476,7 +503,7 @@ export function BillingView() {
                   </div>
                 )}
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : `${canceledList.length} cancelada(s)`}
+                  {isLoading ? "—" : plural(canceledList.length, "cancelada", "canceladas")}
                 </p>
               </div>
             </div>
@@ -559,7 +586,18 @@ export function BillingView() {
           {/* List */}
           <ListContainer
             emptyState={
-              !isLoading && groups.length === 0 ? (
+              !isLoading && isError ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <AlertCircle className="size-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Não foi possível carregar as cobranças. Tente novamente.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => refetch()}>
+                    <RotateCw className="size-4" />
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : !isLoading && groups.length === 0 ? (
                 <div className="py-6">
                   <ModuleEmptyGuide
                     icon={<Wallet className="size-8" />}
@@ -758,16 +796,25 @@ export function BillingView() {
 
                                   {canManage ? (
                                     c.status === "canceled" ? (
-                                      <Button
-                                        variant="outline"
-                                        size="xs"
-                                        disabled={revertMut.isPending}
-                                        onClick={() => revertCancel(c)}
-                                        title="Reverter cancelamento"
-                                      >
-                                        <RotateCcw className="size-3.5" />
-                                        Reverter
-                                      </Button>
+                                      isSystemCanceled(c) ? (
+                                        <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
+                                          <Button variant="outline" size="xs" disabled>
+                                            <RotateCcw className="size-3.5" />
+                                            Reverter
+                                          </Button>
+                                        </span>
+                                      ) : (
+                                        <Button
+                                          variant="outline"
+                                          size="xs"
+                                          disabled={revertMut.isPending}
+                                          onClick={() => revertCancel(c)}
+                                          title="Reverter cancelamento"
+                                        >
+                                          <RotateCcw className="size-3.5" />
+                                          Reverter
+                                        </Button>
+                                      )
                                     ) : c.status === "paid" ? (
                                       <Button
                                         variant="ghost"
@@ -840,16 +887,25 @@ export function BillingView() {
 
                         {canManage ? (
                           c.status === "canceled" ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={revertMut.isPending}
-                              onClick={() => revertCancel(c)}
-                              title="Reverter cancelamento"
-                            >
-                              <RotateCcw className="size-4" />
-                              Reverter
-                            </Button>
+                            isSystemCanceled(c) ? (
+                              <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
+                                <Button variant="outline" size="sm" disabled>
+                                  <RotateCcw className="size-4" />
+                                  Reverter
+                                </Button>
+                              </span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={revertMut.isPending}
+                                onClick={() => revertCancel(c)}
+                                title="Reverter cancelamento"
+                              >
+                                <RotateCcw className="size-4" />
+                                Reverter
+                              </Button>
+                            )
                           ) : c.status === "paid" ? (
                             <Button
                               variant="ghost"
@@ -973,9 +1029,12 @@ export function BillingView() {
         title="Resetar cobranças da competência"
         description={
           <>
-            Remove as{" "}
-            <strong className="text-foreground">{openCount} cobrança(s) em aberto ou canceladas</strong>{" "}
-            desta competência para gerar de novo. Cobranças pagas são mantidas.
+            Remove{" "}
+            {resetCount === 1 ? "a " : "as "}
+            <strong className="text-foreground">
+              {plural(resetCount, "mensalidade em aberto ou cancelada", "mensalidades em aberto ou canceladas")}
+            </strong>{" "}
+            desta competência para gerar de novo. Mensalidades pagas e aulas avulsas são mantidas.
           </>
         }
         confirmLabel="Resetar cobranças"
@@ -983,13 +1042,17 @@ export function BillingView() {
         variant="destructive"
         isPending={clearMut.isPending}
         onConfirm={async () => {
-          const r = await clearMut.mutateAsync(competence);
-          toast.success(
-            r.deleted > 0
-              ? `${r.deleted} cobrança(s) removida(s)${r.keptPaid > 0 ? `, ${r.keptPaid} paga(s) mantida(s)` : ""}.`
-              : "Nenhuma cobrança em aberto para remover.",
-          );
-          setConfirmClear(false);
+          try {
+            const r = await clearMut.mutateAsync(competence);
+            toast.success(
+              r.deleted > 0
+                ? `${plural(r.deleted, "mensalidade removida", "mensalidades removidas")}${r.keptPaid > 0 ? `, ${plural(r.keptPaid, "paga mantida", "pagas mantidas")}` : ""}.`
+                : "Nenhuma mensalidade em aberto para remover.",
+            );
+            setConfirmClear(false);
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível resetar as cobranças."));
+          }
         }}
       />
 
@@ -1025,9 +1088,13 @@ export function BillingView() {
         isPending={cancelMut.isPending}
         onConfirm={async () => {
           if (!chargeToCancel) return;
-          await cancelMut.mutateAsync(chargeToCancel.id);
-          toast.success("Cobrança cancelada com sucesso.");
-          setChargeToCancel(null);
+          try {
+            await cancelMut.mutateAsync(chargeToCancel.id);
+            toast.success("Cobrança cancelada com sucesso.");
+            setChargeToCancel(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível cancelar a cobrança."));
+          }
         }}
       />
     </>

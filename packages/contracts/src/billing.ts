@@ -35,6 +35,11 @@ export interface PlanFilter {
 export type ChargeKind = "membership" | "dropin";
 export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
+/**
+ * Quem cancelou: "user" (acao manual, pode ser reaberta) ou "system" (troca de
+ * plano/regra, inativacao, saida da aula; nao pode ser reaberta).
+ */
+export type ChargeCanceledBy = "system" | "user";
 
 export interface Charge {
   id: Id;
@@ -53,6 +58,7 @@ export interface Charge {
   status: ChargeStatus;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
+  canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
   cycleIndex?: number;
   cycleTotal?: number;
   isProrated?: boolean;

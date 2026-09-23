@@ -9,6 +9,7 @@ import type {
   UpdateClient,
 } from "@gestarahub/contracts";
 import { chargesDueIn } from "@gestarahub/core/billing";
+import { plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import { store } from "@/mocks/store";
 import {
@@ -22,7 +23,11 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
-import { cancelOpenMembershipCharges, studentMembershipTerms } from "./billingService";
+import {
+  cancelOpenMembershipCharges,
+  chargeStartedMembershipPeriods,
+  studentMembershipTerms,
+} from "./billingService";
 import { clientNoun } from "./nouns";
 
 function clone<T>(value: T): T {
@@ -191,6 +196,24 @@ export const clientsService = {
           inclusive: true,
         });
       }
+      // Troca da regra (momento do pagamento, entrada no meio do periodo ou dia
+      // de vencimento) muda os periodos/vencimentos: as mensalidades em aberto de
+      // periodos que ainda nao comecaram saem, e a geracao recria pela regra nova
+      // (sem cobrar de novo o que ja foi cobrado).
+      // Compara os termos efetivos (regra do aluno ou da academia), para nao
+      // cancelar nada quando so muda a forma de guardar a mesma regra.
+      const rulePlan = store.plans.find((p) => p.id === updated.planId);
+      const beforeTerms = rulePlan ? studentMembershipTerms(current, rulePlan) : undefined;
+      const afterTerms = rulePlan ? studentMembershipTerms(updated, rulePlan) : undefined;
+      const rulesChanged =
+        beforeTerms !== undefined &&
+        afterTerms !== undefined &&
+        (beforeTerms.strategy !== afterTerms.strategy ||
+          beforeTerms.timing !== afterTerms.timing ||
+          beforeTerms.dueDay !== afterTerms.dueDay);
+      if (!planChanged && rulesChanged && current.planId === updated.planId) {
+        cancelOpenMembershipCharges(updated.id, todayISO(), "Cancelada por troca da regra de cobrança");
+      }
       if (updated.planId && payload.initialCharge && payload.initialCharge.amountCents > 0) {
         const charge = initialMembershipCharge(updated, payload.initialCharge);
         const exists = store.charges.some(
@@ -218,9 +241,17 @@ export const clientsService = {
     return simulateWrite(() => {
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      const name = store.clients[idx].name;
+      const before = store.clients[idx];
+      const name = before.name;
+      // "Depois do uso": o periodo em uso (ou ja usado e ainda nao gerado) vira
+      // cobranca agora, senao se perderia com a geracao pulando inativos.
+      const plan = before.planId ? store.plans.find((p) => p.id === before.planId) : undefined;
+      const charged =
+        before.status === "active" && plan && studentMembershipTerms(before, plan).timing === "postpaid"
+          ? chargeStartedMembershipPeriods(before, todayISO())
+          : 0;
       store.clients[idx] = {
-        ...store.clients[idx],
+        ...before,
         status: "inactive",
         updatedAt: nowIso(),
       };
@@ -230,7 +261,7 @@ export const clientsService = {
       auditLogService.record({
         action: "inactivated",
         target: { type: "client", id, label: name },
-        predicate: `inativou o ${clientNoun()} ${name}${canceled > 0 ? ` e cancelou ${canceled} mensalidade(s) futura(s)` : ""}`,
+        predicate: `inativou o ${clientNoun()} ${name}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}`,
       });
     });
   },

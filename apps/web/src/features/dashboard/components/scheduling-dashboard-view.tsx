@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
@@ -59,6 +60,8 @@ function Kpi({
 }
 
 export function SchedulingDashboardView() {
+  // A data de "hoje" vem do relogio do usuario: so no client (sem erro de hidratacao).
+  const isClient = useIsClient();
   const todayDate = todayISO();
   const todayLabel = (() => {
     const l = format(parseISO(todayDate), "EEEE, d 'de' MMMM 'de' yyyy", {
@@ -99,7 +102,7 @@ export function SchedulingDashboardView() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description={`Visão geral · ${todayLabel}`} />
+      <PageHeader title="Dashboard" description={isClient ? `Visão geral · ${todayLabel}` : "Visão geral"} />
 
       <Onboarding />
 
