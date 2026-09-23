@@ -5,6 +5,13 @@ description: Launch and drive apps/web (Next dev) for a runtime smoke test — f
 
 # Smoke-test `apps/web` (launch + drive the real app)
 
+> **Run the suites first.** `pnpm test` (engine + services, <1s) and `pnpm e2e`
+> (Playwright, ~25s, reuses the dev server on :3000) cover the regression paths.
+> Only drive the app by hand for what changed or is not covered yet, and turn
+> every new bug into a spec in `apps/web/e2e` or `src/services/__tests__`.
+> E2E helpers live in `apps/web/e2e/fixtures.ts`: `loginAs`, `seedAcademy`,
+> `editWorld`, `student`, clock frozen at 2026-09-22, fails on console errors.
+
 The web app is a **client-heavy Next.js (App Router, Turbopack) mock**: data lives
 **client-side** in `localStorage["gestarahub:db"]`, seeded on first load. So `curl`
 only proves the shell boots — anything data-dependent (agenda cards, dashboard KPIs,
@@ -32,8 +39,9 @@ touching `@gestarahub/contracts` / `@gestarahub/core`):
 
 ## 2. Auth — forge the session cookie (skip the login flow)
 
-`middleware.ts` (`src/proxy.ts`) guards `(app)/*` via the cookie
-**`gestarahub_session=<userId>`** and redirects to `/login`. Seeded users live in
+`src/proxy.ts` guards `(app)/*` via the cookie **`gestarahub_session`**, whose
+value is the logged user's `UserView` as base64 JSON (see `lib/session.ts`), and
+redirects to `/login`. Easiest: log in through `/login` (the e2e `loginAs` does). Seeded users live in
 `apps/web/src/mocks/seed.ts`; use the **owner** for full permissions:
 
 | userId | who | perfil |

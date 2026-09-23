@@ -35,34 +35,40 @@ Seguindo as diretrizes fundamentais do projeto (`AGENTS.md`):
 2. **Interface do Usuário (UI) 100% em Português (`pt-BR`):**
    - Todos os rótulos de campos, botões, títulos, crachás de status, diálogos e notificações são apresentados em português brasileiro, adaptando os termos para o vocabulário familiar ao usuário.
 
+**Dívida conhecida (código ainda em português):** a pasta `apps/web/src/features/turmas`, o `turmasService` (e `useCancelReserva`, `cancelReserva`), os aliases de compatibilidade em `packages/contracts` (`Plano`, `CreatePlano`, `Cobranca`, `CobrancaView`, `Reserva`, `ReservaView`...) e campos depreciados (`ClassReservation.cobrancaId`, `ClassGroupView.vagasRestantes`). Os contratos canônicos já estão em inglês (`Plan`, `Charge`, `ClassReservation`, `availableSpots`); a renomeação do módulo fica pendente.
+
 ---
 
 ## 3. Matriz de Equivalência e Neutralidade de Domínio
 
-Para permitir que o modelo evolua para qualquer segmento de turmas sem quebras ou refatorações futuras, os conceitos são mapeados de maneira abstrata no contrato e traduzidos na interface:
+Para permitir que o modelo evolua para qualquer segmento de turmas sem quebras ou refatorações futuras, os conceitos são mapeados de maneira abstrata no contrato e traduzidos na interface. Linhas marcadas com *(planejado)* ainda **não existem** no contrato:
 
 | Conceito Operacional | Propriedade no Contrato (Inglês Neutro) | Exibição: Artes Marciais (BJJ) | Exibição: Idiomas / Cursos | Exibição: Dança / Movimento |
 | :--- | :--- | :--- | :--- | :--- |
 | **Aluno** | `Client` | Aluno / Atleta | Aluno / Estudante | Aluno / Dançarino |
 | **Instrutor** | `Professional` | Professor / Sensei | Professor / Teacher | Instrutor / Professor |
 | **Modalidade** | `Category` | Modalidade (ex: Jiu-Jitsu, Judô) | Idioma / Curso (ex: Inglês) | Estilo (ex: Ballet, Dança) |
-| **Nível do Aluno** | `progression.currentLevel` | **Faixa** (Branca, Azul, Roxa...) | **Nível** (A1, B2, Intermediário) | **Nível** (Iniciante, Avançado) |
-| **Sub-nível** | `progression.subLevel` | **Grau** (1 a 4) | **Módulo / Lição** (1 a 4) | **Estágio** (1 a 3) |
-| **Responsável** | `guardian` | Pai / Mãe (Kids) | Pai / Mãe (Kids/Teens) | Responsável Legal |
+| **Nível do Aluno** *(planejado)* | `progression.currentLevel` | **Faixa** (Branca, Azul, Roxa...) | **Nível** (A1, B2, Intermediário) | **Nível** (Iniciante, Avançado) |
+| **Sub-nível** *(planejado)* | `progression.subLevel` | **Grau** (1 a 4) | **Módulo / Lição** (1 a 4) | **Estágio** (1 a 3) |
+| **Responsável** *(planejado)* | `guardian` | Pai / Mãe (Kids) | Pai / Mãe (Kids/Teens) | Responsável Legal |
 | **Turma** | `ClassGroup` | Turma / Horário de Treino | Turma / Grupo de Estudo | Turma |
-| **Público-alvo** | `audience` | Categoria (Kids, Adulto) | Faixa Etária (Kids, Teens) | Categoria |
+| **Público-alvo** *(planejado)* | `audience` | Categoria (Kids, Adulto) | Faixa Etária (Kids, Teens) | Categoria |
 | **Aula / Treino** | `ClassSession` | Treino / Sessão | Aula | Aula |
 | **Lista de Chamada** | `SessionRosterEntry` | Lista do Tatame | Chamada da Sala | Lista de Frequência |
 | **Status da Presença**| `AttendanceStatus` | Presente, Falta, Justificada | Presente, Falta, Justificada | Presente, Falta, Justificada |
 | **Aula Experimental**| `ReservationKind = "trial"` | Aula Experimental | Aula Demonstrativa | Aula Teste |
-| **Mensalidade** | `Plan` / `Charge` | Plano / Mensalidade | Mensalidade / Parcela | Mensalidade / Plano |
+| **Mensalidade** | `Plan` (no aluno: `Client.planId`) / `Charge` | Plano / Mensalidade | Mensalidade / Parcela | Mensalidade / Plano |
 
 ---
 
-## 4. Estrutura de Dados Estendida
+## 4. Estrutura de Dados Estendida (planejada, ainda não implementada)
 
-### A. Aluno (`Client`) com Progressão e Responsável
-Em `packages/contracts/src/client.ts`, os novos campos são opcionais para garantir retrocompatibilidade com qualquer outro modelo:
+> ⚠️ **Nada desta seção existe no código hoje.** `Client` não tem `birthDate`, `guardian` nem `progression`; `ClassGroup` não tem `audience` nem `minLevel`; `SessionRosterEntry` não tem `levelDisplay`, `financialStatus`, `isMinor` nem `guardianPhone`. Os blocos abaixo são a proposta para quando graduação, kids e alerta financeiro na chamada entrarem. O contrato atual está em [11-modelo-3-turmas.md](11-modelo-3-turmas.md).
+
+O `Client` atual já tem, do Modelo 3, os campos de plano e assinatura: `planId`, `planStartDate`, `billingStrategy`, `cyclePaymentTiming`, `dueDay`, `discount` e `membershipStatus` (ver [15-regras-de-cobranca.md](15-regras-de-cobranca.md)).
+
+### A. Aluno (`Client`) com Progressão e Responsável *(planejado)*
+Proposta para `packages/contracts/src/client.ts`, com campos opcionais para garantir retrocompatibilidade com qualquer outro modelo:
 
 ```typescript
 export interface GuardianInfo {
@@ -94,8 +100,8 @@ export interface Client {
 }
 ```
 
-### B. Turma (`ClassGroup`) com Segmentação de Público
-Em `packages/contracts/src/class.ts`:
+### B. Turma (`ClassGroup`) com Segmentação de Público *(planejado)*
+Proposta para `packages/contracts/src/class.ts`:
 
 ```typescript
 export type ClassAudience = "all" | "kids" | "adults";
@@ -108,14 +114,24 @@ export interface ClassGroup {
 ```
 
 ### C. Chamada no Tatame (`SessionRosterEntry`)
-Para a experiência do professor no tatame ser ágil e informativa:
+Hoje a linha da chamada é:
 
 ```typescript
+export type SessionRosterKind = "enrolled" | "dropin" | "trial"; // matriculado | avulso | experimental
+
 export interface SessionRosterEntry {
   studentId: Id;
   studentName: string;
-  kind?: SessionRosterKind; // enrolled | dropin | trial | makeup
+  kind?: SessionRosterKind;
   attendance?: AttendanceStatus; // present | absent | justified
+}
+```
+
+Proposta *(planejado)* para a chamada informativa no tatame:
+
+```typescript
+export interface SessionRosterEntry {
+  // ...campos atuais
   levelDisplay?: string; // ex: "Faixa Azul (2º grau)"
   financialStatus?: "ok" | "overdue"; // indicador visual no tatame
   isMinor?: boolean; // indicador de menor de idade
@@ -123,20 +139,36 @@ export interface SessionRosterEntry {
 }
 ```
 
+O antigo `kind: "makeup"` (reposição) saiu: reposição foi removida do escopo.
+
 ---
 
 ## 5. Fronteiras de Módulos e Isolamento (ADR 01)
 
 - **Fundação Compartilhada:** Organizações, Unidades, Usuários, Permissões/RBAC, Sessão, Layout e Camada de Mock (`store.ts`) continuam comuns a todo o GestaraHub.
 - **Isolamento de Modelos:** Nenhuma regra de Jiu-Jitsu ou turmas polui entidades de barbearia (`Appointment`, `Service`, `TimeBlock`).
-- **Configuração de Tenant:** Tenants de academias possuem `model: "classes"` e `segment: "Artes Marciais"` ou `"Jiu-Jitsu"`.
-- **Tenant Ativo no Ambiente de Mock:** O tenant inicial do mock (`activeOrganizationId` em `seed.ts`) passa a apontar para a organização de academia (`ORG_ACADEMIA`), permitindo testar diretamente a experiência do tatame.
+- **Configuração de Tenant:** O tenant de academia do seed é a "Academia X" (`org-academia-x`), com `model: "classes"` e `segment: "Academia"`. O `segment` é só rótulo; o que muda o app é o `model`.
+- **Tenant Ativo no Ambiente de Mock:** O `activeOrganizationId` inicial em `seed.ts` continua sendo a **Corte Nobre**. Na prática quem escolhe o tenant é o login: a tela lista os usuários de todas as organizações e entrar como Ana Ribeiro (proprietária da Academia X) abre a academia. Os dois tenants nascem vazios, só com o proprietário (ver [../technical/03-multi-tenant-e-escopo.md](../technical/03-multi-tenant-e-escopo.md)).
 
 ---
 
-## 6. Próximos Passos e Priorização do Tatame
+## 6. Já Entregue
+
+- **Turmas, matrícula, calendário e chamada** — aulas geradas a partir da grade; chamada rápida (Presente / Faltou / Justificada, um clique), bloqueada para aulas futuras; frequência com destaque abaixo de 75% (ver [11-modelo-3-turmas.md](11-modelo-3-turmas.md)).
+- **Planos por aluno** — o plano e a assinatura ficam no aluno (`Client.planId`, `membershipStatus` etc.); plano mensal, quinzenal ou semanal, com valor maior que zero.
+- **Regras de cobrança** — antecipado ou depois do uso, proporcional ou ciclo cheio, dia de vencimento, desconto, geração idempotente, pagamento com forma obrigatória. Ver [15-regras-de-cobranca.md](15-regras-de-cobranca.md).
+- **Lista de espera** — turma lotada oferece lista de espera ou matrícula acima da capacidade; promoção manual.
+- **Aula avulsa e experimental** — avulsa gera cobrança avulsa; experimental não gera.
+- **Instrutor substituto** por aula.
+- **Validação contra o horário da unidade** — encontros fora do expediente são recusados; mudar o horário da unidade avisa quando deixa aulas de fora. Também há conflito de horário do instrutor e do aluno.
+- **Auditoria** das operações de turma, matrícula e de todas as operações financeiras.
+- **Testes automatizados** — motor de cobrança, regras dos services e fluxos e2e (turmas, mensalidades, cadastros, configurações, mobile). Ver [../technical/04-estrategia-de-testes.md](../technical/04-estrategia-de-testes.md).
+
+## 7. Próximos Passos e Priorização do Tatame
 
 1. **Incorporar sugestões do parceiro de teste:** Receber e priorizar o feedback prático do professor de Jiu-Jitsu.
-2. **Implementar a chamada ágil:** Fluxo com poucos cliques para marcar presenças e registrar faltas.
-3. **Adicionar graduação no perfil do aluno:** Registro de faixa atual, graus e data de graduação.
-4. **Alerta discreto de mensalidade pendente:** Informar o status financeiro diretamente na lista de chamada da aula.
+2. ~~**Implementar a chamada ágil**~~ — entregue (ver seção 6).
+3. **Adicionar graduação no perfil do aluno:** Registro de faixa atual, graus e data de graduação. *Ainda não implementado* (depende dos campos planejados da seção 4 e de uma tela de perfil do aluno, que também não existe).
+4. **Alerta discreto de mensalidade pendente:** Informar o status financeiro diretamente na lista de chamada da aula. *Ainda não implementado.*
+5. **Turmas kids e responsável:** data de nascimento, responsável e público-alvo da turma. *Ainda não implementado.*
+6. **Escopo do instrutor:** perfil de instrutor vendo só as próprias turmas. *Ainda não implementado.*

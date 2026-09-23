@@ -2,244 +2,280 @@
 
 ## Decisao
 
-O GestaraHub deve ser organizado em modulos funcionais. No MVP, apenas os modulos essenciais da rotina operacional de uma barbearia serao implementados no frontend mockado.
+O GestaraHub e organizado em modulos funcionais. Cada organizacao tem um modelo operacional (`scheduling` = atendimento individual, `classes` = turmas; `delivery` = entrega, sem telas), e o menu mostra so os modulos do seu modelo, filtrados tambem pelas permissoes do perfil (`components/layout/nav.ts`: `navForModel` + `can`).
 
-A navegacao do MVP usa uma linguagem unica e generica: Clientes, Equipe, Servicos, Agenda e Agendamentos. A arquitetura conceitual deve prever um sistema futuro de rotulos por segmento (label overrides), capaz de exibir, por exemplo, "Alunos" no lugar de "Clientes" para uma escola, sem reescrever telas. Esse sistema de rotulos NAO entra no MVP; e apenas previsao conceitual.
+| Menu | Rota | Modelo | Permissao |
+| --- | --- | --- | --- |
+| Dashboard | `/` | todos (conteudo por modelo) | `dashboard:view` |
+| Clientes / Alunos | `/clients` | todos ("Alunos" na academia) | `clients:view` |
+| Equipe | `/team` | todos | `team:view` |
+| Servicos | `/services` | `scheduling` | `services:view` |
+| Agenda | `/schedule` | `scheduling` | `schedule:view` |
+| Turmas | `/classes` | `classes` | `classes:view` |
+| Calendario | `/classes/calendar` | `classes` | `classes:view` |
+| Modalidades | `/classes/modalities` | `classes` | `classes:manage` |
+| Planos | `/classes/plans` | `classes` | `billing:view` |
+| Mensalidades | `/classes/billing` | `classes` | `billing:view` |
+| Usuarios (rodape) | `/users` | todos | `users:view` |
+| Auditoria (rodape) | `/audit` | todos | `audit:view` |
+| Configuracoes (rodape) | `/settings` | todos | `settings:view` |
+
+Rotulos por modelo: o menu troca "Clientes" por "Alunos" na academia, e as mensagens/auditoria trocam "cliente/categoria" por "aluno/modalidade" (`services/nouns.ts`). Rotulos configuraveis pelo tenant (label overrides) ainda nao existem.
 
 Convencao de vocabulario: "Equipe" e o rotulo da navegacao; "Profissional" e o termo usado no contexto de um agendamento e em telas de detalhe.
 
-## Modulo: Agenda
+## Modulo: Agenda (Modelo 1)
 
 ### Objetivo
 
 Centralizar a visualizacao e a gestao dos agendamentos, bloqueios e series recorrentes de cada profissional.
 
+Agenda e Agendamentos foram **unificados** em uma tela so (`/schedule`) com duas abas: **Calendario** e **Lista**. A antiga rota `/appointments` apenas redireciona para `/schedule`.
+
 ### Usuarios envolvidos
 
 - Proprietario/Admin
 - Gerente
 - Atendente
-- Profissional
+- Profissional (so a propria agenda; ver [06-perfis-permissoes.md](06-perfis-permissoes.md))
 
-### Funcionalidades no MVP
+### Funcionalidades implementadas
+
+Aba Calendario (feita a mao, sem biblioteca):
 
 - Ver agenda por dia, semana e mes.
-- Filtrar por profissional.
-- Criar agendamento.
-- Editar agendamento.
-- Cancelar agendamento.
-- Confirmar agendamento.
-- Marcar como em atendimento.
-- Marcar como concluido.
-- Registrar nao comparecimento.
-- Ver detalhes rapidos do agendamento.
+- Filtrar por profissional (o perfil Profissional ve so a propria agenda).
+- Bloqueios e intervalos (almoco) aparecem destacados.
+
+Aba Lista:
+
+- Listar agendamentos ordenados por data e horario.
+- Buscar por cliente; filtrar por profissional, status e periodo.
+
+Acoes (compartilhadas entre as abas):
+
+- Criar e editar agendamento, com **um ou mais servicos** (duracao e preco somados).
+- Confirmar, iniciar atendimento, concluir, registrar nao comparecimento (motivo opcional) e cancelar (motivo obrigatorio).
+- Ver detalhes do agendamento.
 - Remarcar agendamento.
-- Bloquear horario (folga, almoco, indisponibilidade).
+- Bloquear horario (folga, indisponibilidade).
 - Criar agendamento recorrente (serie).
+
+Se faltar cadastro (cliente, profissional ou servico), o formulario mostra atalhos para cadastrar antes de agendar.
 
 #### Remarcar agendamento
 
-- Mover um agendamento para outro horario e/ou outro profissional, mantendo o mesmo cliente e o mesmo servico.
-- Mantem rastro no historico (registra que foi remarcado); a remarcacao nao transforma o agendamento em "concluido".
-- Sujeita as mesmas regras de conflito e disponibilidade de um novo agendamento.
-- Se o agendamento faz parte de uma serie, a remarcacao pergunta: "somente esta ocorrencia" ou "esta e as futuras".
+- Mover um agendamento para outro horario e/ou outro profissional, mantendo o mesmo cliente e os mesmos servicos.
+- Mantem rastro no historico do agendamento (horario/profissional anterior e motivo opcional) e registra na Auditoria; nao transforma o agendamento em "concluido".
+- Sujeita as regras de conflito e disponibilidade. Na remarcacao, fora do expediente, fora do horario do profissional e intervalo ainda bloqueiam (nao ha "remarcar mesmo assim" para esses casos; so para horario no passado).
+- Se o agendamento faz parte de uma serie, a remarcacao pergunta: "somente esta ocorrencia" ou "esta e as futuras". Na opcao "esta e as futuras", ocorrencias em conflito sao puladas e informadas.
 
 #### Bloquear horario
 
-- Um profissional pode ter bloqueios (folga, almoco, indisponibilidade) com data, inicio, fim e motivo opcional.
+- Um profissional pode ter bloqueios (folga, indisponibilidade) com data, inicio, fim e motivo opcional.
 - Horario bloqueado nao aceita agendamento e aparece destacado na agenda.
+- Almoco nao e bloqueio: e o intervalo do horario de trabalho do profissional.
 
 #### Criar agendamento recorrente (serie)
 
 - Frequencias: semanal, quinzenal e mensal (mesmo dia da semana e horario).
-- Termino: por numero de ocorrencias OU por data final. Nao ha opcao infinita no MVP; a serie gerada e sempre finita.
-- Geracao: cria N agendamentos (ocorrencias) ligados por um serieId.
-- Edicao e cancelamento: opcoes "somente esta ocorrencia" ou "esta e as futuras".
-- Conflito: se uma ocorrencia cair em horario ocupado, fora do expediente ou em bloqueio, ela e sinalizada como conflito e NAO e criada automaticamente (fica pendente de resolucao manual).
-- A recorrencia simples de atendimento individual NAO transforma o produto em modelo de turmas; e apenas a repeticao de um compromisso individual.
+- Termino: por numero de ocorrencias OU por data final. A serie gerada e sempre finita.
+- Geracao: cria N agendamentos ligados por um `seriesId`, com origem `recurrence`.
+- Conflito: ocorrencias que caem em horario ocupado, bloqueio, fora do expediente, fora do horario do profissional ou no intervalo NAO sao criadas; um aviso informa quantas ficaram de fora para resolucao manual.
+- Editar e cancelar agem em uma ocorrencia por vez (o escopo "esta e as futuras" so existe na remarcacao).
+- A recorrencia simples NAO transforma o produto em modelo de turmas.
 
 ### Regras
 
-- Sobreposicao de horario para o mesmo profissional e SEMPRE bloqueada no MVP.
-- Status de agendamento (chave -> rotulo): pendente -> Pendente; confirmado -> Confirmado; em_atendimento -> Em atendimento; concluido -> Concluido; cancelado -> Cancelado; nao_compareceu -> Nao compareceu.
-- Origem de agendamento (enum): manual, recorrencia. (futuro: online, whatsapp)
-- A duracao do agendamento segue a duracao do servico escolhido.
+- Ver [05-regras-negocio.md](05-regras-negocio.md). Resumo: sobreposicao para o mesmo profissional e bloqueio sempre barram; fora do horario do profissional, intervalo e fora do expediente pedem confirmacao ao criar/editar.
+- Status (codigo -> rotulo): `pending` -> Pendente; `confirmed` -> Confirmado; `in_service` -> Em atendimento; `completed` -> Concluido; `canceled` -> Cancelado; `no_show` -> Nao compareceu.
+- Origem: `manual`, `recurrence` (futuro: `online`, `whatsapp`).
 
 ### Entidades usadas
 
-- Cliente
-- Profissional
-- Servico
-- Agendamento
-- Bloqueio de horario
-- Serie (recorrencia)
+- Cliente, Profissional, Servico, Agendamento, Bloqueio de horario, Serie (recorrencia)
+
+### Ainda nao implementado
+
+- Agrupar/visualizar as ocorrencias de uma serie (por `seriesId`) na Lista.
+- Editar ou cancelar "esta e as futuras" ocorrencias de uma serie.
+- Fluxo guiado de resolucao das ocorrencias que ficaram em conflito.
 
 ### Fora de escopo no MVP
 
-- Encaixe manual com alerta de conflito (futuro). No MVP nao ha sobreposicao de horario para o mesmo profissional; toda sobreposicao e bloqueada.
+- Encaixe com sobreposicao para o mesmo profissional.
 - Sincronizacao com Google Calendar.
 - Recorrencia avancada (alem de semanal, quinzenal e mensal).
-- Lista de espera automatica.
 - Confirmacao automatica por WhatsApp.
 - Agendamento online pelo cliente.
+- Exportacao da lista e edicao em lote.
 
-## Modulo: Agendamentos
-
-### Objetivo
-
-Oferecer uma visao em lista/tabela de todos os agendamentos, complementar a visao de calendario da Agenda. Serve para buscar, filtrar e revisar agendamentos sem depender da navegacao por datas.
-
-A Agenda e a visao de calendario (dia, semana e mes); Agendamentos e a visao em lista da mesma entidade. As acoes (criar, editar, remarcar, cancelar, mudar status) sao compartilhadas entre as duas telas.
-
-### Usuarios envolvidos
-
-- Proprietario/Admin
-- Gerente
-- Atendente
-- Profissional
-
-### Funcionalidades no MVP
-
-- Listar agendamentos em tabela.
-- Filtrar por status, profissional, periodo e cliente.
-- Buscar por cliente.
-- Ordenar por data e horario.
-- Abrir o detalhe de um agendamento e executar as acoes de status (mesmas da Agenda).
-- Agrupar/visualizar as ocorrencias de uma serie recorrente (por serieId).
-
-### Entidades usadas
-
-- Agendamento
-- Cliente
-- Profissional
-- Servico
-- Serie (recorrencia)
-
-### Fora de escopo no MVP
-
-- Exportacao da lista.
-- Relatorios gerenciais sobre os agendamentos.
-- Edicao em lote.
-
-## Modulo: Clientes
+## Modulo: Clientes / Alunos
 
 ### Objetivo
 
-Organizar clientes e permitir acesso rapido ao historico de agendamentos.
+Organizar o cadastro de clientes (Modelo 1) ou alunos (Modelo 3, mesmo `Client`).
 
-### Funcionalidades no MVP
+### Funcionalidades implementadas
 
-- Listar clientes.
-- Buscar cliente por nome ou telefone.
-- Criar cliente.
-- Editar cliente.
-- Ativar ou inativar cliente.
-- Ver dados basicos e historico mockado.
+- Listar, buscar por nome ou telefone e filtrar por status.
+- Criar, editar, inativar e reativar (com confirmacao).
+- Dados: nome, telefone (WhatsApp), e-mail, observacoes e endereco estruturado (CEP, rua, numero, complemento etc.).
+- Na academia, o cadastro do aluno inclui o plano: plano de acesso, data de inicio, 1ª cobranca calculada pelo motor, regra de cobranca propria (momento do pagamento, entrada no meio do periodo), dia de vencimento, situacao da assinatura (ativa, pausada, cancelada) e desconto (percentual ou fixo, com motivo). Ver [15-regras-de-cobranca.md](15-regras-de-cobranca.md).
+
+### Ainda nao implementado
+
+- Tela de historico do cliente (agendamentos, presencas ou cobrancas de um cliente especifico). O historico existe so por agendamento e na Auditoria.
 
 ### Fora de escopo no MVP
 
-- CRM avancado.
-- Segmentacao.
-- Campanhas.
-- Importacao de contatos.
+- CRM avancado, segmentacao, campanhas, importacao de contatos.
 
 ## Modulo: Equipe
 
 ### Objetivo
 
-Gerenciar os profissionais que realizam atendimentos. "Equipe" e o rotulo da navegacao; nas telas de detalhe e no contexto de um agendamento, usa-se o termo "Profissional".
+Gerenciar os profissionais (Modelo 1) ou professores/instrutores (Modelo 3).
 
-### Funcionalidades no MVP
+### Funcionalidades implementadas
 
-- Listar profissionais.
-- Criar profissional.
-- Editar profissional.
-- Ativar ou inativar profissional.
-- Definir servicos realizados.
-- Visualizar disponibilidade basica.
+- Listar, criar, editar, inativar e reativar profissionais.
+- Horario de trabalho por dia da semana com intervalo (almoco) opcional. O cadastro pode comecar sem horario.
+- Modelo 1: servicos que o profissional realiza (informativo; nao restringe o agendamento).
+- Modelo 3: modalidades que o instrutor leciona (`modalityIds`); so instrutores da modalidade aparecem no formulario da turma.
+- Cargo **opcional** (entidade `Role`), escolhido numa lista filtravel que so aceita cargos existentes; os cargos sao criados no CRUD de Cargos, aberto a partir da tela Equipe.
+- Telefone e endereco opcionais.
 
 ### Fora de escopo no MVP
 
-- Folha de pagamento.
-- Comissoes.
-- Controle de ponto.
-- Permissoes detalhadas por profissional.
+- Folha de pagamento, comissoes, controle de ponto.
 
-## Modulo: Servicos
+## Modulo: Servicos (Modelo 1)
 
 ### Objetivo
 
 Gerenciar os servicos oferecidos pelo negocio.
 
-### Funcionalidades no MVP
+### Funcionalidades implementadas
 
-- Listar servicos.
-- Criar servico.
-- Editar servico.
-- Ativar ou inativar servico.
-- Definir duracao.
-- Definir preco (em reais; armazenado em centavos).
-- Agrupar por categoria.
+- Listar, criar, editar, inativar e reativar servicos.
+- Definir duracao e preco (em reais; armazenado em centavos).
+- Categoria **opcional** (entidade `Category`), gerenciada no CRUD de Categorias da propria tela; sem categoria = "Sem categoria".
 
 ### Fora de escopo no MVP
 
-- Pacotes.
-- Planos.
-- Promocoes.
-- Precos dinamicos.
+- Pacotes, promocoes, precos dinamicos.
 
-## Modulo: Dashboard Operacional
+## Modulo: Turmas (Modelo 3)
 
 ### Objetivo
 
-Dar uma visao rapida do dia e orientar as proximas acoes.
+Gerenciar turmas recorrentes, matriculas, aulas e presenca.
 
-### Funcionalidades no MVP
+### Funcionalidades implementadas
 
-- Agendamentos de hoje.
-- Proximos atendimentos.
-- Atendimentos concluidos.
-- Cancelamentos e no-shows.
-- Receita estimada do dia.
-- Ocupacao por profissional.
+- Listar, criar, editar, desativar e reativar turmas: nome, modalidade, instrutor titular, capacidade, data de inicio, encontros semanais (dia + inicio + fim) e aceite de alunos avulsos com valor da aula avulsa.
+- Detalhe da turma: ocupacao, matriculados com frequencia, matricular alunos (turma lotada pede "Matricular mesmo assim"), cancelar matricula, lista de espera (adicionar, promover, remover).
+- Detalhe da aula (`/classes/sessions/[id]`): lista de chamada com matriculados, avulsos e experimentais; marcar presenca (presente, falta, justificada); adicionar aluno avulso ou experimental; remover da aula; instrutor substituto e restaurar titular.
+
+Regras em [05-regras-negocio.md](05-regras-negocio.md). Reposicao de aula foi removida.
+
+### Ainda nao implementado
+
+- Instrutor ver so as proprias turmas (hoje o perfil Profissional ve todas).
+
+## Modulo: Calendario (Modelo 3)
+
+- Grade semanal das aulas geradas a partir dos encontros das turmas, com atalho para a lista de chamada de cada aula. E a rota inicial da academia para quem nao ve o Dashboard.
+
+## Modulo: Modalidades (Modelo 3)
+
+- CRUD de modalidades (reusa `Category`): criar, editar, inativar e reativar. Acesso com `classes:manage`.
+
+## Modulo: Planos (Modelo 3)
+
+- CRUD de planos: nome, periodicidade (mensal, quinzenal, semanal) e valor (maior que zero). Inativar e reativar com confirmacao.
+
+## Modulo: Mensalidades (Modelo 3)
+
+- Cobrancas por competencia (mes), filtro por tipo (mensalidade ou avulsa).
+- Gerar cobrancas da competencia (idempotente), registrar pagamento com forma de pagamento, desfazer pagamento, cancelar, reabrir e "resetar cobrancas" (nunca apaga pagas).
+- Atrasado calculado na leitura. Regras completas em [15-regras-de-cobranca.md](15-regras-de-cobranca.md); motor em [`../technical/02-motor-de-cobranca.md`](../technical/02-motor-de-cobranca.md).
+- Sem gateway de pagamento.
+
+## Modulo: Dashboard
+
+### Objetivo
+
+Dar uma visao rapida do dia. O conteudo depende do modelo.
+
+### Modelo 1 (atendimento)
+
+- Cartoes: Agendamentos hoje, Receita estimada, Concluidos hoje, A confirmar.
+- Proximos agendamentos (pendentes e confirmados de hoje).
+- Por profissional (quantidade de agendamentos do dia).
+
+### Modelo 3 (academia)
+
+- Cartoes: Aulas hoje, Alunos matriculados, Presencas hoje, Mensalidades recebidas.
+- Aulas de hoje (com acesso a lista de chamada), Ocupacao das turmas, Mensalidades do mes.
+
+### Ainda nao implementado
+
+- Cartao de cancelamentos e no-shows.
 
 ### Fora de escopo no MVP
 
-- BI avancado.
-- Comparativos historicos profundos.
-- Metas.
-- Exportacoes.
+- BI avancado, comparativos historicos, metas, exportacoes.
 
-## Modulo: Configuracoes Basicas
+## Modulo: Usuarios
 
-### Objetivo
+- CRUD de usuarios em `/users`: nome, e-mail (unico), perfil, vinculo opcional com profissional, inativar/reativar.
+- Proprietario gerencia todos os perfis; Gerente so Atendente e Profissional.
+- Nao e possivel inativar a si mesmo nem inativar/rebaixar o ultimo proprietario ativo.
+- Sem senha nem convite por e-mail (login por selecao no mock).
 
-Preparar a estrutura minima do negocio usado no MVP.
+## Modulo: Auditoria
 
-### Funcionalidades no MVP
+- Log imutavel em `/audit`: quem fez, o que, quando, com detalhe das mudancas. Busca e filtro por tipo de entidade.
+- Proprietario ve tudo; Gerente ve eventos operacionais e eventos de usuarios Atendente/Profissional (filtro aplicado no service).
+- Cobre cadastros, usuarios, configuracoes, agendamentos, turmas, matriculas, aulas avulsas e operacoes financeiras.
+- Ainda nao auditados: criacao de serie recorrente, bloqueios de horario, presenca, lista de espera e instrutor substituto.
 
-- Exibir dados da organizacao mockada.
-- Exibir conceito de unidade como estrutura futura.
-- Definir horarios de funcionamento basicos no mock.
+## Modulo: Configuracoes
+
+### Funcionalidades implementadas
+
+Abas:
+
+- **Geral:** nome da organizacao, nome da unidade, telefone/WhatsApp, endereco da unidade e, na academia, **Regras de Cobranca** com previa calculada pelo motor.
+- **Horarios:** horario de funcionamento da unidade por dia, com varios turnos por dia. Salvar horarios que deixam aulas fora do expediente pede confirmacao.
+- **Dados de exemplo:** zerar os mocks (volta ao seed vazio, so com os proprietarios).
 
 ### Fora de escopo no MVP
 
 - Multiunidade completa.
-- Faturamento.
-- Integracoes.
-- Configuracao de add-ons.
-- Rotulos por segmento (label overrides) configuraveis pelo usuario.
+- Integracoes e configuracao de add-ons.
+- Rotulos por segmento configuraveis pelo usuario.
+
+## Modulo: Onboarding
+
+- Checklist de primeiros passos por modelo, com atalhos para cada tela, banner no topo e dialogo de boas-vindas.
+  - Academia: horario de funcionamento, regras de cobranca, modalidades, planos, professores/instrutores, alunos, primeira turma.
+  - Atendimento: horario de funcionamento, servicos, equipe, clientes, primeiro agendamento.
+- Tour guiado pelos itens do menu.
+
+## Modulo: Personalizador de tema
+
+- Cor base, cor de destaque, raio, fonte, estilo e cor do menu, com presets; tema claro/escuro. Sidebar escura por padrao. Acesso pela barra superior. Ver [`../frontend/06-decisoes-de-interface.md`](../frontend/06-decisoes-de-interface.md).
 
 ## Modulos futuros
 
-- Unidades
+- Unidades (multiunidade, Fase 5)
 - Relatorios gerenciais
-- Financeiro
+- Financeiro completo do tenant (gateway, cobranca automatica)
 - Estoque
 - Comissoes
 - WhatsApp e automacoes
-- Entregas/encomendas
-- Turmas/aulas
-- Planos e mensalidades
-- Controle de presenca
+- Entregas/encomendas (Modelo 2)
 - Rotulos por segmento (label overrides)

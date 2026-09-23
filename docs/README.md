@@ -19,6 +19,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 3. [product/02-modelos-operacionais.md](product/02-modelos-operacionais.md) — Conceito estrutural de modelos operacionais (`scheduling` vs `classes` vs `delivery`).
 4. [product/01-glossario.md](product/01-glossario.md) — Glossário dos termos do sistema.
 5. [product/06-perfis-permissoes.md](product/06-perfis-permissoes.md) — Perfis de acesso e RBAC.
+6. [product/15-regras-de-cobranca.md](product/15-regras-de-cobranca.md) — Regras de cobrança das mensalidades (antecipado/pós-pago, proporcional/mês cheio, vencimento). Substitui as regras de mensalidade do doc 11.
 
 ---
 
@@ -26,14 +27,19 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 
 ### Técnico & Arquitetura
 - [technical/00-decisoes-tecnicas.md](technical/00-decisoes-tecnicas.md) — Registro de decisões técnicas transversais (ADRs).
-- [technical/01-extensao-modelos-operacionais.md](technical/01-extensao-modelos-operacionais.md) — Separação modular de modelos operacionais sem genericização prematura.
+- [technical/01-extensao-modelos-operacionais.md](technical/01-extensao-modelos-operacionais.md) — Separação modular de modelos operacionais sem genericização prematura (Modelo 3 já implementado assim).
+- [technical/02-motor-de-cobranca.md](technical/02-motor-de-cobranca.md) — Motor de cobrança único em `packages/core/src/billing.ts`.
+- [technical/03-multi-tenant-e-escopo.md](technical/03-multi-tenant-e-escopo.md) — Mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor e sessão.
+- [technical/04-estrategia-de-testes.md](technical/04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
 - [frontend/01-arquitetura.md](frontend/01-arquitetura.md) — Arquitetura Next.js, TanStack Query e convenções de pastas.
 - [frontend/02-camada-de-dados-mock.md](frontend/02-camada-de-dados-mock.md) — Camada de simulação de API (`simulateRead` / `simulateWrite`).
 - [frontend/03-rotas-e-navegacao.md](frontend/03-rotas-e-navegacao.md) — Roteamento, menus adaptáveis por modelo operacional e RBAC.
-- [frontend/04-design-system.md](frontend/04-design-system.md) — Componentes compartilhados, shadcn/ui e Tailwind CSS.
+- [frontend/04-design-system.md](frontend/04-design-system.md) — Componentes compartilhados, shadcn/ui, Tailwind CSS e personalizador de tema.
+- [frontend/06-decisoes-de-interface.md](frontend/06-decisoes-de-interface.md) — Decisões de interface já implementadas (confirmações, sidebar escura, agenda feita à mão, mobile). Prevalece sobre 00–05.
+- [frontend/05-agenda-react-big-calendar.md](frontend/05-agenda-react-big-calendar.md) — *(Histórico)* Plano original da agenda com react-big-calendar, revertido; a agenda é feita à mão.
 
 ---
 
@@ -47,6 +53,12 @@ Estes documentos contêm a especificação de outros modelos operacionais desenv
 - [product/09-fluxos-principais.md](product/09-fluxos-principais.md) — Fluxos de barbearia.
 - [product/10-estados-e-mensagens.md](product/10-estados-e-mensagens.md) — Estados de agendamentos 1:1.
 - [product/12-modelo-2-entrega.md](product/12-modelo-2-entrega.md) — *(Futuro)* Modelo 2 (encomendas e entregas).
+
+---
+
+## Skills
+
+As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills/): `adr`, `architect`, `contract`, `smoke-web`, `web-data`, `web-feature`, `web-form`. Resumo de cada uma em [skills/README.md](skills/README.md). Regras gerais de código para agentes: [`../AGENTS.md`](../AGENTS.md) e [`../CLAUDE.md`](../CLAUDE.md).
 
 ---
 

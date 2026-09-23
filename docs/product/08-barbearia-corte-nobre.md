@@ -4,20 +4,23 @@
 > Este cenário de dados mockados pertence ao Modelo 1 (agendamento 1:1 de barbearia), que está atualmente em standby. O foco ativo do MVP é o **Modelo 3 (Turmas / Academia de Lutas)**.
 > Ver especificação do foco ativo em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md).
 
+> ⚠️ **Este documento NAO e mais o seed.** O seed (`apps/web/src/mocks/seed.ts`) cria cada tenant **vazio**: so organizacao, unidade e o usuario proprietario. Para a Corte Nobre isso e a organizacao "Corte Nobre" (`model: "scheduling"`), a unidade "Corte Nobre - Matriz" com `businessHours` vazio e o usuario Marcelo Andrade (`owner`). Profissionais, servicos, categorias, cargos, clientes, agendamentos e os demais usuarios abaixo **nao existem** ate alguem cadastra-los pela UI. Ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md).
+
 ## Decisao / Objetivo
 
-Este documento e o CENARIO CANONICO do GestaraHub: a fonte unica de verdade para todos os dados mockados do MVP.
+Este documento e o CENARIO DE REFERENCIA do Modelo 1: um roteiro de dados para **cadastro manual em demos e testes exploratorios**. Antes era a "fonte unica" dos dados mockados; desde que o seed passou a nascer vazio (onboarding real), ele deixou de ser carregado automaticamente.
 
-Sempre que o frontend mockado, os exemplos de tela, os testes ou os agentes de desenvolvimento precisarem de dados (organizacao, unidade, profissionais, servicos, clientes ou agendamentos), eles devem usar exatamente o que esta descrito aqui. Qualquer divergencia entre mock e este documento deve ser resolvida ajustando o mock, nao o cenario.
+Quando alguem precisar montar uma barbearia realista para demonstrar ou testar a agenda (organizacao, unidade, profissionais, servicos, clientes e agendamentos), pode usar os dados abaixo. Eles continuam coerentes entre si e com as regras atuais, mas divergencias entre este documento e o que esta no store nao sao bug.
 
-O cenario representa uma barbearia pequena e realista, suficiente para validar o nucleo operacional do MVP: Clientes, Equipe, Servicos, Agenda e Agendamentos.
+O cenario representa uma barbearia pequena e realista, suficiente para validar o nucleo operacional do Modelo 1: Clientes, Equipe, Servicos e Agenda.
 
 ## Contexto
 
-- A interface do MVP usa linguagem unica e generica de navegacao: Clientes, Equipe, Servicos, Agenda e Agendamentos.
+- Navegacao do tenant `scheduling` (`components/layout/nav.ts`): Dashboard, Clientes, Equipe, Servicos e Agenda; no rodape, Usuarios, Auditoria e Configuracoes. "Agendamentos" nao e mais um item proprio: a Agenda (`/schedule`) tem as abas Calendario e Lista, e `/appointments` redireciona para ela.
 - "Equipe" e o rotulo da navegacao; "Profissional" e usado no contexto de um agendamento e em telas de detalhe.
-- A arquitetura conceitual preve um sistema FUTURO de rotulos por segmento (label overrides). Esse sistema NAO entra no MVP; e apenas previsao conceitual.
+- Termos por modelo ja existem de forma simples (`services/nouns.ts`): no tenant de turmas, cliente vira "aluno" e categoria vira "modalidade". Um sistema completo de rotulos por segmento continua fora do MVP.
 - Projeto do zero: nada da v1 e reaproveitado. Todos os dados deste cenario sao novos e ficticios.
+- Todos os identificadores de codigo (status, origem, campos) estao em ingles; so os rotulos da UI ficam em portugues.
 
 ## Organizacao
 
@@ -29,7 +32,7 @@ O cenario representa uma barbearia pequena e realista, suficiente para validar o
 
 ## Unidade
 
-O MVP simula uma unica unidade.
+O MVP simula uma unica unidade (`store.unit` e singleton; multiunidade fica para a Fase 5). O seed ja cria a unidade com nome, endereco e telefone abaixo.
 
 | Campo | Valor |
 | --- | --- |
@@ -39,6 +42,8 @@ O MVP simula uma unica unidade.
 | Status | Ativa |
 
 ### Horario de funcionamento
+
+No seed, `businessHours` nasce **vazio**; o proprietario preenche em Configuracoes (o checklist de onboarding pede "Definir horário de funcionamento"). Enquanto estiver vazio, a Agenda nao valida expediente da unidade. A grade sugerida para o cenario e:
 
 | Dia | Funcionamento |
 | --- | --- |
@@ -54,6 +59,12 @@ O MVP simula uma unica unidade.
 
 Sao 4 profissionais. Todos atuam na unidade Corte Nobre - Matriz. Os dias de trabalho de cada profissional devem respeitar o horario de funcionamento da unidade.
 
+Como o cadastro funciona hoje (`Professional` em `packages/contracts/src/professional.ts`):
+
+- O papel/especialidade e um `Role` (cargo) **opcional** (`roleId`), criado antes no CRUD de Cargos.
+- `workingHours` pode ficar vazio (profissional sem escala aparece em todo dia aberto) e aceita intervalo de almoco (`breakStart`/`breakEnd`).
+- `serviceIds` ("Servicos que faz") pode ficar vazio e e **informativo**: no agendamento avulso qualquer profissional ativo pode fazer qualquer servico ativo; os servicos que ele realiza so aparecem destacados ("realiza") e no topo da lista (`appointmentsService`, `appointment-form.tsx`). Excecao: a criacao de serie recorrente ainda recusa servico que o profissional nao realiza (`recurrenceService`, erro `PROFESSIONAL_DOES_NOT_OFFER_SERVICE`).
+
 | Nome | Papel | Especialidade | Dias de trabalho | Servicos que faz |
 | --- | --- | --- | --- | --- |
 | Marcelo Andrade | Barbeiro e proprietario | Cortes classicos e navalha | Seg a Sab | Todos os 12 servicos |
@@ -62,6 +73,8 @@ Sao 4 profissionais. Todos atuam na unidade Corte Nobre - Matriz. Os dias de tra
 | Diego Santos | Barbeiro junior | Cortes basicos, barba e acabamentos | Qua a Sab | Corte Masculino, Corte Degrade, Corte Infantil, Pezinho / Acabamento, Barba, Sobrancelha |
 
 ### Quem faz quais servicos (matriz)
+
+Matriz para preencher `serviceIds` de cada profissional. Lembrete: ela destaca, mas nao impede, agendamentos avulsos.
 
 | Servico | Marcelo | Rafael | Bruno | Diego |
 | --- | --- | --- | --- | --- |
@@ -85,11 +98,11 @@ Observacoes:
 
 ## Usuarios (acesso)
 
-Sao 5 usuarios cobrindo os 4 perfis de acesso, incluindo o mix "usuario que e (ou nao) profissional". O perfil de acesso e distinto do cargo (ver `06-perfis-permissoes.md`).
+O seed cria **apenas Marcelo Andrade** (`owner`). Os outros 4 usuarios abaixo sao sugestao para cadastrar em Usuarios (`/users`) e demonstrar cada perfil; o perfil de acesso (`UserProfile`: `owner`, `manager`, `attendant`, `professional`) e distinto do cargo (ver `06-perfis-permissoes.md`).
 
 | Nome | E-mail | Perfil | Vinculo com profissional |
 | --- | --- | --- | --- |
-| Marcelo Andrade | marcelo@cortenobre.com | Proprietario | Sim (tambem atende) |
+| Marcelo Andrade | marcelo@cortenobre.com | Proprietario | Sim (tambem atende) — unico usuario do seed |
 | Patricia Nunes | patricia@cortenobre.com | Gerente | Nao |
 | Sofia Ramos | sofia@cortenobre.com | Atendente | Nao |
 | Rafael Lima | rafael@cortenobre.com | Profissional | Sim (Rafael) |
@@ -98,11 +111,11 @@ Sao 5 usuarios cobrindo os 4 perfis de acesso, incluindo o mix "usuario que e (o
 Observacoes:
 
 - Bruno (profissional) nao possui usuario — nem todo funcionario faz login.
-- O login e por selecao de usuario (senha irrelevante no mock); a topbar permite trocar de usuario para demonstrar cada perfil.
+- O login e por selecao de usuario, sem credenciais: a tela lista os usuarios de todas as organizacoes e escolher um entra na organizacao dele. A topbar permite trocar de usuario (e, com isso, de organizacao).
 
 ## Servicos
 
-Sao 12 servicos. O preco e exibido em reais; o preco em centavos e o valor de armazenamento para precisao.
+Sao 12 servicos. O preco e exibido em reais; o preco em centavos (`priceCents`) e o valor de armazenamento para precisao. A categoria e uma entidade `Category` do tenant (`categoryId`, **opcional**; sem categoria aparece como "Sem categoria"), entao as 4 categorias abaixo precisam ser cadastradas antes.
 
 | Nome | Categoria | Duracao | Preco (R$) | Preco (centavos) |
 | --- | --- | --- | --- | --- |
@@ -148,7 +161,7 @@ Sao 20 clientes. A maioria e recorrente; alguns sao novos; 1 a 2 estao inativos.
 
 ## Padroes de agenda
 
-A massa de dados deve ter entre 40 e 80 agendamentos distribuidos em aproximadamente 4 semanas, cobrindo passado, presente e futuro (tomando a data de referencia da simulacao como o "hoje" do cenario).
+Para uma demo realista, a massa de dados deve ter entre 40 e 80 agendamentos distribuidos em aproximadamente 4 semanas, cobrindo passado, presente e futuro (tomando a data de referencia da simulacao como o "hoje" do cenario).
 
 Distribuicao esperada:
 
@@ -160,7 +173,7 @@ Distribuicao esperada:
 - Variedade de status: pendentes, confirmados, em atendimento (no dia de hoje), concluidos (passado) e cancelados/no-shows espalhados.
 - Cancelamentos: ao menos alguns agendamentos cancelados no historico.
 - No-shows: ao menos alguns agendamentos marcados como Nao compareceu no passado.
-- Respeitar sempre as regras: nenhum profissional com sobreposicao de horario; nada fora do expediente; nada sobre bloqueios.
+- Respeitar sempre as regras: nenhum profissional com sobreposicao de horario; nada sobre bloqueios; nada fora do expediente (possivel com confirmacao, mas foge do cenario).
 
 ### Distribuicao indicativa por profissional
 
@@ -173,7 +186,7 @@ Distribuicao esperada:
 
 ## Series recorrentes de exemplo
 
-Pelo menos duas series recorrentes devem existir nos dados, ligadas por `serieId` e com origem `recorrencia`.
+Sugestao de duas series recorrentes, ligadas por `seriesId` e com origem `recurrence` (`RecurrenceSeries` em `packages/contracts/src/recurrence-series.ts`; frequencias `weekly`, `biweekly`, `monthly`).
 
 ### Serie 1 - Carlos Mendes (quinzenal, sabado, Marcelo)
 
@@ -200,36 +213,40 @@ Pelo menos duas series recorrentes devem existir nos dados, ligadas por `serieId
 Observacoes sobre series:
 
 - Cada serie gera N ocorrencias finitas (sem recorrencia infinita).
-- Se uma ocorrencia cair em horario ocupado, fora do expediente ou em bloqueio, ela e sinalizada como conflito e NAO e criada automaticamente.
-- Edicao/cancelamento de uma ocorrencia segue o escopo: "somente esta ocorrencia" ou "esta e as futuras".
+- Se uma ocorrencia cair em horario ocupado, fora do expediente da unidade, fora do horario do profissional, no intervalo de almoco ou em bloqueio, ela e sinalizada como conflito e NAO e criada (na serie nao ha a confirmacao "mesmo assim" do agendamento avulso).
+- **Remarcacao** de uma ocorrencia pergunta o escopo: "Somente esta ocorrência" ou "Esta e as futuras". **Cancelamento** e sempre de uma ocorrencia por vez (nao existe cancelar/excluir serie).
 
 ## Status de agendamento
 
+`AppointmentStatus` em `packages/contracts/src/common.ts`; rotulos em `lib/labels.ts`.
+
 | Chave | Rotulo |
 | --- | --- |
-| pendente | Pendente |
-| confirmado | Confirmado |
-| em_atendimento | Em atendimento |
-| concluido | Concluido |
-| cancelado | Cancelado |
-| nao_compareceu | Nao compareceu |
+| `pending` | Pendente |
+| `confirmed` | Confirmado |
+| `in_service` | Em atendimento |
+| `completed` | Concluído |
+| `canceled` | Cancelado |
+| `no_show` | Não compareceu |
 
 ## Origem de agendamento
 
+`AppointmentOrigin` = `"manual" | "recurrence"`. `online` e `whatsapp` sao futuros e **nao** estao no tipo.
+
 | Enum | Significado | Status no MVP |
 | --- | --- | --- |
-| manual | Criado por alguem da equipe na Agenda | No MVP |
-| recorrencia | Gerado por uma serie recorrente | No MVP |
-| online | Criado pelo cliente em canal online | Futuro |
-| whatsapp | Criado via WhatsApp | Futuro |
+| `manual` | Criado por alguem da equipe na Agenda | No MVP |
+| `recurrence` | Gerado por uma serie recorrente | No MVP |
+| `online` | Criado pelo cliente em canal online | Futuro (fora do tipo) |
+| `whatsapp` | Criado via WhatsApp | Futuro (fora do tipo) |
 
 ## Exemplos concretos de agendamento
 
-Os exemplos abaixo sao ilustrativos e 100% consistentes com o CANON (profissional faz o servico, dentro do expediente, sem sobreposicao). As datas usam o padrao do cenario.
+Os exemplos abaixo sao ilustrativos e consistentes com o cenario (profissional faz o servico, dentro do expediente, sem sobreposicao). Um agendamento aceita varios servicos (`serviceIds`); duracao e preco sao a soma.
 
 | Cliente | Profissional | Servico | Data | Horario | Status | Origem |
 | --- | --- | --- | --- | --- | --- | --- |
-| Carlos Mendes | Marcelo Andrade | Combo Corte + Barba | Sabado (dia cheio) | 10:00 - 11:00 | Confirmado | recorrencia |
+| Carlos Mendes | Marcelo Andrade | Combo Corte + Barba | Sabado (dia cheio) | 10:00 - 11:00 | Confirmado | recurrence |
 | Anderson Silva | Rafael Lima | Corte Degrade | Sabado (dia cheio) | 11:30 - 12:10 | Concluido | manual |
 | Lucas Ferreira | Diego Santos | Corte Infantil | Sabado (dia cheio) | 09:00 - 09:30 | Pendente | manual |
 | Gustavo Rocha | Bruno Costa | Pigmentacao de Barba | Terca (dia fraco) | 15:00 - 15:45 | Confirmado | manual |
@@ -243,6 +260,6 @@ Exemplos adicionais de estados especiais (para historico):
 
 ## Pendencias
 
-- Fixar a data de referencia ("hoje" do cenario) usada para distribuir passado/presente/futuro nos mocks, para manter os exemplos estaveis entre telas.
-- Definir o numero exato de agendamentos dentro da faixa 40-80 e a alocacao final por dia, garantindo o sabado cheio e a terca fraca.
-- O almoço dos barbeiros seniores (Marcelo e Rafael, 12:00–13:00) é modelado como intervalo do horário de trabalho (breakStart/breakEnd), não como bloqueio avulso — aparece como faixa "Almoço" na Agenda e recusa agendamento nesse horário. Bloqueios avulsos (folga/indisponibilidade) são criados pela UI.
+- Decidir se vale ter um "carregar cenario de demonstracao" opcional (hoje so os testes e2e montam dados via `localStorage`); se sim, este documento volta a ser a fonte desses dados.
+- A data de referencia e o volume de 40-80 agendamentos so importam para quem montar o cenario a mao; nao ha seed a fixar.
+- O almoço dos barbeiros seniores (Marcelo e Rafael, 12:00–13:00) deve ser cadastrado como intervalo do horário de trabalho (`breakStart`/`breakEnd`), não como bloqueio avulso — aparece como faixa "Almoço" na Agenda e, ao agendar nesse horário, pede confirmação ("Agendar durante o intervalo?") em vez de recusar. Bloqueios avulsos (folga/indisponibilidade) são criados pela UI e recusam agendamento.

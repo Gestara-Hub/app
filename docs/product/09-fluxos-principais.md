@@ -4,22 +4,25 @@
 
 Os fluxos (jornadas) do MVP devem ser documentados de forma explicita, cada um com pre-condicoes, passos numerados e pos-condicao/estados resultantes. Isso orienta o frontend mockado, alinha o time e serve de contrato comportamental para testes e para a evolucao futura do backend.
 
-A interface do MVP usa uma linguagem unica e generica de navegacao: Clientes, Equipe, Servicos, Agenda e Agendamentos. O termo "Profissional" e usado no contexto de um agendamento e em telas de detalhe. O sistema futuro de rotulos por segmento (label overrides) NAO entra no MVP.
+A navegacao depende do modelo operacional do tenant (`Organization.model`, ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md)). No Modelo 1 (`scheduling`): Dashboard, Clientes, Equipe, Servicos e Agenda (a Agenda tem as abas Calendario e Lista; "Agendamentos" nao e mais item proprio). No Modelo 3 (`classes`): Dashboard, Alunos, Equipe, Turmas, Calendario, Modalidades, Planos e Mensalidades. Em ambos, no rodape: Usuarios, Auditoria e Configuracoes. O termo "Profissional" e usado no contexto de um agendamento e em telas de detalhe.
 
 ## Contexto
 
-- As regras de negocio que regem estes fluxos estao em `docs/product/05-regras-negocio.md`. Sempre que um fluxo cita uma regra (conflito, disponibilidade, status, origem, remarcacao, bloqueio, recorrencia), a fonte normativa e aquele documento.
-- O cenario, os dados e os exemplos usados aqui sao a barbearia ficticia Corte Nobre, documentada em `docs/product/08-barbearia-corte-nobre.md` (fonte unica de verdade dos dados mock).
-- Os perfis e quem pode executar cada acao estao em `docs/product/06-perfis-permissoes.md`. No MVP, o usuario logado e tratado como Proprietario/Admin.
+- As regras de negocio que regem estes fluxos estao em `docs/product/05-regras-negocio.md`. Sempre que um fluxo cita uma regra (conflito, disponibilidade, status, origem, remarcacao, bloqueio, recorrencia), a fonte normativa e aquele documento; aqui fica a jornada.
+- O cenario usado nos exemplos e a barbearia ficticia Corte Nobre, documentada em `docs/product/08-barbearia-corte-nobre.md`. Atencao: ela e um roteiro de cadastro manual, **nao** o seed. O seed cria o tenant vazio, so com o proprietario (Marcelo Andrade).
+- Os perfis e quem pode executar cada acao estao em `docs/product/06-perfis-permissoes.md`. O perfil vem do usuario escolhido no login (`owner`, `manager`, `attendant`, `professional`) e cada acao e liberada por permissao (`can`/`useCan`).
 - Os modulos e telas envolvidos estao em `docs/product/03-modulos.md`.
+- Modelo 3 (turmas): regras em [`11-modelo-3-turmas.md`](11-modelo-3-turmas.md); mensalidades em [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md).
 
 ## Escopo
 
 Fluxos documentados neste arquivo:
 
+Modelo 1 (agenda individual):
+
 1. Login mockado
 2. Abrir o dia (dashboard operacional)
-3. Criar agendamento (incluindo o caminho de conflito de horario)
+3. Criar agendamento (incluindo conflitos bloqueantes e confirmacoes "mesmo assim")
 4. Remarcar agendamento (com escopo de serie)
 5. Mudar status do agendamento (confirmar, em atendimento, concluir, cancelar, no-show)
 6. Bloquear horario de um profissional
@@ -27,22 +30,30 @@ Fluxos documentados neste arquivo:
 8. Cadastrar/editar Cliente
 9. Cadastrar/editar Servico
 10. Cadastrar/editar Profissional
-11. Buscar cliente e ver historico
+11. Buscar cliente (sem tela de historico)
+
+Modelo 3 (turmas), resumido:
+
+12. Cadastrar aluno com plano e 1a cobranca
+13. Gerar mensalidades da competencia
+14. Registrar pagamento
+15. Matricular aluno e lista de espera
+16. Fazer a chamada
 
 ## Fora de escopo
 
-- Encaixe manual com alerta de conflito. No MVP, a sobreposicao de horario para o mesmo profissional e SEMPRE bloqueada (ver `docs/product/05-regras-negocio.md`).
+- Encaixe sobre outro agendamento. A sobreposicao de horario para o mesmo profissional e SEMPRE bloqueada, assim como o horario com bloqueio.
 - Backend real, persistencia real e autenticacao real. Tudo e mockado.
 - Origens de agendamento `online` e `whatsapp`.
 - Recorrencia infinita.
-- Sistema de rotulos por segmento (label overrides).
+- Sistema completo de rotulos por segmento (label overrides). Hoje so existe a troca simples cliente/aluno e categoria/modalidade por modelo.
 
 ## Convencoes dos fluxos
 
-- Entidades: Cliente, Profissional, Servico, Agendamento, Bloqueio de horario, Serie (recorrencia), Organizacao, Unidade.
-- Status de agendamento (chave -> rotulo): `pendente` -> Pendente; `confirmado` -> Confirmado; `em_atendimento` -> Em atendimento; `concluido` -> Concluido; `cancelado` -> Cancelado; `nao_compareceu` -> Nao compareceu.
-- Origem de agendamento (enum): `manual`, `recorrencia`. (futuro: `online`, `whatsapp`)
-- Funcionamento da unidade Corte Nobre - Matriz: Seg a Sex 09:00-20:00, Sab 08:00-18:00, Domingo fechado.
+- Entidades (contrato em ingles): `Client`, `Professional`, `Service`, `Category`, `Role`, `Appointment`, `TimeBlock`, `RecurrenceSeries`, `Organization`, `Unit`. Modelo 3: `ClassGroup`, `Enrollment`, `ClassSession`, `Attendance`, `ClassReservation`, `WaitlistEntry`, `Plan`, `Charge`.
+- Status de agendamento (chave -> rotulo): `pending` -> Pendente; `confirmed` -> Confirmado; `in_service` -> Em atendimento; `completed` -> Concluído; `canceled` -> Cancelado; `no_show` -> Não compareceu.
+- Origem de agendamento (enum): `manual`, `recurrence`. (futuro, fora do tipo: `online`, `whatsapp`)
+- Funcionamento da unidade: nasce vazio no seed e e definido em Configuracoes. Enquanto vazio, nao ha validacao de expediente. No cenario Corte Nobre: Seg a Sex 09:00-20:00, Sab 08:00-18:00, Domingo fechado.
 
 ---
 
@@ -50,27 +61,28 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Aplicacao frontend carregada, sem sessao ativa.
-- Usuario mock de Proprietario/Admin disponivel no mock (ex.: Marcelo Andrade, proprietario da Corte Nobre).
+- Aplicacao frontend carregada, sem sessao ativa (cookie `gestarahub_session` ausente).
+- Existe ao menos um usuario ativo. O seed traz dois proprietarios: Marcelo Andrade (Corte Nobre, `scheduling`) e Ana Ribeiro (Academia X, `classes`).
 
 ### Passos
 
 1. O usuario abre a aplicacao e ve a tela de login.
-2. O usuario informa as credenciais mockadas (ou usa um acesso de demonstracao).
-3. O usuario aciona "Entrar".
-4. O sistema valida de forma simulada e cria uma sessao mockada com perfil Proprietario/Admin.
-5. O sistema redireciona para o dashboard operacional (abrir o dia).
+2. A tela lista os usuarios de todas as organizacoes (nome, organizacao e perfil). Nao ha campo de e-mail nem senha.
+3. O usuario clica no usuario desejado.
+4. A server action `signIn` grava o `UserView` no cookie de sessao. O perfil de acesso e o do usuario escolhido; a organizacao ativa passa a ser a dele.
+5. O sistema redireciona para a rota de origem (se permitida) ou para a primeira rota acessivel: o Dashboard (`/`) para quem tem `dashboard:view`; senao, a rota nucleo do modelo (`/schedule` ou `/classes/calendar`).
 
 ### Pos-condicao / Estados resultantes
 
-- Sessao mockada ativa com a organizacao Corte Nobre e a unidade Corte Nobre - Matriz selecionadas.
-- Usuario na tela inicial (dashboard) com a navegacao disponivel: Clientes, Equipe, Servicos, Agenda, Agendamentos.
+- Sessao mockada ativa com a organizacao e a unidade do usuario.
+- Navegacao filtrada pelo modelo do tenant e pelas permissoes do perfil.
+- A topbar permite trocar de usuario (`switchUser`), o que tambem troca de organizacao.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Organizacao, Unidade.
-- Perfis: usuario logado tratado como Proprietario/Admin (ver `docs/product/06-perfis-permissoes.md`).
-- Autenticacao visual mockada, sem backend (ver `docs/product/04-mvp-barbearia.md`).
+- Entidades: `User`, `Organization`, `Unit`.
+- Perfis e permissoes: ver `docs/product/06-perfis-permissoes.md`.
+- Sessao e escopo do tenant: ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md).
 
 ---
 
@@ -78,27 +90,30 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Dados mock de agendamentos do dia carregados (ver `docs/product/08-barbearia-corte-nobre.md`).
+- Sessao mockada ativa em um tenant `scheduling`, com perfil que tem `dashboard:view`.
 
 ### Passos
 
-1. Apos o login, o sistema exibe o dashboard operacional para a data de hoje.
-2. O sistema apresenta os cards de indicadores do dia: agendamentos de hoje, proximos atendimentos, concluidos, cancelamentos e no-shows e receita estimada do dia.
-3. O sistema mostra a ocupacao por profissional (ex.: Marcelo Andrade com agenda mais cheia, Diego Santos com a mais vazia).
-4. O usuario consulta a lista de proximos atendimentos com horario, cliente, servico, profissional e status.
-5. O usuario pode clicar em um atendimento para abrir o detalhe, ou navegar para a Agenda.
+1. O sistema exibe o Dashboard com a data de hoje ("Visão geral · <data>") e, enquanto houver passos pendentes, o checklist de onboarding.
+2. O sistema apresenta quatro cards do dia:
+   - **Agendamentos hoje**: agendamentos do dia, exceto cancelados.
+   - **Receita estimada**: soma dos precos dos agendamentos confirmados, em atendimento e concluidos.
+   - **Concluídos hoje**.
+   - **A confirmar**: agendamentos pendentes.
+3. O card **Próximos agendamentos** lista os pendentes e confirmados de hoje por horario (horario, cliente, servicos, profissional e status), com o atalho "Ver agenda".
+4. O card **Por profissional** mostra quantos agendamentos (nao cancelados) cada profissional ativo tem hoje. E uma contagem, nao uma taxa de ocupacao.
 
 ### Pos-condicao / Estados resultantes
 
-- Usuario tem a visao operacional do dia e os atalhos para as proximas acoes.
+- Usuario tem a visao do dia e o atalho para a Agenda.
 - Nenhum dado e alterado; o fluxo e de leitura.
+- Nao existem cards de cancelamentos ou no-shows, nem ocupacao percentual por profissional. Os itens da lista nao abrem o detalhe (ainda nao implementado).
 
 ### Entidades e regras envolvidas
 
-- Entidades: Agendamento, Profissional, Servico, Cliente.
-- Regras de receita estimada: considera confirmados, em atendimento e concluidos; cancelados e no-shows nao contam (ver `docs/product/05-regras-negocio.md`).
-- Calculo a partir do preco do servico (em reais; armazenado em centavos), ex.: um Combo Completo concluido soma R$ 90,00 a receita estimada.
+- Entidades: `Appointment`, `Professional`, `Service`, `Client`.
+- Receita estimada: confirmados, em atendimento e concluidos; cancelados, pendentes e no-shows nao contam. Valor de cada agendamento = soma dos precos dos seus servicos (`totalPriceCents`).
+- No tenant `classes`, o Dashboard e outro (Aulas hoje, Alunos matriculados, Presenças hoje, Mensalidades recebidas).
 
 ---
 
@@ -106,39 +121,46 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Existem clientes, profissionais e servicos ativos no mock.
-- O usuario esta na Agenda ou na acao "Novo agendamento".
+- Sessao mockada ativa com permissao de criar agendamento.
+- Existem ao menos um cliente, um profissional e um servico ativos. Se faltar algum, o formulario mostra "Antes de agendar, cadastre" com atalhos e o botao fica desabilitado.
 
 ### Passos (caminho feliz)
 
-1. O usuario abre a Agenda e escolhe a data e o profissional (ex.: 26/06/2026, Rafael Lima).
-2. O usuario aciona "Novo agendamento" em um horario livre (ex.: 14:00).
-3. O usuario seleciona o cliente (ex.: Carlos Mendes). Clientes inativos nao aparecem como primeira opcao.
-4. O usuario seleciona o servico (ex.: Corte Degrade, 40 min, R$ 55,00). So aparecem servicos ativos que o profissional realiza.
-5. O sistema calcula o horario de fim a partir do inicio mais a duracao do servico (14:00 + 40 min = 14:40).
-6. O sistema valida disponibilidade: dentro do expediente da unidade, sem sobreposicao com outro agendamento do mesmo profissional e sem coincidir com um bloqueio.
-7. O usuario confirma. O sistema cria o agendamento com origem `manual` e status inicial `pendente` (Pendente).
+1. O usuario abre a Agenda e aciona "Novo agendamento" (ou clica num horario livre do calendario, que ja preenche data, horario e profissional).
+2. O usuario seleciona o cliente. So clientes **ativos** aparecem.
+3. O usuario seleciona o profissional (so ativos) e **um ou mais servicos** (so ativos). Todos os servicos ativos aparecem para qualquer profissional; os que ele realiza vem no topo com o selo "realiza", sem impedir os demais.
+4. O sistema calcula o fim a partir do inicio mais a soma das duracoes (ex.: Corte Degrade 40 min + Sobrancelha 15 min, 14:00 -> 14:55).
+5. O usuario informa data, horario e observacoes opcionais e aciona "Criar agendamento".
+6. O sistema valida o horario (`checkSlotAvailability` em `packages/core/src/scheduling.ts`) e cria o agendamento com origem `manual` e status `pending`.
 
-### Passos (caminho de conflito - bloqueado no MVP)
+### Passos (conflitos bloqueantes)
 
-1. O usuario tenta criar um agendamento que se sobrepoe a outro do mesmo profissional, cai fora do expediente ou coincide com um bloqueio.
-   - Exemplo: Marcelo Andrade ja tem Combo Corte + Barba das 10:00 as 11:00 no sabado; o usuario tenta marcar um Corte Masculino as 10:30 para Marcelo.
-2. O sistema detecta o conflito durante a validacao de disponibilidade.
-3. O sistema impede a criacao e exibe mensagem de conflito, indicando o motivo (sobreposicao, fora do expediente ou bloqueio).
-4. O usuario ajusta horario, profissional ou desiste. No MVP NAO existe encaixe manual; nao ha opcao de salvar mesmo assim.
+1. O horario escolhido se sobrepoe a outro agendamento do mesmo profissional (que nao esteja cancelado nem com no-show) ou cai sobre um bloqueio.
+2. O sistema recusa e mostra a mensagem no campo de horario: "Este horário já está ocupado para [Profissional]." ou "Este horário está bloqueado e não aceita agendamento."
+3. O usuario ajusta horario ou profissional. Nao ha opcao de salvar mesmo assim.
+
+### Passos (regras moles, com confirmacao)
+
+Estes casos pedem confirmacao e, se o usuario aceitar, o agendamento e criado:
+
+- Fora do expediente da unidade: "Agendar fora do expediente da unidade?"
+- Fora do horario do profissional: "Agendar fora do horário do profissional?" (ou "Agendar sem horário de trabalho cadastrado?" quando ele nao tem escala).
+- No intervalo de almoco: "Agendar durante o intervalo?"
+- Data/horario no passado: "Agendar para um horário no passado?"
+
+O botao de confirmacao e sempre "Agendar mesmo assim".
 
 ### Pos-condicao / Estados resultantes
 
-- Caminho feliz: novo Agendamento criado com status `pendente`, origem `manual`, vinculado a cliente, profissional e servico; visivel na Agenda e no dashboard.
-- Caminho de conflito: nenhum agendamento e criado; nenhum estado e alterado.
+- Caminho feliz ou confirmado: novo `Appointment` com status `pending`, origem `manual`, `serviceIds` com 1..n servicos; visivel na Agenda e no Dashboard; entrada na Auditoria.
+- Conflito bloqueante ou confirmacao recusada: nada e criado.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Agendamento, Cliente, Profissional, Servico, Bloqueio de horario.
-- Regras de agendamento, disponibilidade e conflito; sobreposicao para o mesmo profissional e SEMPRE bloqueada (ver `docs/product/05-regras-negocio.md`).
-- Duracao do agendamento segue a duracao do servico.
-- Profissional/servico/cliente inativos nao sao sugeridos para novos agendamentos.
+- Entidades: `Appointment`, `Client`, `Professional`, `Service`, `TimeBlock`.
+- Duracao e preco do agendamento = soma dos servicos.
+- Profissional inativo: "Este profissional está inativo."; servico inativo: "[Servico] está inativo." (validacao do service; a UI ja so oferece ativos).
+- A associacao profissional x servico e informativa no agendamento avulso (ver `appointmentsService`).
 
 ---
 
@@ -146,34 +168,28 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Existe um agendamento que ainda nao foi concluido (ex.: agendamento pendente ou confirmado de Joao Pereira com Bruno Costa).
+- Sessao mockada ativa com `appointments:reschedule`.
+- O agendamento nao esta em status final (`completed`, `canceled` ou `no_show`); nesses status o menu de acoes nao aparece.
 
 ### Passos
 
-1. O usuario abre o agendamento na Agenda ou no detalhe.
-2. O usuario aciona "Remarcar".
-3. O sistema verifica se o agendamento pertence a uma serie recorrente:
-   - Se pertence a uma serie, o sistema pergunta o escopo: "somente esta ocorrencia" ou "esta e as futuras".
-   - Se nao pertence, segue direto para a escolha de novo horario/profissional.
-4. O usuario escolhe o novo horario e/ou o novo profissional, mantendo o mesmo cliente e o mesmo servico.
-5. O sistema valida o novo horario com as mesmas regras de um novo agendamento: expediente, bloqueios e sobreposicao com o mesmo profissional.
-   - Se houver conflito, a remarcacao e impedida e o usuario deve ajustar (mesmo comportamento do Fluxo 3, caminho de conflito).
-6. O usuario confirma. O sistema move o agendamento e registra rastro no historico (horario/profissional anterior e novo).
+1. O usuario abre o agendamento e, em "Mais ações", aciona "Remarcar".
+2. Se o agendamento pertence a uma serie, o sistema pergunta: "Este agendamento faz parte de uma série. Remarcar quais ocorrências?" com "Somente esta ocorrência" / "Esta e as futuras".
+3. O usuario escolhe profissional e horario (e data, se for so esta ocorrencia) e, opcionalmente, o "Motivo (opcional)". Cliente e servicos sao mantidos.
+4. O sistema valida o novo horario. Na remarcacao, sobreposicao, bloqueio, fora do expediente da unidade, fora do horario do profissional e intervalo sao **todos bloqueantes** (o service de remarcacao nao aceita as confirmacoes moles do Fluxo 3). So o horario no passado pede confirmacao ("Remarcar para um horário no passado?").
+5. O sistema move o agendamento e acrescenta o horario anterior em `rescheduledFrom` (data, horario, profissional e motivo), alem de registrar a remarcacao na Auditoria.
 
 ### Pos-condicao / Estados resultantes
 
-- Agendamento movido para o novo horario e/ou profissional, mantendo cliente e servico.
-- O status NAO vira `concluido` por causa da remarcacao; permanece no status anterior (ex.: continua `confirmado`).
-- Historico registra que houve remarcacao.
-- Se a escolha foi "esta e as futuras" em uma serie, as ocorrencias futuras da serie tambem sao movidas conforme o padrao escolhido.
-- Em caso de conflito: nenhuma alteracao e aplicada.
+- Agendamento movido, mantendo cliente, servicos e status.
+- Rastro em `Appointment.rescheduledFrom` + evento `rescheduled` na Auditoria. O detalhe do agendamento mostra "Remarcado — originalmente dd/MM às HH:mm" com o ultimo motivo.
+- "Esta e as futuras": aplica o novo horario/profissional a esta e as proximas ocorrencias ativas da serie, mantendo a data de cada uma. Ocorrencias em conflito sao puladas: "N ocorrência(s) remarcada(s); M em conflito não foram remarcadas."
+- Em caso de conflito na remarcacao simples: nada muda.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Agendamento, Serie (recorrencia), Profissional, Bloqueio de horario.
-- Regras de remarcacao, conflito e disponibilidade; escopo "somente esta ocorrencia" / "esta e as futuras" para series (ver `docs/product/05-regras-negocio.md`).
-- Acao disponivel para Admin, Gerente e Atendente (ver `docs/product/06-perfis-permissoes.md`).
+- Entidades: `Appointment`, `RecurrenceSeries`, `Professional`, `TimeBlock`.
+- Para mudar data/horario use Remarcar; "Editar" altera cliente, profissional, servicos e observacoes, mas nao data/horario.
 
 ---
 
@@ -181,33 +197,31 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Existe um agendamento em um status que admite a transicao desejada.
+- Sessao mockada ativa com `appointments:status` (e `appointments:cancel` para cancelar).
 
 ### Passos
 
-1. O usuario abre o agendamento (na Agenda, no dashboard ou no detalhe).
-2. O usuario escolhe a acao de status conforme a situacao:
-   - **Confirmar**: de `pendente` para `confirmado` (ex.: confirmar o Corte Masculino de Pedro Henrique Alves com Diego Santos).
-   - **Iniciar atendimento**: de `confirmado` (ou `pendente`) para `em_atendimento`, quando o servico comeca.
-   - **Concluir**: de `em_atendimento` para `concluido`, quando o atendimento termina.
-   - **Cancelar**: de `pendente`, `confirmado` ou `em_atendimento` para `cancelado`.
-   - **Registrar nao comparecimento (no-show)**: de `pendente` ou `confirmado` para `nao_compareceu`, quando o cliente nao aparece.
-3. O sistema aplica a mudanca de status e atualiza a Agenda e os indicadores do dashboard.
+1. O usuario abre o agendamento (na Agenda).
+2. A acao principal depende do status atual:
+   - **Confirmar**: `pending` -> `confirmed`.
+   - **Iniciar atendimento**: `confirmed` -> `in_service`.
+   - **Concluir**: `in_service` -> `completed`.
+3. Em "Mais ações":
+   - **Não compareceu** (so em `pending` ou `confirmed`): pede confirmacao com motivo opcional -> `no_show`.
+   - **Cancelar agendamento** (em qualquer status nao final): exige "Motivo do cancelamento" -> `canceled`.
+4. O sistema aplica a mudanca, registra na Auditoria e atualiza Agenda e Dashboard.
 
 ### Pos-condicao / Estados resultantes
 
-- O agendamento assume o novo status.
-- `concluido`: conta como receita realizada/estimada e como atendimento finalizado; nao deve ser editado livremente como agendamento futuro.
-- `cancelado`: permanece no historico; nao conta como receita estimada.
-- `nao_compareceu`: tratado como perda operacional; nao conta como atendimento concluido nem como receita realizada.
-- Os indicadores do dashboard (concluidos, cancelamentos, no-shows, receita estimada) sao recalculados.
+- `completed`: conta na receita estimada; sem acoes de edicao na UI.
+- `canceled`: permanece no historico com `cancellationReason`; libera o horario; nao conta na receita.
+- `no_show`: guarda `noShowReason` quando informado; libera o horario; nao conta na receita.
+- Nao ha como reverter um status final pela UI.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Agendamento.
-- Regras de status, receita estimada e tratamento de no-show (ver `docs/product/05-regras-negocio.md`).
-- Tabela de status (chave -> rotulo) na secao "Convencoes dos fluxos".
+- Entidades: `Appointment`.
+- **Nao existe maquina de estados no service**: `appointmentsService.setStatus` aceita qualquer transicao. Quem limita as transicoes e so a UI (botoes acima). Uma API real deve validar.
 
 ---
 
@@ -215,28 +229,26 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa com perfil que pode criar bloqueios (Admin ou Gerente).
-- Profissional alvo existe e esta ativo (ex.: Marcelo Andrade).
+- Sessao mockada ativa com `appointments:block`.
+- Existe ao menos um profissional.
 
 ### Passos
 
-1. O usuario abre a Agenda e seleciona o profissional (ex.: Marcelo Andrade).
-2. O usuario aciona "Bloquear horario".
-3. O usuario informa data, horario de inicio, horario de fim e, opcionalmente, o motivo (ex.: almoco 12:00-13:00; folga; indisponibilidade).
-4. O sistema verifica se ja existe agendamento no intervalo escolhido. Se existir, sinaliza o conflito para que o usuario resolva (ex.: remarcar o agendamento antes de bloquear).
-5. O usuario confirma. O sistema cria o Bloqueio de horario para aquele profissional.
+1. Na Agenda, o usuario aciona o bloqueio e abre o dialogo "Bloquear horário".
+2. Informa profissional, data, inicio, fim e, opcionalmente, o motivo (ex.: folga, indisponibilidade).
+3. O sistema valida so os campos ("O horário de início deve ser anterior ao de fim.") e cria o `TimeBlock`.
 
 ### Pos-condicao / Estados resultantes
 
-- Bloqueio criado e exibido destacado na Agenda do profissional.
-- O intervalo bloqueado nao aceita novos agendamentos, remarcacoes nem ocorrencias recorrentes.
-- Tentativas futuras de agendar nesse intervalo seguem o caminho de conflito (bloqueado).
+- Bloqueio exibido na Agenda como "Bloqueado" + motivo.
+- O intervalo passa a recusar novos agendamentos, remarcacoes e ocorrencias de serie.
+- **O sistema nao verifica agendamentos ja existentes no intervalo**: eles continuam la, sobrepostos ao bloqueio (aviso ainda nao implementado).
+- Criar bloqueio nao entra na Auditoria (ainda nao implementado).
 
 ### Entidades e regras envolvidas
 
-- Entidades: Bloqueio de horario, Profissional, Agendamento.
-- Regras de bloqueio de horario e de disponibilidade/conflito (ver `docs/product/05-regras-negocio.md`).
-- Criacao de bloqueio: Admin e Gerente. Atendente apenas visualiza (ver `docs/product/06-perfis-permissoes.md`).
+- Entidades: `TimeBlock`, `Professional`, `Appointment`.
+- Almoco recorrente nao e bloqueio: e o intervalo do horario de trabalho (`breakStart`/`breakEnd`), que so pede confirmacao.
 
 ---
 
@@ -245,33 +257,29 @@ Fluxos documentados neste arquivo:
 ### Pre-condicoes
 
 - Sessao mockada ativa.
-- Existem cliente, profissional e servico ativos (ex.: Carlos Mendes, cliente recorrente que faz Combo Corte + Barba quinzenalmente aos sabados com Marcelo Andrade).
+- Existem cliente, profissional e servicos ativos; o profissional precisa ter os servicos escolhidos em "Servicos que faz" (a serie ainda aplica essa regra, diferente do agendamento avulso).
 
 ### Passos
 
-1. O usuario inicia um novo agendamento (Fluxo 3) e ativa a opcao "Repetir / Recorrente".
-2. O usuario escolhe a frequencia: semanal, quinzenal ou mensal (mantendo o mesmo dia da semana e o mesmo horario).
-   - Exemplo: a cada duas semanas (quinzenal), no sabado as 10:00, Combo Corte + Barba (60 min, R$ 75,00) com Marcelo Andrade.
-3. O usuario escolhe o termino: por numero de ocorrencias (ex.: 8 ocorrencias) OU por data final. Nao existe opcao infinita.
-4. O sistema calcula as datas das ocorrencias e gera N agendamentos ligados por um `serieId`, com origem `recorrencia`.
-5. Para cada ocorrencia, o sistema valida disponibilidade (expediente, bloqueios e sobreposicao com o mesmo profissional):
-   - Ocorrencias sem conflito sao criadas normalmente (status inicial `pendente`).
-   - Ocorrencia que cair em horario ocupado, fora do expediente ou em bloqueio e sinalizada como conflito e NAO e criada automaticamente; fica pendente de resolucao manual.
-6. O sistema apresenta o resumo: quantas ocorrencias foram criadas e quais ficaram em conflito a resolver.
+1. Na Agenda, o usuario aciona "Série recorrente" e abre "Nova série recorrente".
+2. Escolhe cliente, profissional, servicos, data de inicio e horario.
+3. Escolhe a frequencia: semanal, quinzenal ou mensal (`weekly`, `biweekly`, `monthly`).
+4. Escolhe o termino: "Número de ocorrências" ou data final. Nao existe opcao infinita.
+5. O sistema gera as datas e, para cada uma, valida o horario sem confirmacoes moles: sobreposicao, bloqueio, fora do expediente, fora do horario do profissional e intervalo contam como conflito.
+6. Ocorrencias sem conflito sao criadas com origem `recurrence`, status `pending` e `seriesId`. As em conflito nao sao criadas.
+7. O sistema avisa: "Série criada com N ocorrência(s)." ou "N ocorrência(s) criada(s); M em conflito não foram criadas. Resolva manualmente." (ou "Nenhuma ocorrência pôde ser criada (todas em conflito).").
 
 ### Pos-condicao / Estados resultantes
 
-- Serie criada com `serieId`; ocorrencias sem conflito criadas como agendamentos com origem `recorrencia` e status `pendente`.
-- Ocorrencias em conflito ficam sinalizadas e nao criadas, aguardando resolucao manual (ex.: escolher outro horario para aquela data especifica).
-- A serie e finita; nao gera ocorrencias indefinidamente.
+- `RecurrenceSeries` criada; ocorrencias sem conflito viram agendamentos.
+- As datas em conflito nao ficam guardadas em lugar nenhum; a resolucao e criar um agendamento avulso para a data.
+- A serie e finita.
+- A criacao da serie nao entra na Auditoria (ainda nao implementado).
 
 ### Entidades e regras envolvidas
 
-- Entidades: Serie (recorrencia), Agendamento, Cliente, Profissional, Servico, Bloqueio de horario.
-- Regras de recorrencia, conflito e disponibilidade (ver `docs/product/05-regras-negocio.md`).
-- Recorrencia simples e repeticao de compromisso individual; NAO transforma o produto em modelo de turmas.
-- Edicao/cancelamento de ocorrencias seguem o escopo "somente esta ocorrencia" / "esta e as futuras".
-- Acao disponivel para Admin, Gerente e Atendente (ver `docs/product/06-perfis-permissoes.md`).
+- Entidades: `RecurrenceSeries`, `Appointment`, `Client`, `Professional`, `Service`, `TimeBlock`.
+- Remarcacao tem escopo de serie (Fluxo 4). Cancelamento e sempre de uma ocorrencia; nao existe cancelar/excluir a serie.
 
 ---
 
@@ -279,32 +287,28 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Usuario na navegacao Clientes.
+- Sessao mockada ativa, na navegacao Clientes (no tenant de turmas, "Alunos").
 
 ### Passos (cadastrar)
 
-1. O usuario abre Clientes e aciona "Novo cliente".
-2. O usuario preenche os dados: nome (ex.: Henrique Azevedo), telefone, email opcional e observacoes.
-3. O usuario salva. O sistema cria o cliente com status ativo.
+1. O usuario aciona "Novo cliente" ("Novo aluno").
+2. Preenche nome, telefone (obrigatorio, ao menos 10 digitos), e-mail opcional, observacoes e endereco opcional. No tenant de turmas ha tambem a secao de plano (Fluxo 12).
+3. O usuario salva. O sistema cria o cliente ativo e registra na Auditoria.
 
-### Passos (editar / inativar)
+### Passos (editar / inativar / reativar)
 
-1. O usuario abre um cliente existente (ex.: um cliente inativo da lista).
-2. O usuario altera dados ou muda o status para ativo/inativo.
-3. O usuario salva. O sistema atualiza o cliente.
+1. Na lista, o usuario usa as acoes da linha: editar, inativar ("Inativar cliente?") ou reativar ("Reativar cliente?").
+2. Fechar o formulario com alteracoes pede "Descartar alterações?".
 
 ### Pos-condicao / Estados resultantes
 
-- Cliente criado ou atualizado, disponivel na lista e na busca.
-- Cliente ativo pode ser selecionado em novos agendamentos.
-- Cliente inativo aparece no historico, mas nao e sugerido como primeira opcao para novos agendamentos.
+- Cliente ativo aparece para novos agendamentos; cliente inativo **nao aparece** no seletor de novos agendamentos, mas os agendamentos antigos continuam com o nome dele.
+- No tenant de turmas, inativar o aluno cancela as mensalidades em aberto de periodos que ainda nao comecaram (ver [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md)).
 
 ### Entidades e regras envolvidas
 
-- Entidades: Cliente.
-- Campos esperados em `docs/product/04-mvp-barbearia.md`.
-- Regra: cliente inativo nao e sugerido como primeira opcao (ver `docs/product/05-regras-negocio.md`).
+- Entidades: `Client`.
+- Mensagens de validacao: ver `10-estados-e-mensagens.md`.
 
 ---
 
@@ -312,32 +316,28 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Usuario na navegacao Servicos.
+- Sessao mockada ativa em tenant `scheduling`, na navegacao Servicos.
 
 ### Passos (cadastrar)
 
-1. O usuario abre Servicos e aciona "Novo servico".
-2. O usuario preenche: nome (ex.: Pigmentacao de Barba), categoria (Barba), duracao em minutos (45) e preco (R$ 60,00 / 6000 centavos), com descricao opcional.
-3. O usuario salva. O sistema cria o servico com status ativo.
+1. O usuario aciona "Novo serviço".
+2. Preenche nome, categoria (opcional; entidade `Category` do tenant), duracao em minutos (> 0), preco (>= 0) e descricao opcional.
+3. O usuario salva. O sistema cria o servico ativo.
 
-### Passos (editar / inativar)
+### Passos (editar / inativar / reativar)
 
-1. O usuario abre um servico existente (ex.: Relaxamento / Progressiva).
-2. O usuario altera duracao, preco, categoria ou muda o status para ativo/inativo.
-3. O usuario salva. O sistema atualiza o servico.
+1. O usuario edita o servico ou usa "Inativar serviço?" / "Reativar serviço?".
 
 ### Pos-condicao / Estados resultantes
 
-- Servico criado ou atualizado, agrupado por categoria (Cabelo, Barba, Cuidados, Combos).
-- Servico ativo pode ser escolhido em agendamentos; servico inativo nao e sugerido para novos agendamentos.
-- A duracao do servico passa a definir o horario de fim dos novos agendamentos que o usarem.
+- Servico sem categoria aparece como "Sem categoria".
+- Servico ativo pode ser escolhido em agendamentos; inativo nao aparece no seletor.
+- A duracao entra na soma que define o fim dos novos agendamentos.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Servico.
-- Preco em reais, armazenado em centavos; coerente com o catalogo de 12 servicos da Corte Nobre (ver `docs/product/08-barbearia-corte-nobre.md`).
-- Regra: servico inativo nao e sugerido para novos agendamentos (ver `docs/product/05-regras-negocio.md`).
+- Entidades: `Service`, `Category`.
+- Preco em reais, armazenado em centavos (`priceCents`).
 
 ---
 
@@ -345,67 +345,103 @@ Fluxos documentados neste arquivo:
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Usuario na navegacao Equipe.
+- Sessao mockada ativa, na navegacao Equipe.
 
 ### Passos (cadastrar)
 
-1. O usuario abre Equipe e aciona "Novo profissional".
-2. O usuario preenche: nome (ex.: Diego Santos), cargo/especialidade (Barbeiro junior), telefone opcional, horarios de trabalho (ex.: Qua-Sab) e os servicos que realiza.
-3. O usuario salva. O sistema cria o profissional com status ativo.
+1. O usuario aciona "Novo profissional".
+2. Preenche nome (obrigatorio), cargo (opcional; escolhido entre os `Role` ja cadastrados), telefone opcional, endereco opcional e horarios de trabalho (opcionais, com intervalo de almoco opcional).
+3. No tenant `scheduling`, marca os servicos que realiza (opcional). No tenant `classes`, marca as modalidades que leciona (**ao menos uma e obrigatoria**).
+4. O usuario salva. O sistema cria o profissional ativo.
 
-### Passos (editar / inativar)
+### Passos (editar / inativar / reativar)
 
-1. O usuario abre um profissional existente (ex.: Rafael Lima).
-2. O usuario ajusta especialidade, horarios de trabalho, servicos realizados ou muda o status para ativo/inativo.
-   - Exemplo: Rafael Lima faz todos os servicos, exceto Relaxamento / Progressiva.
-3. O usuario salva. O sistema atualiza o profissional.
+1. O usuario ajusta os dados ou usa "Inativar profissional?" / "Reativar profissional?".
 
 ### Pos-condicao / Estados resultantes
 
-- Profissional criado ou atualizado na Equipe, com seus servicos e disponibilidade basica.
-- Profissional ativo pode ser selecionado em novos agendamentos; profissional inativo nao e sugerido.
-- A lista de servicos realizados limita quais servicos aparecem ao agendar com aquele profissional (ex.: Diego Santos nao aparece para Relaxamento / Progressiva).
+- Profissional ativo aparece para novos agendamentos; inativo nao aparece.
+- Sem horario cadastrado, o profissional aparece em todo dia aberto da Agenda e agendar com ele pede confirmacao.
+- "Servicos que faz" so destaca servicos no agendamento avulso (e ainda restringe a serie recorrente).
 
 ### Entidades e regras envolvidas
 
-- Entidades: Profissional, Servico.
-- Vocabulario: "Equipe" e o rotulo da navegacao; "Profissional" e o termo de detalhe e de agendamento.
-- Regra: profissional inativo nao e sugerido para novos agendamentos; disponibilidade baseada em horarios de trabalho (ver `docs/product/05-regras-negocio.md`).
+- Entidades: `Professional`, `Role`, `Service`, `Category` (modalidade).
+- Inativar profissional com agendamentos futuros nao faz nada com esses agendamentos (sem aviso; ainda nao implementado).
 
 ---
 
-## Fluxo 11: Buscar cliente e ver historico
+## Fluxo 11: Buscar cliente
 
 ### Pre-condicoes
 
-- Sessao mockada ativa.
-- Existem clientes com historico mockado de agendamentos.
+- Sessao mockada ativa, com clientes cadastrados.
 
 ### Passos
 
-1. O usuario abre a navegacao Clientes.
-2. O usuario busca por nome ou telefone (ex.: "Lucas" para encontrar Lucas Ferreira).
-3. O sistema exibe os resultados, incluindo clientes inativos identificados como tal.
-4. O usuario abre o cliente desejado.
-5. O sistema mostra os dados basicos e o historico de agendamentos, com data, servico, profissional, status (Concluido, Cancelado, Nao compareceu, etc.) e valor.
-6. A partir do detalhe, o usuario pode iniciar um novo agendamento, editar o cliente ou consultar atendimentos passados.
+1. O usuario abre Clientes.
+2. Busca por nome ou telefone e, se quiser, filtra por status.
+3. O sistema lista os resultados, com os inativos identificados.
+4. A partir da linha, o usuario pode editar, inativar ou reativar.
 
 ### Pos-condicao / Estados resultantes
 
-- Usuario localiza o cliente e visualiza seu historico completo (leitura).
-- Nenhum dado e alterado neste fluxo, salvo se o usuario seguir para criar/editar (Fluxos 3 ou 8).
+- Leitura apenas.
+- **Nao existe tela de detalhe nem historico de agendamentos do cliente** (ainda nao implementado). Para ver os agendamentos de um cliente, use a aba Lista da Agenda com busca por cliente.
 
 ### Entidades e regras envolvidas
 
-- Entidades: Cliente, Agendamento, Servico, Profissional.
-- Regra: agendamentos cancelados e no-shows permanecem no historico; cliente inativo aparece no historico, mas nao e primeira opcao em novos agendamentos (ver `docs/product/05-regras-negocio.md`).
+- Entidades: `Client`, `Appointment`.
+
+---
+
+## Fluxo 12 (M3): Cadastrar aluno com plano e 1a cobranca
+
+1. Em Alunos, "Novo aluno": dados basicos + plano (`Client.planId`), inicio da vigencia (`planStartDate`) e situacao da assinatura (`membershipStatus`: ativa, trancada/pausada, cancelada).
+2. A regra de cobranca vem da academia (Configuracoes -> Regras de Cobrança) e pode ser personalizada no aluno: momento do pagamento, entrada no meio do periodo, dia de vencimento e desconto.
+3. O formulario calcula a 1a mensalidade pelo motor (`@gestarahub/core/billing`) e mostra valor e vencimento, que podem ser ajustados.
+4. Ao salvar, o aluno e criado e, se o valor for maior que zero, a 1a cobranca (`Charge` `kind: "membership"`) nasce junto.
+
+Regras completas: [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md).
+
+## Fluxo 13 (M3): Gerar mensalidades da competencia
+
+1. Em Mensalidades, o usuario escolhe a competencia (mes) e aciona "Gerar cobranças".
+2. Confirma em "Gerar cobranças de <Mês de AAAA>?".
+3. O sistema cria as mensalidades que vencem naquele mes para cada aluno ativo com plano e assinatura ativa, pela regra dele. E idempotente: um periodo de uso nunca gera duas cobrancas ("Nenhuma cobrança nova (já geradas).").
+4. A geracao entra na Auditoria.
+
+## Fluxo 14 (M3): Registrar pagamento
+
+1. Na lista de Mensalidades, o usuario aciona o pagamento de uma cobranca.
+2. O dialogo "Registrar pagamento" mostra aluno, valor e periodo e exige a forma (Pix, Dinheiro, Cartão, Outro).
+3. A cobranca vira `paid` com `paidAt` e `method`.
+4. Correcoes, todas com confirmacao: "Desfazer pagamento?", "Cancelar cobrança", "Reabrir cobrança?" e, para a competencia inteira, "Resetar cobranças da competência" (nunca apaga pagas).
+
+## Fluxo 15 (M3): Matricular aluno e lista de espera
+
+1. No detalhe da turma, "Matricular alunos" abre a selecao multipla de alunos.
+2. Se o aluno ja tem aula no mesmo dia e horario em outra turma, a matricula e recusada (`CLASS_SCHEDULE_CONFLICT`).
+3. Com a turma lotada, o dialogo avisa e oferece "Pôr na lista de espera" ou "Matricular mesmo assim (N)".
+4. A lista de espera fica no detalhe da turma. Ao abrir vaga, a promocao e manual: "Promover da lista de espera?" (matricula mesmo se lotada) ou "Remover da lista de espera?".
+5. "Cancelar matrícula?" tira o aluno da turma e da chamada; a mensalidade do aluno nao muda (o plano e do aluno).
+
+## Fluxo 16 (M3): Fazer a chamada
+
+1. No Calendario, o usuario abre a aula (sessao gerada a partir da grade da turma).
+2. A lista mostra matriculados vigentes naquela data, avulsos e experimentais, cada um com Presente / Faltou / Justificada (um clique, sem confirmacao).
+3. Aula futura: a chamada fica desabilitada ("A chamada só pode ser feita no dia da aula ou depois.").
+4. Na mesma tela: "Adicionar aluno nesta aula" (Aula Avulsa gera cobranca avulsa; Experimental nao gera), "Remover da aula?" (so avulsos/experimentais; cancela a cobranca avulsa em aberto) e "Trocar instrutor" (substituto so desta aula; restaurar o titular e um clique).
+
+Regras completas: [`11-modelo-3-turmas.md`](11-modelo-3-turmas.md).
 
 ---
 
 ## Pendencias
 
-- Definir formato e nivel de detalhe do rastro de historico para remarcacao e edicao de ocorrencias recorrentes (auditoria mockada).
-- Definir o fluxo de interface para resolucao manual de ocorrencias recorrentes sinalizadas como conflito.
-- Confirmar as transicoes de status permitidas (maquina de estados) e quais sao reversiveis no MVP (ex.: reverter um cancelamento).
-- Definir o comportamento ao inativar um profissional ou servico que possui agendamentos futuros.
+- Resolucao de ocorrencias de serie em conflito: hoje so um aviso; as datas nao ficam guardadas para resolver depois.
+- Maquina de estados de agendamento no service (hoje so a UI limita) e decisao sobre reverter status final.
+- Comportamento ao inativar profissional ou servico com agendamentos futuros.
+- Aviso de agendamentos existentes ao criar bloqueio.
+- Auditoria de bloqueios e da criacao de series.
+- Tela de detalhe/historico do cliente e do aluno.

@@ -1,5 +1,19 @@
 # MVP Barbearia
 
+> ⚠️ Documento congelado do MVP da barbearia (Modelo 1). Diferenças em relação ao código atual:
+>
+> - **Seed vazio:** cada tenant nasce só com organização, unidade e o proprietário (Corte Nobre: Marcelo Andrade). O cenário de 4 profissionais, 12 serviços e ~20 clientes descrito abaixo não é mais semeado; tudo é cadastrado pela UI. Ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md).
+> - **Códigos em inglês:** status `pending`, `confirmed`, `in_service`, `completed`, `canceled`, `no_show`; origem `manual`, `recurrence`. Os rótulos da UI continuam em português.
+> - **Vários serviços por agendamento:** `serviceIds[]`; duração e preço são a soma dos serviços.
+> - **Agendamentos virou aba da Agenda:** `/schedule` tem as abas Calendário e Lista; `/appointments` só redireciona.
+> - **Cargo é opcional** (entidade `Role`, escolhida numa lista filtrável; cargos são criados no CRUD de Cargos da Equipe).
+> - **Categoria de serviço é entidade opcional** (`Category`); serviço sem categoria aparece como "Sem categoria".
+> - **Escopo "só esta / esta e as futuras" só existe na remarcação.** Editar e cancelar agem sempre em uma ocorrência.
+> - **Não há tela de histórico do cliente.**
+> - **Fora do horário do profissional, no intervalo ou fora do expediente da unidade pedem confirmação** ("Agendar mesmo assim") ao criar/editar, em vez de bloquear. Bloqueio de horário e sobreposição continuam bloqueando. Na remarcação e na criação de série essas checagens ainda bloqueiam.
+>
+> Multi-tenant e escopo: [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md). Convenções de UI: [`../frontend/06-decisoes-de-interface.md`](../frontend/06-decisoes-de-interface.md).
+
 > ⏸️ **STATUS: CONGELADO / STANDBY (Pós-MVP)**
 > O foco ativo do MVP foi redirecionado para o **Modelo 3 (Turmas & Aulas / Academia de Lutas)** com base em validação com usuário real (design partner). Este documento e o cenário "Corte Nobre" permanecem preservados como referência arquitetural para o Modelo 1 (atendimento individual 1:1), mas o desenvolvimento ativo deste nicho está pausado.
 > Ver especificação do MVP ativo em [14-mvp-academia-lutas.md](14-mvp-academia-lutas.md).

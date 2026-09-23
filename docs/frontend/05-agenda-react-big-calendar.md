@@ -1,13 +1,15 @@
-# Agenda com react-big-calendar
+# [HISTÓRICO] Agenda com react-big-calendar (decisão revertida)
 
-> ⚠️ **DESATUALIZADO / SUPERSEDED.** A Agenda foi implementada **à mão** (React +
-> Tailwind), **sem** `react-big-calendar` nem qualquer lib externa de calendario.
-> `date-fns` é usado apenas para cálculos/formatos de data. Este documento
-> descreve a decisão original (avaliada e revertida) e permanece como registro de
-> contexto/requisitos. Implementação real:
+> ⚠️ **HISTÓRICO / SUPERSEDED. Não use este documento como referência de implementação.**
+> A Agenda foi implementada **à mão** (React + Tailwind), **sem** `react-big-calendar`
+> nem qualquer lib externa de calendário; `date-fns` é usado apenas para cálculos e
+> formatos de data. O texto abaixo descreve a decisão original (avaliada e revertida)
+> e fica só como registro de contexto e requisitos. Implementação real:
 > `apps/web/src/features/appointments/components/` (`calendar-panel.tsx`,
-> `schedule-day-grid.tsx` — views Dia/Semana/Mês). Motivos da reversão: controle
-> total do layout/UX, zero dependência externa e sem risco de features pagas.
+> `schedule-day-grid.tsx`, views Dia/Semana/Mês). Decisão vigente:
+> [`06-decisoes-de-interface.md`](06-decisoes-de-interface.md) (item 4). Motivos da
+> reversão: controle total do layout/UX, zero dependência externa e sem risco de
+> features pagas.
 
 ## Decisao
 
