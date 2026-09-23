@@ -12,7 +12,7 @@ No MVP frontend-first, o app roda contra uma camada de servico mockada em client
 
 - O MVP valida escopo, fluxos, telas e regras antes de modelar o backend (ver `docs/frontend/00-estrategia-frontend.md`).
 - Os dados sao mockados, mas o formato imita um contrato de API HTTP futuro. Os contratos vivem em `packages/contracts` (`@gestarahub/contracts`).
-- O store em memoria guarda um mundo multi-tenant (um store por organizacao) e e persistido no localStorage: sobrevive a reloads (reset por versao de seed ou pela acao "Zerar mocks" em Configuracoes). O seed cria dois tenants vazios, so com o proprietario (ver `docs/technical/03-multi-tenant-e-escopo.md`).
+- O store em memoria guarda um mundo multi-tenant (um store por organizacao) e e persistido no localStorage: sobrevive a reloads (reset por versao de seed ou pela acao "Apagar dados da demonstração" (aba Dados) em Configuracoes). O seed cria dois tenants vazios, so com o proprietario (ver `docs/technical/03-multi-tenant-e-escopo.md`).
 - A organizacao do codigo prioriza isolamento por dominio (feature) para evoluir sem reescrever telas quando o backend chegar.
 
 ## Escopo
@@ -286,7 +286,7 @@ Features existentes (rota tecnica em ingles, rotulo de UI em PT; itens com model
 | `audit` | `/audit` | Auditoria | Log de auditoria. |
 | `settings` | `/settings` | Configurações | Organizacao, unidade, horario, regras de cobranca. |
 | `onboarding` | (banner/tour no shell) | — | Onboarding do tenant. |
-| `system` | (card em Configurações) | — | "Zerar mocks". |
+| `system` | (card em Configurações) | — | "Apagar dados da demonstração" (aba Dados). |
 | `auth` | — | — | Sessao (ver tabela de camadas). |
 
 O Login fica no route group `(auth)` (`src/app/(auth)/login/page.tsx`), fora do app shell; nao e uma feature de dominio operacional.

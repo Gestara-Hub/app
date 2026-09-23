@@ -35,7 +35,7 @@ componentes (telas, client components)
 
 - O mock imita um contrato de API HTTP: o service retorna `Promise`, pode falhar, tem latencia simulada e tipos estaveis.
 - Trocar o mock por backend real significa trocar SO a implementacao dos services. Os tipos do contrato, os hooks e as telas nao mudam.
-- O store em memoria guarda um mundo multi-tenant (ver `docs/technical/03-multi-tenant-e-escopo.md`). O seed cria **dois tenants vazios, so com o proprietario**: Corte Nobre (`scheduling`) e Academia X (`classes`). O restante dos dados nasce pelo uso da UI. O mundo e persistido no localStorage: sobrevive a reloads (reset por versao de seed ou pela acao "Zerar mocks" em Configuracoes, `features/system/components/reset-data-card.tsx`).
+- O store em memoria guarda um mundo multi-tenant (ver `docs/technical/03-multi-tenant-e-escopo.md`). O seed cria **dois tenants vazios, so com o proprietario**: Corte Nobre (`scheduling`) e Academia X (`classes`). O restante dos dados nasce pelo uso da UI. O mundo e persistido no localStorage: sobrevive a reloads (reset por versao de seed ou pela acao "Apagar dados da demonstração" (aba Dados) em Configuracoes, `features/system/components/reset-data-card.tsx`).
 
 ## Stack concreta
 

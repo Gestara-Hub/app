@@ -148,7 +148,7 @@ export interface MockWorld {
 - **Seed** (`mocks/seed.ts`, `createInitialWorld`): dois tenants vazios, so com organizacao, unidade e proprietario: Corte Nobre (`scheduling`, `org-corte-nobre`) e Academia X (`classes`, `org-academia-x`).
 - **Persistencia:** chave `gestarahub:db`, blob `{ v, data }`. Hidrata na 1a carga do modulo no browser e regrava a cada escrita (`simulateWrite` -> `persist()`). No SSR/Node e no-op.
 - **Versao:** `SEED_VERSION = 21`. Blobs com `v < 20` sao descartados e re-seedados; blobs `v20` passam por `migrateWorld` (v21: endereco estruturado, vencimento e status de matricula no aluno), sem perder dados.
-- **Reset:** `resetStore()` recria o mundo e faz `localStorage.clear()`. Na UI, o card "Zerar mocks" em Configuracoes (`features/system`, via `services/system.ts`).
+- **Reset:** `resetStore()` recria o mundo e faz `localStorage.clear()`. Na UI, o card "Apagar dados da demonstração" (aba Dados) em Configuracoes (`features/system`, via `services/system.ts`).
 
 ## Camada de servico
 

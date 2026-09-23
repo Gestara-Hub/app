@@ -164,7 +164,7 @@ Decisao em [`04-estrategia-de-testes.md`](04-estrategia-de-testes.md): motor de 
 - A UI nunca acessa mocks diretamente. O fluxo e sempre: hooks (TanStack Query) -> services (funcoes async tipadas) -> store em memoria.
 - O service imita um contrato de API HTTP (mesma forma de chamada, mesmos tipos de entrada e saida, mesmos erros).
 - Trocar o mock por backend real significa trocar SO a implementacao do service; hooks e telas permanecem iguais.
-- O store em memoria e multi-tenant (dois tenants vazios no seed, so com o proprietario) e persistido no localStorage do navegador (simula um banco): sobrevive a reloads, com migracao/reset por versao de seed (`SEED_VERSION`) e acao "Zerar mocks" em Configuracoes. A persistencia e so no cliente (no SSR/Node e no-op). Ver `03-multi-tenant-e-escopo.md`.
+- O store em memoria e multi-tenant (dois tenants vazios no seed, so com o proprietario) e persistido no localStorage do navegador (simula um banco): sobrevive a reloads, com migracao/reset por versao de seed (`SEED_VERSION`) e acao "Apagar dados da demonstração" (aba Dados) em Configuracoes. A persistencia e so no cliente (no SSR/Node e no-op). Ver `03-multi-tenant-e-escopo.md`.
 
 O detalhamento desta camada (estrutura de services, store, seed, simulacao de latencia e erro) esta em `docs/frontend/02-camada-de-dados-mock.md`.
 

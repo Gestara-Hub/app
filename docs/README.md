@@ -52,6 +52,7 @@ Estes documentos contêm a especificação de outros modelos operacionais desenv
 - [product/05-regras-negocio.md](product/05-regras-negocio.md) — *(⏸️ Standby)* Regras de agendamento 1:1 da barbearia.
 - [product/09-fluxos-principais.md](product/09-fluxos-principais.md) — Fluxos de barbearia.
 - [product/10-estados-e-mensagens.md](product/10-estados-e-mensagens.md) — Estados de agendamentos 1:1.
+- [product/16-backlog-barbearia.md](product/16-backlog-barbearia.md) — *(⏸️ Standby)* Bugs e melhorias de UI/UX da barbearia levantados em 23/09/2026, para a próxima rodada do Modelo 1.
 - [product/12-modelo-2-entrega.md](product/12-modelo-2-entrega.md) — *(Futuro)* Modelo 2 (encomendas e entregas).
 
 ---

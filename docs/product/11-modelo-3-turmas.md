@@ -276,3 +276,23 @@ Fechadas:
 - **Reposicao:** removida do escopo (antes: prazo de 30 dias, neutralizava a falta).
 
 Fora deste corte (revisitar depois): cancelar/mover aula, aviso de vaga aberta, promocao automatica, escopo do instrutor, perfil do aluno, frequencia por periodo, enforcement de frequencia minima, gateway de pagamento.
+
+---
+
+## Atualizações de 23/09/2026 (auditoria de bugs e UX da academia)
+
+Estas regras já estão implementadas e prevalecem sobre o texto acima quando houver diferença.
+
+- **Aula concluída:** a aula fica "Concluída" quando o horário de **fim** passa, inclusive a de hoje (antes só aulas de dias anteriores).
+- **Avulso e experimental:**
+  - a experimental é sempre permitida;
+  - o avulso só é oferecido (e aceito pelo service) quando a turma permite avulso. Ausente = permite, igual no formulário e no service;
+  - com avulso ligado, o valor da aula avulsa é obrigatório (> R$ 0). Avulso de R$ 0 não gera cobrança, e a mensagem não diz "cobrança gerada";
+  - avulso e experimental **podem entrar em aula lotada** (decisão do produto: o professor pode aceitar). A ocupação passa da capacidade e isso aparece na aula e no calendário.
+- **Ocupação:** o calendário e a aula contam do mesmo jeito: matrículas vigentes + avulsos + experimentais da data.
+- **Lista de espera:** as posições são sempre 1..n (renumeradas ao promover ou remover). Promover exige que o aluno ainda esteja esperando, ativo, sem matrícula ativa na turma e sem conflito de horário; clicar duas vezes não cria duas matrículas.
+- **Conflito do instrutor:** o mesmo instrutor não dá aula em duas turmas ativas no mesmo dia com horário sobreposto (horários que só se encostam não conflitam). A regra vale ao criar, editar e **reativar** a turma e ao **escalar substituto** (considerando as turmas e as outras substituições dele naquela data). O formulário avisa ao vivo, no bloco de horário. Implementação única em `@gestarahub/core/scheduling` (`findInstructorConflicts`).
+- **Blocos de horário da turma:** ao marcar ou desmarcar dias, um horário que saiu do expediente de algum dia marcado é reajustado (mantendo a duração) para um início que sirva a todos; se nenhum servir, o alerta continua.
+- **Datas:** matrícula e cancelamento são comparados pela data **local** (uma matrícula às 22h conta na aula daquele dia).
+- **Calendário:** semana, visão, modalidade e instrutor ficam na URL. No celular, sem escolha na URL, abre em Lista.
+- **Cancelamento em lote de matrículas:** cancela exatamente os selecionados, com ou sem busca ativa.

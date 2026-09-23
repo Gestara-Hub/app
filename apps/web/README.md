@@ -12,7 +12,7 @@ pnpm dev        # http://localhost:3000
 ```
 
 - **Login:** a tela `/login` lista usuarios de demonstracao; escolha um para entrar. Cada usuario pertence a uma organizacao (Corte Nobre, barbearia, ou Academia X, academia) e entrar com ele ativa aquela organizacao. Para trocar depois, use o menu do usuario na topbar.
-- **Dados:** ficam no `localStorage` do navegador (chave `gestarahub:db`) e sobrevivem ao reload. O seed cria so as organizacoes e os proprietarios; o resto nasce pelo uso. Para recomecar, use "Zerar mocks" em Configurações.
+- **Dados:** ficam no `localStorage` do navegador (chave `gestarahub:db`) e sobrevivem ao reload. O seed cria so as organizacoes e os proprietarios; o resto nasce pelo uso. Para recomecar, use "Apagar dados da demonstração" em Configurações > Dados.
 
 ## Scripts
 

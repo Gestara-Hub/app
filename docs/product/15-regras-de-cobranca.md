@@ -55,3 +55,17 @@ Em 22/09/2026 um teste ponta a ponta encontrou 23 bugs, a maioria em Mensalidade
 - **Dia de vencimento até 31, caindo no último dia do mês:** mantido só para o dia do aluno no "Mês cheio" (entrada no dia 31); o padrão da academia fica em 1 a 28 para não "andar" ao longo do ano.
 - **Semanal com 4 semanas fixas por mês:** rejeitada; deixava os dias 29 a 31 sem cobrança.
 - **Perguntar o que fazer com cobranças futuras na troca de plano/inativação:** rejeitada em favor de cancelar automaticamente o que ainda não começou, com aviso no modal.
+
+---
+
+## Atualizações de 23/09/2026 (auditoria de bugs da academia)
+
+Estas regras já estão implementadas.
+
+- **Quem cancelou:** toda cobrança cancelada registra se foi pelo **sistema** (troca de plano, troca de regra, inativação, aluno removido da aula) ou pelo **usuário**. "Reverter" só reabre as canceladas pelo usuário; nas do sistema o botão fica desabilitado com a explicação, para não gerar cobrança em dobro.
+- **Geração:** uma mensalidade cancelada **não** impede gerar o mesmo período de novo (ex.: aluno inativado e reativado). Uma mensalidade existente que se **sobrepõe** ao período planejado impede a nova (evita cobrar o mesmo dia duas vezes depois de mudar a regra).
+- **Troca de regra do aluno:** mudar o momento do pagamento, a entrada no meio do período ou o dia de vencimento funciona como troca de plano: as mensalidades em aberto de períodos que ainda não começaram são canceladas. Regravar a mesma regra efetiva não cancela nada.
+- **Periodicidade do plano:** não pode ser alterada enquanto o plano tiver alunos ativos (crie um novo plano).
+- **Inativação no "Depois do uso":** ao inativar, o período já iniciado é cobrado na hora (valor e vencimento do motor); os períodos futuros continuam cancelados. No "Antecipado", pausado ou cancelado nada novo é gerado.
+- **Resetar cobranças (ferramenta de teste):** remove só **mensalidades** em aberto ou canceladas da competência. Pagas e aulas avulsas ficam. O número no modal é o que será removido. O botão sai na versão final.
+- **Dashboard:** "Mensalidades recebidas" soma só mensalidades. Sem nada gerado no mês aparece "Nenhuma mensalidade gerada no mês".

@@ -38,8 +38,8 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/clients` | Clientes / Alunos | todos | `clients:view` | Lista e cadastro. |
 | `/team` | Equipe | todos | `team:view` | Profissionais / instrutores e cargos. |
 | `/services` | Serviços | `scheduling` | `services:view` | Catalogo de servicos. |
-| `/schedule` | Agenda | `scheduling` | — | Abas Calendário (Dia/Semana/Mês, colunas por profissional) e Lista. |
-| `/appointments` | — | `scheduling` | — | Redireciona para `/schedule` (links antigos). |
+| `/schedule` | Agenda | `scheduling` | `schedule:view` | Abas Calendário (Dia/Semana/Mês, colunas por profissional) e Lista. |
+| `/appointments` | — | `scheduling` | `schedule:view` | Redireciona para `/schedule` (links antigos). |
 | `/classes` | Turmas | `classes` | `classes:view` | Lista de turmas. |
 | `/classes/[id]` | Detalhe da turma | `classes` | `classes:view` | Matriculas, lista de espera. |
 | `/classes/sessions/[sessionId]` | Aula | `classes` | `classes:view` | Chamada, reservas, instrutor substituto. |
@@ -49,7 +49,7 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/classes/billing` | Mensalidades | `classes` | `billing:view` | Cobrancas por competencia. |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
-| `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras de cobranca, "Zerar mocks". |
+| `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras de cobranca, "Apagar dados da demonstração" (aba Dados). |
 
 Notas:
 
@@ -157,3 +157,16 @@ Controle por perfil:
 
 - Resolvidas: modal x rota (dialogos), API do proxy (implementada), redirect pos-login (`?from=`), flags do cookie (`httpOnly`, `sameSite: "lax"`).
 - Aberta: persistir filtros da Agenda/Calendário em search params para deep-linking.
+
+---
+
+## Guarda de rota (atualizado em 23/09/2026)
+
+Toda página em `app/(app)` chama `requirePermission(permission, route)` (`features/auth/require-permission.ts`). Ela confere:
+
+1. a **permissão** do perfil;
+2. o **modelo operacional** do tenant: a rota precisa pertencer ao modelo (`isRouteInModel` em `components/layout/nav.ts`, pelo item de menu mais específico). Rotas fora do menu contam como compartilhadas.
+
+Sem permissão ou fora do modelo, o usuário vai para `firstAllowedRoute`. Assim a barbearia não abre `/classes/*` e a academia não abre `/schedule`, `/services` nem `/appointments`, mesmo digitando a URL. `canAccessRoute` também usa o item mais específico (`/classes/modalities` é Modalidades, não Turmas).
+
+O `from` do login guarda caminho **e** query (`proxy.ts`) e só aceita caminho interno (`safeRedirectPath` em `lib/session.ts`: nada de `//site`, `/\site`, esquema ou caractere de controle). Páginas de erro e 404 em pt-BR ficam em `app/not-found.tsx`, `app/(app)/not-found.tsx`, `app/(app)/error.tsx` e `app/global-error.tsx`.
