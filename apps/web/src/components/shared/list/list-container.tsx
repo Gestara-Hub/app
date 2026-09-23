@@ -24,7 +24,7 @@ export function ListContainer({
           {emptyState}
         </div>
       ) : (
-        <div className="divide-y divide-border/40">{children}</div>
+        <div className="list-stagger divide-y divide-border/40">{children}</div>
       )}
     </div>
   );
