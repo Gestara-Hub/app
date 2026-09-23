@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Artefatos do Playwright (traces, relatorios): gerados, nao sao codigo.
+    "test-results/**",
+    "playwright-report/**",
+    "blob-report/**",
   ]),
   {
     // Componentes vendored do shadcn/ui (copiados pela CLI) nao foram escritos
