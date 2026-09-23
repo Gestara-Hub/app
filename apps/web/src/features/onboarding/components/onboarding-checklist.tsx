@@ -125,17 +125,17 @@ export function OnboardingChecklist({
         </Button>
       </div>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-fuchsia-100/70 dark:bg-fuchsia-950/60">
+      <div className="h-1.5 overflow-hidden rounded-full bg-primary/10">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-600 transition-all duration-300"
+          className="h-full rounded-full bg-primary transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>
 
       {nextStep ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-fuchsia-200/90 bg-gradient-to-r from-fuchsia-50/80 via-pink-50/40 to-card p-4 shadow-xs dark:border-fuchsia-900/50 dark:from-fuchsia-950/30 dark:via-pink-950/15 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/[0.04] p-4 shadow-xs dark:bg-primary/[0.07] sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-400">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
               <Sparkles className="size-3.5" />
               Próximo passo
             </p>
@@ -146,7 +146,7 @@ export function OnboardingChecklist({
           <Button
             asChild
             className={cn(
-              "shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700",
+              "shrink-0",
               highlightNextStep && "motion-safe:animate-attention-loop",
             )}
           >
@@ -181,10 +181,10 @@ export function OnboardingChecklist({
 
                 const classes = cn(
                   "flex items-start gap-3 rounded-xl border bg-card p-3.5 shadow-xs transition-colors",
-                  active && "border-fuchsia-300/90 bg-fuchsia-50/40 dark:border-fuchsia-800/60 dark:bg-fuchsia-950/20",
+                  active && "border-primary/40 bg-primary/[0.04] dark:bg-primary/[0.07]",
                   step.done && "bg-muted/30",
                   locked && "opacity-70",
-                  actionable && "hover:border-fuchsia-300 hover:bg-accent",
+                  actionable && "hover:border-primary/40 hover:bg-accent",
                 );
 
                 const inner = (
@@ -195,7 +195,7 @@ export function OnboardingChecklist({
                         step.done
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                           : active
-                            ? "bg-gradient-to-br from-fuchsia-600 to-pink-600 text-white shadow-xs"
+                            ? "bg-primary text-primary-foreground shadow-xs"
                             : "bg-muted text-muted-foreground",
                       )}
                     >
@@ -206,13 +206,13 @@ export function OnboardingChecklist({
                         <p
                           className={cn(
                             "truncate text-sm font-medium",
-                            active && "font-semibold text-fuchsia-950 dark:text-fuchsia-200",
+                            active && "font-semibold text-foreground",
                           )}
                         >
                           {step.label}
                         </p>
                         {active ? (
-                          <span className="shrink-0 rounded-full border border-fuchsia-300 bg-fuchsia-50/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/40 dark:text-fuchsia-300">
+                          <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                             Atual
                           </span>
                         ) : null}

@@ -59,6 +59,7 @@
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-attention-loop: attention 2.2s ease-in-out infinite;
+  --animate-attention-ring: attention-ring 1.8s ease-out infinite;
   --animate-confetti: confetti 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
@@ -67,7 +68,7 @@
 @keyframes attention {
   0% {
     transform: scale(1) rotate(0);
-    box-shadow: 0 0 0 0 rgb(192 38 211 / 0.7);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 60%, transparent);
   }
   10% {
     transform: scale(1.12) rotate(-3deg);
@@ -85,11 +86,23 @@
     transform: scale(1) rotate(0);
   }
   70% {
-    box-shadow: 0 0 0 14px rgb(192 38 211 / 0);
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--primary) 0%, transparent);
   }
   100% {
     transform: scale(1) rotate(0);
-    box-shadow: 0 0 0 0 rgb(192 38 211 / 0);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
+/* Destaque de um cartao/secao (ex.: Regras de Cobranca via onboarding): so o
+   anel pulsa, sem mexer no tamanho. */
+@keyframes attention-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent);
   }
 }
 

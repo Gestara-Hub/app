@@ -28,6 +28,7 @@ import {
   type SegmentedChoiceOption,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -226,6 +227,8 @@ function OrgUnitForm({
   // disparar `hashchange`. Por isso reage tambem a troca dos search params.
   const searchParams = useSearchParams();
   const billingTriggerRef = useRef<HTMLButtonElement>(null);
+  // Chegou pelo deep-link (ex.: onboarding): o cartao pulsa ate o usuario clicar nele.
+  const [highlightBilling, setHighlightBilling] = useState(false);
   useEffect(() => {
     let timer: number | undefined;
     const handleHash = () => {
@@ -237,6 +240,7 @@ function OrgUnitForm({
         if (!el || el.closest("[hidden]")) return;
         el.scrollIntoView({ behavior: "smooth", block: "start" });
         billingTriggerRef.current?.focus({ preventScroll: true });
+        setHighlightBilling(true);
       }, 120);
     };
     handleHash();
@@ -395,7 +399,12 @@ function OrgUnitForm({
               value="billing"
               id="billing-rules"
               data-tour="settings-billing-rules"
-              className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors scroll-mt-6"
+              onPointerDownCapture={() => setHighlightBilling(false)}
+              className={cn(
+                "rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors scroll-mt-6",
+                highlightBilling &&
+                  "border-primary/60 data-[state=open]:border-primary/60 motion-safe:animate-attention-ring",
+              )}
             >
               <AccordionTrigger
                 ref={billingTriggerRef}

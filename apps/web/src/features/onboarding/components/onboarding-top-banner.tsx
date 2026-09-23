@@ -78,7 +78,7 @@ export function OnboardingTopBanner() {
           "rounded-xl border shadow-xs transition-colors",
           !nextStep
             ? "border-emerald-500/30 bg-emerald-500/[0.08] dark:bg-emerald-950/25"
-            : "border-fuchsia-200/90 bg-gradient-to-r from-fuchsia-50/80 via-pink-50/40 to-card dark:border-fuchsia-900/50 dark:from-fuchsia-950/30 dark:via-pink-950/15",
+            : "border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.07]",
         )}
       >
         <div className="flex items-center justify-between gap-4 p-3.5 sm:px-5 sm:py-3">
@@ -86,7 +86,7 @@ export function OnboardingTopBanner() {
           <div className="min-w-0 flex-1">
             {nextStep ? (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-400">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
                   <Sparkles className="size-3.5" />
                   <span>
                     {isOnNextStepPage ? "Passo atual" : "Próximo passo"} · Passo {nextStepIndex + 1} de {total}
@@ -115,7 +115,7 @@ export function OnboardingTopBanner() {
               <Button
                 asChild
                 className={cn(
-                  "shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700",
+                  "shrink-0",
                   pulse && "motion-safe:animate-attention-loop",
                 )}
               >
@@ -133,11 +133,11 @@ export function OnboardingTopBanner() {
         </div>
 
         {/* Linha de progresso destacada na borda inferior */}
-        <div className="h-1 w-full overflow-hidden rounded-b-xl bg-fuchsia-100/70 dark:bg-fuchsia-950/60">
+        <div className="h-1 w-full overflow-hidden rounded-b-xl bg-primary/10">
           <div
             className={cn(
               "h-full transition-all duration-500 ease-out",
-              isComplete ? "bg-emerald-600" : "bg-gradient-to-r from-fuchsia-600 to-pink-600",
+              isComplete ? "bg-emerald-600" : "bg-primary",
             )}
             style={{ width: `${pct}%` }}
           />
