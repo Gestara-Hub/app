@@ -166,7 +166,7 @@ export const THEME_PRESETS: ThemePreset[] = [
       baseColor: "zinc",
       themeColor: "zinc",
       radius: "0.5",
-      menuColor: "default",
+      menuColor: "inverted",
       menuAccent: "subtle",
       font: "geist",
       style: "default",
@@ -466,7 +466,7 @@ const DEFAULT_STATE: ThemeState = {
   baseColor: "zinc",
   themeColor: "zinc",
   radius: "0.5",
-  menuColor: "default",
+  menuColor: "inverted", // padrao do produto: menu lateral escuro
   menuAccent: "subtle",
   font: "geist",
   style: "default",

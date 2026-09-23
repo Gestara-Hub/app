@@ -42,7 +42,7 @@ export default function RootLayout({
                 var c = (s && s.themeColor) || localStorage.getItem("gestarahub:theme-color") || "zinc";
                 var r = (s && s.radius) || localStorage.getItem("gestarahub:theme-radius") || "0.5";
                 var b = (s && s.baseColor) || "zinc";
-                var m = (s && s.menuColor) || "default";
+                var m = (s && s.menuColor) || "inverted";
                 var f = (s && s.font) || "geist";
                 var st = (s && s.style) || "mira";
                 document.documentElement.setAttribute("data-theme-color", c);
