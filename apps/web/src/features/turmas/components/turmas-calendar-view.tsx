@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   addWeeks,
   eachDayOfInterval,
   endOfWeek,
   format,
+  isValid,
+  parseISO,
   startOfWeek,
 } from "date-fns";
 import {
@@ -31,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { todayISO } from "@gestarahub/core/date";
 import { useClassGroups, useClassSessions } from "../hooks/use-turmas";
+import { rememberCalendarQuery } from "../calendar-filters";
 import { TurmasWeekGrid, dayLabel } from "./turmas-week-grid";
 
 type View = "grid" | "list";
@@ -38,11 +42,73 @@ type View = "grid" | "list";
 const toISO = (d: Date) => format(d, "yyyy-MM-dd");
 const ALL = "all";
 
+/**
+ * Filtros na URL (?week=&view=&modality=&instructor=): sobrevivem ao reload e ao
+ * voltar de uma aula. Valores padrao (semana atual, grade, todos) ficam de fora.
+ */
+function useCalendarFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const queryString = searchParams.toString();
+  useEffect(() => {
+    rememberCalendarQuery(queryString);
+  }, [queryString]);
+
+  const weekParam = searchParams.get("week");
+  const parsedWeek = weekParam ? parseISO(weekParam) : null;
+  const anchor = parsedWeek && isValid(parsedWeek) ? parsedWeek : new Date();
+  const view: View = searchParams.get("view") === "list" ? "list" : "grid";
+  const modality = searchParams.get("modality") ?? ALL;
+  const instructor = searchParams.get("instructor") ?? ALL;
+
+  const update = (patch: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const currentWeek = toISO(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const setAnchor = (date: Date) => {
+    const week = toISO(startOfWeek(date, { weekStartsOn: 1 }));
+    update({ week: week === currentWeek ? null : week });
+  };
+  const setView = (next: View) => update({ view: next === "grid" ? null : next });
+  const setModality = (value: string) => update({ modality: value === ALL ? null : value });
+  const setInstructor = (value: string) =>
+    update({ instructor: value === ALL ? null : value });
+  const clearFilters = () => update({ modality: null, instructor: null });
+
+  return {
+    anchor,
+    view,
+    modality,
+    instructor,
+    setAnchor,
+    setView,
+    setModality,
+    setInstructor,
+    clearFilters,
+  };
+}
+
 export function TurmasCalendarView() {
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const [view, setView] = useState<View>("grid");
-  const [modality, setModality] = useState<string>(ALL);
-  const [instructor, setInstructor] = useState<string>(ALL);
+  const {
+    anchor,
+    view,
+    modality,
+    instructor,
+    setAnchor,
+    setView,
+    setModality,
+    setInstructor,
+    clearFilters,
+  } = useCalendarFilters();
 
   // So renderiza no client (evita mismatch de hidratacao com a data do server).
   const mounted = useSyncExternalStore(
@@ -213,10 +279,7 @@ export function TurmasCalendarView() {
             actionLabel={hasFilters ? "Limpar filtros" : undefined}
             onAction={
               hasFilters
-                ? () => {
-                    setModality(ALL);
-                    setInstructor(ALL);
-                  }
+                ? clearFilters
                 : undefined
             }
           />
