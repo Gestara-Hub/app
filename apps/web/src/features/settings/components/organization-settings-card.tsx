@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -140,6 +141,14 @@ function parseUnitAddress(addr: Unit["address"]): OrgUnitValues["address"] {
   };
 }
 
+/**
+ * Ancoras do hash. Tolera hash repetido (`#billing-rules#billing-rules`), que o
+ * roteador do Next ja produziu em navegacoes seguidas para o mesmo destino.
+ */
+export function hashTargets(hash: string): string[] {
+  return hash.split("#").filter(Boolean);
+}
+
 function OrgUnitForm({
   organization,
   unit,
@@ -206,26 +215,37 @@ function OrgUnitForm({
 
   // Se a URL possuir #billing-rules, abre a seção de regras de cobrança; senão, abre a de identificação
   const [openSections, setOpenSections] = useState<string[]>(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#billing-rules") {
+    if (typeof window !== "undefined" && hashTargets(window.location.hash).includes("billing-rules")) {
       return ["billing"];
     }
     return ["business"];
   });
 
+  // O painel fica montado nas outras abas, e a navegacao do Next (ex.: o
+  // "Continuar" do onboarding vindo de Horarios) troca a URL via pushState, sem
+  // disparar `hashchange`. Por isso reage tambem a troca dos search params.
+  const searchParams = useSearchParams();
+  const billingTriggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
+    let timer: number | undefined;
     const handleHash = () => {
-      if (typeof window !== "undefined" && window.location.hash === "#billing-rules") {
-        setOpenSections(["billing"]);
-        setTimeout(() => {
-          const el = document.getElementById("billing-rules");
-          el?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 120);
-      }
+      if (!hashTargets(window.location.hash).includes("billing-rules")) return;
+      setOpenSections((prev) => (prev.includes("billing") ? prev : [...prev, "billing"]));
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const el = document.getElementById("billing-rules");
+        if (!el || el.closest("[hidden]")) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        billingTriggerRef.current?.focus({ preventScroll: true });
+      }, 120);
     };
     handleHash();
     window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("hashchange", handleHash);
+    };
+  }, [searchParams]);
 
   const onError = (errors: FieldErrors<OrgUnitValues>) => {
     const toOpen: string[] = [];
@@ -377,7 +397,10 @@ function OrgUnitForm({
               data-tour="settings-billing-rules"
               className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors scroll-mt-6"
             >
-              <AccordionTrigger className="py-4 hover:no-underline cursor-pointer">
+              <AccordionTrigger
+                ref={billingTriggerRef}
+                className="py-4 hover:no-underline cursor-pointer"
+              >
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <CalendarDays className="size-4" />

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ResetDataActions } from "@/features/system";
-import { OrganizationSettingsForm } from "./organization-settings-card";
+import { OrganizationSettingsForm, hashTargets } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 
 type Tab = "geral" | "horarios" | "dados";
@@ -60,8 +60,8 @@ export function SettingsTabs() {
   // Rola até a seção com âncora hash (ex.: #billing-rules) quando a aba Geral estiver ativa
   useEffect(() => {
     if (tab === "geral" && typeof window !== "undefined" && window.location.hash) {
-      const hash = window.location.hash.slice(1);
-      const el = document.getElementById(hash);
+      const [hash] = hashTargets(window.location.hash);
+      const el = hash ? document.getElementById(hash) : null;
       if (el) {
         setTimeout(() => {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
