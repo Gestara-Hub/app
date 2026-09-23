@@ -4,5 +4,6 @@ packages:
 
 # Frontend mockado no MVP: nenhum build nativo e necessario.
 allowBuilds:
+  esbuild: false
   sharp: false
   unrs-resolver: false

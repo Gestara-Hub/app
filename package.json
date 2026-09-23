@@ -8,6 +8,7 @@
     "build": "pnpm --filter @gestarahub/web build",
     "lint": "pnpm --filter @gestarahub/web lint",
     "typecheck": "pnpm --filter @gestarahub/web typecheck",
-    "test": "pnpm --filter @gestarahub/core test"
+    "test": "pnpm --filter @gestarahub/core test && pnpm --filter @gestarahub/web test",
+    "e2e": "pnpm --filter @gestarahub/web e2e"
   }
 }
