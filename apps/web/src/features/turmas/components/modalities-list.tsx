@@ -85,7 +85,7 @@ function ModalityRow({
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações da modalidade"
+            title={`Ações de ${modality.name}`}
             variant="ghost"
           />
         ) : null

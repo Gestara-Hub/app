@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
-import { formatPhone } from "@gestarahub/core/format";
+import { formatPhone, plural } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ClassGroupView, Id } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
@@ -328,7 +328,7 @@ export function EnrollStudentsDialog({
         ) : (
           <p className="text-xs text-muted-foreground">
             {isFull
-              ? `${selected.size} selecionado(s)`
+              ? plural(selected.size, "selecionado", "selecionados")
               : `${selected.size} de ${remaining} ${remaining === 1 ? "vaga" : "vagas"}`}
           </p>
         )}

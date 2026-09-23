@@ -44,6 +44,7 @@ import {
   StatusFilterSelect,
 } from "@/components/shared/list";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ClassGroupView, ClassMeetingSlot, RecordStatus } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import {
@@ -111,7 +112,7 @@ function TurmaRow({
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações da turma"
+            title={`Ações de ${turma.name}`}
             variant="ghost"
           />
         ) : null
@@ -215,8 +216,8 @@ export function TurmasView({
       await deactivate.mutateAsync(deactivatingTurma.id);
       toast.success(`Turma "${deactivatingTurma.name}" desativada.`);
       setDeactivatingTurma(null);
-    } catch {
-      toast.error("Não foi possível desativar a turma.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível desativar a turma."));
     }
   };
 
@@ -234,8 +235,9 @@ export function TurmasView({
     try {
       await reactivate.mutateAsync(turma.id);
       toast.success(`Turma "${turma.name}" reativada.`);
-    } catch {
-      toast.error("Não foi possível reativar a turma.");
+    } catch (err) {
+      // Ex.: o horario da turma ficou ocupado por outra turma do instrutor.
+      toast.error(getErrorMessage(err, "Não foi possível reativar a turma."));
     }
   };
 

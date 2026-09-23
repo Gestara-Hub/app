@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
+  AlertCircle,
   ChevronLeft,
   GraduationCap,
   Pencil,
@@ -40,8 +41,9 @@ import {
 import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
-import { formatPhone } from "@gestarahub/core/format";
-import type { EnrollmentView, Id } from "@gestarahub/contracts";
+import { getErrorMessage } from "@gestarahub/core/api-error";
+import { formatPhone, plural, pluralWord } from "@gestarahub/core/format";
+import { isApiError, type EnrollmentView, type Id } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useClients } from "@/features/clients";
 import {
@@ -58,6 +60,10 @@ import { TurmaFormDialog } from "./turma-form-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 type Tab = "enrolled" | "waitlist";
+
+function isApiNotFound(error: unknown): boolean {
+  return isApiError(error) && error.code === "NOT_FOUND";
+}
 
 /** Badge de frequencia do aluno (informativo; destaque quando < 75%). */
 function FreqBadge({
@@ -76,7 +82,7 @@ function FreqBadge({
   const low = rate < 0.75;
   return (
     <span
-      title={`${present} presença(s) · ${absent} falta(s)`}
+      title={`${plural(present, "presença", "presenças")} · ${plural(absent, "falta", "faltas")}`}
       className={
         "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums " +
         (low
@@ -153,7 +159,7 @@ function TabButton({
 }
 
 export function TurmaDetailView({ id }: { id: string }) {
-  const { data: turma, isLoading } = useClassGroup(id);
+  const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
   const { data: waitlist } = useWaitlist(id);
@@ -174,6 +180,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const handleEnrollOpenChange = (open: boolean) => {
     setEnrollOpen(open);
@@ -194,13 +201,41 @@ export function TurmaDetailView({ id }: { id: string }) {
     return (studentId: Id) => map.get(studentId);
   }, [clients]);
 
-  if (isLoading || !turma) {
+  if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
+  }
+
+  if (!turma) {
+    const notFound = isApiNotFound(error);
+    return (
+      <div className="rounded-lg border">
+        <ModuleEmptyGuide
+          icon={<AlertCircle className="size-8" />}
+          title={notFound || !isError ? "Turma não encontrada" : "Não foi possível carregar a turma"}
+          description={
+            notFound || !isError
+              ? "Ela pode ter sido removida ou o link está incorreto."
+              : getErrorMessage(error, "Tente novamente em instantes.")
+          }
+          actionLabel={notFound || !isError ? undefined : "Tentar novamente"}
+          onAction={notFound || !isError ? undefined : () => void refetch()}
+        />
+        <div className="flex justify-center pb-6">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/classes">
+              <ChevronLeft className="size-4" />
+              Turmas
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const enrolledIds = new Set((enrollments ?? []).map((e) => e.studentId));
   const waitlistedIds = new Set((waitlist ?? []).map((w) => w.studentId));
-  const selectedRows = rows.filter((e) => selected.has(e.id));
+  // O lote e o que esta selecionado, com ou sem busca (a busca so filtra a lista).
+  const selectedRows = (enrollments ?? []).filter((e) => selected.has(e.id));
   const allShownSelected =
     rows.length > 0 && rows.every((e) => selected.has(e.id));
 
@@ -214,7 +249,15 @@ export function TurmaDetailView({ id }: { id: string }) {
   };
 
   const toggleAll = () => {
-    setSelected(allShownSelected ? new Set() : new Set(rows.map((e) => e.id)));
+    // Mexe so nas linhas visiveis; a selecao fora da busca e preservada.
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const e of rows) {
+        if (allShownSelected) next.delete(e.id);
+        else next.add(e.id);
+      }
+      return next;
+    });
   };
 
   const cancelOne = async (enrollment: EnrollmentView) => {
@@ -236,25 +279,43 @@ export function TurmaDetailView({ id }: { id: string }) {
             return next;
           });
         },
+        onError: (err) =>
+          toast.error(getErrorMessage(err, "Não foi possível cancelar a matrícula.")),
       },
     );
   };
 
   const cancelSelected = async () => {
-    let ok = 0;
-    for (const row of selectedRows) {
+    const batch = selectedRows;
+    const done = new Set<Id>();
+    let lastError: unknown;
+    setBulkPending(true);
+    for (const row of batch) {
       try {
         await cancelMut.mutateAsync({ id: row.id });
-        ok += 1;
-      } catch {
+        done.add(row.id);
+      } catch (err) {
         // erro individual nao interrompe o lote; o resumo conta o que passou.
+        lastError = err;
       }
     }
+    setBulkPending(false);
     setConfirmBulk(false);
-    setSelected(new Set());
-    if (ok > 0) {
+    // Tira da selecao so o que foi processado; falhas seguem marcadas.
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const rowId of done) next.delete(rowId);
+      return next;
+    });
+    if (done.size > 0) {
       toast.success(
-        ok === 1 ? "Matrícula cancelada." : `${ok} matrículas canceladas.`,
+        `${plural(done.size, "matrícula cancelada", "matrículas canceladas")}.`,
+      );
+    }
+    const failed = batch.length - done.size;
+    if (failed > 0) {
+      toast.error(
+        `${plural(failed, "matrícula não foi cancelada", "matrículas não foram canceladas")}. ${getErrorMessage(lastError, "Tente novamente.")}`,
       );
     }
   };
@@ -359,10 +420,10 @@ export function TurmaDetailView({ id }: { id: string }) {
                 ) : null}
               </div>
 
-              {canManage && selected.size > 0 ? (
+              {canManage && selectedRows.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
                   <span className="text-sm text-muted-foreground">
-                    {selected.size} selecionado(s)
+                    {plural(selectedRows.length, "selecionado", "selecionados")}
                   </span>
                   <Button
                     variant="outline"
@@ -448,7 +509,7 @@ export function TurmaDetailView({ id }: { id: string }) {
                           {canManage ? (
                             <ListItemActionsMenu
                               actions={actions}
-                              title="Ações da matrícula"
+                              title={`Ações de ${e.studentName}`}
                             />
                           ) : null}
                         </div>
@@ -480,7 +541,9 @@ export function TurmaDetailView({ id }: { id: string }) {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={promoteMut.isPending}
                         onClick={async () => {
+                          if (promoteMut.isPending) return;
                           const ok = await confirmAction({
                             title: "Promover da lista de espera?",
                             description: `${w.studentName} será matriculado na turma, mesmo que ela esteja lotada.`,
@@ -490,6 +553,8 @@ export function TurmaDetailView({ id }: { id: string }) {
                           promoteMut.mutate(w.id, {
                             onSuccess: () =>
                               toast.success("Aluno promovido para matrícula."),
+                            onError: (err) =>
+                              toast.error(getErrorMessage(err, "Não foi possível promover o aluno.")),
                           });
                         }}
                       >
@@ -499,7 +564,9 @@ export function TurmaDetailView({ id }: { id: string }) {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        title="Remover da lista"
+                        title={`Remover ${w.studentName} da lista`}
+                        aria-label={`Remover ${w.studentName} da lista`}
+                        disabled={removeWaitMut.isPending}
                         onClick={async () => {
                           const ok = await confirmAction({
                             title: "Remover da lista de espera?",
@@ -510,6 +577,8 @@ export function TurmaDetailView({ id }: { id: string }) {
                           if (!ok) return;
                           removeWaitMut.mutate(w.id, {
                             onSuccess: () => toast.success("Aluno removido da lista de espera."),
+                            onError: (err) =>
+                              toast.error(getErrorMessage(err, "Não foi possível remover da lista de espera.")),
                           });
                         }}
                       >
@@ -525,11 +594,16 @@ export function TurmaDetailView({ id }: { id: string }) {
       ) : null}
 
 
-      <AlertDialog open={confirmBulk} onOpenChange={setConfirmBulk}>
+      <AlertDialog
+        open={confirmBulk}
+        onOpenChange={(open) => {
+          if (!bulkPending) setConfirmBulk(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Cancelar {selected.size} matrícula(s)?
+              Cancelar {plural(selectedRows.length, "matrícula", "matrículas")}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               Os alunos saem da turma e deixam de contar nas vagas. O histórico
@@ -537,9 +611,19 @@ export function TurmaDetailView({ id }: { id: string }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={cancelSelected}>
-              Cancelar matrículas
+            <AlertDialogCancel disabled={bulkPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkPending || selectedRows.length === 0}
+              onClick={(event) => {
+                // Mantem o dialogo aberto ate o lote terminar.
+                event.preventDefault();
+                void cancelSelected();
+              }}
+            >
+              {bulkPending
+                ? "Cancelando..."
+                : `Cancelar ${pluralWord(selectedRows.length, "matrícula", "matrículas")}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

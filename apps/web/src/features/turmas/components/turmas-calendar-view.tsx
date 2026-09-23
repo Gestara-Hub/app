@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@gestarahub/core/date";
-import { useClassGroups, useClassSessions } from "../hooks/use-turmas";
+import { useClassSessions } from "../hooks/use-turmas";
 import { rememberCalendarQuery } from "../calendar-filters";
 import { TurmasWeekGrid, dayLabel } from "./turmas-week-grid";
 
@@ -42,9 +42,27 @@ type View = "grid" | "list";
 const toISO = (d: Date) => format(d, "yyyy-MM-dd");
 const ALL = "all";
 
+// Tela pequena (abaixo do breakpoint sm do Tailwind): a grade pede rolagem lateral.
+const MOBILE_QUERY = "(max-width: 639px)";
+function subscribeMobile(onChange: () => void): () => void {
+  const mql = window.matchMedia(MOBILE_QUERY);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+/** `false` no server e na hidratacao; depois reflete a largura real. */
+function useIsMobile(): boolean {
+  return useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false,
+  );
+}
+
 /**
  * Filtros na URL (?week=&view=&modality=&instructor=): sobrevivem ao reload e ao
- * voltar de uma aula. Valores padrao (semana atual, grade, todos) ficam de fora.
+ * voltar de uma aula. Valores padrao (semana atual, todos) ficam de fora; a visao
+ * escolhida vai sempre na URL, e sem escolha o padrao e grade (lista no celular).
  */
 function useCalendarFilters() {
   const router = useRouter();
@@ -59,12 +77,17 @@ function useCalendarFilters() {
   const weekParam = searchParams.get("week");
   const parsedWeek = weekParam ? parseISO(weekParam) : null;
   const anchor = parsedWeek && isValid(parsedWeek) ? parsedWeek : new Date();
-  const view: View = searchParams.get("view") === "list" ? "list" : "grid";
+  const isMobile = useIsMobile();
+  const viewParam = searchParams.get("view");
+  const view: View =
+    viewParam === "list" || viewParam === "grid" ? viewParam : isMobile ? "list" : "grid";
   const modality = searchParams.get("modality") ?? ALL;
   const instructor = searchParams.get("instructor") ?? ALL;
 
   const update = (patch: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
+    // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
+    // antes do re-render nao se apagam.
+    const params = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(patch)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
@@ -78,7 +101,8 @@ function useCalendarFilters() {
     const week = toISO(startOfWeek(date, { weekStartsOn: 1 }));
     update({ week: week === currentWeek ? null : week });
   };
-  const setView = (next: View) => update({ view: next === "grid" ? null : next });
+  // Explicito: a escolha vale em qualquer largura de tela.
+  const setView = (next: View) => update({ view: next });
   const setModality = (value: string) => update({ modality: value === ALL ? null : value });
   const setInstructor = (value: string) =>
     update({ instructor: value === ALL ? null : value });
@@ -123,21 +147,9 @@ export function TurmasCalendarView() {
     dateFrom: toISO(weekStart),
     dateTo: toISO(weekEnd),
   });
-  const { data: turmas } = useClassGroups();
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const today = todayISO();
-
-  const occupancyByClass = useMemo(
-    () =>
-      new Map(
-        (turmas ?? []).map((t) => [
-          t.id,
-          { enrolled: t.enrolledCount, capacity: t.capacity },
-        ]),
-      ),
-    [turmas],
-  );
 
   const modalityOptions = useMemo(() => {
     const names = new Set(
@@ -192,7 +204,7 @@ export function TurmasCalendarView() {
         </div>
       </PageHeader>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div
             role="tablist"
@@ -229,9 +241,10 @@ export function TurmasCalendarView() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* No celular os filtros empilham em largura total para o texto caber. */}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <Select value={modality} onValueChange={setModality}>
-            <SelectTrigger className="w-44" aria-label="Filtrar por modalidade">
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por modalidade">
               <SelectValue placeholder="Modalidade" />
             </SelectTrigger>
             <SelectContent>
@@ -245,7 +258,7 @@ export function TurmasCalendarView() {
           </Select>
 
           <Select value={instructor} onValueChange={setInstructor}>
-            <SelectTrigger className="w-44" aria-label="Filtrar por instrutor">
+            <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por instrutor">
               <SelectValue placeholder="Instrutor" />
             </SelectTrigger>
             <SelectContent>
@@ -312,7 +325,8 @@ export function TurmasCalendarView() {
                 </p>
                 <div className="space-y-1.5">
                   {daySessions.map((s) => {
-                    const occ = occupancyByClass.get(s.classGroupId);
+                    // Mesma ocupacao da tela da aula: roster da data (com avulsos).
+                    const full = s.occupiedCount >= s.capacity;
                     return (
                       <Link
                         key={s.id}
@@ -332,9 +346,16 @@ export function TurmasCalendarView() {
                                 ) : (
                                   s.instructorName
                                 )}
-                                {occ
-                                  ? ` · ${occ.enrolled}/${occ.capacity} vagas`
-                                  : ""}
+                                {" · "}
+                                <span
+                                  className={cn(
+                                    full && "font-medium text-amber-600 dark:text-amber-400",
+                                  )}
+                                >
+                                  {full
+                                    ? `${s.occupiedCount}/${s.capacity} · Turma lotada`
+                                    : `${s.occupiedCount}/${s.capacity} vagas`}
+                                </span>
                               </p>
                             </div>
                             <span className="shrink-0 text-sm tabular-nums text-muted-foreground">

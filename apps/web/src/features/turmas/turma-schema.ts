@@ -32,7 +32,12 @@ export const turmaFormSchema = z.object({
     .refine((slots) => slots.every((s) => s.start && s.end && s.start < s.end), {
       message: "Horário inválido: informe início e fim (o início deve ser antes do fim).",
     }),
-});
+})
+  // Aula avulsa sem valor nao gera cobranca: com avulso ligado, o valor e obrigatorio.
+  .refine((data) => !data.allowDropin || (data.sessionPriceCents ?? 0) > 0, {
+    path: ["sessionPriceCents"],
+    message: "Informe o valor da aula avulsa.",
+  });
 
 export type TurmaFormValues = z.infer<typeof turmaFormSchema>;
 

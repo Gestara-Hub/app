@@ -33,6 +33,7 @@ import {
   instructorConflictMessage,
   weekdayOf,
 } from "@gestarahub/core/scheduling";
+import { isPastSlot } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
@@ -61,6 +62,12 @@ function todayISO(): DateISO {
   return format(new Date(), "yyyy-MM-dd");
 }
 
+// Data LOCAL (yyyy-MM-dd) de um timestamp ISO. `.slice(0, 10)` pega a data UTC
+// e erra o dia a noite (ex.: 22h em Brasilia ja e o dia seguinte em UTC).
+function localDateOf(iso: string): DateISO {
+  return format(parseISO(iso), "yyyy-MM-dd");
+}
+
 function modalityName(id?: Id): string | undefined {
   return id ? store.categories.find((c) => c.id === id)?.name : undefined;
 }
@@ -84,8 +91,8 @@ function enrollmentsOn(classGroupId: Id, date: DateISO): Enrollment[] {
   return store.enrollments.filter(
     (e) =>
       e.classGroupId === classGroupId &&
-      e.enrolledAt.slice(0, 10) <= date &&
-      (e.status === "active" || (e.canceledAt !== undefined && e.canceledAt.slice(0, 10) > date)),
+      localDateOf(e.enrolledAt) <= date &&
+      (e.status === "active" || (e.canceledAt !== undefined && localDateOf(e.canceledAt) > date)),
   );
 }
 
@@ -160,7 +167,8 @@ function toSessionView(
     start: slot.start,
     end: slot.end,
     instructorId: effectiveInstructorId,
-    status: date < todayISO() ? "done" : "scheduled",
+    // Concluida quando o horario de fim ja passou (inclusive hoje).
+    status: isPastSlot(date, slot.end) ? "done" : "scheduled",
     createdAt: g.createdAt,
     updatedAt: override?.updatedAt ?? g.updatedAt,
     className: g.name,
@@ -315,16 +323,8 @@ function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id):
   validateInstructorScheduleConflict(payload, currentGroupId);
 }
 
-function buildSessionDetail(id: Id): ClassSessionDetail {
-  const p = parseSessionId(id);
-  const g = p
-    ? store.classGroups.find((x) => x.id === p.classGroupId)
-    : undefined;
-  if (!p || !g) throw notFoundError("Aula não encontrada.");
-  const slot = g.meetingSlots.find((s) => s.start === p.start);
-  if (!slot) throw notFoundError("Aula não encontrada.");
-  const view = toSessionView(g, p.date, slot);
-
+// Roster da aula (mesma regra no detalhe e na ocupacao do calendario).
+function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[] {
   // Roster unificado (híbrido):
   // 1. Alunos matriculados da turma
   // Quem tem presenca registrada nesta aula continua na lista, mesmo que a
@@ -332,7 +332,7 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
   const marked = new Set(
     store.attendances.filter((a) => a.sessionId === id).map((a) => a.studentId),
   );
-  const onDate = enrollmentsOn(g.id, p.date);
+  const onDate = enrollmentsOn(g.id, date);
   const extra = store.enrollments.filter(
     (e) => e.classGroupId === g.id && marked.has(e.studentId) && !onDate.some((o) => o.studentId === e.studentId),
   );
@@ -360,10 +360,27 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
       )?.status,
     }));
 
-  const roster: SessionRosterEntry[] = [
-    ...enrolledEntries,
-    ...reservedEntries,
-  ].sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
+  return [...enrolledEntries, ...reservedEntries].sort((a, b) =>
+    a.studentName.localeCompare(b.studentName, "pt-BR"),
+  );
+}
+
+/** Aula do calendario com a ocupacao da data (matriculados vigentes + avulsos/experimentais). */
+export type ClassSessionListItem = ClassSessionView & {
+  capacity: number;
+  occupiedCount: number;
+};
+
+function buildSessionDetail(id: Id): ClassSessionDetail {
+  const p = parseSessionId(id);
+  const g = p
+    ? store.classGroups.find((x) => x.id === p.classGroupId)
+    : undefined;
+  if (!p || !g) throw notFoundError("Aula não encontrada.");
+  const slot = g.meetingSlots.find((s) => s.start === p.start);
+  if (!slot) throw notFoundError("Aula não encontrada.");
+  const view = toSessionView(g, p.date, slot);
+  const roster = buildRoster(g, id, p.date);
 
   const capacity = g.capacity;
   const availableSpots = Math.max(0, capacity - roster.length);
@@ -378,6 +395,64 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
     sessionPriceCents: g.sessionPriceCents,
     roster,
   };
+}
+
+// Renumera a fila (1..n) de quem ainda espera, na ordem atual.
+function renumberWaitlist(classGroupId: Id): void {
+  store.waitlist
+    .filter((w) => w.classGroupId === classGroupId && w.status === "waiting")
+    .sort((a, b) => a.position - b.position)
+    .forEach((w, i) => {
+      w.position = i + 1;
+    });
+}
+
+// Aulas que o instrutor da de fato numa data: as turmas dele (sem override para
+// outro) + as aulas de outras turmas em que ele e substituto naquela data.
+function instructorSessionsOn(
+  instructorId: Id,
+  date: DateISO,
+  excludeSessionId: Id,
+): { group: ClassGroup; slot: ClassMeetingSlot }[] {
+  const wd = weekdayOf(date);
+  const overrides = store.sessionOverrides || [];
+  const out: { group: ClassGroup; slot: ClassMeetingSlot }[] = [];
+  for (const g of store.classGroups) {
+    if (g.status !== "active" || date < g.startDate) continue;
+    if (g.endDate && date > g.endDate) continue;
+    for (const slot of g.meetingSlots) {
+      if (slot.weekday !== wd) continue;
+      const sid = makeSessionId(g.id, date, slot.start);
+      if (sid === excludeSessionId) continue;
+      const effective = overrides.find((o) => o.sessionId === sid)?.instructorId ?? g.instructorId;
+      if (effective === instructorId) out.push({ group: g, slot });
+    }
+  }
+  return out;
+}
+
+// Substituto nao pode estar em outra aula sobreposta na mesma data.
+function validateSubstituteConflict(
+  sessionId: Id,
+  date: DateISO,
+  slot: ClassMeetingSlot,
+  instructorId: Id,
+  name: string,
+): void {
+  // Cada aula vira uma "turma" de um encontro so para reusar a regra do core.
+  const busy = instructorSessionsOn(instructorId, date, sessionId).map(({ group, slot: s }) => ({
+    id: group.id,
+    name: group.name,
+    status: "active" as const,
+    instructorId,
+    meetingSlots: [s],
+  }));
+  const [conflict] = findInstructorConflicts([slot], instructorId, busy);
+  if (conflict) {
+    throw apiError("CLASS_SCHEDULE_CONFLICT", instructorConflictMessage(name, conflict), {
+      httpStatus: 409,
+    });
+  }
 }
 
 export const turmasService = {
@@ -485,6 +560,20 @@ export const turmasService = {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const g = store.classGroups[idx];
+      // Enquanto inativa, o horario pode ter sido ocupado por outra turma do instrutor.
+      const [conflict] = findInstructorConflicts(
+        g.meetingSlots,
+        g.instructorId,
+        store.classGroups,
+        g.id,
+      );
+      if (conflict) {
+        throw apiError(
+          "CLASS_SCHEDULE_CONFLICT",
+          instructorConflictMessage(instructorName(g.instructorId) || "O instrutor", conflict),
+          { httpStatus: 409 },
+        );
+      }
       store.classGroups[idx] = {
         ...g,
         status: "active",
@@ -595,21 +684,27 @@ export const turmasService = {
     classGroupId?: Id;
     dateFrom: DateISO;
     dateTo: DateISO;
-  }): Promise<ClassSessionView[]> {
+  }): Promise<ClassSessionListItem[]> {
     return simulateRead(() => {
       const groups = store.classGroups.filter(
         (g) =>
           g.status === "active" &&
           (!filter.classGroupId || g.id === filter.classGroupId),
       );
-      const out: ClassSessionView[] = [];
+      const out: ClassSessionListItem[] = [];
       for (const date of datesBetween(filter.dateFrom, filter.dateTo)) {
         const wd = weekdayOf(date);
         for (const g of groups) {
           if (date < g.startDate) continue;
           if (g.endDate && date > g.endDate) continue;
           for (const slot of g.meetingSlots) {
-            if (slot.weekday === wd) out.push(toSessionView(g, date, slot));
+            if (slot.weekday !== wd) continue;
+            const view = toSessionView(g, date, slot);
+            out.push({
+              ...view,
+              capacity: g.capacity,
+              occupiedCount: buildRoster(g, view.id, date).length,
+            });
           }
         }
       }
@@ -689,6 +784,9 @@ export const turmasService = {
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
       if (!instructor) throw notFoundError("Instrutor não encontrado.");
+      const slot = g.meetingSlots.find((s) => s.start === p.start);
+      if (!slot) throw notFoundError("Aula não encontrada.");
+      validateSubstituteConflict(sessionId, p.date, slot, instructor.id, instructor.name);
 
       if (!store.sessionOverrides) {
         store.sessionOverrides = [];
@@ -767,10 +865,11 @@ export const turmasService = {
           { field: "studentId", message: "Aluno já está na lista de espera." },
         ]);
       }
+      // Maior posicao + 1: nunca repete, mesmo apos remocoes/promocoes.
       const position =
-        store.waitlist.filter(
-          (w) => w.classGroupId === g.id && w.status === "waiting",
-        ).length + 1;
+        store.waitlist
+          .filter((w) => w.classGroupId === g.id && w.status === "waiting")
+          .reduce((max, w) => Math.max(max, w.position), 0) + 1;
       const entry: WaitlistEntry = {
         id: newId(),
         classGroupId: g.id,
@@ -790,7 +889,30 @@ export const turmasService = {
     return simulateWrite(() => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
+      // Guarda contra clique duplo: so promove quem ainda esta esperando.
+      if (w.status !== "waiting") {
+        throw apiError("VALIDATION", "Este aluno já saiu da lista de espera.", {
+          httpStatus: 409,
+        });
+      }
+      const g = store.classGroups.find((x) => x.id === w.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+      const student = store.clients.find((c) => c.id === w.studentId);
+      if (!student) throw notFoundError("Aluno não encontrado.");
+      if (student.status !== "active") {
+        throw apiError("VALIDATION", `${student.name} está inativo. Reative o aluno antes de matricular.`, {
+          httpStatus: 422,
+        });
+      }
+      const already = activeEnrollments(g.id).some((e) => e.studentId === w.studentId);
+      if (already) {
+        throw apiError("VALIDATION", `${student.name} já está matriculado nesta turma.`, {
+          httpStatus: 409,
+        });
+      }
+      validateStudentScheduleConflict(w.studentId, g.id);
       w.status = "promoted";
+      renumberWaitlist(g.id);
       const enrollment: Enrollment = {
         id: newId(),
         classGroupId: w.classGroupId,
@@ -799,11 +921,10 @@ export const turmasService = {
         enrolledAt: nowIso(),
       };
       store.enrollments.push(enrollment);
-      const student = store.clients.find((c) => c.id === w.studentId);
       return clone({
         ...enrollment,
-        studentName: student?.name ?? "",
-        studentStatus: student?.status ?? "inactive",
+        studentName: student.name,
+        studentStatus: student.status,
         presentCount: 0,
         absentCount: 0,
         attendanceRate: null,
@@ -816,6 +937,7 @@ export const turmasService = {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
       w.status = "canceled";
+      renumberWaitlist(w.classGroupId);
     });
   },
 
@@ -851,6 +973,12 @@ export const turmasService = {
       }
 
       const kind: ReservationKind = input.kind || "dropin";
+      // Experimental segue liberada; avulsa so se a turma aceita (ausente = true).
+      if (kind === "dropin" && g.allowDropin === false) {
+        throw apiError("VALIDATION", "Esta turma não aceita aula avulsa.", {
+          httpStatus: 422,
+        });
+      }
       const p = parseSessionId(input.sessionId);
       const sessionDate = p?.date ?? todayISO();
       const ts = nowIso();
@@ -926,6 +1054,8 @@ export const turmasService = {
           );
       if (charge) {
         charge.status = "canceled";
+        // Cancelada pelo sistema (aluno saiu da aula), nao por decisao do usuario.
+        charge.canceledBy = "system";
         charge.updatedAt = nowIso();
       }
       auditLogService.record({

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCheck, ChevronLeft, ChevronRight, RotateCcw, User, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, CheckCheck, ChevronLeft, ChevronRight, RotateCcw, User, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,13 @@ import {
 import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
 import { Combobox } from "@/components/shared/combobox";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
-import type {
-  AttendanceStatus,
-  ClassSessionDetail,
-  ReservationKind,
+import {
+  isApiError,
+  type AttendanceStatus,
+  type ClassSessionDetail,
+  type ReservationKind,
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useClients } from "@/features/clients";
@@ -62,7 +64,7 @@ const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
 ];
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
-  const { data: session, isLoading } = useClassSession(sessionId);
+  const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: clients } = useClients({ status: "active" });
   const markMut = useMarkAttendance();
   const reserveMut = useReserveSession();
@@ -78,8 +80,41 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const [substituteOpen, setSubstituteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
 
-  if (isLoading || !session) {
+  if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
+  }
+
+  if (!session) {
+    const notFound = !isError || (isApiError(error) && error.code === "NOT_FOUND");
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border px-4 py-10 text-center">
+        <AlertCircle className="size-8 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-foreground">
+            {notFound ? "Aula não encontrada" : "Não foi possível carregar a aula"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {notFound
+              ? "A aula pode não existir mais ou o link está incorreto."
+              : getErrorMessage(error, "Tente novamente em instantes.")}
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          {notFound ? null : (
+            <Button size="sm" onClick={() => void refetch()}>
+              <RotateCcw className="size-4" />
+              Tentar novamente
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link href="/classes/calendar">
+              <ChevronLeft className="size-4" />
+              Calendário
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const rosterIds = new Set(session.roster.map((r) => r.studentId));
@@ -109,7 +144,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       }
       toast.success("Presença marcada para todos os alunos pendentes.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível marcar a presença.");
+      toast.error(getErrorMessage(err, "Não foi possível marcar a presença."));
     } finally {
       setBulkPending(false);
     }
@@ -119,7 +154,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     session.availableSpots === 1
       ? "1 vaga disponível"
       : `${session.availableSpots} vagas disponíveis`;
-  const canAddStudent = canEnroll && (session.allowDropin || session.availableSpots > 0);
+  // Avulso e experimental podem entrar mesmo com a aula lotada (o professor aceita);
+  // sem avulso na turma, o dialogo so oferece experimental.
+  const canAddStudent = canEnroll;
   const addDisabledReason =
     availableClients.length === 0 ? "Todos os alunos ativos já estão nesta aula." : null;
 
@@ -137,16 +174,18 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         amountCents: input.amountCents,
       },
       {
-        onSuccess: () => {
+        onSuccess: (reservation) => {
           toast.success(
             input.kind === "trial"
               ? "Aluno inscrito como experimental."
-              : "Aluno avulso adicionado com cobrança gerada.",
+              : reservation.chargeId
+                ? "Aluno avulso adicionado com cobrança gerada."
+                : "Aluno avulso adicionado.",
           );
           setAddOpen(false);
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Erro ao adicionar aluno.");
+          toast.error(getErrorMessage(err, "Erro ao adicionar aluno."));
         },
       },
     );
@@ -241,8 +280,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                 try {
                   await restoreMut.mutateAsync(session.id);
                   toast.success("Instrutor titular restaurado com sucesso.");
-                } catch {
-                  toast.error("Erro ao restaurar titular.");
+                } catch (err) {
+                  toast.error(getErrorMessage(err, "Erro ao restaurar titular."));
                 }
               }}
               disabled={restoreMut.isPending}
@@ -391,13 +430,23 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         <button
                           key={s.value}
                           type="button"
+                          aria-pressed={on}
+                          aria-label={`${s.label}: ${r.studentName}`}
                           disabled={!canMark || markMut.isPending || bulkPending}
                           onClick={() =>
-                            markMut.mutate({
-                              sessionId,
-                              studentId: r.studentId,
-                              status: s.value,
-                            })
+                            markMut.mutate(
+                              {
+                                sessionId,
+                                studentId: r.studentId,
+                                status: s.value,
+                              },
+                              {
+                                onError: (err) =>
+                                  toast.error(
+                                    getErrorMessage(err, "Não foi possível marcar a presença."),
+                                  ),
+                              },
+                            )
                           }
                           className={cn(
                             "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
@@ -415,7 +464,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        title="Remover da aula"
+                        title={`Remover ${r.studentName} da aula`}
+                        aria-label={`Remover ${r.studentName} da aula`}
                         disabled={cancelReservationMut.isPending}
                         onClick={async () => {
                           const ok = await confirmAction({
@@ -430,6 +480,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             {
                               onSuccess: () =>
                                 toast.success("Aluno removido da aula."),
+                              onError: (err) =>
+                                toast.error(
+                                  getErrorMessage(err, "Não foi possível remover o aluno da aula."),
+                                ),
                             },
                           );
                         }}
@@ -485,7 +539,9 @@ function AddStudentSessionDialog({
   isPending: boolean;
 }) {
   const [studentId, setStudentId] = useState("");
-  const [kind, setKind] = useState<ReservationKind>("dropin");
+  const [chosenKind, setKind] = useState<ReservationKind>("dropin");
+  // Turma sem avulso: so experimental.
+  const kind: ReservationKind = session.allowDropin ? chosenKind : "trial";
   const defaultPrice = session.sessionPriceCents ?? 0;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -512,7 +568,9 @@ function AddStudentSessionDialog({
         <DialogHeader className="pr-14">
           <DialogTitle>Adicionar aluno nesta aula</DialogTitle>
           <DialogDescription>
-            Inscreva um aluno como aula avulsa ou experimental para o dia{" "}
+            {session.allowDropin
+              ? "Inscreva um aluno como aula avulsa ou experimental para o dia "
+              : "Esta turma não aceita aula avulsa. Inscreva um aluno como experimental para o dia "}
             {format(parseISO(session.date), "dd/MM/yyyy")}.
           </DialogDescription>
         </DialogHeader>
@@ -533,25 +591,29 @@ function AddStudentSessionDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Tipo de inscrição *</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setKind("dropin")}
-                className={cn(
-                  "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
-                  kind === "dropin"
-                    ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
-                    : "border-border/60 hover:bg-muted/50 text-muted-foreground",
-                )}
-              >
-                <span className="text-sm font-medium">Aula Avulsa</span>
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  Gera cobrança avulsa
-                </span>
-              </button>
+            <div className={cn("grid gap-3", session.allowDropin ? "grid-cols-2" : "grid-cols-1")}>
+              {session.allowDropin ? (
+                <button
+                  type="button"
+                  aria-pressed={kind === "dropin"}
+                  onClick={() => setKind("dropin")}
+                  className={cn(
+                    "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
+                    kind === "dropin"
+                      ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
+                      : "border-border/60 hover:bg-muted/50 text-muted-foreground",
+                  )}
+                >
+                  <span className="text-sm font-medium">Aula avulsa</span>
+                  <span className="text-xs text-muted-foreground mt-0.5">
+                    {defaultPrice > 0 ? "Gera cobrança avulsa" : "Sem valor configurado"}
+                  </span>
+                </button>
+              ) : null}
 
               <button
                 type="button"
+                aria-pressed={kind === "trial"}
                 onClick={() => setKind("trial")}
                 className={cn(
                   "flex flex-col items-start p-3 rounded-lg border text-left transition-all",

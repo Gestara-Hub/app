@@ -26,6 +26,7 @@ import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import { plural } from "@gestarahub/core/format";
 import {
   addMinutesToTime,
   checkSlotWithinBusinessHours,
@@ -583,7 +584,8 @@ export function TurmaForm({
           modalityId: turma.modalityId ?? "",
           planId: turma.planId ?? "",
           instructorId: turma.instructorId,
-          allowDropin: turma.allowDropin ?? false,
+          // Ausente = aceita avulso (mesma regra do service, doc 11).
+          allowDropin: turma.allowDropin ?? true,
           sessionPriceCents: turma.sessionPriceCents ?? 0,
           capacity: turma.capacity,
           startDate: turma.startDate,
@@ -698,7 +700,7 @@ export function TurmaForm({
   // Lotacao e regra flexivel: reduzir abaixo dos matriculados so avisa.
   const overCapacityHint =
     turma && typeof capacityValue === "number" && capacityValue < turma.enrolledCount
-      ? `A turma tem ${turma.enrolledCount} matriculados: com ${capacityValue} vaga(s), ela ficará acima da capacidade.`
+      ? `A turma tem ${turma.enrolledCount} matriculados: com ${plural(capacityValue, "vaga", "vagas")}, ela ficará acima da capacidade.`
       : undefined;
   const allowDropin = useWatch({
     control: form.control,
@@ -859,7 +861,7 @@ export function TurmaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <InputNumber<TurmaFormValues>
             name="capacity"
-            label="Capacidade (vagas no tatame)"
+            label="Capacidade (vagas)"
             min={1}
             hint={overCapacityHint}
             disabled={pending}
@@ -877,7 +879,7 @@ export function TurmaForm({
           <SwitchField<TurmaFormValues>
             name="allowDropin"
             label="Permitir alunos avulsos nesta turma"
-            hint="Alunos poderão reservar aulas avulsas ou experimentais nas vagas restantes desta turma."
+            hint="Permite inscrever alunos em aula avulsa (paga) nesta turma. A aula experimental é sempre permitida."
             disabled={pending}
           />
 
@@ -885,6 +887,7 @@ export function TurmaForm({
             <InputCurrency<TurmaFormValues>
               name="sessionPriceCents"
               label="Valor da aula avulsa / diária"
+              required
               disabled={pending}
             />
           ) : null}

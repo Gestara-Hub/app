@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ClassSessionDetail } from "@gestarahub/contracts";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { useProfessionals } from "@/features/professionals";
 import {
   useRestorePrimaryInstructor,
@@ -56,6 +57,8 @@ function SubstituteInstructorForm({
   const [reason, setReason] = useState<string>(
     session.substitutionReason ?? "",
   );
+  // Erro do service (ex.: conflito de horario do substituto), mostrado junto ao campo.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const primaryInstructorId = session.primaryInstructorId ?? session.instructorId;
   const primaryInstructorName =
@@ -79,9 +82,9 @@ function SubstituteInstructorForm({
       toast.success("Instrutor da aula atualizado com sucesso.");
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao trocar instrutor.",
-      );
+      const message = getErrorMessage(err, "Erro ao trocar instrutor.");
+      setSubmitError(message);
+      toast.error(message);
     }
   };
 
@@ -91,9 +94,7 @@ function SubstituteInstructorForm({
       toast.success("Instrutor titular restaurado com sucesso.");
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao restaurar titular.",
-      );
+      toast.error(getErrorMessage(err, "Erro ao restaurar titular."));
     }
   };
 
@@ -140,10 +141,17 @@ function SubstituteInstructorForm({
           </label>
           <Select
             value={instructorId}
-            onValueChange={setInstructorId}
+            onValueChange={(value) => {
+              setInstructorId(value);
+              setSubmitError(null);
+            }}
             disabled={isPending || loadingProfessionals}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger
+              className="w-full"
+              aria-label="Instrutor substituto"
+              aria-invalid={submitError ? true : undefined}
+            >
               <SelectValue placeholder="Selecione o profissional substituto" />
             </SelectTrigger>
             <SelectContent>
@@ -157,6 +165,11 @@ function SubstituteInstructorForm({
               })}
             </SelectContent>
           </Select>
+          {submitError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {submitError}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">
