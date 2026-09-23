@@ -1,7 +1,7 @@
 import { requirePermission } from "@/features/auth/require-permission";
-import { TurmasView } from "@/features/turmas";
+import { ClassesScreen } from "./classes-screen";
 
 export default async function ClassesPage() {
   await requirePermission("classes:view");
-  return <TurmasView />;
+  return <ClassesScreen />;
 }

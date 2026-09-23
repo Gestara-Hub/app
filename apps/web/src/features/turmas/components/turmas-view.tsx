@@ -52,6 +52,7 @@ import {
   useReactivateClassGroup,
 } from "../hooks/use-turmas";
 import { TurmaFormDialog } from "./turma-form-dialog";
+import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const WEEKDAY_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -174,7 +175,12 @@ function SkeletonRows({ showAction }: { showAction: boolean }) {
   ));
 }
 
-export function TurmasView() {
+export function TurmasView({
+  createCompletesSetup = false,
+}: {
+  /** Criar uma turma agora conclui o cadastro basico: comemora em vez do aviso simples. */
+  createCompletesSetup?: boolean;
+} = {}) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
@@ -186,6 +192,7 @@ export function TurmasView() {
   const canManage = can("classes:manage");
   const [createOpen, setCreateOpen] = useState(false);
   const [createdTurmaForEnroll, setCreatedTurmaForEnroll] = useState<ClassGroupView | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
   const [deactivatingTurma, setDeactivatingTurma] = useState<ClassGroupView | null>(null);
 
   const deactivate = useDeactivateClassGroup();
@@ -256,11 +263,27 @@ export function TurmasView() {
       <TurmaFormDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(created) => setCreatedTurmaForEnroll(created)}
+        onCreated={(created) => {
+          // Decidido antes do refetch: depois dele o passo ja conta como feito.
+          setCelebrate(createCompletesSetup);
+          setCreatedTurmaForEnroll(created);
+        }}
+      />
+
+      <SetupCompleteDialog
+        groupName={createdTurmaForEnroll?.name}
+        open={createdTurmaForEnroll !== null && celebrate}
+        onOpenChange={(open) => !open && setCreatedTurmaForEnroll(null)}
+        onEnroll={() => {
+          if (createdTurmaForEnroll) {
+            router.push(`/classes/${createdTurmaForEnroll.id}?enroll=true`);
+          }
+          setCreatedTurmaForEnroll(null);
+        }}
       />
 
       <AlertDialog
-        open={createdTurmaForEnroll !== null}
+        open={createdTurmaForEnroll !== null && !celebrate}
         onOpenChange={(open) => !open && setCreatedTurmaForEnroll(null)}
       >
         <AlertDialogContent>
