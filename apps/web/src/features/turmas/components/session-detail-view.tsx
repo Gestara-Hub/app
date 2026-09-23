@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, RotateCcw, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { CheckCheck, ChevronLeft, ChevronRight, RotateCcw, User, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/layout/page-header";
 import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
+import { Combobox } from "@/components/shared/combobox";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import type {
@@ -36,6 +37,7 @@ import {
   useRestorePrimaryInstructor,
 } from "../hooks/use-turmas";
 import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
+import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
@@ -74,6 +76,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
   const [addOpen, setAddOpen] = useState(false);
   const [substituteOpen, setSubstituteOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   if (isLoading || !session) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -84,15 +87,41 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const isFutureSession = session.date > format(new Date(), "yyyy-MM-dd");
   const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
 
-  const meta = [
-    session.modalityName,
-    `${format(parseISO(session.date), "dd/MM/yyyy")} · ${session.start}–${session.end}`,
-    session.isSubstitute
-      ? `Instrutor substituto: ${session.instructorName} (Titular: ${session.primaryInstructorName})`
-      : `Instrutor: ${session.instructorName}`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const today = format(new Date(), "yyyy-MM-dd");
+  const isToday = session.date === today;
+  const sessionDate = parseISO(session.date);
+  const dateLabel = format(sessionDate, "EEEE, d 'de' MMMM", { locale: ptBR });
+  const shortDate = format(sessionDate, "dd/MM");
+
+  // Resumo da chamada (so para aula de hoje ou passada).
+  const counts = {
+    present: session.roster.filter((r) => r.attendance === "present").length,
+    absent: session.roster.filter((r) => r.attendance === "absent").length,
+    justified: session.roster.filter((r) => r.attendance === "justified").length,
+    pending: session.roster.filter((r) => !r.attendance).length,
+  };
+
+  const markAllPresent = async () => {
+    setBulkPending(true);
+    try {
+      for (const r of session.roster.filter((entry) => !entry.attendance)) {
+        await markMut.mutateAsync({ sessionId, studentId: r.studentId, status: "present" });
+      }
+      toast.success("Presença marcada para todos os alunos pendentes.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível marcar a presença.");
+    } finally {
+      setBulkPending(false);
+    }
+  };
+
+  const spotsLabel =
+    session.availableSpots === 1
+      ? "1 vaga disponível"
+      : `${session.availableSpots} vagas disponíveis`;
+  const canAddStudent = canEnroll && (session.allowDropin || session.availableSpots > 0);
+  const addDisabledReason =
+    availableClients.length === 0 ? "Todos os alunos ativos já estão nesta aula." : null;
 
   const handleAddStudent = (input: {
     studentId: string;
@@ -126,25 +155,64 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   return (
     <>
       {confirmDialog}
-      <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
-        <Link href="/classes/calendar">
+      <nav aria-label="Navegação" className="mb-3 flex items-center gap-1 text-sm text-muted-foreground">
+        <Link
+          href={calendarHrefFor(session.date)}
+          className="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:text-foreground"
+        >
           <ChevronLeft className="size-4" />
           Calendário
         </Link>
-      </Button>
+        <ChevronRight aria-hidden className="size-3.5" />
+        <Link
+          href={`/classes/${session.classGroupId}`}
+          className="truncate rounded-md px-1 py-0.5 hover:text-foreground"
+        >
+          {session.className}
+        </Link>
+      </nav>
 
-      <PageHeader title={session.className} description={meta}>
-        {canManage && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSubstituteOpen(true)}
-          >
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">{session.className}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium",
+                isToday
+                  ? "bg-primary text-primary-foreground"
+                  : isFutureSession
+                    ? "bg-muted text-muted-foreground"
+                    : "border text-muted-foreground",
+              )}
+            >
+              {isToday ? "Hoje" : isFutureSession ? "Próxima aula" : "Realizada"}
+            </span>
+            <span className="font-medium text-foreground first-letter:uppercase">{dateLabel}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="tabular-nums text-foreground">
+              {session.start}–{session.end}
+            </span>
+            {session.modalityName && session.modalityName !== session.className ? (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-muted-foreground">{session.modalityName}</span>
+              </>
+            ) : null}
+          </div>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <User className="size-3.5" />
+            {session.isSubstitute ? "Substituto" : "Instrutor"}:{" "}
+            <span className="text-foreground">{session.instructorName}</span>
+          </p>
+        </div>
+        {canManage ? (
+          <Button variant="outline" size="sm" onClick={() => setSubstituteOpen(true)}>
             <UserCheck className="size-4" />
             {session.isSubstitute ? "Alterar substituto" : "Trocar instrutor"}
           </Button>
-        )}
-      </PageHeader>
+        ) : null}
+      </div>
 
       {/* Banner de Instrutor Substituto */}
       {session.isSubstitute && (
@@ -188,12 +256,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       )}
 
       {/* Cabeçalho da Lista de Chamada e Ação de Adicionar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">
-            Lista de chamada
-          </h2>
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+          <h2 className="text-base font-semibold text-foreground">Lista de chamada</h2>
+          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
             <span>
               {session.roster.length}/{session.capacity} vagas ocupadas
             </span>
@@ -206,29 +272,64 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   : "text-amber-600 dark:text-amber-400",
               )}
             >
-              {session.availableSpots > 0
-                ? `${session.availableSpots} vaga(s) disponível(is)`
-                : "Turma lotada"}
+              {session.availableSpots > 0 ? spotsLabel : "Turma lotada"}
             </span>
           </div>
-          {isFutureSession ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              A presença fica liberada no dia da aula.
-            </p>
-          ) : null}
         </div>
 
-        {canEnroll && (session.allowDropin || session.availableSpots > 0) ? (
-          <Button
-            size="sm"
-            onClick={() => setAddOpen(true)}
-            disabled={availableClients.length === 0}
-          >
-            <UserPlus className="size-4" />
-            Adicionar aluno nesta aula
-          </Button>
+        {canAddStudent ? (
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAddOpen(true)}
+              disabled={addDisabledReason !== null}
+            >
+              <UserPlus className="size-4" />
+              Adicionar aluno nesta aula
+            </Button>
+            {addDisabledReason ? (
+              <p className="text-xs text-muted-foreground">{addDisabledReason}</p>
+            ) : null}
+          </div>
         ) : null}
       </div>
+
+      {/* Resumo da chamada + marcar todos */}
+      {session.roster.length > 0 && !isFutureSession ? (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{counts.present}</span>{" "}
+              <span className="text-muted-foreground">{counts.present === 1 ? "presente" : "presentes"}</span>
+            </span>
+            <span>
+              <span className="font-semibold text-red-700 dark:text-red-400">{counts.absent}</span>{" "}
+              <span className="text-muted-foreground">{counts.absent === 1 ? "falta" : "faltas"}</span>
+            </span>
+            <span>
+              <span className="font-semibold text-amber-700 dark:text-amber-400">{counts.justified}</span>{" "}
+              <span className="text-muted-foreground">
+                {counts.justified === 1 ? "justificada" : "justificadas"}
+              </span>
+            </span>
+            <span>
+              <span className="font-semibold text-foreground">{counts.pending}</span>{" "}
+              <span className="text-muted-foreground">a marcar</span>
+            </span>
+          </div>
+          {canMark && counts.pending > 0 ? (
+            <Button
+              size="sm"
+              onClick={markAllPresent}
+              disabled={bulkPending || markMut.isPending}
+            >
+              <CheckCheck className="size-4" />
+              {bulkPending ? "Marcando..." : "Marcar todos como presentes"}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Roster de Alunos */}
       {session.roster.length === 0 ? (
@@ -279,13 +380,18 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {STATUSES.map((s) => {
+                    {isFutureSession ? (
+                      <span className="text-xs text-muted-foreground">
+                        Chamada abre em {shortDate}
+                      </span>
+                    ) : null}
+                    {isFutureSession ? null : STATUSES.map((s) => {
                       const on = r.attendance === s.value;
                       return (
                         <button
                           key={s.value}
                           type="button"
-                          disabled={!canMark || isFutureSession || markMut.isPending}
+                          disabled={!canMark || markMut.isPending || bulkPending}
                           onClick={() =>
                             markMut.mutate({
                               sessionId,
@@ -414,19 +520,15 @@ function AddStudentSessionDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Aluno *</label>
-            <select
+            <Combobox
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
-              required
-            >
-              <option value="">Selecione o aluno...</option>
-              {availableClients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setStudentId}
+              options={availableClients.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Selecione o aluno"
+              searchPlaceholder="Buscar aluno..."
+              emptyMessage="Nenhum aluno encontrado."
+              ariaLabel="Aluno"
+            />
           </div>
 
           <div className="space-y-1.5">

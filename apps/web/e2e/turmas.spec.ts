@@ -29,14 +29,18 @@ const withClass = (t: Record<string, unknown>) => {
 test("chamada bloqueada em aula futura e liberada em aula passada", async ({ page }) => {
   await seedAcademy(page, { extra: withClass });
 
+  // Aula futura: sem botões de presença, só o aviso de quando a chamada abre.
   await page.goto("/classes/sessions/cg-1~2026-09-23~17%3A00");
-  await expect(page.getByText("A presença fica liberada no dia da aula.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Presente" })).toBeDisabled();
+  await expect(page.getByText("Próxima aula")).toBeVisible();
+  await expect(page.getByText("Chamada abre em 23/09")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Presente", exact: true })).toHaveCount(0);
 
+  // Aula passada: chamada liberada, com resumo e "marcar todos".
   await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
-  await expect(page.getByText("A presença fica liberada no dia da aula.")).toHaveCount(0);
-  await page.getByRole("button", { name: "Presente" }).click();
-  await expect(page.getByRole("button", { name: "Presente" })).toBeEnabled();
+  await expect(page.getByText("Realizada")).toBeVisible();
+  await expect(page.getByText(/Chamada abre em/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Presente", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Presente", exact: true })).toBeEnabled();
 });
 
 test("avulso gera cobrança e remover da aula pede confirmação e a cancela", async ({ page }) => {
@@ -45,7 +49,8 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
 
   await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("combobox").first().selectOption({ label: "Aluno Avulso" });
+  await dialog.getByRole("combobox", { name: "Aluno" }).click();
+  await page.getByRole("option", { name: "Aluno Avulso" }).click();
   await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
