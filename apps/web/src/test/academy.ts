@@ -1,16 +1,22 @@
 import type {
   Charge,
+  ClassGroupView,
+  ClassMeetingSlot,
   Client,
   OrganizationSettings,
   Plan,
   PlanPeriod,
+  ProfessionalView,
   StudentBillingStrategy,
   StudentCyclePaymentTiming,
 } from "@gestarahub/contracts";
 import { firstCharge, resolveMembershipTerms } from "@gestarahub/core/billing";
 import { resetStore, setActiveOrganization, store } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
+import { categoriesService } from "@/services/categoriesService";
 import { clientsService } from "@/services/clientsService";
+import { professionalsService } from "@/services/professionalsService";
+import { turmasService } from "@/services/turmasService";
 
 export const ACADEMY_ORG = "org-academia-x";
 export const ACADEMY_UNIT = "unit-academia-x";
@@ -103,3 +109,52 @@ export function chargesOf(studentId: string, opts: { includeCanceled?: boolean }
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .map((c) => `${c.dueDate} ${c.amountCents}`);
 }
+
+// --- Turmas -----------------------------------------------------------------
+
+/** Instrutor ativo (com modalidade propria criada se nao informada). */
+export async function createInstructor(name: string, modalityId?: string): Promise<ProfessionalView> {
+  const modality = modalityId ?? (await categoriesService.create({ name: `Modalidade ${name}` })).id;
+  return professionalsService.create({
+    name,
+    status: "active",
+    workingHours: [],
+    serviceIds: [],
+    modalityIds: [modality],
+  });
+}
+
+interface ClassOptions {
+  name?: string;
+  instructorId: string;
+  slots: ClassMeetingSlot[];
+  capacity?: number;
+  allowDropin?: boolean;
+  sessionPriceCents?: number;
+  startDate?: string;
+}
+
+/** Turma ativa desde 14/09/2026 (segunda da semana passada), na modalidade do instrutor. */
+export function createClass(opts: ClassOptions): Promise<ClassGroupView> {
+  const instructor = store.professionals.find((p) => p.id === opts.instructorId);
+  return turmasService.create({
+    name: opts.name ?? "Turma",
+    modalityId: instructor?.modalityIds?.[0] ?? "",
+    instructorId: opts.instructorId,
+    capacity: opts.capacity ?? 10,
+    allowDropin: opts.allowDropin ?? true,
+    sessionPriceCents: opts.sessionPriceCents ?? 4000,
+    meetingSlots: opts.slots,
+    startDate: opts.startDate ?? "2026-09-14",
+    status: "active",
+  });
+}
+
+/** Aluno ativo sem plano. */
+export function createStudent(name: string): Promise<Client> {
+  return clientsService.create({ name, phone: "11977770000", status: "active" });
+}
+
+/** Id da aula gerada (`turma~data~inicio`). */
+export const sessionIdOf = (classGroupId: string, date: string, start: string) =>
+  `${classGroupId}~${date}~${start}`;

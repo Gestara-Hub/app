@@ -55,6 +55,9 @@ test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
     },
   });
   await page.goto("/settings?tab=horarios");
+  // Salvar antes de a lista de turmas carregar pula o aviso (business-hours-card
+  // usa `activeGroups ?? []`). Sob carga isso acontecia; espera a leitura do mock.
+  await page.waitForTimeout(1000);
   await page.getByRole("switch").nth(1).click(); // segunda-feira
   await page.getByRole("button", { name: "Salvar horários" }).click();
   const confirm = page.getByRole("alertdialog");
@@ -182,4 +185,67 @@ test("horários: resumo por dia, edição em modal e aplicar a outros dias", asy
   await expect(wednesday.getByLabel("Quarta turno 1 início")).toBeFocused();
   await wednesday.getByRole("button", { name: "Cancelar" }).click();
   await expect(summary(3)).toHaveText("06:00–22:00");
+});
+
+test("horários: indicador de não salvo, confirmação ao trocar de aba e salvar", async ({ page }) => {
+  await seedAcademy(page);
+  await page.goto("/settings?tab=horarios");
+  const panel = page.locator("#settings-panel-horarios");
+  await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+
+  await panel.getByRole("switch").nth(1).click(); // fecha a segunda
+  await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+
+  await page.getByRole("tab", { name: /Geral/ }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
+  await expect(confirm).toContainText("Você alterou a aba Horários");
+  await confirm.getByRole("button", { name: "Continuar editando" }).click();
+  await expect(confirm).toBeHidden();
+  await expect(page).toHaveURL(/tab=horarios/);
+  await expect(panel.getByText("● Alterações não salvas")).toBeVisible();
+
+  await panel.getByRole("button", { name: "Salvar horários" }).click();
+  await expect(page.getByText("Horários de funcionamento salvos.")).toBeVisible();
+  await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
+
+  // Salvo: troca de aba sem perguntar.
+  await page.getByRole("tab", { name: /Geral/ }).click();
+  await expect(page).toHaveURL(/tab=geral/);
+  await expect(confirm).toHaveCount(0);
+});
+
+test("aba Dados: apagar os dados da demonstração pede confirmação", async ({ page }) => {
+  await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
+  await page.goto("/settings?tab=dados");
+  await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Apagar dados da demonstração?" });
+  await expect(confirm).toContainText("Esta ação não pode ser desfeita.");
+  await confirm.getByRole("button", { name: "Cancelar" }).click();
+  await expect(confirm).toBeHidden();
+
+  await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
+  await confirm.getByRole("button", { name: "Apagar tudo" }).click();
+  await expect(page.getByText("Dados da demonstração apagados.", { exact: false })).toBeVisible();
+  await page.goto("/clients");
+  await expect(page.getByText("Aluno A20")).toHaveCount(0);
+});
+
+test("horários: 'Aplicar também a' lista os 7 dias com o dia em edição travado", async ({ page }) => {
+  await seedAcademy(page);
+  await page.goto("/settings?tab=horarios");
+  await page.getByRole("button", { name: "Editar horários de Segunda" }).click();
+  const dialog = page.getByRole("dialog", { name: "Horários de Segunda" });
+  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  for (const d of days) await expect(dialog.getByRole("button", { name: d, exact: true })).toBeVisible();
+
+  const monday = dialog.getByRole("button", { name: "Seg", exact: true });
+  await expect(monday).toHaveAttribute("aria-pressed", "true");
+  await expect(monday).toBeDisabled();
+
+  const friday = dialog.getByRole("button", { name: "Sex", exact: true });
+  await expect(friday).toHaveAttribute("aria-pressed", "false");
+  await friday.click();
+  await expect(friday).toHaveAttribute("aria-pressed", "true");
+  await friday.click();
+  await expect(friday).toHaveAttribute("aria-pressed", "false");
 });

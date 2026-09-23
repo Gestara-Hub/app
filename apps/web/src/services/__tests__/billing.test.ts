@@ -176,3 +176,113 @@ describe("ciclo de vida da assinatura", () => {
     expect(mine.some((c) => c.status === "canceled" && c.notes === "Cancelada na inativação do aluno")).toBe(true);
   });
 });
+
+describe("correções da auditoria da academia (cobrança)", () => {
+  beforeEach(() => resetAcademy());
+
+  const membershipsOf = (studentId: string) =>
+    store.charges.filter((c) => c.studentId === studentId && c.kind === "membership");
+
+  it("mensalidade cancelada não impede gerar o mesmo período de novo", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    await generate("2026-10");
+    const oct = membershipsOf(s.id).find((c) => c.competence === "2026-10")!;
+    await billingService.cancelCharge(oct.id);
+
+    const again = await billingService.generateCharges("2026-10");
+    expect(again.created).toBe(1);
+    expect(chargesOf(s.id)).toEqual(["2026-09-20 5500", "2026-10-10 15000"]);
+  });
+
+  it("cobrança existente que sobrepõe o período bloqueia uma nova", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    // Periodo de outra regra (15/10 a 14/11) sobrepõe outubro (01 a 31/10).
+    const base = membershipsOf(s.id)[0];
+    store.charges.push({
+      ...base,
+      id: "chg-overlap",
+      competence: "2026-10",
+      periodStart: "2026-10-15",
+      periodEnd: "2026-11-14",
+      dueDate: "2026-10-15",
+      amountCents: 15000,
+      status: "pending",
+    });
+    const result = await billingService.generateCharges("2026-10");
+    expect(result.created).toBe(0);
+  });
+
+  it("resetar remove só mensalidades em aberto ou canceladas e o total bate com o do modal", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const paid = await enrollStudent({ plan, startDate: "2026-09-20", name: "Pago" });
+    const open = await enrollStudent({ plan, startDate: "2026-09-20", name: "Aberto" });
+    const canceled = await enrollStudent({ plan, startDate: "2026-09-20", name: "Cancelado" });
+    await billingService.markPaid(membershipsOf(paid.id)[0].id, "pix");
+    await billingService.cancelCharge(membershipsOf(canceled.id)[0].id);
+    // Aula avulsa na mesma competencia (nao e recriada pela geracao, entao fica).
+    const dropin = { ...membershipsOf(open.id)[0], id: "chg-dropin", kind: "dropin" as const, planId: undefined };
+    store.charges.push(dropin);
+
+    // Mesma conta do modal "Resetar cobranças" (billing-view: mensalidades da competência que não são pagas).
+    const modal = (await billingService.listCharges({ competence: "2026-09", kind: "membership" })).filter(
+      (c) => c.status !== "paid",
+    ).length;
+    const result = await billingService.clearCharges("2026-09");
+
+    expect(modal).toBe(2);
+    expect(result).toEqual({ deleted: modal, keptPaid: 1 });
+    expect(store.charges.map((c) => c.id).sort()).toEqual([membershipsOf(paid.id)[0].id, "chg-dropin"].sort());
+  });
+
+  it("reabrir aceita cancelada pelo usuário e recusa cancelada pelo sistema ou não cancelada", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    const [charge] = membershipsOf(s.id);
+
+    await expect(billingService.reopenCharge(charge.id)).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: "Só é possível reabrir uma cobrança cancelada.",
+    });
+
+    await billingService.cancelCharge(charge.id);
+    expect(store.charges.find((c) => c.id === charge.id)?.canceledBy).toBe("user");
+    const reopened = await billingService.reopenCharge(charge.id);
+    expect(reopened.status).toBe("overdue"); // vencia 20/09, hoje 22/09
+    expect(store.charges.find((c) => c.id === charge.id)).toMatchObject({ status: "pending", canceledBy: undefined });
+
+    const stored = store.charges.find((c) => c.id === charge.id)!;
+    stored.status = "canceled";
+    stored.canceledBy = "system";
+    await expect(billingService.reopenCharge(charge.id)).rejects.toMatchObject({
+      code: "VALIDATION",
+      message: "Esta cobrança foi cancelada automaticamente pelo sistema e não pode ser reaberta.",
+    });
+    expect(stored.status).toBe("canceled");
+  });
+
+  it("não muda a periodicidade de plano com alunos ativos", async () => {
+    const plan = await createPlan("monthly", 15000);
+    await enrollStudent({ plan, startDate: "2026-09-20" });
+    await expect(billingService.updatePlan(plan.id, { period: "weekly" })).rejects.toMatchObject({
+      fields: [{ field: "period" }],
+    });
+    expect(store.plans.find((p) => p.id === plan.id)?.period).toBe("monthly");
+  });
+
+  it("muda a periodicidade quando o plano não tem alunos ativos", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-20" });
+    await clientsService.remove(s.id);
+    const updated = await billingService.updatePlan(plan.id, { period: "weekly" });
+    expect(updated.period).toBe("weekly");
+  });
+
+  it("com alunos ativos, muda só nome e valor (mesma periodicidade reenviada é aceita)", async () => {
+    const plan = await createPlan("monthly", 15000);
+    await enrollStudent({ plan, startDate: "2026-09-20" });
+    const updated = await billingService.updatePlan(plan.id, { name: "Mensal Plus", priceCents: 18000, period: "monthly" });
+    expect(updated).toMatchObject({ name: "Mensal Plus", priceCents: 18000, period: "monthly" });
+  });
+});

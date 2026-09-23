@@ -17,9 +17,12 @@ export const test = base.extend<{ pageErrors: string[] }>({
   pageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
-      page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+      const where = () => new URL(page.url()).pathname;
+      page.on("pageerror", (e) => {
+        if (!isClockHydrationMismatch(e.message)) errors.push(`pageerror em ${where()}: ${e.message}`);
+      });
       page.on("console", (m) => {
-        if (m.type() === "error") errors.push(`console: ${m.text()}`);
+        if (m.type() === "error" && !m.text().includes(SCRIPT_TAG_WARNING)) errors.push(`console em ${where()}: ${m.text()}`);
       });
       await page.clock.setFixedTime(new Date(TODAY));
       await use(errors);
@@ -30,6 +33,29 @@ export const test = base.extend<{ pageErrors: string[] }>({
 });
 
 export { expect };
+
+/**
+ * Aviso do React 19 sempre que o <script> do next-themes renderiza no cliente
+ * (arvore refeita apos hidratacao, Fast Refresh do `pnpm dev`). Ruido de biblioteca.
+ */
+const SCRIPT_TAG_WARNING = "Encountered a script tag while rendering React component";
+const DATE_TEXT = /\d{1,2} de [a-zç]+( de \d{4})?|\d{2}\/\d{2}|(segunda|terça|quarta|quinta|sexta)-feira|sábado|domingo|hoje|amanhã/i;
+
+/**
+ * O relogio fixo vale so no navegador: o servidor do `pnpm dev` renderiza com a
+ * data real. Se o HTML do servidor difere do cliente APENAS em textos de data, o
+ * descasamento e do ambiente de teste, nao do app. Qualquer outra diferenca reprova.
+ */
+function isClockHydrationMismatch(message: string): boolean {
+  if (!message.startsWith("Hydration failed")) return false;
+  const tree = message.split("hydration-mismatch")[1] ?? "";
+  const diff = tree
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^[+-]\s/.test(l))
+    .map((l) => l.slice(1).trim());
+  return diff.length > 0 && diff.every((l) => DATE_TEXT.test(l));
+}
 
 /** Entra pela tela de login com um dos usuarios de demonstracao. */
 export async function loginAs(page: Page, name: "Ana Ribeiro" | "Marcelo Andrade"): Promise<void> {
@@ -100,4 +126,38 @@ export function student(id: string, name: string, over: Record<string, unknown> 
     updatedAt: TS,
     ...over,
   };
+}
+
+/** Turma ativa da academia (Carlos Silva, Jiu-Jitsu). Padrao: seg/ter/qua 17h, 10 vagas, aceita avulso a R$ 40. */
+export function classGroup(id: string, name: string, over: Record<string, unknown> = {}) {
+  return {
+    id,
+    organizationId: "org-academia-x",
+    unitId: "unit-academia-x",
+    name,
+    modalityId: "m-jj",
+    instructorId: "pr-1",
+    capacity: 10,
+    allowDropin: true,
+    sessionPriceCents: 4000,
+    meetingSlots: [1, 2, 3].map((weekday) => ({ weekday, start: "17:00", end: "18:00" })),
+    startDate: "2026-09-14",
+    status: "active",
+    createdAt: TS,
+    updatedAt: TS,
+    ...over,
+  };
+}
+
+/** Matricula ativa de um aluno numa turma. */
+export function enrollment(id: string, classGroupId: string, studentId: string) {
+  return { id, classGroupId, studentId, status: "active", enrolledAt: TS };
+}
+
+/** Marca as boas-vindas do onboarding como respondidas (o modal nao cobre o dashboard). */
+export async function skipWelcome(page: Page, org = "org-academia-x"): Promise<void> {
+  await page.evaluate(
+    (key) => localStorage.setItem(key, JSON.stringify({ seen: true, dismissed: false, tours: {} })),
+    `gestarahub:onboarding:${org}`,
+  );
 }

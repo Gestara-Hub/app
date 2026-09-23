@@ -3,7 +3,7 @@ import { expect, loginAs, seedAcademy, student, test } from "./fixtures";
 test("reativar aluno pede confirmação", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-x", "Aluno Inativo", { status: "inactive" })]) });
   await page.goto("/clients");
-  await page.getByRole("button", { name: "Ações do aluno" }).last().click();
+  await page.getByRole("button", { name: "Ações de Aluno Inativo", exact: true }).click();
   await page.getByRole("menuitem", { name: "Reativar" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("Reativar aluno?");

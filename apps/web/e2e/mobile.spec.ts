@@ -1,4 +1,4 @@
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
 
 test("mensalidades no celular: sem rolagem lateral e linha legível", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno Nome Comprido da Silva")]) });
@@ -27,4 +27,25 @@ test("horários no celular: modal e dia com dois turnos cabem sem rolagem latera
   await page.getByRole("button", { name: "Aplicar" }).click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("calendário no celular abre em lista e mantém a grade escolhida", async ({ page }) => {
+  await seedAcademy(page, {
+    extra: (t) => {
+      t.clients = [student("c-a", "Aluno A20")];
+      t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
+      t.enrollments = [enrollment("e-1", "cg-1", "c-a")];
+    },
+  });
+  await page.goto("/classes/calendar");
+  const list = page.getByRole("tab", { name: "Lista" });
+  const grid = page.getByRole("tab", { name: "Grade" });
+  await expect(list).toHaveAttribute("aria-selected", "true");
+  await expect(page).not.toHaveURL(/view=/);
+
+  await grid.click();
+  await expect(page).toHaveURL(/view=grid/);
+  await expect(grid).toHaveAttribute("aria-selected", "true");
+  await page.reload();
+  await expect(grid).toHaveAttribute("aria-selected", "true");
 });
