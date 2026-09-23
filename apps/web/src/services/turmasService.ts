@@ -27,7 +27,12 @@ import type {
   WaitlistEntryView,
 } from "@gestarahub/contracts";
 import { addDays, format, parseISO } from "date-fns";
-import { checkSlotWithinBusinessHours, weekdayOf } from "@gestarahub/core/scheduling";
+import {
+  checkSlotWithinBusinessHours,
+  findInstructorConflicts,
+  instructorConflictMessage,
+  weekdayOf,
+} from "@gestarahub/core/scheduling";
 import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
@@ -191,52 +196,28 @@ function timesOverlap(
   return start1 < end2 && end1 > start2;
 }
 
-// Valida conflito de horário: instrutor não pode estar em duas turmas no mesmo dia/hora.
+// Valida conflito de horário: instrutor não pode estar em duas turmas no mesmo dia/hora
+// (regra em @gestarahub/core/scheduling, a mesma que o formulário mostra ao vivo).
 function validateInstructorScheduleConflict(
   payload: Partial<CreateClassGroup>,
   currentGroupId?: Id,
 ): void {
-  const fields: ApiErrorField[] = [];
   if (!payload.instructorId || !payload.meetingSlots) return;
-
+  const [conflict] = findInstructorConflicts(
+    payload.meetingSlots,
+    payload.instructorId,
+    store.classGroups,
+    currentGroupId,
+  );
+  if (!conflict) return;
   const instructor = store.professionals.find((p) => p.id === payload.instructorId);
-  const instructorName = instructor?.name ?? "Instrutor";
-
-  for (const slot of payload.meetingSlots) {
-    // Procura outras turmas ATIVAS do mesmo instrutor no mesmo dia.
-    const conflicts = store.classGroups.filter(
-      (g) =>
-        g.id !== currentGroupId && // Não compara com ela mesma (ao editar).
-        g.status === "active" &&
-        g.instructorId === payload.instructorId &&
-        g.meetingSlots.some((s) => {
-          if (s.weekday !== slot.weekday) return false; // Dia diferente.
-          // Mesmo dia: verifica sobreposição de horário.
-          return timesOverlap(slot.start, slot.end, s.start, s.end);
-        }),
-    );
-
-    if (conflicts.length > 0) {
-      const conflict = conflicts[0];
-      const conflictSlot = conflict.meetingSlots.find(
-        (s) =>
-          s.weekday === slot.weekday &&
-          timesOverlap(slot.start, slot.end, s.start, s.end),
-      );
-      if (conflictSlot) {
-        const dayName = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][
-          slot.weekday
-        ];
-        fields.push({
-          field: "meetingSlots",
-          message: `${instructorName} já tem aula ${dayName} ${conflictSlot.start}-${conflictSlot.end} em "${conflict.name}".`,
-        });
-        break; // Mostra só o primeiro conflito.
-      }
-    }
-  }
-
-  if (fields.length > 0) throw validationError(fields);
+  const fields: ApiErrorField[] = [
+    {
+      field: "meetingSlots",
+      message: instructorConflictMessage(instructor?.name ?? "O instrutor", conflict),
+    },
+  ];
+  throw validationError(fields);
 }
 
 // Valida se o aluno já está em outra turma com horário conflitante (mesmo dia/hora).

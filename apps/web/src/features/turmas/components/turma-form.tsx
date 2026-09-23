@@ -29,6 +29,8 @@ import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import {
   addMinutesToTime,
   checkSlotWithinBusinessHours,
+  findInstructorConflicts,
+  instructorConflictMessage,
   weekdayOf,
 } from "@gestarahub/core/scheduling";
 import type {
@@ -40,7 +42,7 @@ import type {
 import { useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
-import { useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
+import { useClassGroups, useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
 import {
   getTurmaFormSchema,
   type TurmaFormValues,
@@ -196,6 +198,35 @@ function blocksToSlots(blocks: ScheduleBlock[]): TurmaFormValues["meetingSlots"]
   return slots.sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start));
 }
 
+const toMinutes = (time: string) => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+
+/**
+ * Depois de mudar os dias de um bloco: se o horario atual sai do expediente de
+ * algum dia marcado, procura (mantendo a duracao) um inicio que caiba em todos,
+ * testando a abertura de cada dia marcado. Horario ja valido nao e mexido; sem
+ * opcao que sirva a todos, fica como esta e o alerta mostra o conflito real.
+ */
+function fitBlockToDays(block: ScheduleBlock, unit?: Unit): ScheduleBlock {
+  const hours = unit?.businessHours;
+  if (!hours?.length || block.days.length === 0 || !block.start || !block.end) return block;
+  const fitsAll = (start: string, end: string) =>
+    block.days.every(
+      (day) => checkSlotWithinBusinessHours(day as Weekday, start, end, hours).valid,
+    );
+  if (fitsAll(block.start, block.end)) return block;
+
+  const duration = Math.max(15, toMinutes(block.end) - toMinutes(block.start));
+  for (const day of block.days) {
+    const { start } = getUnitTimesForWeekday(day, unit);
+    const end = addMinutesToTime(start, duration);
+    if (end > start && fitsAll(start, end)) return { ...block, start, end };
+  }
+  return block;
+}
+
 /** Editor de encontros: suporta horário principal e horários adicionais opcionais (ex: Sábado). */
 function MeetingSlotsEditor({
   value,
@@ -204,6 +235,9 @@ function MeetingSlotsEditor({
   error,
   unit,
   startDate,
+  instructor,
+  otherGroups,
+  currentGroupId,
 }: {
   value: TurmaFormValues["meetingSlots"];
   onChange: (v: TurmaFormValues["meetingSlots"]) => void;
@@ -211,6 +245,10 @@ function MeetingSlotsEditor({
   error?: string;
   unit?: Unit;
   startDate?: string;
+  /** Instrutor escolhido: cada bloco avisa na hora se ele ja da aula no horario. */
+  instructor?: { id: string; name: string };
+  otherGroups?: ClassGroupView[];
+  currentGroupId?: string;
 }) {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>(() =>
     slotsToBlocks(value, unit, startDate),
@@ -247,7 +285,7 @@ function MeetingSlotsEditor({
       const nextDays = hasDay
         ? b.days.filter((d) => d !== weekday)
         : [...b.days, weekday].sort((a, b) => a - b);
-      return { ...b, days: nextDays };
+      return fitBlockToDays({ ...b, days: nextDays }, unit);
     });
     setBlocks(next);
     emitChange(next);
@@ -296,6 +334,41 @@ function MeetingSlotsEditor({
     return blocks.some((b) => b.id !== currentBlockId && b.days.includes(weekday));
   };
 
+  const isBlockTimeInverted = (block: ScheduleBlock) =>
+    Boolean(block.start && block.end && block.start >= block.end);
+
+  /** Erro proprio do bloco: horario invertido, fora do expediente, conflito do instrutor ou sem dias. */
+  const getBlockError = (block: ScheduleBlock): string | undefined => {
+    if (isBlockTimeInverted(block)) {
+      return "Horário inválido: informe início e fim (o início deve ser antes do fim).";
+    }
+    if (block.start && block.end && unit?.businessHours?.length) {
+      for (const day of block.days) {
+        const check = checkSlotWithinBusinessHours(
+          day as Weekday,
+          block.start,
+          block.end,
+          unit.businessHours,
+        );
+        if (!check.valid && check.message) return check.message;
+      }
+    }
+    if (instructor && block.start && block.end) {
+      const [conflict] = findInstructorConflicts(
+        block.days.map((day) => ({ weekday: day as Weekday, start: block.start, end: block.end })),
+        instructor.id,
+        otherGroups ?? [],
+        currentGroupId,
+      );
+      if (conflict) return instructorConflictMessage(instructor.name, conflict);
+    }
+    if (error && block.days.length === 0) {
+      return "Selecione ao menos um dia da semana para este horário.";
+    }
+    return undefined;
+  };
+  const hasBlockError = blocks.some((b) => getBlockError(b) !== undefined);
+
   const allSelectedDaysCount = blocks.flatMap((b) => b.days).length;
 
   return (
@@ -306,51 +379,9 @@ function MeetingSlotsEditor({
       <div className="space-y-3">
         {blocks.map((block, index) => {
           const isMain = index === 0;
-          const isTimeInverted = Boolean(
-            block.start && block.end && block.start >= block.end,
-          );
-
-          // Valida se o horário ultrapassa o expediente da unidade em qualquer um dos dias selecionados
-          let businessHoursError: string | undefined;
-          if (
-            !isTimeInverted &&
-            block.start &&
-            block.end &&
-            block.days.length > 0 &&
-            unit?.businessHours?.length
-          ) {
-            for (const day of block.days) {
-              const check = checkSlotWithinBusinessHours(
-                day as Weekday,
-                block.start,
-                block.end,
-                unit.businessHours,
-              );
-              if (!check.valid && check.message) {
-                businessHoursError = check.message;
-                break;
-              }
-            }
-          }
-
-          let blockError: string | undefined;
-          if (isTimeInverted) {
-            blockError =
-              "Horário inválido: informe início e fim (o início deve ser antes do fim).";
-          } else if (businessHoursError) {
-            blockError = businessHoursError;
-          } else if (error && block.days.length === 0) {
-            blockError = "Selecione ao menos um dia da semana para este horário.";
-          }
-
-          const isCardInvalid = Boolean(
-            blockError ||
-              (error && (
-                blocks.length === 1 ||
-                block.days.length === 0 ||
-                !blocks.some((b) => b.days.length === 0 || (b.start && b.end && b.start >= b.end))
-              )),
-          );
+          const isTimeInverted = isBlockTimeInverted(block);
+          const blockError = getBlockError(block);
+          const isCardInvalid = Boolean(blockError);
           return (
             <div
               key={block.id}
@@ -484,6 +515,14 @@ function MeetingSlotsEditor({
           );
         })}
 
+        {/* Erro do campo (ex.: devolvido pelo servidor) que nenhum bloco explica sozinho. */}
+        {error && !hasBlockError ? (
+          <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+
         {allSelectedDaysCount < 7 && blocks.length < 7 && (
           <Button
             type="button"
@@ -518,6 +557,8 @@ export function TurmaForm({
   const { data: unit } = useUnit();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
+  // Turmas ativas: o editor de horarios avisa conflito do instrutor ao vivo.
+  const { data: activeGroups } = useClassGroups({ status: "active" });
 
   const openStartDate = useMemo(() => getInitialStartDate(unit), [unit]);
   const initialWeekday = useMemo(() => weekdayOf(openStartDate), [openStartDate]);
@@ -673,6 +714,10 @@ export function TurmaForm({
     control: form.control,
     name: "instructorId",
   });
+  const selectedProfessional = (professionals ?? []).find((p) => p.id === instructorId);
+  const selectedInstructor = selectedProfessional
+    ? { id: selectedProfessional.id, name: selectedProfessional.name }
+    : undefined;
 
   // Rastreia a última modalidade para detectar mudanças
   const prevModalityRef = useRef<string>(turma?.modalityId ?? "");
@@ -856,6 +901,9 @@ export function TurmaForm({
               error={fieldState.error?.message}
               unit={unit}
               startDate={startDate}
+              instructor={selectedInstructor}
+              otherGroups={activeGroups}
+              currentGroupId={turma?.id}
             />
           )}
         />

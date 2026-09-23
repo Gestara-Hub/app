@@ -2,6 +2,8 @@ import { addDays, addMonths, addWeeks, getDay, parseISO } from "date-fns";
 import type {
   BusinessHoursDay,
   BusinessHoursShift,
+  ClassGroup,
+  ClassMeetingSlot,
   DateISO,
   Frequency,
   TimeISO,
@@ -306,4 +308,52 @@ function formatDate(d: Date): DateISO {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+// --- Conflito de instrutor entre turmas ---------------------------------------
+
+export interface InstructorSlotConflict {
+  /** Encontro da turma sendo editada que conflita. */
+  slot: ClassMeetingSlot;
+  /** Turma ativa do mesmo instrutor que ja ocupa o horario. */
+  group: Pick<ClassGroup, "id" | "name">;
+  groupSlot: ClassMeetingSlot;
+}
+
+/**
+ * Regra: o mesmo instrutor nao da aula em duas turmas ativas no mesmo dia com
+ * horario sobreposto (outro instrutor pode). `excludeGroupId` ignora a propria
+ * turma ao editar. Retorna um conflito por encontro de `slots`.
+ */
+export function findInstructorConflicts(
+  slots: ClassMeetingSlot[],
+  instructorId: string,
+  groups: Pick<ClassGroup, "id" | "name" | "status" | "instructorId" | "meetingSlots">[],
+  excludeGroupId?: string,
+): InstructorSlotConflict[] {
+  if (!instructorId) return [];
+  const conflicts: InstructorSlotConflict[] = [];
+  for (const slot of slots) {
+    for (const group of groups) {
+      if (group.id === excludeGroupId || group.status !== "active") continue;
+      if (group.instructorId !== instructorId) continue;
+      const groupSlot = group.meetingSlots.find(
+        (s) => s.weekday === slot.weekday && rangesOverlap(slot.start, slot.end, s.start, s.end),
+      );
+      if (groupSlot) {
+        conflicts.push({ slot, group: { id: group.id, name: group.name }, groupSlot });
+        break;
+      }
+    }
+  }
+  return conflicts;
+}
+
+/** Mensagem da regra, igual no formulario e no service. */
+export function instructorConflictMessage(
+  instructorName: string,
+  conflict: InstructorSlotConflict,
+): string {
+  const { groupSlot, group } = conflict;
+  return `${instructorName} já dá aula ${WEEKDAY_LABELS_PT[groupSlot.weekday]} das ${groupSlot.start} às ${groupSlot.end} na turma "${group.name}". Escolha outro horário ou outro professor.`;
 }
