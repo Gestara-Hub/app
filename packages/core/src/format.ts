@@ -47,3 +47,16 @@ export function formatPhone(value: string): string {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`;
 }
+
+/**
+ * Plural pt-BR com o numero: `plural(1, "cobrança", "cobranças")` -> "1 cobrança",
+ * `plural(5, ...)` -> "5 cobranças" (0 usa o plural). Evita o "cobrança(s)".
+ */
+export function plural(count: number, singular: string, pluralForm: string): string {
+  return `${count} ${pluralWord(count, singular, pluralForm)}`;
+}
+
+/** So a palavra concordando com `count` (para frases como "3 aulas concluídas"). */
+export function pluralWord(count: number, singular: string, pluralForm: string): string {
+  return count === 1 ? singular : pluralForm;
+}
