@@ -60,12 +60,15 @@ export function OnboardingChecklist({
   doneCount,
   total,
   isClasses = false,
+  highlightNextStep = false,
   onStartTour,
 }: {
   steps: OnboardingStep[];
   doneCount: number;
   total: number;
   isClasses?: boolean;
+  /** Pulsa o "Continuar" do proximo passo. */
+  highlightNextStep?: boolean;
   onStartTour: () => void;
 }) {
   const groups = isClasses ? GROUPS_CLASSES : GROUPS_DEFAULT;
@@ -142,7 +145,10 @@ export function OnboardingChecklist({
           </div>
           <Button
             asChild
-            className="shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700"
+            className={cn(
+              "shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700",
+              highlightNextStep && "motion-safe:animate-attention-loop",
+            )}
           >
             <Link href={nextStep.href}>
               Continuar

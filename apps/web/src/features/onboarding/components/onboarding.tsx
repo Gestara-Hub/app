@@ -94,6 +94,8 @@ export function Onboarding() {
           doneCount={doneCount}
           total={total}
           isClasses={isClasses}
+          // O Dashboard nunca e a tela de um passo: o "Continuar" pulsa (menos no tour).
+          highlightNextStep={!tourOpen}
           onStartTour={() => setTourOpen(true)}
         />
       ) : null}

@@ -58,6 +58,38 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-attention-loop: attention 2.2s ease-in-out infinite;
+}
+
+/* Chama a atencao para um CTA (ex.: "Continuar" do onboarding): cresce, treme e
+   solta um anel. Na versao em loop sobra um respiro entre as chamadas. */
+@keyframes attention {
+  0% {
+    transform: scale(1) rotate(0);
+    box-shadow: 0 0 0 0 rgb(192 38 211 / 0.7);
+  }
+  10% {
+    transform: scale(1.12) rotate(-3deg);
+  }
+  20% {
+    transform: scale(1.12) rotate(3deg);
+  }
+  30% {
+    transform: scale(1.12) rotate(-3deg);
+  }
+  40% {
+    transform: scale(1.12) rotate(2deg);
+  }
+  55% {
+    transform: scale(1) rotate(0);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgb(192 38 211 / 0);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    box-shadow: 0 0 0 0 rgb(192 38 211 / 0);
+  }
 }
 
 @keyframes accordion-down {

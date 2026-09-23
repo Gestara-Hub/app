@@ -1,12 +1,21 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/features/auth";
-import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
+import { useOnboardingSteps, type OnboardingStep } from "../hooks/use-onboarding-steps";
+
+/**
+ * Pagina do passo = o caminho exato do seu destino. Subpaginas (ex.:
+ * /classes/calendar para o passo /classes) nao contam: nelas o "Continuar" pulsa.
+ */
+function isStepPage(step: OnboardingStep, pathname: string): boolean {
+  return pathname === step.href.split(/[?#]/)[0];
+}
 
 export function OnboardingTopBanner() {
   const user = useCurrentUser();
@@ -15,6 +24,24 @@ export function OnboardingTopBanner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = searchParams?.get("tab") ?? null;
+  const ctaRef = useRef<HTMLAnchorElement>(null);
+
+  // Quando um passo acaba de ser concluido (doneCount sobe), leva o usuario ao
+  // topo com o foco no "Continuar". O primeiro valor pronto so vira referencia,
+  // para nao rolar ao abrir a pagina.
+  const [seenDoneCount, setSeenDoneCount] = useState<number | null>(null);
+  const [nudgeCount, setNudgeCount] = useState(0);
+  if (isReady && seenDoneCount !== doneCount) {
+    if (seenDoneCount !== null && doneCount > seenDoneCount) setNudgeCount((n) => n + 1);
+    setSeenDoneCount(doneCount);
+  }
+
+  useEffect(() => {
+    if (nudgeCount === 0) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    ctaRef.current?.focus({ preventScroll: true });
+  }, [nudgeCount]);
 
   // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
   if (
@@ -35,8 +62,10 @@ export function OnboardingTopBanner() {
         ? pathname === "/settings" && tab === "horarios"
         : nextStep.id === "billing"
           ? pathname === "/settings" && (tab === "geral" || !tab)
-          : pathname === nextStep.href || pathname.startsWith(`${nextStep.href}/`)),
+          : isStepPage(nextStep, pathname)),
   );
+  // Fora da tela do passo, o "Continuar" pulsa chamando para la; nela, fica quieto.
+  const pulse = Boolean(nextStep) && !isOnNextStepPage;
   const pct = Math.round((doneCount / total) * 100);
 
   return (
@@ -46,7 +75,7 @@ export function OnboardingTopBanner() {
     >
       <div
         className={cn(
-          "overflow-hidden rounded-xl border shadow-xs transition-colors",
+          "rounded-xl border shadow-xs transition-colors",
           !nextStep
             ? "border-emerald-500/30 bg-emerald-500/[0.08] dark:bg-emerald-950/25"
             : "border-fuchsia-200/90 bg-gradient-to-r from-fuchsia-50/80 via-pink-50/40 to-card dark:border-fuchsia-900/50 dark:from-fuchsia-950/30 dark:via-pink-950/15",
@@ -85,9 +114,12 @@ export function OnboardingTopBanner() {
             {nextStep ? (
               <Button
                 asChild
-                className="shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700"
+                className={cn(
+                  "shrink-0 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white shadow-xs shadow-fuchsia-600/25 hover:from-fuchsia-700 hover:to-pink-700",
+                  pulse && "motion-safe:animate-attention-loop",
+                )}
               >
-                <Link href={nextStep.href}>
+                <Link ref={ctaRef} href={nextStep.href}>
                   Continuar
                   <ArrowRight className="size-4" />
                 </Link>
@@ -101,7 +133,7 @@ export function OnboardingTopBanner() {
         </div>
 
         {/* Linha de progresso destacada na borda inferior */}
-        <div className="h-1 w-full bg-fuchsia-100/70 dark:bg-fuchsia-950/60">
+        <div className="h-1 w-full overflow-hidden rounded-b-xl bg-fuchsia-100/70 dark:bg-fuchsia-950/60">
           <div
             className={cn(
               "h-full transition-all duration-500 ease-out",
