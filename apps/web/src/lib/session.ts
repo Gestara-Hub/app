@@ -48,3 +48,29 @@ export function userInitials(name: string): string {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/**
+ * Sanitiza o destino pos-login (`?from=`): aceita so caminho relativo do proprio
+ * app ("/x?y"). Barra "//host", "/\host", esquema ("https:", "javascript:") e
+ * caracteres de controle (open redirect). Retorna undefined se invalido.
+ */
+export function safeRedirectPath(from: unknown): string | undefined {
+  if (typeof from !== "string" || from.length === 0 || from.length > 2048) {
+    return undefined;
+  }
+  if (!from.startsWith("/") || from.startsWith("//")) return undefined;
+  // Barra invertida vira "/" em alguns navegadores ("/\evil.com" = "//evil.com").
+  if (from.includes("\\")) return undefined;
+  for (let i = 0; i < from.length; i++) {
+    const code = from.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return undefined;
+  }
+  try {
+    const base = "http://gestarahub.local";
+    const url = new URL(from, base);
+    if (url.origin !== base) return undefined;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return undefined;
+  }
+}

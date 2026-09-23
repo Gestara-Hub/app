@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
   encodeSession,
+  safeRedirectPath,
 } from "@/lib/session";
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
@@ -35,9 +36,11 @@ export async function signIn(user: UserView, from?: string): Promise<void> {
   await setSession(user);
 
   const model = organizationModelById(user.organizationId) ?? "scheduling";
+  // So caminho relativo do app (barra open redirect como "//evil.com").
+  const safeFrom = safeRedirectPath(from);
   const target =
-    from && from.startsWith("/") && canAccessRoute(user, from, model)
-      ? from
+    safeFrom && canAccessRoute(user, safeFrom, model)
+      ? safeFrom
       : firstAllowedRoute(user, model);
   redirect(target);
 }
@@ -47,6 +50,16 @@ export async function switchUser(user: UserView): Promise<void> {
   await setSession(user);
   const model = organizationModelById(user.organizationId) ?? "scheduling";
   redirect(firstAllowedRoute(user, model));
+}
+
+/**
+ * Regrava as claims do cookie sem redirecionar. Chamado pelo client quando o
+ * proprio registro do usuario logado mudou no store (nome, perfil, vinculo),
+ * para a sessao nao agir com um snapshot velho. O client faz `router.refresh()`
+ * em seguida para o layout server reler as claims.
+ */
+export async function refreshSession(user: UserView): Promise<void> {
+  await setSession(user);
 }
 
 /** Logout mockado: limpa o cookie de sessao e volta para o login. */

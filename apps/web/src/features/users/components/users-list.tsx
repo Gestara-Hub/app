@@ -96,6 +96,7 @@ function UserRow({
           <ListItemActionsMenu
             actions={actions}
             title="Ações do usuário"
+            ariaLabel={`Ações de ${user.name}`}
             variant="ghost"
           />
         ) : null
@@ -183,6 +184,10 @@ export function UsersList({
     canManageProfile(currentUser, u.profile),
   );
 
+  // Gerente so enxerga Atendente/Profissional: textos refletem esse recorte
+  // (senao "nenhum usuario" mentiria com owners/gerentes cadastrados).
+  const limitedView = currentUser.profile !== "owner";
+
   const hasSearch = Boolean(filter.search);
   const hasFilters = status !== "all";
 
@@ -220,8 +225,16 @@ export function UsersList({
         emptyGuide={
           <ModuleEmptyGuide
             icon={<ShieldCheck className="size-8" />}
-            title="Nenhum usuário cadastrado ainda."
-            description="Cadastre quem pode acessar o sistema e defina o perfil de acesso."
+            title={
+              limitedView
+                ? "Nenhum atendente ou profissional cadastrado."
+                : "Nenhum usuário cadastrado ainda."
+            }
+            description={
+              limitedView
+                ? "Você gerencia os perfis Atendente e Profissional. Cadastre quem pode acessar o sistema."
+                : "Cadastre quem pode acessar o sistema e defina o perfil de acesso."
+            }
             actionLabel={canManage ? "Cadastrar usuário" : undefined}
             onAction={canManage ? onCreate : undefined}
           />
@@ -265,8 +278,16 @@ export function UsersList({
       {!isPending && !isError && users.length > 0 ? (
         <ListSummaryBar
           count={users.length}
-          singularLabel="usuário cadastrado"
-          pluralLabel="usuários cadastrados"
+          singularLabel={
+            limitedView
+              ? "atendente ou profissional cadastrado"
+              : "usuário cadastrado"
+          }
+          pluralLabel={
+            limitedView
+              ? "atendentes ou profissionais cadastrados"
+              : "usuários cadastrados"
+          }
           hasFilters={hasSearch || hasFilters}
           onClearFilters={clearAll}
         />

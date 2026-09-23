@@ -3,6 +3,7 @@ import { PublicAuthShell } from "@/components/shared/public-auth-shell";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
+import { safeRedirectPath } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -20,7 +21,8 @@ export default async function LoginPage({
   }
 
   const { from } = await searchParams;
-  const target = from && from.startsWith("/") ? from : "/";
+  // So caminho relativo do app; o signIn revalida (permissao + modelo).
+  const target = safeRedirectPath(from) ?? "/";
 
   return (
     <PublicAuthShell

@@ -99,6 +99,39 @@ export function firstAllowedRoute(
   return item?.href ?? "/";
 }
 
+const ALL_NAV: NavItem[] = [...MAIN_NAV, ...FOOTER_NAV];
+
+// Remove query/hash: o casamento de rota olha so o pathname.
+function pathOnly(pathname: string): string {
+  return pathname.split(/[?#]/)[0] || "/";
+}
+
+/**
+ * Itens que casam com a rota no nivel MAIS especifico (href mais longo), igual
+ * a sidebar: /classes/modalities e Modalidades, nao Turmas. Pode haver mais de
+ * um (mesma rota com rotulo por modelo, ex.: Clientes/Alunos).
+ */
+function mostSpecificMatches(items: NavItem[], pathname: string): NavItem[] {
+  const path = pathOnly(pathname);
+  const matches = items.filter((i) => isNavItemActive(path, i.href));
+  if (matches.length === 0) return [];
+  const longest = Math.max(...matches.map((i) => i.href.length));
+  return matches.filter((i) => i.href.length === longest);
+}
+
+/**
+ * A rota existe no modelo do tenant? Rota fora de toda nav (ex.: detalhe sem
+ * item proprio) herda do item-pai; sem nenhum item = compartilhada.
+ */
+export function isRouteInModel(
+  pathname: string,
+  model: OperationalModel,
+): boolean {
+  const matches = mostSpecificMatches(ALL_NAV, pathname);
+  if (matches.length === 0) return true;
+  return matches.some((i) => !i.models || i.models.includes(model));
+}
+
 /**
  * O usuario pode acessar a rota, considerando o modelo do tenant? Rota de outro
  * modelo e barrada; rota fora de toda nav (detalhes) e liberada (o gating fino
@@ -109,11 +142,7 @@ export function canAccessRoute(
   pathname: string,
   model: OperationalModel,
 ): boolean {
-  const modelNav = navForModel([...MAIN_NAV, ...FOOTER_NAV], model);
-  const item = modelNav.find((i) => isNavItemActive(pathname, i.href));
-  if (item) return can(subject, item.permission);
-  const otherModelItem = [...MAIN_NAV, ...FOOTER_NAV].find((i) =>
-    isNavItemActive(pathname, i.href),
-  );
-  return otherModelItem ? false : true;
+  if (!isRouteInModel(pathname, model)) return false;
+  const [item] = mostSpecificMatches(navForModel(ALL_NAV, model), pathname);
+  return item ? can(subject, item.permission) : true;
 }

@@ -15,7 +15,8 @@ const USER_PROFILES: readonly string[] = [
 
 /**
  * Schema de formulario do Usuario (validacao da UI). Mensagens alinhadas ao
- * usersService. `professionalId` vazio = usuario sem vinculo com profissional.
+ * usersService. `professionalId` vazio = usuario sem vinculo com profissional
+ * (obrigatorio no perfil Profissional).
  */
 export const userFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome."),
@@ -33,6 +34,15 @@ export const userFormSchema = z.object({
     }),
   professionalId: z.string().optional(),
   active: z.boolean(),
+}).superRefine((values, ctx) => {
+  // Perfil Profissional sem vinculo nao enxerga agenda nenhuma: exige o vinculo.
+  if (values.profile === "professional" && !values.professionalId) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["professionalId"],
+      message: "Vincule o usuário a um profissional da equipe.",
+    });
+  }
 });
 
 export type UserFormValues = z.infer<typeof userFormSchema>;

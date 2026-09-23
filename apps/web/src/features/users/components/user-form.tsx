@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   useForm,
   useWatch,
@@ -11,13 +10,18 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
-import { FieldShell, InputText, SelectField, SwitchField } from "@/components/form";
+import {
+  FieldShell,
+  InputText,
+  SelectField,
+  SwitchField,
+  fieldAria,
+} from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/shared/combobox";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { userProfileLabel } from "@/lib/labels";
-import { normalizeText } from "@/lib/text";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals";
@@ -55,12 +59,12 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
   const pending = createMut.isPending || updateMut.isPending;
 
   const { data: professionals } = useProfessionals({ status: "active" });
-  const [nameOpen, setNameOpen] = useState(false);
 
   // Um usuario so pode atribuir perfis que ele mesmo pode gerenciar (Gerente:
   // Atendente/Profissional). Ao editar, preserva o perfil atual do usuario mesmo
   // que fora do conjunto, para nao perde-lo no select.
   const currentUser = useCurrentUser();
+  const isSelf = Boolean(user && user.id === currentUser.id);
   const allowedProfiles = new Set<UserProfile>(manageableProfiles(currentUser));
   if (user) allowedProfiles.add(user.profile);
   const profileOptions = PROFILE_ORDER.filter((p) => allowedProfiles.has(p)).map(
@@ -74,19 +78,41 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
     defaultValues: toDefaults(user),
   });
 
-  // Vinculo ativo: o Nome foi escolhido a partir da equipe (autocomplete).
+  // Opcoes do vinculo: profissionais ativos + o vinculado atual (mesmo inativo),
+  // para nao sumir do combobox ao editar.
+  const professionalOptions: { id: string; name: string; roleName?: string }[] =
+    (professionals ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      roleName: p.role?.name,
+    }));
+  if (
+    user?.professional &&
+    !professionalOptions.some((p) => p.id === user.professional?.id)
+  ) {
+    professionalOptions.push({
+      id: user.professional.id,
+      name: user.professional.name,
+    });
+  }
+
   const linkedId = useWatch({ control: form.control, name: "professionalId" });
   const linked = linkedId
-    ? (professionals ?? []).find((p) => p.id === linkedId)
+    ? professionalOptions.find((p) => p.id === linkedId)
     : undefined;
+  const profile = useWatch({ control: form.control, name: "profile" });
+  const isProfessionalProfile = profile === "professional";
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Editando a si mesmo: perfil e status ficam travados (sem auto-rebaixar
+    // ou se inativar e seguir com os poderes do cookie).
     const payload: CreateUser = {
       name: values.name,
       email: values.email,
-      profile: values.profile as UserProfile,
+      profile: isSelf && user ? user.profile : (values.profile as UserProfile),
       professionalId: values.professionalId || undefined,
-      status: values.active ? "active" : "inactive",
+      status:
+        isSelf && user ? user.status : values.active ? "active" : "inactive",
     };
 
     try {
@@ -119,92 +145,13 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         className="flex flex-col min-h-0 flex-1 overflow-hidden"
       >
         <DialogBody className="space-y-4">
-          <Controller
-          control={form.control}
-          name="name"
-          render={({ field, fieldState }) => {
-            const query = normalizeText(field.value ?? "");
-            const matches =
-              query === ""
-                ? []
-                : (professionals ?? [])
-                    .filter((p) => {
-                      const n = normalizeText(p.name);
-                      return n !== query && n.includes(query);
-                    })
-                    .slice(0, 6);
-            const showList = nameOpen && matches.length > 0;
-
-            return (
-              <FieldShell
-                id="user-name"
-                label="Nome"
-                required
-                error={fieldState.error?.message}
-                hint={
-                  linked
-                    ? `Vinculado a ${linked.name} (equipe).`
-                    : "Digite para sugerir um membro da equipe; selecionar cria o vínculo."
-                }
-              >
-                <div className="relative">
-                  <Input
-                    id="user-name"
-                    ref={field.ref}
-                    name={field.name}
-                    value={field.value ?? ""}
-                    placeholder="Ex.: Maria Souza"
-                    autoComplete="off"
-                    disabled={pending}
-                    aria-invalid={fieldState.invalid}
-                    onChange={(event) => {
-                      field.onChange(event.target.value);
-                      // Digitacao manual desfaz o vinculo — so selecionar da
-                      // lista vincula a um profissional.
-                      if (form.getValues("professionalId")) {
-                        form.setValue("professionalId", "", { shouldDirty: true });
-                      }
-                      setNameOpen(true);
-                    }}
-                    onFocus={() => setNameOpen(true)}
-                    onBlur={() => {
-                      field.onBlur();
-                      setNameOpen(false);
-                    }}
-                  />
-                  {showList ? (
-                    <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto overscroll-contain rounded-md border bg-popover py-1 text-popover-foreground shadow-md">
-                      {matches.map((p) => (
-                        <button
-                          type="button"
-                          key={p.id}
-                          // mousedown preventDefault mantem o foco (sem blur antes do click)
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => {
-                            form.setValue("name", p.name, {
-                              shouldValidate: true,
-                              shouldDirty: true,
-                            });
-                            form.setValue("professionalId", p.id, {
-                              shouldDirty: true,
-                            });
-                            setNameOpen(false);
-                          }}
-                          className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                        >
-                          <span className="truncate">{p.name}</span>
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {p.role?.name}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </FieldShell>
-            );
-          }}
-        />
+          <InputText<UserFormValues>
+            name="name"
+            label="Nome"
+            placeholder="Ex.: Maria Souza"
+            required
+            disabled={pending}
+          />
 
         <InputText<UserFormValues>
           name="email"
@@ -221,7 +168,69 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
           placeholder="Selecione o perfil"
           options={profileOptions}
           required
-          disabled={pending}
+          disabled={pending || isSelf}
+          hint={
+            isSelf
+              ? "Você não pode alterar o próprio perfil de acesso."
+              : undefined
+          }
+        />
+
+        <Controller
+          control={form.control}
+          name="professionalId"
+          render={({ field, fieldState }) => {
+            const hint = isProfessionalProfile
+              ? "Obrigatório no perfil Profissional: define a agenda que ele vê."
+              : "Opcional. Vincula o usuário a um membro da equipe.";
+            const error = fieldState.error?.message;
+            return (
+              <FieldShell
+                id="user-professional"
+                label="Profissional da equipe"
+                required={isProfessionalProfile}
+                error={error}
+                hint={hint}
+              >
+                <Combobox
+                  id="user-professional"
+                  triggerRef={field.ref}
+                  value={field.value ?? ""}
+                  onChange={(id) => {
+                    field.onChange(id);
+                    // Preenche o nome com o do profissional quando o campo esta
+                    // vazio ou ainda tem o nome do vinculo anterior.
+                    const picked = professionalOptions.find((p) => p.id === id);
+                    const currentName = form.getValues("name").trim();
+                    const previous = professionalOptions.find(
+                      (p) => p.id === linkedId,
+                    );
+                    if (picked && (!currentName || currentName === previous?.name)) {
+                      form.setValue("name", picked.name, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                  onBlur={field.onBlur}
+                  options={professionalOptions.map((p) => ({
+                    value: p.id,
+                    label: p.roleName ? `${p.name} · ${p.roleName}` : p.name,
+                  }))}
+                  placeholder="Selecione o profissional"
+                  searchPlaceholder="Buscar profissional..."
+                  emptyMessage="Nenhum profissional encontrado."
+                  ariaLabel="Profissional da equipe"
+                  ariaDescribedBy={
+                    fieldAria("user-professional", error, hint)["aria-describedby"]
+                  }
+                  invalid={fieldState.invalid}
+                  disabled={pending}
+                  clearable
+                />
+              </FieldShell>
+            );
+          }}
         />
 
         {linked ? (
@@ -236,8 +245,12 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
           <SwitchField<UserFormValues>
             name="active"
             label="Usuário ativo"
-            hint="Usuários inativos não podem acessar o sistema."
-            disabled={pending}
+            hint={
+              isSelf
+                ? "Você não pode inativar o próprio usuário."
+                : "Usuários inativos não podem acessar o sistema."
+            }
+            disabled={pending || isSelf}
           />
         ) : null}
         </DialogBody>

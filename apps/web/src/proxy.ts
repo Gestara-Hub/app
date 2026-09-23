@@ -16,14 +16,16 @@ function isPublic(pathname: string): boolean {
 }
 
 export function proxy(request: NextRequest): NextResponse {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
   const publicPath = isPublic(pathname);
 
   if (!hasSession && !publicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("from", pathname);
+    // Destino relativo com a query original (filtros na URL); o login sanitiza.
+    url.search = "";
+    url.searchParams.set("from", `${pathname}${search}`);
     return NextResponse.redirect(url);
   }
 

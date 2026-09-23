@@ -22,6 +22,7 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { getCurrentActor } from "@/mocks/currentActor";
 import { auditLogService } from "./auditLogService";
 
 function clone<T>(value: T): T {
@@ -120,6 +121,22 @@ function ensureNotLastOwner(current: User, next: Partial<CreateUser>): void {
   if (losesOwner) throw lastOwnerError();
 }
 
+// Ninguem muda o proprio perfil nem o proprio status (a UI ja trava; aqui e a
+// regra no "servidor", como o backend real faria pelo ator do token).
+function ensureNotSelfPrivilegeChange(current: User, next: Partial<CreateUser>): void {
+  if (getCurrentActor()?.userId !== current.id) return;
+  const changesProfile = next.profile !== undefined && next.profile !== current.profile;
+  const changesStatus = next.status !== undefined && next.status !== current.status;
+  if (changesProfile || changesStatus) {
+    throw validationError([
+      {
+        field: changesProfile ? "profile" : "status",
+        message: "Você não pode alterar o seu próprio perfil ou status.",
+      },
+    ]);
+  }
+}
+
 export const usersService = {
   list(filter?: UserFilter): Promise<UserView[]> {
     return simulateRead(() => {
@@ -211,6 +228,7 @@ export const usersService = {
       validateUser(payload, { partial: true });
       if (payload.email !== undefined) ensureEmailUnique(payload.email, id);
       const current = store.users[idx];
+      ensureNotSelfPrivilegeChange(current, payload);
       ensureNotLastOwner(current, payload);
       const updated: User = {
         ...current,
@@ -255,6 +273,7 @@ export const usersService = {
     return simulateWrite(() => {
       const idx = store.users.findIndex((u) => u.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
+      ensureNotSelfPrivilegeChange(store.users[idx], { status: "inactive" });
       ensureNotLastOwner(store.users[idx], { status: "inactive" });
       const target = store.users[idx];
       store.users[idx] = {

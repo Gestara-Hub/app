@@ -6,7 +6,7 @@ export default async function ClassSessionPage({
 }: {
   params: Promise<{ sessionId: string }>;
 }) {
-  await requirePermission("classes:view");
+  await requirePermission("classes:view", "/classes");
   const { sessionId } = await params;
   return <SessionDetailView sessionId={decodeURIComponent(sessionId)} />;
 }
