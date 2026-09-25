@@ -88,7 +88,7 @@ export function SelectField<T extends FieldValues>({
                       "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
                       "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
                       "disabled:cursor-not-allowed disabled:opacity-50",
-                      clearable && selected ? "pr-16" : "pr-8",
+                      clearable && selected && selected.value !== "" ? "pr-16" : "pr-8",
                       !selected && "text-muted-foreground",
                     )}
                   >
@@ -112,7 +112,7 @@ export function SelectField<T extends FieldValues>({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              {clearable && selected && !disabled ? (
+              {clearable && selected && selected.value !== "" && !disabled ? (
                 <button
                   type="button"
                   aria-label={`Limpar ${label ?? "seleção"}`}

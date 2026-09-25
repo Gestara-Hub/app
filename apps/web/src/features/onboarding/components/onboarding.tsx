@@ -4,67 +4,11 @@ import { useState } from "react";
 import { useCurrentUser } from "@/features/auth";
 import { OnboardingChecklist } from "./onboarding-checklist";
 import { OnboardingWelcomeDialog } from "./onboarding-welcome-dialog";
-import { ProductTour, type TourStep } from "./product-tour";
+import { ProductTour } from "./product-tour";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 
-// Passos do tour para agendamento individual (Barbearia, Clínica, etc.)
-const TOUR_STEPS_DEFAULT: TourStep[] = [
-  {
-    target: '[data-tour="sidebar-nav"]',
-    title: "O menu ao lado",
-    body: "É por aqui que você anda no dia a dia: clientes, equipe, serviços e agenda ficam todos neste menu.",
-  },
-  {
-    target: '[data-tour="nav-agenda"]',
-    title: "Agenda",
-    body: "É aqui que você marca e acompanha os agendamentos — por dia, semana ou mês.",
-  },
-  {
-    target: '[data-tour="nav-users"]',
-    title: "Usuários",
-    body: "Cadastre quem vai usar o GestaraHub e defina o que cada pessoa pode ver e fazer.",
-  },
-  {
-    target: '[data-tour="nav-settings"]',
-    title: "Configurações",
-    body: "Aqui você ajusta o horário de funcionamento e outras opções do seu negócio.",
-  },
-  {
-    target: '[data-tour="onboarding-checklist"]',
-    title: "Primeiros passos",
-    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
-  },
-];
-
-// Passos do tour para turmas e aulas coletivas (Escola de Idiomas, Cursos, Academia, etc.)
-const TOUR_STEPS_CLASSES: TourStep[] = [
-  {
-    target: '[data-tour="sidebar-nav"]',
-    title: "O menu ao lado",
-    body: "É por aqui que você anda no dia a dia: alunos, equipe, modalidades, turmas e mensalidades ficam todos neste menu.",
-  },
-  {
-    target: '[data-tour="nav-classes"]',
-    title: "Turmas",
-    body: "Aqui você organiza as turmas, horários das aulas, limites de vagas e matrículas.",
-  },
-  {
-    target: '[data-tour="nav-users"]',
-    title: "Usuários",
-    body: "Cadastre quem vai usar o GestaraHub e defina o que cada pessoa pode ver e fazer.",
-  },
-  {
-    target: '[data-tour="nav-settings"]',
-    title: "Configurações",
-    body: "Aqui você ajusta o horário de funcionamento, regras de cobrança das mensalidades e outras opções do seu negócio.",
-  },
-  {
-    target: '[data-tour="onboarding-checklist"]',
-    title: "Primeiros passos",
-    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
-  },
-];
+import { TOUR_STEPS_CLASSES, TOUR_STEPS_DEFAULT } from "./tour-steps";
 
 /**
  * Orquestra o onboarding (modal de boas-vindas + tour + checklist). Montado no
@@ -110,6 +54,7 @@ export function Onboarding() {
           setTourOpen(true);
         }}
         onStartSetup={() => update({ seen: true })}
+        isClasses={isClasses}
       />
 
       {tourOpen ? (

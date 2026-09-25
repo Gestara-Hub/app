@@ -81,9 +81,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
         <DialogBody className="space-y-4">
           <InputText<ModalityFormValues>
             name="name"
-            label="Nome da modalidade / curso"
-            placeholder="Ex.: Inglês, Dança, Natação"
-            hint="O tipo de aula, curso ou modalidade que a unidade oferece. As turmas e os professores se organizam por ela."
+            label="Nome"
+            placeholder="Digite o nome"
             required
             disabled={pending}
           />
@@ -91,8 +90,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
           {isEdit ? (
             <SwitchField<ModalityFormValues>
               name="active"
-              label="Modalidade ativa"
-              hint="Modalidades inativas não aparecem em novas turmas nem no cadastro de instrutores."
+              label="Ativa"
+              hint="Quando inativa, deixa de aparecer em novas turmas e no cadastro da equipe."
               disabled={pending}
             />
           ) : null}
@@ -108,8 +107,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
             {pending
               ? "Salvando..."
               : isEdit
-                ? "Salvar alterações"
-                : "Criar modalidade"}
+                ? "Salvar"
+                : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

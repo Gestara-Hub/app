@@ -81,7 +81,10 @@ export interface StudentProgression {
   currentLevel: string;            // "white", "blue" ou texto livre / ID
   subLevel?: number;               // 0 a 4 (graus)
   promotedAt?: DateISO;            // data da última graduação
+  nextExamDate?: DateISO;          // data prevista do próximo exame / troca de faixa
   attendanceCountAtLevel?: number; // presenças acumuladas no nível atual
+  strengths?: string;              // pontos fortes observados pelo instrutor
+  focusAreas?: string;             // pontos fracos / a melhorar
 }
 
 export interface Client {

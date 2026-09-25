@@ -34,6 +34,7 @@ import {
   useClassSessions,
 } from "@/features/turmas";
 import { Onboarding } from "@/features/onboarding";
+import { useCurrentUser } from "@/features/auth";
 
 function Kpi({
   icon,
@@ -151,32 +152,53 @@ export function AcademyDashboardView() {
   const isError =
     sessionsQuery.isError || groupsQuery.isError || chargesQuery.isError;
 
+  const user = useCurrentUser();
+  const hasOperatingData = groups.length > 0;
+
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          title="Dashboard"
-          description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
-        />
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/classes/calendar">
-              <CalendarCheck className="size-4" />
-              Ver calendário
-            </Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/classes">
-              <Plus className="size-4" />
-              Nova turma
-            </Link>
-          </Button>
+      {hasOperatingData ? (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <PageHeader
+            title="Dashboard"
+            description={
+              isClient
+                ? `Visão geral das turmas · ${todayLabel}`
+                : "Visão geral das turmas"
+            }
+          />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/classes/calendar">
+                <CalendarCheck className="size-4" />
+                Ver calendário
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/classes">
+                <Plus className="size-4" />
+                Nova turma
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <Onboarding />
 
-      {isError ? (
+      {!hasOperatingData ? (
+        user.profile !== "owner" ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
+            <GraduationCap className="size-10 text-muted-foreground/60 mb-2" />
+            <h3 className="text-base font-semibold text-foreground">
+              Nenhuma turma cadastrada ainda
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mt-1">
+              A unidade está em fase de configuração inicial. Assim que as primeiras turmas forem criadas, a rotina de aulas e chamadas aparecerá aqui.
+            </p>
+          </div>
+        ) : null
+      ) : isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border py-16 text-center">
           <AlertTriangle className="size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">

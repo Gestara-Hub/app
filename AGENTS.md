@@ -49,12 +49,11 @@ All user-facing texts **must be in Portuguese**:
 
 ---
 
-## 4. Verification Commands
-Before concluding any task, ensure:
+## 4. Verification & Testing Workflow (USER RULE)
+- **Do NOT run automated test suites (`pnpm test`) or Playwright (`pnpm e2e` / browser automation) automatically** unless explicitly requested by the user.
+- **Workflow**: Make requested changes directly and quickly. Keep track of all changes made during the session. At the conclusion or milestone, suggest to the user whether new tests should be created or existing suites run.
+- When verification is requested or before concluding, standard commands are:
 ```bash
-pnpm --filter @gestarahub/web typecheck  # tsc --noEmit (must be 0 errors)
-pnpm --filter @gestarahub/web lint       # eslint (must be 0 errors, 0 warnings)
-pnpm test                                # billing engine (node --test) + services (Vitest)
-pnpm e2e                                 # browser flows (Playwright, system Chrome, reuses `pnpm dev`)
+pnpm --filter @gestarahub/web typecheck  # tsc --noEmit (0 errors)
+pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ```
-- Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`. When fixing a bug, add the test that reproduces it in the same change.

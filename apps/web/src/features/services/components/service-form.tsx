@@ -111,7 +111,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
           <InputText<ServiceFormValues>
           name="name"
           label="Nome"
-          placeholder="Ex.: Atendimento padrão"
+          placeholder="Informe o nome do serviço"
           required
           disabled={pending}
         />

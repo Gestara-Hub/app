@@ -8,6 +8,11 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { organizationModelById } from "@/mocks/store";
 import { OnboardingTopBanner } from "@/features/onboarding";
+import {
+  VIEW_MODE_STORAGE_PREFIX,
+  ViewModeProvider,
+  type ListViewMode,
+} from "@/components/shared/list";
 
 export default async function AppLayout({
   children,
@@ -25,18 +30,34 @@ export default async function AppLayout({
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
+  // Modos de visualizacao (lista vs card) persistidos em cookie para SSR sem flicker.
+  const initialViewModes: Record<string, ListViewMode> = {};
+  for (const c of cookieStore.getAll()) {
+    if (
+      c.name.startsWith(VIEW_MODE_STORAGE_PREFIX) &&
+      (c.value === "list" || c.value === "grid")
+    ) {
+      const key = c.name.slice(VIEW_MODE_STORAGE_PREFIX.length);
+      initialViewModes[key] = c.value;
+    }
+  }
+
   return (
     <SessionProvider user={user} model={model}>
-      <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
-        <AppSidebar />
-        <SidebarInset>
-          <AppTopbar />
-          <Suspense fallback={null}>
-            <OnboardingTopBanner />
-          </Suspense>
-          <div className="min-w-0 flex-1 p-4 md:p-6">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
+      <ViewModeProvider initialModes={initialViewModes}>
+        <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
+          <AppSidebar />
+          <SidebarInset>
+            <AppTopbar />
+            <Suspense fallback={null}>
+              <OnboardingTopBanner />
+            </Suspense>
+            <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-6">
+              {children}
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </ViewModeProvider>
     </SessionProvider>
   );
 }

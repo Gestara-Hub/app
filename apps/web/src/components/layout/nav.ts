@@ -17,6 +17,39 @@ import {
 import { can } from "@/lib/permissions";
 import type { OperationalModel, Permission, User } from "@gestarahub/contracts";
 
+export type NavSectionId =
+  | "overview"
+  | "daily_operations"
+  | "financial"
+  | "catalog";
+
+export interface NavSectionMeta {
+  id: NavSectionId;
+  /** Rótulo da seção na sidebar (ausente para o topo/Dashboard sem cabeçalho). */
+  label?: string;
+  /** Alvo data-tour para destacar o bloco inteiro no Tour Guiado. */
+  tourId?: string;
+}
+
+export const NAV_SECTIONS: NavSectionMeta[] = [
+  { id: "overview" },
+  {
+    id: "daily_operations",
+    label: "Operação Diária",
+    tourId: "nav-group-operations",
+  },
+  {
+    id: "financial",
+    label: "Financeiro",
+    tourId: "nav-group-financial",
+  },
+  {
+    id: "catalog",
+    label: "Cadastros",
+    tourId: "nav-group-catalog",
+  },
+];
+
 export interface NavItem {
   /** Rotulo visivel (PT acentuado). */
   label: string;
@@ -25,6 +58,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Permissao minima para ver/acessar o item (RBAC). */
   permission: Permission;
+  /** Secao visual na barra lateral. */
+  section?: NavSectionId;
   /** Modelos operacionais em que o item aparece; ausente = compartilhado. */
   models?: OperationalModel[];
   /** Alvo do tour de onboarding (data-tour), quando destacado. */
@@ -35,17 +70,102 @@ export interface NavItem {
 // scheduling (M1) ve Agenda/Serviços; classes (M3) ve Turmas/Calendário; os
 // compartilhados (sem `models`) aparecem em todos.
 export const MAIN_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard:view" },
-  { label: "Clientes", href: "/clients", icon: Users, permission: "clients:view", models: ["scheduling", "delivery"] },
-  { label: "Alunos", href: "/clients", icon: Users, permission: "clients:view", models: ["classes"] },
-  { label: "Equipe", href: "/team", icon: Contact, permission: "team:view" },
-  { label: "Serviços", href: "/services", icon: Tag, permission: "services:view", models: ["scheduling"], tourId: "nav-services" },
-  { label: "Agenda", href: "/schedule", icon: CalendarDays, permission: "schedule:view", models: ["scheduling"], tourId: "nav-agenda" },
-  { label: "Turmas", href: "/classes", icon: GraduationCap, permission: "classes:view", models: ["classes"], tourId: "nav-classes" },
-  { label: "Calendário", href: "/classes/calendar", icon: CalendarRange, permission: "classes:view", models: ["classes"] },
-  { label: "Modalidades", href: "/classes/modalities", icon: Shapes, permission: "classes:manage", models: ["classes"] },
-  { label: "Planos", href: "/classes/plans", icon: Layers, permission: "billing:view", models: ["classes"] },
-  { label: "Mensalidades", href: "/classes/billing", icon: Wallet, permission: "billing:view", models: ["classes"] },
+  // Topo: Visão Geral
+  {
+    label: "Dashboard",
+    href: "/",
+    icon: LayoutDashboard,
+    permission: "dashboard:view",
+    section: "overview",
+  },
+
+  // Bloco 1: Operação Diária
+  {
+    label: "Calendário",
+    href: "/classes/calendar",
+    icon: CalendarRange,
+    permission: "classes:view",
+    section: "daily_operations",
+    models: ["classes"],
+  },
+  {
+    label: "Agenda",
+    href: "/schedule",
+    icon: CalendarDays,
+    permission: "schedule:view",
+    section: "daily_operations",
+    models: ["scheduling"],
+    tourId: "nav-agenda",
+  },
+  {
+    label: "Turmas",
+    href: "/classes",
+    icon: GraduationCap,
+    permission: "classes:view",
+    section: "daily_operations",
+    models: ["classes"],
+    tourId: "nav-classes",
+  },
+  {
+    label: "Alunos",
+    href: "/clients",
+    icon: Users,
+    permission: "clients:view",
+    section: "daily_operations",
+    models: ["classes"],
+  },
+  {
+    label: "Clientes",
+    href: "/clients",
+    icon: Users,
+    permission: "clients:view",
+    section: "daily_operations",
+    models: ["scheduling", "delivery"],
+  },
+
+  // Bloco 2: Financeiro
+  {
+    label: "Mensalidades",
+    href: "/classes/billing",
+    icon: Wallet,
+    permission: "billing:view",
+    section: "financial",
+    models: ["classes"],
+  },
+
+  // Bloco 3: Cadastros Estruturais
+  {
+    label: "Modalidades",
+    href: "/classes/modalities",
+    icon: Shapes,
+    permission: "classes:manage",
+    section: "catalog",
+    models: ["classes"],
+  },
+  {
+    label: "Planos",
+    href: "/classes/plans",
+    icon: Layers,
+    permission: "billing:view",
+    section: "catalog",
+    models: ["classes"],
+  },
+  {
+    label: "Serviços",
+    href: "/services",
+    icon: Tag,
+    permission: "services:view",
+    section: "catalog",
+    models: ["scheduling"],
+    tourId: "nav-services",
+  },
+  {
+    label: "Equipe",
+    href: "/team",
+    icon: Contact,
+    permission: "team:view",
+    section: "catalog",
+  },
 ];
 
 // Itens administrativos (owner) ancorados no rodape, separados dos operacionais.

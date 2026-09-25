@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -26,28 +24,9 @@ export function ClientFormDialog({
 }: ClientFormDialogProps) {
   const isClasses = useModel() === "classes";
   const isEdit = Boolean(client);
-  const [dirty, setDirty] = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
-
-  // Esc, X ou Cancelar com alterações pedem confirmação antes de descartar.
-  const requestOpenChange = (next: boolean) => {
-    if (!next && dirty) {
-      setConfirmDiscard(true);
-      return;
-    }
-    if (!next) setDirty(false);
-    onOpenChange(next);
-  };
-
-  const close = () => {
-    setDirty(false);
-    setConfirmDiscard(false);
-    onOpenChange(false);
-  };
 
   return (
-    <>
-    <Dialog open={open} onOpenChange={requestOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[90vh] sm:max-w-xl flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
@@ -78,21 +57,9 @@ export function ClientFormDialog({
           key={client?.id ?? "novo"}
           client={client}
           formId="client-form"
-          onDirtyChange={setDirty}
-          onSuccess={close}
+          onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>
-    <ConfirmActionDialog
-      open={confirmDiscard}
-      onOpenChange={setConfirmDiscard}
-      title="Descartar alterações?"
-      description="O que você preencheu neste formulário será perdido."
-      confirmLabel="Descartar"
-      cancelLabel="Continuar editando"
-      variant="destructive"
-      onConfirm={close}
-    />
-    </>
   );
 }

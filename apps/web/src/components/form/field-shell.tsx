@@ -1,4 +1,8 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, type ReactNode } from "react";
+import { useFormContext } from "react-hook-form";
+import { useDialogDirty } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +45,14 @@ export function FieldShell({
   className,
   children,
 }: FieldShellProps) {
+  const form = useFormContext();
+  const isDirty = Boolean(form?.formState?.isDirty);
+  const setDialogDirty = useDialogDirty();
+
+  useEffect(() => {
+    setDialogDirty?.(isDirty);
+  }, [isDirty, setDialogDirty]);
+
   return (
     <div className={cn("space-y-1.5", className)}>
       {label ? (

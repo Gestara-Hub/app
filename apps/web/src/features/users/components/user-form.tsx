@@ -148,7 +148,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
           <InputText<UserFormValues>
             name="name"
             label="Nome"
-            placeholder="Ex.: Maria Souza"
+            placeholder="Informe o nome completo"
             required
             disabled={pending}
           />
@@ -157,7 +157,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
           name="email"
           type="email"
           label="E-mail"
-          placeholder="maria@empresa.com"
+          placeholder="email@dominio.com"
           required
           disabled={pending}
         />

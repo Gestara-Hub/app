@@ -71,11 +71,19 @@ function SheetContent({
             "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           className
         )}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null
+          if (target?.closest?.("[data-product-tour]")) {
+            e.preventDefault()
+          }
+          props.onInteractOutside?.(e)
+        }}
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement | null
           if (
             target?.closest?.("[data-sonner-toaster]") ||
-            target?.closest?.("[data-sonner-toast]")
+            target?.closest?.("[data-sonner-toast]") ||
+            target?.closest?.("[data-product-tour]")
           ) {
             e.preventDefault()
           }

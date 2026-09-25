@@ -6,6 +6,16 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface DialogExpandedContextValue {
   isExpanded: boolean
@@ -21,10 +31,79 @@ const DialogExpandedContext = React.createContext<DialogExpandedContextValue>({
 
 const useDialogExpanded = () => React.useContext(DialogExpandedContext)
 
+const DialogDirtyContext = React.createContext<((dirty: boolean) => void) | null>(
+  null
+)
+
+export const useDialogDirty = () => React.useContext(DialogDirtyContext)
+
 function Dialog({
+  open,
+  onOpenChange,
+  children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  const [dirty, setDirty] = React.useState(false)
+  const [confirmDiscard, setConfirmDiscard] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!open) {
+      setDirty(false)
+      setConfirmDiscard(false)
+    }
+  }, [open])
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && dirty) {
+        setConfirmDiscard(true)
+        return
+      }
+      if (!nextOpen) {
+        setDirty(false)
+      }
+      onOpenChange?.(nextOpen)
+    },
+    [dirty, onOpenChange]
+  )
+
+  const handleConfirmDiscard = React.useCallback(() => {
+    setDirty(false)
+    setConfirmDiscard(false)
+    onOpenChange?.(false)
+  }, [onOpenChange])
+
+  return (
+    <DialogDirtyContext.Provider value={setDirty}>
+      <DialogPrimitive.Root
+        data-slot="dialog"
+        open={open}
+        onOpenChange={handleOpenChange}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Root>
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O que você preencheu neste formulário será perdido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleConfirmDiscard}
+            >
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DialogDirtyContext.Provider>
+  )
 }
 
 function DialogTrigger({
@@ -89,7 +168,10 @@ function DialogContent({
   storageKey,
   expanded: controlledExpanded,
   onExpandedChange,
-  expandedClassName = "sm:max-w-4xl lg:max-w-5xl h-[92vh] max-h-[92vh]",
+  expandedClassName = "max-sm:w-screen max-sm:max-w-none max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none max-sm:border-0 sm:max-w-4xl lg:max-w-5xl sm:h-[92vh] sm:max-h-[92vh]",
+  closeOnInteractOutside = false,
+  onInteractOutside,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -98,6 +180,7 @@ function DialogContent({
   expanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
   expandedClassName?: string
+  closeOnInteractOutside?: boolean
 }) {
   const [uncontrolledExpanded, setUncontrolledExpanded] = React.useState<boolean>(
     () => (expandable && storageKey ? getSavedExpandedState(storageKey) : false)
@@ -141,7 +224,16 @@ function DialogContent({
             className,
             isExpanded && expandedClassName
           )}
+          onInteractOutside={(e) => {
+            if (!closeOnInteractOutside) {
+              e.preventDefault()
+            }
+            onInteractOutside?.(e)
+          }}
           onPointerDownOutside={(e) => {
+            if (!closeOnInteractOutside) {
+              e.preventDefault()
+            }
             const target = e.target as HTMLElement | null
             if (
               target?.closest?.("[data-sonner-toaster]") ||
@@ -149,7 +241,7 @@ function DialogContent({
             ) {
               e.preventDefault()
             }
-            props.onPointerDownOutside?.(e)
+            onPointerDownOutside?.(e)
           }}
           {...props}
         >

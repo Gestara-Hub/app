@@ -18,7 +18,59 @@ function isStepPage(step: OnboardingStep, pathname: string): boolean {
   return pathname === step.href.split(/[?#]/)[0];
 }
 
-const ASIDE_CLASS = "px-4 pt-3 pb-1 md:px-6 md:pt-4";
+function isOnboardingAlreadyComplete(organizationId: string): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const cached = window.localStorage.getItem(
+      `gestarahub_onboarding_complete:${organizationId}`,
+    );
+    if (cached === "1") return true;
+    if (cached === "0") return false;
+
+    const rawState = window.localStorage.getItem(
+      `gestarahub:onboarding:${organizationId}`,
+    );
+    if (rawState) {
+      const parsed = JSON.parse(rawState) as { setupCompletedShown?: boolean };
+      if (parsed.setupCompletedShown) return true;
+    }
+
+    const rawDb = window.localStorage.getItem("gestarahub:db");
+    if (rawDb) {
+      const db = JSON.parse(rawDb) as {
+        data?: {
+          tenants?: Record<
+            string,
+            {
+              classGroups?: unknown[];
+              clients?: unknown[];
+              professionals?: unknown[];
+              plans?: unknown[];
+              categories?: unknown[];
+              appointments?: unknown[];
+            }
+          >;
+        };
+      };
+      const tenant = db.data?.tenants?.[organizationId];
+      if (tenant) {
+        const hasClassesDone =
+          (tenant.classGroups?.length ?? 0) > 0 &&
+          (tenant.clients?.length ?? 0) > 0 &&
+          (tenant.professionals?.length ?? 0) > 0 &&
+          (tenant.plans?.length ?? 0) > 0 &&
+          (tenant.categories?.length ?? 0) > 0;
+        const hasSchedulingDone = (tenant.appointments?.length ?? 0) > 0;
+        if (hasClassesDone || hasSchedulingDone) return true;
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return false;
+}
+
+const ASIDE_CLASS = "mx-auto w-full max-w-7xl px-4 pt-3 pb-1 md:px-6 md:pt-4";
 // CTA menor no celular; tamanho padrao a partir de sm
 const CTA_CLASS = "shrink-0 sm:h-9 sm:px-4 sm:has-[>svg]:px-3";
 
@@ -48,21 +100,6 @@ export function OnboardingTopBanner() {
     ctaRef.current?.focus({ preventScroll: true });
   }, [nudgeCount]);
 
-  // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
-  if (user.profile !== "owner" || pathname === "/") return null;
-
-  // Enquanto os passos carregam, reserva a altura do banner para o conteudo
-  // nao ser empurrado quando ele aparece (layout shift).
-  if (!isReady) {
-    return (
-      <div aria-hidden className={ASIDE_CLASS}>
-        <Skeleton className="h-16 rounded-xl bg-muted sm:h-[72px]" />
-      </div>
-    );
-  }
-
-  if (isComplete) return null;
-
   const nextStepIndex = nextStep
     ? steps.findIndex((s) => s.id === nextStep.id)
     : -1;
@@ -74,6 +111,59 @@ export function OnboardingTopBanner() {
           ? pathname === "/settings" && (tab === "geral" || !tab)
           : isStepPage(nextStep, pathname)),
   );
+  const activeStepOnPage =
+    user.profile === "owner" &&
+    pathname !== "/" &&
+    isReady &&
+    !isComplete &&
+    isOnNextStepPage &&
+    nextStep
+      ? nextStep.id
+      : null;
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeStepOnPage) {
+      root.dataset.onboardingStep = activeStepOnPage;
+    } else {
+      delete root.dataset.onboardingStep;
+    }
+    return () => {
+      delete root.dataset.onboardingStep;
+    };
+  }, [activeStepOnPage]);
+
+  useEffect(() => {
+    if (!isReady || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        `gestarahub_onboarding_complete:${user.organizationId}`,
+        isComplete ? "1" : "0",
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [isReady, isComplete, user.organizationId]);
+
+  // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
+  if (user.profile !== "owner" || pathname === "/") return null;
+
+  if (isComplete) return null;
+
+  // Enquanto os passos carregam, se o setup basico ja foi concluido nesta
+  // organizacao (ou durante o SSR antes de hidratar), nao exibe o skeleton do
+  // banner para evitar piscar/empurrar a tela em contas ja configuradas.
+  if (!isReady) {
+    if (isOnboardingAlreadyComplete(user.organizationId)) {
+      return null;
+    }
+    return (
+      <div aria-hidden className={ASIDE_CLASS}>
+        <Skeleton className="h-16 rounded-xl bg-muted sm:h-[72px]" />
+      </div>
+    );
+  }
+
   // Fora da tela do passo, o "Continuar" pulsa chamando para la; nela, fica quieto.
   const pulse = Boolean(nextStep) && !isOnNextStepPage;
   const pct = Math.round((doneCount / total) * 100);
@@ -91,50 +181,56 @@ export function OnboardingTopBanner() {
             : "border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.07]",
         )}
       >
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:gap-4 sm:px-5 sm:py-3">
-          {/* Lado esquerdo: Próximo passo objetivo alinhado ao padrão da dashboard */}
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 sm:gap-4 sm:px-5 sm:py-3">
+          {/* Lado esquerdo: Rótulo suave em cinza + Título único em destaque */}
           <div className="min-w-0 flex-1">
             {nextStep ? (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-[11px] leading-4 font-semibold uppercase tracking-wide text-primary sm:text-xs">
-                  <Sparkles className="size-3.5" />
+                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Sparkles className="size-3.5 text-primary/70" />
                   <span>
-                    {isOnNextStepPage ? "Passo atual" : "Próximo passo"} · Passo {nextStepIndex + 1} de {total}
+                    Configuração inicial · {nextStepIndex + 1} de {total}
                   </span>
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1 sm:text-base">
+                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1">
                   {nextStep.label}
                 </p>
               </div>
             ) : (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-[11px] leading-4 font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 sm:text-xs">
-                  <Check className="size-3.5 stroke-[3]" />
+                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <Check className="size-3.5 stroke-[2.5]" />
                   <span>Configuração concluída · 100%</span>
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1 sm:text-base">
+                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1">
                   Todas as etapas foram concluídas!
                 </p>
               </div>
             )}
           </div>
 
-          {/* Lado direito: Continuar */}
+          {/* Lado direito: Continuar (apenas quando fora da tela do passo) */}
           <div className="flex shrink-0 items-center gap-2">
             {nextStep ? (
-              <Button
-                asChild
-                size="sm"
-                className={cn(
-                  CTA_CLASS,
-                  pulse && "motion-safe:animate-attention-loop",
-                )}
-              >
-                <Link ref={ctaRef} href={nextStep.href}>
-                  Continuar
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              isOnNextStepPage ? (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  {nextStep.description}
+                </span>
+              ) : (
+                <Button
+                  asChild
+                  size="sm"
+                  className={cn(
+                    CTA_CLASS,
+                    pulse && "motion-safe:animate-attention-loop",
+                  )}
+                >
+                  <Link ref={ctaRef} href={nextStep.href}>
+                    Continuar
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              )
             ) : (
               <Button asChild size="sm" variant="outline" className={CTA_CLASS}>
                 <Link href="/">Concluir na Dashboard</Link>

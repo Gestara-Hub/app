@@ -20,6 +20,7 @@ export interface ConfirmActionDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "destructive" | "default";
+  highlightAction?: "confirm" | "cancel";
   isPending?: boolean;
   onConfirm: () => Promise<void> | void;
 }
@@ -32,6 +33,7 @@ export function ConfirmActionDialog({
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
   variant = "destructive",
+  highlightAction = "confirm",
   isPending = false,
   onConfirm,
 }: ConfirmActionDialogProps) {
@@ -48,14 +50,31 @@ export function ConfirmActionDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={isPending}
-            variant={variant === "destructive" ? "destructive" : "default"}
-          >
-            {isPending ? "Processando..." : confirmLabel}
-          </AlertDialogAction>
+          {highlightAction === "cancel" ? (
+            <>
+              <AlertDialogAction
+                onClick={handleConfirm}
+                disabled={isPending}
+                variant="outline"
+              >
+                {isPending ? "Processando..." : confirmLabel}
+              </AlertDialogAction>
+              <AlertDialogCancel disabled={isPending} variant="default">
+                {cancelLabel}
+              </AlertDialogCancel>
+            </>
+          ) : (
+            <>
+              <AlertDialogCancel disabled={isPending}>{cancelLabel}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirm}
+                disabled={isPending}
+                variant={variant === "destructive" ? "destructive" : "default"}
+              >
+                {isPending ? "Processando..." : confirmLabel}
+              </AlertDialogAction>
+            </>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -68,6 +87,7 @@ export interface ConfirmActionOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "destructive" | "default";
+  highlightAction?: "confirm" | "cancel";
 }
 
 /**
@@ -102,6 +122,7 @@ export function useConfirmAction() {
       confirmLabel={pending?.options.confirmLabel}
       cancelLabel={pending?.options.cancelLabel ?? "Voltar"}
       variant={pending?.options.variant ?? "default"}
+      highlightAction={pending?.options.highlightAction ?? "confirm"}
       onConfirm={() => settle(true)}
     />
   );

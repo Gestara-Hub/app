@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Ban, Check, ListPlus, Search, UserPlus, X } from "lucide-react";
+import { Ban, Check, ChevronDown, ListPlus, Search, UserPlus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,23 @@ export function EnrollStudentsDialog({
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [pending, setPending] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [listContainer, setListContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    if (!listContainer) return;
+    setCanScrollUp(listContainer.scrollTop > 6);
+    setCanScrollDown(
+      listContainer.scrollHeight -
+        listContainer.scrollTop -
+        listContainer.clientHeight >
+        6,
+    );
+  }, [listContainer]);
 
   const rows = useMemo(() => {
     const term = normalizeText(search);
@@ -81,6 +98,39 @@ export function EnrollStudentsDialog({
   const shown = rows.slice(0, MAX_ROWS);
   const hidden = rows.length - shown.length;
 
+  useEffect(() => {
+    if (!listContainer) return;
+
+    const resizeObserver = new ResizeObserver(() => checkScroll());
+    resizeObserver.observe(listContainer);
+    for (const child of Array.from(listContainer.children)) {
+      resizeObserver.observe(child);
+    }
+
+    const mutationObserver = new MutationObserver(() => checkScroll());
+    mutationObserver.observe(listContainer, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+
+    const rafId = requestAnimationFrame(() => checkScroll());
+    const timer1 = setTimeout(() => checkScroll(), 60);
+    const timer2 = setTimeout(() => checkScroll(), 220);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [listContainer, shown.length, checkScroll]);
+
+  const scrollToMore = () => {
+    listContainer?.scrollBy({ top: 180, behavior: "smooth" });
+  };
+
   const selectedList = useMemo(
     () => (clients ?? []).filter((c) => selected.has(c.id)),
     [clients, selected],
@@ -96,6 +146,12 @@ export function EnrollStudentsDialog({
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
+    });
+    requestAnimationFrame(() => {
+      const input = searchInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
     });
   };
 
@@ -204,9 +260,21 @@ export function EnrollStudentsDialog({
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             autoFocus
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && search.trim()) {
+                const availableMatches = shown.filter(
+                  (r) => r.state === "available" && !selected.has(r.client.id),
+                );
+                if (availableMatches.length === 1) {
+                  event.preventDefault();
+                  toggle(availableMatches[0].client.id);
+                }
+              }
+            }}
             placeholder="Buscar por nome ou telefone..."
             className="px-8"
             autoComplete="off"
@@ -215,7 +283,10 @@ export function EnrollStudentsDialog({
           {search ? (
             <button
               type="button"
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                searchInputRef.current?.focus();
+              }}
               aria-label="Limpar busca"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
@@ -240,76 +311,117 @@ export function EnrollStudentsDialog({
           </div>
         ) : null}
 
-        <div
-          role="listbox"
-          aria-multiselectable
-          aria-label="Alunos"
-          className="max-h-72 space-y-0.5 overflow-y-auto rounded-md border p-1"
-        >
-          {shown.length === 0 ? (
-            <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              Nenhum aluno encontrado{search ? ` para "${search}"` : ""}.
-            </p>
-          ) : (
-            shown.map(({ client, state }) => {
-              const disabled = state !== "available";
-              const checked = selected.has(client.id);
-              return (
-                <button
-                  key={client.id}
-                  type="button"
-                  role="option"
-                  aria-selected={checked}
-                  disabled={disabled}
-                  onClick={() => toggle(client.id)}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
-                    disabled
-                      ? "cursor-not-allowed opacity-60"
-                      : "hover:bg-accent",
-                  )}
-                >
-                  {disabled ? (
-                    <Ban className="size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    // Caixa decorativa: a propria linha e o alvo clicavel, entao
-                    // um <Checkbox> aqui seria um <button> dentro de <button>.
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
-                        checked
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-input",
-                      )}
-                    >
-                      {checked ? <Check className="size-3" /> : null}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">{client.name}</p>
-                    {client.phone ? (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {formatPhone(client.phone)}
-                      </p>
+        <div className="relative overflow-hidden rounded-md border">
+          {/* Sombra superior quando houver itens rolados para cima */}
+          <div
+            className={cn(
+              "pointer-events-none absolute top-0 right-0 left-0 z-10 h-4 bg-gradient-to-b from-black/10 to-transparent transition-opacity duration-200 dark:from-black/40",
+              canScrollUp ? "opacity-100" : "opacity-0",
+            )}
+          />
+
+          <div
+            ref={setListContainer}
+            onScroll={checkScroll}
+            role="listbox"
+            aria-multiselectable
+            aria-label="Alunos"
+            className="max-h-72 space-y-0.5 overflow-y-auto p-1"
+          >
+            {shown.length === 0 ? (
+              <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                Nenhum aluno encontrado{search ? ` para "${search}"` : ""}.
+              </p>
+            ) : (
+              shown.map(({ client, state }) => {
+                const disabled = state !== "available";
+                const checked = selected.has(client.id);
+                return (
+                  <button
+                    key={client.id}
+                    type="button"
+                    role="option"
+                    aria-selected={checked}
+                    disabled={disabled}
+                    onClick={() => toggle(client.id)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors",
+                      disabled
+                        ? "cursor-not-allowed opacity-60"
+                        : "hover:bg-accent",
+                    )}
+                  >
+                    {disabled ? (
+                      <Ban className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      // Caixa decorativa: a propria linha e o alvo clicavel, entao
+                      // um <Checkbox> aqui seria um <button> dentro de <button>.
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
+                          checked
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input",
+                        )}
+                      >
+                        {checked ? <Check className="size-3" /> : null}
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{client.name}</p>
+                      {client.phone ? (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {formatPhone(client.phone)}
+                        </p>
+                      ) : null}
+                    </div>
+                    {disabled ? (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {state === "enrolled"
+                          ? "já matriculado"
+                          : "na lista de espera"}
+                      </span>
                     ) : null}
-                  </div>
-                  {disabled ? (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {state === "enrolled"
-                        ? "já matriculado"
-                        : "na lista de espera"}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })
-          )}
-          {hidden > 0 ? (
-            <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
-              +{hidden} não exibidos — refine a busca.
-            </p>
-          ) : null}
+                  </button>
+                );
+              })
+            )}
+            {hidden > 0 ? (
+              <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
+                +{hidden} não exibidos — refine a busca.
+              </p>
+            ) : null}
+          </div>
+
+          {/* Gradiente inferior quando houver mais alunos abaixo */}
+          <div
+            className={cn(
+              "pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-8 bg-gradient-to-t from-background/95 via-background/50 to-transparent transition-opacity duration-200",
+              canScrollDown ? "opacity-100" : "opacity-0",
+            )}
+          />
+
+          {/* Pill flutuante indicativo de rolagem */}
+          <div
+            className={cn(
+              "pointer-events-auto absolute bottom-2 left-1/2 z-20 -translate-x-1/2 transition-all duration-300",
+              canScrollDown
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none translate-y-2 opacity-0",
+            )}
+          >
+            <button
+              type="button"
+              onClick={scrollToMore}
+              aria-label="Rolar para ver mais alunos"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/80 bg-background/95 px-3 py-1 text-xs font-medium text-muted-foreground shadow-md backdrop-blur-xs transition-all select-none hover:border-border hover:bg-accent hover:text-foreground active:scale-95"
+              title="Clique para rolar e ver mais alunos"
+            >
+              <span>Mais alunos abaixo</span>
+              <ChevronDown className="size-3.5 animate-bounce text-primary" />
+            </button>
+          </div>
         </div>
 
         <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
@@ -350,11 +462,13 @@ export function EnrollStudentsDialog({
           >
             {pending
               ? "Matriculando..."
-              : isFull || overCapacity
-                ? `Matricular mesmo assim (${selected.size})`
-                : selected.size === 1
-                  ? "Matricular 1 aluno"
-                  : `Matricular ${selected.size} alunos`}
+              : selected.size === 0
+                ? "Matricular"
+                : isFull || overCapacity
+                  ? `Matricular mesmo assim (${selected.size})`
+                  : selected.size === 1
+                    ? "Matricular 1 aluno"
+                    : `Matricular ${selected.size} alunos`}
           </Button>
         </DialogFooter>
       </DialogContent>

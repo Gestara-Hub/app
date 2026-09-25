@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,9 +9,11 @@ import { toast } from "sonner";
 import {
   Building2,
   CalendarDays,
+  Check,
   Loader2,
   MapPin,
   Save,
+  Sparkles,
 } from "lucide-react";
 import {
   Accordion,
@@ -180,7 +182,12 @@ function OrgUnitForm({
   });
 
   const isClasses = organization.model === "classes";
-  useReportDirty(form.formState.isDirty, onDirtyChange);
+  const hasBusinessHours = Boolean(
+    unit.businessHours?.some((day) => !day.closed),
+  );
+  const isBillingUnconfirmed =
+    isClasses && hasBusinessHours && !organization.settings?.billingTiming;
+  useReportDirty(form.formState.isDirty || isBillingUnconfirmed, onDirtyChange);
 
   // Watch fields para compor resumos dinâmicos nas barras dos accordions
   const orgName = useWatch({ control: form.control, name: "organizationName" });
@@ -218,9 +225,15 @@ function OrgUnitForm({
       : `Vence todo dia ${isValidDueDay ? currentDueDay : 10}`;
   const billingSummary = `${timingSummary} • ${strategySummary} • ${dueSummary}`;
 
-  // Se a URL possuir #billing-rules, abre a seção de regras de cobrança; senão, abre a de identificação
+  // Só expande e destaca automaticamente as regras de cobrança na etapa guiada do onboarding
+  // (ou seja, quando o passo de cobrança ainda estiver pendente de confirmação).
+  const shouldFocusBilling =
+    isBillingUnconfirmed &&
+    typeof window !== "undefined" &&
+    hashTargets(window.location.hash).includes("billing-rules");
+
   const [openSections, setOpenSections] = useState<string[]>(() => {
-    if (typeof window !== "undefined" && hashTargets(window.location.hash).includes("billing-rules")) {
+    if (shouldFocusBilling) {
       return ["billing"];
     }
     return ["business"];
@@ -230,22 +243,22 @@ function OrgUnitForm({
   // "Continuar" do onboarding vindo de Horarios) troca a URL via pushState, sem
   // disparar `hashchange`. Por isso reage tambem a troca dos search params.
   const searchParams = useSearchParams();
-  const billingTriggerRef = useRef<HTMLButtonElement>(null);
   // Chegou pelo deep-link (ex.: onboarding): o cartao pulsa ate o usuario clicar nele.
   const [highlightBilling, setHighlightBilling] = useState(false);
   useEffect(() => {
     let timer: number | undefined;
     const handleHash = () => {
+      if (!isBillingUnconfirmed) return;
       if (!hashTargets(window.location.hash).includes("billing-rules")) return;
-      setOpenSections((prev) => (prev.includes("billing") ? prev : [...prev, "billing"]));
+      setOpenSections(["billing"]);
+      setHighlightBilling(true);
       window.clearTimeout(timer);
+      // Aguarda a animacao de abertura do acordeao (200ms) concluir para ter a altura real da pagina
       timer = window.setTimeout(() => {
         const el = document.getElementById("billing-rules");
         if (!el || el.closest("[hidden]")) return;
         el.scrollIntoView({ behavior: "smooth", block: "start" });
-        billingTriggerRef.current?.focus({ preventScroll: true });
-        setHighlightBilling(true);
-      }, 120);
+      }, 280);
     };
     handleHash();
     window.addEventListener("hashchange", handleHash);
@@ -253,7 +266,7 @@ function OrgUnitForm({
       window.clearTimeout(timer);
       window.removeEventListener("hashchange", handleHash);
     };
-  }, [searchParams]);
+  }, [searchParams, isBillingUnconfirmed]);
 
   const onError = (errors: FieldErrors<OrgUnitValues>) => {
     const toOpen: string[] = [];
@@ -303,7 +316,16 @@ function OrgUnitForm({
           phone: values.phone ?? "",
         });
       }
-      toast.success("Configurações salvas.");
+      toast.success(
+        isBillingUnconfirmed
+          ? "Regras de cobrança confirmadas com sucesso."
+          : "Configurações salvas.",
+      );
+      if (typeof window !== "undefined" && window.location.hash) {
+        const cleanUrl = `${window.location.pathname}${window.location.search || ""}`;
+        window.history.replaceState(null, "", cleanUrl);
+      }
+      setHighlightBilling(false);
       form.reset(values);
     } catch (error) {
       toast.error(
@@ -328,7 +350,7 @@ function OrgUnitForm({
           {/* Seção 1: Identificação do Negócio */}
           <AccordionItem
             value="business"
-            className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors"
+            className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors"
           >
             <AccordionTrigger className="py-4 hover:no-underline cursor-pointer">
               <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -349,7 +371,7 @@ function OrgUnitForm({
               <InputText<OrgUnitValues>
                 name="organizationName"
                 label="Nome da organização / academia"
-                placeholder="Ex: Academia Gracie Barra, Studio Pilates..."
+                placeholder="Informe o nome da organização"
                 required
                 disabled={pending}
               />
@@ -358,7 +380,7 @@ function OrgUnitForm({
                 <InputText<OrgUnitValues>
                   name="unitName"
                   label="Nome da unidade"
-                  placeholder="Ex: Matriz, Unidade Centro..."
+                  placeholder="Informe o nome da unidade"
                   required
                   disabled={pending}
                 />
@@ -375,7 +397,7 @@ function OrgUnitForm({
           {/* Seção 2: Endereço da Unidade */}
           <AccordionItem
             value="address"
-            className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors"
+            className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors"
           >
             <AccordionTrigger className="py-4 hover:no-underline cursor-pointer">
               <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -405,15 +427,12 @@ function OrgUnitForm({
               data-tour="settings-billing-rules"
               onPointerDownCapture={() => setHighlightBilling(false)}
               className={cn(
-                "rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs data-[state=open]:border-primary/40 transition-colors scroll-mt-6",
+                "rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors scroll-mt-20",
                 highlightBilling &&
-                  "border-primary/60 data-[state=open]:border-primary/60 motion-safe:animate-attention-ring",
+                  "border-primary/60 motion-safe:animate-attention-ring",
               )}
             >
-              <AccordionTrigger
-                ref={billingTriggerRef}
-                className="py-4 hover:no-underline cursor-pointer"
-              >
+              <AccordionTrigger className="py-4 hover:no-underline cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0 pr-2">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <CalendarDays className="size-4" />
@@ -429,9 +448,14 @@ function OrgUnitForm({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-5 border-t border-border/40 mt-1">
-                <p className="pt-3 pb-1 text-xs text-muted-foreground">
-                  Como as mensalidades são cobradas nas novas matrículas.
-                </p>
+                {isBillingUnconfirmed ? (
+                  <div className="mt-3 mb-2 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground">
+                    <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />
+                    <p>
+                      Sugerimos o modelo mais comum para academias (mensalidade antecipada, proporcional no 1º mês e vencimento dia 10). Se estiver de acordo, basta confirmar abaixo.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="divide-y divide-border/40">
                   <SettingRow label="Momento do pagamento" hint="Quando a mensalidade vence.">
                     <SegmentedChoiceField<OrgUnitValues>
@@ -453,18 +477,30 @@ function OrgUnitForm({
                     label="Dia de vencimento"
                     hint={
                       currentStrategy === "full_cycle"
-                        ? "Cada aluno vence no dia em que entrou."
-                        : "Todos os alunos vencem nesse dia (1 a 28)."
+                        ? "O vencimento ocorre mensalmente na mesma data em que a matrícula foi realizada."
+                        : "Todos os alunos vencem no mesmo dia fixo."
                     }
                   >
-                    <div className="sm:w-44">
-                      <InputNumber<OrgUnitValues>
-                        name="defaultDueDay"
-                        min={1}
-                        max={MAX_DEFAULT_DUE_DAY}
-                        disabled={pending || currentStrategy === "full_cycle"}
-                      />
-                    </div>
+                    {currentStrategy === "full_cycle" ? (
+                      <div className="flex items-center gap-2 py-1 text-sm font-medium text-foreground">
+                        <span className="rounded-md border bg-muted/50 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                          Automático (dia da matrícula)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <span>Todo dia</span>
+                        <div className="w-20">
+                          <InputNumber<OrgUnitValues>
+                            name="defaultDueDay"
+                            min={1}
+                            max={MAX_DEFAULT_DUE_DAY}
+                            disabled={pending}
+                          />
+                        </div>
+                        <span>de cada mês (1 a 28)</span>
+                      </div>
+                    )}
                   </SettingRow>
                 </div>
                 <BillingRulesPreview
@@ -478,18 +514,31 @@ function OrgUnitForm({
         </Accordion>
 
         {/* Rodapé de Ação */}
-        <div className="flex items-center justify-between p-4 sm:p-5 rounded-xl border border-border/70 bg-card shadow-xs">
-          <UnsavedChangesStatus dirty={form.formState.isDirty} />
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            {isBillingUnconfirmed && !form.formState.isDirty ? (
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                ● Pendente de confirmação para concluir o passo
+              </p>
+            ) : (
+              <UnsavedChangesStatus dirty={form.formState.isDirty} />
+            )}
+          </div>
           <Button type="submit" disabled={pending} className="min-w-36">
             {pending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 Salvando...
               </>
+            ) : isBillingUnconfirmed && !form.formState.isDirty ? (
+              <>
+                <Check className="mr-2 size-4" />
+                Confirmar regras recomendadas
+              </>
             ) : (
               <>
                 <Save className="mr-2 size-4" />
-                Salvar alterações
+                Salvar configurações
               </>
             )}
           </Button>

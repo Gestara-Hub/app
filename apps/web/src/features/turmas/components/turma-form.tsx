@@ -12,12 +12,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import {
+  ComboboxField,
   DateField,
   FieldShell,
   InputCurrency,
   InputNumber,
   InputText,
-  SelectField,
   SwitchField,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -272,9 +272,17 @@ function MeetingSlotsEditor({
   };
 
   const updateBlockTime = (blockId: string, patch: Partial<{ start: string; end: string }>) => {
-    const next = blocks.map((b) =>
-      b.id === blockId ? { ...b, ...patch } : b,
-    );
+    const next = blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      // Quando muda apenas o inicio, preserva a duracao atual (ex.: 60m) para nao inverter inicio > fim
+      if (patch.start && !patch.end && b.start && b.end) {
+        const currentDuration = toMinutes(b.end) - toMinutes(b.start);
+        const durationToKeep = currentDuration > 0 ? currentDuration : 60;
+        const autoEnd = addMinutesToTime(patch.start, durationToKeep);
+        return { ...b, start: patch.start, end: autoEnd };
+      }
+      return { ...b, ...patch };
+    });
     setBlocks(next);
     emitChange(next);
   };
@@ -373,16 +381,16 @@ function MeetingSlotsEditor({
   const allSelectedDaysCount = blocks.flatMap((b) => b.days).length;
 
   return (
-    <FieldShell
-      label="Encontros e Horários"
-      hint="Dias e horários em que a turma se reúne no tatame."
-    >
-      <div className="space-y-3">
+    <FieldShell label="Encontros e Horários">
+      <div className="space-y-2.5">
         {blocks.map((block, index) => {
           const isMain = index === 0;
           const isTimeInverted = isBlockTimeInverted(block);
           const blockError = getBlockError(block);
           const isCardInvalid = Boolean(blockError);
+          const durationMinutes =
+            block.start && block.end ? toMinutes(block.end) - toMinutes(block.start) : 0;
+
           return (
             <div
               key={block.id}
@@ -393,52 +401,86 @@ function MeetingSlotsEditor({
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1.5 min-w-0">
+                <div className="space-y-1.5 min-w-0 flex-1">
                   {blocks.length > 1 && (
                     <span className="text-xs font-semibold text-muted-foreground block">
                       {isMain ? "Horário principal:" : "Horário adicional:"}
                     </span>
                   )}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                      <span className="w-28">Início</span>
-                      <span className="invisible text-sm select-none">às</span>
-                      <span className="w-28">Fim</span>
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <span className="w-28">Início</span>
+                        <span className="invisible text-sm select-none">às</span>
+                        <span className="w-28">Fim</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          step={300}
+                          value={block.start}
+                          onChange={(e) =>
+                            updateBlockTime(block.id, { start: e.target.value })
+                          }
+                          disabled={disabled}
+                          aria-invalid={isTimeInverted}
+                          aria-label="Início do encontro"
+                          className={cn(
+                            "h-8 w-28 bg-background",
+                            isTimeInverted &&
+                              "border-destructive focus-visible:ring-destructive/40",
+                          )}
+                        />
+                        <span className="text-sm text-muted-foreground">às</span>
+                        <Input
+                          type="time"
+                          step={300}
+                          value={block.end}
+                          onChange={(e) =>
+                            updateBlockTime(block.id, { end: e.target.value })
+                          }
+                          disabled={disabled}
+                          aria-invalid={isTimeInverted}
+                          aria-label="Fim do encontro"
+                          className={cn(
+                            "h-8 w-28 bg-background",
+                            isTimeInverted &&
+                              "border-destructive focus-visible:ring-destructive/40",
+                          )}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        step={300}
-                        value={block.start}
-                        onChange={(e) =>
-                          updateBlockTime(block.id, { start: e.target.value })
-                        }
-                        disabled={disabled}
-                        aria-invalid={isTimeInverted}
-                        aria-label="Início do encontro"
-                        className={cn(
-                          "h-8 w-28 bg-background",
-                          isTimeInverted &&
-                            "border-destructive focus-visible:ring-destructive/40",
-                        )}
-                      />
-                      <span className="text-sm text-muted-foreground">às</span>
-                      <Input
-                        type="time"
-                        step={300}
-                        value={block.end}
-                        onChange={(e) =>
-                          updateBlockTime(block.id, { end: e.target.value })
-                        }
-                        disabled={disabled}
-                        aria-invalid={isTimeInverted}
-                        aria-label="Fim do encontro"
-                        className={cn(
-                          "h-8 w-28 bg-background",
-                          isTimeInverted &&
-                            "border-destructive focus-visible:ring-destructive/40",
-                        )}
-                      />
+
+                    {/* Atalhos discretos de duração da aula */}
+                    <div className="flex items-center gap-1">
+                      {[
+                        { label: "45m", mins: 45 },
+                        { label: "1h", mins: 60 },
+                        { label: "1h30", mins: 90 },
+                      ].map((preset) => {
+                        const active = durationMinutes === preset.mins;
+                        return (
+                          <button
+                            key={preset.mins}
+                            type="button"
+                            disabled={disabled || !block.start}
+                            onClick={() =>
+                              updateBlockTime(block.id, {
+                                end: addMinutesToTime(block.start, preset.mins),
+                              })
+                            }
+                            className={cn(
+                              "h-8 rounded-md border px-2.5 text-xs font-medium transition-colors cursor-pointer",
+                              active
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground hover:text-foreground",
+                            )}
+                            title={`Definir duração de ${preset.label}`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -790,7 +832,6 @@ export function TurmaForm({
         onSuccess?.();
       } else {
         const created = await createMut.mutateAsync(payload);
-        toast.success("Turma criada com sucesso.");
         onSuccess?.(created);
       }
     } catch (error) {
@@ -828,30 +869,34 @@ export function TurmaForm({
           <InputText<TurmaFormValues>
           name="name"
           label="Nome da turma"
-          placeholder="Ex.: Jiu-Jitsu Fundamentos, No-Gi Avançado, Kids A"
+          placeholder="Informe o nome da turma"
           required
           disabled={pending}
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField<TurmaFormValues>
+          <ComboboxField<TurmaFormValues>
             name="modalityId"
-            label="Modalidade / Arte Marcial"
+            label="Modalidade"
             placeholder="Selecione a modalidade"
+            searchPlaceholder="Filtrar modalidade..."
+            emptyMessage="Nenhuma modalidade encontrada."
             options={categoryOptions}
             required
             disabled={pending}
           />
-          <SelectField<TurmaFormValues>
+          <ComboboxField<TurmaFormValues>
             name="instructorId"
-            label="Professor / Instrutor"
+            label="Professor"
             placeholder={
               !modalityId
-                ? "Selecione a modalidade primeiro"
+                ? "Escolha a modalidade antes"
                 : instructorOptions.length === 0
-                  ? "Nenhum professor leciona esta modalidade"
+                  ? "Sem professor nesta modalidade"
                   : "Selecione o professor"
             }
+            searchPlaceholder="Filtrar professor..."
+            emptyMessage="Nenhum professor encontrado."
             options={instructorOptions}
             required
             disabled={pending || !modalityId || instructorOptions.length === 0}
@@ -875,7 +920,7 @@ export function TurmaForm({
           />
         </div>
 
-        <div className="space-y-3 rounded-lg border p-3.5 bg-muted/20">
+        <div className={cn("space-y-3", allowDropin && "rounded-lg border p-3.5 bg-muted/15")}>
           <SwitchField<TurmaFormValues>
             name="allowDropin"
             label="Permitir alunos avulsos nesta turma"

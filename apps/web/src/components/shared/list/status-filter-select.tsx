@@ -27,13 +27,20 @@ export function StatusFilterSelect({
   const activeLabel = isFemale ? "Ativas" : "Ativos";
   const inactiveLabel = isFemale ? "Inativas" : "Inativos";
 
+  const currentLabel =
+    value === "active"
+      ? activeLabel
+      : value === "inactive"
+        ? inactiveLabel
+        : allLabel;
+
   return (
     <Select
       value={value}
       onValueChange={(val) => onChange(val as "all" | RecordStatus)}
     >
       <SelectTrigger className={className} aria-label="Filtrar por status">
-        <SelectValue placeholder="Status" />
+        <SelectValue placeholder="Status">{currentLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">{allLabel}</SelectItem>

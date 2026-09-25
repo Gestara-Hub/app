@@ -12,13 +12,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  InitialsAvatar,
   ListContainer,
   ListEmptyState,
   ListRow,
   ListSummaryBar,
   RecordStatusBadge,
   SearchInput,
+  SkeletonCards,
   StatusFilterSelect,
+  ViewModeToggle,
+  useViewMode,
 } from "@/components/shared/list";
 import {
   ListItemActionsMenu,
@@ -26,6 +30,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { cn } from "@/lib/utils";
 import type { Category, CategoryFilter, RecordStatus } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories";
 
@@ -104,6 +109,95 @@ function ModalityRow({
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
+function ModalityCard({
+  modality,
+  canManage,
+  onEdit,
+  onInactivate,
+  onReactivate,
+}: {
+  modality: Category;
+  canManage: boolean;
+  onEdit: (m: Category) => void;
+  onInactivate: (m: Category) => void;
+  onReactivate: (m: Category) => void;
+}) {
+  const isActive = modality.status === "active";
+
+  const actions: ListItemAction[] = canManage
+    ? [
+        {
+          key: "edit",
+          label: "Editar",
+          icon: <Pencil className="size-4" />,
+          onSelect: () => onEdit(modality),
+        },
+        isActive
+          ? {
+              key: "inactivate",
+              label: "Inativar",
+              icon: <PowerOff className="size-4" />,
+              onSelect: () => onInactivate(modality),
+              destructive: true,
+            }
+          : {
+              key: "reactivate",
+              label: "Reativar",
+              icon: <Power className="size-4" />,
+              onSelect: () => onReactivate(modality),
+            },
+      ]
+    : [];
+
+  const card = (
+    <div
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onClick={() => canManage && onEdit(modality)}
+      onKeyDown={(e) => {
+        if (!canManage) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(modality);
+        }
+      }}
+      className={cn(
+        "group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 shadow-2xs transition-all",
+        canManage &&
+          "cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <InitialsAvatar name={modality.name} size="default" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {modality.name}
+            </p>
+            <RecordStatusBadge status={modality.status} />
+          </div>
+        </div>
+      </div>
+
+      {canManage ? (
+        <div
+          className="-mr-1 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ListItemActionsMenu
+            actions={actions}
+            title={`Ações de ${modality.name}`}
+            variant="ghost"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (!canManage) return card;
+  return <ListItemContextMenu actions={actions}>{card}</ListItemContextMenu>;
+}
+
 function SkeletonRows({ showAction }: { showAction: boolean }) {
   return Array.from({ length: 4 }).map((_, i) => (
     <div
@@ -120,13 +214,13 @@ function SkeletonRows({ showAction }: { showAction: boolean }) {
 
 export function ModalitiesList({
   canManage,
-  onCreate,
   onEdit,
   onInactivate,
   onReactivate,
 }: ModalitiesListProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  const [viewMode, setViewMode] = useViewMode("modalities", "list");
 
   const filter: CategoryFilter = {
     search: search.trim() || undefined,
@@ -174,9 +268,7 @@ export function ModalitiesList({
           <ModuleEmptyGuide
             icon={<Shapes className="size-8" />}
             title="Nenhuma modalidade cadastrada ainda."
-            description="Cadastre as modalidades ou cursos oferecidos (ex.: Inglês, Dança, Natação) para organizar turmas e professores."
-            actionLabel={canManage ? "Cadastrar modalidade" : undefined}
-            onAction={canManage ? onCreate : undefined}
+            description="Cadastre as modalidades oferecidas para organizar turmas e professores."
           />
         }
       />
@@ -206,16 +298,20 @@ export function ModalitiesList({
           aria-label="Buscar modalidade"
         />
 
-        <StatusFilterSelect
-          value={status}
-          onChange={setStatus}
-          gender="female"
-        />
+        <div className="flex items-center gap-2">
+          <StatusFilterSelect
+            value={status}
+            onChange={setStatus}
+            gender="female"
+          />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
 
       {/* Contador / Resumo */}
-      {!isPending && !isError && modalities.length > 0 ? (
+      {!isError ? (
         <ListSummaryBar
+          isLoading={isPending}
           count={modalities.length}
           singularLabel="modalidade cadastrada"
           pluralLabel="modalidades cadastradas"
@@ -224,10 +320,27 @@ export function ModalitiesList({
         />
       ) : null}
 
-      {/* Container Unificado da Lista */}
-      <ListContainer emptyState={emptyState}>
-        {items}
-      </ListContainer>
+      {/* Container Unificado da Lista ou Grade de Cards */}
+      {isPending && viewMode === "grid" ? (
+        <SkeletonCards compact showAction={canManage} />
+      ) : !isPending && !isError && modalities.length > 0 && viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {modalities.map((modality) => (
+            <ModalityCard
+              key={modality.id}
+              modality={modality}
+              canManage={canManage}
+              onEdit={onEdit}
+              onInactivate={onInactivate}
+              onReactivate={onReactivate}
+            />
+          ))}
+        </div>
+      ) : (
+        <ListContainer emptyState={emptyState}>
+          {items}
+        </ListContainer>
+      )}
     </div>
   );
 }

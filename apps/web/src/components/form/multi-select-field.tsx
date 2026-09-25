@@ -83,6 +83,8 @@ export function MultiSelectField<T extends FieldValues>({
 }: MultiSelectFieldProps<T>) {
   const { control } = useFormContext<T>();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const fieldId = id ?? String(name);
   const listId = useId();
 
@@ -124,6 +126,13 @@ export function MultiSelectField<T extends FieldValues>({
   );
   const groups = groupOptions(options);
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setSearch("");
+    }
+  };
+
   return (
     <Controller
       control={control}
@@ -151,7 +160,7 @@ export function MultiSelectField<T extends FieldValues>({
             error={fieldState.error?.message}
             required={required}
           >
-            <Popover modal={true} open={open} onOpenChange={setOpen}>
+            <Popover modal={true} open={open} onOpenChange={handleOpenChange}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -216,7 +225,12 @@ export function MultiSelectField<T extends FieldValues>({
                 className="w-[var(--radix-popover-trigger-width)] p-0"
               >
                 <Command>
-                  <CommandInput placeholder={searchPlaceholder} />
+                  <CommandInput
+                    ref={inputRef}
+                    placeholder={searchPlaceholder}
+                    value={search}
+                    onValueChange={setSearch}
+                  />
                   <div className="relative">
                     <CommandList
                       id={listId}
@@ -238,7 +252,13 @@ export function MultiSelectField<T extends FieldValues>({
                               <CommandItem
                                 key={option.value}
                                 value={option.label}
-                                onSelect={() => toggle(option.value)}
+                                onSelect={() => {
+                                  toggle(option.value);
+                                  requestAnimationFrame(() => {
+                                    inputRef.current?.focus();
+                                    inputRef.current?.select();
+                                  });
+                                }}
                               >
                                 <Check
                                   className={cn(

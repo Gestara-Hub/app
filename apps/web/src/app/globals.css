@@ -106,6 +106,19 @@
   }
 }
 
+/* No fluxo guiado (onboarding), somente o CTA principal da tela que corresponde
+   exatamente ao passo atual (`nextStep`) pulsa para orientar o usuario. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-onboarding-step="modalities"] [data-onboarding-cta="modalities"],
+  html[data-onboarding-step="plans"] [data-onboarding-cta="plans"],
+  html[data-onboarding-step="team"] [data-onboarding-cta="team"],
+  html[data-onboarding-step="clients"] [data-onboarding-cta="clients"],
+  html[data-onboarding-step="classes"] [data-onboarding-cta="classes"],
+  html[data-onboarding-step="services"] [data-onboarding-cta="services"] {
+    animation: attention 2.2s ease-in-out infinite;
+  }
+}
+
 /* Linhas de lista entrando em cascata (ListContainer): 30ms entre linhas, com
    teto de 10 linhas para listas longas nao demorarem a aparecer. */
 .list-stagger > :nth-child(1) {
@@ -922,5 +935,38 @@ html[data-style="vega"] .bg-card,
   pointer-events: none !important;
 }
 
+/* ==========================================================================
+   View Mode Pre-Hydration Skeleton Guard (Prevents List->Card Flash on Refresh)
+   ========================================================================== */
 
+html[data-vm-turmas="grid"] [data-vm-skeleton="turmas:list"],
+html[data-vm-clients="grid"] [data-vm-skeleton="clients:list"],
+html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:list"],
+html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:list"],
+html[data-vm-plans="grid"] [data-vm-skeleton="plans:list"] {
+  display: none !important;
+}
 
+html[data-vm-turmas="grid"] [data-vm-skeleton="turmas:grid"],
+html[data-vm-clients="grid"] [data-vm-skeleton="clients:grid"],
+html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:grid"],
+html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:grid"],
+html[data-vm-plans="grid"] [data-vm-skeleton="plans:grid"] {
+  display: block !important;
+}
+
+html[data-vm-turmas="list"] [data-vm-skeleton="turmas:grid"],
+html[data-vm-clients="list"] [data-vm-skeleton="clients:grid"],
+html[data-vm-professionals="list"] [data-vm-skeleton="professionals:grid"],
+html[data-vm-modalities="list"] [data-vm-skeleton="modalities:grid"],
+html[data-vm-plans="list"] [data-vm-skeleton="plans:grid"] {
+  display: none !important;
+}
+
+html[data-vm-turmas="list"] [data-vm-skeleton="turmas:list"],
+html[data-vm-clients="list"] [data-vm-skeleton="clients:list"],
+html[data-vm-professionals="list"] [data-vm-skeleton="professionals:list"],
+html[data-vm-modalities="list"] [data-vm-skeleton="modalities:list"],
+html[data-vm-plans="list"] [data-vm-skeleton="plans:list"] {
+  display: block !important;
+}

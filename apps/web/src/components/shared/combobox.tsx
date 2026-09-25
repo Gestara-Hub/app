@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useId, useState, type Ref } from "react";
-import { Check, ChevronDown, ChevronUp, ChevronsUpDown, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Plus,
+  X,
+} from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -39,6 +46,9 @@ interface ComboboxProps {
   clearable?: boolean;
   onBlur?: () => void;
   triggerRef?: Ref<HTMLButtonElement>;
+  /** Se informado, exibe uma opcao "+ Criar ..." quando o texto buscado nao existe nas opcoes. */
+  onCreateOption?: (inputValue: string) => void | Promise<void>;
+  createOptionLabel?: (inputValue: string) => string;
 }
 
 /**
@@ -62,12 +72,25 @@ export function Combobox({
   clearable,
   onBlur,
   triggerRef,
+  onCreateOption,
+  createOptionLabel,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const listId = useId();
   const selected = options.find((o) => o.value === value);
+  const trimmedSearch = search.trim();
+  const hasExactMatch = Boolean(
+    trimmedSearch &&
+      options.some(
+        (o) => o.label.trim().toLowerCase() === trimmedSearch.toLowerCase(),
+      ),
+  );
+  const canCreate = Boolean(onCreateOption && trimmedSearch && !hasExactMatch);
+
   const updateScrollIndicators = useCallback((node: HTMLElement) => {
     setCanScrollUp(node.scrollTop > 1);
     setCanScrollDown(node.scrollTop + node.clientHeight < node.scrollHeight - 1);
@@ -81,8 +104,15 @@ export function Combobox({
     [updateScrollIndicators],
   );
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setSearch("");
+    }
+  };
+
   return (
-    <Popover modal={true} open={open} onOpenChange={setOpen}>
+    <Popover modal={true} open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -109,7 +139,7 @@ export function Combobox({
             {selected ? selected.label : placeholder}
           </span>
           <span className="flex items-center gap-1">
-            {clearable && selected && !disabled ? (
+            {clearable && selected && selected.value !== "" && !disabled ? (
               <span
                 role="button"
                 tabIndex={-1}
@@ -134,14 +164,18 @@ export function Combobox({
         className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList
             id={listId}
             ref={setListNode}
             onScroll={(event) => updateScrollIndicators(event.currentTarget)}
             className="max-h-[min(16rem,var(--radix-popover-content-available-height))]"
           >
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            {!canCreate ? <CommandEmpty>{emptyMessage}</CommandEmpty> : null}
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
@@ -149,6 +183,7 @@ export function Combobox({
                   value={option.label}
                   onSelect={() => {
                     onChange(clearable && option.value === value ? "" : option.value);
+                    setSearch("");
                     setOpen(false);
                   }}
                 >
@@ -161,6 +196,33 @@ export function Combobox({
                   {option.label}
                 </CommandItem>
               ))}
+              {canCreate && onCreateOption ? (
+                <CommandItem
+                  key={`__create__:${trimmedSearch}`}
+                  value={trimmedSearch}
+                  disabled={creating}
+                  onSelect={async () => {
+                    try {
+                      setCreating(true);
+                      await onCreateOption(trimmedSearch);
+                      setSearch("");
+                      setOpen(false);
+                    } finally {
+                      setCreating(false);
+                    }
+                  }}
+                  className="text-primary data-[selected=true]:text-primary font-medium"
+                >
+                  <Plus className="size-4 text-primary" />
+                  <span>
+                    {creating
+                      ? "Criando..."
+                      : createOptionLabel
+                        ? createOptionLabel(trimmedSearch)
+                        : `Criar "${trimmedSearch}"`}
+                  </span>
+                </CommandItem>
+              ) : null}
             </CommandGroup>
           </CommandList>
         </Command>

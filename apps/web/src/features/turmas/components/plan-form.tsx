@@ -84,7 +84,7 @@ export function PlanForm({
         <InputText<PlanFormValues>
           name="name"
           label="Nome"
-          placeholder="Ex.: Mensal 2x/semana"
+          placeholder="Digite o nome"
           required
           disabled={pending}
         />
@@ -107,7 +107,7 @@ export function PlanForm({
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
-          createLabel="Criar plano"
+          createLabel="Adicionar"
           editLabel="Salvar"
         />
       </form>

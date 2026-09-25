@@ -179,7 +179,7 @@ function SubstituteInstructorForm({
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex: Professor convidado, cobrir folga, imprevisto..."
+            placeholder="Informe o motivo da substituição (opcional)"
             disabled={isPending}
           />
         </div>

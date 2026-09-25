@@ -144,10 +144,25 @@ function loadFromStorage(): MockWorld | null {
       saveToStorage(worldData);
     }
 
+    let normalizedPlans = false;
     for (const tenant of Object.values(worldData.tenants)) {
       const t = tenant as Partial<MockStore>;
       t.charges = t.charges || t.cobrancas || [];
       t.reservations = t.reservations || t.reservas || [];
+      if (t.plans) {
+        for (const plan of t.plans) {
+          const cleaned = plan.name
+            .replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "")
+            .trim();
+          if (cleaned && cleaned !== plan.name) {
+            plan.name = cleaned;
+            normalizedPlans = true;
+          }
+        }
+      }
+    }
+    if (normalizedPlans) {
+      saveToStorage(worldData);
     }
     return worldData;
   } catch {

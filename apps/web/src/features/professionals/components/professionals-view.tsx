@@ -77,7 +77,7 @@ export function ProfessionalsView() {
               <Briefcase className="size-4" />
               Cargos
             </Button>
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} data-onboarding-cta="team">
               <Plus className="size-4" />
               Novo profissional
             </Button>

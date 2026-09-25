@@ -356,8 +356,9 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
             </div>
           </div>
 
-          {!query.isPending && !query.isError && appointments.length > 0 ? (
+          {!query.isError ? (
             <ListSummaryBar
+              isLoading={query.isPending}
               count={appointments.length}
               singularLabel="agendamento"
               pluralLabel="agendamentos"

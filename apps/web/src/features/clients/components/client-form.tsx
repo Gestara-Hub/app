@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import {
   AddressFields,
   CollapsibleSection,
+  ComboboxField,
   DateField,
   InputCurrency,
   InputNumber,
@@ -121,10 +122,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   const { data: plans } = usePlans({ status: "active" });
 
   const planOptions = useMemo(() => {
-    const list = (plans ?? []).map((p) => ({
-      value: p.id,
-      label: `${p.name} — ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
-    }));
+    const list = (plans ?? []).map((p) => {
+      const cleanName = p.name
+        .replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "")
+        .trim();
+      return {
+        value: p.id,
+        label: `${cleanName} — ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
+      };
+    });
     return [{ value: "", label: "Nenhum plano (sem mensalidade fixa)" }, ...list];
   }, [plans]);
 
@@ -198,9 +204,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     }
   }, [orgSettings, client, form]);
 
-  const [planOpen, setPlanOpen] = useState(
-    () => (client ? Boolean(client.planId) : true),
-  );
+  const [planOpen, setPlanOpen] = useState(() => !client);
   const [addressOpen, setAddressOpen] = useState(
     Boolean(
       client?.address?.street ||
@@ -216,7 +220,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   );
 
   const planBadge = selectedPlan
-    ? `${selectedPlan.name} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
+    ? `${selectedPlan.name.replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "").trim()} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
     : selectedPlanId
       ? "Plano selecionado"
       : undefined;
@@ -504,7 +508,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           <InputText<ClientFormValues>
             name="name"
             label={isClasses ? "Nome do aluno" : "Nome"}
-            placeholder="Ex.: João Pereira"
+            placeholder="Informe o nome completo"
             required
             disabled={pending}
           />
@@ -555,21 +559,29 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             onOpenChange={setPlanOpen}
           >
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <SelectField<ClientFormValues>
-                  name="planId"
-                  label="Plano de acesso"
-                  options={planOptions}
-                  disabled={pending}
-                />
-
-                {selectedPlanId ? (
-                  <DateField<ClientFormValues>
-                    name="planStartDate"
-                    label="Data de início do plano"
-                    hint="Data a partir de quando o plano entra em vigor."
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+                <div className={selectedPlanId ? "sm:col-span-3" : "sm:col-span-5"}>
+                  <ComboboxField<ClientFormValues>
+                    name="planId"
+                    label="Plano de acesso"
+                    placeholder="Nenhum plano (sem mensalidade fixa)"
+                    searchPlaceholder="Filtrar plano por nome, período ou valor..."
+                    emptyMessage="Nenhum plano encontrado."
+                    options={planOptions}
+                    clearable
                     disabled={pending}
                   />
+                </div>
+
+                {selectedPlanId ? (
+                  <div className="sm:col-span-2">
+                    <DateField<ClientFormValues>
+                      name="planStartDate"
+                      label="Início do plano"
+                      hint="Data a partir de quando o plano entra em vigor."
+                      disabled={pending}
+                    />
+                  </div>
                 ) : null}
               </div>
 
@@ -717,7 +729,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                           <InputNumber<ClientFormValues>
                             name="discountValue"
                             label="Desconto (%)"
-                            placeholder="Ex: 10"
+                            placeholder="0"
                             min={0}
                             max={100}
                             disabled={pending}
@@ -734,7 +746,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                       <InputText<ClientFormValues>
                         name="discountReason"
                         label="Motivo do desconto"
-                        placeholder="Ex: Desconto família, atleta ou bolsa"
+                        placeholder="Informe o motivo do desconto (opcional)"
                         disabled={pending}
                       />
                     </div>

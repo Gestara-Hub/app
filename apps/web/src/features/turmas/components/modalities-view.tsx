@@ -59,7 +59,7 @@ export function ModalitiesView() {
         description="Os tipos de aula que a unidade oferece. As turmas e os instrutores se organizam por elas."
       >
         {canManage ? (
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} data-onboarding-cta="modalities">
             <Plus className="size-4" />
             Nova modalidade
           </Button>

@@ -27,19 +27,35 @@ function simulate({ billingTiming, midMonthStrategy, defaultDueDay }: BillingRul
     { planPriceCents: EXAMPLE_PRICE_CENTS, startDate: start },
     { billingTiming, midMonthStrategy, defaultDueDay },
   );
-  const charges = upcomingCharges(terms, 2).map((c) => ({
-    ...c,
-    reference: c.isProrated
-      ? `${c.periodStart.slice(8)} a ${shortDate(c.periodEnd)} (${c.proratedDays} dias)`
-      : midMonthStrategy === "prorated"
-        ? format(parseISO(c.periodStart), "MMMM", { locale: ptBR })
-        : `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}`,
-  }));
+  const charges = upcomingCharges(terms, 2).map((c, idx) => {
+    const range = `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}`;
+    const monthName = format(parseISO(c.periodStart), "MMMM", { locale: ptBR });
+    const dueOnEnrollment = c.dueDate === start;
+
+    return {
+      ...c,
+      orderLabel: `${idx + 1}ª mensalidade`,
+      dueLabel: dueOnEnrollment
+        ? `${shortDate(c.dueDate)} (na matrícula)`
+        : shortDate(c.dueDate),
+      reference: c.isProrated
+        ? `${range} (${c.proratedDays} dias)`
+        : midMonthStrategy === "prorated"
+          ? `${range} (${monthName})`
+          : range,
+    };
+  });
+
   const postpaid = billingTiming === "postpaid";
   const recurring =
     midMonthStrategy === "full_cycle"
-      ? `todo dia ${terms.dueDay}, ${postpaid ? "pelo ciclo anterior" : "pelo ciclo seguinte"}`
-      : `todo dia ${terms.dueDay}, ${postpaid ? "pelo mês anterior" : "pelo mês corrente"}`;
+      ? postpaid
+        ? `todo dia ${terms.dueDay}, cobrindo os 30 dias que acabaram de passar`
+        : `todo dia ${terms.dueDay}, cobrindo sempre os 30 dias seguintes`
+      : postpaid
+        ? `todo dia ${terms.dueDay}, referente ao mês que acabou de fechar`
+        : `todo dia ${terms.dueDay}, referente ao mês em andamento`;
+
   return { start, charges, recurring };
 }
 
@@ -48,35 +64,55 @@ export function BillingRulesPreview(props: BillingRulesPreviewProps) {
 
   return (
     <div className="rounded-lg bg-muted/40 px-4 py-3" aria-live="polite">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Eye className="size-3.5" />
-        Na prática: aluno entra em {shortDate(result.start)}, plano de{" "}
-        {formatCents(EXAMPLE_PRICE_CENTS)}
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Eye className="size-3.5 shrink-0" />
+        <span>
+          Simulação: aluno matriculado em{" "}
+          <strong className="font-semibold text-foreground">{shortDate(result.start)}</strong> no
+          plano de{" "}
+          <strong className="font-semibold text-foreground">
+            {formatCents(EXAMPLE_PRICE_CENTS)}
+          </strong>
+        </span>
       </p>
-      <table className="mt-2.5 w-full text-sm">
-        <thead className="sr-only">
-          <tr>
-            <th>Vencimento</th>
-            <th>Valor</th>
-            <th>Referente a</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.charges.map((charge) => (
-            <tr key={charge.periodStart}>
-              <td className="w-px whitespace-nowrap py-0.5 pr-4 tabular-nums text-muted-foreground">
-                {shortDate(charge.dueDate)}
-              </td>
-              <td className="w-px whitespace-nowrap py-0.5 pr-4 font-medium tabular-nums text-foreground">
-                {formatCents(charge.amountCents)}
-              </td>
-              <td className="py-0.5 text-right text-muted-foreground">{charge.reference}</td>
+
+      <div className="mt-2.5 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/40 text-[11px] font-medium text-muted-foreground/75">
+              <th className="pb-1.5 pr-3 text-left font-medium">Cobrança</th>
+              <th className="pb-1.5 pr-3 text-left font-medium">Vencimento</th>
+              <th className="pb-1.5 pr-3 text-left font-medium">Valor</th>
+              <th className="pb-1.5 text-right font-medium">Período de aulas</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border/20">
+            {result.charges.map((charge) => (
+              <tr key={charge.periodStart}>
+                <td className="whitespace-nowrap py-1.5 pr-3 text-xs font-medium text-muted-foreground">
+                  {charge.orderLabel}
+                </td>
+                <td className="whitespace-nowrap py-1.5 pr-3 tabular-nums text-muted-foreground">
+                  {charge.dueLabel}
+                </td>
+                <td className="whitespace-nowrap py-1.5 pr-3 font-semibold tabular-nums text-foreground">
+                  {formatCents(charge.amountCents)}
+                </td>
+                <td className="whitespace-nowrap py-1.5 text-right tabular-nums text-muted-foreground">
+                  {charge.reference}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <p className="mt-2 border-t border-border/40 pt-2 text-xs text-muted-foreground">
-        Depois: {formatCents(EXAMPLE_PRICE_CENTS)} {result.recurring}.
+        Nos meses seguintes:{" "}
+        <strong className="font-medium text-foreground">
+          {formatCents(EXAMPLE_PRICE_CENTS)} {result.recurring}
+        </strong>
+        .
       </p>
     </div>
   );

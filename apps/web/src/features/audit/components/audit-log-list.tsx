@@ -232,8 +232,9 @@ export function AuditLogList() {
         </div>
 
         {/* Contador / Resumo */}
-        {!isPending && !isError && entries.length > 0 ? (
+        {!isError ? (
           <ListSummaryBar
+            isLoading={isPending}
             count={entries.length}
             singularLabel="evento registrado"
             pluralLabel="eventos registrados"

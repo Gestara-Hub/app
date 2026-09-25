@@ -21,6 +21,8 @@ interface ComboboxFieldProps<T extends FieldValues> {
   clearable?: boolean;
   options: ComboboxOption[];
   id?: string;
+  onCreateOption?: (inputValue: string) => void | Promise<void>;
+  createOptionLabel?: (inputValue: string) => string;
 }
 
 /**
@@ -41,6 +43,8 @@ export function ComboboxField<T extends FieldValues>({
   clearable,
   options,
   id,
+  onCreateOption,
+  createOptionLabel,
 }: ComboboxFieldProps<T>) {
   const { control } = useFormContext<T>();
   const fieldId = id ?? String(name);
@@ -72,6 +76,8 @@ export function ComboboxField<T extends FieldValues>({
             invalid={fieldState.invalid}
             disabled={disabled}
             clearable={clearable}
+            onCreateOption={onCreateOption}
+            createOptionLabel={createOptionLabel}
           />
         </FieldShell>
       )}

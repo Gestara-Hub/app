@@ -282,8 +282,9 @@ export function ServicesList({
       </div>
 
       {/* Contador / Resumo */}
-      {!isPending && !isError && services.length > 0 ? (
+      {!isError ? (
         <ListSummaryBar
+          isLoading={isPending}
           count={services.length}
           singularLabel="serviço cadastrado"
           pluralLabel="serviços cadastrados"

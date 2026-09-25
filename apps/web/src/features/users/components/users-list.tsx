@@ -275,8 +275,9 @@ export function UsersList({
       </div>
 
       {/* Contador / Resumo */}
-      {!isPending && !isError && users.length > 0 ? (
+      {!isError ? (
         <ListSummaryBar
+          isLoading={isPending}
           count={users.length}
           singularLabel={
             limitedView

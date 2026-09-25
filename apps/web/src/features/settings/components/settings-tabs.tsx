@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, Clock, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { ResetDataActions } from "@/features/system";
-import { OrganizationSettingsForm, hashTargets } from "./organization-settings-card";
+import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 import { useBeforeUnloadGuard } from "./unsaved-changes";
 
@@ -59,19 +59,6 @@ export function SettingsTabs() {
   const paramTab = searchParams.get("tab");
   const tab: Tab = isTab(paramTab) ? paramTab : "geral";
 
-  // Rola até a seção com âncora hash (ex.: #billing-rules) quando a aba Geral estiver ativa
-  useEffect(() => {
-    if (tab === "geral" && typeof window !== "undefined" && window.location.hash) {
-      const [hash] = hashTargets(window.location.hash);
-      const el = hash ? document.getElementById(hash) : null;
-      if (el) {
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 50);
-      }
-    }
-  }, [tab]);
-
   // Abas com alteracoes nao salvas (Geral e Horarios avisam via onDirtyChange)
   const [dirtyTabs, setDirtyTabs] = useState<Partial<Record<Tab, boolean>>>({});
   const setGeralDirty = useCallback(
@@ -92,15 +79,20 @@ export function SettingsTabs() {
       const current = TABS.find((t) => t.value === tab)?.label ?? "";
       const ok = await confirm({
         title: "Alterações não salvas",
-        description: `Você alterou a aba ${current} e ainda não salvou. As alterações ficam guardadas até você sair da página, mas não valem enquanto não forem salvas.`,
+        description: `Você tem alterações não salvas na aba ${current}. Deseja continuar editando?`,
         confirmLabel: "Trocar de aba",
         cancelLabel: "Continuar editando",
+        highlightAction: "cancel",
       });
       if (!ok) return;
     }
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", nextTab);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    const targetUrl = `${pathname}?${params.toString()}`;
+    if (typeof window !== "undefined" && window.location.hash) {
+      window.history.replaceState(null, "", targetUrl);
+    }
+    router.replace(targetUrl, { scroll: false });
   };
 
   return (
@@ -133,7 +125,7 @@ export function SettingsTabs() {
               {t.label}
               {dirtyTabs[t.value] ? (
                 <>
-                  <span aria-hidden className="size-1.5 rounded-full bg-amber-500" />
+                  <span aria-hidden className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
                   <span className="sr-only">(alterações não salvas)</span>
                 </>
               ) : null}

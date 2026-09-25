@@ -31,7 +31,7 @@ import type {
   Weekday,
 } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
-import { useRoles } from "@/features/roles";
+import { useCreateRole, useRoles } from "@/features/roles";
 import { useUnit } from "@/features/settings";
 import {
   useCreateProfessional,
@@ -111,17 +111,8 @@ export function ProfessionalForm({
   // existente (select com filtro), nao cria. Sugestoes = cargos ativos; inclui
   // o cargo atual do profissional mesmo se inativo, para nao perde-lo ao editar.
   const { data: roles } = useRoles();
+  const createRoleMut = useCreateRole();
   const currentRoleName = professional?.role?.name ?? "";
-  const roleOptions = useMemo(() => {
-    const activeRoleNames = (roles ?? [])
-      .filter((r) => r.status === "active")
-      .map((r) => r.name);
-    const suggestions =
-      currentRoleName && !activeRoleNames.includes(currentRoleName)
-        ? [...activeRoleNames, currentRoleName]
-        : activeRoleNames;
-    return suggestions.map((name) => ({ label: name, value: name }));
-  }, [roles, currentRoleName]);
 
   const schema = useMemo(() => getProfessionalFormSchema(isClasses), [isClasses]);
 
@@ -131,6 +122,38 @@ export function ProfessionalForm({
     reValidateMode: "onChange",
     defaultValues: toDefaults(professional, currentRoleName, unit, isClasses),
   });
+
+  const selectedRoleName = useWatch({
+    control: form.control,
+    name: "role",
+  });
+
+  const roleOptions = useMemo(() => {
+    const activeRoleNames = (roles ?? [])
+      .filter((r) => r.status === "active")
+      .map((r) => r.name);
+    const extraNames = [currentRoleName, selectedRoleName].filter(
+      (n): n is string => Boolean(n && !activeRoleNames.includes(n)),
+    );
+    const uniqueNames = Array.from(new Set([...activeRoleNames, ...extraNames]));
+    return uniqueNames.map((name) => ({ label: name, value: name }));
+  }, [roles, currentRoleName, selectedRoleName]);
+
+  const handleCreateRole = useCallback(
+    async (roleName: string) => {
+      try {
+        const created = await createRoleMut.mutateAsync({ name: roleName });
+        form.setValue("role", created.name, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+        toast.success(`Cargo "${created.name}" criado.`);
+      } catch (error) {
+        toast.error(getErrorMessage(error, "Não foi possível criar o cargo."));
+      }
+    },
+    [createRoleMut, form],
+  );
 
   const [workingHoursOpen, setWorkingHoursOpen] = useState(false);
 
@@ -186,17 +209,21 @@ export function ProfessionalForm({
   }, [unit, isEdit, form, isClasses]);
 
   const onSubmit = async (values: ProfessionalFormValues) => {
-    // Cargo e opcional: se preenchido, resolve para um Role (FK) existente; se um
-    // texto sem correspondencia for digitado, avisa. Vazio -> sem cargo.
     const typedRole = values.role.trim();
-    const selectedRole = typedRole
+    let selectedRole = typedRole
       ? (roles ?? []).find(
           (r) => normalizeText(r.name) === normalizeText(typedRole),
         )
       : undefined;
     if (typedRole && !selectedRole) {
-      form.setError("role", { message: "Selecione um cargo da lista." });
-      return;
+      try {
+        selectedRole = await createRoleMut.mutateAsync({ name: typedRole });
+      } catch (error) {
+        form.setError("role", {
+          message: getErrorMessage(error, "Não foi possível criar o cargo."),
+        });
+        return;
+      }
     }
     const roleId = selectedRole?.id;
 
@@ -281,7 +308,7 @@ export function ProfessionalForm({
           <InputText<ProfessionalFormValues>
           name="name"
           label="Nome"
-          placeholder="Ex.: Marcelo Andrade"
+          placeholder="Informe o nome completo"
           required
           disabled={pending}
         />
@@ -303,10 +330,12 @@ export function ProfessionalForm({
           <ComboboxField<ProfessionalFormValues>
             name="role"
             label="Cargo"
-            placeholder="Selecione um cargo (opcional)"
-            searchPlaceholder="Buscar cargo..."
-            emptyMessage="Nenhum cargo encontrado."
+            placeholder="Selecione ou crie..."
+            searchPlaceholder="Buscar ou digitar..."
+            emptyMessage={"Nenhum cargo cadastrado.\nDigite acima para criar."}
             options={roleOptions}
+            onCreateOption={handleCreateRole}
+            createOptionLabel={(val) => `Criar cargo "${val}"`}
             clearable
             disabled={pending}
           />

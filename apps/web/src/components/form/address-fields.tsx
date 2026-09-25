@@ -158,7 +158,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           <InputText<T>
             name={getFieldName("street")}
             label="Logradouro / Rua"
-            placeholder="Ex: Av. Paulista, Rua das Flores"
+            placeholder="Rua, avenida, logradouro"
             required={required}
             disabled={disabled || loading}
           />
@@ -169,7 +169,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
         <InputText<T>
           name={getFieldName("number")}
           label="Número"
-          placeholder="Ex: 120, S/N"
+          placeholder="Número ou S/N"
           required={required}
           disabled={disabled || loading}
         />
@@ -177,7 +177,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           <InputText<T>
             name={getFieldName("complement")}
             label="Complemento"
-            placeholder="Ex: Apto 42, Bloco B, Sala 3"
+            placeholder="Sala, bloco, andar (opcional)"
             disabled={disabled || loading}
           />
         </div>
@@ -187,21 +187,21 @@ export function AddressFields<T extends FieldValues = FieldValues>({
         <InputText<T>
           name={getFieldName("neighborhood")}
           label="Bairro"
-          placeholder="Ex: Centro, Bela Vista"
+          placeholder="Informe o bairro"
           required={required}
           disabled={disabled || loading}
         />
         <InputText<T>
           name={getFieldName("city")}
           label="Cidade"
-          placeholder="Ex: São Paulo"
+          placeholder="Informe a cidade"
           required={required}
           disabled={disabled || loading}
         />
         <InputText<T>
           name={getFieldName("state")}
           label="Estado (UF)"
-          placeholder="Ex: SP"
+          placeholder="UF"
           required={required}
           disabled={disabled || loading}
         />

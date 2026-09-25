@@ -100,13 +100,20 @@ export function SchedulingDashboardView() {
   const isPending = professionalsQuery.isPending || appointmentsQuery.isPending;
   const isError = professionalsQuery.isError || appointmentsQuery.isError;
 
+  const hasOperatingData = active.length > 0 || professionals.length > 0;
+
   return (
     <>
-      <PageHeader title="Dashboard" description={isClient ? `Visão geral · ${todayLabel}` : "Visão geral"} />
+      {hasOperatingData ? (
+        <PageHeader
+          title="Dashboard"
+          description={isClient ? `Visão geral · ${todayLabel}` : "Visão geral"}
+        />
+      ) : null}
 
       <Onboarding />
 
-      {isError ? (
+      {!hasOperatingData ? null : isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border py-16 text-center">
           <AlertTriangle className="size-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">

@@ -62,7 +62,7 @@ export function useOnboardingSteps() {
       {
         id: "hours",
         label: "Definir horário de funcionamento",
-        description: "Configure o expediente da unidade.",
+        description: "Configure os dias e horários de funcionamento da unidade.",
         href: "/settings?tab=horarios",
         cta: "Configurar",
         done: hoursSet,
@@ -78,7 +78,7 @@ export function useOnboardingSteps() {
       {
         id: "modalities",
         label: "Cadastrar modalidades",
-        description: "Adicione as modalidades ou cursos oferecidos (ex: Inglês, Dança, Natação).",
+        description: "Adicione as modalidades ou atividades oferecidas.",
         href: "/classes/modalities",
         cta: "Adicionar",
         done: (categoriesQuery.data?.length ?? 0) > 0,
@@ -90,6 +90,7 @@ export function useOnboardingSteps() {
         href: "/classes/plans",
         cta: "Criar",
         done: (plansQuery.data?.length ?? 0) > 0,
+        requires: ["modalities"],
       },
       {
         id: "team",
@@ -110,11 +111,11 @@ export function useOnboardingSteps() {
       {
         id: "classes",
         label: "Criar a primeira turma",
-        description: "Defina os horários, capacidade e dias das aulas.",
+        description: "A etapa final para abrir as matrículas e ativar o seu painel do dia a dia.",
         href: "/classes",
         cta: "Criar",
         done: (classGroupsQuery.data?.length ?? 0) > 0,
-        requires: ["team", "clients"],
+        requires: ["hours", "modalities", "team", "clients"],
       },
     ];
   } else {

@@ -69,7 +69,7 @@ export function ClientsView() {
         }
       >
         {canManage ? (
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} data-onboarding-cta="clients">
             <Plus className="size-4" />
             {isClasses ? "Novo aluno" : "Novo cliente"}
           </Button>

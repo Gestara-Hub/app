@@ -23,6 +23,9 @@ import {
   RecordStatusBadge,
   SearchInput,
   StatusFilterSelect,
+  ViewModeSkeleton,
+  ViewModeToggle,
+  useViewMode,
 } from "@/components/shared/list";
 import {
   ListItemActionsMenu,
@@ -30,6 +33,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { cn } from "@/lib/utils";
 import { formatPhone, plural } from "@gestarahub/core/format";
 import type {
   ProfessionalFilter,
@@ -156,8 +160,124 @@ function ProfessionalRow({
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
+function ProfessionalCard({
+  professional,
+  canManage,
+  isClasses,
+  onEdit,
+  onInactivate,
+  onReactivate,
+}: {
+  professional: ProfessionalView;
+  canManage: boolean;
+  isClasses: boolean;
+  onEdit: (p: ProfessionalView) => void;
+  onInactivate: (p: ProfessionalView) => void;
+  onReactivate: (p: ProfessionalView) => void;
+}) {
+  const isActive = professional.status === "active";
+
+  const actions: ListItemAction[] = canManage
+    ? [
+        {
+          key: "edit",
+          label: "Editar",
+          icon: <Pencil className="size-4" />,
+          onSelect: () => onEdit(professional),
+        },
+        isActive
+          ? {
+              key: "inactivate",
+              label: "Inativar",
+              icon: <PowerOff className="size-4" />,
+              onSelect: () => onInactivate(professional),
+              destructive: true,
+            }
+          : {
+              key: "reactivate",
+              label: "Reativar",
+              icon: <Power className="size-4" />,
+              onSelect: () => onReactivate(professional),
+            },
+      ]
+    : [];
+
+  const activityMeta = isClasses
+    ? plural((professional.modalityIds ?? []).length, "modalidade", "modalidades")
+    : plural(professional.serviceIds.length, "serviço", "serviços");
+
+  const card = (
+    <div
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onClick={() => canManage && onEdit(professional)}
+      onKeyDown={(e) => {
+        if (!canManage) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(professional);
+        }
+      }}
+      className={cn(
+        "group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all",
+        canManage &&
+          "cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <InitialsAvatar name={professional.name} />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {professional.name}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {professional.role?.name ? (
+                <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {professional.role.name}
+                </span>
+              ) : null}
+              <RecordStatusBadge status={professional.status} />
+            </div>
+          </div>
+        </div>
+
+        {canManage ? (
+          <div
+            className="-mr-2 -mt-1 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ListItemActionsMenu
+              actions={actions}
+              title="Ações do profissional"
+              ariaLabel={`Ações de ${professional.name}`}
+              variant="ghost"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <Briefcase className="size-3.5 text-muted-foreground/60" />
+          <span>{activityMeta}</span>
+        </span>
+        {professional.phone ? (
+          <span className="inline-flex items-center gap-1.5 tabular-nums">
+            <Phone className="size-3.5 text-muted-foreground/60" />
+            <span>{formatPhone(professional.phone)}</span>
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  if (!canManage) return card;
+  return <ListItemContextMenu actions={actions}>{card}</ListItemContextMenu>;
+}
+
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 4 }).map((_, i) => (
+  return Array.from({ length: 5 }).map((_, i) => (
     <div
       key={i}
       className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
@@ -165,24 +285,60 @@ function SkeletonRows({ showAction }: { showAction: boolean }) {
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         <Skeleton className="size-9 rounded-full shrink-0" />
         <div className="space-y-1.5 min-w-0 flex-1">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-64" />
+          <Skeleton className="h-4 w-64 max-w-full" />
+          <Skeleton className="h-3 w-44 max-w-full" />
         </div>
       </div>
-      {showAction ? <Skeleton className="size-8 rounded-md shrink-0" /> : null}
+      {showAction ? (
+        <div className="flex size-8 shrink-0 items-center justify-center">
+          <Skeleton className="h-4 w-1.5 rounded-full" />
+        </div>
+      ) : null}
     </div>
   ));
 }
 
+function ProfessionalSkeletonCards({ showAction }: { showAction: boolean }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-36 max-w-full" />
+                <Skeleton className="h-4 w-32 max-w-full rounded-full" />
+              </div>
+            </div>
+            {showAction ? (
+              <div className="-mr-2 -mt-1 flex size-8 shrink-0 items-center justify-center">
+                <Skeleton className="h-4 w-1.5 rounded-full" />
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-3.5 w-28" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ProfessionalsList({
   canManage,
-  onCreate,
   onEdit,
   onInactivate,
   onReactivate,
 }: ProfessionalsListProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  const [viewMode, setViewMode] = useViewMode("professionals", "list");
   const isClasses = useModel() === "classes";
 
   const filter: ProfessionalFilter = {
@@ -236,8 +392,6 @@ export function ProfessionalsList({
                 ? "Cadastre sua equipe, as modalidades que cada um leciona e a disponibilidade."
                 : "Cadastre sua equipe, os serviços que cada um realiza e a disponibilidade."
             }
-            actionLabel={canManage ? "Cadastrar profissional" : undefined}
-            onAction={canManage ? onCreate : undefined}
           />
         }
       />
@@ -268,16 +422,20 @@ export function ProfessionalsList({
           aria-label="Buscar profissional"
         />
 
-        <StatusFilterSelect
-          value={status}
-          onChange={setStatus}
-          gender="male"
-        />
+        <div className="flex items-center gap-2">
+          <StatusFilterSelect
+            value={status}
+            onChange={setStatus}
+            gender="male"
+          />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+        </div>
       </div>
 
       {/* Contador / Resumo */}
-      {!isPending && !isError && professionals.length > 0 ? (
+      {!isError ? (
         <ListSummaryBar
+          isLoading={isPending}
           count={professionals.length}
           singularLabel="profissional na equipe"
           pluralLabel="profissionais na equipe"
@@ -286,10 +444,37 @@ export function ProfessionalsList({
         />
       ) : null}
 
-      {/* Container Unificado da Lista */}
-      <ListContainer emptyState={emptyState}>
-        {items}
-      </ListContainer>
+      {/* Container Unificado da Lista ou Grade de Cards */}
+      {isPending ? (
+        <ViewModeSkeleton
+          storageKey="professionals"
+          mode={viewMode}
+          list={
+            <ListContainer>
+              <SkeletonRows showAction={canManage} />
+            </ListContainer>
+          }
+          grid={<ProfessionalSkeletonCards showAction={canManage} />}
+        />
+      ) : !isError && professionals.length > 0 && viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {professionals.map((professional) => (
+            <ProfessionalCard
+              key={professional.id}
+              professional={professional}
+              canManage={canManage}
+              isClasses={isClasses}
+              onEdit={onEdit}
+              onInactivate={onInactivate}
+              onReactivate={onReactivate}
+            />
+          ))}
+        </div>
+      ) : (
+        <ListContainer emptyState={emptyState}>
+          {items}
+        </ListContainer>
+      )}
     </div>
   );
 }
