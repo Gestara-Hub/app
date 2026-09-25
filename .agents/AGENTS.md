@@ -32,7 +32,7 @@ All user-facing texts **must be in Portuguese**:
 - **Domain Contracts**: Defined in `packages/contracts/src/` and shared between backend and frontend. Always evolve contracts before or alongside service layers.
 - **Service Layer**: In `apps/web/src/services/*Service.ts`. Must return domain contracts / view read-models and use `simulateRead` / `simulateWrite`.
 - **Shared Primitives**:
-  - List components: `@/components/shared/list` (`SearchInput`, `StatusFilterSelect`, `RecordStatusBadge`, `InitialsAvatar`, `ListContainer`, `ListRow`, `ListSummaryBar`, `ListEmptyState`, `ListItemContextMenu`, `ListItemActionsMenu`).
+  - List components: `@/components/shared/list` (`SearchInput`, `StatusFilterSelect`, `RecordStatusBadge`, `InitialsAvatar`, `ListContainer`, `ListRow`, `ListSummaryBar`, `ListEmptyState`, `ViewModeToggle`, `ViewModeProvider`, `ViewModeSkeleton`, `ViewModeCoachmark`, `SkeletonCards`, `useViewMode`, `ListItemContextMenu`, `ListItemActionsMenu`).
   - Dialogs: `@/components/shared/confirm-action-dialog`.
   - Form helpers: `@/components/form` (`DialogFormFooter`, `InputCurrency`, `InputText`, `SelectField`, `SwitchField`, etc.) and `@/lib/form-errors.ts` (`handleFormApiError`).
 - **Boundaries**: Code in `@/components/shared` must NEVER import from `@/features`. Features import from shared components, never vice-versa.
