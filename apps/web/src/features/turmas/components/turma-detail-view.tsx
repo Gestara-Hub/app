@@ -38,14 +38,22 @@ import {
   ListItemActionsMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
+import { BeltBadge } from "@/components/shared/belt-badge";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatPhone, plural, pluralWord } from "@gestarahub/core/format";
-import { isApiError, type EnrollmentView, type Id } from "@gestarahub/contracts";
+import {
+  isApiError,
+  type Client,
+  type EnrollmentView,
+  type Id,
+} from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useClients } from "@/features/clients";
+import { useCategories } from "@/features/categories";
+import { StudentProgressDialog, useClients } from "@/features/clients";
 import {
   useCancelEnrollment,
   useClassGroup,
@@ -162,6 +170,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
+  const { data: categories } = useCategories();
   const { data: waitlist } = useWaitlist(id);
   const cancelMut = useCancelEnrollment();
   const promoteMut = usePromoteWaitlist();
@@ -176,6 +185,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const [enrollOpen, setEnrollOpen] = useState(
     () => searchParams?.get("enroll") === "true",
   );
+  const [progressClient, setProgressClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<Tab>("enrolled");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
@@ -196,10 +206,20 @@ export function TurmaDetailView({ id }: { id: string }) {
     return list.filter((e) => normalizeText(e.studentName).includes(term));
   }, [enrollments, search]);
 
-  const phoneOf = useMemo(() => {
-    const map = new Map((clients ?? []).map((c) => [c.id, c.phone]));
-    return (studentId: Id) => map.get(studentId);
-  }, [clients]);
+  const clientById = useMemo(
+    () => new Map((clients ?? []).map((c) => [c.id, c])),
+    [clients],
+  );
+  const phoneOf = (studentId: Id) => clientById.get(studentId)?.phone;
+
+  const modalityTrack = useMemo(() => {
+    if (!turma) return null;
+    const cat = (categories ?? []).find((c) => c.id === turma.modalityId);
+    const track = resolveModalityTrack(
+      cat ?? { name: turma.modalityName },
+    );
+    return track.enabled && track.levels.length > 0 ? track : null;
+  }, [turma, categories]);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -461,9 +481,33 @@ export function TurmaDetailView({ id }: { id: string }) {
               ) : (
                 <div className="space-y-2">
                   {rows.map((e) => {
+                    const student = clientById.get(e.studentId);
                     const phone = phoneOf(e.studentId);
+                    const prog =
+                      turma.modalityId && student
+                        ? student.progressions?.[turma.modalityId]
+                        : undefined;
+                    const currentLvl = modalityTrack
+                      ? (modalityTrack.levels.find(
+                          (l) =>
+                            l.id === prog?.levelId ||
+                            l.name === prog?.levelName,
+                        ) ?? modalityTrack.levels[0])
+                      : null;
+                    const currentSub = prog?.subLevel ?? 0;
+
                     const actions: ListItemAction[] = canManage
                       ? [
+                          ...(student
+                            ? [
+                                {
+                                  key: "progress",
+                                  label: "Evolução e Graduação",
+                                  icon: <GraduationCap className="size-4" />,
+                                  onSelect: () => setProgressClient(student),
+                                },
+                              ]
+                            : []),
                           {
                             key: "cancel",
                             label: "Cancelar matrícula",
@@ -489,9 +533,26 @@ export function TurmaDetailView({ id }: { id: string }) {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
-                              {e.studentName}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-medium">
+                                {e.studentName}
+                              </p>
+                              {currentLvl && student ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setProgressClient(student)}
+                                  title="Abrir ficha de evolução e graduação"
+                                >
+                                  <BeltBadge
+                                    name={currentLvl.name}
+                                    color={currentLvl.color}
+                                    subLevel={currentSub}
+                                    maxSubLevels={currentLvl.maxSubLevels}
+                                    size="xs"
+                                  />
+                                </button>
+                              ) : null}
+                            </div>
                             <p className="truncate text-xs text-muted-foreground">
                               {[
                                 phone ? formatPhone(phone) : null,
@@ -593,6 +654,13 @@ export function TurmaDetailView({ id }: { id: string }) {
         </section>
       ) : null}
 
+      <StudentProgressDialog
+        client={progressClient}
+        open={Boolean(progressClient)}
+        onOpenChange={(open) => {
+          if (!open) setProgressClient(null);
+        }}
+      />
 
       <AlertDialog
         open={confirmBulk}

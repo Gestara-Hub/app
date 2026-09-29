@@ -5,3 +5,4 @@ export { professionalsService } from "./professionalsService";
 export { usersService } from "./usersService";
 export { auditLogService } from "./auditLogService";
 export { systemService } from "./system";
+export { subscriptionService } from "./subscriptionService";

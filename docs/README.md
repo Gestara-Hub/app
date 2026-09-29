@@ -20,6 +20,9 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 4. [product/01-glossario.md](product/01-glossario.md) — Glossário dos termos do sistema.
 5. [product/06-perfis-permissoes.md](product/06-perfis-permissoes.md) — Perfis de acesso e RBAC.
 6. [product/15-regras-de-cobranca.md](product/15-regras-de-cobranca.md) — Regras de cobrança das mensalidades (antecipado/pós-pago, proporcional/mês cheio, vencimento). Substitui as regras de mensalidade do doc 11.
+7. [product/17-pitch-gestarahub.md](product/17-pitch-gestarahub.md) — Pitch de negócio (problema, solução, exemplos, modelo de receita e visão de marketplace de parceiros). Base para a apresentação.
+8. [product/18-pesquisa-dores-e-caminhos.md](product/18-pesquisa-dores-e-caminhos.md) — Pesquisa (com fontes) das dores de academias, salões e docerias e dos caminhos de expansão além do marketplace (pagamentos, WhatsApp, canal próprio de captação, crédito, app do aluno).
+7. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Planejado)* Wizard de configuração inicial no 1º login, presets por segmento (`martial_arts`, `fitness_wellness`, `aquatics_sports`, `education_courses`) e pré-criação de modalidades em 1 clique.
 
 ---
 
@@ -31,6 +34,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/02-motor-de-cobranca.md](technical/02-motor-de-cobranca.md) — Motor de cobrança único em `packages/core/src/billing.ts`.
 - [technical/03-multi-tenant-e-escopo.md](technical/03-multi-tenant-e-escopo.md) — Mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor e sessão.
 - [technical/04-estrategia-de-testes.md](technical/04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
+- [technical/05-modulo-financeiro.md](technical/05-modulo-financeiro.md) — *(Em implementação)* Módulo Financeiro da academia: entradas e saídas, pagamento de professores, pagamento online simulado e plano GestaraHub (grátis/pro).
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

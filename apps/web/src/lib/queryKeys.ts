@@ -6,6 +6,8 @@ import type {
   ClassGroupFilter,
   ClientFilter,
   DateISO,
+  FinancialCategoryFilter,
+  FinancialEntryFilter,
   Id,
   PlanFilter,
   ProfessionalFilter,
@@ -93,6 +95,36 @@ export const queryKeys = {
     all: ["billing"] as const,
     plans: (filter?: PlanFilter) => ["billing", "plans", filter] as const,
     charges: (filter?: ChargeFilter) => ["billing", "charges", filter] as const,
+  },
+  // Financeiro do negocio (plano pago). Marcar uma cobranca como paga
+  // (Mensalidades) invalida `finance.all`; presenca/matricula/substituicao
+  // invalidam `teacherPay.all` (a previa depende delas).
+  finance: {
+    all: ["finance"] as const,
+    summary: (competence: string) => ["finance", "summary", competence] as const,
+    series: (months: number, endCompetence?: string) =>
+      ["finance", "series", months, endCompetence] as const,
+    byCategory: (competence: string) => ["finance", "byCategory", competence] as const,
+    upcoming: (days: number) => ["finance", "upcoming", days] as const,
+    entries: (filter?: FinancialEntryFilter) => ["finance", "entries", filter] as const,
+    categories: (filter?: FinancialCategoryFilter) =>
+      ["finance", "categories", filter] as const,
+  },
+  teacherPay: {
+    all: ["teacherPay"] as const,
+    rules: ["teacherPay", "rules"] as const,
+    teachers: ["teacherPay", "teachers"] as const,
+    payouts: (competence: string) => ["teacherPay", "payouts", competence] as const,
+    preview: (professionalId: Id, competence: string) =>
+      ["teacherPay", "preview", professionalId, competence] as const,
+  },
+  onlinePayments: {
+    all: ["onlinePayments"] as const,
+    forCharge: (chargeId: Id) => ["onlinePayments", "charge", chargeId] as const,
+    recurring: (studentId: Id) => ["onlinePayments", "recurring", studentId] as const,
+  },
+  subscription: {
+    detail: ["subscription"] as const,
   },
   organization: {
     detail: ["organization"] as const,

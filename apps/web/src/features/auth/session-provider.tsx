@@ -16,16 +16,20 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { can as canFn } from "@/lib/permissions";
+import { tierHasFeature, tierOf } from "@/lib/subscription";
 import { createQueryClient } from "@/lib/providers";
 import { queryKeys } from "@/lib/queryKeys";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { setActiveOrganization } from "@/mocks/store";
 import { usersService } from "@/services/usersService";
-import { refreshSession, signOut } from "@/app/(auth)/actions";
+import { settingsService } from "@/services/settingsService";
+import { refreshSession, signOut, syncSubscriptionTier } from "@/app/(auth)/actions";
 import {
   isApiError,
   type OperationalModel,
+  type PaidFeature,
   type Permission,
+  type SubscriptionTier,
   type UserView,
 } from "@gestarahub/contracts";
 
@@ -34,6 +38,8 @@ interface SessionContextValue {
   can: (permission: Permission) => boolean;
   /** Modelo operacional do tenant atual — a nav/shell derivam dele. */
   model: OperationalModel;
+  /** Tier do plano GestaraHub resolvido no server (cookie espelho / seed). */
+  initialTier: SubscriptionTier;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -50,10 +56,13 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({
   user,
   model,
+  tier = "free",
   children,
 }: {
   user: UserView;
   model: OperationalModel;
+  /** Tier do plano GestaraHub resolvido no server (ver get-subscription-tier). */
+  tier?: SubscriptionTier;
   children: ReactNode;
 }) {
   // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
@@ -85,8 +94,13 @@ export function SessionProvider({
   }, [queryClient]);
 
   const value = useMemo<SessionContextValue>(
-    () => ({ user, can: (permission) => canFn(user, permission), model }),
-    [user, model],
+    () => ({
+      user,
+      can: (permission) => canFn(user, permission),
+      model,
+      initialTier: tier,
+    }),
+    [user, model, tier],
   );
   // Publica o ator ambiente lido pela camada de services (auditoria carimba o
   // autor de cada mutacao sem receber o ator por parametro). Espelha o principal
@@ -99,6 +113,7 @@ export function SessionProvider({
     <QueryClientProvider client={queryClient}>
       <SessionContext.Provider value={value}>
         <SessionSync user={user} />
+        <SubscriptionSync organizationId={user.organizationId} serverTier={tier} />
         {children}
       </SessionContext.Provider>
     </QueryClientProvider>
@@ -152,6 +167,46 @@ function SessionSync({ user }: { user: UserView }) {
   return null;
 }
 
+// Organizacao do tenant (mesma query de Configuracoes): fonte do tier no client.
+function useOrganizationQuery() {
+  return useQuery({
+    queryKey: queryKeys.organization.detail,
+    queryFn: () => settingsService.getOrganization(),
+  });
+}
+
+/**
+ * Mantem o cookie espelho do tier alinhado ao store do navegador: se o tier da
+ * organizacao (client) difere do que o server usou, regrava o cookie e
+ * recarrega o layout server (as pages pagas trocam upsell <-> tela).
+ */
+function SubscriptionSync({
+  organizationId,
+  serverTier,
+}: {
+  organizationId: string;
+  serverTier: SubscriptionTier;
+}) {
+  const router = useRouter();
+  const handledRef = useRef<string | null>(null);
+  const { data } = useOrganizationQuery();
+
+  useEffect(() => {
+    if (!data) return;
+    const tier = tierOf(data);
+    if (tier === serverTier) {
+      handledRef.current = null;
+      return;
+    }
+    const signature = `${organizationId}:${tier}`;
+    if (handledRef.current === signature) return;
+    handledRef.current = signature;
+    void syncSubscriptionTier(organizationId, tier).then(() => router.refresh());
+  }, [data, organizationId, serverTier, router]);
+
+  return null;
+}
+
 function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext);
   if (!ctx) {
@@ -170,4 +225,20 @@ export function useCan(): (permission: Permission) => boolean {
 
 export function useModel(): OperationalModel {
   return useSession().model;
+}
+
+/**
+ * Tier atual do plano GestaraHub no client: o da organizacao no store (reage a
+ * troca nas Configuracoes) ou, enquanto carrega, o resolvido no server.
+ */
+export function useSubscriptionTier(): SubscriptionTier {
+  const { initialTier } = useSession();
+  const { data } = useOrganizationQuery();
+  return data ? tierOf(data) : initialTier;
+}
+
+/** `hasFeature(feature)` vinculado ao tier do tenant (espelha `useCan`). */
+export function useHasFeature(): (feature: PaidFeature) => boolean {
+  const tier = useSubscriptionTier();
+  return useMemo(() => (feature: PaidFeature) => tierHasFeature(tier, feature), [tier]);
 }

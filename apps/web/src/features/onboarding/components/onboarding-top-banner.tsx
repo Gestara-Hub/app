@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
@@ -73,8 +73,14 @@ function isOnboardingAlreadyComplete(organizationId: string): boolean {
 const ASIDE_CLASS = "mx-auto w-full max-w-7xl px-4 pt-3 pb-1 md:px-6 md:pt-4";
 // CTA menor no celular; tamanho padrao a partir de sm
 const CTA_CLASS = "shrink-0 sm:h-9 sm:px-4 sm:has-[>svg]:px-3";
+const emptySubscribe = () => () => {};
 
 export function OnboardingTopBanner() {
+  const isHydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
   const user = useCurrentUser();
   const { steps, doneCount, total, isReady, isComplete, nextStep } =
     useOnboardingSteps();
@@ -144,6 +150,8 @@ export function OnboardingTopBanner() {
       // ignore storage errors
     }
   }, [isReady, isComplete, user.organizationId]);
+
+  if (!isHydrated) return null;
 
   // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
   if (user.profile !== "owner" || pathname === "/") return null;
@@ -218,6 +226,7 @@ export function OnboardingTopBanner() {
                 </span>
               ) : (
                 <Button
+                  key={nextStep.id}
                   asChild
                   size="sm"
                   className={cn(

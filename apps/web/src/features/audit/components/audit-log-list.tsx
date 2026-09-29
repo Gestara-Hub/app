@@ -36,7 +36,7 @@ import { useAuditLog } from "../hooks/use-audit-log";
 import { AuditLogDetailDialog } from "./audit-log-detail-dialog";
 
 const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
-  scheduling: ["appointment", "client", "service", "category", "role", "professional", "user", "settings"],
+  scheduling: ["appointment", "client", "service", "category", "role", "professional", "user", "settings", "subscription"],
   classes: [
     "client",
     "category",
@@ -47,8 +47,14 @@ const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
     "professional",
     "user",
     "settings",
+    "financial_entry",
+    "financial_category",
+    "teacher_pay_rule",
+    "teacher_payout",
+    "online_payment",
+    "subscription",
   ],
-  delivery: ["client", "service", "category", "role", "professional", "user", "settings"],
+  delivery: ["client", "service", "category", "role", "professional", "user", "settings", "subscription"],
 };
 
 function AuditRow({

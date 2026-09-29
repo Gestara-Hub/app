@@ -58,13 +58,13 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-attention-loop: attention 2.2s ease-in-out infinite;
-  --animate-attention-ring: attention-ring 1.8s ease-out infinite;
+  --animate-attention-loop: attention 1.8s ease-in-out 2;
+  --animate-attention-ring: attention-ring 1.8s ease-out 2;
   --animate-confetti: confetti 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 /* Chama a atencao para um CTA (ex.: "Continuar" do onboarding): cresce, treme e
-   solta um anel. Na versao em loop sobra um respiro entre as chamadas. */
+   solta um anel por 2 ciclos (3,6s) e depois para. */
 @keyframes attention {
   0% {
     transform: scale(1) rotate(0);
@@ -94,8 +94,6 @@
   }
 }
 
-/* Destaque de um cartao/secao (ex.: Regras de Cobranca via onboarding): so o
-   anel pulsa, sem mexer no tamanho. */
 @keyframes attention-ring {
   0% {
     box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent);
@@ -106,8 +104,8 @@
   }
 }
 
-/* No fluxo guiado (onboarding), somente o CTA principal da tela que corresponde
-   exatamente ao passo atual (`nextStep`) pulsa para orientar o usuario. */
+/* No fluxo guiado (onboarding), o CTA principal da tela do passo atual pulsa
+   por 2 ciclos (3,6s) ao entrar na etapa e depois para. */
 @media (prefers-reduced-motion: no-preference) {
   html[data-onboarding-step="modalities"] [data-onboarding-cta="modalities"],
   html[data-onboarding-step="plans"] [data-onboarding-cta="plans"],
@@ -115,7 +113,7 @@
   html[data-onboarding-step="clients"] [data-onboarding-cta="clients"],
   html[data-onboarding-step="classes"] [data-onboarding-cta="classes"],
   html[data-onboarding-step="services"] [data-onboarding-cta="services"] {
-    animation: attention 2.2s ease-in-out infinite;
+    animation: attention 1.8s ease-in-out 2;
   }
 }
 

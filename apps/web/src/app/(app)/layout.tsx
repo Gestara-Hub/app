@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
+import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
 import { OnboardingTopBanner } from "@/features/onboarding";
 import {
@@ -25,6 +26,8 @@ export default async function AppLayout({
   if (!user) redirect("/login");
   // Modelo operacional do tenant do usuario (resolvido no server; sem flicker).
   const model = organizationModelById(user.organizationId) ?? "scheduling";
+  // Tier do plano GestaraHub (cookie espelho do store do navegador; seed = free).
+  const tier = await getOrganizationTier(user.organizationId);
 
   // Estado de colapso da sidebar persistido pelo shadcn no cookie `sidebar_state`.
   const cookieStore = await cookies();
@@ -43,7 +46,7 @@ export default async function AppLayout({
   }
 
   return (
-    <SessionProvider user={user} model={model}>
+    <SessionProvider user={user} model={model} tier={tier}>
       <ViewModeProvider initialModes={initialViewModes}>
         <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
           <AppSidebar />

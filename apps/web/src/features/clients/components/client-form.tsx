@@ -34,6 +34,7 @@ import { usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
+import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { format } from "date-fns";
 import { resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
@@ -752,6 +753,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     </div>
                   ) : null}
                 </div>
+              ) : null}
+
+              {/* Pix Automatico: so para o plano ja salvo do aluno */}
+              {isEdit && client?.planId && selectedPlanId === client.planId ? (
+                <RecurringAuthorizationSection
+                  studentId={client.id}
+                  studentName={client.name}
+                  planPriceCents={plans?.find((p) => p.id === client.planId)?.priceCents}
+                />
               ) : null}
             </div>
           </CollapsibleSection>

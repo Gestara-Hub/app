@@ -1,5 +1,13 @@
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
-import type { Organization, Unit, User } from "@gestarahub/contracts";
+import type {
+  FinancialCategory,
+  FinancialEntryType,
+  FinancialSystemCategoryKey,
+  Id,
+  Organization,
+  Unit,
+  User,
+} from "@gestarahub/contracts";
 import type { MockStore, MockWorld } from "./store";
 
 /**
@@ -43,7 +51,58 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     charges: [],
     waitlist: [],
     reservations: [],
+    financialCategories: [],
+    financialEntries: [],
+    financialRecurrences: [],
+    teacherPayRules: [],
+    teacherPayouts: [],
+    onlinePayments: [],
+    recurringAuthorizations: [],
   };
+}
+
+// Categorias financeiras padrao (docs/technical/05, secao 4.3). As de sistema
+// representam fontes automaticas (cobrancas e pagamento de professores) e nao
+// podem ser escolhidas num lancamento manual. Ids deterministicos por tenant.
+const DEFAULT_FINANCIAL_CATEGORIES: {
+  key: string;
+  type: FinancialEntryType;
+  name: string;
+  systemKey?: FinancialSystemCategoryKey;
+}[] = [
+  { key: "memberships", type: "income", name: "Mensalidades", systemKey: "memberships" },
+  { key: "dropins", type: "income", name: "Aulas avulsas", systemKey: "dropins" },
+  { key: "products", type: "income", name: "Venda de produtos" },
+  { key: "events", type: "income", name: "Eventos e seminários" },
+  { key: "graduation", type: "income", name: "Taxa de graduação" },
+  { key: "other-income", type: "income", name: "Outras receitas" },
+  { key: "teachers", type: "expense", name: "Professores", systemKey: "teachers" },
+  { key: "rent", type: "expense", name: "Aluguel" },
+  { key: "utilities", type: "expense", name: "Contas (luz, água, internet)" },
+  { key: "equipment", type: "expense", name: "Material e equipamentos" },
+  { key: "marketing", type: "expense", name: "Marketing" },
+  { key: "taxes", type: "expense", name: "Impostos e taxas" },
+  { key: "other-expense", type: "expense", name: "Outras despesas" },
+];
+
+/** Id deterministico da categoria de sistema do tenant (para os services). */
+export function systemFinancialCategoryId(
+  organizationId: Id,
+  key: FinancialSystemCategoryKey,
+): Id {
+  return `fcat-${organizationId}-${key}`;
+}
+
+export function defaultFinancialCategories(organizationId: Id): FinancialCategory[] {
+  return DEFAULT_FINANCIAL_CATEGORIES.map((c) => ({
+    id: `fcat-${organizationId}-${c.key}`,
+    organizationId,
+    type: c.type,
+    name: c.name,
+    ...(c.systemKey ? { system: true, systemKey: c.systemKey } : {}),
+    status: "active",
+    ...timestamps(),
+  }));
 }
 
 // --- Tenant 1: "Corte Nobre" (Modelo 1 — atendimento individual) -----------
@@ -59,6 +118,7 @@ function seedCorteNobre(): MockStore {
       billingTiming: "prepaid",
       midMonthStrategy: "prorated",
     },
+    subscription: { tier: "free" },
     status: "active",
   };
 
@@ -101,6 +161,7 @@ function seedAcademia(): MockStore {
     settings: {
       defaultDueDay: 10,
     },
+    subscription: { tier: "free" },
     status: "active",
   };
 
@@ -126,7 +187,10 @@ function seedAcademia(): MockStore {
     },
   ];
 
-  return emptyStore(organization, unit, users);
+  return {
+    ...emptyStore(organization, unit, users),
+    financialCategories: defaultFinancialCategories(ORG_ACADEMIA),
+  };
 }
 
 /** Mundo multi-tenant: Corte Nobre (M1) + Academia X (M3). Ativo = Corte Nobre. */

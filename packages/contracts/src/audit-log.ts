@@ -40,7 +40,14 @@ export type AuditEntityType =
   | "plan"
   | "charge"
   | "class_group"
-  | "enrollment";
+  | "enrollment"
+  // Financeiro (plano pago) e assinatura do GestaraHub.
+  | "financial_entry"
+  | "financial_category"
+  | "teacher_payout"
+  | "teacher_pay_rule"
+  | "online_payment"
+  | "subscription";
 
 // Autor do evento (snapshot no momento — nome/perfil podem mudar depois).
 export interface AuditActor {

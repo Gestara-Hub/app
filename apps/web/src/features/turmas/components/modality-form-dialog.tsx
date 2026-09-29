@@ -26,17 +26,18 @@ export function ModalityFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] sm:max-w-md flex flex-col p-0 gap-0 overflow-hidden"
+        expandable
+        className="max-h-[90vh] sm:max-w-xl flex flex-col p-0 gap-0 overflow-hidden"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-12">
+        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16">
           <DialogTitle>
             {isEdit ? "Editar modalidade" : "Nova modalidade"}
           </DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Altere o nome ou a disponibilidade no sistema."
-              : "Será usada para vincular turmas e professores."}
+              ? "Configure o nome, a trilha de faixas/níveis e a disponibilidade."
+              : "Configure a modalidade e, se desejar, sua trilha de graduação e metas."}
           </DialogDescription>
         </DialogHeader>
         <ModalityForm

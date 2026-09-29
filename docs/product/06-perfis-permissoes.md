@@ -111,11 +111,16 @@ As acoes do sistema sao `capability keys` no formato `entidade:acao`, com fonte 
 | attendance:mark | ✓ | ✓ | ✓ | ✓ |
 | billing:view | ✓ | ✓ | ✓ | |
 | billing:manage | ✓ | ✓ | | |
+| finance:view | ✓ | ✓ | | |
+| finance:manage | ✓ | ✓ | | |
+| subscription:manage | ✓ | | | |
 | settings:view | ✓ | | | |
 | users:view / users:manage | ✓ | ✓ (so Atendente/Profissional) | | |
 | audit:view | ✓ | ✓ (visao restrita) | | |
 
 As keys sao independentes do modelo; o que aparece para cada tenant e decidido tambem pelo modelo operacional (ex.: `classes:*` e `billing:*` so tem telas na academia; `services:*` e a Agenda so no atendimento).
+
+`finance:*` exige tambem o recurso `finance` do Plano GestaraHub (`lib/subscription`, `hasFeature`): com a permissao e sem o recurso, o item "Financeiro" aparece com cadeado e a rota mostra o upsell. `subscription:manage` troca o plano (so o Proprietario). Ver [05-modulo-financeiro](../technical/05-modulo-financeiro.md).
 
 Regras especificas:
 

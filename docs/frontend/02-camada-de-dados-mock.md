@@ -91,7 +91,9 @@ export type ApiErrorCode =
   | "SERVICE_INACTIVE"
   // Regras de negocio (turmas — Modelo 3)
   | "CLASS_FULL"
-  | "CLASS_SCHEDULE_CONFLICT";
+  | "CLASS_SCHEDULE_CONFLICT"
+  // Plano GestaraHub
+  | "FEATURE_NOT_IN_PLAN"; // 403: recurso pago fora do plano (assertFeature)
 
 export interface ApiErrorField {
   field: string;   // ex.: 'name', 'priceCents'

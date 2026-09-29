@@ -21,6 +21,7 @@ import {
   SearchInput,
   SkeletonCards,
   StatusFilterSelect,
+  ViewModeSkeleton,
   ViewModeToggle,
   useViewMode,
 } from "@/components/shared/list";
@@ -30,6 +31,10 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import {
+  formatTrackSummary,
+  resolveModalityTrack,
+} from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import type { Category, CategoryFilter, RecordStatus } from "@gestarahub/contracts";
 import { useCategories } from "@/features/categories";
@@ -101,6 +106,11 @@ function ModalityRow({
           {modality.name}
         </p>
         <RecordStatusBadge status={modality.status} />
+        {formatTrackSummary(resolveModalityTrack(modality)) ? (
+          <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {formatTrackSummary(resolveModalityTrack(modality))}
+          </span>
+        ) : null}
       </div>
     </ListRow>
   );
@@ -123,12 +133,13 @@ function ModalityCard({
   onReactivate: (m: Category) => void;
 }) {
   const isActive = modality.status === "active";
+  const trackSummary = formatTrackSummary(resolveModalityTrack(modality));
 
   const actions: ListItemAction[] = canManage
     ? [
         {
           key: "edit",
-          label: "Editar",
+          label: "Editar / Trilha",
           icon: <Pencil className="size-4" />,
           onSelect: () => onEdit(modality),
         },
@@ -169,13 +180,18 @@ function ModalityCard({
     >
       <div className="flex min-w-0 items-center gap-3">
         <InitialsAvatar name={modality.name} size="default" />
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {modality.name}
             </p>
             <RecordStatusBadge status={modality.status} />
           </div>
+          {trackSummary ? (
+            <p className="truncate text-xs text-muted-foreground">
+              {trackSummary}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -199,15 +215,19 @@ function ModalityCard({
 }
 
 function SkeletonRows({ showAction }: { showAction: boolean }) {
-  return Array.from({ length: 4 }).map((_, i) => (
+  return Array.from({ length: 5 }).map((_, i) => (
     <div
       key={i}
       className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5"
     >
-      <div className="space-y-1.5 min-w-0 flex-1">
-        <Skeleton className="h-4 w-36" />
+      <div className="min-w-0 flex-1 py-1">
+        <Skeleton className="h-4 w-56 max-w-full" />
       </div>
-      {showAction ? <Skeleton className="size-8 rounded-md shrink-0" /> : null}
+      {showAction ? (
+        <div className="flex size-8 shrink-0 items-center justify-center">
+          <Skeleton className="h-4 w-1.5 rounded-full" />
+        </div>
+      ) : null}
     </div>
   ));
 }
@@ -321,9 +341,18 @@ export function ModalitiesList({
       ) : null}
 
       {/* Container Unificado da Lista ou Grade de Cards */}
-      {isPending && viewMode === "grid" ? (
-        <SkeletonCards compact showAction={canManage} />
-      ) : !isPending && !isError && modalities.length > 0 && viewMode === "grid" ? (
+      {isPending ? (
+        <ViewModeSkeleton
+          storageKey="modalities"
+          mode={viewMode}
+          list={
+            <ListContainer>
+              <SkeletonRows showAction={canManage} />
+            </ListContainer>
+          }
+          grid={<SkeletonCards compact showAction={canManage} />}
+        />
+      ) : !isError && modalities.length > 0 && viewMode === "grid" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {modalities.map((modality) => (
             <ModalityCard

@@ -2,15 +2,18 @@
 
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, Clock, Database } from "lucide-react";
+import { Building2, Clock, Database, QrCode, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { ResetDataActions } from "@/features/system";
+import { useModel } from "@/features/auth";
 import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 import { useBeforeUnloadGuard } from "./unsaved-changes";
+import { SubscriptionPlanCard } from "./subscription-plan-card";
+import { OnlinePaymentsSettingsCard } from "./online-payments-settings-card";
 
-type Tab = "geral" | "horarios" | "dados";
+type Tab = "geral" | "horarios" | "pagamento" | "plano" | "dados";
 
 const TABS: {
   value: Tab;
@@ -33,6 +36,20 @@ const TABS: {
       "Define o expediente e os turnos de funcionamento da unidade — usado para validar os agendamentos.",
   },
   {
+    value: "pagamento",
+    label: "Pagamento online",
+    icon: QrCode,
+    description:
+      "Cobrança das mensalidades por Pix, link de pagamento e Pix Automático (simulado nesta versão).",
+  },
+  {
+    value: "plano",
+    label: "Plano GestaraHub",
+    icon: Sparkles,
+    description:
+      "O plano do GestaraHub desta organização e o que o Pro inclui. Não confundir com os planos de mensalidade dos alunos.",
+  },
+  {
     value: "dados",
     label: "Dados",
     icon: Database,
@@ -42,12 +59,12 @@ const TABS: {
 ];
 
 /**
- * Configurações em abas: uma seção por vez (Geral / Horários / Dados). Os três
+ * Configurações em abas: uma seção por vez (Geral / Horários / Pagamento online / Plano / Dados). Os três
  * painéis ficam montados e alternamos só a visibilidade, para não descartar
  * edições em andamento ao trocar de aba.
  */
 function isTab(value: string | null): value is Tab {
-  return value === "geral" || value === "horarios" || value === "dados";
+  return TABS.some((t) => t.value === value);
 }
 
 export function SettingsTabs() {
@@ -56,8 +73,12 @@ export function SettingsTabs() {
   const searchParams = useSearchParams();
 
   // Deep-link: `/settings?tab=horarios` ou `/settings?tab=geral` deriva diretamente da URL
+  // Pagamento online vale para as mensalidades (Modelo 3, turmas).
+  const isClasses = useModel() === "classes";
+  const visibleTabs = TABS.filter((t) => t.value !== "pagamento" || isClasses);
   const paramTab = searchParams.get("tab");
-  const tab: Tab = isTab(paramTab) ? paramTab : "geral";
+  const tab: Tab =
+    isTab(paramTab) && visibleTabs.some((t) => t.value === paramTab) ? paramTab : "geral";
 
   // Abas com alteracoes nao salvas (Geral e Horarios avisam via onDirtyChange)
   const [dirtyTabs, setDirtyTabs] = useState<Partial<Record<Tab, boolean>>>({});
@@ -70,7 +91,12 @@ export function SettingsTabs() {
       setDirtyTabs((prev) => (prev.horarios === dirty ? prev : { ...prev, horarios: dirty })),
     [],
   );
-  useBeforeUnloadGuard(Boolean(dirtyTabs.geral || dirtyTabs.horarios));
+  const setPagamentoDirty = useCallback(
+    (dirty: boolean) =>
+      setDirtyTabs((prev) => (prev.pagamento === dirty ? prev : { ...prev, pagamento: dirty })),
+    [],
+  );
+  useBeforeUnloadGuard(Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento));
   const { confirm, dialog: confirmDialog } = useConfirmAction();
 
   const handleTabChange = async (nextTab: Tab) => {
@@ -100,9 +126,9 @@ export function SettingsTabs() {
       <div
         role="tablist"
         aria-label="Seções de configurações"
-        className="mb-6 inline-flex gap-1 rounded-lg border bg-muted/40 p-1"
+        className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
       >
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const active = t.value === tab;
           const Icon = t.icon;
           return (
@@ -115,7 +141,7 @@ export function SettingsTabs() {
               aria-controls={`settings-panel-${t.value}`}
               onClick={() => void handleTabChange(t.value)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
+                "inline-flex shrink-0 items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
                 active
                   ? "bg-background text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
@@ -134,7 +160,7 @@ export function SettingsTabs() {
         })}
       </div>
 
-      {TABS.map((t) => (
+      {visibleTabs.map((t) => (
         <div
           key={t.value}
           role="tabpanel"
@@ -148,6 +174,10 @@ export function SettingsTabs() {
           ) : null}
           {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={setGeralDirty} /> : null}
           {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={setHorariosDirty} /> : null}
+          {t.value === "pagamento" ? (
+            <OnlinePaymentsSettingsCard onDirtyChange={setPagamentoDirty} />
+          ) : null}
+          {t.value === "plano" ? <SubscriptionPlanCard /> : null}
           {t.value === "dados" ? <ResetDataActions /> : null}
         </div>
       ))}

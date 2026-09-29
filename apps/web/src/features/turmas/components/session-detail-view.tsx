@@ -1,9 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AlertCircle, CheckCheck, ChevronLeft, ChevronRight, RotateCcw, User, UserCheck, UserPlus, Users, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCheck,
+  ChevronLeft,
+  ChevronRight,
+  GraduationCap,
+  RotateCcw,
+  User,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -19,7 +31,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
+import { BeltBadge } from "@/components/shared/belt-badge";
 import { Combobox } from "@/components/shared/combobox";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
@@ -27,12 +41,15 @@ import {
   isApiError,
   type AttendanceStatus,
   type ClassSessionDetail,
+  type Client,
   type ReservationKind,
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useClients } from "@/features/clients";
+import { useCategories } from "@/features/categories";
+import { StudentProgressDialog, useClients } from "@/features/clients";
 import {
   useCancelReservation,
+  useClassGroup,
   useClassSession,
   useMarkAttendance,
   useReserveSession,
@@ -65,6 +82,8 @@ const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
+  const { data: turma } = useClassGroup(session?.classGroupId ?? "");
+  const { data: categories } = useCategories();
   const { data: clients } = useClients({ status: "active" });
   const markMut = useMarkAttendance();
   const reserveMut = useReserveSession();
@@ -79,6 +98,24 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [substituteOpen, setSubstituteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  const [progressClient, setProgressClient] = useState<Client | null>(null);
+
+  const clientById = useMemo(
+    () => new Map((clients ?? []).map((c) => [c.id, c])),
+    [clients],
+  );
+  const modalityTrack = useMemo(() => {
+    const cat = turma
+      ? (categories ?? []).find((c) => c.id === turma.modalityId)
+      : (categories ?? []).find((c) => c.name === session?.modalityName);
+    if (!cat && !session?.modalityName) return null;
+    const track = resolveModalityTrack(
+      cat ?? { name: session?.modalityName ?? "" },
+    );
+    return track.enabled && track.levels.length > 0
+      ? { track, modalityId: cat?.id ?? turma?.modalityId ?? "" }
+      : null;
+  }, [turma, categories, session?.modalityName]);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -390,6 +427,18 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {session.roster.map((r) => {
             const isEnrolled = r.kind === "enrolled" || !r.kind;
             const isTrial = r.kind === "trial";
+            const student = clientById.get(r.studentId);
+            const prog =
+              modalityTrack && student
+                ? student.progressions?.[modalityTrack.modalityId]
+                : undefined;
+            const currentLvl = modalityTrack
+              ? (modalityTrack.track.levels.find(
+                  (l) =>
+                    l.id === prog?.levelId || l.name === prog?.levelName,
+                ) ?? modalityTrack.track.levels[0])
+              : null;
+            const currentSub = prog?.subLevel ?? 0;
 
             return (
               <ListRow key={r.studentId}>
@@ -397,7 +446,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <InitialsAvatar name={r.studentName} />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium truncate text-foreground">
                           {r.studentName}
                         </span>
@@ -414,11 +463,39 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             Avulso
                           </span>
                         )}
+                        {currentLvl && student ? (
+                          <button
+                            type="button"
+                            onClick={() => setProgressClient(student)}
+                            title="Abrir ficha de evolução e graduação"
+                          >
+                            <BeltBadge
+                              name={currentLvl.name}
+                              color={currentLvl.color}
+                              subLevel={currentSub}
+                              maxSubLevels={currentLvl.maxSubLevels}
+                              size="xs"
+                            />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {student ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        title={`Evolução e avaliação de ${r.studentName}`}
+                        aria-label={`Evolução e avaliação de ${r.studentName}`}
+                        onClick={() => setProgressClient(student)}
+                      >
+                        <GraduationCap className="size-4 text-muted-foreground hover:text-primary" />
+                      </Button>
+                    ) : null}
+
                     {isFutureSession ? (
                       <span className="text-xs text-muted-foreground">
                         Chamada abre em {shortDate}
@@ -498,6 +575,14 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           })}
         </ListContainer>
       )}
+
+      <StudentProgressDialog
+        client={progressClient}
+        open={Boolean(progressClient)}
+        onOpenChange={(open) => {
+          if (!open) setProgressClient(null);
+        }}
+      />
 
       {/* Diálogo para Adicionar Aluno Avulso / Experimental */}
       <AddStudentSessionDialog

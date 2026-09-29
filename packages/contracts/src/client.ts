@@ -1,4 +1,5 @@
 import type { Address, DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
+import type { Category, ProgressionBeltColor } from "./category";
 
 export type DiscountType = "percentage" | "fixed";
 
@@ -12,6 +13,68 @@ export type MembershipStatus = "active" | "paused" | "canceled";
 
 export type StudentBillingStrategy = "prorated" | "full_cycle";
 export type StudentCyclePaymentTiming = "prepaid" | "postpaid";
+
+export type EvaluationEntryTone = "positive" | "attention" | "general";
+
+export interface StudentEvaluationEntry {
+  id: Id;
+  date: DateISO;
+  classGroupId?: Id;
+  classGroupName?: string;
+  sessionId?: Id;
+  tone: EvaluationEntryTone;
+  note: string;
+  authorName?: string;
+  createdAt: DateTimeISO;
+}
+
+export interface StudentPromotionHistoryEntry {
+  id: Id;
+  date: DateISO;
+  fromLevelName?: string;
+  fromSubLevel?: number;
+  toLevelName: string;
+  toLevelColor: ProgressionBeltColor;
+  toSubLevel: number;
+  attendancesCompleted?: number;
+  monthsInLevel?: number;
+  isExam?: boolean;
+  notes?: string;
+  createdAt: DateTimeISO;
+}
+
+export interface StudentModalityProgression {
+  modalityId: Id;
+  modalityName?: string;
+  levelId?: string;
+  levelName: string;
+  levelColor: ProgressionBeltColor;
+  subLevel: number;
+  maxSubLevels?: number;
+  promotedAt: DateISO;
+  initialAttendanceOffset?: number;
+  nextExamDate?: DateISO;
+  strengths: string[];
+  focusAreas: string[];
+  evaluations: StudentEvaluationEntry[];
+  promotionHistory: StudentPromotionHistoryEntry[];
+  updatedAt: DateTimeISO;
+}
+
+export interface StudentModalityOverviewItem {
+  modality: Category;
+  isEnrolled: boolean;
+  enrolledClassNames: string[];
+  presentSincePromotion: number;
+  totalPresentInModality: number;
+  progression?: StudentModalityProgression;
+}
+
+export interface StudentProgressionOverview {
+  studentId: Id;
+  studentName: string;
+  items: StudentModalityOverviewItem[];
+}
 
 export interface Client {
   id: Id;
@@ -29,6 +92,7 @@ export interface Client {
   dueDay?: number; // 1 a 31 (dia preferencial de vencimento da mensalidade)
   discount?: StudentDiscount;
   membershipStatus?: MembershipStatus;
+  progressions?: Record<Id, StudentModalityProgression>;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
@@ -54,4 +118,5 @@ export interface ClientFilter {
   planId?: Id;
   membershipStatus?: MembershipStatus;
 }
+
 

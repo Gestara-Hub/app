@@ -83,7 +83,9 @@ export type ApiErrorCode =
   | "SERVICE_INACTIVE"
   // Regras de negocio (turmas — Modelo 3)
   | "CLASS_FULL" // turma lotada (regra mole: confirma para matricular mesmo assim)
-  | "CLASS_SCHEDULE_CONFLICT"; // conflito de horário (aluno já em outra turma no mesmo horário)
+  | "CLASS_SCHEDULE_CONFLICT" // conflito de horário (aluno já em outra turma no mesmo horário)
+  // Plano GestaraHub
+  | "FEATURE_NOT_IN_PLAN"; // recurso pago fora do plano do tenant (403)
 
 export interface ApiErrorField {
   field: string; // ex.: 'name', 'priceCents'
@@ -97,7 +99,7 @@ export interface ApiError {
   // Detalhes por campo para erros de validacao de formulario.
   fields?: ApiErrorField[];
   // Status HTTP equivalente (para quando virar backend real).
-  httpStatus?: number; // 400 | 404 | 409 | 422 | 500
+  httpStatus?: number; // 400 | 403 | 404 | 409 | 422 | 500
 }
 
 export function isApiError(e: unknown): e is ApiError {

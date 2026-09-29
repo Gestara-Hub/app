@@ -12,10 +12,16 @@ import {
   UserCog,
   Users,
   Wallet,
+  WalletCards,
   type LucideIcon,
 } from "lucide-react";
 import { can } from "@/lib/permissions";
-import type { OperationalModel, Permission, User } from "@gestarahub/contracts";
+import type {
+  OperationalModel,
+  PaidFeature,
+  Permission,
+  User,
+} from "@gestarahub/contracts";
 
 export type NavSectionId =
   | "overview"
@@ -64,6 +70,12 @@ export interface NavItem {
   models?: OperationalModel[];
   /** Alvo do tour de onboarding (data-tour), quando destacado. */
   tourId?: string;
+  /**
+   * Recurso pago exigido (plano GestaraHub). Sem o recurso o item continua
+   * visivel (se o perfil tem a permissao), com cadeado, e a rota abre o upsell
+   * (FeatureLocked). Nao afeta isRouteInModel/canAccessRoute.
+   */
+  feature?: PaidFeature;
 }
 
 // Itens canonicos do app shell. `models` gata a visibilidade por tenant:
@@ -132,6 +144,15 @@ export const MAIN_NAV: NavItem[] = [
     section: "financial",
     models: ["classes"],
   },
+  {
+    label: "Financeiro",
+    href: "/finance",
+    icon: WalletCards,
+    permission: "finance:view",
+    section: "financial",
+    models: ["classes"],
+    feature: "finance",
+  },
 
   // Bloco 3: Cadastros Estruturais
   {
@@ -181,6 +202,17 @@ export function navForModel(
   model: OperationalModel,
 ): NavItem[] {
   return items.filter((i) => !i.models || i.models.includes(model));
+}
+
+/**
+ * O item esta travado pelo plano? (tem `feature` e o tenant nao tem o recurso).
+ * A sidebar mostra o cadeado; a page decide o upsell no server.
+ */
+export function isNavItemLocked(
+  item: Pick<NavItem, "feature">,
+  hasFeature: (feature: PaidFeature) => boolean,
+): boolean {
+  return Boolean(item.feature) && !hasFeature(item.feature!);
 }
 
 export function isNavItemActive(pathname: string, href: string): boolean {

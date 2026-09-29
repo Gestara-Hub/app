@@ -9,21 +9,29 @@ import type {
   ClassSessionOverride,
   Client,
   Enrollment,
+  FinancialCategory,
+  FinancialEntry,
+  FinancialRecurrence,
   Id,
+  OnlinePayment,
   OperationalModel,
   Organization,
+  SubscriptionTier,
   Plan,
   Professional,
   RecurrenceSeries,
+  RecurringAuthorization,
   Role,
   Service,
+  TeacherPayout,
+  TeacherPayRule,
   TimeBlock,
   Unit,
   User,
   WaitlistEntry,
 } from "@gestarahub/contracts";
 import { mockConfig } from "./config";
-import { createInitialWorld } from "./seed";
+import { createInitialWorld, defaultFinancialCategories } from "./seed";
 
 /**
  * Store em memoria (interno; a UI NUNCA importa o store, so os services tocam).
@@ -66,6 +74,15 @@ export interface MockStore {
   waitlist: WaitlistEntry[];
   reservations: ClassReservation[];
   sessionOverrides?: ClassSessionOverride[];
+  // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
+  // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
+  financialCategories: FinancialCategory[];
+  financialEntries: FinancialEntry[];
+  financialRecurrences: FinancialRecurrence[];
+  teacherPayRules: TeacherPayRule[];
+  teacherPayouts: TeacherPayout[];
+  onlinePayments: OnlinePayment[];
+  recurringAuthorizations: RecurringAuthorization[];
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];
   reservas?: ClassReservation[];
@@ -97,7 +114,9 @@ const STORAGE_KEY = "gestarahub:db";
 // v19: Modelo 3 — unificação de turmas regulares (remoção de enrollmentType do formulário e de PlanPeriod "session" nos planos).
 // v20: seed vazio para Barbearia e Academia — apenas os proprietários são criados.
 // v21: endereço estruturado + planos/vencimento/desconto no aluno (migração suave sem perda de dados).
-const SEED_VERSION = 21;
+// v22: Financeiro (plano pago) — colecoes financeiras, categorias padrao no tenant
+//      de classes e organization.subscription (free). Migracao suave.
+const SEED_VERSION = 22;
 
 interface PersistedBlob {
   v: number;
@@ -123,6 +142,22 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
         if (!client.dueDay) {
           client.dueDay = 10;
         }
+      }
+    }
+  }
+  if (fromVersion < 22) {
+    for (const tenant of Object.values(data.tenants)) {
+      const t = tenant as Partial<MockStore> & MockStore;
+      t.financialCategories = t.financialCategories ?? [];
+      t.financialEntries = t.financialEntries ?? [];
+      t.financialRecurrences = t.financialRecurrences ?? [];
+      t.teacherPayRules = t.teacherPayRules ?? [];
+      t.teacherPayouts = t.teacherPayouts ?? [];
+      t.onlinePayments = t.onlinePayments ?? [];
+      t.recurringAuthorizations = t.recurringAuthorizations ?? [];
+      if (!t.organization.subscription) t.organization.subscription = { tier: "free" };
+      if (t.organization.model === "classes" && t.financialCategories.length === 0) {
+        t.financialCategories = defaultFinancialCategories(t.organization.id);
       }
     }
   }
@@ -241,6 +276,17 @@ export function organizationModelById(
   organizationId: Id,
 ): OperationalModel | undefined {
   return world.tenants[organizationId]?.organization.model;
+}
+
+/**
+ * Tier do plano GestaraHub de uma organizacao no mundo semeado/hidratado. No
+ * server so enxerga o seed (o tier trocado no navegador chega pelo cookie
+ * espelho, ver lib/subscription).
+ */
+export function organizationTierById(organizationId: Id): SubscriptionTier | undefined {
+  const org = world.tenants[organizationId]?.organization;
+  if (!org) return undefined;
+  return org.subscription?.tier ?? "free";
 }
 
 /**

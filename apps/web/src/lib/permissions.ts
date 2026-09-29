@@ -41,6 +41,13 @@ const BILLING_OPS = [
   "billing:manage",
 ] as const satisfies readonly Permission[];
 
+// Financeiro do negocio (plano pago) — owner/gerente. Alem da permissao, a tela
+// exige o recurso "finance" do plano (lib/subscription).
+const FINANCE_OPS = [
+  "finance:view",
+  "finance:manage",
+] as const satisfies readonly Permission[];
+
 /**
  * Lista completa de permissoes. Conjunto do perfil "owner" e ancora da
  * verificacao de exaustividade abaixo (garante que nenhuma key nova fique de
@@ -52,6 +59,7 @@ const ALL_PERMISSIONS = [
   ...APPOINTMENT_OPS,
   ...CLASS_OPS,
   ...BILLING_OPS,
+  ...FINANCE_OPS,
   "appointments:block",
   "clients:manage",
   "team:manage",
@@ -60,6 +68,8 @@ const ALL_PERMISSIONS = [
   "users:view",
   "users:manage",
   "audit:view",
+  // Trocar o plano GestaraHub: exclusivo do proprietario.
+  "subscription:manage",
 ] as const satisfies readonly Permission[];
 
 // Erro de compilacao se ALL_PERMISSIONS deixar de cobrir alguma `Permission`.
@@ -91,6 +101,7 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "audit:view",
     ...CLASS_OPS,
     ...BILLING_OPS,
+    ...FINANCE_OPS,
   ],
   attendant: [
     ...OPERATIONAL_VIEWS,

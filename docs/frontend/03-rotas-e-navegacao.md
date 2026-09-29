@@ -47,6 +47,7 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
 | `/classes/plans` | Planos | `classes` | `billing:view` | Planos de mensalidade. |
 | `/classes/billing` | Mensalidades | `classes` | `billing:view` | Cobrancas por competencia. |
+| `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
 | `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras de cobranca, "Apagar dados da demonstração" (aba Dados). |

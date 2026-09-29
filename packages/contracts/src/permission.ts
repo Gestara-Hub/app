@@ -32,4 +32,8 @@ export type Permission =
   | "enrollment:manage" // matricular/cancelar alunos
   | "attendance:mark" // marcar presenca nas sessoes
   | "billing:view" // ver planos e mensalidades/cobrancas
-  | "billing:manage"; // criar planos, gerar cobrancas, marcar pago
+  | "billing:manage" // criar planos, gerar cobrancas, marcar pago
+  // Financeiro do negocio (plano pago: tambem exige o recurso "finance").
+  | "finance:view" // ver resumo, lancamentos e pagamento dos professores
+  | "finance:manage" // lancar, pagar professor, configurar cobranca online
+  | "subscription:manage"; // trocar o plano GestaraHub (so o proprietario)

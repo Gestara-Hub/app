@@ -2,15 +2,21 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { UserView } from "@gestarahub/contracts";
+import type { Id, SubscriptionTier, UserView } from "@gestarahub/contracts";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
   encodeSession,
   safeRedirectPath,
 } from "@/lib/session";
+import {
+  SUBSCRIPTION_COOKIE,
+  encodeTierCookie,
+  isSubscriptionTier,
+} from "@/lib/subscription";
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
+import { getCurrentUser } from "@/features/auth/get-current-user";
 
 /**
  * Grava as claims do usuario no cookie de sessao. O client passa o `UserView`
@@ -60,6 +66,28 @@ export async function switchUser(user: UserView): Promise<void> {
  */
 export async function refreshSession(user: UserView): Promise<void> {
   await setSession(user);
+}
+
+/**
+ * Espelha o tier do plano GestaraHub (que vive no store do navegador) num
+ * cookie, para as pages server decidirem entre a tela paga e o upsell. So
+ * aceita a organizacao da propria sessao. O client faz `router.refresh()`
+ * em seguida.
+ */
+export async function syncSubscriptionTier(
+  organizationId: Id,
+  tier: SubscriptionTier,
+): Promise<void> {
+  const session = await getCurrentUser();
+  const cookieStore = await cookies();
+  if (!session || session.organizationId !== organizationId) return;
+  if (!isSubscriptionTier(tier)) return;
+  cookieStore.set(SUBSCRIPTION_COOKIE, encodeTierCookie(organizationId, tier), {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_MAX_AGE,
+  });
 }
 
 /** Logout mockado: limpa o cookie de sessao e volta para o login. */

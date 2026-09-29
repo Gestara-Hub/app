@@ -1,4 +1,6 @@
 import type { Address, Id, RecordStatus, TimeISO, Weekday } from "./common";
+import type { OnlinePaymentSettings } from "./finance";
+import type { Subscription } from "./subscription";
 
 /**
  * Modelo operacional do tenant (estrutural — define o app inteiro). Ortogonal ao
@@ -15,6 +17,7 @@ export interface OrganizationSettings {
   defaultDueDay?: number; // dia padrão de vencimento de mensalidades (ex: 10)
   billingTiming?: OrganizationBillingTiming; // 'prepaid' (no ato) ou 'postpaid' (ao final) - default: 'prepaid'
   midMonthStrategy?: OrganizationMidMonthStrategy; // 'prorated' (proporcional) ou 'full_cycle' (ciclo 30 dias) - default: 'prorated'
+  onlinePayments?: OnlinePaymentSettings; // cobranca online simulada (plano pago)
 }
 
 export interface Organization {
@@ -23,6 +26,8 @@ export interface Organization {
   segment: string; // 'Barbearia' (vertical/rotulo — nao confundir com `model`)
   model: OperationalModel; // modelo operacional (estrutural)
   settings?: OrganizationSettings;
+  /** Plano GestaraHub (assinatura). Ausente = free. */
+  subscription?: Subscription;
   status: RecordStatus;
 }
 

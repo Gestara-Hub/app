@@ -12,6 +12,7 @@ import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
+import { StudentProgressDialog } from "./student-progress-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ClientsView() {
@@ -21,6 +22,7 @@ export function ClientsView() {
     client?: Client;
   }>({ open: false });
   const [inactivating, setInactivating] = useState<Client | null>(null);
+  const [progressClient, setProgressClient] = useState<Client | null>(null);
 
   const updateMut = useUpdateClient();
   const canManage = useCan()("clients:manage");
@@ -64,7 +66,7 @@ export function ClientsView() {
         title={isClasses ? "Alunos" : "Clientes"}
         description={
           isClasses
-            ? "Cadastro e histórico de alunos."
+            ? "Cadastro, evolução técnica e histórico de alunos."
             : "Cadastro e histórico de clientes."
         }
       >
@@ -80,6 +82,7 @@ export function ClientsView() {
         canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
+        onOpenProgress={isClasses ? setProgressClient : undefined}
         onInactivate={setInactivating}
         onReactivate={reactivate}
       />
@@ -91,6 +94,17 @@ export function ClientsView() {
         }}
         client={formState.client}
       />
+
+      {isClasses ? (
+        <StudentProgressDialog
+          client={progressClient}
+          open={Boolean(progressClient)}
+          onOpenChange={(open) => {
+            if (!open) setProgressClient(null);
+          }}
+          onEditClient={openEdit}
+        />
+      ) : null}
 
       <InactivateClientDialog
         client={inactivating}

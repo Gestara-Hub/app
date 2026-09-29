@@ -171,7 +171,10 @@ O antigo `kind: "makeup"` (reposição) saiu: reposição foi removida do escopo
 
 1. **Incorporar sugestões do parceiro de teste:** Receber e priorizar o feedback prático do professor de Jiu-Jitsu.
 2. ~~**Implementar a chamada ágil**~~ — entregue (ver seção 6).
-3. **Adicionar graduação no perfil do aluno:** Registro de faixa atual, graus e data de graduação. *Ainda não implementado* (depende dos campos planejados da seção 4 e de uma tela de perfil do aluno, que também não existe).
-4. **Alerta discreto de mensalidade pendente:** Informar o status financeiro diretamente na lista de chamada da aula. *Ainda não implementado.*
-5. **Turmas kids e responsável:** data de nascimento, responsável e público-alvo da turma. *Ainda não implementado.*
-6. **Escopo do instrutor:** perfil de instrutor vendo só as próprias turmas. *Ainda não implementado.*
+3. **Progresso e graduação do aluno (em refinamento ativo):** Ficha/Modal de Progresso dedicada (faixa, graus, pontos fortes/a melhorar, histórico de evolução por sessão e exame de faixa) + badge da faixa na lista/card e na chamada.
+4. **Taxa de matrícula *(alinhado — próximo da fila)*:** Valor padrão nas Configurações de Cobrança da academia (`defaultEnrollmentFeeCents`) + opção de cobrar/editar/isentar ao cadastrar o aluno com plano, gerando cobrança separada (`ChargeKind = "enrollment_fee"`, badge `"Taxa de matrícula"`).
+5. **Clonar turma *(alinhado — próximo da fila)*:** Ação `"Clonar turma"` no menu `⋮` (lista/card de Turmas) e no detalhe da turma, abrindo o modal de Nova Turma pré-preenchido com `<Nome> (Cópia)`, Modalidade, Instrutor, Capacidade, configuração de Aula Avulsa e Horários (`meetingSlots`), sem copiar os alunos matriculados.
+6. **Alerta discreto de mensalidade pendente:** Informar o status financeiro diretamente na lista de chamada da aula. *Ainda não implementado.*
+7. **Turmas kids e responsável:** data de nascimento, responsável e público-alvo da turma. *Ainda não implementado.*
+8. **Escopo do instrutor:** perfil de instrutor vendo só as próprias turmas. *Ainda não implementado.*
+

@@ -1,4 +1,5 @@
 import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
+import type { ChargePaidVia } from "./finance";
 
 /**
  * Billing & plans (financial). Record/status only, no payment gateway.
@@ -58,6 +59,8 @@ export interface Charge {
   status: ChargeStatus;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
+  /** Como foi paga (ausente em dados antigos = manual). */
+  paidVia?: ChargePaidVia;
   canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
   cycleIndex?: number;
   cycleTotal?: number;

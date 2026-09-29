@@ -31,6 +31,7 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
+import { applyRecurringAutoPayments, cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 
 /**
  * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem
@@ -102,6 +103,20 @@ function recordChargeEvent(
     target: { type: "charge", id: c.id, label: chargeLabel(c) },
     predicate: `${verb} ${chargeLabel(c)} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})`,
   });
+}
+
+/**
+ * D8: pagamento online ou por Pix Automatico nao se desfaz (seria estorno, fora
+ * da demonstracao). Manual e dado antigo (sem `paidVia`) seguem permitidos.
+ */
+function assertNotPaidOnline(c: Charge, verb: "desfazer" | "cancelar"): void {
+  if (c.paidVia !== "online" && c.paidVia !== "recurring") return;
+  const via = c.paidVia === "online" ? "online" : "pelo Pix Automático";
+  throw apiError(
+    "VALIDATION",
+    `Não é possível ${verb} um pagamento feito ${via}: seria um estorno, que não existe nesta versão.`,
+    { httpStatus: 409 },
+  );
 }
 
 function validatePlan(payload: Partial<CreatePlan>): void {
@@ -347,6 +362,8 @@ export const billingService = {
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return simulateRead(() => {
+      // Pix Automatico: paga na leitura o que venceu dentro do limite.
+      applyRecurringAutoPayments();
       let result = store.charges.map(toChargeView);
       if (filter?.competence) {
         result = result.filter((c) => c.competence === filter.competence);
@@ -424,7 +441,10 @@ export const billingService = {
       c.status = "paid";
       c.paidAt = nowIso();
       c.method = method;
+      c.paidVia = "manual";
       c.updatedAt = nowIso();
+      // Pago na mao: o Pix/link em aberto nao vale mais.
+      cancelOnlinePaymentsForCharge(c.id);
       recordChargeEvent(c, "status_changed", "registrou o pagamento da");
       return clone(toChargeView(c));
     });
@@ -435,9 +455,11 @@ export const billingService = {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      assertNotPaidOnline(c, "desfazer");
       c.status = "pending";
       c.paidAt = undefined;
       c.method = undefined;
+      c.paidVia = undefined;
       c.updatedAt = nowIso();
       recordChargeEvent(c, "status_changed", "desfez o pagamento da");
       return clone(toChargeView(c));
@@ -449,11 +471,15 @@ export const billingService = {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      // Cancelar uma paga online apagaria o recebimento, como o desfazer.
+      if (c.status === "paid") assertNotPaidOnline(c, "cancelar");
       c.status = "canceled";
       c.canceledBy = "user";
       c.paidAt = undefined;
       c.method = undefined;
+      c.paidVia = undefined;
       c.updatedAt = nowIso();
+      cancelOnlinePaymentsForCharge(c.id);
       recordChargeEvent(c, "cancelled", "cancelou a");
       return clone(toChargeView(c));
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { addMonths, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -11,6 +12,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Info,
+  Lock,
+  QrCode,
   RotateCcw,
   RotateCw,
   Wallet,
@@ -38,7 +42,8 @@ import type {
   PaymentMethod,
   PlanPeriod,
 } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth";
+import { useCan, useHasFeature } from "@/features/auth";
+import { useOrganization } from "@/features/settings";
 import {
   useCancelCharge,
   useCharges,
@@ -46,9 +51,11 @@ import {
   useGenerateCharges,
   useMarkChargePaid,
   useMarkChargePending,
+  useActiveRecurringAuthorizations,
   useRevertCharge,
 } from "../hooks/use-billing";
 import { RegisterPaymentDialog } from "./register-payment-dialog";
+import { OnlineChargeDialog } from "./online-charge-dialog";
 
 const STATUS_LABEL: Record<ChargeStatus, string> = {
   pending: "Pendente",
@@ -177,6 +184,39 @@ const SYSTEM_CANCELED_HINT =
   "Cancelada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
 const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
 
+/** D8: pago online ou por Pix Automatico nao se desfaz (seria estorno). */
+const isPaidOnline = (c: ChargeView) =>
+  c.status === "paid" && (c.paidVia === "online" || c.paidVia === "recurring");
+const PAID_ONLINE_HINT =
+  "Pago online: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+const PAID_RECURRING_HINT =
+  "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+
+/** Selo de como a cobranca paga foi recebida (so online / Pix Automatico). */
+function PaidViaBadge({ charge }: { charge: ChargeView }) {
+  if (charge.status !== "paid") return null;
+  if (charge.paidVia !== "online" && charge.paidVia !== "recurring") return null;
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary">
+      {charge.paidVia === "online" ? "Pago online" : "Pix Automático"}
+    </span>
+  );
+}
+
+/** Aviso: aluno com Pix Automatico ativo, mas a cobranca passa do limite. */
+function RecurringLimitBadge({ limitCents }: { limitCents?: number }) {
+  if (limitCents === undefined) return null;
+  return (
+    <span
+      title={`O Pix Automático deste aluno tem limite de ${formatCents(limitCents)} por cobrança. Esta fica em aberto: cobre de outra forma ou aumente o limite no cadastro do aluno.`}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] leading-none font-medium text-warning"
+    >
+      <AlertCircle className="size-3" aria-hidden />
+      Acima do limite do Pix Automático
+    </span>
+  );
+}
+
 /** "2026-09" -> "Setembro de 2026". */
 function competenceLabel(competence: string): string {
   const label = format(parseISO(`${competence}-01`), "MMMM 'de' yyyy", { locale: ptBR });
@@ -200,16 +240,71 @@ function getCycleTitle(c: ChargeView): string {
   return "Mensalidade";
 }
 
+const STATUS_FILTERS: { value: "all" | ChargeStatus; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "pending", label: "Pendentes" },
+  { value: "overdue", label: "Atrasadas" },
+  { value: "paid", label: "Pagas" },
+  { value: "canceled", label: "Canceladas" },
+];
+
+function isChargeStatus(value: string | null): value is ChargeStatus {
+  return value === "pending" || value === "overdue" || value === "paid" || value === "canceled";
+}
+
+function isChargeKind(value: string | null): value is ChargeKind {
+  return value === "membership" || value === "dropin";
+}
+
+const currentCompetence = () => format(new Date(), "yyyy-MM");
+
+/**
+ * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
+ * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin`. Padroes
+ * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
+ */
+function useBillingFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const monthParam = searchParams.get("month");
+  const competence =
+    monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam) ? monthParam : currentCompetence();
+  const statusParam = searchParams.get("status");
+  const statusFilter: "all" | ChargeStatus = isChargeStatus(statusParam) ? statusParam : "all";
+  const kindParam = searchParams.get("kind");
+  const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
+
+  const update = (patch: Record<string, string | null>) => {
+    // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
+    // antes do re-render nao se apagam.
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const setCompetence = (next: string) =>
+    update({ month: next === currentCompetence() ? null : next });
+  const setStatusFilter = (next: "all" | ChargeStatus) =>
+    update({ status: next === "all" ? null : next });
+  const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
+
+  return { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter };
+}
+
 export function BillingView() {
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
-  const [competence, setCompetence] = useState(() =>
-    format(new Date(), "yyyy-MM"),
-  );
-  const [kindFilter, setKindFilter] = useState<"all" | ChargeKind>("all");
+  const { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter } =
+    useBillingFilters();
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
@@ -239,8 +334,32 @@ export function BillingView() {
   const can = useCan();
   const canManage = can("billing:manage");
 
+  // Cobrar online: billing:manage + recurso do plano + opcao ligada.
+  const hasFeature = useHasFeature();
+  const hasOnlineFeature = hasFeature("online_payments");
+  const { data: org } = useOrganization();
+  const onlineEnabled = Boolean(org?.settings?.onlinePayments?.enabled);
+  const onlineBlockedReason = !hasOnlineFeature
+    ? "Plano Pro"
+    : !onlineEnabled
+      ? "desligado nas Configurações"
+      : null;
+  const [chargeToCollect, setChargeToCollect] = useState<ChargeView | null>(null);
+
+  // Limite do Pix Automatico por aluno (so autorizacoes ativas).
+  const { data: activeRecurring } = useActiveRecurringAuthorizations(hasOnlineFeature);
+  const recurringLimit = new Map((activeRecurring ?? []).map((a) => [a.studentId, a.maxAmountCents]));
+  const overRecurringLimit = (c: ChargeView): number | undefined => {
+    if (c.kind !== "membership" || (c.status !== "pending" && c.status !== "overdue")) return undefined;
+    const limit = recurringLimit.get(c.studentId);
+    return limit !== undefined && c.amountCents > limit ? limit : undefined;
+  };
+
   const list = charges ?? [];
-  const groups = groupCharges(list);
+  // O status filtra so a lista; os cartoes seguem mostrando o mes inteiro.
+  const groups = groupCharges(
+    statusFilter === "all" ? list : list.filter((c) => c.status === statusFilter),
+  );
 
   const activeList = list.filter((c) => c.status !== "canceled");
   const activeTotalCents = activeList.reduce((s, c) => s + c.amountCents, 0);
@@ -275,7 +394,7 @@ export function BillingView() {
   };
 
   const shiftCompetence = (delta: number) =>
-    setCompetence((prev) => format(addMonths(parseISO(`${prev}-01`), delta), "yyyy-MM"));
+    setCompetence(format(addMonths(parseISO(`${competence}-01`), delta), "yyyy-MM"));
 
   const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
@@ -320,6 +439,95 @@ export function BillingView() {
       onError: (err) =>
         toast.error(getErrorMessage(err, "Não foi possível reabrir a cobrança.")),
     });
+  };
+
+  // Acoes da linha (compact = sub-parcela dentro do painel expandido).
+  const renderChargeActions = (c: ChargeView, compact: boolean) => {
+    if (!canManage) return null;
+    const btnSize = compact ? "xs" : "sm";
+    const iconCls = compact ? "size-3.5" : "size-4";
+
+    if (c.status === "canceled") {
+      return isSystemCanceled(c) ? (
+        <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
+          <Button variant="outline" size={btnSize} disabled>
+            <RotateCcw className={iconCls} />
+            Reverter
+          </Button>
+        </span>
+      ) : (
+        <Button
+          variant="outline"
+          size={btnSize}
+          disabled={revertMut.isPending}
+          onClick={() => revertCancel(c)}
+          title="Reverter cancelamento"
+        >
+          <RotateCcw className={iconCls} />
+          Reverter
+        </Button>
+      );
+    }
+
+    if (c.status === "paid") {
+      if (isPaidOnline(c)) {
+        const hint = c.paidVia === "recurring" ? PAID_RECURRING_HINT : PAID_ONLINE_HINT;
+        return (
+          <span
+            title={hint}
+            aria-label={hint}
+            role="img"
+            className={cn(
+              "inline-flex items-center justify-center text-muted-foreground",
+              compact ? "size-7" : "size-8",
+            )}
+          >
+            <Info className={iconCls} />
+          </span>
+        );
+      }
+      return (
+        <Button
+          variant="ghost"
+          size={compact ? "icon-xs" : "icon-sm"}
+          className={compact ? "size-7" : "size-8"}
+          title="Desfazer pagamento"
+          onClick={() => undoPayment(c)}
+        >
+          <RotateCcw className={iconCls} />
+        </Button>
+      );
+    }
+
+    return (
+      <ListItemActionsMenu
+        title="Mais opções"
+        ariaLabel={`Ações de ${c.studentName}`}
+        variant="ghost"
+        actions={[
+          {
+            key: "pay",
+            label: "Marcar pago",
+            icon: <CheckCircle2 className="size-4" />,
+            onSelect: () => setChargeToPay(c),
+          },
+          {
+            key: "online",
+            label: onlineBlockedReason ? `Cobrar online (${onlineBlockedReason})` : "Cobrar online",
+            icon: onlineBlockedReason ? <Lock className="size-4" /> : <QrCode className="size-4" />,
+            disabled: Boolean(onlineBlockedReason),
+            onSelect: () => setChargeToCollect(c),
+          },
+          {
+            key: "cancel",
+            label: "Cancelar cobrança",
+            icon: <Ban className="size-4" />,
+            destructive: true,
+            onSelect: () => setChargeToCancel(c),
+          },
+        ]}
+      />
+    );
   };
 
   const [confirmClear, setConfirmClear] = useState(false);
@@ -580,6 +788,29 @@ export function BillingView() {
                   Aulas Avulsas
                 </button>
               </div>
+
+              <div
+                role="group"
+                aria-label="Filtrar por situação"
+                className="inline-flex max-w-full overflow-x-auto rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs"
+              >
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    aria-pressed={statusFilter === f.value}
+                    onClick={() => setStatusFilter(f.value)}
+                    className={cn(
+                      "shrink-0 rounded-md px-2.5 py-1 font-medium transition-colors",
+                      statusFilter === f.value
+                        ? "bg-background text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -595,6 +826,15 @@ export function BillingView() {
                   <Button variant="outline" size="sm" onClick={() => refetch()}>
                     <RotateCw className="size-4" />
                     Tentar novamente
+                  </Button>
+                </div>
+              ) : !isLoading && groups.length === 0 && list.length > 0 ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma cobrança com esta situação no mês.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => setStatusFilter("all")}>
+                    Ver todas
                   </Button>
                 </div>
               ) : !isLoading && groups.length === 0 ? (
@@ -780,6 +1020,8 @@ export function BillingView() {
                                   >
                                     {STATUS_LABEL[c.status]}
                                   </span>
+                                  <PaidViaBadge charge={c} />
+                                  <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -794,65 +1036,7 @@ export function BillingView() {
                                     {formatCents(c.amountCents)}
                                   </span>
 
-                                  {canManage ? (
-                                    c.status === "canceled" ? (
-                                      isSystemCanceled(c) ? (
-                                        <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
-                                          <Button variant="outline" size="xs" disabled>
-                                            <RotateCcw className="size-3.5" />
-                                            Reverter
-                                          </Button>
-                                        </span>
-                                      ) : (
-                                        <Button
-                                          variant="outline"
-                                          size="xs"
-                                          disabled={revertMut.isPending}
-                                          onClick={() => revertCancel(c)}
-                                          title="Reverter cancelamento"
-                                        >
-                                          <RotateCcw className="size-3.5" />
-                                          Reverter
-                                        </Button>
-                                      )
-                                    ) : c.status === "paid" ? (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="size-7"
-                                        title="Desfazer pagamento"
-                                        onClick={() => undoPayment(c)}
-                                      >
-                                        <RotateCcw className="size-3.5" />
-                                      </Button>
-                                    ) : (
-                                      <>
-                                        <Button
-                                          variant="outline"
-                                          size="xs"
-                                          onClick={() => setChargeToPay(c)}
-                                        >
-                                          <CheckCircle2 className="size-3.5" />
-                                          Marcar pago
-                                        </Button>
-
-                                        <ListItemActionsMenu
-                                          title="Mais opções"
-                                          variant="ghost"
-                                          actions={[
-                                            {
-                                              key: "cancel",
-                                              label: "Cancelar cobrança",
-                                              icon: <Ban className="size-4" />,
-                                              destructive: true,
-                                              onSelect: () =>
-                                                setChargeToCancel(c),
-                                            },
-                                          ]}
-                                        />
-                                      </>
-                                    )
-                                  ) : null}
+                                  {renderChargeActions(c, true)}
                                 </div>
                               </div>
                             ))}
@@ -885,64 +1069,7 @@ export function BillingView() {
                           {formatCents(c.amountCents)}
                         </span>
 
-                        {canManage ? (
-                          c.status === "canceled" ? (
-                            isSystemCanceled(c) ? (
-                              <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
-                                <Button variant="outline" size="sm" disabled>
-                                  <RotateCcw className="size-4" />
-                                  Reverter
-                                </Button>
-                              </span>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={revertMut.isPending}
-                                onClick={() => revertCancel(c)}
-                                title="Reverter cancelamento"
-                              >
-                                <RotateCcw className="size-4" />
-                                Reverter
-                              </Button>
-                            )
-                          ) : c.status === "paid" ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="size-8"
-                              title="Desfazer pagamento"
-                              onClick={() => undoPayment(c)}
-                            >
-                              <RotateCcw className="size-4" />
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setChargeToPay(c)}
-                              >
-                                <CheckCircle2 className="size-4" />
-                                Marcar pago
-                              </Button>
-
-                              <ListItemActionsMenu
-                                title="Mais opções"
-                                variant="ghost"
-                                actions={[
-                                  {
-                                    key: "cancel",
-                                    label: "Cancelar cobrança",
-                                    icon: <Ban className="size-4" />,
-                                    destructive: true,
-                                    onSelect: () => setChargeToCancel(c),
-                                  },
-                                ]}
-                              />
-                            </>
-                          )
-                        ) : null}
+                        {renderChargeActions(c, false)}
                       </div>
                     }
                   >
@@ -977,6 +1104,8 @@ export function BillingView() {
                           >
                             {STATUS_LABEL[c.status]}
                           </span>
+                          <PaidViaBadge charge={c} />
+                          <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
@@ -998,7 +1127,10 @@ export function BillingView() {
                           {c.status === "paid" && c.method ? (
                             <>
                               <span>·</span>
-                              <span>pago via {paymentMethodLabel(c.method)}</span>
+                              <span>
+                                {c.paidVia === "online" ? "pago online via " : "pago via "}
+                                {paymentMethodLabel(c.method)}
+                              </span>
                             </>
                           ) : null}
                         </div>
@@ -1013,6 +1145,12 @@ export function BillingView() {
       )}
 
       {confirmDialog}
+      <OnlineChargeDialog
+        charge={chargeToCollect}
+        onOpenChange={(open) => {
+          if (!open) setChargeToCollect(null);
+        }}
+      />
       <RegisterPaymentDialog
         charge={chargeToPay}
         isPending={paidMut.isPending}

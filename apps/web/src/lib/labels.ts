@@ -3,9 +3,15 @@ import type {
   AuditAction,
   AuditEntityType,
   Frequency,
+  FinancialEntryDisplayStatus,
+  FinancialEntryType,
   OperationalModel,
+  PaidFeature,
   PaymentMethod,
   RecordStatus,
+  SubscriptionTier,
+  TeacherPayComponentKind,
+  TeacherPayoutStatus,
   UserProfile,
 } from "@gestarahub/contracts";
 
@@ -88,6 +94,12 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   charge: "Mensalidade",
   class_group: "Turma",
   enrollment: "Matrícula",
+  financial_entry: "Lançamento financeiro",
+  financial_category: "Categoria financeira",
+  teacher_payout: "Pagamento de professor",
+  teacher_pay_rule: "Regra de pagamento",
+  online_payment: "Pagamento online",
+  subscription: "Plano GestaraHub",
 };
 
 // No modelo de turmas, cliente e aluno e categoria e modalidade.
@@ -114,4 +126,68 @@ export const PAYMENT_METHODS: PaymentMethod[] = ["pix", "cash", "card", "other"]
 
 export function paymentMethodLabel(method: PaymentMethod): string {
   return PAYMENT_METHOD_LABEL[method];
+}
+
+// --- Plano GestaraHub e Financeiro -----------------------------------------
+
+const SUBSCRIPTION_TIER_LABEL: Record<SubscriptionTier, string> = {
+  free: "Grátis",
+  pro: "Pro",
+};
+
+export function subscriptionTierLabel(tier: SubscriptionTier): string {
+  return SUBSCRIPTION_TIER_LABEL[tier];
+}
+
+const PAID_FEATURE_LABEL: Record<PaidFeature, string> = {
+  finance: "Financeiro",
+  online_payments: "Pagamento online",
+  reports: "Relatórios",
+  messaging: "Comunicação automática",
+};
+
+export function paidFeatureLabel(feature: PaidFeature): string {
+  return PAID_FEATURE_LABEL[feature];
+}
+
+const FINANCIAL_ENTRY_TYPE_LABEL: Record<FinancialEntryType, string> = {
+  income: "Entrada",
+  expense: "Saída",
+};
+
+export function financialEntryTypeLabel(type: FinancialEntryType): string {
+  return FINANCIAL_ENTRY_TYPE_LABEL[type];
+}
+
+const FINANCIAL_ENTRY_STATUS_LABEL: Record<FinancialEntryDisplayStatus, string> = {
+  pending: "Pendente",
+  paid: "Pago",
+  overdue: "Atrasado",
+  canceled: "Cancelado",
+};
+
+export function financialEntryStatusLabel(status: FinancialEntryDisplayStatus): string {
+  return FINANCIAL_ENTRY_STATUS_LABEL[status];
+}
+
+const TEACHER_PAY_COMPONENT_LABEL: Record<TeacherPayComponentKind, string> = {
+  fixed_monthly: "Fixo mensal",
+  per_session: "Por aula dada",
+  per_student: "Por aluno ativo",
+  percent_of_memberships: "% das mensalidades",
+};
+
+export function teacherPayComponentLabel(kind: TeacherPayComponentKind): string {
+  return TEACHER_PAY_COMPONENT_LABEL[kind];
+}
+
+const TEACHER_PAYOUT_STATUS_LABEL: Record<TeacherPayoutStatus, string> = {
+  open: "Prévia",
+  closed: "Fechado",
+  paid: "Pago",
+  canceled: "Cancelado",
+};
+
+export function teacherPayoutStatusLabel(status: TeacherPayoutStatus): string {
+  return TEACHER_PAYOUT_STATUS_LABEL[status];
 }

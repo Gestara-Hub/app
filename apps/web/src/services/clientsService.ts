@@ -1,16 +1,24 @@
 import type {
   ApiErrorField,
+  Category,
   Charge,
   Client,
   ClientFilter,
   CreateClient,
   CreateClientInitialCharge,
+  DateISO,
+  EvaluationEntryTone,
   Id,
+  ProgressionBeltColor,
+  StudentModalityOverviewItem,
+  StudentModalityProgression,
+  StudentProgressionOverview,
   UpdateClient,
 } from "@gestarahub/contracts";
 import { chargesDueIn } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/mocks/store";
 import {
   newId,
@@ -263,6 +271,273 @@ export const clientsService = {
         target: { type: "client", id, label: name },
         predicate: `inativou o ${clientNoun()} ${name}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}`,
       });
+    });
+  },
+
+  getProgressionOverview(studentId: Id): Promise<StudentProgressionOverview> {
+    return simulateRead(() => {
+      const client = store.clients.find((c) => c.id === studentId);
+      if (!client) throw notFoundError(NOT_FOUND);
+
+      const activeEnrollments = store.enrollments.filter(
+        (e) => e.studentId === studentId && e.status === "active",
+      );
+      const enrolledGroupIds = new Set(activeEnrollments.map((e) => e.classGroupId));
+      const enrolledGroups = store.classGroups.filter((g) => enrolledGroupIds.has(g.id));
+
+      const categoriesById = new Map<Id, Category>();
+      for (const cat of store.categories) {
+        if (cat.status === "active") {
+          categoriesById.set(cat.id, {
+            ...cat,
+            progressionTrack: resolveModalityTrack(cat),
+          });
+        }
+      }
+
+      // Garante que modalidades em que o aluno ja tem progresso tambem aparecam
+      const existingProgressions = client.progressions ?? {};
+      for (const modId of Object.keys(existingProgressions)) {
+        if (!categoriesById.has(modId)) {
+          const found = store.categories.find((c) => c.id === modId);
+          if (found) {
+            categoriesById.set(found.id, {
+              ...found,
+              progressionTrack: resolveModalityTrack(found),
+            });
+          }
+        }
+      }
+
+      const items: StudentModalityOverviewItem[] = [];
+      for (const modality of categoriesById.values()) {
+        const groupsInModality = store.classGroups.filter(
+          (g) => g.modalityId === modality.id,
+        );
+        const groupIdsInModality = new Set(groupsInModality.map((g) => g.id));
+        const studentGroupsInModality = enrolledGroups.filter(
+          (g) => g.modalityId === modality.id,
+        );
+        const isEnrolled = studentGroupsInModality.length > 0;
+        const progression = existingProgressions[modality.id];
+        const promotedAt = progression?.promotedAt;
+
+        let totalPresentInModality = 0;
+        let presentSincePromotion = 0;
+
+        for (const att of store.attendances) {
+          if (att.studentId !== studentId || att.status !== "present") continue;
+          const [groupId, sessionDate] = att.sessionId.split("~");
+          if (!groupIdsInModality.has(groupId)) continue;
+          totalPresentInModality += 1;
+          if (!promotedAt || (sessionDate && sessionDate >= promotedAt)) {
+            presentSincePromotion += 1;
+          }
+        }
+
+        items.push({
+          modality,
+          isEnrolled,
+          enrolledClassNames: studentGroupsInModality.map((g) => g.name),
+          presentSincePromotion:
+            presentSincePromotion + (progression?.initialAttendanceOffset ?? 0),
+          totalPresentInModality:
+            totalPresentInModality + (progression?.initialAttendanceOffset ?? 0),
+          progression,
+        });
+      }
+
+      // Ordena primeiro modalidades em que o aluno esta matriculado ou ja possui progresso
+      items.sort((a, b) => {
+        const aScore = (a.isEnrolled ? 2 : 0) + (a.progression ? 1 : 0);
+        const bScore = (b.isEnrolled ? 2 : 0) + (b.progression ? 1 : 0);
+        if (aScore !== bScore) return bScore - aScore;
+        return a.modality.position - b.modality.position;
+      });
+
+      return clone({
+        studentId: client.id,
+        studentName: client.name,
+        items,
+      });
+    });
+  },
+
+  saveModalityProgression(
+    studentId: Id,
+    progression: Omit<StudentModalityProgression, "updatedAt">,
+  ): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = store.clients.findIndex((c) => c.id === studentId);
+      if (idx === -1) throw notFoundError(NOT_FOUND);
+      const current = store.clients[idx];
+      const ts = nowIso();
+      const nextEntry: StudentModalityProgression = {
+        ...progression,
+        updatedAt: ts,
+      };
+      const updated: Client = {
+        ...current,
+        progressions: {
+          ...(current.progressions ?? {}),
+          [progression.modalityId]: nextEntry,
+        },
+        updatedAt: ts,
+      };
+      store.clients[idx] = updated;
+      auditLogService.record({
+        action: "updated",
+        target: { type: "client", id: updated.id, label: updated.name },
+        predicate: `atualizou o progresso de ${updated.name} (${progression.levelName})`,
+      });
+      return clone(updated);
+    });
+  },
+
+  promoteStudent(payload: {
+    studentId: Id;
+    modalityId: Id;
+    modalityName?: string;
+    toLevelId?: string;
+    toLevelName: string;
+    toLevelColor: ProgressionBeltColor;
+    toSubLevel: number;
+    maxSubLevels?: number;
+    date: DateISO;
+    attendancesCompleted?: number;
+    monthsInLevel?: number;
+    isExam?: boolean;
+    notes?: string;
+  }): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = store.clients.findIndex((c) => c.id === payload.studentId);
+      if (idx === -1) throw notFoundError(NOT_FOUND);
+      const current = store.clients[idx];
+      const ts = nowIso();
+      const prev = current.progressions?.[payload.modalityId];
+
+      const historyEntry = {
+        id: newId(),
+        date: payload.date,
+        fromLevelName: prev?.levelName,
+        fromSubLevel: prev?.subLevel,
+        toLevelName: payload.toLevelName,
+        toLevelColor: payload.toLevelColor,
+        toSubLevel: payload.toSubLevel,
+        attendancesCompleted: payload.attendancesCompleted,
+        monthsInLevel: payload.monthsInLevel,
+        isExam: payload.isExam,
+        notes: payload.notes?.trim() || undefined,
+        createdAt: ts,
+      };
+
+      const nextProgression: StudentModalityProgression = {
+        modalityId: payload.modalityId,
+        modalityName: payload.modalityName ?? prev?.modalityName,
+        levelId: payload.toLevelId,
+        levelName: payload.toLevelName,
+        levelColor: payload.toLevelColor,
+        subLevel: payload.toSubLevel,
+        maxSubLevels: payload.maxSubLevels ?? prev?.maxSubLevels ?? 4,
+        promotedAt: payload.date,
+        initialAttendanceOffset: 0,
+        nextExamDate: undefined,
+        strengths: prev?.strengths ?? [],
+        focusAreas: prev?.focusAreas ?? [],
+        evaluations: prev?.evaluations ?? [],
+        promotionHistory: [historyEntry, ...(prev?.promotionHistory ?? [])],
+        updatedAt: ts,
+      };
+
+      const updated: Client = {
+        ...current,
+        progressions: {
+          ...(current.progressions ?? {}),
+          [payload.modalityId]: nextProgression,
+        },
+        updatedAt: ts,
+      };
+      store.clients[idx] = updated;
+      auditLogService.record({
+        action: "updated",
+        target: { type: "client", id: updated.id, label: updated.name },
+        predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
+      });
+      return clone(updated);
+    });
+  },
+
+  addSessionEvaluation(payload: {
+    studentId: Id;
+    modalityId: Id;
+    modalityName?: string;
+    classGroupId?: Id;
+    classGroupName?: string;
+    sessionId?: Id;
+    date: DateISO;
+    tone: EvaluationEntryTone;
+    note: string;
+    authorName?: string;
+  }): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = store.clients.findIndex((c) => c.id === payload.studentId);
+      if (idx === -1) throw notFoundError(NOT_FOUND);
+      const current = store.clients[idx];
+      const ts = nowIso();
+      const modality = store.categories.find((c) => c.id === payload.modalityId);
+      const track = resolveModalityTrack(modality);
+      const firstLevel = track.levels[0] ?? {
+        id: "lvl-default",
+        name: "Iniciante",
+        color: "white" as const,
+        maxSubLevels: 4,
+      };
+      const prev = current.progressions?.[payload.modalityId];
+
+      const evaluation = {
+        id: newId(),
+        date: payload.date,
+        classGroupId: payload.classGroupId,
+        classGroupName: payload.classGroupName,
+        sessionId: payload.sessionId,
+        tone: payload.tone,
+        note: payload.note.trim(),
+        authorName: payload.authorName,
+        createdAt: ts,
+      };
+
+      const nextProgression: StudentModalityProgression = prev
+        ? {
+            ...prev,
+            evaluations: [evaluation, ...prev.evaluations],
+            updatedAt: ts,
+          }
+        : {
+            modalityId: payload.modalityId,
+            modalityName: payload.modalityName ?? modality?.name,
+            levelId: firstLevel.id,
+            levelName: firstLevel.name,
+            levelColor: firstLevel.color,
+            subLevel: 0,
+            maxSubLevels: firstLevel.maxSubLevels,
+            promotedAt: payload.date,
+            strengths: [],
+            focusAreas: [],
+            evaluations: [evaluation],
+            promotionHistory: [],
+            updatedAt: ts,
+          };
+
+      const updated: Client = {
+        ...current,
+        progressions: {
+          ...(current.progressions ?? {}),
+          [payload.modalityId]: nextProgression,
+        },
+        updatedAt: ts,
+      };
+      store.clients[idx] = updated;
+      return clone(updated);
     });
   },
 };

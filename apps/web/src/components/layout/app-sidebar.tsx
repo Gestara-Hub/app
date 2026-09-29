@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Lock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,12 +23,13 @@ import {
 import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
-import { useCan, useModel } from "@/features/auth";
+import { useCan, useHasFeature, useModel } from "@/features/auth";
 import {
   FOOTER_NAV,
   MAIN_NAV,
   NAV_SECTIONS,
   isNavItemActive,
+  isNavItemLocked,
   navForModel,
   type NavItem,
 } from "./nav";
@@ -40,6 +42,7 @@ function NavMenu({
   activeHref?: string;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const hasFeature = useHasFeature();
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
@@ -49,12 +52,14 @@ function NavMenu({
     <SidebarMenu>
       {items.map((item) => {
         const Icon = item.icon;
+        // Recurso pago fora do plano: item visivel com cadeado (abre o upsell).
+        const locked = isNavItemLocked(item, hasFeature);
         return (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
               asChild
               isActive={item.href === activeHref}
-              tooltip={item.label}
+              tooltip={locked ? `${item.label} (Plano Pro)` : item.label}
             >
               <Link
                 href={item.href}
@@ -63,6 +68,15 @@ function NavMenu({
               >
                 <Icon />
                 <span>{item.label}</span>
+                {locked ? (
+                  <>
+                    <Lock
+                      aria-hidden
+                      className="ml-auto size-3.5! text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden"
+                    />
+                    <span className="sr-only">(disponível no Plano Pro)</span>
+                  </>
+                ) : null}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

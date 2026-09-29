@@ -97,6 +97,7 @@ export const categoriesService = {
         organizationId: store.organization.id,
         name: payload.name.trim(),
         position: nextPosition,
+        progressionTrack: payload.progressionTrack,
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,

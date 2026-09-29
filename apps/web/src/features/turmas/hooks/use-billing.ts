@@ -4,17 +4,33 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { billingService } from "@/services/billingService";
+import { onlinePaymentsService } from "@/services/onlinePaymentsService";
 import type {
   ChargeFilter,
   CreatePlan,
   Id,
+  OnlinePaymentMethod,
   PaymentMethod,
   PlanFilter,
   UpdatePlan,
 } from "@gestarahub/contracts";
+
+/**
+ * Toda mutation de cobranca mexe no dinheiro: invalida Mensalidades, o
+ * Financeiro (le as cobrancas como entrada), a previa dos professores, os
+ * pagamentos online e a Auditoria.
+ */
+function invalidateMoney(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+  qc.invalidateQueries({ queryKey: queryKeys.finance.all });
+  qc.invalidateQueries({ queryKey: queryKeys.teacherPay.all });
+  qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
+  qc.invalidateQueries({ queryKey: queryKeys.audit.all });
+}
 
 // --- Planos (Plans) -------------------------------------------------------
 export function usePlans(filter?: PlanFilter) {
@@ -28,7 +44,7 @@ export function useCreatePlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePlan) => billingService.createPlan(payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -37,7 +53,7 @@ export function useUpdatePlan() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdatePlan }) =>
       billingService.updatePlan(id, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -46,7 +62,7 @@ export function useInactivatePlan() {
   return useMutation({
     mutationFn: (id: Id) =>
       billingService.updatePlan(id, { status: "inactive" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -55,7 +71,7 @@ export function useReactivatePlan() {
   return useMutation({
     mutationFn: (id: Id) =>
       billingService.updatePlan(id, { status: "active" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -72,7 +88,7 @@ export function useGenerateCharges() {
   return useMutation({
     mutationFn: (competence: string) =>
       billingService.generateCharges(competence),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -81,7 +97,7 @@ export function useMarkChargePaid() {
   return useMutation({
     mutationFn: ({ id, method }: { id: Id; method?: PaymentMethod }) =>
       billingService.markPaid(id, method),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -89,7 +105,7 @@ export function useMarkChargePending() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: Id) => billingService.markPending(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -97,7 +113,7 @@ export function useCancelCharge() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: Id) => billingService.cancelCharge(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -105,7 +121,7 @@ export function useRevertCharge() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: Id) => billingService.reopenCharge(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
@@ -113,8 +129,44 @@ export function useClearCharges() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (competence: string) => billingService.clearCharges(competence),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.billing.all }),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
+// --- Cobranca online (Pix / link) ------------------------------------------
+/** Dialogo "Cobrar online": aluno, telefone e os codigos gerados da cobranca. */
+export function useOnlineCheckout(chargeId: Id | null) {
+  return useQuery({
+    queryKey: queryKeys.onlinePayments.forCharge(chargeId ?? ""),
+    queryFn: () => onlinePaymentsService.getCheckout(chargeId!),
+    enabled: Boolean(chargeId),
+  });
+}
+
+export function useCreateOnlinePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ chargeId, method }: { chargeId: Id; method: OnlinePaymentMethod }) =>
+      onlinePaymentsService.createForCharge(chargeId, method),
+    onSuccess: () => invalidateMoney(qc),
+  });
+}
+
+/** Demonstracao: marca o codigo e a cobranca como pagos. */
+export function useSimulateOnlinePaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (onlinePaymentId: Id) => onlinePaymentsService.simulatePaid(onlinePaymentId),
+    onSuccess: () => invalidateMoney(qc),
+  });
+}
+
+/** Autorizacoes ativas do Pix Automatico (aviso de limite na linha). */
+export function useActiveRecurringAuthorizations(enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.onlinePayments.all, "recurring", "active"],
+    queryFn: () => onlinePaymentsService.listActiveRecurring(),
+    enabled,
+  });
+}
 

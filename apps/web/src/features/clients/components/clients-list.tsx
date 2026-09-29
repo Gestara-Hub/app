@@ -1,7 +1,18 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, Mail, Pencil, Phone, Power, PowerOff, RotateCw, Users, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  GraduationCap,
+  Mail,
+  Pencil,
+  Phone,
+  Power,
+  PowerOff,
+  RotateCw,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,11 +34,21 @@ import {
   ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
+import { BeltBadge } from "@/components/shared/belt-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
-import type { Client, ClientFilter, Plan, PlanPeriod, RecordStatus } from "@gestarahub/contracts";
+import type {
+  Category,
+  Client,
+  ClientFilter,
+  Plan,
+  PlanPeriod,
+  RecordStatus,
+} from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
+import { useCategories } from "@/features/categories";
 import { usePlans } from "@/features/turmas";
 import { useClients } from "../hooks/use-clients";
 
@@ -56,6 +77,81 @@ function getEffectivePriceCents(client: Client, plan: Plan): number {
     }
   }
   return price;
+}
+
+function ClientProgressionBadges({
+  client,
+  categoryById,
+  onOpenProgress,
+}: {
+  client: Client;
+  categoryById: Map<string, Category>;
+  onOpenProgress?: (client: Client) => void;
+}) {
+  const entries = Object.values(client.progressions ?? {});
+  const resolvedBadges = entries
+    .map((prog) => {
+      const cat = categoryById.get(prog.modalityId);
+      if (!cat) return null;
+      const track = resolveModalityTrack(cat);
+      if (!track.enabled) return null;
+      const lvl =
+        track.levels.find(
+          (l) => l.id === prog.levelId || l.name === prog.levelName,
+        ) ?? track.levels[0];
+      if (!lvl) return null;
+      return {
+        modalityId: prog.modalityId,
+        modalityName: cat.name,
+        level: lvl,
+        subLevel: prog.subLevel,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  if (resolvedBadges.length === 0) {
+    if (!onOpenProgress) return null;
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenProgress(client);
+        }}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors"
+      >
+        <GraduationCap className="size-3" />
+        <span>Evolução / Faixa</span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="inline-flex flex-wrap items-center gap-1.5"
+      onClick={(e) => {
+        if (onOpenProgress) {
+          e.stopPropagation();
+          onOpenProgress(client);
+        }
+      }}
+    >
+      {resolvedBadges.slice(0, 2).map((b) => (
+        <BeltBadge
+          key={b.modalityId}
+          name={
+            resolvedBadges.length > 1
+              ? `${b.modalityName.split(" ")[0]} • ${b.level.name}`
+              : b.level.name
+          }
+          color={b.level.color}
+          subLevel={b.subLevel}
+          maxSubLevels={b.level.maxSubLevels}
+          size="xs"
+        />
+      ))}
+    </div>
+  );
 }
 
 function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
@@ -110,6 +206,7 @@ interface ClientsListProps {
   canManage: boolean;
   onCreate: () => void;
   onEdit: (client: Client) => void;
+  onOpenProgress?: (client: Client) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
 }
@@ -117,17 +214,21 @@ interface ClientsListProps {
 function ClientRow({
   client,
   plan,
+  categoryById,
   canManage,
   isClasses,
   onEdit,
+  onOpenProgress,
   onInactivate,
   onReactivate,
 }: {
   client: Client;
   plan?: Plan;
+  categoryById: Map<string, Category>;
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
+  onOpenProgress?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -135,9 +236,19 @@ function ClientRow({
 
   const actions: ListItemAction[] = canManage
     ? [
+        ...(isClasses && onOpenProgress
+          ? [
+              {
+                key: "progress",
+                label: "Evolução e Graduação",
+                icon: <GraduationCap className="size-4" />,
+                onSelect: () => onOpenProgress(client),
+              },
+            ]
+          : []),
         {
           key: "edit",
-          label: "Editar",
+          label: "Editar cadastro",
           icon: <Pencil className="size-4" />,
           onSelect: () => onEdit(client),
         },
@@ -158,9 +269,17 @@ function ClientRow({
       ]
     : [];
 
+  const handleRowClick = () => {
+    if (isClasses && onOpenProgress) {
+      onOpenProgress(client);
+    } else {
+      onEdit(client);
+    }
+  };
+
   const content = (
     <ListRow
-      onClick={() => onEdit(client)}
+      onClick={handleRowClick}
       canClick={canManage}
       actions={
         canManage ? (
@@ -183,6 +302,13 @@ function ClientRow({
                 {client.name}
               </p>
               <RecordStatusBadge status={client.status} />
+              {isClasses ? (
+                <ClientProgressionBadges
+                  client={client}
+                  categoryById={categoryById}
+                  onOpenProgress={onOpenProgress}
+                />
+              ) : null}
             </div>
 
             <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
@@ -230,17 +356,21 @@ function ClientRow({
 function ClientCard({
   client,
   plan,
+  categoryById,
   canManage,
   isClasses,
   onEdit,
+  onOpenProgress,
   onInactivate,
   onReactivate,
 }: {
   client: Client;
   plan?: Plan;
+  categoryById: Map<string, Category>;
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
+  onOpenProgress?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -248,9 +378,19 @@ function ClientCard({
 
   const actions: ListItemAction[] = canManage
     ? [
+        ...(isClasses && onOpenProgress
+          ? [
+              {
+                key: "progress",
+                label: "Evolução e Graduação",
+                icon: <GraduationCap className="size-4" />,
+                onSelect: () => onOpenProgress(client),
+              },
+            ]
+          : []),
         {
           key: "edit",
-          label: "Editar",
+          label: "Editar cadastro",
           icon: <Pencil className="size-4" />,
           onSelect: () => onEdit(client),
         },
@@ -271,16 +411,25 @@ function ClientCard({
       ]
     : [];
 
+  const handleCardClick = () => {
+    if (!canManage) return;
+    if (isClasses && onOpenProgress) {
+      onOpenProgress(client);
+    } else {
+      onEdit(client);
+    }
+  };
+
   const card = (
     <div
       role={canManage ? "button" : undefined}
       tabIndex={canManage ? 0 : undefined}
-      onClick={() => canManage && onEdit(client)}
+      onClick={handleCardClick}
       onKeyDown={(e) => {
         if (!canManage) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onEdit(client);
+          handleCardClick();
         }
       }}
       className={cn(
@@ -299,6 +448,13 @@ function ClientCard({
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <RecordStatusBadge status={client.status} />
+                {isClasses ? (
+                  <ClientProgressionBadges
+                    client={client}
+                    categoryById={categoryById}
+                    onOpenProgress={onOpenProgress}
+                  />
+                ) : null}
               </div>
             </div>
           </div>
@@ -426,6 +582,7 @@ function ClientSkeletonCards({
 export function ClientsList({
   canManage,
   onEdit,
+  onOpenProgress,
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
@@ -441,11 +598,16 @@ export function ClientsList({
 
   const { data, isPending, isError, refetch } = useClients(filter);
   const { data: plans } = usePlans();
+  const { data: categories } = useCategories();
   const clients = data ?? [];
 
   const planById = useMemo(
     () => new Map((plans ?? []).map((p) => [p.id, p])),
     [plans],
+  );
+  const categoryById = useMemo(
+    () => new Map((categories ?? []).map((c) => [c.id, c])),
+    [categories],
   );
 
   const hasSearch = Boolean(filter.search);
@@ -513,9 +675,11 @@ export function ClientsList({
         key={client.id}
         client={client}
         plan={client.planId ? planById.get(client.planId) : undefined}
+        categoryById={categoryById}
         canManage={canManage}
         isClasses={isClasses}
         onEdit={onEdit}
+        onOpenProgress={onOpenProgress}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
       />
@@ -581,9 +745,11 @@ export function ClientsList({
               key={client.id}
               client={client}
               plan={client.planId ? planById.get(client.planId) : undefined}
+              categoryById={categoryById}
               canManage={canManage}
               isClasses={isClasses}
               onEdit={onEdit}
+              onOpenProgress={onOpenProgress}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
             />
