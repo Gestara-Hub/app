@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { handleFormApiError } from "@/lib/form-errors";
 import { teacherPayComponentLabel } from "@/lib/labels";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import type { TeacherPayTeacher } from "@/services/teacherPayService";
 import { useSaveTeacherPayRule } from "../hooks/use-teacher-pay";
 import { competenceLabel, currentCompetence } from "../lib";
@@ -58,9 +59,13 @@ interface TeacherPayRuleDialogProps {
 }
 
 /** "Configurar pagamento": partes da regra, dia de pagamento e vigencia. */
-export function TeacherPayRuleDialog({ teacher, competence, onOpenChange }: TeacherPayRuleDialogProps) {
+export function TeacherPayRuleDialog({ teacher: current, competence, onOpenChange }: TeacherPayRuleDialogProps) {
+  // Guarda o ultimo professor enquanto o dialog anima a saida (sem isso o
+  // formulario sumia e o titulo trocava no meio da animacao).
+  const teacher = useRetainedValue(current) ?? null;
+
   return (
-    <Dialog open={teacher !== null} onOpenChange={onOpenChange}>
+    <Dialog open={current !== null} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
         onInteractOutside={(event) => event.preventDefault()}
@@ -281,8 +286,6 @@ function TeacherPayRuleForm({
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
-          createLabel="Salvar pagamento"
-          editLabel="Salvar alterações"
         />
       </form>
     </FormProvider>

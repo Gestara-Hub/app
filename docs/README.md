@@ -43,6 +43,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [frontend/03-rotas-e-navegacao.md](frontend/03-rotas-e-navegacao.md) — Roteamento, menus adaptáveis por modelo operacional e RBAC.
 - [frontend/04-design-system.md](frontend/04-design-system.md) — Componentes compartilhados, shadcn/ui, Tailwind CSS e personalizador de tema.
 - [frontend/06-decisoes-de-interface.md](frontend/06-decisoes-de-interface.md) — Decisões de interface já implementadas (confirmações, sidebar escura, agenda feita à mão, mobile). Prevalece sobre 00–05.
+- [frontend/07-padroes-telas-e-ux.md](frontend/07-padroes-telas-e-ux.md) — **Padrões técnicos de telas, formulários, modais (`Adicionar` / `Salvar` / `Cancelar`), KPIs, listagens e usabilidade mobile (iOS Safari & Chrome).**
 - [frontend/05-agenda-react-big-calendar.md](frontend/05-agenda-react-big-calendar.md) — *(Histórico)* Plano original da agenda com react-big-calendar, revertido; a agenda é feita à mão.
 
 ---

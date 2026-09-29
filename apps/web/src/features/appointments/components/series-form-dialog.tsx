@@ -198,7 +198,7 @@ function SeriesForm({
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Criar série"}
+            {pending ? "Salvando..." : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

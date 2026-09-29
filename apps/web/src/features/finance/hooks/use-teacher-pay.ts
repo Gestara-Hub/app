@@ -52,6 +52,22 @@ export function useSaveTeacherPayRule() {
   });
 }
 
+export function useSaveTeacherPayoutAdjustments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      professionalId,
+      competence,
+      adjustments,
+    }: {
+      professionalId: Id;
+      competence: string;
+      adjustments: TeacherPayoutAdjustment[];
+    }) => teacherPayService.saveAdjustments(professionalId, competence, adjustments),
+    onSuccess: () => invalidateTeacherPay(qc),
+  });
+}
+
 export function useCloseTeacherPayout() {
   const qc = useQueryClient();
   return useMutation({

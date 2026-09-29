@@ -104,7 +104,7 @@ function BlockForm({
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : "Criar bloqueio"}
+            {pending ? "Salvando..." : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

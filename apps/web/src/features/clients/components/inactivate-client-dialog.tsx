@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
@@ -16,6 +17,8 @@ export function InactivateClientDialog({
   client,
   onOpenChange,
 }: InactivateClientDialogProps) {
+  // Conteudo com o ultimo registro: nao some durante a animacao de saida.
+  const shown = useRetainedValue(client);
   const isClasses = useModel() === "classes";
   const inactivateMut = useInactivateClient();
 
@@ -45,12 +48,12 @@ export function InactivateClientDialog({
       }}
       title={isClasses ? "Inativar aluno?" : "Inativar cliente?"}
       description={
-        client ? (
+        shown ? (
           <>
-            “{client.name}” deixará de ser sugerido em{" "}
+            “{shown.name}” deixará de ser sugerido em{" "}
             {isClasses ? "novas matrículas" : "novos agendamentos"}. O histórico
             é mantido e você pode reativá-lo depois.
-            {isClasses && client.planId ? (
+            {isClasses && shown.planId ? (
               <>
                 {" "}
                 Mensalidades em aberto de períodos que ainda não começaram serão

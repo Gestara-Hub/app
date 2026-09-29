@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Professional } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
@@ -16,6 +17,8 @@ export function InactivateProfessionalDialog({
   professional,
   onOpenChange,
 }: InactivateProfessionalDialogProps) {
+  // Conteudo com o ultimo registro: nao some durante a animacao de saida.
+  const shown = useRetainedValue(professional);
   const inactivateMut = useInactivateProfessional();
   const isClasses = useModel() === "classes";
 
@@ -40,9 +43,9 @@ export function InactivateProfessionalDialog({
       }}
       title="Inativar profissional?"
       description={
-        professional ? (
+        shown ? (
           <>
-            “{professional.name}” deixará de ser sugerido{" "}
+            “{shown.name}” deixará de ser sugerido{" "}
             {isClasses
               ? "como instrutor em novas turmas e substituições. As turmas atuais mantêm o instrutor"
               : "em novos agendamentos"}

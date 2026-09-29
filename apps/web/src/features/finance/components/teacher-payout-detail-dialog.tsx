@@ -43,12 +43,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import type { TeacherPayDetailSession, TeacherPayoutDetail } from "@/services/teacherPayService";
 import {
   useCloseTeacherPayout,
   useMarkTeacherPayoutPaid,
   useMarkTeacherPayoutUnpaid,
   useReopenTeacherPayout,
+  useSaveTeacherPayoutAdjustments,
   useTeacherPayoutPreview,
 } from "../hooks/use-teacher-pay";
 import { competenceLabel, currentCompetence } from "../lib";
@@ -89,14 +91,17 @@ export function TeacherPayoutDetailDialog({
   onOpenChange,
   onConfigure,
 }: TeacherPayoutDetailDialogProps) {
-  const { data, isLoading, isError, refetch } = useTeacherPayoutPreview(professionalId, competence);
+  // Guarda o ultimo professor enquanto o dialog anima a saida: com o id nulo a
+  // query desliga, `data` some e o ramo de erro piscava antes de fechar.
+  const shownId = useRetainedValue(professionalId) ?? null;
+  const { data, isLoading, isError, refetch } = useTeacherPayoutPreview(shownId, competence);
 
   return (
     <Dialog open={professionalId !== null} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
         showCloseButton={false}
-        // Nao fecha por clique fora: evita perder ajustes em rascunho.
+        // Nao fecha por clique fora: evita perder o ajuste sendo digitado.
         onInteractOutside={(event) => event.preventDefault()}
       >
         {isLoading ? (
@@ -116,7 +121,7 @@ export function TeacherPayoutDetailDialog({
           </>
         ) : (
           <DetailContent
-            // Recomeca os ajustes em rascunho quando o status muda.
+            // Remonta (fecha o formulario de ajuste) quando o status muda.
             key={`${data.professionalId}-${data.competence}-${data.status}`}
             data={data}
             canManage={canManage}
@@ -160,7 +165,13 @@ function DetailContent({
   const reopenMut = useReopenTeacherPayout();
   const paidMut = useMarkTeacherPayoutPaid();
   const unpaidMut = useMarkTeacherPayoutUnpaid();
-  const pending = closeMut.isPending || reopenMut.isPending || paidMut.isPending || unpaidMut.isPending;
+  const adjustMut = useSaveTeacherPayoutAdjustments();
+  const pending =
+    closeMut.isPending ||
+    reopenMut.isPending ||
+    paidMut.isPending ||
+    unpaidMut.isPending ||
+    adjustMut.isPending;
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const [payOpen, setPayOpen] = useState(false);
 
@@ -168,12 +179,10 @@ function DetailContent({
   const isOpen = data.status === "open";
   const computedLines = data.lines.filter((l) => l.kind !== "adjustment");
 
-  // Ajustes: rascunho local no mes aberto; congelados no fechado/pago.
-  const [adjustments, setAdjustments] = useState<TeacherPayoutAdjustment[]>(() =>
-    data.lines
-      .filter((l) => l.kind === "adjustment")
-      .map((l) => ({ label: l.label, amountCents: l.amountCents })),
-  );
+  // Ajustes salvos no registro: editaveis no mes aberto; congelados no fechado/pago.
+  const adjustments: TeacherPayoutAdjustment[] = data.lines
+    .filter((l) => l.kind === "adjustment")
+    .map((l) => ({ label: l.label, amountCents: l.amountCents }));
   const computedTotal = computedLines.reduce((sum, l) => sum + l.amountCents, 0);
   const rawTotal = isOpen
     ? computedTotal + adjustments.reduce((sum, a) => sum + a.amountCents, 0)
@@ -182,6 +191,37 @@ function DetailContent({
   // Mes que ainda nao comecou nao pode ser fechado (o service tambem recusa).
   const future = data.competence > currentCompetence();
   const shownTotal = Math.max(0, rawTotal);
+
+  const saveAdjustments = async (next: TeacherPayoutAdjustment[], success: string) => {
+    try {
+      await adjustMut.mutateAsync({
+        professionalId: data.professionalId,
+        competence: data.competence,
+        adjustments: next,
+      });
+      toast.success(success);
+      return true;
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível salvar o ajuste."));
+      return false;
+    }
+  };
+
+  const removeAdjustment = async (index: number) => {
+    const target = adjustments[index];
+    if (!target) return;
+    const ok = await confirm({
+      title: "Remover ajuste?",
+      description: `O ajuste "${target.label}" (${signedCents(target.amountCents)}) sai da prévia de ${data.professionalName}.`,
+      confirmLabel: "Remover ajuste",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    await saveAdjustments(
+      adjustments.filter((_, j) => j !== index),
+      "Ajuste removido.",
+    );
+  };
 
   const closeMonth = async () => {
     const ok = await confirm({
@@ -207,7 +247,7 @@ function DetailContent({
     if (!data.payout) return;
     const ok = await confirm({
       title: `Reabrir ${monthLabel}?`,
-      description: `O valor de ${data.professionalName} volta a ser uma prévia recalculada com os dados atuais. Os ajustes ficam como rascunho.`,
+      description: `O valor de ${data.professionalName} volta a ser uma prévia recalculada com os dados atuais. Os ajustes são mantidos.`,
       confirmLabel: "Reabrir mês",
       variant: "default",
     });
@@ -379,7 +419,7 @@ function DetailContent({
                         size="icon-xs"
                         aria-label={`Remover ajuste ${a.label}`}
                         disabled={pending}
-                        onClick={() => setAdjustments((prev) => prev.filter((_, j) => j !== i))}
+                        onClick={() => void removeAdjustment(i)}
                       >
                         <Trash2 />
                       </Button>
@@ -396,7 +436,7 @@ function DetailContent({
           {isOpen && canManage ? (
             <AdjustmentForm
               disabled={pending}
-              onAdd={(a) => setAdjustments((prev) => [...prev, a])}
+              onAdd={(a) => saveAdjustments([...adjustments, a], "Ajuste salvo.")}
             />
           ) : null}
           {negative ? (
@@ -518,7 +558,8 @@ function AdjustmentForm({
   onAdd,
 }: {
   disabled: boolean;
-  onAdd: (adjustment: TeacherPayoutAdjustment) => void;
+  /** Resolve `true` quando o ajuste foi salvo (so entao o formulario fecha). */
+  onAdd: (adjustment: TeacherPayoutAdjustment) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const form = useForm<AdjustmentFormValues>({
@@ -537,8 +578,9 @@ function AdjustmentForm({
     );
   }
 
-  const submit = form.handleSubmit((values) => {
-    onAdd({ label: values.label.trim(), amountCents: signedAdjustment(values) });
+  const submit = form.handleSubmit(async (values) => {
+    const saved = await onAdd({ label: values.label.trim(), amountCents: signedAdjustment(values) });
+    if (!saved) return;
     form.reset({ type: values.type, label: "", amountCents: 0 });
     setOpen(false);
   });
@@ -567,7 +609,7 @@ function AdjustmentForm({
             name="label"
             id="adjustment-label"
             label="Descrição"
-            placeholder="Ex.: Bônus seminário"
+            placeholder="Descreva o ajuste"
             required
             disabled={disabled}
           />
@@ -583,8 +625,8 @@ function AdjustmentForm({
           <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button type="submit" size="sm" disabled={disabled}>
-            Adicionar
+          <Button type="submit" size="sm" disabled={disabled || form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Salvando..." : "Adicionar"}
           </Button>
         </div>
       </form>

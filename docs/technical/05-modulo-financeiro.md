@@ -265,8 +265,8 @@ export interface TeacherPayout {
 
 ### 5.4 Fechamento do mês
 
-1. **Aberto (`open`):** durante o mês, o valor é uma **prévia** recalculada a cada leitura.
-2. **Fechar (`closed`):** o dono revisa, adiciona **ajustes** (bônus, desconto, vale adiantado) e fecha. O cálculo **congela** nas linhas, e mudanças posteriores (uma presença corrigida) não alteram o valor. Pode **reabrir** enquanto não estiver pago.
+1. **Aberto (`open`):** durante o mês, o valor é uma **prévia** recalculada a cada leitura. Os **ajustes** podem ser lançados e removidos a qualquer momento e ficam salvos no registro do mês, sem precisar fechar.
+2. **Fechar (`closed`):** o dono revisa os **ajustes** (bônus, desconto, vale adiantado) e fecha. O cálculo **congela** nas linhas, e mudanças posteriores (uma presença corrigida) não alteram o valor. Pode **reabrir** enquanto não estiver pago.
 3. **Pagar (`paid`):** exige forma de pagamento, grava `paidAt` e entra no caixa como despesa da categoria "Professores".
 4. **Desfazer pagamento** volta para `closed`, com confirmação.
 
@@ -469,7 +469,8 @@ Registrados na implementação das telas (27/09/2026):
   - com "Repetir todo mês", o vencimento precisa cair entre os dias 1 e 28.
 - **Professores:**
   - a assinatura ficou `closePayout(professionalId, competence, adjustments)`;
-  - reabrir mantém o registro como `open`, guardando os ajustes em rascunho;
+  - `saveAdjustments(professionalId, competence, adjustments)` salva os ajustes do mês aberto num registro `open` só com as linhas de ajuste (o cálculo segue ao vivo); recusa mês fechado ou pago; total negativo pode ficar salvo, quem recusa é o fechamento; cada mudança vai para a auditoria;
+  - reabrir mantém o registro como `open`, com os ajustes salvos;
   - pagar exige o mês fechado; fechar recusa mês que ainda não começou e total negativo;
   - aluno que saiu no meio do mês é atribuído pelas turmas em que esteve no mês;
   - read-models `TeacherPayTeacher`, `TeacherPayDetailSession` e `TeacherPayoutDetail` estão no service (podem subir para os contratos).

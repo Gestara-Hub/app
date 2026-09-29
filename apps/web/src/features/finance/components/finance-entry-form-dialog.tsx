@@ -332,8 +332,6 @@ function EntryForm({
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
-          createLabel="Lançar"
-          editLabel="Salvar"
           className="shrink-0 border-t border-border/40 px-6 py-4"
         />
       </form>

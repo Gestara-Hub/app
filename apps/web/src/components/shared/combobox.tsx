@@ -161,6 +161,14 @@ export function Combobox({
       <PopoverContent
         align="start"
         sideOffset={8}
+        onOpenAutoFocus={(e) => {
+          if (
+            typeof window !== "undefined" &&
+            window.matchMedia("(pointer: coarse)").matches
+          ) {
+            e.preventDefault();
+          }
+        }}
         className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>

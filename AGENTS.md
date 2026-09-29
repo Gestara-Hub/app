@@ -7,7 +7,7 @@ GestaraHub is a modern multi-tenant management platform for service businesses, 
 - **Packages**: `@gestarahub/contracts` (domain types, enums, `ApiError`) and `@gestarahub/core` (pure logic: `scheduling`, `billing`, `date`, `format`, `api-error`).
 - **Mock / Data Seam**: `@/mocks/store` (multi-tenant world persisted in `localStorage`) and `@/services/*Service.ts` simulate the future NestJS API with `simulateRead` and `simulateWrite`.
 - **Session**: mocked cookie `gestarahub_session`, route guard in `apps/web/src/proxy.ts` (Next 16), server actions in `apps/web/src/app/(auth)/actions.ts`, per-page RBAC with `requirePermission`.
-- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/` and `docs/frontend/06-decisoes-de-interface.md`.
+- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/`, UI decisions in `docs/frontend/06-decisoes-de-interface.md`, and screen/form/mobile standards in `docs/frontend/07-padroes-telas-e-ux.md`.
 
 ---
 

@@ -967,8 +967,8 @@ export function TurmaForm({
             {pending
               ? "Salvando..."
               : isEdit
-                ? "Salvar alterações"
-                : "Criar turma"}
+                ? "Salvar"
+                : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

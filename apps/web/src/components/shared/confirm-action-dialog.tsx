@@ -95,25 +95,29 @@ export interface ConfirmActionOptions {
  * `if (!(await confirm({...}))) return;`. Renderize `dialog` uma vez no componente.
  */
 export function useConfirmAction() {
+  // `open` separado das opcoes: ao fechar, as opcoes ficam ate a proxima
+  // confirmacao, para titulo, texto e botoes nao mudarem durante a animacao de saida.
   const [pending, setPending] = useState<{
     options: ConfirmActionOptions;
     resolve: (confirmed: boolean) => void;
+    open: boolean;
   } | null>(null);
 
   const confirm = useCallback(
     (options: ConfirmActionOptions) =>
-      new Promise<boolean>((resolve) => setPending({ options, resolve })),
+      new Promise<boolean>((resolve) => setPending({ options, resolve, open: true })),
     [],
   );
 
   const settle = (confirmed: boolean) => {
-    pending?.resolve(confirmed);
-    setPending(null);
+    if (!pending?.open) return;
+    pending.resolve(confirmed);
+    setPending({ ...pending, open: false });
   };
 
   const dialog = (
     <ConfirmActionDialog
-      open={pending !== null}
+      open={pending?.open ?? false}
       onOpenChange={(open) => {
         if (!open) settle(false);
       }}

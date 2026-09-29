@@ -8,6 +8,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -352,6 +353,8 @@ export function TurmasView({
   const [createdTurmaForEnroll, setCreatedTurmaForEnroll] = useState<ClassGroupView | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [deactivatingTurma, setDeactivatingTurma] = useState<ClassGroupView | null>(null);
+  // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
+  const shownDeactivatingTurma = useRetainedValue(deactivatingTurma);
 
   const deactivate = useDeactivateClassGroup();
   const reactivate = useReactivateClassGroup();
@@ -457,9 +460,9 @@ export function TurmasView({
         onOpenChange={(open) => !open && setDeactivatingTurma(null)}
         title="Desativar turma?"
         description={
-          deactivatingTurma ? (
+          shownDeactivatingTurma ? (
             <>
-              Tem certeza que deseja desativar <strong>&ldquo;{deactivatingTurma.name}&rdquo;</strong>?
+              Tem certeza que deseja desativar <strong>&ldquo;{shownDeactivatingTurma.name}&rdquo;</strong>?
               <br />
               <br />
               Isso não deletará os dados — apenas impedirá novas aulas. O histórico

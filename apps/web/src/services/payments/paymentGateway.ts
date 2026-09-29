@@ -3,6 +3,7 @@ import type {
   Id,
   RecurringAuthorization,
 } from "@gestarahub/contracts";
+import { newId } from "@/mocks/helpers";
 
 /**
  * Adaptador do provedor de pagamento (docs/technical/05, secao 6.1). Isola o
@@ -133,7 +134,7 @@ export const mockPaymentGateway: PaymentGateway = {
 
   async requestRecurringAuthorization(input) {
     return {
-      id: crypto.randomUUID(),
+      id: newId(),
       studentId: input.studentId,
       maxAmountCents: input.maxAmountCents,
       status: "pending",

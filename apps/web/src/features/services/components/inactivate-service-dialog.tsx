@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Service } from "@gestarahub/contracts";
 import { useInactivateService } from "../hooks/use-services";
@@ -15,6 +16,8 @@ export function InactivateServiceDialog({
   service,
   onOpenChange,
 }: InactivateServiceDialogProps) {
+  // Conteudo com o ultimo registro: nao some durante a animacao de saida.
+  const shown = useRetainedValue(service);
   const inactivateMut = useInactivateService();
 
   async function handleConfirm() {
@@ -36,9 +39,9 @@ export function InactivateServiceDialog({
       }}
       title="Inativar serviço?"
       description={
-        service ? (
+        shown ? (
           <>
-            “{service.name}” deixará de ser sugerido em novos agendamentos.
+            “{shown.name}” deixará de ser sugerido em novos agendamentos.
             Você pode reativá-lo depois.
           </>
         ) : null

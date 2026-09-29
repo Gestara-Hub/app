@@ -27,6 +27,7 @@ import {
 } from "@/components/shared/list";
 import { ListItemActionsMenu } from "@/components/shared/list-item-actions-menu";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -306,6 +307,8 @@ export function BillingView() {
   const { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter } =
     useBillingFilters();
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
+  // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
+  const shownChargeToCancel = useRetainedValue(chargeToCancel);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (key: string) => {
@@ -1202,18 +1205,18 @@ export function BillingView() {
         }}
         title="Cancelar cobrança"
         description={
-          chargeToCancel ? (
+          shownChargeToCancel ? (
             <>
               Deseja realmente cancelar a cobrança de{" "}
               <strong className="text-foreground">
-                {chargeToCancel.studentName}
+                {shownChargeToCancel.studentName}
               </strong>
-              {getCycleTitle(chargeToCancel) !== "Mensalidade" ? (
-                <> ({getCycleTitle(chargeToCancel)})</>
+              {getCycleTitle(shownChargeToCancel) !== "Mensalidade" ? (
+                <> ({getCycleTitle(shownChargeToCancel)})</>
               ) : null}{" "}
               no valor de{" "}
               <strong className="text-foreground">
-                {formatCents(chargeToCancel.amountCents)}
+                {formatCents(shownChargeToCancel.amountCents)}
               </strong>
               ? Essa cobrança não comporá o total a receber, mas continuará no
               histórico podendo ser revertida a qualquer momento.

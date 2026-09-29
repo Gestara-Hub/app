@@ -7,7 +7,7 @@ GestaraHub is a modern multi-tenant management platform for service businesses, 
 - **Packages**: `@gestarahub/contracts` (domain types, enums, `ApiError`) and `@gestarahub/core` (pure logic: `scheduling`, `billing`, `date`, `format`, `api-error`).
 - **Mock / Data Seam**: `@/mocks/store` (multi-tenant world persisted in `localStorage`) and `@/services/*Service.ts` simulate the future NestJS API with `simulateRead` and `simulateWrite`.
 - **Session**: mocked cookie `gestarahub_session`, route guard in `apps/web/src/proxy.ts` (Next 16), server actions in `apps/web/src/app/(auth)/actions.ts`, per-page RBAC with `requirePermission`.
-- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/` and `docs/frontend/06-decisoes-de-interface.md`.
+- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/`, UI decisions in `docs/frontend/06-decisoes-de-interface.md`, and screen/form/mobile standards in `docs/frontend/07-padroes-telas-e-ux.md`.
 
 ---
 
@@ -49,12 +49,39 @@ All user-facing texts **must be in Portuguese**:
 
 ---
 
-## 4. Verification Commands
-Before concluding any task, ensure:
+## 4. Screen, Form, Modal & Mobile UX Standards (MANDATORY)
+Read **[`docs/frontend/07-padroes-telas-e-ux.md`](docs/frontend/07-padroes-telas-e-ux.md)** before creating or editing any screen, dialog, or form. Key rules:
+- **Screen Layout (`*-view.tsx`)**:
+  - Primary creation button (`+ Nova turma`, `+ Novo lançamento`, `+ Novo aluno`) always lives in the top-right `PageHeader`, never hidden inside secondary tabs.
+  - Top KPI summary grid has a **maximum of 4 cards** (`lg:grid-cols-4`). Group secondary metrics as `sub` text rather than adding a 5th/6th card. Never `truncate` monetary values or category names.
+  - Every list screen/tab must render `SearchInput` + filters + `ListSummaryBar` (with `isLoading={isPending}`) above `ListContainer`.
+  - Every row/card must wrap with `ListItemContextMenu` (right-click) and render `ListItemActionsMenu` (`⋮`) on the right.
+- **Modal Form Structure (`Dialog` + `DialogBody` + `DialogFormFooter`)**:
+  - Header (`DialogHeader shrink-0`) and Footer (`DialogFormFooter shrink-0`) are fixed; fields scroll inside `<DialogBody className="space-y-4">`.
+  - **Footer Button Labels (STRICT)**:
+    - Create mode (`!isEdit`): **`"Adicionar"`** (pending: `"Salvando..."`)
+    - Edit mode (`isEdit`): **`"Salvar"`** (pending: `"Salvando..."`)
+    - Cancel button: **`"Cancelar"`**
+  - **No `"Ex.: ..."` in placeholders**: Use direct instructions (`"Informe o nome da modalidade"`, `"Descreva o lançamento"`). For quick examples, use clickable suggestion chips below the input.
+  - Auxiliary entity management (e.g., `+ Gerenciar categorias`) goes inline in the `SelectField` label header (`flex items-center justify-between`), opening a stacked dialog.
+- **Mobile UX (iOS Safari & Chrome)**:
+  - Inputs (`<input>`, `<textarea>`, `<CommandInput>`) must use `text-base md:text-sm` (`16px` on mobile) to prevent iOS auto-zoom.
+  - Never auto-focus inputs on touch devices (`pointer: coarse`) or when the first field is `date`/`time`.
+  - Never call `crypto.randomUUID()` directly (fails on non-HTTPS LAN `http://192.168.x.x`); use `newId()` from `@/mocks/helpers`.
+
+---
+
+## 5. Verification & Testing Workflow (USER RULE)
+- **Do NOT run automated test suites (`pnpm test`) or Playwright (`pnpm e2e` / browser automation) automatically** unless explicitly requested by the user.
+- **Workflow**: Make requested changes directly and quickly. Keep track of all changes made during the session. At the conclusion or milestone, suggest to the user whether new tests should be created or existing suites run.
+- When verification is requested or before concluding, standard commands are:
 ```bash
-pnpm --filter @gestarahub/web typecheck  # tsc --noEmit (must be 0 errors)
-pnpm --filter @gestarahub/web lint       # eslint (must be 0 errors, 0 warnings)
+pnpm --filter @gestarahub/web typecheck  # tsc --noEmit (0 errors)
+pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
+```
+- Full suites, only when the user asks:
+```bash
 pnpm test                                # billing engine (node --test) + services (Vitest)
 pnpm e2e                                 # browser flows (Playwright, system Chrome, reuses `pnpm dev`)
 ```
-- Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`. When fixing a bug, add the test that reproduces it in the same change.
+- Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`.

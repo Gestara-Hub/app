@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { UserView } from "@gestarahub/contracts";
 import { useInactivateUser } from "../hooks/use-users";
@@ -15,6 +16,8 @@ export function InactivateUserDialog({
   user,
   onOpenChange,
 }: InactivateUserDialogProps) {
+  // Conteudo com o ultimo registro: nao some durante a animacao de saida.
+  const shown = useRetainedValue(user);
   const inactivateMut = useInactivateUser();
 
   async function handleConfirm() {
@@ -36,9 +39,9 @@ export function InactivateUserDialog({
       }}
       title="Inativar usuário?"
       description={
-        user ? (
+        shown ? (
           <>
-            “{user.name}” deixará de acessar o sistema. Você pode reativá-lo
+            “{shown.name}” deixará de acessar o sistema. Você pode reativá-lo
             depois.
           </>
         ) : null

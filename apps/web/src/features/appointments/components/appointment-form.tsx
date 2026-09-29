@@ -366,8 +366,8 @@ export function AppointmentForm({
             {pending
               ? "Salvando..."
               : isEdit
-                ? "Salvar alterações"
-                : "Criar agendamento"}
+                ? "Salvar"
+                : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

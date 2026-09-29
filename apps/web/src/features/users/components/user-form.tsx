@@ -262,7 +262,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar usuário"}
+            {pending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

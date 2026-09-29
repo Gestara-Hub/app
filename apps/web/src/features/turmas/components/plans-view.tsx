@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   ListItemActionsMenu,
@@ -370,6 +371,8 @@ export function PlansView() {
   const [editing, setEditing] = useState<Plan | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inactivating, setInactivating] = useState<Plan | null>(null);
+  // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
+  const shownInactivating = useRetainedValue(inactivating);
 
   const inactivateMut = useInactivatePlan();
   const reactivateMut = useReactivatePlan();
@@ -567,9 +570,9 @@ export function PlansView() {
         onOpenChange={(open) => !open && setInactivating(null)}
         title="Inativar plano?"
         description={
-          inactivating ? (
+          shownInactivating ? (
             <>
-              O plano &ldquo;{inactivating.name}&rdquo; deixa de aparecer no
+              O plano &ldquo;{shownInactivating.name}&rdquo; deixa de aparecer no
               cadastro de novos alunos. Quem já tem este plano continua sendo
               cobrado normalmente. Você pode reativá-lo a qualquer momento.
             </>

@@ -33,7 +33,7 @@ import {
 } from "@gestarahub/core/finance";
 import { isPastSlot } from "@gestarahub/core/date";
 import { weekdayOf } from "@gestarahub/core/scheduling";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, pluralWord } from "@gestarahub/core/format";
 import { addDays, format, parseISO } from "date-fns";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import {
@@ -451,6 +451,21 @@ function normalizeAdjustments(
   return lines;
 }
 
+function formatSignedCents(cents: number): string {
+  return cents < 0 ? `− ${formatCents(-cents)}` : formatCents(cents);
+}
+
+/** Linhas de `a` que nao estao em `b` (mesma descricao e valor; conta repeticoes). */
+function lineDifference(a: TeacherPayoutLine[], b: TeacherPayoutLine[]): TeacherPayoutLine[] {
+  const rest = [...b];
+  return a.filter((line) => {
+    const i = rest.findIndex((r) => r.label === line.label && r.amountCents === line.amountCents);
+    if (i === -1) return true;
+    rest.splice(i, 1);
+    return false;
+  });
+}
+
 function findPayout(id: Id): TeacherPayout {
   const payout = store.teacherPayouts.find((p) => p.id === id);
   if (!payout) throw notFoundError("Pagamento do professor não encontrado.");
@@ -619,6 +634,77 @@ export const teacherPayService = {
         )
         .map(toDetailSession);
       return clone({ ...view, sessions, substitutedSessions });
+    });
+  },
+
+  /**
+   * Salva os ajustes do mes aberto sem fechar (registro `open` so com as linhas
+   * de ajuste; o calculo segue ao vivo). Total negativo pode ficar salvo; quem
+   * recusa e o fechamento.
+   */
+  saveAdjustments(
+    professionalId: Id,
+    competence: string,
+    adjustments: TeacherPayoutAdjustment[],
+  ): Promise<TeacherPayoutView> {
+    return simulateWrite(() => {
+      assertFeature("finance");
+      if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
+      const professional = store.professionals.find((p) => p.id === professionalId);
+      if (!professional) throw notFoundError("Professor não encontrado.");
+      const rule = ruleOf(professionalId);
+      if (!rule || !isRuleEffective(rule, competence)) {
+        throw conflict("Este professor não tem regra de pagamento vigente neste mês.");
+      }
+      const existing = payoutOf(professionalId, competence);
+      if (existing && existing.status !== "open") {
+        throw conflict("Este mês já está fechado. Reabra o mês para mudar os ajustes.");
+      }
+
+      const lines = normalizeAdjustments(adjustments);
+      const before = adjustmentLines(existing);
+      const ts = nowIso();
+      let payout: TeacherPayout;
+      if (existing) {
+        Object.assign(existing, {
+          lines,
+          totalCents: payoutTotalCents(lines),
+          dueDate: dueDateOf(rule, competence),
+          updatedAt: ts,
+        });
+        payout = existing;
+      } else {
+        payout = {
+          id: newId(),
+          organizationId: store.organization.id,
+          professionalId,
+          competence,
+          lines,
+          totalCents: payoutTotalCents(lines),
+          dueDate: dueDateOf(rule, competence),
+          status: "open",
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        store.teacherPayouts.push(payout);
+      }
+
+      const describe = (l: TeacherPayoutLine) => `"${l.label}" (${formatSignedCents(l.amountCents)})`;
+      const added = lineDifference(lines, before).map(describe);
+      const removed = lineDifference(before, lines).map(describe);
+      const parts = [
+        added.length > 0 ? `adicionou ${pluralWord(added.length, "o ajuste", "os ajustes")} ${added.join(", ")}` : "",
+        removed.length > 0 ? `removeu ${pluralWord(removed.length, "o ajuste", "os ajustes")} ${removed.join(", ")}` : "",
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        auditLogService.record({
+          action: "updated",
+          target: { type: "teacher_payout", id: payout.id, label: payoutLabel(professionalId, competence) },
+          predicate: `${parts.join(" e ")} no pagamento de ${professional.name} de ${competenceLabel(competence)}`,
+        });
+      }
+      const view = buildView(professionalId, competence, buildFacts(competence));
+      return clone(view!);
     });
   },
 

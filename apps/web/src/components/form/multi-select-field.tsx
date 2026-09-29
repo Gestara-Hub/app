@@ -222,6 +222,14 @@ export function MultiSelectField<T extends FieldValues>({
               </PopoverTrigger>
               <PopoverContent
                 align="start"
+                onOpenAutoFocus={(e) => {
+                  if (
+                    typeof window !== "undefined" &&
+                    window.matchMedia("(pointer: coarse)").matches
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
                 className="w-[var(--radix-popover-trigger-width)] p-0"
               >
                 <Command>
@@ -254,10 +262,17 @@ export function MultiSelectField<T extends FieldValues>({
                                 value={option.label}
                                 onSelect={() => {
                                   toggle(option.value);
-                                  requestAnimationFrame(() => {
-                                    inputRef.current?.focus();
-                                    inputRef.current?.select();
-                                  });
+                                  const isTouchDevice =
+                                    typeof window !== "undefined" &&
+                                    window.matchMedia("(pointer: coarse)").matches;
+                                  if (isTouchDevice) {
+                                    handleOpenChange(false);
+                                  } else {
+                                    requestAnimationFrame(() => {
+                                      inputRef.current?.focus();
+                                      inputRef.current?.select();
+                                    });
+                                  }
                                 }}
                               >
                                 <Check

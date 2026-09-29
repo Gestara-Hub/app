@@ -15,8 +15,8 @@ export interface DialogFormFooterProps {
 export function DialogFormFooter({
   isPending,
   isEdit = false,
-  createLabel = "Criar",
-  editLabel = "Salvar alterações",
+  createLabel = "Adicionar",
+  editLabel = "Salvar",
   cancelLabel = "Cancelar",
   className,
 }: DialogFormFooterProps) {

@@ -389,8 +389,8 @@ export function ProfessionalForm({
             {pending
               ? "Salvando..."
               : isEdit
-                ? "Salvar alterações"
-                : "Criar profissional"}
+                ? "Salvar"
+                : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

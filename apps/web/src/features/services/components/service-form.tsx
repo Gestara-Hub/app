@@ -191,7 +191,7 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
             </Button>
           </DialogClose>
           <Button type="submit" disabled={pending}>
-            {pending ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar serviço"}
+            {pending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>

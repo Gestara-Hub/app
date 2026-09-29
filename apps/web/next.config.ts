@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@gestarahub/contracts", "@gestarahub/core"],
   // Esconde o indicador flutuante do Next em dev.
   devIndicators: false,
+  allowedDevOrigins: ["192.168.1.2"],
 };
 
 export default nextConfig;

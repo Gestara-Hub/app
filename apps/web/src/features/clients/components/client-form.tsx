@@ -807,10 +807,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             {pending
               ? "Salvando..."
               : isEdit
-                ? "Salvar alterações"
-                : isClasses
-                  ? "Cadastrar aluno"
-                  : "Criar cliente"}
+                ? "Salvar"
+                : "Adicionar"}
           </Button>
         </DialogFooter>
       </form>
