@@ -39,7 +39,7 @@ All user-facing texts **must be in Portuguese**:
 - **Shared Primitives**:
   - List components: `@/components/shared/list` (`SearchInput`, `StatusFilterSelect`, `RecordStatusBadge`, `InitialsAvatar`, `ListContainer`, `ListRow`, `ListSummaryBar`, `ListEmptyState`, `ViewModeToggle`, `ViewModeProvider`, `ViewModeSkeleton`, `ViewModeCoachmark`, `SkeletonCards`, `useViewMode`); row menus in `@/components/shared/list-item-actions-menu` (`ListItemActionsMenu`, `ListItemContextMenu`); `ModuleEmptyGuide`, `Combobox`, `EntityManagerDialog` in `@/components/shared/*`.
   - Dialogs: `@/components/shared/confirm-action-dialog` (`useConfirmAction`, `ConfirmActionDialog`).
-  - Form helpers: `@/components/form` (`DialogFormFooter`, `InputCurrency`, `InputText`, `SelectField`, `ComboboxField`, `SegmentedChoiceField`, `SwitchField`, etc.) and `@/lib/form-errors.ts` (`handleFormApiError`).
+  - Form helpers: `@/components/form` (`DialogFormFooter`, `InputCurrency`, `InputText`, `SelectField`, `ComboboxField`, `SegmentedChoiceField`, `SwitchField`, `FileDropField` + `filesSchema` from `@/lib/files`, `PaymentMethodField`, etc.) and `@/lib/form-errors.ts` (`handleFormApiError`). Payment registration dialogs use `@/components/shared/payment-dialog` (`PaymentDialog`).
 - **Navigation**: `apps/web/src/components/layout/nav.ts` (`MAIN_NAV`, `FOOTER_NAV`, filtered by operational model and permission).
 - **Boundaries** (enforced by `apps/web/eslint.config.mjs`):
   - `@/components/ui`, `@/components/form`, `@/components/shared`, `@/lib` and `@/config` must NEVER import from `@/features` or `@/mocks`.

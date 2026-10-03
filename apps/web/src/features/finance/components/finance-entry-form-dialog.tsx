@@ -360,6 +360,17 @@ export function FinanceEntryFormDialog({
   /** Mes aberto na tela: o vencimento padrao cai nele. */
   competence: string;
 }) {
+  // Retem o lancamento enquanto o dialog anima a saida: sem isso o formulario
+  // sumia (corpo encolhia) e o titulo voltava para "Novo lancamento" no fechar.
+  // `session` muda a cada abertura para o formulario recomecar limpo.
+  const [shown, setShown] = useState({ open, entry, session: 0 });
+  if (open && (!shown.open || entry !== shown.entry)) {
+    setShown({ open, entry, session: shown.open ? shown.session : shown.session + 1 });
+  } else if (!open && shown.open) {
+    setShown({ ...shown, open: false });
+  }
+  const current = shown.entry;
+
   const today = format(new Date(), "yyyy-MM-dd");
   const defaultDueDate = today.startsWith(competence) ? today : `${competence}-10`;
 
@@ -370,22 +381,20 @@ export function FinanceEntryFormDialog({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>{entry ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
+          <DialogTitle>{current ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
           <DialogDescription>
-            {entry
+            {current
               ? "Altere os dados do lançamento. O tipo não muda depois de criado."
               : "Registre uma receita ou despesa que não vem das mensalidades."}
           </DialogDescription>
         </DialogHeader>
-        {open ? (
-          <EntryForm
-            key={entry?.id ?? "new"}
-            entry={entry}
-            defaultType={defaultType}
-            defaultDueDate={defaultDueDate}
-            onSuccess={() => onOpenChange(false)}
-          />
-        ) : null}
+        <EntryForm
+          key={`${shown.session}-${current?.id ?? "new"}`}
+          entry={current}
+          defaultType={defaultType}
+          defaultDueDate={defaultDueDate}
+          onSuccess={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );

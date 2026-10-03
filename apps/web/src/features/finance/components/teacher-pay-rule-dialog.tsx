@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -67,10 +68,10 @@ export function TeacherPayRuleDialog({ teacher: current, competence, onOpenChang
   return (
     <Dialog open={current !== null} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="pr-12">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
           <DialogTitle>
             {teacher?.rule ? "Editar pagamento" : "Configurar pagamento"}
           </DialogTitle>
@@ -153,139 +154,143 @@ function TeacherPayRuleForm({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <div className="space-y-3">
-          {fields.map((field, index) => {
-            const kind = components?.[index]?.kind ?? field.kind;
-            const base = `components.${index}` as const;
-            return (
-              <div key={field.id} className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground">Parte {index + 1}</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Remover parte ${index + 1}`}
-                    disabled={pending || fields.length === 1}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <SelectField<Values>
-                    name={`${base}.kind` as Path<Values>}
-                    id={`${base}.kind`}
-                    label="Tipo"
-                    options={KIND_OPTIONS}
-                    clearable={false}
-                    required
-                    disabled={pending}
-                    hint={KIND_HINT[kind]}
-                  />
-                  {kind === "percent_of_memberships" ? (
-                    <InputNumber<Values>
-                      name={`${base}.percent` as Path<Values>}
-                      id={`${base}.percent`}
-                      label="Porcentagem"
-                      placeholder="Ex.: 30"
-                      min={0}
-                      max={100}
-                      step={0.5}
-                      suffix="%"
+      <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          <div className="space-y-3">
+            {fields.map((field, index) => {
+              const kind = components?.[index]?.kind ?? field.kind;
+              const base = `components.${index}` as const;
+              return (
+                <div key={field.id} className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">Parte {index + 1}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Remover parte ${index + 1}`}
+                      disabled={pending || fields.length === 1}
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <SelectField<Values>
+                      name={`${base}.kind` as Path<Values>}
+                      id={`${base}.kind`}
+                      label="Tipo"
+                      options={KIND_OPTIONS}
+                      clearable={false}
                       required
                       disabled={pending}
+                      hint={KIND_HINT[kind]}
                     />
-                  ) : (
-                    <InputCurrency<Values>
-                      name={`${base}.amountCents` as Path<Values>}
-                      id={`${base}.amountCents`}
-                      label={
-                        kind === "per_session"
-                          ? "Valor por aula"
-                          : kind === "per_student"
-                            ? "Valor por aluno"
-                            : "Valor mensal"
-                      }
-                      required
-                      disabled={pending}
-                    />
-                  )}
+                    {kind === "percent_of_memberships" ? (
+                      <InputNumber<Values>
+                        name={`${base}.percent` as Path<Values>}
+                        id={`${base}.percent`}
+                        label="Porcentagem"
+                        placeholder="Ex.: 30"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        suffix="%"
+                        required
+                        disabled={pending}
+                      />
+                    ) : (
+                      <InputCurrency<Values>
+                        name={`${base}.amountCents` as Path<Values>}
+                        id={`${base}.amountCents`}
+                        label={
+                          kind === "per_session"
+                            ? "Valor por aula"
+                            : kind === "per_student"
+                              ? "Valor por aluno"
+                              : "Valor mensal"
+                        }
+                        required
+                        disabled={pending}
+                      />
+                    )}
+                  </div>
+                  {kind !== "fixed_monthly" ? (
+                    classOptions.length > 0 ? (
+                      <MultiSelectField<Values>
+                        name={`${base}.classGroupIds` as Path<Values>}
+                        id={`${base}.classGroupIds`}
+                        label="Turmas"
+                        placeholder="Todas as turmas dele"
+                        searchPlaceholder="Buscar turma..."
+                        emptyMessage="Nenhuma turma encontrada."
+                        hint="Deixe vazio para valer em todas as turmas em que ele é titular."
+                        options={classOptions}
+                        disabled={pending}
+                      />
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {kind === "per_session"
+                          ? "Ele ainda não é titular de nenhuma turma; contam só as aulas em que substituir."
+                          : "Ele ainda não é titular de nenhuma turma; esta parte fica zerada até ter alunos."}
+                      </p>
+                    )
+                  ) : null}
                 </div>
-                {kind !== "fixed_monthly" ? (
-                  classOptions.length > 0 ? (
-                    <MultiSelectField<Values>
-                      name={`${base}.classGroupIds` as Path<Values>}
-                      id={`${base}.classGroupIds`}
-                      label="Turmas"
-                      placeholder="Todas as turmas dele"
-                      searchPlaceholder="Buscar turma..."
-                      emptyMessage="Nenhuma turma encontrada."
-                      hint="Deixe vazio para valer em todas as turmas em que ele é titular."
-                      options={classOptions}
-                      disabled={pending}
-                    />
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {kind === "per_session"
-                        ? "Ele ainda não é titular de nenhuma turma; contam só as aulas em que substituir."
-                        : "Ele ainda não é titular de nenhuma turma; esta parte fica zerada até ter alunos."}
-                    </p>
-                  )
-                ) : null}
-              </div>
-            );
-          })}
-          {componentsError ? (
-            <p role="alert" className="text-sm text-destructive">
-              {componentsError}
-            </p>
+              );
+            })}
+            {componentsError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {componentsError}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => append(emptyComponent("per_session"))}
+            >
+              <Plus className="size-4" />
+              Adicionar parte
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <InputNumber<Values>
+              name="paymentDay"
+              label="Dia do pagamento"
+              hint="Dia do mês seguinte em que o pagamento vence."
+              min={1}
+              max={28}
+              required
+              disabled={pending}
+            />
+            <SelectField<Values>
+              name="startCompetence"
+              label="Vale a partir de"
+              options={competenceOptions}
+              clearable={false}
+              required
+              disabled={pending}
+            />
+          </div>
+
+          {isEdit ? (
+            <SwitchField<Values>
+              name="active"
+              label="Regra ativa"
+              hint="Desligada, o professor sai da prévia dos próximos fechamentos. Meses fechados não mudam."
+              disabled={pending}
+            />
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={pending}
-            onClick={() => append(emptyComponent("per_session"))}
-          >
-            <Plus className="size-4" />
-            Adicionar parte
-          </Button>
-        </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <InputNumber<Values>
-            name="paymentDay"
-            label="Dia do pagamento"
-            hint="Dia do mês seguinte em que o pagamento vence."
-            min={1}
-            max={28}
-            required
-            disabled={pending}
-          />
-          <SelectField<Values>
-            name="startCompetence"
-            label="Vale a partir de"
-            options={competenceOptions}
-            clearable={false}
-            required
-            disabled={pending}
-          />
-        </div>
-
-        {isEdit ? (
-          <SwitchField<Values>
-            name="active"
-            label="Regra ativa"
-            hint="Desligada, o professor sai da prévia dos próximos fechamentos. Meses fechados não mudam."
-            disabled={pending}
-          />
-        ) : null}
+        </DialogBody>
 
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
+          className="shrink-0 border-t border-border/40 px-6 py-4"
         />
       </form>
     </FormProvider>

@@ -16,10 +16,9 @@ import { LayoutGrid, List, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { VIEW_MODE_STORAGE_PREFIX } from "./view-mode-script";
 
 export type ListViewMode = "list" | "grid";
-
-export const VIEW_MODE_STORAGE_PREFIX = "gestarahub_view_mode_";
 
 const ViewModeServerContext = createContext<Record<string, ListViewMode>>({});
 
@@ -53,8 +52,6 @@ function syncAllLocalStorageViewModesToCookies() {
   }
 }
 
-const PRE_PAINT_VIEW_MODE_SCRIPT = `(function(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf("gestarahub_view_mode_")===0){var v=localStorage.getItem(k);if(v==="list"||v==="grid"){var n=k.slice(21);document.documentElement.setAttribute("data-vm-"+n,v);document.cookie=k+"="+v+"; path=/; max-age=31536000; SameSite=Lax";}}}}catch(e){}})();`;
-
 export function ViewModeProvider({
   initialModes = {},
   children,
@@ -62,15 +59,13 @@ export function ViewModeProvider({
   initialModes?: Record<string, ListViewMode>;
   children: ReactNode;
 }) {
+  // O script antes da pintura fica no root layout (PRE_PAINT_VIEW_MODE_SCRIPT).
   useEffect(() => {
     syncAllLocalStorageViewModesToCookies();
   }, []);
 
   return (
     <ViewModeServerContext.Provider value={initialModes}>
-      <script
-        dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }}
-      />
       {children}
     </ViewModeServerContext.Provider>
   );

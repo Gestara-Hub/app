@@ -6,4 +6,5 @@ export * from "./list-container";
 export * from "./list-row";
 export * from "./list-summary-bar";
 export * from "./list-empty-state";
+export * from "./view-mode-script";
 export * from "./view-mode-toggle";

@@ -29,7 +29,7 @@ const TABS: { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[]
  * So a aba ativa monta (cada uma busca os proprios dados).
  */
 export function FinanceView() {
-  const { tab, setTab, competence, shiftCompetence } = useFinanceUrlState();
+  const { tab, setTab, competence, setCompetence } = useFinanceUrlState();
   const can = useCan();
   const canManage = can("finance:manage");
   const [createOpen, setCreateOpen] = useState(false);
@@ -42,7 +42,7 @@ export function FinanceView() {
       >
         {tab !== "configuracoes" ? (
           <div className="flex flex-wrap items-center gap-2">
-            <CompetencePicker competence={competence} onShift={shiftCompetence} label="Mês" />
+            <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
             {canManage ? (
               <Button size="sm" onClick={() => setCreateOpen(true)}>
                 <Plus className="size-4" />

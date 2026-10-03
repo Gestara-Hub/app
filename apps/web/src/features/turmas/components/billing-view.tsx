@@ -24,6 +24,8 @@ import {
   InitialsAvatar,
   ListContainer,
   ListRow,
+  ListSummaryBar,
+  SearchInput,
 } from "@/components/shared/list";
 import { ListItemActionsMenu } from "@/components/shared/list-item-actions-menu";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
@@ -32,6 +34,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { paymentMethodLabel } from "@/lib/labels";
+import { normalizeText } from "@/lib/text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -307,6 +310,7 @@ export function BillingView() {
   const { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter } =
     useBillingFilters();
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
+  const [search, setSearch] = useState("");
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
   const shownChargeToCancel = useRetainedValue(chargeToCancel);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
@@ -359,10 +363,20 @@ export function BillingView() {
   };
 
   const list = charges ?? [];
-  // O status filtra so a lista; os cartoes seguem mostrando o mes inteiro.
-  const groups = groupCharges(
-    statusFilter === "all" ? list : list.filter((c) => c.status === statusFilter),
+  // Status e busca filtram so a lista; os cartoes seguem mostrando o mes inteiro.
+  const query = normalizeText(search);
+  const filteredList = list.filter(
+    (c) =>
+      (statusFilter === "all" || c.status === statusFilter) &&
+      (query === "" || normalizeText(c.studentName).includes(query)),
   );
+  const groups = groupCharges(filteredList);
+  const hasListFilters = statusFilter !== "all" || kindFilter !== "all" || query !== "";
+  const clearListFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setKindFilter("all");
+  };
 
   const activeList = list.filter((c) => c.status !== "canceled");
   const activeTotalCents = activeList.reduce((s, c) => s + c.amountCents, 0);
@@ -720,6 +734,14 @@ export function BillingView() {
             </div>
           </div>
 
+          {/* Busca por aluno */}
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar aluno..."
+            aria-label="Buscar aluno"
+          />
+
           {/* Filters Bar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
@@ -817,6 +839,15 @@ export function BillingView() {
             </div>
           </div>
 
+          <ListSummaryBar
+            count={filteredList.length}
+            singularLabel="cobrança"
+            pluralLabel="cobranças"
+            isLoading={isLoading}
+            hasFilters={hasListFilters}
+            onClearFilters={clearListFilters}
+          />
+
           {/* List */}
           <ListContainer
             emptyState={
@@ -834,10 +865,12 @@ export function BillingView() {
               ) : !isLoading && groups.length === 0 && list.length > 0 ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Nenhuma cobrança com esta situação no mês.
+                    {query !== ""
+                      ? `Nenhuma cobrança de “${search.trim()}” com estes filtros no mês.`
+                      : "Nenhuma cobrança com esta situação no mês."}
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => setStatusFilter("all")}>
-                    Ver todas
+                  <Button variant="outline" size="sm" onClick={clearListFilters}>
+                    Limpar filtros
                   </Button>
                 </div>
               ) : !isLoading && groups.length === 0 ? (

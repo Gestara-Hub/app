@@ -47,11 +47,20 @@ export function FieldShell({
 }: FieldShellProps) {
   const form = useFormContext();
   const isDirty = Boolean(form?.formState?.isDirty);
-  const setDialogDirty = useDialogDirty();
+  const dirtyRegistry = useDialogDirty();
+  // O formulario (control do RHF) e a chave: ao desmontar, sai do registro do
+  // dialog e deixa de contar como alteracao pendente.
+  const source = form?.control;
 
   useEffect(() => {
-    setDialogDirty?.(isDirty);
-  }, [isDirty, setDialogDirty]);
+    if (!dirtyRegistry || !source) return;
+    dirtyRegistry.mount(source);
+    return () => dirtyRegistry.unmount(source);
+  }, [dirtyRegistry, source]);
+
+  useEffect(() => {
+    if (dirtyRegistry && source) dirtyRegistry.update(source, isDirty);
+  }, [dirtyRegistry, source, isDirty]);
 
   return (
     <div className={cn("space-y-1.5", className)}>

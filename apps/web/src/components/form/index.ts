@@ -18,6 +18,8 @@ export {
   SegmentedChoiceField,
   type SegmentedChoiceOption,
 } from "./segmented-choice-field";
+export { FileDropField, FileDropzone, type FileDropzoneProps } from "./file-drop-field";
+export { PaymentMethodField } from "./payment-method-field";
 export { DialogFormFooter } from "./dialog-form-footer";
 export { AddressFields } from "./address-fields";
 export { CollapsibleSection } from "./collapsible-section";

@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -150,8 +151,16 @@ export function FinanceEntriesTab({
   const can = useCan();
   const canManage = can("finance:manage");
 
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  // Filtro inicial vindo de um link (ex.: "Ver contas atrasadas" do Resumo).
+  const searchParams = useSearchParams();
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => {
+    const value = searchParams.get("type");
+    return value === "income" || value === "expense" ? value : "all";
+  });
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const value = searchParams.get("status") as StatusFilter | null;
+    return value && STATUS_FILTERS.includes(value) ? value : "all";
+  });
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 

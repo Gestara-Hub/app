@@ -350,8 +350,11 @@ Rota nova `/finance` (menu **"Financeiro"**, ícone de carteira, depois de "Mens
 
 ### 7.1 Resumo (`?tab=resumo`, padrão)
 - **Seletor de mês** (competência), igual ao de Mensalidades.
-- **Cartões:** Entrou, Saiu, **Resultado do mês** (entrou − saiu), A receber (previsto de entradas), A pagar (previsto de saídas), **Atrasado** (entradas vencidas não pagas, com link para Mensalidades filtrada).
-- **Gráfico** entradas × saídas dos últimos 6 meses (barras), com a linha do resultado.
+- **Cartões (4):**
+  - **Entrou** e **Saiu** no mês, com a variação contra o mês anterior ("↑ 12% vs set"; sem valor no mês anterior não mostra) e o que está em aberto como subtexto (a receber / a pagar);
+  - **Resultado do mês** (entrou − saiu) e, havendo algo em aberto, o **previsto** "com o que está em aberto" (resultado + a receber − a pagar do mês);
+  - **Em atraso** com os dois lados: a receber (cobranças vencidas, link para Mensalidades filtrada) e a pagar (contas e professores vencidos, link para Lançamentos com `?type=expense&status=overdue`).
+- **Gráfico** entradas × saídas dos últimos 6 meses (barras), com a linha do resultado e o eixo Y com valores. Começa no primeiro mês com movimento (meses zerados no início não aparecem).
 - **Por categoria:** entradas e saídas agrupadas, com percentual.
 - **Próximos vencimentos** (7 dias): contas a pagar e pagamentos de professores.
 
@@ -364,7 +367,7 @@ Rota nova `/finance` (menu **"Financeiro"**, ícone de carteira, depois de "Mens
 ### 7.3 Professores (`?tab=professores`)
 - Lista dos professores com a regra resumida ("Fixo R$ 800 + 30% das mensalidades") e o **valor do mês** (prévia, fechado ou pago).
 - **Configurar pagamento** (por professor): editor de partes (adicionar parte → tipo → valor ou %, turmas opcionais), dia de pagamento, vigência.
-- **Detalhe do mês** (por professor): as linhas do cálculo com quantidades ("16 aulas dadas", "25 alunos ativos", "40% de R$ 3.000"), a lista das aulas contadas (incluindo substituições), ajustes, e os botões Fechar, Reabrir, Pagar.
+- **Detalhe do mês** (por professor): as etapas (Prévia → Fechado → Pago) com o próximo passo, as linhas do cálculo com quantidades ("16 aulas dadas", "25 alunos ativos", "40% de R$ 3.000"), a lista das aulas contadas (incluindo substituições), as aulas ainda previstas no mês, ajustes, e uma ação principal por etapa (Fechar mês ou Pagar; Reabrir e Desfazer pagamento em "Mais ações"). Fechar o mês corrente avisa que o que acontecer até o último dia fica de fora.
 
 ### 7.4 Configurações
 - **Categorias financeiras:** gerenciar em `EntityManagerDialog` (criar, renomear, inativar; as de sistema ficam travadas).
@@ -408,6 +411,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 - Conciliação bancária e importação de extrato (OFX).
 - Várias contas ou caixas (tudo em um caixa único).
 - Nota fiscal.
+- **Guardar comprovantes de pagamento.** Os três diálogos de registrar pagamento (mensalidade, lançamento, professor; `PaymentDialog`) já têm o campo "Comprovante (opcional)" (`FileDropField`, imagem ou PDF, até 10 MB cada, no máximo 5; regras em `RECEIPT_FILE_RULES`), validado pelo RHF + Zod. Os arquivos **não são enviados**: o mock recebe só a forma de pagamento. Na fase de backend: upload para storage compatível com S3 com link assinado (nunca público), metadados do anexo (nome, MIME, tamanho, quem enviou, quando) ligados à cobrança, ao lançamento ou ao pagamento do professor, visualização só com `finance:view` e prazo de retenção por LGPD (comprovante pode ter CPF e dados bancários).
 - Exportação e relatórios (vão para o módulo **Relatórios**, que lê estes dados).
 - Envio automático de mensagens de cobrança (vai para o módulo **Comunicação**).
 - Financeiro para os modelos de agendamento e encomenda (contratos já neutros; telas depois).
@@ -471,6 +475,7 @@ Registrados na implementação das telas (27/09/2026):
   - a assinatura ficou `closePayout(professionalId, competence, adjustments)`;
   - `saveAdjustments(professionalId, competence, adjustments)` salva os ajustes do mês aberto num registro `open` só com as linhas de ajuste (o cálculo segue ao vivo); recusa mês fechado ou pago; total negativo pode ficar salvo, quem recusa é o fechamento; cada mudança vai para a auditoria;
   - reabrir mantém o registro como `open`, com os ajustes salvos;
+  - `TeacherPayoutDetail.upcomingSessions` traz as aulas do professor que ainda não terminaram na competência (só para o detalhe; não entram no cálculo);
   - pagar exige o mês fechado; fechar recusa mês que ainda não começou e total negativo;
   - aluno que saiu no meio do mês é atribuído pelas turmas em que esteve no mês;
   - read-models `TeacherPayTeacher`, `TeacherPayDetailSession` e `TeacherPayoutDetail` estão no service (podem subir para os contratos).

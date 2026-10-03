@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
+import { addDays, endOfMonth, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   Lock,
   MoreVertical,
@@ -19,7 +20,11 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { PaymentMethod, TeacherPayoutAdjustment } from "@gestarahub/contracts";
+import type {
+  PaymentMethod,
+  TeacherPayoutAdjustment,
+  TeacherPayoutStatus,
+} from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, formatDateTime, plural } from "@gestarahub/core/format";
 import { InputCurrency, InputText, SelectField } from "@/components/form";
@@ -28,6 +33,7 @@ import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -99,7 +105,7 @@ export function TeacherPayoutDetailDialog({
   return (
     <Dialog open={professionalId !== null} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+        className="flex max-h-[88vh] flex-col overflow-hidden p-0 sm:max-w-lg"
         showCloseButton={false}
         // Nao fecha por clique fora: evita perder o ajuste sendo digitado.
         onInteractOutside={(event) => event.preventDefault()}
@@ -107,7 +113,7 @@ export function TeacherPayoutDetailDialog({
         {isLoading ? (
           <DetailSkeleton />
         ) : isError || !data ? (
-          <>
+          <div className="space-y-4 p-6">
             <DialogHeader>
               <DialogTitle>Pagamento do mês</DialogTitle>
               <DialogDescription>Não foi possível carregar o pagamento deste mês.</DialogDescription>
@@ -118,7 +124,7 @@ export function TeacherPayoutDetailDialog({
               </DialogClose>
               <Button onClick={() => void refetch()}>Tentar novamente</Button>
             </div>
-          </>
+          </div>
         ) : (
           <DetailContent
             // Remonta (fecha o formulario de ajuste) quando o status muda.
@@ -126,7 +132,6 @@ export function TeacherPayoutDetailDialog({
             data={data}
             canManage={canManage}
             onConfigure={onConfigure}
-            onClose={() => onOpenChange(false)}
           />
         )}
       </DialogContent>
@@ -136,7 +141,7 @@ export function TeacherPayoutDetailDialog({
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true">
+    <div className="space-y-4 p-6" aria-busy="true">
       <DialogTitle className="sr-only">Carregando pagamento</DialogTitle>
       <div className="flex items-center gap-3">
         <Skeleton className="size-11 rounded-full" />
@@ -154,12 +159,10 @@ function DetailContent({
   data,
   canManage,
   onConfigure,
-  onClose,
 }: {
   data: TeacherPayoutDetail;
   canManage: boolean;
   onConfigure: (professionalId: string) => void;
-  onClose: () => void;
 }) {
   const closeMut = useCloseTeacherPayout();
   const reopenMut = useReopenTeacherPayout();
@@ -190,6 +193,12 @@ function DetailContent({
   const negative = isOpen && rawTotal < 0;
   // Mes que ainda nao comecou nao pode ser fechado (o service tambem recusa).
   const future = data.competence > currentCompetence();
+  // Mes corrente: fechar agora deixa de fora o que ainda acontece ate o ultimo dia.
+  const running = data.competence === currentCompetence();
+  const monthEnd = endOfMonth(parseISO(`${data.competence}-01`));
+  const lastDayLabel = format(monthEnd, "dd/MM");
+  const nextMonthStartLabel = format(addDays(monthEnd, 1), "dd/MM");
+  const upcomingCount = data.upcomingSessions.length;
   const shownTotal = Math.max(0, rawTotal);
 
   const saveAdjustments = async (next: TeacherPayoutAdjustment[], success: string) => {
@@ -224,9 +233,26 @@ function DetailContent({
   };
 
   const closeMonth = async () => {
+    const frozen = `O pagamento de ${data.professionalName} fica congelado em ${formatCents(shownTotal)}${adjustments.length > 0 ? `, com ${plural(adjustments.length, "ajuste", "ajustes")}` : ""}. Correções posteriores de aulas ou matrículas não mudam o valor; para recalcular, reabra o mês.`;
     const ok = await confirm({
       title: `Fechar ${monthLabel}?`,
-      description: `O pagamento de ${data.professionalName} fica congelado em ${formatCents(shownTotal)}${adjustments.length > 0 ? `, com ${plural(adjustments.length, "ajuste", "ajustes")}` : ""}. Correções posteriores de aulas ou matrículas não mudam o valor; para recalcular, reabra o mês.`,
+      description: running ? (
+        <>
+          <span className="mb-2 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-foreground">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span>
+              {monthLabel} ainda não terminou.{" "}
+              {upcomingCount > 0
+                ? `${plural(upcomingCount, "aula prevista", "aulas previstas")} até ${lastDayLabel} ${upcomingCount === 1 ? "fica" : "ficam"} de fora`
+                : `O que acontecer até ${lastDayLabel} fica de fora`}
+              , assim como matrículas e mensalidades pagas até lá.
+            </span>
+          </span>
+          {frozen}
+        </>
+      ) : (
+        frozen
+      ),
       confirmLabel: "Fechar mês",
       variant: "default",
     });
@@ -290,9 +316,11 @@ function DetailContent({
 
   const hasMenu = canManage && (data.status === "closed" || data.status === "paid" || Boolean(data.rule));
 
+  const hasFooter = canManage && (isOpen || data.status === "closed");
+
   return (
     <>
-      <DialogHeader>
+      <DialogHeader className="shrink-0 p-6 pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <InitialsAvatar name={data.professionalName} className="size-11" />
@@ -343,7 +371,20 @@ function DetailContent({
         </div>
       </DialogHeader>
 
-      <div className="space-y-5 py-1">
+      <DialogBody className="space-y-5" scrollCueLabel="Mais detalhes abaixo">
+        {/* Etapas do mes + o que fazer agora. */}
+        <PayoutSteps status={data.status} />
+        {canManage ? (
+          <NextStepHint
+            status={data.status}
+            future={future}
+            running={running}
+            monthLabel={monthLabel}
+            nextMonthStartLabel={nextMonthStartLabel}
+            dueDate={data.dueDate}
+          />
+        ) : null}
+
         {/* Hero: valor do mes + vencimento e regra. */}
         <div className="rounded-lg border bg-muted/30 p-4">
           <p className="text-xs font-medium text-muted-foreground">
@@ -454,6 +495,13 @@ function DetailContent({
           sessions={data.sessions}
           highlightSubstitute
         />
+        {isOpen && upcomingCount > 0 ? (
+          <SessionsSection
+            title={`Aulas previstas até ${lastDayLabel} (entram quando acontecerem)`}
+            sessions={data.upcomingSessions}
+            muted
+          />
+        ) : null}
         {data.substitutedSessions.length > 0 ? (
           <SessionsSection
             title="Aulas dele dadas por substituto (não contam)"
@@ -461,29 +509,28 @@ function DetailContent({
             muted
           />
         ) : null}
-      </div>
+      </DialogBody>
 
-      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" disabled={pending} onClick={onClose}>
-          Fechar
-        </Button>
-        {canManage && isOpen ? (
-          <Button
-            disabled={pending || negative || future}
-            title={future ? "Este mês ainda não começou." : undefined}
-            onClick={() => void closeMonth()}
-          >
-            <CheckCircle2 className="size-4" />
-            Fechar mês
-          </Button>
-        ) : null}
-        {canManage && data.status === "closed" ? (
-          <Button disabled={pending} onClick={() => setPayOpen(true)}>
-            <Wallet className="size-4" />
-            Pagar
-          </Button>
-        ) : null}
-      </div>
+      {/* Uma acao principal por etapa; fechar o modal fica no X do cabecalho. */}
+      {hasFooter ? (
+        <div className="flex shrink-0 flex-col gap-2 border-t border-border/40 bg-background p-6 pt-4 sm:flex-row sm:justify-end">
+          {isOpen ? (
+            <Button
+              disabled={pending || negative || future}
+              title={future ? "Este mês ainda não começou." : undefined}
+              onClick={() => void closeMonth()}
+            >
+              <CheckCircle2 className="size-4" />
+              Fechar mês
+            </Button>
+          ) : (
+            <Button disabled={pending} onClick={() => setPayOpen(true)}>
+              <Wallet className="size-4" />
+              Pagar
+            </Button>
+          )}
+        </div>
+      ) : null}
 
       {confirmDialog}
       <TeacherPayoutPayDialog
@@ -497,6 +544,90 @@ function DetailContent({
       />
     </>
   );
+}
+
+const STEPS: { status: Exclude<TeacherPayoutStatus, "canceled">; label: string }[] = [
+  { status: "open", label: "Prévia" },
+  { status: "closed", label: "Fechado" },
+  { status: "paid", label: "Pago" },
+];
+
+/** Prévia → Fechado → Pago, com a etapa atual marcada. */
+function PayoutSteps({ status }: { status: TeacherPayoutStatus }) {
+  const currentIndex = STEPS.findIndex((s) => s.status === status);
+  return (
+    <ol className="flex items-center gap-2" aria-label="Etapas do pagamento">
+      {STEPS.map((step, i) => {
+        const done = i < currentIndex || status === "paid";
+        const current = i === currentIndex && status !== "paid";
+        return (
+          <li key={step.status} className="flex flex-1 items-center gap-2 last:flex-none">
+            <span
+              aria-current={current ? "step" : undefined}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap",
+                done ? "text-success" : current ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-flex size-5 items-center justify-center rounded-full border text-[11px] tabular-nums",
+                  done
+                    ? "border-success/40 bg-success/10"
+                    : current
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border",
+                )}
+              >
+                {done ? <Check className="size-3" /> : i + 1}
+              </span>
+              {step.label}
+            </span>
+            {i < STEPS.length - 1 ? (
+              <span
+                aria-hidden
+                className={cn("h-px flex-1", i < currentIndex ? "bg-success/40" : "bg-border")}
+              />
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** O que fazer agora na etapa do mes (so para quem gerencia). */
+function NextStepHint({
+  status,
+  future,
+  running,
+  monthLabel,
+  nextMonthStartLabel,
+  dueDate,
+}: {
+  status: TeacherPayoutStatus;
+  future: boolean;
+  running: boolean;
+  monthLabel: string;
+  nextMonthStartLabel: string;
+  dueDate: string;
+}) {
+  let text: string;
+  if (status === "paid") {
+    text = "Mês concluído. Para corrigir, desfaça o pagamento em Mais ações.";
+  } else if (status === "closed") {
+    const overdue = dueDate < format(new Date(), "yyyy-MM-dd");
+    text = overdue
+      ? `Valor congelado. O pagamento venceu em ${fullDate(dueDate)}; registre em Pagar.`
+      : `Valor congelado. Registre o pagamento em Pagar até ${fullDate(dueDate)}.`;
+  } else if (future) {
+    text = `${monthLabel} ainda não começou. A prévia se forma conforme as aulas acontecem.`;
+  } else if (running) {
+    text = `${monthLabel} está em andamento. Feche a partir de ${nextMonthStartLabel} para contar o mês inteiro; o fechamento libera o pagamento.`;
+  } else {
+    text = "Revise as aulas e os ajustes e feche o mês. O fechamento congela o valor e libera o pagamento.";
+  }
+  return <p className="-mt-2 text-sm text-muted-foreground">{text}</p>;
 }
 
 function SessionsSection({
@@ -520,7 +651,7 @@ function SessionsSection({
       {sessions.length === 0 ? (
         <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
-        <ul className={cn("max-h-60 divide-y overflow-y-auto rounded-lg border", muted && "opacity-80")}>
+        <ul className={cn("divide-y rounded-lg border", muted && "opacity-80")}>
           {sessions.map((s) => {
             const asSubstitute = s.instructorId !== s.primaryInstructorId;
             return (

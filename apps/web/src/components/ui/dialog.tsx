@@ -31,9 +31,19 @@ const DialogExpandedContext = React.createContext<DialogExpandedContextValue>({
 
 const useDialogExpanded = () => React.useContext(DialogExpandedContext)
 
-const DialogDirtyContext = React.createContext<((dirty: boolean) => void) | null>(
-  null
-)
+/**
+ * Registro de formularios sujos dentro do dialog. Cada formulario (chave =
+ * `control` do RHF) entra ao montar e sai ao desmontar, assim um subformulario
+ * que fecha (ex.: "Adicionar ajuste" salvo ou cancelado) nao deixa o dialog
+ * pedindo "Descartar alteracoes?".
+ */
+export interface DialogDirtyRegistry {
+  mount: (source: object) => void
+  unmount: (source: object) => void
+  update: (source: object, dirty: boolean) => void
+}
+
+const DialogDirtyContext = React.createContext<DialogDirtyRegistry | null>(null)
 
 export const useDialogDirty = () => React.useContext(DialogDirtyContext)
 
@@ -45,9 +55,37 @@ function Dialog({
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   const [dirty, setDirty] = React.useState(false)
   const [confirmDiscard, setConfirmDiscard] = React.useState(false)
+  // Por formulario: quantos campos montados e se esta sujo.
+  const sourcesRef = React.useRef(new Map<object, { fields: number; dirty: boolean }>())
+
+  const registry = React.useMemo<DialogDirtyRegistry>(() => {
+    const recompute = () =>
+      setDirty([...sourcesRef.current.values()].some((s) => s.dirty))
+    return {
+      mount(source) {
+        const entry = sourcesRef.current.get(source)
+        if (entry) entry.fields += 1
+        else sourcesRef.current.set(source, { fields: 1, dirty: false })
+      },
+      unmount(source) {
+        const entry = sourcesRef.current.get(source)
+        if (!entry) return
+        entry.fields -= 1
+        if (entry.fields <= 0) sourcesRef.current.delete(source)
+        recompute()
+      },
+      update(source, isDirty) {
+        const entry = sourcesRef.current.get(source)
+        if (!entry || entry.dirty === isDirty) return
+        entry.dirty = isDirty
+        recompute()
+      },
+    }
+  }, [])
 
   React.useEffect(() => {
     if (!open) {
+      for (const entry of sourcesRef.current.values()) entry.dirty = false
       setDirty(false)
       setConfirmDiscard(false)
     }
@@ -68,13 +106,14 @@ function Dialog({
   )
 
   const handleConfirmDiscard = React.useCallback(() => {
+    for (const entry of sourcesRef.current.values()) entry.dirty = false
     setDirty(false)
     setConfirmDiscard(false)
     onOpenChange?.(false)
   }, [onOpenChange])
 
   return (
-    <DialogDirtyContext.Provider value={setDirty}>
+    <DialogDirtyContext.Provider value={registry}>
       <DialogPrimitive.Root
         data-slot="dialog"
         open={open}

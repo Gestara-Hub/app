@@ -32,9 +32,18 @@ export function competenceShortLabel(competence: string): string {
   return format(parseISO(`${competence}-01`), "MMM/yy", { locale: ptBR });
 }
 
-/** Link da rota do Financeiro numa aba (mantem a competencia, se houver). */
-export function financeHref(tab: FinanceTab, competence?: string): string {
+/**
+ * Link da rota do Financeiro numa aba (mantem a competencia, se houver).
+ * `type`/`status` abrem Lancamentos ja filtrado (lidos so ao montar a aba).
+ */
+export function financeHref(
+  tab: FinanceTab,
+  competence?: string,
+  filter?: { type?: "income" | "expense"; status?: "paid" | "pending" | "overdue" | "canceled" },
+): string {
   const params = new URLSearchParams({ tab });
   if (competence) params.set("month", competence);
+  if (filter?.type) params.set("type", filter.type);
+  if (filter?.status) params.set("status", filter.status);
   return `/finance?${params.toString()}`;
 }

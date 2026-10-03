@@ -20,6 +20,7 @@ import type {
   FinanceUpcomingItem,
   FinancialEntryType,
 } from "@gestarahub/contracts";
+import { addCompetence } from "@gestarahub/core/finance";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ import {
   useFinanceUpcoming,
 } from "../hooks/use-finance";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
-import { competenceLabel } from "../lib";
+import { competenceLabel, competenceShortLabel, financeHref } from "../lib";
 import { billingHref, fullDate, shortDate } from "../finance-ui";
 import { FinanceCashFlowChart } from "./finance-cash-flow-chart";
 
@@ -80,17 +81,23 @@ function RetryBlock({ message, onRetry }: { message: string; onRetry: () => void
 function KpiCard({
   label,
   value,
+  valueAddon,
   hint,
   icon,
   tone = "neutral",
   footer,
+  children,
 }: {
   label: string;
-  value: string;
-  hint?: string;
+  value?: string;
+  /** Ao lado do valor (ex.: comparacao com o mes anterior). */
+  valueAddon?: ReactNode;
+  hint?: ReactNode;
   icon: ReactNode;
   tone?: "neutral" | "success" | "destructive" | "warning";
   footer?: ReactNode;
+  /** Corpo proprio no lugar de valor + hint. */
+  children?: ReactNode;
 }) {
   return (
     <div
@@ -115,29 +122,120 @@ function KpiCard({
         </div>
       </div>
       <div className="mt-2">
-        <div
-          className={cn(
-            "text-xl font-bold tabular-nums sm:text-2xl",
-            tone === "destructive" ? "text-destructive" : "text-foreground",
-          )}
-        >
-          {value}
-        </div>
-        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+        {children ?? (
+          <>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span
+                className={cn(
+                  "text-xl font-bold tabular-nums sm:text-2xl",
+                  tone === "destructive" ? "text-destructive" : "text-foreground",
+                )}
+              >
+                {value}
+              </span>
+              {valueAddon}
+            </div>
+            {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+          </>
+        )}
         {footer}
       </div>
     </div>
   );
 }
 
-function KpiCards({ summary }: { summary: FinanceSummary }) {
+/**
+ * Variacao contra o mes anterior ("↑ 12% vs set"). Sem base (mes anterior
+ * zerado) nao mostra nada. `upIsGood` decide a cor (entradas sim, saidas nao).
+ */
+function MonthDelta({
+  current,
+  previous,
+  previousCompetence,
+  upIsGood,
+}: {
+  current: number;
+  previous: number | undefined;
+  previousCompetence: string;
+  upIsGood: boolean;
+}) {
+  if (previous === undefined || previous <= 0) return null;
+  const pct = Math.round(((current - previous) / previous) * 100);
+  const month = competenceShortLabel(previousCompetence).split("/")[0];
+  const good = pct === 0 ? null : pct > 0 === upIsGood;
+  return (
+    <span
+      className={cn(
+        "text-xs font-medium tabular-nums whitespace-nowrap",
+        good === null ? "text-muted-foreground" : good ? "text-success" : "text-destructive",
+      )}
+      title={`${competenceLabel(previousCompetence)}: ${formatCents(previous)}`}
+    >
+      {pct === 0 ? "=" : pct > 0 ? "↑" : "↓"} {Math.abs(pct)}% vs {month}
+    </span>
+  );
+}
+
+function OverdueRow({
+  label,
+  cents,
+  href,
+  linkLabel,
+}: {
+  label: string;
+  cents: number;
+  href: string;
+  linkLabel: string;
+}) {
+  const has = cents > 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span
+          className={cn(
+            "text-base font-bold tabular-nums sm:text-lg",
+            has ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {formatCents(cents)}
+        </span>
+      </div>
+      {has ? (
+        <Link
+          href={href}
+          className="inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-medium text-primary hover:underline"
+        >
+          {linkLabel}
+          <ChevronRight className="size-3.5 shrink-0" />
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function KpiCards({ summary, series }: { summary: FinanceSummary; series?: FinanceMonthPoint[] }) {
   const negative = summary.resultCents < 0;
-  const hasOverdue = summary.incomeOverdueCents > 0;
+  const hasOpen = summary.incomeForecastCents > 0 || summary.expenseForecastCents > 0;
+  // Resultado se tudo que vence no mes e esta em aberto for pago.
+  const projected = summary.resultCents + summary.incomeForecastCents - summary.expenseForecastCents;
+  const hasOverdue = summary.incomeOverdueCents > 0 || summary.expenseOverdueCents > 0;
+  const previousCompetence = addCompetence(summary.competence, -1);
+  const previous = series?.find((p) => p.competence === previousCompetence);
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <KpiCard
         label="Entrou no mês"
         value={formatCents(summary.incomePaidCents)}
+        valueAddon={
+          <MonthDelta
+            current={summary.incomePaidCents}
+            previous={previous?.incomeCents}
+            previousCompetence={previousCompetence}
+            upIsGood
+          />
+        }
         hint={
           summary.incomeForecastCents > 0
             ? `A receber em aberto: ${formatCents(summary.incomeForecastCents)}`
@@ -149,41 +247,66 @@ function KpiCards({ summary }: { summary: FinanceSummary }) {
       <KpiCard
         label="Saiu no mês"
         value={formatCents(summary.expensePaidCents)}
+        valueAddon={
+          <MonthDelta
+            current={summary.expensePaidCents}
+            previous={previous?.expenseCents}
+            previousCompetence={previousCompetence}
+            upIsGood={false}
+          />
+        }
         hint={
-          summary.expenseOverdueCents > 0
-            ? `${formatCents(summary.expenseOverdueCents)} em contas vencidas`
-            : summary.expenseForecastCents > 0
-              ? `A pagar em aberto: ${formatCents(summary.expenseForecastCents)}`
-              : "Nenhuma conta pendente no mês"
+          summary.expenseForecastCents > 0
+            ? `A pagar em aberto: ${formatCents(summary.expenseForecastCents)}`
+            : "Nenhuma conta pendente no mês"
         }
         icon={<ArrowUpCircle className="size-4" />}
-        tone={summary.expenseOverdueCents > 0 ? "warning" : "neutral"}
       />
       <KpiCard
         label="Resultado do mês"
         value={formatCents(summary.resultCents)}
-        hint={negative ? "Saiu mais do que entrou" : "Saldo líquido (entrou − saiu)"}
+        hint={
+          hasOpen ? (
+            <>
+              Com o que está em aberto:{" "}
+              <span
+                className={cn(
+                  "font-semibold tabular-nums",
+                  projected < 0 ? "text-destructive" : "text-foreground",
+                )}
+              >
+                {formatCents(projected)}
+              </span>
+            </>
+          ) : negative ? (
+            "Saiu mais do que entrou"
+          ) : (
+            "Saldo líquido (entrou − saiu)"
+          )
+        }
         icon={<Scale className="size-4" />}
         tone={negative ? "destructive" : "success"}
       />
       <KpiCard
         label="Em atraso"
-        value={formatCents(summary.incomeOverdueCents)}
-        hint={hasOverdue ? "Entradas vencidas no mês" : "Nenhuma cobrança vencida"}
         icon={<AlertCircle className="size-4" />}
         tone={hasOverdue ? "destructive" : "neutral"}
-        footer={
-          hasOverdue ? (
-            <Link
-              href={billingHref(summary.competence, { status: "overdue" })}
-              className="mt-1 inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-medium text-primary hover:underline"
-            >
-              Ver cobranças atrasadas
-              <ChevronRight className="size-3.5 shrink-0" />
-            </Link>
-          ) : null
-        }
-      />
+      >
+        <div className="space-y-1.5">
+          <OverdueRow
+            label="A receber"
+            cents={summary.incomeOverdueCents}
+            href={billingHref(summary.competence, { status: "overdue" })}
+            linkLabel="Ver cobranças atrasadas"
+          />
+          <OverdueRow
+            label="A pagar"
+            cents={summary.expenseOverdueCents}
+            href={financeHref("lancamentos", summary.competence, { type: "expense", status: "overdue" })}
+            linkLabel="Ver contas atrasadas"
+          />
+        </div>
+      </KpiCard>
     </div>
   );
 }
@@ -218,11 +341,19 @@ function SeriesPanel({
   isError: boolean;
   onRetry: () => void;
 }) {
-  const empty = (points ?? []).every((p) => p.incomeCents === 0 && p.expenseCents === 0);
+  const all = points ?? [];
+  const empty = all.every((p) => p.incomeCents === 0 && p.expenseCents === 0);
+  // Comeca no primeiro mes com movimento: meses zerados no inicio so ocupavam espaco.
+  const firstWithData = all.findIndex((p) => p.incomeCents > 0 || p.expenseCents > 0);
+  const shown = firstWithData > 0 ? all.slice(firstWithData) : all;
   return (
     <Panel
       title="Entradas × saídas"
-      description={`Pago nos últimos ${SERIES_MONTHS} meses, com o resultado de cada mês.`}
+      description={
+        shown.length > 1 && shown.length < all.length
+          ? `Pago desde ${competenceLabel(shown[0].competence).toLowerCase()}, com o resultado de cada mês.`
+          : `Pago nos últimos ${SERIES_MONTHS} meses, com o resultado de cada mês.`
+      }
       className="lg:col-span-3"
     >
       {isPending ? (
@@ -234,7 +365,7 @@ function SeriesPanel({
           Nenhum valor pago nos últimos {SERIES_MONTHS} meses.
         </p>
       ) : (
-        <FinanceCashFlowChart points={points ?? []} />
+        <FinanceCashFlowChart points={shown} />
       )}
     </Panel>
   );
@@ -487,7 +618,7 @@ export function FinanceSummaryTab({
 
   return (
     <div className="space-y-4">
-      {s ? <KpiCards summary={s} /> : <KpiSkeleton />}
+      {s ? <KpiCards summary={s} series={series.data} /> : <KpiSkeleton />}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <SeriesPanel

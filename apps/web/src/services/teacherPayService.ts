@@ -86,6 +86,8 @@ export interface TeacherPayoutDetail extends TeacherPayoutView {
   sessions: TeacherPayDetailSession[];
   /** Aulas das turmas dele dadas por substituto (nao contam para ele). */
   substitutedSessions: TeacherPayDetailSession[];
+  /** Aulas dele ainda por acontecer na competencia (entram quando acontecerem). */
+  upcomingSessions: TeacherPayDetailSession[];
 }
 
 // ---------------------------------------------------------------------------
@@ -179,9 +181,10 @@ function lastSessionDate(g: ClassGroup): DateISO | undefined {
  * geradas dos meetingSlots, id `classGroupId~date~start`, instrutor efetivo do
  * override de substituicao, "done" quando o fim ja passou). Duplicada aqui porque
  * o turmasService nao exporta a derivacao. Nao ha cancelamento de sessao no
- * store: toda sessao passada conta como dada.
+ * store: toda sessao passada conta como dada. `upcoming` devolve as que ainda
+ * nao terminaram (so para o detalhe; nao entram no calculo).
  */
-function sessionsDoneIn(competence: string): DerivedSession[] {
+function sessionsIn(competence: string, when: "done" | "upcoming" = "done"): DerivedSession[] {
   const overrides = store.sessionOverrides ?? [];
   const overrideBySession = new Map(overrides.map((o) => [o.sessionId, o]));
   const out: DerivedSession[] = [];
@@ -194,7 +197,7 @@ function sessionsDoneIn(competence: string): DerivedSession[] {
       if (last && date > last) continue;
       for (const slot of g.meetingSlots) {
         if (slot.weekday !== wd) continue;
-        if (!isPastSlot(date, slot.end)) continue;
+        if (isPastSlot(date, slot.end) !== (when === "done")) continue;
         const sessionId = [g.id, date, slot.start].join("~");
         const instructorId = overrideBySession.get(sessionId)?.instructorId ?? g.instructorId;
         out.push({
@@ -268,7 +271,7 @@ interface CompetenceFacts {
  * no ultimo dia ou, se o aluno saiu no meio do mes, pelas turmas em que esteve.
  */
 function buildFacts(competence: string): CompetenceFacts {
-  const sessions = sessionsDoneIn(competence);
+  const sessions = sessionsIn(competence);
   const activeEnrollments = enrollmentsActiveOn(lastDayOfCompetence(competence));
   const withActive = new Set(activeEnrollments.map((e) => e.studentId));
   const membershipEnrollments = [
@@ -633,7 +636,10 @@ export const teacherPayService = {
             s.fact.instructorId !== professionalId,
         )
         .map(toDetailSession);
-      return clone({ ...view, sessions, substitutedSessions });
+      const upcomingSessions = sessionsIn(competence, "upcoming")
+        .filter((s) => s.fact.instructorId === professionalId)
+        .map(toDetailSession);
+      return clone({ ...view, sessions, substitutedSessions, upcomingSessions });
     });
   },
 

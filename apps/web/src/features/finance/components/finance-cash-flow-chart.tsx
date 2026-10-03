@@ -9,7 +9,8 @@ import { competenceLabel, competenceShortLabel } from "../lib";
 // Geometria do SVG (unidades do viewBox; o SVG escala com a largura).
 const WIDTH = 640;
 const HEIGHT = 220;
-const PAD = { top: 12, right: 8, bottom: 26, left: 8 };
+// `left` reserva a coluna do eixo Y (valores).
+const PAD = { top: 12, right: 8, bottom: 26, left: 64 };
 const BAR_WIDTH = 14;
 const BAR_GAP = 2;
 
@@ -20,6 +21,18 @@ function niceCeil(value: number): number {
   const f = value / exp;
   const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
   return nice * exp;
+}
+
+const COMPACT_BRL = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/** Centavos -> rotulo curto do eixo ("R$ 1,5 mil"). */
+function axisLabel(cents: number): string {
+  return cents === 0 ? "R$ 0" : COMPACT_BRL.format(cents / 100);
 }
 
 /** Barra com o topo arredondado (4px) ancorada na linha base. */
@@ -57,6 +70,9 @@ export function FinanceCashFlowChart({ points }: { points: FinanceMonthPoint[] }
   const slot = (WIDTH - PAD.left - PAD.right) / Math.max(1, points.length);
   const center = (i: number) => PAD.left + slot * i + slot / 2;
 
+  // Eixo Y: topo, metade, zero e (se houver resultado negativo) o fundo.
+  const ticks = [top, top / 2, 0, bottom].filter((v, i, arr) => arr.indexOf(v) === i);
+
   const linePoints = points.map((p, i) => `${center(i)},${y(p.resultCents)}`).join(" ");
   const activePoint = active !== null ? points[active] : null;
 
@@ -81,18 +97,28 @@ export function FinanceCashFlowChart({ points }: { points: FinanceMonthPoint[] }
           role="img"
           aria-label="Entradas e saídas dos últimos meses, com o resultado de cada mês"
         >
-          {/* grade recessiva: topo, zero e fundo */}
-          {[top, 0, bottom].filter((v, i, arr) => arr.indexOf(v) === i).map((v) => (
-            <line
-              key={v}
-              x1={PAD.left}
-              x2={WIDTH - PAD.right}
-              y1={y(v)}
-              y2={y(v)}
-              className={v === 0 ? "stroke-border" : "stroke-border/50"}
-              strokeDasharray={v === 0 ? undefined : "3 3"}
-              strokeWidth={1}
-            />
+          {/* grade recessiva com os valores do eixo Y */}
+          {ticks.map((v) => (
+            <g key={v}>
+              <line
+                x1={PAD.left}
+                x2={WIDTH - PAD.right}
+                y1={y(v)}
+                y2={y(v)}
+                className={v === 0 ? "stroke-border" : "stroke-border/50"}
+                strokeDasharray={v === 0 ? undefined : "3 3"}
+                strokeWidth={1}
+              />
+              <text
+                x={PAD.left - 8}
+                y={y(v)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                className="fill-muted-foreground text-[11px] tabular-nums"
+              >
+                {axisLabel(v)}
+              </text>
+            </g>
           ))}
 
           {points.map((p, i) => {

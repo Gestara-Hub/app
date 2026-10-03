@@ -194,4 +194,4 @@ Produto:
 ## Pendencias
 
 - Resolvidas: pnpm fixado e workspaces criados; lint so com ESLint; aliases configurados; agenda feita a mao; docs de frontend 01–06 completos.
-- Abertas: backend NestJS (fase 3), escolha de banco, paginacao, multiunidade (Fase 5).
+- Abertas: backend NestJS (fase 3), escolha de banco, paginacao, multiunidade (Fase 5), armazenamento de arquivos (comprovantes de pagamento; ver `05-modulo-financeiro.md`, secao 10).

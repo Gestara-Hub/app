@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import appIcon from "@/assets/icon.png";
+import { PRE_PAINT_VIEW_MODE_SCRIPT } from "@/components/shared/list/view-mode-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -87,6 +88,8 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Lista vs cards antes da pintura (skeleton certo, sem flicker). */}
+        <script dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }} />
       </head>
       <body className="min-h-full">
         <Providers>{children}</Providers>
