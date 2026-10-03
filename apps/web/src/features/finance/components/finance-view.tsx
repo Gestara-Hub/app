@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeftRight, LayoutDashboard, Plus, Settings2, Users } from "lucide-react";
+import { ArrowLeftRight, LayoutDashboard, Lock, Plus, Settings2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { useCan } from "@/features/auth";
+import { useCan, useHasFeature } from "@/features/auth";
 import { OnlinePaymentsSettingsCard } from "@/features/settings";
 import { cn } from "@/lib/utils";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
@@ -32,6 +32,8 @@ export function FinanceView() {
   const { tab, setTab, competence, setCompetence } = useFinanceUrlState();
   const can = useCan();
   const canManage = can("finance:manage");
+  const hasFeature = useHasFeature();
+  const hasOnlineFeature = hasFeature("online_payments");
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
@@ -79,6 +81,9 @@ export function FinanceView() {
             >
               <Icon className="size-4 shrink-0" />
               {t.label}
+              {t.value === "configuracoes" && !hasOnlineFeature ? (
+                <Lock className="size-3 text-muted-foreground/80 ml-0.5" aria-hidden />
+              ) : null}
             </button>
           );
         })}

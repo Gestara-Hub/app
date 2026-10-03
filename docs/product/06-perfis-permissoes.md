@@ -120,7 +120,7 @@ As acoes do sistema sao `capability keys` no formato `entidade:acao`, com fonte 
 
 As keys sao independentes do modelo; o que aparece para cada tenant e decidido tambem pelo modelo operacional (ex.: `classes:*` e `billing:*` so tem telas na academia; `services:*` e a Agenda so no atendimento).
 
-`finance:*` exige tambem o recurso `finance` do Plano GestaraHub (`lib/subscription`, `hasFeature`): com a permissao e sem o recurso, o item "Financeiro" aparece com cadeado e a rota mostra o upsell. `subscription:manage` troca o plano (so o Proprietario). Ver [05-modulo-financeiro](../technical/05-modulo-financeiro.md).
+`finance:*` governa o acesso ao módulo Financeiro (Proprietário e Gerente). O Financeiro básico é parte do Plano Grátis. A cobrança online de mensalidades e lançamentos via Pix/link/Pix Automático exige adicionalmente o recurso `online_payments` do Plano Pro (`lib/subscription`, `hasFeature`). `subscription:manage` troca o plano (só o Proprietário). Ver [13-modelo-de-negocio](13-modelo-de-negocio.md) e [05-modulo-financeiro](../technical/05-modulo-financeiro.md).
 
 Regras especificas:
 

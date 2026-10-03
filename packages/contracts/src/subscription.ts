@@ -5,14 +5,14 @@ import type { DateTimeISO } from "./common";
  * confundir com `Plan` (plano de mensalidade do aluno). Na tela aparece como
  * "Plano GestaraHub". Ver docs/technical/05-modulo-financeiro (secao 3).
  */
-export type SubscriptionTier = "free" | "pro";
+export type SubscriptionTier = "free" | "pro" | "scale";
 
 /** Recursos pagos, checados junto com a permissao do perfil. */
 export type PaidFeature =
-  | "finance" // Financeiro
-  | "online_payments" // cobranca online (Pix, link, Pix Automatico)
-  | "reports" // Relatorios (proximo modulo)
-  | "messaging"; // Comunicacao automatizada (modulo futuro)
+  | "online_payments" // cobranca online no app/web (Pix, link, Pix Automatico com baixa automatica)
+  | "messaging" // Comunicacao automatizada (gateway WhatsApp, lembretes inteligentes)
+  | "reports_advanced" // Relatorios gerenciais avancados (DRE, churn, projecao)
+  | "bi"; // Inteligencia e analytics preditivos (nivel Scale)
 
 export interface Subscription {
   tier: SubscriptionTier;

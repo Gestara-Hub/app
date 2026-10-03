@@ -57,3 +57,9 @@ All user-facing texts **must be in Portuguese**:
 pnpm --filter @gestarahub/web typecheck  # tsc --noEmit (0 errors)
 pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ```
+
+---
+
+## 5. Git Workflow (USER RULE)
+- **Never run `git commit` or `git push` on your own.** Only commit or push when the user explicitly asks for it, and only the action requested (a request to commit is NOT a request to push).
+- Leave changes in the working tree at the end of a task and tell the user what changed; the user decides when to commit and push.

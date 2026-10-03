@@ -17,10 +17,10 @@ import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscripti
 
 // O que cada recurso pago entrega (texto curto da aba).
 const FEATURE_DESCRIPTION: Record<PaidFeature, string> = {
-  finance: "Entradas, saídas, lucro do mês e pagamento dos professores.",
-  online_payments: "Cobrança por Pix, link de pagamento e Pix Automático.",
-  reports: "Relatórios do negócio para acompanhar e decidir.",
-  messaging: "Lembretes e cobranças enviados automaticamente.",
+  online_payments: "Cobrança por Pix, link e Pix Automático com baixa automática no app e web.",
+  messaging: "Lembretes de cobrança e avisos automáticos via WhatsApp.",
+  reports_advanced: "DRE gerencial, projeção financeira e análise de retenção/churn.",
+  bi: "Inteligência analítica preditiva e mapas de ocupação avançados.",
 };
 
 const PRO_FEATURES = TIER_FEATURES.pro;
@@ -70,7 +70,7 @@ export function SubscriptionPlanCard() {
         ? {
             title: "Ativar o Plano Pro?",
             description:
-              "Demonstração: libera o Financeiro e os demais recursos do Pro para esta organização. Nenhuma cobrança é feita.",
+              "Demonstração: libera pagamentos online, comunicação automática via WhatsApp e relatórios avançados para esta organização. Nenhuma cobrança é feita.",
             confirmLabel: "Ativar Pro",
             variant: "default",
           }

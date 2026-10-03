@@ -85,3 +85,9 @@ pnpm test                                # billing engine (node --test) + servic
 pnpm e2e                                 # browser flows (Playwright, system Chrome, reuses `pnpm dev`)
 ```
 - Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`.
+
+---
+
+## 6. Git Workflow (USER RULE)
+- **Never run `git commit` or `git push` on your own.** Only commit or push when the user explicitly asks for it, and only the action requested (a request to commit is NOT a request to push).
+- Leave changes in the working tree at the end of a task and tell the user what changed; the user decides when to commit and push.

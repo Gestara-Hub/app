@@ -133,6 +133,7 @@ export function paymentMethodLabel(method: PaymentMethod): string {
 const SUBSCRIPTION_TIER_LABEL: Record<SubscriptionTier, string> = {
   free: "Grátis",
   pro: "Pro",
+  scale: "Scale",
 };
 
 export function subscriptionTierLabel(tier: SubscriptionTier): string {
@@ -140,10 +141,10 @@ export function subscriptionTierLabel(tier: SubscriptionTier): string {
 }
 
 const PAID_FEATURE_LABEL: Record<PaidFeature, string> = {
-  finance: "Financeiro",
   online_payments: "Pagamento online",
-  reports: "Relatórios",
+  reports_advanced: "Relatórios avançados",
   messaging: "Comunicação automática",
+  bi: "BI & Analytics",
 };
 
 export function paidFeatureLabel(feature: PaidFeature): string {

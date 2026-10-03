@@ -151,7 +151,6 @@ export const MAIN_NAV: NavItem[] = [
     permission: "finance:view",
     section: "financial",
     models: ["classes"],
-    feature: "finance",
   },
 
   // Bloco 3: Cadastros Estruturais

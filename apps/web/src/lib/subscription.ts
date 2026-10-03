@@ -11,10 +11,11 @@ import type {
  */
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   free: [],
-  pro: ["finance", "online_payments", "reports", "messaging"],
+  pro: ["online_payments", "messaging", "reports_advanced"],
+  scale: ["online_payments", "messaging", "reports_advanced", "bi"],
 };
 
-export const SUBSCRIPTION_TIERS: readonly SubscriptionTier[] = ["free", "pro"];
+export const SUBSCRIPTION_TIERS: readonly SubscriptionTier[] = ["free", "pro", "scale"];
 
 /** Tier efetivo da organizacao (sem assinatura = free). */
 export function tierOf(org: Pick<Organization, "subscription"> | null | undefined): SubscriptionTier {
@@ -35,7 +36,7 @@ export function hasFeature(
 }
 
 export function isSubscriptionTier(value: unknown): value is SubscriptionTier {
-  return value === "free" || value === "pro";
+  return value === "free" || value === "pro" || value === "scale";
 }
 
 /**

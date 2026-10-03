@@ -56,7 +56,6 @@ import {
 import { persist, store } from "@/mocks/store";
 import { systemFinancialCategoryId } from "@/mocks/seed";
 import { auditLogService } from "./auditLogService";
-import { assertFeature } from "./subscriptionService";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
 
@@ -670,7 +669,6 @@ export const financeService = {
    */
   createEntry(payload: CreateFinancialEntry): Promise<FinancialEntry> {
     return simulateWrite(() => {
-      assertFeature("finance");
       validateCreate(payload);
       const ts = nowIso();
       const organizationId = store.organization.id;
@@ -737,7 +735,6 @@ export const financeService = {
     scope: FinancialEntryUpdateScope = "single",
   ): Promise<FinancialEntry> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const entry = findEntry(id);
       if (entry.status === "canceled") {
         throw conflict("Lançamento cancelado não pode ser editado.");
@@ -808,7 +805,6 @@ export const financeService = {
   /** Marca como pago agora (exige forma de pagamento). */
   markEntryPaid(id: Id, method: PaymentMethod): Promise<FinancialEntry> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const entry = findEntry(id);
       if (!isPaymentMethod(method)) {
         throw validationError([{ field: "method", message: "Selecione a forma de pagamento." }]);
@@ -833,7 +829,6 @@ export const financeService = {
   /** Desfaz o pagamento (volta a pendente; atraso derivado na leitura). */
   markEntryPending(id: Id): Promise<FinancialEntry> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const entry = findEntry(id);
       if (entry.status !== "paid") throw conflict("Só é possível desfazer um lançamento pago.");
       const method = entry.method;
@@ -861,7 +856,6 @@ export const financeService = {
   /** Cancela (mantem no historico, sai dos totais). Pago precisa desfazer antes. */
   cancelEntry(id: Id): Promise<FinancialEntry> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const entry = findEntry(id);
       if (entry.status === "canceled") throw conflict("Este lançamento já está cancelado.");
       if (entry.status === "paid") {
@@ -880,7 +874,6 @@ export const financeService = {
    */
   deleteEntry(id: Id): Promise<void> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const entry = findEntry(id);
       if (wasEverPaid(entry)) {
         throw conflict("Lançamento que já foi pago não pode ser excluído. Cancele em vez disso.");
@@ -896,7 +889,6 @@ export const financeService = {
   /** Encerra a repeticao: inativa e cancela os pendentes com vencimento de hoje em diante. */
   endRecurrence(recurrenceId: Id): Promise<{ canceled: number }> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const recurrence = store.financialRecurrences.find((r) => r.id === recurrenceId);
       if (!recurrence) throw notFoundError("Repetição não encontrada.");
       if (recurrence.status !== "active") throw conflict("Esta repetição já foi encerrada.");
@@ -935,7 +927,6 @@ export const financeService = {
 
   createCategory(payload: CreateFinancialCategory): Promise<FinancialCategory> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const fields: ApiErrorField[] = [];
       const name = typeof payload.name === "string" ? payload.name.trim() : "";
       if (!isEntryType(payload.type)) fields.push({ field: "type", message: "Escolha entre entrada e saída." });
@@ -968,7 +959,6 @@ export const financeService = {
   /** Renomeia, inativa ou reativa. Categorias de sistema ficam travadas. */
   updateCategory(id: Id, payload: UpdateFinancialCategory): Promise<FinancialCategory> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const idx = store.financialCategories.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError("Categoria não encontrada.");
       const current = store.financialCategories[idx];

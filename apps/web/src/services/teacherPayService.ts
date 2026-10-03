@@ -47,7 +47,6 @@ import {
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
-import { assertFeature } from "./subscriptionService";
 
 /**
  * Pagamento dos professores (Financeiro, plano pago). Regra por professor,
@@ -545,7 +544,6 @@ export const teacherPayService = {
   /** Cria ou substitui a regra do professor (uma por professor). */
   saveRule(professionalId: Id, payload: SaveTeacherPayRule): Promise<TeacherPayRule> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
       const components = normalizeComponents(professionalId, payload.components);
@@ -654,7 +652,6 @@ export const teacherPayService = {
     adjustments: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
     return simulateWrite(() => {
-      assertFeature("finance");
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
@@ -724,7 +721,6 @@ export const teacherPayService = {
     adjustments: TeacherPayoutAdjustment[] = [],
   ): Promise<TeacherPayoutView> {
     return simulateWrite(() => {
-      assertFeature("finance");
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       if (competence > currentCompetence()) {
         throw conflict("Não é possível fechar um mês que ainda não começou.");
@@ -793,7 +789,6 @@ export const teacherPayService = {
   /** Reabre um mes fechado (volta a previa ao vivo; os ajustes ficam como rascunho). */
   reopenPayout(id: Id): Promise<void> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const payout = findPayout(id);
       if (payout.status === "paid") {
         throw conflict("Desfaça o pagamento antes de reabrir o mês.");
@@ -815,7 +810,6 @@ export const teacherPayService = {
   /** Paga o mes fechado: entra no caixa como saida "Professores" em `paidAt`. */
   markPayoutPaid(id: Id, method: PaymentMethod): Promise<TeacherPayout> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const payout = findPayout(id);
       if (payout.status !== "closed") {
         throw conflict(
@@ -842,7 +836,6 @@ export const teacherPayService = {
   /** Desfaz o pagamento: volta para fechado. */
   markPayoutUnpaid(id: Id): Promise<TeacherPayout> {
     return simulateWrite(() => {
-      assertFeature("finance");
       const payout = findPayout(id);
       if (payout.status !== "paid") throw conflict("Este pagamento não está registrado como pago.");
       payout.status = "closed";
