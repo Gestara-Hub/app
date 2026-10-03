@@ -151,7 +151,7 @@ export function FinanceEntriesTab({
   const can = useCan();
   const canManage = can("finance:manage");
 
-  // Filtro inicial vindo de um link (ex.: "Ver contas atrasadas" do Resumo).
+  // Filtro inicial vindo de um link (ex.: "Ver contas atrasadas" do Resumo ou clique em categoria).
   const searchParams = useSearchParams();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => {
     const value = searchParams.get("type");
@@ -161,8 +161,10 @@ export function FinanceEntriesTab({
     const value = searchParams.get("status") as StatusFilter | null;
     return value && STATUS_FILTERS.includes(value) ? value : "all";
   });
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    () => searchParams.get("categoryId") ?? "all",
+  );
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
 
   const filter: FinancialEntryFilter = {
     competence,
