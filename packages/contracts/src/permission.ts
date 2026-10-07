@@ -36,4 +36,10 @@ export type Permission =
   // Financeiro do negocio (plano pago: tambem exige o recurso "finance").
   | "finance:view" // ver resumo, lancamentos e pagamento dos professores
   | "finance:manage" // lancar, pagar professor, configurar cobranca online
+  // Comunicacao e WhatsApp (plano pago: exige o recurso "messaging").
+  | "communication:view" // ver status, automacoes e historico de mensagens
+  | "communication:manage" // conectar WhatsApp, alterar templates e regras de envio
+  // Relatorios operacionais e gerenciais
+  | "reports:view" // ver catalogo de relatorios e dados
+  | "reports:export" // exportar relatorios em PDF / CSV
   | "subscription:manage"; // trocar o plano GestaraHub (so o proprietario)

@@ -13,6 +13,8 @@ import type {
   FinancialEntry,
   FinancialRecurrence,
   Id,
+  MessageLog,
+  MessageTemplate,
   OnlinePayment,
   OperationalModel,
   Organization,
@@ -29,9 +31,16 @@ import type {
   Unit,
   User,
   WaitlistEntry,
+  WhatsAppSession,
 } from "@gestarahub/contracts";
 import { mockConfig } from "./config";
-import { createInitialWorld, defaultFinancialCategories } from "./seed";
+import {
+  createInitialWorld,
+  defaultFinancialCategories,
+  defaultMessageLogs,
+  defaultMessageTemplates,
+  defaultWhatsAppSession,
+} from "./seed";
 
 /**
  * Store em memoria (interno; a UI NUNCA importa o store, so os services tocam).
@@ -83,6 +92,10 @@ export interface MockStore {
   teacherPayouts: TeacherPayout[];
   onlinePayments: OnlinePayment[];
   recurringAuthorizations: RecurringAuthorization[];
+  // Comunicacao e gateway WhatsApp (recurso pago "messaging")
+  communicationSession?: WhatsAppSession;
+  messageTemplates: MessageTemplate[];
+  messageLogs: MessageLog[];
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];
   reservas?: ClassReservation[];
@@ -116,7 +129,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v21: endereço estruturado + planos/vencimento/desconto no aluno (migração suave sem perda de dados).
 // v22: Financeiro (plano pago) — colecoes financeiras, categorias padrao no tenant
 //      de classes e organization.subscription (free). Migracao suave.
-const SEED_VERSION = 22;
+// v23: Comunicacao (recurso messaging) — sessao WhatsApp, templates de regua e logs.
+const SEED_VERSION = 23;
 
 interface PersistedBlob {
   v: number;
@@ -158,6 +172,20 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
       if (!t.organization.subscription) t.organization.subscription = { tier: "free" };
       if (t.organization.model === "classes" && t.financialCategories.length === 0) {
         t.financialCategories = defaultFinancialCategories(t.organization.id);
+      }
+    }
+  }
+  if (fromVersion < 23) {
+    for (const tenant of Object.values(data.tenants)) {
+      const t = tenant as Partial<MockStore> & MockStore;
+      if (!t.communicationSession) {
+        t.communicationSession = defaultWhatsAppSession(t.organization.id);
+      }
+      if (!t.messageTemplates || t.messageTemplates.length === 0) {
+        t.messageTemplates = defaultMessageTemplates(t.organization.id);
+      }
+      if (!t.messageLogs || t.messageLogs.length === 0) {
+        t.messageLogs = defaultMessageLogs(t.organization.id);
       }
     }
   }

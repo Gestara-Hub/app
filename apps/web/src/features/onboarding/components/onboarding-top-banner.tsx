@@ -70,7 +70,7 @@ function isOnboardingAlreadyComplete(organizationId: string): boolean {
   return false;
 }
 
-const ASIDE_CLASS = "mx-auto w-full max-w-7xl px-4 pt-3 pb-1 md:px-6 md:pt-4";
+const ASIDE_CLASS = "mx-auto w-full max-w-7xl px-4 pt-3 pb-1 md:px-6 md:pt-4 print:hidden";
 // CTA menor no celular; tamanho padrao a partir de sm
 const CTA_CLASS = "shrink-0 sm:h-9 sm:px-4 sm:has-[>svg]:px-3";
 const emptySubscribe = () => () => {};

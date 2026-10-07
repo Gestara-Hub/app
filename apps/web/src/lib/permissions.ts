@@ -42,10 +42,23 @@ const BILLING_OPS = [
 ] as const satisfies readonly Permission[];
 
 // Financeiro do negocio (plano pago) — owner/gerente. Alem da permissao, a tela
+// Financeiro do negocio (plano pago) — owner/gerente. Alem da permissao, a tela
 // exige o recurso "finance" do plano (lib/subscription).
 const FINANCE_OPS = [
   "finance:view",
   "finance:manage",
+] as const satisfies readonly Permission[];
+
+// Comunicacao e WhatsApp (plano pago: messaging) — owner/gerente/atendente.
+const COMMUNICATION_OPS = [
+  "communication:view",
+  "communication:manage",
+] as const satisfies readonly Permission[];
+
+// Relatorios operacionais e gerenciais — owner/gerente/atendente.
+const REPORTS_OPS = [
+  "reports:view",
+  "reports:export",
 ] as const satisfies readonly Permission[];
 
 /**
@@ -60,6 +73,8 @@ const ALL_PERMISSIONS = [
   ...CLASS_OPS,
   ...BILLING_OPS,
   ...FINANCE_OPS,
+  ...COMMUNICATION_OPS,
+  ...REPORTS_OPS,
   "appointments:block",
   "clients:manage",
   "team:manage",
@@ -102,6 +117,8 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     ...CLASS_OPS,
     ...BILLING_OPS,
     ...FINANCE_OPS,
+    ...COMMUNICATION_OPS,
+    ...REPORTS_OPS,
   ],
   attendant: [
     ...OPERATIONAL_VIEWS,
@@ -113,6 +130,10 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "attendance:mark",
     // Financeiro: ve mensalidades, mas nao gerencia planos/cobrancas.
     "billing:view",
+    // Comunicacao: ve historico e status.
+    "communication:view",
+    // Relatorios: pode ver relatorios operacionais.
+    "reports:view",
   ],
   // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas e
   // marca presenca; nada de gestao.

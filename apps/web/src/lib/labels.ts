@@ -100,6 +100,9 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   teacher_pay_rule: "Regra de pagamento",
   online_payment: "Pagamento online",
   subscription: "Plano GestaraHub",
+  communication_session: "Conexão WhatsApp",
+  message_template: "Regra de comunicação",
+  message_log: "Mensagem WhatsApp",
 };
 
 // No modelo de turmas, cliente e aluno e categoria e modalidade.

@@ -15,3 +15,5 @@ export * from "./class";
 export * from "./billing";
 export * from "./subscription";
 export * from "./finance";
+export * from "./communication";
+export * from "./report";

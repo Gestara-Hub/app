@@ -132,4 +132,18 @@ export const queryKeys = {
   unit: {
     detail: ["unit"] as const,
   },
+  communication: {
+    all: ["communication"] as const,
+    session: ["communication", "session"] as const,
+    templates: ["communication", "templates"] as const,
+    logs: (filter?: { trigger?: string; status?: string; search?: string }) =>
+      ["communication", "logs", filter] as const,
+    metrics: ["communication", "metrics"] as const,
+  },
+  reports: {
+    all: ["reports"] as const,
+    catalog: ["reports", "catalog"] as const,
+    data: (type: string, filter?: Record<string, unknown>) =>
+      ["reports", "data", type, filter] as const,
+  },
 } as const;

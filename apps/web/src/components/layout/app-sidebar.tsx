@@ -115,7 +115,7 @@ export function AppSidebar() {
   })).filter((section) => section.items.length > 0);
 
   return (
-    <Sidebar variant="inset" collapsible="icon">
+    <Sidebar variant="inset" collapsible="icon" className="print:hidden">
       <SidebarHeader>
         <div className="flex items-center justify-center gap-2 py-1">
           <Image

@@ -2,9 +2,11 @@ import {
   CalendarDays,
   CalendarRange,
   Contact,
+  FileSpreadsheet,
   GraduationCap,
   Layers,
   LayoutDashboard,
+  MessageSquareText,
   ScrollText,
   Settings,
   Shapes,
@@ -134,6 +136,14 @@ export const MAIN_NAV: NavItem[] = [
     section: "daily_operations",
     models: ["scheduling", "delivery"],
   },
+  {
+    label: "Comunicação",
+    href: "/communication",
+    icon: MessageSquareText,
+    permission: "communication:view",
+    section: "daily_operations",
+    feature: "messaging",
+  },
 
   // Bloco 2: Financeiro
   {
@@ -151,6 +161,13 @@ export const MAIN_NAV: NavItem[] = [
     permission: "finance:view",
     section: "financial",
     models: ["classes"],
+  },
+  {
+    label: "Relatórios",
+    href: "/reports",
+    icon: FileSpreadsheet,
+    permission: "reports:view",
+    section: "financial",
   },
 
   // Bloco 3: Cadastros Estruturais

@@ -85,7 +85,9 @@ export type ApiErrorCode =
   | "CLASS_FULL" // turma lotada (regra mole: confirma para matricular mesmo assim)
   | "CLASS_SCHEDULE_CONFLICT" // conflito de horário (aluno já em outra turma no mesmo horário)
   // Plano GestaraHub
-  | "FEATURE_NOT_IN_PLAN"; // recurso pago fora do plano do tenant (403)
+  | "FEATURE_NOT_IN_PLAN" // recurso pago fora do plano do tenant (403)
+  // Integracoes e Comunicacao
+  | "SERVICE_UNAVAILABLE";
 
 export interface ApiErrorField {
   field: string; // ex.: 'name', 'priceCents'

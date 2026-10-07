@@ -50,12 +50,12 @@ export default async function AppLayout({
       <ViewModeProvider initialModes={initialViewModes}>
         <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
           <AppSidebar />
-          <SidebarInset>
+          <SidebarInset className="print:bg-white print:p-0">
             <AppTopbar />
             <Suspense fallback={null}>
               <OnboardingTopBanner />
             </Suspense>
-            <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-6">
+            <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-6 print:p-0 print:max-w-none">
               {children}
             </div>
           </SidebarInset>

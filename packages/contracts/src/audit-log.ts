@@ -47,7 +47,10 @@ export type AuditEntityType =
   | "teacher_payout"
   | "teacher_pay_rule"
   | "online_payment"
-  | "subscription";
+  | "subscription"
+  | "communication_session"
+  | "message_template"
+  | "message_log";
 
 // Autor do evento (snapshot no momento — nome/perfil podem mudar depois).
 export interface AuditActor {

@@ -4,9 +4,12 @@ import type {
   FinancialEntryType,
   FinancialSystemCategoryKey,
   Id,
+  MessageLog,
+  MessageTemplate,
   Organization,
   Unit,
   User,
+  WhatsAppSession,
 } from "@gestarahub/contracts";
 import type { MockStore, MockWorld } from "./store";
 
@@ -58,6 +61,9 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     teacherPayouts: [],
     onlinePayments: [],
     recurringAuthorizations: [],
+    communicationSession: defaultWhatsAppSession(organization.id),
+    messageTemplates: defaultMessageTemplates(organization.id),
+    messageLogs: defaultMessageLogs(organization.id),
   };
 }
 
@@ -191,6 +197,233 @@ function seedAcademia(): MockStore {
     ...emptyStore(organization, unit, users),
     financialCategories: defaultFinancialCategories(ORG_ACADEMIA),
   };
+}
+
+export function defaultWhatsAppSession(organizationId: Id): WhatsAppSession {
+  return {
+    organizationId,
+    status: "connected",
+    phoneNumber: "5511987654321",
+    profileName: "GestaraHub Gateway",
+    connectedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+    batteryLevel: 94,
+    allowedSendHours: {
+      start: "08:00",
+      end: "20:00",
+    },
+    monthlyQuota: {
+      used: 342,
+      included: 1000,
+    },
+  };
+}
+
+export function defaultMessageTemplates(organizationId: Id): MessageTemplate[] {
+  const ts = timestamps();
+  return [
+    {
+      id: `tmpl-${organizationId}-before-due`,
+      organizationId,
+      trigger: "billing_before_due",
+      category: "billing",
+      title: "Lembrete de Vencimento (Preventivo)",
+      description: "Disparado 3 dias antes do vencimento da mensalidade",
+      enabled: true,
+      sendHour: "09:00",
+      daysOffset: -3,
+      content:
+        "Olá, {aluno}! Passando para lembrar que sua mensalidade de {valor} na {empresa} vence em {vencimento}. Pague com facilidade pelo Pix Copia e Cola: {link_pagamento}. Bons treinos! 🥋",
+      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-due-date`,
+      organizationId,
+      trigger: "billing_due_date",
+      category: "billing",
+      title: "Vencimento Hoje",
+      description: "Disparado no dia do vencimento da mensalidade",
+      enabled: true,
+      sendHour: "09:30",
+      daysOffset: 0,
+      content:
+        "Olá, {aluno}! Sua mensalidade da {empresa} no valor de {valor} vence hoje ({vencimento}). Garanta sua vaga ativa acessando o link seguro de pagamento: {link_pagamento}. Obrigado!",
+      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-after-due`,
+      organizationId,
+      trigger: "billing_after_due",
+      category: "billing",
+      title: "Aviso de Atraso (3 dias)",
+      description: "Disparado 3 dias após o vencimento não identificado",
+      enabled: true,
+      sendHour: "10:00",
+      daysOffset: 3,
+      content:
+        "Oi, {aluno}! Notamos que a mensalidade de {valor} da {empresa} que venceu em {vencimento} ainda está em aberto. Para regularizar sem complicações, basta acessar: {link_pagamento}. Qualquer dúvida, estamos à disposição!",
+      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-critical`,
+      organizationId,
+      trigger: "billing_critical",
+      category: "billing",
+      title: "Cobrança de Atraso Crítico (10 dias)",
+      description: "Disparado 10 dias após o vencimento com aviso de bloqueio",
+      enabled: false,
+      sendHour: "11:00",
+      daysOffset: 10,
+      content:
+        "Aviso Importante: Olá, {aluno}. Identificamos uma pendência na mensalidade vencida em {vencimento}. Para evitar a suspensão temporária do acesso às aulas, acesse o link de regularização: {link_pagamento} ou procure nossa recepção.",
+      availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-welcome`,
+      organizationId,
+      trigger: "welcome_student",
+      category: "retention",
+      title: "Boas-Vindas ao Novo Aluno",
+      description: "Disparado automaticamente ao confirmar nova matrícula",
+      enabled: true,
+      sendHour: "08:00",
+      daysOffset: 0,
+      content:
+        "Seja muito bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link {link_app} para acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
+      availableVariables: ["{aluno}", "{empresa}", "{link_app}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-absence`,
+      organizationId,
+      trigger: "absence_alert",
+      category: "retention",
+      title: "Sentimos sua Falta (Anti-Evasão)",
+      description: "Disparado após 14 dias sem frequência registrada",
+      enabled: true,
+      sendHour: "14:00",
+      daysOffset: 14,
+      content:
+        "Oi, {aluno}! Tudo bem? Sentimos muito a sua falta nos últimos treinos da {empresa}. Seu lugar no tatame está guardado! Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪",
+      availableVariables: ["{aluno}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-birthday`,
+      organizationId,
+      trigger: "birthday_greeting",
+      category: "retention",
+      title: "Felicitações de Aniversário",
+      description: "Disparado no dia do aniversário do aluno cadastrado",
+      enabled: true,
+      sendHour: "08:30",
+      daysOffset: 0,
+      content:
+        "Parabéns pelo seu dia, {aluno}! 🎂 Toda a equipe da {empresa} deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
+      availableVariables: ["{aluno}", "{empresa}"],
+      ...ts,
+    },
+  ];
+}
+
+export function defaultMessageLogs(organizationId: Id): MessageLog[] {
+  const now = Date.now();
+  const h = (hoursAgo: number) => new Date(now - hoursAgo * 3600 * 1000).toISOString();
+
+  return [
+    {
+      id: `msg-${organizationId}-1`,
+      organizationId,
+      recipientName: "Bruno Costa",
+      recipientPhone: "5511991234567",
+      trigger: "billing_before_due",
+      category: "billing",
+      content:
+        "Olá, Bruno Costa! Passando para lembrar que sua mensalidade de R$ 180,00 na Academia X vence em 10/10/2026. Pague com facilidade pelo Pix Copia e Cola: https://pay.gestarahub.com/c/x1a2b3",
+      status: "read",
+      sentAt: h(2),
+      readAt: h(1.5),
+    },
+    {
+      id: `msg-${organizationId}-2`,
+      organizationId,
+      recipientName: "Camila Fernandes",
+      recipientPhone: "5511982345678",
+      trigger: "billing_due_date",
+      category: "billing",
+      content:
+        "Olá, Camila Fernandes! Sua mensalidade da Academia X no valor de R$ 220,00 vence hoje (03/10/2026). Garanta sua vaga ativa acessando o link seguro de pagamento: https://pay.gestarahub.com/c/c2f4g6",
+      status: "delivered",
+      sentAt: h(5),
+    },
+    {
+      id: `msg-${organizationId}-3`,
+      organizationId,
+      recipientName: "Rodrigo Silveira",
+      recipientPhone: "5511973456789",
+      trigger: "billing_after_due",
+      category: "billing",
+      content:
+        "Oi, Rodrigo Silveira! Notamos que a mensalidade de R$ 180,00 da Academia X que venceu em 30/09/2026 ainda está em aberto. Para regularizar sem complicações, basta acessar: https://pay.gestarahub.com/c/r9s8t7",
+      status: "read",
+      sentAt: h(26),
+      readAt: h(25),
+    },
+    {
+      id: `msg-${organizationId}-4`,
+      organizationId,
+      recipientName: "Juliana Mendes",
+      recipientPhone: "5511964567890",
+      trigger: "welcome_student",
+      category: "retention",
+      content:
+        "Seja muito bem-vindo(a) à Academia X, Juliana Mendes! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link https://app.gestarahub.com/login",
+      status: "read",
+      sentAt: h(48),
+      readAt: h(47.5),
+    },
+    {
+      id: `msg-${organizationId}-5`,
+      organizationId,
+      recipientName: "Felipe Santos",
+      recipientPhone: "5511955678901",
+      trigger: "absence_alert",
+      category: "retention",
+      content:
+        "Oi, Felipe Santos! Tudo bem? Sentimos muito a sua falta nos últimos treinos da Academia X. Seu lugar no tatame está guardado! Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪",
+      status: "delivered",
+      sentAt: h(72),
+    },
+    {
+      id: `msg-${organizationId}-6`,
+      organizationId,
+      recipientName: "Marcos Oliveira",
+      recipientPhone: "5511946789012",
+      trigger: "birthday_greeting",
+      category: "retention",
+      content:
+        "Parabéns pelo seu dia, Marcos Oliveira! 🎂 Toda a equipe da Academia X deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
+      status: "read",
+      sentAt: h(96),
+      readAt: h(95),
+    },
+    {
+      id: `msg-${organizationId}-7`,
+      organizationId,
+      recipientName: "Thiago Lima",
+      recipientPhone: "5511900000000",
+      trigger: "billing_after_due",
+      category: "billing",
+      content:
+        "Oi, Thiago Lima! Notamos que a mensalidade de R$ 180,00 da Academia X que venceu em 25/09/2026 ainda está em aberto.",
+      status: "failed",
+      sentAt: h(120),
+      errorReason: "Número de WhatsApp inexistente ou não registrado.",
+    },
+  ];
 }
 
 /** Mundo multi-tenant: Corte Nobre (M1) + Academia X (M3). Ativo = Corte Nobre. */

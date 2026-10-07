@@ -968,3 +968,47 @@ html[data-vm-modalities="list"] [data-vm-skeleton="modalities:list"],
 html[data-vm-plans="list"] [data-vm-skeleton="plans:list"] {
   display: block !important;
 }
+
+/* ==========================================================================
+   Print Optimization & Shell Hiding
+   ========================================================================== */
+
+@media print {
+  /* Oculta completamente cabeçalhos, barras de navegação, sidebars, banners e toasts */
+  header,
+  aside,
+  nav,
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-rail"],
+  [data-sonner-toaster],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Garante fundo branco puro e texto legível na folha */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  main,
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    min-height: auto !important;
+  }
+
+  @page {
+    margin: 12mm 15mm;
+    size: auto;
+  }
+}
