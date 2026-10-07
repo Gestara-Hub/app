@@ -15,7 +15,6 @@ import {
   GraduationCap,
   Plus,
   RotateCw,
-  Users,
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,33 +37,64 @@ import { useCurrentUser } from "@/features/auth";
 
 function Kpi({
   icon,
+  iconColor = "bg-primary/10 text-primary",
   label,
   value,
   hint,
+  badge,
+  href,
 }: {
   icon: ReactNode;
+  iconColor?: string;
   label: string;
   value: string;
-  hint?: string;
+  hint?: ReactNode;
+  badge?: ReactNode;
+  href?: string;
 }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          {icon}
+  const content = (
+    <div className="flex items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+          {badge}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="break-words text-xl font-semibold leading-tight tabular-nums xl:text-2xl">
-            {value}
-          </p>
-          {hint ? (
-            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{hint}</p>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+        <p className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl mt-0.5">
+          {value}
+        </p>
+        {hint ? (
+          <div className="text-xs text-muted-foreground leading-snug mt-0.5 truncate">
+            {hint}
+          </div>
+        ) : null}
+      </div>
+      <div
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-lg",
+          iconColor,
+        )}
+      >
+        {icon}
+      </div>
+    </div>
   );
+
+  const cardClasses = cn(
+    "rounded-xl border bg-card text-card-foreground shadow-xs transition-all",
+    href && "hover:border-foreground/25 hover:shadow-xs cursor-pointer",
+  );
+
+  if (href) {
+    return (
+      <div className={cardClasses}>
+        <Link href={href} className="block">
+          {content}
+        </Link>
+      </div>
+    );
+  }
+
+  return <div className={cardClasses}>{content}</div>;
 }
 
 export function AcademyDashboardView() {
@@ -99,10 +129,10 @@ export function AcademyDashboardView() {
   };
 
   const activeGroups = groups.filter((g) => g.status === "active");
-  const totalEnrolled = activeGroups.reduce(
-    (sum, g) => sum + g.enrolledCount,
-    0,
-  );
+  const totalCapacity = activeGroups.reduce((sum, g) => sum + g.capacity, 0);
+  const totalEnrolled = activeGroups.reduce((sum, g) => sum + g.enrolledCount, 0);
+  const overallOccupancyPct =
+    totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
   // Status das aulas de hoje
   const completedSessions = sessions.filter((s) => s.status === "done").length;
@@ -138,8 +168,8 @@ export function AcademyDashboardView() {
   // "Quitadas" so quando ha mensalidade no mes e nenhuma em aberto.
   const billedCharges = charges.filter((c) => c.status !== "canceled");
   const revenueHint =
-    pendingRevenue > 0 || overdueRevenue > 0
-      ? `${formatCents(pendingRevenue)} pendente${overdueRevenue > 0 ? ` · ${formatCents(overdueRevenue)} em atraso` : ""}`
+    pendingRevenue > 0
+      ? `${formatCents(pendingRevenue)} pendente`
       : billedCharges.length === 0
         ? "Nenhuma mensalidade gerada no mês"
         : "Todas as mensalidades quitadas";
@@ -220,35 +250,32 @@ export function AcademyDashboardView() {
         </div>
       ) : isPending ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))}
           </div>
           <Skeleton className="h-72 w-full rounded-lg" />
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Top 4 KPI Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Top 3 KPI Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Kpi
               icon={<GraduationCap className="size-5" />}
+              iconColor="bg-primary/10 text-primary"
               label="Aulas hoje"
               value={String(sessions.length)}
               hint={
                 sessions.length === 0
-                  ? "Nenhuma aula hoje"
+                  ? "Nenhuma aula programada"
                   : sessionsHint
               }
-            />
-            <Kpi
-              icon={<Users className="size-5" />}
-              label="Alunos matriculados"
-              value={String(totalEnrolled)}
-              hint={`Em ${plural(activeGroups.length, "turma ativa", "turmas ativas")}`}
+              href="/classes/calendar"
             />
             <Kpi
               icon={<CheckCheck className="size-5" />}
+              iconColor="bg-sky-500/10 text-sky-600 dark:text-sky-400"
               label="Presenças hoje"
               value={
                 attendance.total > 0
@@ -262,21 +289,73 @@ export function AcademyDashboardView() {
                   ? `${plural(attendance.absent, "falta", "faltas")} · ${plural(attendance.justified, "justificada", "justificadas")}`
                   : sessions.length > 0
                     ? "Chamada aberta para hoje"
-                    : "Nenhuma aula programada"
+                    : "Grade livre hoje"
               }
+              href="/classes"
             />
             <Kpi
               icon={<Wallet className="size-5" />}
+              iconColor="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               label="Mensalidades recebidas"
               value={formatCents(paidRevenue)}
+              href="/classes/billing"
+              badge={
+                overdueCharges.length > 0 ? (
+                  <Badge
+                    variant="destructive"
+                    className="h-4.5 px-1.5 text-[10px] font-semibold"
+                  >
+                    {overdueCharges.length} em atraso
+                  </Badge>
+                ) : null
+              }
               hint={revenueHint}
             />
           </div>
 
-          {/* Grid Principal: Aulas do dia + Ocupação & Financeiro */}
+          {/* Alerta de Inadimplência / Mensalidades em Atraso */}
+          {overdueCharges.length > 0 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 sm:px-4 sm:py-3 text-destructive">
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
+                  <AlertCircle className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Atenção:{" "}
+                    <span className="text-destructive font-bold">
+                      {overdueCharges.length}{" "}
+                      {pluralWord(overdueCharges.length, "mensalidade", "mensalidades")}{" "}
+                      em atraso
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Total de{" "}
+                    <strong className="text-foreground">
+                      {formatCents(overdueRevenue)}
+                    </strong>{" "}
+                    aguardando regularização nesta competência.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 shrink-0 self-end sm:self-auto"
+                asChild
+              >
+                <Link href="/classes/billing">
+                  Ver cobranças
+                  <ArrowUpRight className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+
+          {/* Grid Principal: Aulas do dia + Ocupação das turmas */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Coluna 1: Aulas de Hoje (Grade do dia) */}
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 flex flex-col">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div className="space-y-0.5">
                   <CardTitle className="text-base font-semibold">
@@ -293,7 +372,7 @@ export function AcademyDashboardView() {
                   </Link>
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col justify-center">
                 {upcomingSessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2.5 py-12 text-center">
                     <CalendarDays className="size-8 text-muted-foreground/60" />
@@ -404,123 +483,81 @@ export function AcademyDashboardView() {
               </CardContent>
             </Card>
 
-            {/* Coluna 2: Ocupação das turmas e Resumo financeiro */}
-            <div className="space-y-4">
-              {/* Card Ocupação */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <CardTitle className="text-base font-semibold">
-                    Ocupação das turmas
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/classes">
-                      Ver turmas
-                      <ArrowUpRight className="size-3.5" />
-                    </Link>
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  {activeGroups.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-muted-foreground">
-                      Nenhuma turma cadastrada.
-                    </p>
-                  ) : (
-                    <ul className="space-y-3.5">
-                      {activeGroups.slice(0, 4).map((g) => {
-                        // O numero mostra a ocupacao real (pode passar de 100%);
-                        // so a barra e limitada ao trilho.
-                        const pct = Math.round(
-                          (g.enrolledCount / Math.max(1, g.capacity)) * 100,
-                        );
-                        const isOverCapacity = pct > 100;
-                        const isAlmostFull = pct >= 85;
-                        return (
-                          <li key={g.id} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-medium truncate max-w-[170px]">
-                                {g.name}
-                              </span>
-                              <span
-                                className={cn(
-                                  "tabular-nums",
-                                  isOverCapacity
-                                    ? "font-medium text-red-600 dark:text-red-400"
-                                    : "text-muted-foreground",
-                                )}
-                              >
-                                {g.enrolledCount}/{g.capacity} ({pct}%)
-                                {isOverCapacity ? " · acima da capacidade" : ""}
-                              </span>
-                            </div>
-                            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all",
-                                  isOverCapacity
-                                    ? "bg-red-500"
-                                    : isAlmostFull
-                                      ? "bg-amber-500"
-                                      : "bg-primary",
-                                )}
-                                style={{ width: `${Math.min(pct, 100)}%` }}
-                              />
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Card Mensalidades & Avisos */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <CardTitle className="text-base font-semibold">
-                    Mensalidades do mês
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/classes/billing">
-                      Cobranças
-                      <ArrowUpRight className="size-3.5" />
-                    </Link>
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-md border p-2.5 bg-muted/20">
-                      <p className="text-muted-foreground">Recebido</p>
-                      <p className="text-sm font-semibold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">
-                        {formatCents(paidRevenue)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {plural(paidCharges.length, "pagamento", "pagamentos")}
-                      </p>
-                    </div>
-                    <div className="rounded-md border p-2.5 bg-muted/20">
-                      <p className="text-muted-foreground">Pendente</p>
-                      <p className="text-sm font-semibold tabular-nums mt-0.5">
-                        {formatCents(pendingRevenue)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {plural(pendingCharges.length, "mensalidade", "mensalidades")}
-                      </p>
-                    </div>
+            {/* Coluna 2: Ocupação das turmas */}
+            <Card className="flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Ocupação das turmas
+                </CardTitle>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/classes">
+                    Ver turmas
+                    <ArrowUpRight className="size-3.5" />
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-between">
+                {activeGroups.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center py-6 text-center text-xs text-muted-foreground">
+                    Nenhuma turma cadastrada.
                   </div>
+                ) : (
+                  <ul className="space-y-3.5">
+                    {activeGroups.slice(0, 6).map((g) => {
+                      // O numero mostra a ocupacao real (pode passar de 100%);
+                      // so a barra e limitada ao trilho.
+                      const pct = Math.round(
+                        (g.enrolledCount / Math.max(1, g.capacity)) * 100,
+                      );
+                      const isOverCapacity = pct > 100;
+                      const isAlmostFull = pct >= 85;
+                      return (
+                        <li key={g.id} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium truncate max-w-[170px]">
+                              {g.name}
+                            </span>
+                            <span
+                              className={cn(
+                                "tabular-nums",
+                                isOverCapacity
+                                  ? "font-medium text-red-600 dark:text-red-400"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {g.enrolledCount}/{g.capacity} ({pct}%)
+                              {isOverCapacity ? " · acima da capacidade" : ""}
+                            </span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                isOverCapacity
+                                  ? "bg-red-500"
+                                  : isAlmostFull
+                                    ? "bg-amber-500"
+                                    : "bg-primary",
+                              )}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
 
-                  {overdueCharges.length > 0 ? (
-                    <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-                      <AlertCircle className="size-4 shrink-0" />
-                      <span>
-                        <strong>{overdueCharges.length}</strong>{" "}
-                        {pluralWord(overdueCharges.length, "mensalidade", "mensalidades")} em
-                        atraso ({formatCents(overdueRevenue)}).
-                      </span>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-            </div>
+                {activeGroups.length > 0 ? (
+                  <div className="mt-4 pt-3.5 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Ocupação geral da unidade</span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {totalEnrolled}/{totalCapacity} vagas ({overallOccupancyPct}%)
+                    </span>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
