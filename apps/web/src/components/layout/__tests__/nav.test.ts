@@ -81,8 +81,8 @@ describe("canAccessRoute", () => {
     expect(canAccessRoute(as("manager"), "/settings", "scheduling")).toBe(false);
   });
 
-  it("dashboard / exige dashboard:view", () => {
-    expect(canAccessRoute(as("owner"), "/", "classes")).toBe(true);
-    expect(canAccessRoute(as("professional"), "/", "classes")).toBe(false);
+  it("dashboard /dashboard exige dashboard:view", () => {
+    expect(canAccessRoute(as("owner"), "/dashboard", "classes")).toBe(true);
+    expect(canAccessRoute(as("professional"), "/dashboard", "classes")).toBe(false);
   });
 });

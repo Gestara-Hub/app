@@ -22,7 +22,7 @@ export default async function LoginPage({
 
   const { from } = await searchParams;
   // So caminho relativo do app; o signIn revalida (permissao + modelo).
-  const target = safeRedirectPath(from) ?? "/";
+  const target = safeRedirectPath(from) ?? "/dashboard";
 
   return (
     <PublicAuthShell

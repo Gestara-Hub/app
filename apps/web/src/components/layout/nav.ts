@@ -87,7 +87,7 @@ export const MAIN_NAV: NavItem[] = [
   // Topo: Visão Geral
   {
     label: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
     permission: "dashboard:view",
     section: "overview",
@@ -232,7 +232,7 @@ export function isNavItemLocked(
 }
 
 export function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+  if (href === "/dashboard") return pathname === "/dashboard";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -258,20 +258,20 @@ export function firstAllowedRoute(
   subject: Pick<User, "profile">,
   model: OperationalModel,
 ): string {
-  if (can(subject, "dashboard:view")) return "/";
+  if (can(subject, "dashboard:view")) return "/dashboard";
   const core = MAIN_NAV.find((i) => i.href === coreRouteFor(model));
   if (core && can(subject, core.permission)) return core.href;
   const item = navForModel(MAIN_NAV, model).find((i) =>
     can(subject, i.permission),
   );
-  return item?.href ?? "/";
+  return item?.href ?? "/dashboard";
 }
 
 const ALL_NAV: NavItem[] = [...MAIN_NAV, ...FOOTER_NAV];
 
 // Remove query/hash: o casamento de rota olha so o pathname.
 function pathOnly(pathname: string): string {
-  return pathname.split(/[?#]/)[0] || "/";
+  return pathname.split(/[?#]/)[0] || "/dashboard";
 }
 
 /**

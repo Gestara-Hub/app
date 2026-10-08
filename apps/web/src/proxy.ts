@@ -7,11 +7,12 @@ import { SESSION_COOKIE } from "@/lib/session";
  * `/login` guardando o destino em `?from=`. Estando logado, `/login` redireciona
  * para o Dashboard. Como e mock, mantemos simples.
  */
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/"];
 
 function isPublic(pathname: string): boolean {
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
+    (path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
   );
 }
 
