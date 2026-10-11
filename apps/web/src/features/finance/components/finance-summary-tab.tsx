@@ -165,7 +165,6 @@ function VariantSimplified({
                 ? `+ ${formatCents(summary.incomeForecastCents)} a receber no mês`
                 : "Todas as mensalidades recebidas"}
             </p>
-            <ScholarshipNote summary={summary} />
           </div>
         </div>
 
@@ -1150,19 +1149,5 @@ export function FinanceSummaryTab({
         </>
       )}
     </div>
-  );
-}
-
-/**
- * Bolsas do mes (informativo): quanto deixou de ser cobrado por bolsas. Nao
- * entra no caixa nem no resultado.
- */
-function ScholarshipNote({ summary }: { summary: FinanceSummary }) {
-  if (!summary.scholarshipGrantedCents) return null;
-  const students = summary.scholarshipStudents ?? 0;
-  return (
-    <p className="mt-0.5 text-xs text-muted-foreground">
-      {`Bolsas concedidas: ${formatCents(summary.scholarshipGrantedCents)} (${plural(students, "aluno", "alunos")})`}
-    </p>
   );
 }
