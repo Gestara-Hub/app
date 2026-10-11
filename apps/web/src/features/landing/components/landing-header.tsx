@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Menu, Moon, Sun, X } from "lucide-react";
@@ -11,10 +11,29 @@ import logoDarkImage from "@/assets/logo-dark.png";
 
 export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const { resolvedTheme, setTheme } = useTheme();
 
+  useEffect(() => {
+    const updateScrollProgress = () => {
+      const scrollHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollHeight > 0) {
+        const progress = Math.min(
+          100,
+          Math.max(0, (window.scrollY / scrollHeight) * 100)
+        );
+        setScrollProgress(progress);
+      }
+    };
+
+    window.addEventListener("scroll", updateScrollProgress, { passive: true });
+    updateScrollProgress();
+    return () => window.removeEventListener("scroll", updateScrollProgress);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-colors relative">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -78,10 +97,10 @@ export function LandingHeader() {
           </Button>
 
           <Button asChild size="sm" className="gap-1.5 px-4 font-semibold shadow-xs">
-            <Link href="/login">
+            <a href="#cadastro">
               <span>Começar grátis</span>
               <ArrowRight className="size-3.5" />
-            </Link>
+            </a>
           </Button>
         </div>
 
@@ -148,14 +167,21 @@ export function LandingHeader() {
               </Link>
             </Button>
             <Button asChild className="w-full justify-center gap-1.5 font-semibold">
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+              <a href="#cadastro" onClick={() => setMobileMenuOpen(false)}>
                 <span>Criar conta grátis</span>
                 <ArrowRight className="size-3.5" />
-              </Link>
+              </a>
             </Button>
           </div>
         </div>
       )}
+
+      {/* Barra de Progresso no Scroll */}
+      <div
+        className="absolute bottom-0 left-0 h-[2px] bg-primary transition-[width] duration-150 ease-out z-10"
+        style={{ width: `${scrollProgress}%` }}
+        aria-hidden="true"
+      />
     </header>
   );
 }

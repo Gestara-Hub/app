@@ -54,7 +54,9 @@ export function OnboardingWelcomeDialog({
               Bem-vindo ao GestaraHub
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-              Seu painel para gerenciar {isClasses ? "turmas, mensalidades e alunos" : "serviços, agendamentos e equipe"} está pronto. Como prefere começar?
+              {isClasses
+                ? "Seu espaço foi configurado com sucesso! Como prefere começar a explorar o painel?"
+                : "Seu negócio está pronto para começar. Como prefere explorar o sistema?"}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -117,12 +119,11 @@ export function OnboardingWelcomeDialog({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-foreground text-sm sm:text-base">
-                    Configurar no meu ritmo
+                    Ir para os primeiros passos
                   </h3>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-snug">
-                  Vá direto ao checklist guiado para cadastrar horários, planos e
-                  a primeira turma.
+                  Siga o checklist no seu ritmo para definir horários de funcionamento, regras de cobrança e turmas.
                 </p>
               </div>
             </div>
@@ -134,7 +135,7 @@ export function OnboardingWelcomeDialog({
         {/* Rodapé sutil */}
         <div className="px-6 py-4 mt-1 bg-muted/20 border-t flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <p className="text-xs text-muted-foreground">
-            Você pode reabrir o tour ou checklist quando quiser pelo menu.
+            Você pode reabrir o tour quando quiser pelo topo do checklist.
           </p>
           <Button
             variant="ghost"

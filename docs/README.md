@@ -44,6 +44,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [frontend/04-design-system.md](frontend/04-design-system.md) — Componentes compartilhados, shadcn/ui, Tailwind CSS e personalizador de tema.
 - [frontend/06-decisoes-de-interface.md](frontend/06-decisoes-de-interface.md) — Decisões de interface já implementadas (confirmações, sidebar escura, agenda feita à mão, mobile). Prevalece sobre 00–05.
 - [frontend/07-padroes-telas-e-ux.md](frontend/07-padroes-telas-e-ux.md) — **Padrões técnicos de telas, formulários, modais (`Adicionar` / `Salvar` / `Cancelar`), KPIs, listagens e usabilidade mobile (iOS Safari & Chrome).**
+- [frontend/08-decisoes-landing-page-e-onboarding.md](frontend/08-decisoes-landing-page-e-onboarding.md) — **Decisões de produto, layout, micro-cópia e UX da nova Landing Page e do Wizard de Setup inicial (`/setup`).**
 - [frontend/05-agenda-react-big-calendar.md](frontend/05-agenda-react-big-calendar.md) — *(Histórico)* Plano original da agenda com react-big-calendar, revertido; a agenda é feita à mão.
 
 ---

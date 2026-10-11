@@ -14,7 +14,7 @@ export default function AppNotFound() {
         O registro ou a página que você procura não existe ou foi removido.
       </p>
       <Button asChild>
-        <Link href="/">Voltar para o início</Link>
+        <Link href="/dashboard">Voltar para o início</Link>
       </Button>
     </div>
   );

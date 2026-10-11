@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
-import { OnboardingTopBanner } from "@/features/onboarding";
+import { OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import {
   VIEW_MODE_STORAGE_PREFIX,
   ViewModeProvider,
@@ -56,7 +56,7 @@ export default async function AppLayout({
               <OnboardingTopBanner />
             </Suspense>
             <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-6 print:p-0 print:max-w-none">
-              {children}
+              <SetupGuard>{children}</SetupGuard>
             </div>
           </SidebarInset>
         </SidebarProvider>

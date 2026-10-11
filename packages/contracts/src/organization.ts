@@ -13,11 +13,23 @@ export type OperationalModel = "scheduling" | "classes" | "delivery";
 export type OrganizationBillingTiming = "prepaid" | "postpaid";
 export type OrganizationMidMonthStrategy = "prorated" | "full_cycle";
 
+export type ClassesBusinessSegment =
+  | "martial_arts"
+  | "fitness_wellness"
+  | "crossfit_functional"
+  | "dance_arts"
+  | "aquatics_sports"
+  | "education_courses"
+  | "custom";
+
 export interface OrganizationSettings {
   defaultDueDay?: number; // dia padrão de vencimento de mensalidades (ex: 10)
   billingTiming?: OrganizationBillingTiming; // 'prepaid' (no ato) ou 'postpaid' (ao final) - default: 'prepaid'
   midMonthStrategy?: OrganizationMidMonthStrategy; // 'prorated' (proporcional) ou 'full_cycle' (ciclo 30 dias) - default: 'prorated'
   onlinePayments?: OnlinePaymentSettings; // cobranca online simulada (plano pago)
+  businessSegments?: ClassesBusinessSegment[];
+  customSegmentName?: string;
+  onboardingCompleted?: boolean;
 }
 
 export interface Organization {

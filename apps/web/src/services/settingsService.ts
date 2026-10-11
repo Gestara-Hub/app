@@ -1,5 +1,5 @@
-import type { Address, BusinessHoursDay, Organization, Unit } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import type { Address, BusinessHoursDay, Id, Organization, Unit } from "@gestarahub/contracts";
+import { setActiveOrganization, store } from "@/mocks/store";
 import { simulateRead, simulateWrite } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 
@@ -18,6 +18,12 @@ export type UpdateUnit = Partial<{
 }>;
 
 export const settingsService = {
+  setActiveTenant(organizationId: Id): Promise<void> {
+    return simulateWrite(() => {
+      setActiveOrganization(organizationId);
+    });
+  },
+
   getOrganization(): Promise<Organization> {
     return simulateRead(() => clone(store.organization));
   },

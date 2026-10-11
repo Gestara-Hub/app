@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/features/auth";
+import { useOrganization } from "@/features/settings";
 import { OnboardingChecklist } from "./onboarding-checklist";
 import { OnboardingWelcomeDialog } from "./onboarding-welcome-dialog";
 import { ProductTour } from "./product-tour";
@@ -11,22 +12,23 @@ import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 import { TOUR_STEPS_CLASSES, TOUR_STEPS_DEFAULT } from "./tour-steps";
 
 /**
- * Orquestra o onboarding (modal de boas-vindas + tour + checklist). Montado no
- * Dashboard; so aparece para o Proprietario enquanto a conta nao esta
- * configurada. `isReady` (todas as leituras resolvidas) tambem serve de guarda
- * de SSR/hidratacao — servidor e 1o render do cliente devolvem null igualmente.
+ * Orquestra o checklist e tour guiado no Dashboard após a conclusão do setup inicial.
+ * Só aparece para o Proprietário enquanto as etapas recomendadas não foram concluídas.
  */
 export function Onboarding() {
   const user = useCurrentUser();
   const [state, update] = useOnboardingState();
+  const { data: organization, isLoading: orgLoading } = useOrganization();
   const { steps, doneCount, total, isReady, isComplete, isClasses } =
     useOnboardingSteps();
   const [tourOpen, setTourOpen] = useState(false);
 
-  if (!isReady || user.profile !== "owner") return null;
+  if (!isReady || orgLoading || user.profile !== "owner") return null;
 
-  // Estado derivado (sem efeito): abre as boas-vindas ate serem respondidas.
-  // Qualquer acao de fechar grava `seen`, o que fecha o modal naturalmente.
+  // Se o proprietário ainda não concluiu o setup inicial (/setup), o SetupGuard já
+  // o redirecionará para a tela de setup. Não renderiza nada aqui.
+  if (!organization?.settings?.onboardingCompleted) return null;
+
   const welcomeOpen = !state.seen && !isComplete;
   const showChecklist = !isComplete;
 
@@ -38,9 +40,11 @@ export function Onboarding() {
           doneCount={doneCount}
           total={total}
           isClasses={isClasses}
-          // O Dashboard nunca e a tela de um passo: o "Continuar" pulsa (menos no tour).
-          highlightNextStep={!tourOpen}
-          onStartTour={() => setTourOpen(true)}
+          highlightNextStep={!tourOpen && !welcomeOpen}
+          onStartTour={() => {
+            update({ seen: true });
+            setTourOpen(true);
+          }}
         />
       ) : null}
 
@@ -53,7 +57,9 @@ export function Onboarding() {
           update({ seen: true });
           setTourOpen(true);
         }}
-        onStartSetup={() => update({ seen: true })}
+        onStartSetup={() => {
+          update({ seen: true });
+        }}
         isClasses={isClasses}
       />
 

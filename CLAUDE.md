@@ -7,7 +7,29 @@ GestaraHub is a modern multi-tenant management platform for service businesses, 
 - **Packages**: `@gestarahub/contracts` (domain types, enums, `ApiError`) and `@gestarahub/core` (pure logic: `scheduling`, `billing`, `date`, `format`, `api-error`).
 - **Mock / Data Seam**: `@/mocks/store` (multi-tenant world persisted in `localStorage`) and `@/services/*Service.ts` simulate the future NestJS API with `simulateRead` and `simulateWrite`.
 - **Session**: mocked cookie `gestarahub_session`, route guard in `apps/web/src/proxy.ts` (Next 16), server actions in `apps/web/src/app/(auth)/actions.ts`, per-page RBAC with `requirePermission`.
-- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/`, UI decisions in `docs/frontend/06-decisoes-de-interface.md`, and screen/form/mobile standards in `docs/frontend/07-padroes-telas-e-ux.md`.
+- **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/`, UI decisions in `docs/frontend/06-decisoes-de-interface.md`, screen/form/mobile standards in `docs/frontend/07-padroes-telas-e-ux.md`, and **recent LP & Onboarding decisions in [`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/frontend/08-decisoes-landing-page-e-onboarding.md)**.
+
+### 1.1. Contexto Estratégico & Decisões Recentes (LP & Setup Inicial)
+Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/frontend/08-decisoes-landing-page-e-onboarding.md)** para o histórico completo. Principais diretrizes ativas:
+- **Posicionamento**: Sistema 100% gratuito para quem ensina, com suporte nativo duplo: **aulas em grupo (turmas) OU aulas particulares individuais (1 a 1 / VIP)**.
+- **Segmentos**: Lutas, Pilates, Música, Idiomas, Dança, Boxes/Funcional, Natação e Personalizado.
+- **Controle de Progresso**: Trilha configurável (faixas, níveis, módulos ou fases), não restrita a artes marciais.
+- **Design & Copy (Crítico para o Usuário)**:
+  - Zero poluição visual: layouts minimalistas, sem mockups carregados nem números falsos de marketing.
+  - Micro-cópia ultra-concisa (6 a 8 palavras por item, frases diretas de 1 linha).
+  - Proibido `line-clamp` cortando palavras no meio com reticências (`...`).
+  - Proibido duplicar listas de seleção na mesma tela.
+  - Labels de formulário limpas (ex.: `Nome*` colado com tipografia inline, sem gap de flexbox).
+- **Landing Page (`features/landing`)**:
+  - Antes vs. Depois com 3 dores reais (sem blocos redundantes de passos ou métricas).
+  - 6 cards minimalistas de modalidades (`LandingSegments`).
+  - 4 Pilares da gestão (`LandingFeatures`).
+  - Efeito scroll fluido contínuo com `ScrollReveal` (`once: false`, aceleração GPU) + barra de progresso no topo.
+- **Setup Inicial (`/setup` & `BusinessSetupWizard`)**:
+  - Wizard em 3 passos com stepper espaçado (`1 Espaço → 2 Segmento → 3 Modalidades`).
+  - Passo 1: `Nome*` + `Unidade ou filial (opcional)`.
+  - Passo 2: 6 cards sem cortes de texto + card customizado com borda tracejada.
+  - Passo 3: Pílulas interativas unificadas com check `✓`, contador dinâmico e placeholder contextual para novas aulas.
 
 ---
 

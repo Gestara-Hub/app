@@ -106,6 +106,8 @@ export function OnboardingTopBanner() {
     ctaRef.current?.focus({ preventScroll: true });
   }, [nudgeCount]);
 
+  const isDashboard = pathname === "/" || pathname === "/dashboard";
+
   const nextStepIndex = nextStep
     ? steps.findIndex((s) => s.id === nextStep.id)
     : -1;
@@ -119,7 +121,7 @@ export function OnboardingTopBanner() {
   );
   const activeStepOnPage =
     user.profile === "owner" &&
-    pathname !== "/" &&
+    !isDashboard &&
     isReady &&
     !isComplete &&
     isOnNextStepPage &&
@@ -154,7 +156,7 @@ export function OnboardingTopBanner() {
   if (!isHydrated) return null;
 
   // Exibe obrigatoriamente para o perfil de Proprietário enquanto houver passos pendentes (exceto na Dashboard)
-  if (user.profile !== "owner" || pathname === "/") return null;
+  if (user.profile !== "owner" || isDashboard) return null;
 
   if (isComplete) return null;
 
@@ -242,7 +244,7 @@ export function OnboardingTopBanner() {
               )
             ) : (
               <Button asChild size="sm" variant="outline" className={CTA_CLASS}>
-                <Link href="/">Concluir na Dashboard</Link>
+                <Link href="/dashboard">Concluir na Dashboard</Link>
               </Button>
             )}
           </div>

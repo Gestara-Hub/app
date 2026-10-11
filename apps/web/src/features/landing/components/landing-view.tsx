@@ -5,6 +5,7 @@ import { LandingHero } from "./landing-hero";
 import { LandingProblems } from "./landing-problems";
 import { LandingSegments } from "./landing-segments";
 import { LandingFeatures } from "./landing-features";
+import { LandingSignupSection } from "./landing-signup-section";
 import { LandingFaq } from "./landing-faq";
 import { LandingFooter } from "./landing-footer";
 
@@ -17,6 +18,7 @@ export function LandingView() {
         <LandingProblems />
         <LandingSegments />
         <LandingFeatures />
+        <LandingSignupSection />
         <LandingFaq />
       </main>
       <LandingFooter />

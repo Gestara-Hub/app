@@ -130,7 +130,8 @@ const STORAGE_KEY = "gestarahub:db";
 // v22: Financeiro (plano pago) — colecoes financeiras, categorias padrao no tenant
 //      de classes e organization.subscription (free). Migracao suave.
 // v23: Comunicacao (recurso messaging) — sessao WhatsApp, templates de regua e logs.
-const SEED_VERSION = 23;
+// v24: Onboarding setup — campos de unidade e endereço da Academia limpos para capturar do setup.
+const SEED_VERSION = 24;
 
 interface PersistedBlob {
   v: number;
@@ -315,6 +316,11 @@ export function organizationTierById(organizationId: Id): SubscriptionTier | und
   const org = world.tenants[organizationId]?.organization;
   if (!org) return undefined;
   return org.subscription?.tier ?? "free";
+}
+
+/** Indica se a organizacao ja concluiu a etapa de setup inicial (onboarding). */
+export function isOnboardingCompletedById(organizationId: Id): boolean {
+  return Boolean(world.tenants[organizationId]?.organization.settings?.onboardingCompleted);
 }
 
 /**

@@ -1,3 +1,5 @@
+export { SetupGuard } from "./components/setup-guard";
+export { BusinessSetupWizard } from "./components/business-setup-wizard";
 export { Onboarding } from "./components/onboarding";
 export { OnboardingTopBanner } from "./components/onboarding-top-banner";
 export { OnboardingWelcomeDialog } from "./components/onboarding-welcome-dialog";

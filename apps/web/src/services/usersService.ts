@@ -54,6 +54,7 @@ export interface UserSwitchOption {
   user: UserView;
   organizationId: Id;
   organizationName: string;
+  onboardingCompleted?: boolean;
 }
 
 function validateUser(
@@ -167,12 +168,16 @@ export const usersService = {
     return simulateRead(() => {
       const options: UserSwitchOption[] = [];
       for (const tenant of allTenants()) {
+        // Deixar apenas o ambiente de academia / Ana Ribeiro no demo por enquanto
+        if (tenant.organization.id === "org-barbearia") continue;
         for (const u of tenant.users) {
           if (u.status !== "active") continue;
+          if (u.id === "usr-marcelo" || u.name === "Marcelo Andrade") continue;
           options.push({
             user: toViewWith(tenant.professionals, u),
             organizationId: tenant.organization.id,
             organizationName: tenant.organization.name,
+            onboardingCompleted: Boolean(tenant.organization.settings?.onboardingCompleted),
           });
         }
       }

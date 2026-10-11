@@ -26,7 +26,10 @@ import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 export function AppTopbar() {
   const user = useCurrentUser();
   const { data: unit, isError: unitError } = useUnit();
-  const { data: switchOptions } = useSwitchableUsers();
+  const { data: rawSwitchOptions } = useSwitchableUsers();
+  const switchOptions = (rawSwitchOptions ?? []).filter(
+    (opt) => opt.user.name !== "Marcelo Andrade" && opt.user.id !== "usr-marcelo",
+  );
   const { resolvedTheme, setTheme } = useTheme();
 
   return (

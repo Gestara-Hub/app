@@ -174,9 +174,9 @@ function seedAcademia(): MockStore {
   const unit: Unit = {
     id: UNIT_ACADEMIA,
     organizationId: ORG_ACADEMIA,
-    name: "Academia X - Unidade 1",
-    address: "Av. das Modalidades, 300 - Centro",
-    phone: digits("(11) 4003-1000"),
+    name: "",
+    address: undefined,
+    phone: undefined,
     status: "active",
     businessHours: [],
   };

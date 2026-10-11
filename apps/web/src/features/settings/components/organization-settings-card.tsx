@@ -60,8 +60,8 @@ const schema = z.object({
   organizationName: z
     .string()
     .trim()
-    .min(1, "Informe o nome da organização ou academia."),
-  unitName: z.string().trim().min(1, "Informe o nome da unidade."),
+    .min(1, "Informe o nome da organização."),
+  unitName: z.string().trim().optional(),
   // Limitado a 28 para existir em todos os meses, inclusive fevereiro
   defaultDueDay: z
     .number({ error: "Use um dia de 1 a 28." })
@@ -311,7 +311,7 @@ function OrgUnitForm({
       }
       if (unitDirty) {
         await updateUnit.mutateAsync({
-          name: values.unitName,
+          name: values.unitName?.trim() ?? "",
           address: values.address as Address,
           phone: values.phone ?? "",
         });
@@ -370,7 +370,7 @@ function OrgUnitForm({
             <AccordionContent className="pt-2 pb-5 space-y-4 border-t border-border/40 mt-1">
               <InputText<OrgUnitValues>
                 name="organizationName"
-                label="Nome da organização / academia"
+                label="Nome da organização"
                 placeholder="Informe o nome da organização"
                 required
                 disabled={pending}
@@ -380,8 +380,7 @@ function OrgUnitForm({
                 <InputText<OrgUnitValues>
                   name="unitName"
                   label="Nome da unidade"
-                  placeholder="Informe o nome da unidade"
-                  required
+                  placeholder="Ex.: Matriz Centro (opcional)"
                   disabled={pending}
                 />
                 <InputPhone<OrgUnitValues>

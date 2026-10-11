@@ -94,5 +94,6 @@ export async function syncSubscriptionTier(
 export async function signOut(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(SUBSCRIPTION_COOKIE);
   redirect("/login");
 }

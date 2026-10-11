@@ -7,3 +7,5 @@ export { LandingFeatures } from "./components/landing-features";
 export { LandingFaq } from "./components/landing-faq";
 export { LandingFooter } from "./components/landing-footer";
 export { TypewriterText } from "./components/typewriter-text";
+export { LandingSignupSection } from "./components/landing-signup-section";
+export { ScrollReveal } from "./components/scroll-reveal";

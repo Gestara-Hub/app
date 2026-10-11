@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { signOut } from "@/app/(auth)/actions";
 import { useResetData } from "../hooks/use-reset-data";
 
 export function ResetDataActions() {
@@ -25,8 +26,8 @@ export function ResetDataActions() {
   async function handleConfirm() {
     try {
       await reset.mutateAsync();
-      toast.success("Dados da demonstração apagados. Só os proprietários iniciais foram mantidos.");
       setOpen(false);
+      await signOut();
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível apagar os dados da demonstração."));
     }
