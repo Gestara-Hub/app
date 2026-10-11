@@ -30,45 +30,45 @@ import { useOrganization } from "@/features/settings";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import {
   CLASSES_SEGMENT_PRESETS,
+  segmentTrackForModality,
   type BusinessSegmentPreset,
 } from "@/lib/business-segment-presets";
-import { inferDefaultTrackForModalityName } from "@/lib/progression-tracks";
 import type { ClassesBusinessSegment } from "@gestarahub/contracts";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 
 const SEGMENT_ICONS: Record<ClassesBusinessSegment, React.ComponentType<{ className?: string }>> = {
   martial_arts: Award,
-  fitness_wellness: Activity,
-  education_courses: Languages,
-  dance_arts: Sparkles,
-  crossfit_functional: Dumbbell,
-  aquatics_sports: Waves,
+  pilates_yoga: Activity,
+  music_languages: Languages,
+  dance: Sparkles,
+  functional_training: Dumbbell,
+  swimming_sports: Waves,
   custom: PlusCircle,
 };
 
 const STANDARD_SEGMENTS: ClassesBusinessSegment[] = [
   "martial_arts",
-  "fitness_wellness",
-  "education_courses",
-  "dance_arts",
-  "crossfit_functional",
-  "aquatics_sports",
+  "pilates_yoga",
+  "music_languages",
+  "dance",
+  "functional_training",
+  "swimming_sports",
 ];
 
 function getModalityPlaceholder(segment: ClassesBusinessSegment): string {
   switch (segment) {
     case "martial_arts":
       return "Ex.: Karatê, Capoeira, Taekwondo, Boxe...";
-    case "fitness_wellness":
+    case "pilates_yoga":
       return "Ex.: Mat Pilates, Pilates Clínico, Ashtanga...";
-    case "education_courses":
+    case "music_languages":
       return "Ex.: Bateria, Piano, Canto, Francês...";
-    case "dance_arts":
+    case "dance":
       return "Ex.: Dança Contemporânea, Sapateado, K-Pop...";
-    case "crossfit_functional":
+    case "functional_training":
       return "Ex.: Levantamento de Peso (LPO), Mobilidade...";
-    case "aquatics_sports":
+    case "swimming_sports":
       return "Ex.: Polo Aquático, Futevôlei, Vôlei de Praia...";
     default:
       return "Ex.: Nome da aula ou modalidade...";
@@ -103,7 +103,8 @@ export function BusinessSetupWizard() {
     setSelectedSegment(segId);
     setCustomAddedModalities([]);
     if (segId === "custom") {
-      setSelectedModalities(customSegmentName.trim() ? [customSegmentName.trim()] : []);
+      // O nome da area nao vira modalidade: as aulas sao escolhidas no passo 3.
+      setSelectedModalities([]);
     } else {
       const preset = CLASSES_SEGMENT_PRESETS[segId];
       setSelectedModalities(preset.defaultModalities.slice(0, 2));
@@ -153,11 +154,13 @@ export function BusinessSetupWizard() {
         name: finalName,
         segment: finalSegmentLabel,
         model: "classes",
+        classSegment: selectedSegment,
+        customSegmentName: selectedSegment === "custom" ? customSegmentName.trim() : undefined,
         settings: {
           ...organization?.settings,
-          businessSegments: [selectedSegment],
-          customSegmentName: selectedSegment === "custom" ? customSegmentName.trim() : undefined,
           onboardingCompleted: true,
+          // Modalidades criadas aqui vem com a trilha padrao: pede revisao.
+          modalitiesReviewed: selectedModalities.length > 0 ? false : undefined,
         },
       });
 
@@ -168,18 +171,13 @@ export function BusinessSetupWizard() {
         phone: undefined,
       });
 
-      // 3. Cria as modalidades marcadas com trilhas correspondentes
-      const modalitiesToCreate =
-        selectedModalities.length > 0
-          ? selectedModalities
-          : [selectedSegment === "custom" && customSegmentName.trim() ? customSegmentName.trim() : "Turma Geral"];
-
-      for (const modName of modalitiesToCreate) {
+      // 3. Cria so as modalidades marcadas, com a trilha padrao da area. Sem
+      // nenhuma marcada, nao inventa modalidade: o dono cadastra depois.
+      for (const modName of selectedModalities) {
         try {
-          const track = inferDefaultTrackForModalityName(modName);
           await categoriesService.create({
             name: modName,
-            progressionTrack: activePreset.defaultProgressionEnabled ? track : undefined,
+            progressionTrack: segmentTrackForModality(activePreset, modName),
           });
         } catch {
           // Ignora se já existir
@@ -530,11 +528,9 @@ export function BusinessSetupWizard() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && customSegmentName.trim()) {
                       e.preventDefault();
-                      setSelectedModalities([customSegmentName.trim()]);
                       setStep(3);
                     }
                   }}
-                  placeholder="Ex.: Patinação Artística, Tiro com Arco, Circo, Tênis..."
                   className="h-10 bg-background text-sm"
                   autoFocus
                 />
@@ -553,12 +549,7 @@ export function BusinessSetupWizard() {
               </Button>
 
               <Button
-                onClick={() => {
-                  if (selectedSegment === "custom" && customSegmentName.trim()) {
-                    setSelectedModalities([customSegmentName.trim()]);
-                  }
-                  setStep(3);
-                }}
+                onClick={() => setStep(3)}
                 disabled={selectedSegment === "custom" && !customSegmentName.trim()}
                 className="h-11 px-6 font-semibold gap-2 shadow-sm"
               >

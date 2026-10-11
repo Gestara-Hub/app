@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Category } from "@gestarahub/contracts";
+import { useSegmentVocabulary } from "@/features/settings";
 import { ModalityForm } from "./modality-form";
 
 interface ModalityFormDialogProps {
@@ -22,6 +23,7 @@ export function ModalityFormDialog({
   modality,
 }: ModalityFormDialogProps) {
   const isEdit = Boolean(modality);
+  const vocabulary = useSegmentVocabulary();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -36,8 +38,8 @@ export function ModalityFormDialog({
           </DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Configure o nome, a trilha de faixas/níveis e a disponibilidade."
-              : "Configure a modalidade e, se desejar, sua trilha de graduação e metas."}
+              ? `Configure o nome, a ${vocabulary.trackTitle.toLowerCase()} e a disponibilidade.`
+              : `Configure a modalidade e, se quiser, a ${vocabulary.trackTitle.toLowerCase()}.`}
           </DialogDescription>
         </DialogHeader>
         <ModalityForm

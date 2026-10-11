@@ -152,8 +152,23 @@ type OperationalModel = "scheduling" | "classes" | "delivery";
 type PlanPeriod = "monthly" | "biweekly" | "weekly";
 
 type ChargeKind = "membership" | "dropin";
+
+// Area do negocio no Modelo 3 (Organization.classSegment). Ausente = martial_arts.
+type ClassesBusinessSegment =
+  | "martial_arts"
+  | "pilates_yoga"
+  | "music_languages"
+  | "dance"
+  | "functional_training"
+  | "swimming_sports"
+  | "custom";
 // Categoria de servico/modalidade e a entidade Category (categoryId), nao um enum.
 ```
+
+### Area do negocio (segmento) no Modelo 3
+
+- A area e uma chave fechada (`Organization.classSegment`), nunca texto. `Organization.segment` (texto) e so rotulo de exibicao; no Personalizado, o nome digitado fica em `Organization.customSegmentName`.
+- A area so define padroes e vocabulario, nunca liga ou desliga recursos. O perfil de cada area fica em `apps/web/src/lib/business-segment-presets.ts`: trilha padrao das modalidades, duracao e vagas de nova turma, palavras das telas (faixa, nivel, modulo ou fase) e o tom dos modelos de mensagem. Detalhe em `docs/frontend/08-decisoes-landing-page-e-onboarding.md`, secao 4.5.
 
 ## Testes
 

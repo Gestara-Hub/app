@@ -34,7 +34,8 @@ export interface PlanFilter {
 
 /** Student charge (recurring membership or single drop-in session). */
 export type ChargeKind = "membership" | "dropin";
-export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled";
+/** `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso. */
+export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
 /**
  * Quem cancelou: "user" (acao manual, pode ser reaberta) ou "system" (troca de
@@ -62,6 +63,10 @@ export interface Charge {
   /** Como foi paga (ausente em dados antigos = manual). */
   paidVia?: ChargePaidVia;
   canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
+  /** Bolsa aplicada nesta mensalidade (100 = integral). */
+  scholarshipPercent?: number;
+  /** Valor sem desconto/bolsa (base para "bolsas concedidas"). So com bolsa. */
+  listAmountCents?: number;
   cycleIndex?: number;
   cycleTotal?: number;
   isProrated?: boolean;

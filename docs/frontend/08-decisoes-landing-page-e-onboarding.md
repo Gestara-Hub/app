@@ -49,9 +49,11 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 ## 3. Decisões da Landing Page (`apps/web/src/features/landing/`)
 
 ### 3.1. Hero (`landing-hero.tsx`)
-- **Pill superior**: *"Aulas em Grupo ou Individuais • Sistema 100% Gratuito"*.
-- **Typewriter**: Alterna dinamicamente entre os nichos reais (*"Lutas & Artes Marciais."*, *"Pilates & Yoga."*, *"Música & Instrumentos."*, *"Idiomas & Línguas."*, *"Dança & Escolas."*, *"Boxes & Funcional."*).
+- **Pill superior**: *"Grátis para sempre • Sem cartão de crédito"*.
+- **Título** (11/10/2026, opção escolhida entre 4): *"Chega de caderno e planilha. Gestão simples para"* + digitação com o tipo de negócio, sempre fechando a frase: *"academias de luta."*, *"estúdios de pilates e yoga."*, *"escolas de música."*, *"escolas de idiomas."*, *"escolas de dança."*, *"boxes e funcional."*.
+- **Sem subtítulo**: os botões vêm logo após o título.
 - **Badges de confiança**: *"Em grupo ou aulas particulares"*, *"Sem limite de alunos ou horários"*, *"Chamada direta no celular"*.
+- **Metadados (título e descrição da página)**: sem "teste de 14 dias"; reforçam "grátis para sempre".
 
 ### 3.2. Antes vs. Depois (`landing-problems.tsx`)
 - **Título & Subtítulo**:
@@ -123,11 +125,12 @@ Localização: `apps/web/src/features/onboarding/components/business-setup-wizar
 - Subtítulo: *Adaptamos as opções de turmas, regras e chamada para o seu formato.*
 - Grid simétrico de 6 cards principais (presets configurados em `apps/web/src/lib/business-segment-presets.ts`):
   1. `martial_arts`: Lutas & Artes Marciais (*Tatame & Faixas* | *Chamada no tatame e esteira de faixas.*)
-  2. `fitness_wellness`: Pilates & Yoga (*Aparelhos & VIP* | *Limite por aparelho e reposições organizadas.*)
-  3. `education_courses`: Música & Idiomas (*Grupo ou VIP* | *Aulas particulares ou turmas por módulos.*)
-  4. `dance_arts`: Dança & Movimento (*Níveis & Turmas* | *Turmas por nível e ensaios particulares.*)
-  5. `crossfit_functional`: Boxes & Funcional (*Lotação & Fila* | *Bloqueio ao lotar e fila de espera automática.*)
-  6. `aquatics_sports`: Natação & Esportes (*Turmas & Raia* | *Turmas por idade e controle de presença.*)
+  2. `pilates_yoga`: Pilates & Yoga (*Grupo ou 1 a 1* | *Turmas pequenas e aulas particulares.*)
+  3. `music_languages`: Música & Idiomas (*Grupo ou VIP* | *Aulas particulares ou turmas por módulos.*)
+  4. `dance`: Dança & Movimento (*Níveis & Turmas* | *Turmas por nível e aulas particulares.*)
+  5. `functional_training`: Boxes & Funcional (*Lotação & Fila* | *Bloqueio ao lotar e fila de espera automática.*)
+  6. `swimming_sports`: Natação & Esportes (*Fases & Presença* | *Turmas por fase e controle de presença.*)
+- **Cópia só com o que existe**: os cards não prometem recurso que o sistema não tem (capacidade por aparelho, raia e faixa etária foram retirados em 11/10/2026).
 - **Zero cortes**: Nenhuma reticência nem texto quebrado. Todo o conteúdo cabe 100% no card.
 - Opção 7 (Personalizado): Card com borda tracejada, discreto e simétrico. Ao clicar, abre o campo para digitar a modalidade exclusiva.
 
@@ -141,7 +144,43 @@ Localização: `apps/web/src/features/onboarding/components/business-setup-wizar
 - **Campo de Adição Contextual**:
   - Placeholder dinâmico conforme o segmento escolhido no Passo 2 (ex.: Lutas sugere *Karatê/Capoeira*; Pilates sugere *Mat Pilates/Pilates Clínico*; Música sugere *Piano/Canto/Bateria*).
   - Ao adicionar, a nova aula entra direto como uma pílula ativa com ícone de exclusão `x`.
-- **Finalização**: Salva dados da organização e unidade, pré-cria as modalidades marcadas e redireciona para `/dashboard`.
+- **Finalização**: Salva dados da organização (incluindo `classSegment`) e unidade, pré-cria as modalidades marcadas com a trilha padrão da área e redireciona para `/dashboard`.
+- **Revisão das modalidades do setup** (11/10/2026): quando o setup cria modalidades, grava `settings.modalitiesReviewed = false`. O passo "Cadastrar modalidades" do passo a passo fica em **"Falta revisar"** (selo âmbar, botão "Revisar"): não conta como concluído, mas já libera os passos que dependem dele. A tela de Modalidades mostra um aviso explicando a trilha de evolução, com "Está tudo certo". Clicar no aviso ou salvar uma modalidade (nome ou trilha) fecha a revisão. Sem modalidades no setup, nada muda. O setup não cria modalidade que não foi marcada (nem o nome da área do Personalizado, nem "Turma Geral").
+
+### 4.5. O que a área (segmento) muda no sistema
+
+Decisão de 11/10/2026: a área é um **pacote de padrões e vocabulário**. Não liga nem desliga recursos; todo recurso vale para qualquer área. Fonte única: `apps/web/src/lib/business-segment-presets.ts`. Tenants sem área salva seguem como Lutas.
+
+| Área | Trilha padrão | Nova turma | Palavra | Avanço |
+|---|---|---|---|---|
+| Lutas | Pelo nome da modalidade (BJJ, Judô, Muay Thai...) | 60 min, 20 vagas | Faixa | Graduar |
+| Pilates & Yoga | Sem trilha (liga depois) | 50 min, 6 vagas | Nível | Avançar |
+| Música & Idiomas | Módulos (Básico → Avançado) | 60 min, 8 vagas | Módulo | Avançar |
+| Dança | Níveis gerais | 60 min, 15 vagas | Nível | Avançar |
+| Boxes & Funcional | Sem trilha | 60 min, 15 vagas | Nível | Avançar |
+| Natação & Esportes | Fases (Adaptação → Treinamento) | 45 min, 8 vagas | Fase | Avançar |
+| Personalizado | Sem trilha | 60 min, 10 vagas | Nível | Avançar |
+
+Onde aparece:
+- **Setup**: trilha das modalidades criadas no passo 3.
+- **Modalidade**: título da trilha e trilha sugerida ao ligar o switch.
+- **Nova turma**: vagas, duração do horário e atalho de duração da área.
+- **Telas de aluno, turma, aula e relatórios**: "Faixa" ou "Nível/Módulo/Fase", "Graduar" ou "Avançar". "Aluno" não muda.
+- **Comunicação**: Lutas fala em treino e tatame; as demais, em aulas. Ao trocar de área, só os modelos ainda no texto padrão mudam; os editados ficam como estão.
+- **Configurações**: campo "Área do espaço" em Identificação do Negócio. Trocar muda só padrões e palavras daí em diante; modalidades, trilhas e turmas existentes não mudam.
+
+#### Estilo da trilha (11/10/2026)
+
+O visual vem da **trilha** (`ModalityProgressionTrack.style`), não da área, porque uma academia de luta pode ter Yoga e uma escola de dança pode ter Capoeira:
+- **`belt` (faixa)**: barra de faixa/corda, até 2 cores (faixa e ponta) e graus. Modelos de luta.
+- **`levels` (nível)**: etiqueta simples, **uma cor opcional** (padrão: sem cor) e **sem subníveis**. Demais modelos.
+- Trilhas antigas sem `style` são resolvidas por `resolveTrackStyle` (modelo; se personalizada, nomes como "Faixa", "Kruang", "Corda") e gravam o estilo no próximo salvar.
+- O editor tem o campo **Modelo**, com os modelos da área primeiro ("Sugeridos") e o resto em "Outros modelos". Trocar um modelo personalizado pede confirmação.
+- Modelos: Jiu-Jitsu, Judô, Muay Thai, Karatê, Taekwondo, Capoeira, Kickboxing (faixa); Níveis (Iniciante, Intermediário, Avançado), Módulos, Idiomas A1 a C2, Fases da natação, Categorias (Iniciante, Scaled, RX) e Do zero (nível).
+- Textos do editor seguem o estilo: "Quando troca de faixa ou grau" ou "Quando avança de nível/módulo/fase", "Adicionar fase" etc.
+- Sugestões rápidas de nome de modalidade seguem a área (Lutas mantém a lista de lutas; Personalizado não mostra sugestões).
+
+Fora de escopo (recurso novo, não configuração): capacidade por aparelho, raia, turmas por faixa etária e o card "Prontos para graduar/avançar" no dashboard.
 
 ---
 

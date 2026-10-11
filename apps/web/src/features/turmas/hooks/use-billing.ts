@@ -83,15 +83,6 @@ export function useCharges(filter?: ChargeFilter) {
   });
 }
 
-export function useGenerateCharges() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (competence: string) =>
-      billingService.generateCharges(competence),
-    onSuccess: () => invalidateMoney(qc),
-  });
-}
-
 export function useMarkChargePaid() {
   const qc = useQueryClient();
   return useMutation({
@@ -121,14 +112,6 @@ export function useRevertCharge() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: Id) => billingService.reopenCharge(id),
-    onSuccess: () => invalidateMoney(qc),
-  });
-}
-
-export function useClearCharges() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (competence: string) => billingService.clearCharges(competence),
     onSuccess: () => invalidateMoney(qc),
   });
 }

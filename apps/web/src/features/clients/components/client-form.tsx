@@ -20,8 +20,10 @@ import {
   InputNumber,
   InputPhone,
   InputText,
+  SegmentedChoiceField,
   SelectField,
   TextArea,
+  type SegmentedChoiceOption,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
@@ -55,6 +57,24 @@ const TIMING_LABEL = { prepaid: "Antecipado", postpaid: "Depois do uso" } as con
 
 const shortDate = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
 
+const PAYMENT_MODE_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "membership", label: "Paga mensalidade", description: "Plano e desconto opcional" },
+  { value: "scholarship", label: "Bolsista", description: "Integral ou parcial" },
+  { value: "none", label: "Não paga mensalidade", description: "Avulso ou experimental" },
+];
+
+const SCHOLARSHIP_BY_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "percent", label: "% de bolsa", description: "Desconto em % do plano" },
+  { value: "amount", label: "Valor a pagar", description: "Quanto o aluno paga" },
+];
+
+const SCHOLARSHIP_KIND_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "full", label: "Integral", description: "Não paga mensalidade" },
+  { value: "partial", label: "Parcial", description: "Paga uma parte" },
+];
+
+const SCHOLARSHIP_REASONS = ["Atleta", "Social", "Família de professor", "Parceria"];
+
 const DISCOUNT_TYPE_OPTIONS = [
   { value: "fixed", label: "Valor fixo em reais (R$)" },
   { value: "percentage", label: "Porcentagem sobre a mensalidade (%)" },
@@ -62,9 +82,23 @@ const DISCOUNT_TYPE_OPTIONS = [
 
 const todayDateISO = format(new Date(), "yyyy-MM-dd");
 
-function toDefaults(client?: Client, orgSettings?: OrganizationSettings): ClientFormValues {
+function toDefaults(
+  client?: Client,
+  orgSettings?: OrganizationSettings,
+  isClasses = true,
+): ClientFormValues {
   const addr = client?.address;
-  const hasDiscount = Boolean(client?.discount && client.discount.value > 0);
+  const isScholar = Boolean(client?.discount?.scholarship);
+  const hasDiscount = Boolean(!isScholar && client?.discount && client.discount.value > 0);
+  // Novo aluno comeca em "Paga mensalidade"; aluno salvo sem plano e sem bolsa
+  // e "Não paga mensalidade". Fora do modelo de turmas nao ha essa escolha.
+  const paymentMode = !isClasses
+    ? undefined
+    : isScholar
+      ? "scholarship"
+      : client && !client.planId
+        ? "none"
+        : "membership";
   const initialStartDate = client?.planStartDate || todayDateISO;
   const initialStrategy = client?.billingStrategy || orgSettings?.midMonthStrategy || "prorated";
   const initialTiming = client?.cyclePaymentTiming || orgSettings?.billingTiming || "prepaid";
@@ -96,6 +130,19 @@ function toDefaults(client?: Client, orgSettings?: OrganizationSettings): Client
     discountType: client?.discount?.type ?? "fixed",
     discountValue: client?.discount?.value ?? 0,
     discountReason: client?.discount?.reason ?? "",
+    paymentMode,
+    scholarshipKind:
+      isScholar && !(client?.discount?.type === "percentage" && client.discount.value >= 100)
+        ? "partial"
+        : "full",
+    scholarshipBy: isScholar && client?.discount?.type === "fixed" ? "amount" : "percent",
+    scholarshipPercent:
+      isScholar && client?.discount?.type === "percentage" && client.discount.value < 100
+        ? client.discount.value
+        : 50,
+    // Valor a pagar: preenchido quando o plano carrega (precisa do preco).
+    scholarshipPayCents: undefined,
+    discountValidUntil: client?.discount?.validUntil ?? "",
   };
 }
 
@@ -132,14 +179,14 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         label: `${cleanName} — ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
       };
     });
-    return [{ value: "", label: "Nenhum plano (sem mensalidade fixa)" }, ...list];
+    return list;
   }, [plans]);
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(client, orgSettings),
+    defaultValues: toDefaults(client, orgSettings, isClasses),
   });
 
   const isDirty = form.formState.isDirty;
@@ -175,6 +222,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     control: form.control,
     name: "discountValue",
   });
+  const paymentMode = useWatch({ control: form.control, name: "paymentMode" });
+  const scholarshipKind = useWatch({ control: form.control, name: "scholarshipKind" });
+  const scholarshipBy = useWatch({ control: form.control, name: "scholarshipBy" });
+  const scholarshipPercentValue = useWatch({ control: form.control, name: "scholarshipPercent" });
+  const scholarshipPayCents = useWatch({ control: form.control, name: "scholarshipPayCents" });
+  const isScholarship = paymentMode === "scholarship";
+  const isFullScholarship = isScholarship && scholarshipKind !== "partial";
   const addressValues = useWatch({
     control: form.control,
     name: "address",
@@ -220,6 +274,52 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     [plans, selectedPlanId],
   );
 
+  // Desconto efetivo do modo escolhido. Bolsa por "valor a pagar" vira desconto
+  // fixo (preco do plano - valor pago); integral = 100%.
+  const effectiveDiscount = useMemo(() => {
+    if (isScholarship) {
+      if (isFullScholarship) return { type: "percentage" as const, value: 100 };
+      if (scholarshipBy === "amount") {
+        const pay = Number(scholarshipPayCents) || 0;
+        const price = selectedPlan?.priceCents ?? 0;
+        return pay > 0 && price > pay ? { type: "fixed" as const, value: price - pay } : null;
+      }
+      const pct = Number(scholarshipPercentValue) || 0;
+      return pct > 0 ? { type: "percentage" as const, value: Math.min(pct, 100) } : null;
+    }
+    if (paymentMode !== "membership" || !hasDiscount) return null;
+    const value = Number(discountValue);
+    return value > 0 ? { type: discountType ?? "fixed", value } : null;
+  }, [
+    isScholarship,
+    isFullScholarship,
+    scholarshipBy,
+    scholarshipPayCents,
+    scholarshipPercentValue,
+    selectedPlan,
+    paymentMode,
+    hasDiscount,
+    discountType,
+    discountValue,
+  ]);
+
+  // Edicao de bolsa por valor: mostra quanto o aluno paga (preco - desconto).
+  useEffect(() => {
+    const d = client?.discount;
+    if (!d?.scholarship || d.type !== "fixed" || !selectedPlan) return;
+    if (form.getValues("scholarshipPayCents") !== undefined) return;
+    if (selectedPlan.id !== client?.planId) return;
+    form.setValue("scholarshipPayCents", Math.max(0, selectedPlan.priceCents - d.value));
+  }, [client, selectedPlan, form]);
+
+  const planFieldLabel = isFullScholarship
+    ? "Plano de referência (opcional)"
+    : isScholarship
+      ? "Plano"
+      : "Plano de acesso";
+  // Inicio: com plano, ou na bolsa integral (sem plano, e o inicio das isentas).
+  const showStartDate = paymentMode !== "none" && (Boolean(selectedPlanId) || isFullScholarship);
+
   const planBadge = selectedPlan
     ? `${selectedPlan.name.replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "").trim()} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
     : selectedPlanId
@@ -235,30 +335,53 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   }, [discountType, form]);
 
   const discountBadge = useMemo(() => {
-    if (!hasDiscount || !selectedPlanId) return null;
-    const numValue = Number(discountValue);
-    if (!numValue || numValue <= 0 || isNaN(numValue)) {
-      return null;
+    if (paymentMode === "none") return "Sem mensalidade";
+    if (isFullScholarship) return "Bolsista integral";
+    if (!effectiveDiscount || !selectedPlanId) return null;
+    if (isScholarship) {
+      return scholarshipBy === "amount"
+        ? `Paga ${formatCents(Number(scholarshipPayCents) || 0)}`
+        : `Bolsa ${effectiveDiscount.value}%`;
     }
-    if (discountType === "percentage") {
-      return `-${numValue}%`;
+    if (effectiveDiscount.type === "percentage") {
+      return `-${effectiveDiscount.value}%`;
     }
-    return `-${formatCents(Math.round(numValue))}`;
-  }, [hasDiscount, selectedPlanId, discountValue, discountType]);
+    return `-${formatCents(Math.round(effectiveDiscount.value))}`;
+  }, [
+    effectiveDiscount,
+    isScholarship,
+    isFullScholarship,
+    selectedPlanId,
+    paymentMode,
+    scholarshipBy,
+    scholarshipPayCents,
+  ]);
+
+  // Conta ao vivo da bolsa parcial: "Plano R$ 180,00 → paga R$ 90,00 (bolsa de 50%)".
+  const partialSummary = useMemo(() => {
+    if (!isScholarship || isFullScholarship || !selectedPlan || !effectiveDiscount) return null;
+    const price = selectedPlan.priceCents;
+    const pay =
+      effectiveDiscount.type === "percentage"
+        ? price - Math.round((price * effectiveDiscount.value) / 100)
+        : price - effectiveDiscount.value;
+    const pct = price > 0 ? Math.round(((price - pay) / price) * 100) : 0;
+    return `Plano ${formatCents(price)} → paga ${formatCents(pay)} (bolsa de ${pct}%)`;
+  }, [isScholarship, isFullScholarship, selectedPlan, effectiveDiscount]);
 
   const basePriceCents = useMemo(() => {
     if (!selectedPlan) return 0;
     let price = selectedPlan.priceCents;
-    if (hasDiscount && discountValue && Number(discountValue) > 0) {
-      if (discountType === "percentage") {
-        const disc = Math.round((price * Number(discountValue)) / 100);
+    if (effectiveDiscount) {
+      if (effectiveDiscount.type === "percentage") {
+        const disc = Math.round((price * effectiveDiscount.value) / 100);
         price = Math.max(0, price - disc);
       } else {
-        price = Math.max(0, price - Math.round(Number(discountValue)));
+        price = Math.max(0, price - Math.round(effectiveDiscount.value));
       }
     }
     return price;
-  }, [selectedPlan, hasDiscount, discountType, discountValue]);
+  }, [selectedPlan, effectiveDiscount]);
 
   // Mesmo motor da geracao em lote e da previa das Configuracoes.
   const billingCalculation = useMemo(() => {
@@ -357,7 +480,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       errors.dueDay ||
       errors.membershipStatus ||
       errors.discountValue ||
-      errors.discountReason
+      errors.discountReason ||
+      errors.scholarshipPercent ||
+      errors.scholarshipPayCents
     ) {
       setPlanOpen(true);
     }
@@ -385,22 +510,54 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         }
       : undefined;
 
-    const hasDiscountVal =
-      Boolean(values.hasDiscount &&
-      values.discountValue !== undefined &&
-      values.discountValue !== null &&
-      values.discountValue > 0);
+    const mode = values.paymentMode ?? "membership";
+    const isScholar = mode === "scholarship";
+    const isFull = isScholar && values.scholarshipKind !== "partial";
+    // "Não paga mensalidade" nao leva plano; a bolsa integral pode ir sem plano.
+    const planId = mode === "none" ? undefined : values.planId || undefined;
+    const plan = plans?.find((p) => p.id === planId);
 
-    const discountPayload = hasDiscountVal
-      ? {
-          type: values.discountType ?? "fixed",
-          value: Math.round(values.discountValue ?? 0),
-          reason: values.discountReason?.trim() || undefined,
-        }
-      : undefined;
+    if (isScholar && !isFull && values.scholarshipBy === "amount" && plan) {
+      const pay = Math.round(values.scholarshipPayCents ?? 0);
+      if (pay >= plan.priceCents) {
+        form.setError("scholarshipPayCents", {
+          message: `Use um valor menor que o do plano (${formatCents(plan.priceCents)}).`,
+        });
+        return;
+      }
+    }
+
+    const reason = values.discountReason?.trim() || undefined;
+    const validUntil = values.discountValidUntil || undefined;
+    const discountPayload: CreateClient["discount"] = isScholar
+      ? isFull
+        ? { type: "percentage", value: 100, scholarship: true, reason, validUntil }
+        : values.scholarshipBy === "amount"
+          ? {
+              type: "fixed",
+              value: Math.max(0, (plan?.priceCents ?? 0) - Math.round(values.scholarshipPayCents ?? 0)),
+              scholarship: true,
+              reason,
+              validUntil,
+            }
+          : {
+              type: "percentage",
+              value: Math.round(values.scholarshipPercent ?? 0),
+              scholarship: true,
+              reason,
+              validUntil,
+            }
+      : mode === "membership" && values.hasDiscount && values.discountValue && values.discountValue > 0
+        ? {
+            type: values.discountType ?? "fixed",
+            value: Math.round(values.discountValue),
+            reason,
+            validUntil,
+          }
+        : undefined;
 
     const isNewPlanAssignment = Boolean(
-      values.planId && (!isEdit || values.planId !== client?.planId),
+      planId && (!isEdit || planId !== client?.planId),
     );
     let initialChargePayload: CreateClient["initialCharge"] | undefined;
 
@@ -411,7 +568,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           ? Math.round(values.firstChargeAmount)
           : first.amountCents;
 
-      if (chosenAmount > 0) {
+      // Bolsa integral: a 1a mensalidade sai como "Isento" (R$ 0).
+      if (chosenAmount > 0 || discountPayload?.scholarship) {
         initialChargePayload = {
           amountCents: chosenAmount,
           dueDate: values.firstChargeDueDate || first.dueDate,
@@ -430,13 +588,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       email: values.email || undefined,
       notes: values.notes || undefined,
       address: addressPayload,
-      planId: values.planId || undefined,
-      planStartDate: values.planId ? values.planStartDate || todayDateISO : undefined,
-      billingStrategy: values.planId ? values.billingStrategy || "prorated" : undefined,
-      cyclePaymentTiming: values.planId ? values.cyclePaymentTiming || "prepaid" : undefined,
-      dueDay: values.planId ? values.dueDay || defaultDueDay : undefined,
-      membershipStatus: values.planId ? values.membershipStatus || "active" : undefined,
-      discount: values.planId ? discountPayload : undefined,
+      planId,
+      // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
+      // (as mensalidades isentas seguem essa regra).
+      planStartDate: planId || isFull ? values.planStartDate || todayDateISO : undefined,
+      billingStrategy: planId || isFull ? values.billingStrategy || "prorated" : undefined,
+      cyclePaymentTiming: planId || isFull ? values.cyclePaymentTiming || "prepaid" : undefined,
+      dueDay: planId || isFull ? values.dueDay || defaultDueDay : undefined,
+      membershipStatus: planId || isFull ? values.membershipStatus || "active" : undefined,
+      discount: planId || isFull ? discountPayload : undefined,
       initialCharge: initialChargePayload,
     };
 
@@ -560,33 +720,62 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             onOpenChange={setPlanOpen}
           >
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
-                <div className={selectedPlanId ? "sm:col-span-3" : "sm:col-span-5"}>
-                  <ComboboxField<ClientFormValues>
-                    name="planId"
-                    label="Plano de acesso"
-                    placeholder="Nenhum plano (sem mensalidade fixa)"
-                    searchPlaceholder="Filtrar plano por nome, período ou valor..."
-                    emptyMessage="Nenhum plano encontrado."
-                    options={planOptions}
-                    clearable
-                    disabled={pending}
-                  />
-                </div>
+              <SegmentedChoiceField<ClientFormValues>
+                name="paymentMode"
+                ariaLabel="Como o aluno paga"
+                options={PAYMENT_MODE_OPTIONS}
+                disabled={pending}
+              />
 
-                {selectedPlanId ? (
-                  <div className="sm:col-span-2">
-                    <DateField<ClientFormValues>
-                      name="planStartDate"
-                      label="Início do plano"
-                      hint="Data a partir de quando o plano entra em vigor."
+              {paymentMode === "none" ? (
+                <p className="text-xs text-muted-foreground">
+                  Sem plano e sem cobrança. Use para aula avulsa ou experimental.
+                </p>
+              ) : null}
+
+              {isScholarship ? (
+                <SegmentedChoiceField<ClientFormValues>
+                  name="scholarshipKind"
+                  ariaLabel="Tipo de bolsa"
+                  options={SCHOLARSHIP_KIND_OPTIONS}
+                  disabled={pending}
+                />
+              ) : null}
+
+              {paymentMode !== "none" ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+                  <div className={showStartDate ? "sm:col-span-3" : "sm:col-span-5"}>
+                    <ComboboxField<ClientFormValues>
+                      name="planId"
+                      label={planFieldLabel}
+                      hint={isFullScholarship ? "Para saber quanto vale a bolsa." : undefined}
+                      placeholder={isFullScholarship ? "Sem plano de referência" : "Selecione o plano"}
+                      searchPlaceholder="Filtrar plano por nome, período ou valor..."
+                      emptyMessage="Nenhum plano encontrado."
+                      options={planOptions}
+                      clearable
                       disabled={pending}
                     />
                   </div>
-                ) : null}
-              </div>
 
-              {showFirstCharge && billingCalculation ? (
+                  {showStartDate ? (
+                    <div className="sm:col-span-2">
+                      <DateField<ClientFormValues>
+                        name="planStartDate"
+                        label={isScholarship ? "Início da bolsa" : "Início do plano"}
+                        hint={
+                          isScholarship
+                            ? "Data a partir de quando a bolsa vale."
+                            : "Data a partir de quando o plano entra em vigor."
+                        }
+                        disabled={pending}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {showFirstCharge && billingCalculation && !isFullScholarship ? (
                 <div className="space-y-3 pt-2 border-t border-border/40 animate-in fade-in-50 duration-150">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -667,7 +856,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                 </div>
               ) : null}
 
-              {selectedPlanId ? (
+              {selectedPlanId || isFullScholarship ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <InputNumber<ClientFormValues>
                     name="dueDay"
@@ -696,7 +885,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                 </div>
               ) : null}
 
-              {selectedPlanId ? (
+              {paymentMode === "membership" && selectedPlanId ? (
                 <div className="pt-2 border-t border-border/40 space-y-2">
                   <div className="flex items-center justify-between py-1">
                     <label
@@ -750,8 +939,94 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                         placeholder="Informe o motivo do desconto (opcional)"
                         disabled={pending}
                       />
+                      <DateField<ClientFormValues>
+                        name="discountValidUntil"
+                        label="Válido até (opcional)"
+                        hint="Depois dessa data, o desconto deixa de valer."
+                        disabled={pending}
+                      />
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+
+              {isScholarship ? (
+                <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3">
+                  {scholarshipKind === "partial" ? (
+                    selectedPlan ? (
+                      <div className="space-y-3">
+                        <SegmentedChoiceField<ClientFormValues>
+                          name="scholarshipBy"
+                          ariaLabel="Definir a bolsa por"
+                          options={SCHOLARSHIP_BY_OPTIONS}
+                          disabled={pending}
+                        />
+                        {scholarshipBy === "amount" ? (
+                          <InputCurrency<ClientFormValues>
+                            name="scholarshipPayCents"
+                            label="Valor a pagar por período"
+                            placeholder="0,00"
+                            disabled={pending}
+                          />
+                        ) : (
+                          <InputNumber<ClientFormValues>
+                            name="scholarshipPercent"
+                            label="Bolsa (%)"
+                            placeholder="50"
+                            min={1}
+                            max={99}
+                            disabled={pending}
+                          />
+                        )}
+                        {partialSummary ? (
+                          <p className="text-xs text-muted-foreground">{partialSummary}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Escolha o plano para definir quanto o aluno paga.
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      As mensalidades aparecem como Isento, sem cobrança.
+                    </p>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <InputText<ClientFormValues>
+                      name="discountReason"
+                      label="Motivo da bolsa"
+                      placeholder="Informe o motivo da bolsa (opcional)"
+                      disabled={pending}
+                    />
+                    <div className="flex flex-wrap gap-1">
+                      {SCHOLARSHIP_REASONS.map((reason) => (
+                        <button
+                          key={reason}
+                          type="button"
+                          disabled={pending}
+                          onClick={() =>
+                            form.setValue("discountReason", reason, { shouldDirty: true })
+                          }
+                          className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          + {reason}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <DateField<ClientFormValues>
+                    name="discountValidUntil"
+                    label="Válida até (opcional)"
+                    hint={
+                      isFullScholarship && !selectedPlanId
+                        ? "Depois dessa data, deixa de aparecer em Mensalidades."
+                        : "Depois dessa data, volta ao valor cheio do plano."
+                    }
+                    disabled={pending}
+                  />
                 </div>
               ) : null}
 

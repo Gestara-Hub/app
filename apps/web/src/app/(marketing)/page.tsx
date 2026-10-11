@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { LandingView } from "@/features/landing";
 
 export const metadata: Metadata = {
-  title:
-    "GestaraHub — Plataforma de Gestão para Academias, Estúdios e Agendamentos",
+  title: "GestaraHub | Gestão simples para quem ensina",
   description:
-    "Gestão completa de turmas, graduações de artes marciais, mensalidades, presença digital e agendamentos. Experimente grátis por 14 dias.",
+    "Turmas, chamada no celular, mensalidades e evolução dos alunos em um só lugar. Para academias de luta, estúdios, escolas de música, idiomas e dança. Grátis para sempre.",
 };
 
 export default function LandingPage() {

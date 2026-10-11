@@ -7,6 +7,13 @@ export interface StudentDiscount {
   type: DiscountType;
   value: number; // centavos se fixed (ex: 3000 = R$ 30,00) ou percentual (ex: 10 = 10%)
   reason?: string;
+  /**
+   * Bolsa (sempre percentual: 100 = integral). Integral gera a mensalidade como
+   * "Isento" (`waived`); parcial cobra o valor reduzido com selo de bolsa.
+   */
+  scholarship?: boolean;
+  /** Ultimo dia em que o desconto/bolsa vale; periodos depois voltam ao valor cheio. */
+  validUntil?: DateISO;
 }
 
 export type MembershipStatus = "active" | "paused" | "canceled";
@@ -34,7 +41,7 @@ export interface StudentPromotionHistoryEntry {
   fromLevelName?: string;
   fromSubLevel?: number;
   toLevelName: string;
-  toLevelColor: ProgressionBeltColor;
+  toLevelColor?: ProgressionBeltColor;
   toSubLevel: number;
   attendancesCompleted?: number;
   monthsInLevel?: number;
@@ -48,7 +55,7 @@ export interface StudentModalityProgression {
   modalityName?: string;
   levelId?: string;
   levelName: string;
-  levelColor: ProgressionBeltColor;
+  levelColor?: ProgressionBeltColor;
   subLevel: number;
   maxSubLevels?: number;
   promotedAt: DateISO;

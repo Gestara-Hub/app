@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { OnboardingStep } from "../hooks/use-onboarding-steps";
+import { isStepSatisfied, type OnboardingStep } from "../hooks/use-onboarding-steps";
 
 // Fases do setup para agendamento individual (Barbearia, Clínica, etc.)
 const GROUPS_DEFAULT = [
@@ -102,13 +102,13 @@ export function OnboardingChecklist({
   };
 
   const pct = Math.round((doneCount / total) * 100);
-  const doneById = Object.fromEntries(steps.map((s) => [s.id, s.done]));
+  const satisfiedById = Object.fromEntries(steps.map((s) => [s.id, isStepSatisfied(s)]));
   const stepById = Object.fromEntries(steps.map((s) => [s.id, s]));
   const numberById = Object.fromEntries(steps.map((s, i) => [s.id, i + 1]));
 
   const missingOf = (step: OnboardingStep) =>
     (step.requires ?? [])
-      .filter((id) => !doneById[id])
+      .filter((id) => !satisfiedById[id])
       .map((id) => stepShort[id] ?? id);
 
   // Próximo passo ativo = primeiro não concluído e sem pré-requisito pendente
@@ -272,7 +272,9 @@ export function OnboardingChecklist({
                               "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums mt-0.5 sm:mt-0 transition-colors",
                               step.done
                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : active
+                                : step.needsReview && !active
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                                  : active
                                   ? "bg-primary text-primary-foreground shadow-xs"
                                   : "bg-muted text-muted-foreground",
                             )}
@@ -295,7 +297,11 @@ export function OnboardingChecklist({
                               >
                                 {step.label}
                               </p>
-                              {active ? (
+                              {step.needsReview ? (
+                                <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                                  Falta revisar
+                                </span>
+                              ) : active ? (
                                 <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
                                   Passo Atual
                                 </span>
@@ -329,7 +335,7 @@ export function OnboardingChecklist({
                               asChild
                             >
                               <span>
-                                Continuar
+                                {step.needsReview ? "Revisar" : "Continuar"}
                                 <ArrowRight className="size-3.5" />
                               </span>
                             </Button>

@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useSegmentVocabulary } from "@/features/settings";
 
 interface ReportDocumentViewProps {
   report: GeneratedReportData;
@@ -21,6 +22,7 @@ interface ReportDocumentViewProps {
 }
 
 export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) {
+  const vocabulary = useSegmentVocabulary();
   const { header } = report.data;
 
   const handlePrint = () => {
@@ -35,14 +37,14 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
         csvContent += `Turma;${report.data.className}\n`;
         csvContent += `Modalidade;${report.data.modalityName}\n`;
         csvContent += `Data;${report.data.sessionDate}\n\n`;
-        csvContent += "Aluno;Graduação;Presença;Check-in\n";
+        csvContent += `Aluno;${vocabulary.level};Presença;Check-in\n`;
         report.data.rows.forEach((r) => {
           csvContent += `"${r.studentName}";"${r.belt || ""}";"${r.status === "present" ? "Presente" : "Ausente"}";"${r.checkInTime || ""}"\n`;
         });
         break;
       }
       case "students_roster": {
-        csvContent += "Aluno;Telefone;Plano;Vencimento;Status;Faixa;Matrícula\n";
+        csvContent += `Aluno;Telefone;Plano;Vencimento;Status;${vocabulary.level};Matrícula\n`;
         report.data.rows.forEach((r) => {
           csvContent += `"${r.name}";"${formatPhone(r.phone)}";"${r.planName}";"${r.dueDay}";"${r.status}";"${r.belt || ""}";"${r.enrolledAt}"\n`;
         });
@@ -198,7 +200,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                   <tr>
                     <th className="py-2.5 px-3 w-10 text-center">#</th>
                     <th className="py-2.5 px-3">Nome do Aluno</th>
-                    <th className="py-2.5 px-3">Graduação</th>
+                    <th className="py-2.5 px-3">{vocabulary.level}</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                     <th className="py-2.5 px-3 text-center">Check-in</th>
                     <th className="py-2.5 px-3 w-40 text-center">Rubrica / Assinatura</th>
@@ -273,7 +275,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                     <th className="py-2.5 px-3">Telefone</th>
                     <th className="py-2.5 px-3">Plano</th>
                     <th className="py-2.5 px-3 text-center">Venc.</th>
-                    <th className="py-2.5 px-3">Faixa</th>
+                    <th className="py-2.5 px-3">{vocabulary.level}</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
                 </thead>

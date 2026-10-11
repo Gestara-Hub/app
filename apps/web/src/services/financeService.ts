@@ -56,6 +56,7 @@ import {
 import { persist, store } from "@/mocks/store";
 import { systemFinancialCategoryId } from "@/mocks/seed";
 import { auditLogService } from "./auditLogService";
+import { autoGenerateMembershipCharges } from "./billingService";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
 
@@ -180,7 +181,10 @@ function materializeAll(): number {
 }
 
 /** Garante a materializacao numa leitura (persiste so se criou algo). */
-function ensureMaterialized(): void {
+function ensureMaterialized(competence?: string): void {
+  // Mensalidades do mes (e do mes consultado, se ja chegou) geradas na leitura,
+  // sem depender de alguem abrir Mensalidades.
+  autoGenerateMembershipCharges(competence);
   // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Mensalidades.
   applyRecurringAutoPayments();
   if (materializeAll() > 0) persist();
@@ -206,7 +210,13 @@ function chargeStatus(c: Charge): FinancialEntryDisplayStatus {
   if (c.status === "pending" || c.status === "overdue") {
     return c.dueDate < todayISO() ? "overdue" : "pending";
   }
-  return c.status;
+  // Isento (bolsa integral) nunca chega aqui: `isCashCharge` o deixa de fora.
+  return c.status === "waived" ? "canceled" : c.status;
+}
+
+/** Cobranca que conta no caixa: nem cancelada nem isenta (bolsa integral). */
+function isCashCharge(c: Charge): boolean {
+  return c.status !== "canceled" && c.status !== "waived";
 }
 
 function chargeCompetence(c: Charge): string {
@@ -232,7 +242,7 @@ function professionalName(id: Id): string {
 function cashFlowItems(): CashFlowItem[] {
   const items: CashFlowItem[] = [];
   for (const c of store.charges) {
-    if (c.status === "canceled") continue;
+    if (!isCashCharge(c)) continue;
     items.push({
       type: "income",
       amountCents: c.amountCents,
@@ -313,7 +323,7 @@ function chargeAggregateRow(
   competence: string,
   charges: Charge[],
 ): FinanceEntryView | null {
-  const active = charges.filter((c) => c.status !== "canceled");
+  const active = charges.filter(isCashCharge);
   if (active.length === 0) return null;
   const counts = { paid: 0, pending: 0, overdue: 0 };
   let amountCents = 0;
@@ -533,8 +543,25 @@ export const financeService = {
   /** Cartoes do Resumo da competencia (fontes da secao 4.1; atrasado conforme secao 14). */
   getSummary(competence: string): Promise<FinanceSummary> {
     return simulateRead(() => {
-      ensureMaterialized();
-      return summarizeCashFlow(cashFlowItems(), competence, todayISO());
+      ensureMaterialized(competence);
+      const summary = summarizeCashFlow(cashFlowItems(), competence, todayISO());
+      // Bolsas: diferenca entre o valor do plano e o cobrado (inclui isentos).
+      const withScholarship = store.charges.filter(
+        (c) =>
+          c.kind === "membership" &&
+          c.status !== "canceled" &&
+          c.scholarshipPercent !== undefined &&
+          chargeCompetence(c) === competence,
+      );
+      const scholarshipGrantedCents = withScholarship.reduce(
+        (sum, c) => sum + Math.max(0, (c.listAmountCents ?? c.amountCents) - c.amountCents),
+        0,
+      );
+      return {
+        ...summary,
+        scholarshipGrantedCents,
+        scholarshipStudents: new Set(withScholarship.map((c) => c.studentId)).size,
+      };
     });
   },
 
@@ -607,7 +634,7 @@ export const financeService = {
    */
   listEntries(filter?: FinancialEntryFilter): Promise<FinanceEntryView[]> {
     return simulateRead(() => {
-      ensureMaterialized();
+      ensureMaterialized(filter?.competence);
       const competence = filter?.competence ?? currentCompetence();
       const today = todayISO();
       const rows: FinanceEntryView[] = [];

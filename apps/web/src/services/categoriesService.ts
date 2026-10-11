@@ -130,6 +130,14 @@ export const categoriesService = {
         updatedAt: nowIso(),
       };
       store.categories[idx] = updated;
+      // Editar uma modalidade criada no setup conta como revisao (passo do onboarding).
+      const settings = store.organization.settings;
+      if (
+        settings?.modalitiesReviewed === false &&
+        (payload.name !== undefined || payload.progressionTrack !== undefined)
+      ) {
+        store.organization.settings = { ...settings, modalitiesReviewed: true };
+      }
       auditLogService.record({
         action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
         target: { type: "category", id: updated.id, label: updated.name },

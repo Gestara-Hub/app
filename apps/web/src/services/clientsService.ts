@@ -34,6 +34,9 @@ import { auditLogService } from "./auditLogService";
 import {
   cancelOpenMembershipCharges,
   chargeStartedMembershipPeriods,
+  isPlanlessScholar,
+  planlessScholarCharges,
+  scholarshipChargeFields,
   studentMembershipTerms,
 } from "./billingService";
 import { clientNoun } from "./nouns";
@@ -74,7 +77,11 @@ function initialMembershipCharge(client: Client, input: CreateClientInitialCharg
     periodEnd: input.periodEnd,
     dueDate: input.dueDate,
     amountCents: input.amountCents,
-    status: "pending",
+    ...scholarshipChargeFields(client, {
+      amountCents: input.amountCents,
+      discountApplied: slot?.discountApplied ?? Boolean(client.discount),
+      listAmountCents: slot?.listAmountCents ?? input.amountCents,
+    }),
     cycleIndex: slot?.cycleIndex ?? 1,
     cycleTotal: slot?.cycleTotal ?? 1,
     isProrated: input.isProrated,
@@ -86,6 +93,16 @@ function initialMembershipCharge(client: Client, input: CreateClientInitialCharg
     updatedAt: ts,
   };
 }
+/** Isentas do bolsista integral sem plano: mes de inicio e mes atual. */
+function ensurePlanlessScholarCharges(client: Client): void {
+  if (!isPlanlessScholar(client)) return;
+  const start = (client.planStartDate || todayISO()).slice(0, 7);
+  const current = todayISO().slice(0, 7);
+  for (const competence of new Set([start, current])) {
+    planlessScholarCharges(client, competence);
+  }
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // NOTA: mensagens a confirmar com o doc 10 quando o modulo Clientes for feito.
@@ -109,6 +126,11 @@ function validateClient(
   }
   if (has("email") && payload.email && !EMAIL_RE.test(payload.email)) {
     fields.push({ field: "email", message: "Informe um e-mail válido." });
+  }
+  // So a bolsa integral dispensa plano; a parcial cobra uma parte dele.
+  const d = payload.discount;
+  if (d?.scholarship && !payload.planId && !(d.type === "percentage" && d.value >= 100)) {
+    fields.push({ field: "planId", message: "Bolsa parcial precisa de um plano." });
   }
 
   if (fields.length > 0) throw validationError(fields);
@@ -167,9 +189,11 @@ export const clientsService = {
       store.clients.push(client);
 
       // 1a mensalidade (calculada no cadastro pelo motor de cobranca e ajustavel).
-      if (client.planId && payload.initialCharge && payload.initialCharge.amountCents > 0) {
+      // Bolsa integral gera a 1a mensalidade como "Isento" (R$ 0).
+      if (client.planId && payload.initialCharge && (payload.initialCharge.amountCents > 0 || client.discount?.scholarship)) {
         store.charges.push(initialMembershipCharge(client, payload.initialCharge));
       }
+      ensurePlanlessScholarCharges(client);
 
       auditLogService.record({
         action: "created",
@@ -218,11 +242,17 @@ export const clientsService = {
         afterTerms !== undefined &&
         (beforeTerms.strategy !== afterTerms.strategy ||
           beforeTerms.timing !== afterTerms.timing ||
-          beforeTerms.dueDay !== afterTerms.dueDay);
+          beforeTerms.dueDay !== afterTerms.dueDay ||
+          // Desconto ou bolsa (valor, tipo, validade) muda o valor dos proximos periodos.
+          JSON.stringify(current.discount ?? null) !== JSON.stringify(updated.discount ?? null));
       if (!planChanged && rulesChanged && current.planId === updated.planId) {
         cancelOpenMembershipCharges(updated.id, todayISO(), "Cancelada por troca da regra de cobrança");
       }
-      if (updated.planId && payload.initialCharge && payload.initialCharge.amountCents > 0) {
+      if (
+        updated.planId &&
+        payload.initialCharge &&
+        (payload.initialCharge.amountCents > 0 || updated.discount?.scholarship)
+      ) {
         const charge = initialMembershipCharge(updated, payload.initialCharge);
         const exists = store.charges.some(
           (c) =>
@@ -234,6 +264,18 @@ export const clientsService = {
         );
         if (!exists) store.charges.push(charge);
       }
+
+      // Bolsista integral sem plano: trocar a bolsa ou sair dela cancela as
+      // isentas futuras; continuando bolsista, recria pela regra nova.
+      if (
+        isPlanlessScholar(current) &&
+        (!isPlanlessScholar(updated) ||
+          JSON.stringify(current.discount) !== JSON.stringify(updated.discount) ||
+          current.planStartDate !== updated.planStartDate)
+      ) {
+        cancelOpenMembershipCharges(updated.id, todayISO(), "Cancelada por troca da bolsa");
+      }
+      ensurePlanlessScholarCharges(updated);
 
       auditLogService.record({
         action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
@@ -400,7 +442,7 @@ export const clientsService = {
     modalityName?: string;
     toLevelId?: string;
     toLevelName: string;
-    toLevelColor: ProgressionBeltColor;
+    toLevelColor?: ProgressionBeltColor;
     toSubLevel: number;
     maxSubLevels?: number;
     date: DateISO;

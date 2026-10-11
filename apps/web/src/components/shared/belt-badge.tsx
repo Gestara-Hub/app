@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProgressionBeltColor } from "@gestarahub/contracts";
+import type { ProgressionBeltColor, ProgressionTrackStyle } from "@gestarahub/contracts";
 import {
   BELT_COLOR_META,
   inferTipColorFromLevelName,
@@ -11,8 +11,11 @@ import { cn } from "@/lib/utils";
 export interface BeltBadgeProps {
   levelName?: string;
   name?: string;
-  color: ProgressionBeltColor;
+  /** Opcional no estilo `levels`: sem cor, a etiqueta fica neutra e sem bolinha. */
+  color?: ProgressionBeltColor | null;
   tipColor?: ProgressionBeltColor | null;
+  /** Estilo da trilha (`resolveTrackStyle`). Ausente: deduz pelo nome do nivel. */
+  variant?: ProgressionTrackStyle;
   subLevel?: number;
   maxSubLevels?: number;
   modalityName?: string;
@@ -22,11 +25,20 @@ export interface BeltBadgeProps {
   className?: string;
 }
 
+/** Etiqueta de nivel sem cor escolhida. */
+const NEUTRAL_META = {
+  ...BELT_COLOR_META.slate,
+  badgeBg: "bg-muted",
+  badgeText: "text-foreground",
+  badgeBorder: "border-border",
+};
+
 export function BeltBadge({
   levelName,
   name,
   color,
   tipColor,
+  variant,
   subLevel = 0,
   maxSubLevels = 4,
   modalityName,
@@ -36,14 +48,16 @@ export function BeltBadge({
   className,
 }: BeltBadgeProps) {
   const displayLabel = levelName ?? name ?? "";
-  const meta = BELT_COLOR_META[color] ?? BELT_COLOR_META.slate;
-  const isMartial = isMartialArtsLevelName(displayLabel);
-  const inferredTip =
-    tipColor !== undefined
-      ? tipColor && tipColor !== color
+  const isMartial = variant ? variant === "belt" : isMartialArtsLevelName(displayLabel);
+  const meta = color ? BELT_COLOR_META[color] : isMartial ? BELT_COLOR_META.slate : NEUTRAL_META;
+  const beltColor = color ?? "slate";
+  const inferredTip = !isMartial
+    ? null
+    : tipColor !== undefined
+      ? tipColor && tipColor !== beltColor
         ? tipColor
         : null
-      : inferTipColorFromLevelName(displayLabel, color);
+      : inferTipColorFromLevelName(displayLabel, beltColor);
   const stripes = Math.min(Math.max(subLevel, 0), 6);
   const hasDegrees = maxSubLevels > 0 || subLevel > 0;
 
@@ -126,15 +140,17 @@ export function BeltBadge({
           ) : null}
         </span>
       ) : (
-        /* Visual Universal de Nível / Etapa (Funcional, Pilates, Natação, Cursos) */
-        <span aria-hidden="true" className="inline-flex items-center gap-1 shrink-0">
-          <span
-            className={cn(
-              "rounded-full shrink-0",
-              size === "xs" ? "size-2" : "size-2.5",
-              meta.swatchClass,
-            )}
-          />
+        /* Visual de nivel (demais areas): bolinha so quando ha cor escolhida */
+        <span aria-hidden="true" className="inline-flex items-center gap-1 shrink-0 empty:hidden">
+          {color ? (
+            <span
+              className={cn(
+                "rounded-full shrink-0",
+                size === "xs" ? "size-2" : "size-2.5",
+                meta.swatchClass,
+              )}
+            />
+          ) : null}
           {stripes > 0 ? (
             <span className="inline-flex items-center gap-[2px]">
               {Array.from({ length: stripes }).map((_, idx) => (

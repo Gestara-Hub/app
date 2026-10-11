@@ -23,19 +23,37 @@ export type ProgressionTrackTemplateKey =
   | "bjj_adult"
   | "judo_karate"
   | "muay_thai"
+  | "karate"
+  | "taekwondo"
+  | "capoeira"
+  | "kickboxing"
   | "general_levels"
+  | "modules"
+  | "language_cefr"
+  | "swim_stages"
+  | "functional_categories"
+  | "blank"
   | "custom";
+
+/**
+ * Visual da trilha. `belt`: faixa/corda com ponta e graus (lutas). `levels`:
+ * etiqueta simples, cor opcional e sem subniveis (demais areas).
+ */
+export type ProgressionTrackStyle = "belt" | "levels";
 
 export interface ProgressionLevelStep {
   id: string;
   name: string;
-  color: ProgressionBeltColor;
+  /** Opcional no estilo `levels` (sem cor = etiqueta neutra). */
+  color?: ProgressionBeltColor;
   tipColor?: ProgressionBeltColor;
   maxSubLevels: number;
 }
 
 export interface ModalityProgressionTrack {
   enabled: boolean;
+  /** Ausente em trilhas antigas: resolvido por `resolveTrackStyle`. */
+  style?: ProgressionTrackStyle;
   templateKey?: ProgressionTrackTemplateKey;
   criteriaType: ProgressionCriteriaType;
   targetAttendances?: number;

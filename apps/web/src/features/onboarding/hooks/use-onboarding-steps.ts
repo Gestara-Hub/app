@@ -17,8 +17,18 @@ export interface OnboardingStep {
   href: string;
   cta: string;
   done: boolean;
+  /**
+   * Existe mas falta o dono conferir (ex.: modalidades criadas no setup). Nao
+   * conta como concluido, mas ja libera os passos que dependem dele.
+   */
+  needsReview?: boolean;
   /** Ids de passos que precisam estar concluidos antes deste (senao, bloqueado). */
   requires?: string[];
+}
+
+/** Libera os passos que dependem dele: concluido ou so faltando revisar. */
+export function isStepSatisfied(step: OnboardingStep): boolean {
+  return step.done || Boolean(step.needsReview);
 }
 
 /**
@@ -44,6 +54,9 @@ export function useOnboardingSteps() {
     unitQuery.data?.businessHours?.some((day) => !day.closed),
   );
   const billingSet = Boolean(orgQuery.data?.settings?.billingTiming);
+  const hasModalities = (categoriesQuery.data?.length ?? 0) > 0;
+  const modalitiesNeedReview =
+    hasModalities && orgQuery.data?.settings?.modalitiesReviewed === false;
 
   let steps: OnboardingStep[] = [];
   let isReady = false;
@@ -78,10 +91,13 @@ export function useOnboardingSteps() {
       {
         id: "modalities",
         label: "Cadastrar modalidades",
-        description: "Adicione as modalidades ou atividades oferecidas.",
+        description: modalitiesNeedReview
+          ? "Confira os níveis e as metas das modalidades criadas."
+          : "Adicione as modalidades ou atividades oferecidas.",
         href: "/classes/modalities",
-        cta: "Adicionar",
-        done: (categoriesQuery.data?.length ?? 0) > 0,
+        cta: modalitiesNeedReview ? "Revisar" : "Adicionar",
+        done: hasModalities && !modalitiesNeedReview,
+        needsReview: modalitiesNeedReview,
       },
       {
         id: "plans",
@@ -172,9 +188,9 @@ export function useOnboardingSteps() {
   }
 
   const doneCount = steps.filter((step) => step.done).length;
-  const doneById = Object.fromEntries(steps.map((s) => [s.id, s.done]));
+  const satisfiedById = Object.fromEntries(steps.map((s) => [s.id, isStepSatisfied(s)]));
   const isLocked = (step: OnboardingStep) =>
-    (step.requires ?? []).some((id) => !doneById[id]);
+    (step.requires ?? []).some((id) => !satisfiedById[id]);
   const nextStep = steps.find((step) => !step.done && !isLocked(step)) ?? null;
 
   return {

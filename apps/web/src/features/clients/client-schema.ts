@@ -60,9 +60,19 @@ export const clientFormSchema = z.object({
     .min(0, "O desconto não pode ser negativo.")
     .nullish(),
   discountReason: z.string().trim().optional(),
+  /** Como o aluno paga: mensalidade (plano), bolsa ou sem mensalidade. */
+  paymentMode: z.enum(["membership", "scholarship", "none"]).optional(),
+  scholarshipKind: z.enum(["full", "partial"]).optional(),
+  /** Bolsa parcial definida por % ou pelo valor que o aluno paga. */
+  scholarshipBy: z.enum(["percent", "amount"]).optional(),
+  scholarshipPayCents: z.number({ error: "Informe o valor a pagar." }).nullish(),
+  scholarshipPercent: z
+    .number({ error: "Informe a porcentagem da bolsa." })
+    .nullish(),
+  discountValidUntil: z.string().optional(),
 }).refine(
   (data) => {
-    if (data.hasDiscount && data.discountType === "percentage") {
+    if (data.hasDiscount && data.paymentMode !== "scholarship" && data.discountType === "percentage") {
       return (data.discountValue ?? 0) <= 100;
     }
     return true;
@@ -71,7 +81,33 @@ export const clientFormSchema = z.object({
     message: "O desconto percentual não pode ser superior a 100%.",
     path: ["discountValue"],
   },
+).refine(
+  (data) => {
+    if (isPartialScholarship(data) && data.scholarshipBy !== "amount") {
+      const pct = data.scholarshipPercent ?? 0;
+      return pct >= 1 && pct <= 99;
+    }
+    return true;
+  },
+  {
+    message: "Use de 1% a 99%. Para 100%, escolha bolsa integral.",
+    path: ["scholarshipPercent"],
+  },
+).refine(
+  (data) => !isPartialScholarship(data) || data.scholarshipBy !== "amount" || (data.scholarshipPayCents ?? 0) > 0,
+  { message: "Informe o valor que o aluno paga.", path: ["scholarshipPayCents"] },
+).refine(
+  (data) => {
+    if (data.paymentMode === "membership") return Boolean(data.planId);
+    if (isPartialScholarship(data)) return Boolean(data.planId);
+    return true;
+  },
+  { message: "Selecione o plano.", path: ["planId"] },
 );
+
+function isPartialScholarship(data: { paymentMode?: string; scholarshipKind?: string }): boolean {
+  return data.paymentMode === "scholarship" && data.scholarshipKind === "partial";
+}
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;
 

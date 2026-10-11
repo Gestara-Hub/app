@@ -213,7 +213,7 @@ Todas usam dialogo com titulo, corpo e botoes. Implementacao em `components/shar
 | Detalhe da turma, lista de espera | "Ninguém na lista de espera." | — |
 | Calendario de turmas | "Nenhuma aula nesta semana." (com filtros: "Nenhuma aula para os filtros aplicados.") | "Limpar filtros" (com filtros) |
 | Detalhe da aula | "Nenhum aluno nesta aula." | — |
-| Mensalidades | "Nenhuma cobrança nesta competência." | "Gerar cobranças" |
+| Mensalidades | "Nenhuma cobrança nesta competência." + "As mensalidades deste mês aparecem quando ele começar." (mês futuro) ou "Nenhum aluno com mensalidade ou aula avulsa neste mês." | — (geração automática) |
 | Planos | "Nenhum plano cadastrado ainda." | "Novo plano" |
 | Modalidades | "Nenhuma modalidade cadastrada ainda." | "Cadastrar modalidade" |
 

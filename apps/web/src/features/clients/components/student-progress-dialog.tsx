@@ -56,8 +56,10 @@ import {
   CRITERIA_TYPE_LABELS,
   computeNextPromotionStep,
   resolveModalityTrack,
+  resolveTrackStyle,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
+import { useSegmentVocabulary } from "@/features/settings";
 import {
   useAddSessionEvaluation,
   usePromoteStudent,
@@ -144,6 +146,7 @@ function StudentProgressDialogContent({
   const saveMut = useSaveModalityProgression();
   const promoteMut = usePromoteStudent();
   const addEvalMut = useAddSessionEvaluation();
+  const vocabulary = useSegmentVocabulary();
 
   const availableItems = useMemo(() => {
     if (!overview) return [];
@@ -173,6 +176,7 @@ function StudentProgressDialogContent({
     if (!activeItem) return null;
     return resolveModalityTrack(activeItem.modality);
   }, [activeItem]);
+  const trackStyle = resolveTrackStyle(activeTrack ?? undefined);
 
   // Manual level adjustment panel state
   const [showAdjustPanel, setShowAdjustPanel] = useState(false);
@@ -322,7 +326,7 @@ function StudentProgressDialogContent({
       toast.success("Histórico inicial atualizado com sucesso!");
       setShowAdjustPanel(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao atualizar graduação."));
+      toast.error(getErrorMessage(err, "Erro ao atualizar o histórico inicial."));
     }
   }
 
@@ -347,11 +351,11 @@ function StudentProgressDialogContent({
         isExam: true,
         notes: promoteNotes.trim() || undefined,
       });
-      toast.success("Graduação registrada com sucesso!");
+      toast.success("Evolução registrada com sucesso!");
       setShowPromotePanel(false);
       setPromoteNotes("");
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao registrar graduação."));
+      toast.error(getErrorMessage(err, "Erro ao registrar a evolução."));
     }
   }
 
@@ -428,11 +432,11 @@ function StudentProgressDialogContent({
             <div>
               <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <GraduationCap className="size-5 text-primary" />
-                <span>Evolução e Graduação — {client.name}</span>
+                <span>{vocabulary.progressTitle} — {client.name}</span>
               </DialogTitle>
               <DialogDescription>
-                Acompanhe faixa, graus, presença para exame, pontos fortes e
-                diário técnico por modalidade.
+                Acompanhe {vocabulary.level.toLowerCase()}, presença, pontos
+                fortes e diário técnico por modalidade.
               </DialogDescription>
             </div>
             {onEditClient ? (
@@ -467,10 +471,10 @@ function StudentProgressDialogContent({
             <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground space-y-2">
               <GraduationCap className="size-8 mx-auto text-muted-foreground/50" />
               <p className="font-medium text-foreground">
-                Nenhuma matrícula em turma com graduação ativa
+                Nenhuma turma com {vocabulary.trackTitle.toLowerCase()} ativa
               </p>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Este aluno não está matriculado em turmas de modalidades com trilha de graduação habilitada.
+                O aluno não está em turmas de modalidades com {vocabulary.trackTitle.toLowerCase()} ligada.
               </p>
             </div>
           ) : (
@@ -514,10 +518,12 @@ function StudentProgressDialogContent({
                               Matriculado
                             </span>
                           ) : null}
-                          {lvl ? (
+                          {/* Sem rotulo: so faz sentido com faixa ou com cor escolhida */}
+                          {lvl && (resolveTrackStyle(track) === "belt" || lvl.color) ? (
                             <BeltBadge
                               name={lvl.name}
                               color={lvl.color}
+                              variant={resolveTrackStyle(track)}
                               subLevel={sub}
                               maxSubLevels={lvl.maxSubLevels}
                               size="xs"
@@ -542,7 +548,7 @@ function StudentProgressDialogContent({
                       {isReadyForPromotion ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                           <Sparkles className="size-3" />
-                          Apto para graduação / exame
+                          {vocabulary.readyBadge}
                         </span>
                       ) : null}
                     </div>
@@ -551,13 +557,14 @@ function StudentProgressDialogContent({
                       <BeltBadge
                         name={currentLevel.name}
                         color={currentLevel.color}
+                        variant={trackStyle}
                         subLevel={currentSubLevel}
                         maxSubLevels={currentLevel.maxSubLevels}
                         size="md"
                       />
                       <span className="text-xs text-muted-foreground">
                         {promotedAt
-                          ? `Graduado em ${formatDatePtBr(promotedAt)}`
+                          ? `${vocabulary.promotedOn} ${formatDatePtBr(promotedAt)}`
                           : "Início da jornada"}
                       </span>
                     </div>
@@ -586,7 +593,7 @@ function StudentProgressDialogContent({
                         onClick={handleTogglePromotePanel}
                       >
                         <Award className="size-3.5" />
-                        Graduar / Exame
+                        {vocabulary.promoteVerb}
                       </Button>
                     ) : null}
                   </div>
@@ -601,7 +608,7 @@ function StudentProgressDialogContent({
                           Histórico Inicial e Ponto de Partida
                         </h4>
                         <p className="text-[11px] text-muted-foreground">
-                          Defina a faixa atual do aluno e eventuais presenças já acumuladas antes do sistema ou em outra academia.
+                          {vocabulary.currentLevel} e presenças já acumuladas antes do sistema.
                         </p>
                       </div>
                       <button
@@ -618,7 +625,7 @@ function StudentProgressDialogContent({
                       {/* Faixa / Nível atual */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-muted-foreground">
-                          Faixa / Nível atual
+                          {vocabulary.currentLevel}
                         </label>
                         <Select
                           value={adjustLevelId}
@@ -628,7 +635,7 @@ function StudentProgressDialogContent({
                           }}
                         >
                           <SelectTrigger className="h-9 w-full text-xs">
-                            <SelectValue placeholder="Selecione a faixa/nível" />
+                            <SelectValue placeholder={vocabulary.selectLevel} />
                           </SelectTrigger>
                           <SelectContent>
                             {activeTrack.levels.map((lvl) => (
@@ -641,6 +648,7 @@ function StudentProgressDialogContent({
                                   <BeltBadge
                                     name={lvl.name}
                                     color={lvl.color}
+                                    variant={trackStyle}
                                     size="xs"
                                     showLabel={false}
                                   />
@@ -691,7 +699,7 @@ function StudentProgressDialogContent({
                       {/* Data da graduação */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-muted-foreground">
-                          Data desta graduação
+                          Data de início {vocabulary.inLevel}
                         </label>
                         <Input
                           type="date"
@@ -705,7 +713,7 @@ function StudentProgressDialogContent({
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-medium text-muted-foreground">
-                            Presenças já acumuladas nesta faixa
+                            Presenças já acumuladas {vocabulary.inLevel}
                           </label>
                           {targetAttendances > 0 ? (
                             <span className="text-[10px] text-muted-foreground">
@@ -759,7 +767,7 @@ function StudentProgressDialogContent({
                       <div className="flex items-center gap-2">
                         <Award className="size-4 text-primary" />
                         <p className="text-xs font-semibold text-foreground">
-                          Registrar Graduação / Exame de Faixa
+                          Registrar {vocabulary.promotionLower}
                         </p>
                       </div>
                       <button
@@ -774,7 +782,7 @@ function StudentProgressDialogContent({
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-muted-foreground">
-                          Nova Faixa / Nível
+                          {vocabulary.newLevel}
                         </label>
                         <Select
                           value={targetLevelId}
@@ -784,7 +792,7 @@ function StudentProgressDialogContent({
                           }}
                         >
                           <SelectTrigger className="h-9 w-full text-xs">
-                            <SelectValue placeholder="Selecione a nova faixa" />
+                            <SelectValue placeholder={vocabulary.selectLevel} />
                           </SelectTrigger>
                           <SelectContent>
                             {activeTrack.levels.map((lvl) => (
@@ -797,6 +805,7 @@ function StudentProgressDialogContent({
                                   <BeltBadge
                                     name={lvl.name}
                                     color={lvl.color}
+                                    variant={trackStyle}
                                     size="xs"
                                     showLabel={false}
                                   />
@@ -845,7 +854,7 @@ function StudentProgressDialogContent({
 
                       <div className="space-y-1">
                         <label className="text-[11px] font-medium text-muted-foreground">
-                          Data do exame / graduação
+                          {vocabulary.promotionDate}
                         </label>
                         <Input
                           type="date"
@@ -875,6 +884,7 @@ function StudentProgressDialogContent({
                           <BeltBadge
                             name={promoteSelectedLevel.name}
                             color={promoteSelectedLevel.color}
+                            variant={trackStyle}
                             subLevel={targetSubLevel}
                             maxSubLevels={promoteSelectedLevel.maxSubLevels}
                             size="xs"
@@ -902,7 +912,7 @@ function StudentProgressDialogContent({
                           onClick={handlePromote}
                         >
                           <CheckCircle2 className="size-3.5" />
-                          Confirmar graduação
+                          Confirmar {vocabulary.promotionLower}
                         </Button>
                       </div>
                     </div>
@@ -924,6 +934,7 @@ function StudentProgressDialogContent({
                         <BeltBadge
                           name={nextStep.nextLevel.name}
                           color={nextStep.nextLevel.color}
+                          variant={trackStyle}
                           subLevel={nextStep.nextSubLevel}
                           maxSubLevels={nextStep.nextLevel.maxSubLevels}
                           size="xs"
@@ -1002,7 +1013,7 @@ function StudentProgressDialogContent({
                         <div className="flex items-center gap-2">
                           <Award className="size-4 text-primary" />
                           <span>
-                            Graduação definida por exame técnico ou avaliação do
+                            Definido por exame técnico ou avaliação do
                             professor.
                           </span>
                         </div>
@@ -1283,11 +1294,12 @@ function StudentProgressDialogContent({
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex items-center gap-1 font-semibold text-primary">
                                   <Award className="size-3.5" />
-                                  Graduação / Exame
+                                  {vocabulary.promotion}
                                 </span>
                                 <BeltBadge
                                   name={promo.toLevelName}
                                   color={promo.toLevelColor}
+                                  variant={trackStyle}
                                   subLevel={promo.toSubLevel}
                                   size="xs"
                                 />

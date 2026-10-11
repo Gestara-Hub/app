@@ -74,7 +74,7 @@ export function ReportsView({
             description="Tome decisões com base em números precisos. Tenha acesso a DRE Completa do negócio, margem operacional líquida, análise de retenção de alunos e faturamento previsto."
             benefits={[
               "DRE Gerencial Completa com margens líquidas e operacionais",
-              "Análise de Retenção e taxa de Churn por modalidade/graduação",
+              "Análise de Retenção e taxa de Churn por modalidade",
               "Projeção de fluxo de caixa futuro e recebíveis",
               "Exportação em PDF timbrado para contabilidade e sócios",
               "Exportação de dados analíticos para Excel/CSV",

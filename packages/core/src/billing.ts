@@ -36,6 +36,10 @@ export interface MembershipTerms {
   period: PlanPeriod;
   /** Valor cheio de um periodo, ja com desconto aplicado. */
   priceCents: number;
+  /** Valor do plano sem desconto (volta a valer depois de `discountValidUntil`). Ausente = `priceCents`. */
+  listPriceCents?: number;
+  /** Ultimo dia do desconto/bolsa; periodos que comecam depois pagam o valor cheio. */
+  discountValidUntil?: DateISO;
   startDate: DateISO;
   timing: BillingTiming;
   strategy: BillingStrategy;
@@ -53,6 +57,10 @@ export interface ScheduledCharge {
   isProrated: boolean;
   /** Dias cobrados quando proporcional. */
   proratedDays?: number;
+  /** O desconto/bolsa do aluno vale neste periodo. */
+  discountApplied: boolean;
+  /** Valor deste periodo sem desconto (mesma proporcao). */
+  listAmountCents: number;
 }
 
 export interface CompetenceCharge extends ScheduledCharge {
@@ -121,6 +129,8 @@ export function resolveMembershipTerms(
   return {
     period: input.period ?? "monthly",
     priceCents: applyDiscount(input.planPriceCents, input.discount),
+    listPriceCents: input.planPriceCents,
+    discountValidUntil: input.discount?.validUntil,
     startDate: input.startDate,
     timing: input.timing ?? defaults.billingTiming ?? "prepaid",
     strategy,
@@ -134,6 +144,8 @@ interface RawPeriod {
   amountCents: number;
   isProrated: boolean;
   proratedDays?: number;
+  /** Dias do periodo inteiro quando proporcional (para recalcular sem desconto). */
+  periodDays?: number;
   /** Vencimento no modo antecipado. */
   prepaidDue: Date;
   /** Vencimento no modo depois do uso. */
@@ -150,6 +162,7 @@ function* monthlyProrated(t: MembershipTerms, start: Date): Generator<RawPeriod>
     amountCents: partial ? prorate(t.priceCents, used, dim) : t.priceCents,
     isProrated: partial,
     proratedDays: partial ? used : undefined,
+    periodDays: partial ? dim : undefined,
     prepaidDue: start,
     postpaidDue: dayInMonth(addMonths(firstOfMonth(start), 1), t.dueDay),
   };
@@ -207,6 +220,7 @@ function* biweeklyProrated(t: MembershipTerms, start: Date): Generator<RawPeriod
     amountCents: partial ? prorate(t.priceCents, used, halfDays) : t.priceCents,
     isProrated: partial,
     proratedDays: partial ? used : undefined,
+    periodDays: partial ? halfDays : undefined,
     ...dues(first),
     prepaidDue: start,
   };
@@ -244,14 +258,24 @@ function periodsFor(t: MembershipTerms): Generator<RawPeriod> {
 
 function toScheduled(t: MembershipTerms, p: RawPeriod): ScheduledCharge {
   const due = toISO(t.timing === "postpaid" ? p.postpaidDue : p.prepaidDue);
+  const periodStart = toISO(p.start);
+  const listPrice = t.listPriceCents ?? t.priceCents;
+  const hasDiscount = t.priceCents !== listPrice;
+  const listAmountCents =
+    p.proratedDays && p.periodDays ? prorate(listPrice, p.proratedDays, p.periodDays) : listPrice;
+  // Desconto com validade: periodos que comecam depois dela pagam o valor cheio.
+  const discountApplied =
+    hasDiscount && (!t.discountValidUntil || periodStart <= t.discountValidUntil);
   return {
-    periodStart: toISO(p.start),
+    periodStart,
     periodEnd: toISO(p.end),
     dueDate: due,
     competence: due.slice(0, 7),
-    amountCents: p.amountCents,
+    amountCents: hasDiscount && !discountApplied ? listAmountCents : p.amountCents,
     isProrated: p.isProrated,
     proratedDays: p.proratedDays,
+    discountApplied,
+    listAmountCents,
   };
 }
 

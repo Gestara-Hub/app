@@ -404,19 +404,19 @@ O botao de confirmacao e sempre "Agendar mesmo assim".
 
 Regras completas: [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md).
 
-## Fluxo 13 (M3): Gerar mensalidades da competencia
+## Fluxo 13 (M3): Mensalidades da competencia (geracao automatica)
 
-1. Em Mensalidades, o usuario escolhe a competencia (mes) e aciona "Gerar cobranças".
-2. Confirma em "Gerar cobranças de <Mês de AAAA>?".
-3. O sistema cria as mensalidades que vencem naquele mes para cada aluno ativo com plano e assinatura ativa, pela regra dele. E idempotente: um periodo de uso nunca gera duas cobrancas ("Nenhuma cobrança nova (já geradas).").
-4. A geracao entra na Auditoria.
+1. Nao ha botao: ao abrir Mensalidades, o Dashboard ou o Financeiro, o sistema cria as mensalidades que vencem no **mes atual** e no **mes consultado, se ja chegou**, para cada aluno ativo com plano e assinatura ativa (e bolsista integral sem plano), pela regra dele.
+2. E idempotente: um periodo de uso nunca gera duas cobrancas. Mensalidade cancelada a mao nao e recriada.
+3. Meses futuros ficam vazios ate chegarem ("As mensalidades deste mês aparecem quando ele começar.").
+4. A geracao automatica nao entra na Auditoria (e o sistema). Decisao de 11/10/2026: saem os botoes "Gerar cobranças" e "Resetar cobranças".
 
 ## Fluxo 14 (M3): Registrar pagamento
 
 1. Na lista de Mensalidades, o usuario aciona o pagamento de uma cobranca.
 2. O dialogo "Registrar pagamento" mostra aluno, valor e periodo e exige a forma (Pix, Dinheiro, Cartão, Outro).
 3. A cobranca vira `paid` com `paidAt` e `method`.
-4. Correcoes, todas com confirmacao: "Desfazer pagamento?", "Cancelar cobrança", "Reabrir cobrança?" e, para a competencia inteira, "Resetar cobranças da competência" (nunca apaga pagas).
+4. Correcoes, todas com confirmacao: "Desfazer pagamento?", "Cancelar cobrança", "Reabrir cobrança?".
 
 ## Fluxo 15 (M3): Matricular aluno e lista de espera
 

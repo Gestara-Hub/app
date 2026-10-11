@@ -27,14 +27,20 @@ import {
   InputPhone,
   InputText,
   SegmentedChoiceField,
+  SelectField,
   type SegmentedChoiceOption,
+  type SelectOption,
 } from "@/components/form";
+import {
+  CLASSES_SEGMENT_PRESETS,
+  DEFAULT_CLASS_SEGMENT,
+} from "@/lib/business-segment-presets";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Address, Organization, Unit } from "@gestarahub/contracts";
+import type { Address, ClassesBusinessSegment, Organization, Unit } from "@gestarahub/contracts";
 import {
   useOrganization,
   useUnit,
@@ -78,8 +84,25 @@ const schema = z.object({
       message: "Telefone inválido.",
     }),
   address: addressSchema.optional(),
+  classSegment: z.enum(
+    Object.keys(CLASSES_SEGMENT_PRESETS) as [ClassesBusinessSegment, ...ClassesBusinessSegment[]],
+  ),
+  customSegmentName: z.string().trim().optional(),
+}).superRefine((values, ctx) => {
+  if (values.classSegment === "custom" && !values.customSegmentName) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["customSegmentName"],
+      message: "Informe o nome da área.",
+    });
+  }
 });
 type OrgUnitValues = z.infer<typeof schema>;
+
+const CLASS_SEGMENT_OPTIONS: SelectOption[] = Object.values(CLASSES_SEGMENT_PRESETS).map((p) => ({
+  value: p.id,
+  label: p.id === "custom" ? "Personalizado" : p.label,
+}));
 
 const BILLING_TIMING_OPTIONS: SegmentedChoiceOption[] = [
   { value: "prepaid", label: "Antecipado", description: "Paga antes das aulas" },
@@ -178,6 +201,8 @@ function OrgUnitForm({
       midMonthStrategy: organization.settings?.midMonthStrategy ?? "prorated",
       phone: unit.phone ?? "",
       address: parseUnitAddress(unit.address),
+      classSegment: organization.classSegment ?? DEFAULT_CLASS_SEGMENT,
+      customSegmentName: organization.customSegmentName ?? "",
     },
   });
 
@@ -193,6 +218,7 @@ function OrgUnitForm({
   const orgName = useWatch({ control: form.control, name: "organizationName" });
   const unitName = useWatch({ control: form.control, name: "unitName" });
   const phone = useWatch({ control: form.control, name: "phone" });
+  const classSegment = useWatch({ control: form.control, name: "classSegment" });
 
   const street = useWatch({ control: form.control, name: "address.street" });
   const number = useWatch({ control: form.control, name: "address.number" });
@@ -270,7 +296,13 @@ function OrgUnitForm({
 
   const onError = (errors: FieldErrors<OrgUnitValues>) => {
     const toOpen: string[] = [];
-    if (errors.organizationName || errors.unitName || errors.phone) {
+    if (
+      errors.organizationName ||
+      errors.unitName ||
+      errors.phone ||
+      errors.classSegment ||
+      errors.customSegmentName
+    ) {
       toOpen.push("business");
     }
     if (errors.address) {
@@ -288,8 +320,10 @@ function OrgUnitForm({
   const onSubmit = form.handleSubmit(async (values) => {
     // Grava so o que mudou, para cada salvamento virar um unico evento na auditoria.
     const dirty = form.formState.dirtyFields;
+    const segmentDirty = Boolean(dirty.classSegment || dirty.customSegmentName);
     const orgDirty = Boolean(
-      dirty.organizationName ||
+      segmentDirty ||
+        dirty.organizationName ||
         dirty.defaultDueDay ||
         dirty.billingTiming ||
         dirty.midMonthStrategy ||
@@ -299,8 +333,17 @@ function OrgUnitForm({
     const unitDirty = Boolean(dirty.unitName || dirty.phone || dirty.address);
     try {
       if (orgDirty) {
+        const isCustom = values.classSegment === "custom";
+        const customName = values.customSegmentName?.trim() ?? "";
         await updateOrg.mutateAsync({
           name: values.organizationName,
+          ...(isClasses && segmentDirty
+            ? {
+                classSegment: values.classSegment,
+                customSegmentName: isCustom ? customName : undefined,
+                segment: isCustom ? customName : CLASSES_SEGMENT_PRESETS[values.classSegment].label,
+              }
+            : {}),
           settings: {
             ...organization.settings,
             defaultDueDay: values.defaultDueDay,
@@ -390,6 +433,28 @@ function OrgUnitForm({
                   disabled={pending}
                 />
               </div>
+
+              {isClasses ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <SelectField<OrgUnitValues>
+                    name="classSegment"
+                    label="Área do espaço"
+                    hint="Muda padrões de novas turmas e palavras das telas."
+                    options={CLASS_SEGMENT_OPTIONS}
+                    clearable={false}
+                    disabled={pending}
+                  />
+                  {classSegment === "custom" ? (
+                    <InputText<OrgUnitValues>
+                      name="customSegmentName"
+                      label="Nome da área"
+                      placeholder="Informe o nome da área"
+                      required
+                      disabled={pending}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </AccordionContent>
           </AccordionItem>
 

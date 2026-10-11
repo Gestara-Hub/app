@@ -3,6 +3,7 @@ import type {
   ProgressionBeltColor,
   ProgressionCriteriaType,
   ProgressionLevelStep,
+  ProgressionTrackStyle,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
 
@@ -122,7 +123,7 @@ export const CRITERIA_TYPE_LABELS: Record<ProgressionCriteriaType, string> = {
   attendance: "Por quantidade de aulas",
   time: "Por tempo mínimo no nível",
   attendance_and_time: "Por aulas + tempo mínimo",
-  manual_exam: "Apenas avaliação / exame do professor",
+  manual_exam: "Avaliação do professor",
 };
 
 export const PROGRESSION_TEMPLATES: Record<
@@ -139,6 +140,7 @@ export const PROGRESSION_TEMPLATES: Record<
       "Branca → Cinza → Amarela → Laranja → Verde → Azul → Roxa → Marrom → Preta.",
     track: {
       enabled: true,
+      style: "belt",
       templateKey: "bjj_adult",
       criteriaType: "attendance_and_time",
       targetAttendances: 30,
@@ -161,6 +163,7 @@ export const PROGRESSION_TEMPLATES: Record<
     description: "Todas as faixas e pontas da CBJ (Branca até Preta).",
     track: {
       enabled: true,
+      style: "belt",
       templateKey: "judo_karate",
       criteriaType: "attendance_and_time",
       targetAttendances: 40,
@@ -187,6 +190,7 @@ export const PROGRESSION_TEMPLATES: Record<
     description: "Branco → Ponta Vermelha → Vermelho → Ponta Azul → Azul Claro → Ponta Azul Escuro → Azul Escuro → Ponta Preta → Preto.",
     track: {
       enabled: true,
+      style: "belt",
       templateKey: "muay_thai",
       criteriaType: "attendance",
       targetAttendances: 40,
@@ -205,20 +209,199 @@ export const PROGRESSION_TEMPLATES: Record<
     },
   },
   general_levels: {
-    label: "Níveis Gerais (Iniciante → Avançado)",
-    description: "Ideal para funcional, pilates, natação, dança, cross ou cursos.",
+    label: "Níveis (Iniciante → Avançado)",
+    description: "Iniciante, Intermediário e Avançado.",
     track: {
       enabled: true,
+      style: "levels",
       templateKey: "general_levels",
       criteriaType: "attendance",
       targetAttendances: 24,
       targetMonths: 6,
       levels: [
-        { id: "lvl-gen-beg", name: "Iniciante", color: "white", maxSubLevels: 0 },
-        { id: "lvl-gen-int", name: "Intermediário", color: "blue", maxSubLevels: 0 },
-        { id: "lvl-gen-adv", name: "Avançado", color: "purple", maxSubLevels: 0 },
-        { id: "lvl-gen-pro", name: "Competidor / Especialista", color: "black", maxSubLevels: 0 },
+        { id: "lvl-gen-beg", name: "Iniciante", maxSubLevels: 0 },
+        { id: "lvl-gen-int", name: "Intermediário", maxSubLevels: 0 },
+        { id: "lvl-gen-adv", name: "Avançado", maxSubLevels: 0 },
       ],
+    },
+  },
+  modules: {
+    label: "Módulos (Básico → Avançado)",
+    description: "Ideal para música, idiomas e cursos por etapas.",
+    track: {
+      enabled: true,
+      style: "levels",
+      templateKey: "modules",
+      criteriaType: "attendance_and_time",
+      targetAttendances: 24,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-mod-basic", name: "Módulo Básico", maxSubLevels: 0 },
+        { id: "lvl-mod-pre", name: "Módulo Pré-intermediário", maxSubLevels: 0 },
+        { id: "lvl-mod-int", name: "Módulo Intermediário", maxSubLevels: 0 },
+        { id: "lvl-mod-adv", name: "Módulo Avançado", maxSubLevels: 0 },
+      ],
+    },
+  },
+  swim_stages: {
+    label: "Natação (Fases de aprendizado)",
+    description: "Adaptação → Iniciação → Aperfeiçoamento → Treinamento.",
+    track: {
+      enabled: true,
+      style: "levels",
+      templateKey: "swim_stages",
+      criteriaType: "attendance",
+      targetAttendances: 24,
+      targetMonths: 4,
+      levels: [
+        { id: "lvl-swim-adapt", name: "Adaptação", maxSubLevels: 0 },
+        { id: "lvl-swim-init", name: "Iniciação", maxSubLevels: 0 },
+        { id: "lvl-swim-improve", name: "Aperfeiçoamento", maxSubLevels: 0 },
+        { id: "lvl-swim-train", name: "Treinamento", maxSubLevels: 0 },
+      ],
+    },
+  },
+  karate: {
+    label: "Karatê (Faixas Kyu)",
+    description: "Branca → Amarela → Laranja → Verde → ... → Preta.",
+    track: {
+      enabled: true,
+      style: "belt",
+      templateKey: "karate",
+      criteriaType: "attendance_and_time",
+      targetAttendances: 40,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-kar-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
+        { id: "lvl-kar-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
+        { id: "lvl-kar-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 0 },
+        { id: "lvl-kar-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
+        { id: "lvl-kar-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
+        { id: "lvl-kar-purple", name: "Faixa Roxa", color: "purple", maxSubLevels: 0 },
+        { id: "lvl-kar-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 0 },
+        { id: "lvl-kar-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
+      ],
+    },
+  },
+  taekwondo: {
+    label: "Taekwondo (Gub com pontas)",
+    description: "Branca → pontas coloridas → Vermelha → Preta.",
+    track: {
+      enabled: true,
+      style: "belt",
+      templateKey: "taekwondo",
+      criteriaType: "attendance_and_time",
+      targetAttendances: 36,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-tkd-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
+        { id: "lvl-tkd-white-yellow", name: "Branca Ponta Amarela", color: "white", tipColor: "yellow", maxSubLevels: 0 },
+        { id: "lvl-tkd-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
+        { id: "lvl-tkd-yellow-green", name: "Amarela Ponta Verde", color: "yellow", tipColor: "green", maxSubLevels: 0 },
+        { id: "lvl-tkd-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
+        { id: "lvl-tkd-green-blue", name: "Verde Ponta Azul", color: "green", tipColor: "blue", maxSubLevels: 0 },
+        { id: "lvl-tkd-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
+        { id: "lvl-tkd-blue-red", name: "Azul Ponta Vermelha", color: "blue", tipColor: "red", maxSubLevels: 0 },
+        { id: "lvl-tkd-red", name: "Faixa Vermelha", color: "red", maxSubLevels: 0 },
+        { id: "lvl-tkd-red-black", name: "Vermelha Ponta Preta", color: "red", tipColor: "black", maxSubLevels: 0 },
+        { id: "lvl-tkd-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
+      ],
+    },
+  },
+  kickboxing: {
+    label: "Kickboxing / Krav Maga",
+    description: "Branca → Amarela → Laranja → Verde → Azul → Marrom → Preta.",
+    track: {
+      enabled: true,
+      style: "belt",
+      templateKey: "kickboxing",
+      criteriaType: "attendance_and_time",
+      targetAttendances: 40,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-kb-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
+        { id: "lvl-kb-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
+        { id: "lvl-kb-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 0 },
+        { id: "lvl-kb-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
+        { id: "lvl-kb-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
+        { id: "lvl-kb-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 0 },
+        { id: "lvl-kb-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
+      ],
+    },
+  },
+  capoeira: {
+    label: "Capoeira (Cordas)",
+    description: "Corda Crua → pontas → Amarela → ... → Vermelha.",
+    track: {
+      enabled: true,
+      style: "belt",
+      templateKey: "capoeira",
+      criteriaType: "attendance_and_time",
+      targetAttendances: 40,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-cap-white", name: "Corda Crua", color: "white", maxSubLevels: 0 },
+        { id: "lvl-cap-white-yellow", name: "Crua Ponta Amarela", color: "white", tipColor: "yellow", maxSubLevels: 0 },
+        { id: "lvl-cap-yellow", name: "Corda Amarela", color: "yellow", maxSubLevels: 0 },
+        { id: "lvl-cap-yellow-orange", name: "Amarela Ponta Laranja", color: "yellow", tipColor: "orange", maxSubLevels: 0 },
+        { id: "lvl-cap-orange", name: "Corda Laranja", color: "orange", maxSubLevels: 0 },
+        { id: "lvl-cap-orange-blue", name: "Laranja Ponta Azul", color: "orange", tipColor: "blue", maxSubLevels: 0 },
+        { id: "lvl-cap-blue", name: "Corda Azul", color: "blue", maxSubLevels: 0 },
+        { id: "lvl-cap-green", name: "Corda Verde", color: "green", maxSubLevels: 0 },
+        { id: "lvl-cap-purple", name: "Corda Roxa", color: "purple", maxSubLevels: 0 },
+        { id: "lvl-cap-brown", name: "Corda Marrom", color: "brown", maxSubLevels: 0 },
+        { id: "lvl-cap-red", name: "Corda Vermelha", color: "red", maxSubLevels: 0 },
+      ],
+    },
+  },
+  language_cefr: {
+    label: "Idiomas (A1 → C2)",
+    description: "Níveis do Quadro Europeu: A1, A2, B1, B2, C1 e C2.",
+    track: {
+      enabled: true,
+      style: "levels",
+      templateKey: "language_cefr",
+      criteriaType: "manual_exam",
+      targetAttendances: 40,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-cefr-a1", name: "A1 Iniciante", maxSubLevels: 0 },
+        { id: "lvl-cefr-a2", name: "A2 Básico", maxSubLevels: 0 },
+        { id: "lvl-cefr-b1", name: "B1 Intermediário", maxSubLevels: 0 },
+        { id: "lvl-cefr-b2", name: "B2 Intermediário superior", maxSubLevels: 0 },
+        { id: "lvl-cefr-c1", name: "C1 Avançado", maxSubLevels: 0 },
+        { id: "lvl-cefr-c2", name: "C2 Proficiente", maxSubLevels: 0 },
+      ],
+    },
+  },
+  functional_categories: {
+    label: "Categorias (Iniciante → RX)",
+    description: "Iniciante, Scaled e RX, comum em boxes e funcional.",
+    track: {
+      enabled: true,
+      style: "levels",
+      templateKey: "functional_categories",
+      criteriaType: "manual_exam",
+      targetAttendances: 36,
+      targetMonths: 6,
+      levels: [
+        { id: "lvl-fn-beg", name: "Iniciante", maxSubLevels: 0 },
+        { id: "lvl-fn-scaled", name: "Scaled", maxSubLevels: 0 },
+        { id: "lvl-fn-rx", name: "RX", maxSubLevels: 0 },
+      ],
+    },
+  },
+  blank: {
+    label: "Do zero",
+    description: "Um nível inicial para você montar a sua trilha.",
+    track: {
+      enabled: true,
+      style: "levels",
+      templateKey: "blank",
+      criteriaType: "attendance",
+      targetAttendances: 24,
+      targetMonths: 6,
+      levels: [{ id: "lvl-blank-1", name: "Nível 1", maxSubLevels: 0 }],
     },
   },
 };
@@ -279,9 +462,10 @@ export function isMartialArtsLevelName(levelName: string): boolean {
   );
 }
 
-export function inferDefaultTrackForModalityName(
+/** Modelo de luta pelo nome da modalidade (Jiu-Jitsu, Judô, Muay Thai...). */
+export function inferTemplateKeyForModalityName(
   modalityName: string,
-): ModalityProgressionTrack {
+): Exclude<ProgressionTrackTemplateKey, "custom"> | null {
   const lower = modalityName.toLowerCase();
   if (
     lower.includes("jiu") ||
@@ -289,103 +473,40 @@ export function inferDefaultTrackForModalityName(
     lower.includes("no-gi") ||
     lower.includes("nogi") ||
     lower.includes("submission") ||
-    lower.includes("kimono") ||
-    lower.includes("kids") ||
-    lower.includes("infantil")
+    lower.includes("kimono")
   ) {
-    return structuredClone(PROGRESSION_TEMPLATES.bjj_adult.track);
+    return "bjj_adult";
   }
-  if (lower.includes("judo") || lower.includes("judô")) {
-    return structuredClone(PROGRESSION_TEMPLATES.judo_karate.track);
-  }
-  if (lower.includes("karate") || lower.includes("karatê")) {
-    return {
-      enabled: true,
-      templateKey: "custom",
-      criteriaType: "attendance_and_time",
-      targetAttendances: 40,
-      targetMonths: 6,
-      levels: [
-        { id: "lvl-kar-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
-        { id: "lvl-kar-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
-        { id: "lvl-kar-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 0 },
-        { id: "lvl-kar-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
-        { id: "lvl-kar-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
-        { id: "lvl-kar-purple", name: "Faixa Roxa", color: "purple", maxSubLevels: 0 },
-        { id: "lvl-kar-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 0 },
-        { id: "lvl-kar-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
-      ],
-    };
-  }
-  if (lower.includes("taekwondo")) {
-    return {
-      enabled: true,
-      templateKey: "custom",
-      criteriaType: "attendance_and_time",
-      targetAttendances: 36,
-      targetMonths: 6,
-      levels: [
-        { id: "lvl-tkd-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
-        { id: "lvl-tkd-white-yellow", name: "Branca Ponta Amarela", color: "white", tipColor: "yellow", maxSubLevels: 0 },
-        { id: "lvl-tkd-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
-        { id: "lvl-tkd-yellow-green", name: "Amarela Ponta Verde", color: "yellow", tipColor: "green", maxSubLevels: 0 },
-        { id: "lvl-tkd-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
-        { id: "lvl-tkd-green-blue", name: "Verde Ponta Azul", color: "green", tipColor: "blue", maxSubLevels: 0 },
-        { id: "lvl-tkd-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
-        { id: "lvl-tkd-blue-red", name: "Azul Ponta Vermelha", color: "blue", tipColor: "red", maxSubLevels: 0 },
-        { id: "lvl-tkd-red", name: "Faixa Vermelha", color: "red", maxSubLevels: 0 },
-        { id: "lvl-tkd-red-black", name: "Vermelha Ponta Preta", color: "red", tipColor: "black", maxSubLevels: 0 },
-        { id: "lvl-tkd-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
-      ],
-    };
-  }
-  if (lower.includes("kickboxing") || lower.includes("krav")) {
-    return {
-      enabled: true,
-      templateKey: "custom",
-      criteriaType: "attendance_and_time",
-      targetAttendances: 40,
-      targetMonths: 6,
-      levels: [
-        { id: "lvl-kb-white", name: "Faixa Branca", color: "white", maxSubLevels: 0 },
-        { id: "lvl-kb-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 0 },
-        { id: "lvl-kb-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 0 },
-        { id: "lvl-kb-green", name: "Faixa Verde", color: "green", maxSubLevels: 0 },
-        { id: "lvl-kb-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 0 },
-        { id: "lvl-kb-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 0 },
-        { id: "lvl-kb-black", name: "Faixa Preta", color: "black", maxSubLevels: 5 },
-      ],
-    };
-  }
-  if (lower.includes("capoeira")) {
-    return {
-      enabled: true,
-      templateKey: "custom",
-      criteriaType: "attendance_and_time",
-      targetAttendances: 40,
-      targetMonths: 6,
-      levels: [
-        { id: "lvl-cap-white", name: "Corda Crua", color: "white", maxSubLevels: 0 },
-        { id: "lvl-cap-white-yellow", name: "Crua Ponta Amarela", color: "white", tipColor: "yellow", maxSubLevels: 0 },
-        { id: "lvl-cap-yellow", name: "Corda Amarela", color: "yellow", maxSubLevels: 0 },
-        { id: "lvl-cap-yellow-orange", name: "Amarela Ponta Laranja", color: "yellow", tipColor: "orange", maxSubLevels: 0 },
-        { id: "lvl-cap-orange", name: "Corda Laranja", color: "orange", maxSubLevels: 0 },
-        { id: "lvl-cap-orange-blue", name: "Laranja Ponta Azul", color: "orange", tipColor: "blue", maxSubLevels: 0 },
-        { id: "lvl-cap-blue", name: "Corda Azul", color: "blue", maxSubLevels: 0 },
-        { id: "lvl-cap-green", name: "Corda Verde", color: "green", maxSubLevels: 0 },
-        { id: "lvl-cap-purple", name: "Corda Roxa", color: "purple", maxSubLevels: 0 },
-        { id: "lvl-cap-brown", name: "Corda Marrom", color: "brown", maxSubLevels: 0 },
-        { id: "lvl-cap-red", name: "Corda Vermelha", color: "red", maxSubLevels: 0 },
-      ],
-    };
-  }
-  if (lower.includes("muay") || lower.includes("thai")) {
-    return structuredClone(PROGRESSION_TEMPLATES.muay_thai.track);
-  }
+  if (lower.includes("judo") || lower.includes("judô")) return "judo_karate";
+  if (lower.includes("karate") || lower.includes("karatê")) return "karate";
+  if (lower.includes("taekwondo")) return "taekwondo";
+  if (lower.includes("kickboxing") || lower.includes("krav")) return "kickboxing";
+  if (lower.includes("capoeira")) return "capoeira";
+  if (lower.includes("muay") || lower.includes("thai")) return "muay_thai";
+  return null;
+}
+
+export function inferDefaultTrackForModalityName(
+  modalityName: string,
+): ModalityProgressionTrack {
+  const key = inferTemplateKeyForModalityName(modalityName);
+  if (key) return structuredClone(PROGRESSION_TEMPLATES[key].track);
   return {
     ...structuredClone(PROGRESSION_TEMPLATES.general_levels.track),
     enabled: false,
   };
+}
+
+/**
+ * Estilo da trilha. Trilhas antigas (sem `style`) seguem o modelo e, se for
+ * personalizada, os nomes dos niveis ("Faixa", "Kruang", "Corda"...).
+ */
+export function resolveTrackStyle(track?: ModalityProgressionTrack): ProgressionTrackStyle {
+  if (!track) return "levels";
+  if (track.style) return track.style;
+  const key = track.templateKey;
+  if (key && key !== "custom") return PROGRESSION_TEMPLATES[key].track.style ?? "levels";
+  return track.levels.some((l) => isMartialArtsLevelName(l.name)) ? "belt" : "levels";
 }
 
 export function resolveModalityTrack(

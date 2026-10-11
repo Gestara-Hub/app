@@ -30,7 +30,7 @@ const MINIMAL_SEGMENTS: MinimalSegment[] = [
     icon: Activity,
     title: "Pilates & Yoga",
     examples: "Reformer • Solo • Studio VIP",
-    description: "Limite por aparelho e reposições organizadas.",
+    description: "Turmas pequenas e aulas particulares.",
     tag: "Grupos ou 1 a 1",
   },
   {
@@ -44,7 +44,7 @@ const MINIMAL_SEGMENTS: MinimalSegment[] = [
     icon: Sparkles,
     title: "Dança & Movimento",
     examples: "Ballet • Salão • Ritmos • Ginástica",
-    description: "Turmas por nível e ensaios particulares.",
+    description: "Turmas por nível e aulas particulares.",
     tag: "Coletivo ou VIP",
   },
   {

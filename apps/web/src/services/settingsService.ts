@@ -1,5 +1,13 @@
-import type { Address, BusinessHoursDay, Id, Organization, Unit } from "@gestarahub/contracts";
+import type {
+  Address,
+  BusinessHoursDay,
+  ClassesBusinessSegment,
+  Id,
+  Organization,
+  Unit,
+} from "@gestarahub/contracts";
 import { setActiveOrganization, store } from "@/mocks/store";
+import { defaultMessageTemplates } from "@/mocks/seed";
 import { simulateRead, simulateWrite } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 
@@ -8,7 +16,7 @@ function clone<T>(value: T): T {
 }
 
 export type UpdateOrganization = Partial<
-  Pick<Organization, "name" | "segment" | "model" | "settings">
+  Pick<Organization, "name" | "segment" | "model" | "classSegment" | "customSegmentName" | "settings">
 >;
 export type UpdateUnit = Partial<{
   name: string;
@@ -16,6 +24,27 @@ export type UpdateUnit = Partial<{
   phone: string;
   businessHours: BusinessHoursDay[];
 }>;
+
+/**
+ * Troca de area: os modelos de mensagem que ainda estao no texto padrao da area
+ * anterior passam para o texto da nova. Os editados pelo tenant ficam como estao.
+ */
+function syncTemplatesWithSegment(previous: ClassesBusinessSegment | undefined) {
+  if (!store.messageTemplates?.length) return;
+  const orgId = store.organization.id;
+  const oldDefaults = new Map(
+    defaultMessageTemplates(orgId, previous).map((t) => [t.trigger, t.content]),
+  );
+  const newDefaults = new Map(
+    defaultMessageTemplates(orgId, store.organization.classSegment).map((t) => [t.trigger, t.content]),
+  );
+  for (const template of store.messageTemplates) {
+    const next = newDefaults.get(template.trigger);
+    if (next && template.content === oldDefaults.get(template.trigger)) {
+      template.content = next;
+    }
+  }
+}
 
 export const settingsService = {
   setActiveTenant(organizationId: Id): Promise<void> {
@@ -34,6 +63,7 @@ export const settingsService = {
 
   updateOrganization(payload: UpdateOrganization): Promise<Organization> {
     return simulateWrite(() => {
+      const previousSegment = store.organization.classSegment;
       store.organization = {
         ...store.organization,
         ...payload,
@@ -45,11 +75,30 @@ export const settingsService = {
         model: payload.model || store.organization.model,
         settings: payload.settings !== undefined ? payload.settings : store.organization.settings,
       };
+      if (store.organization.classSegment !== previousSegment) {
+        syncTemplatesWithSegment(previousSegment);
+      }
       auditLogService.record({
         action: "updated",
         target: { type: "settings", label: "Dados da organização" },
         predicate: "atualizou os dados da organização",
         security: true,
+      });
+      return clone(store.organization);
+    });
+  },
+
+  /** "Está tudo certo" no aviso de Modalidades: fecha a revisao pedida pelo setup. */
+  markModalitiesReviewed(): Promise<Organization> {
+    return simulateWrite(() => {
+      store.organization = {
+        ...store.organization,
+        settings: { ...store.organization.settings, modalitiesReviewed: true },
+      };
+      auditLogService.record({
+        action: "updated",
+        target: { type: "settings", label: "Modalidades da configuração inicial" },
+        predicate: "revisou as modalidades criadas na configuração inicial",
       });
       return clone(store.organization);
     });

@@ -103,7 +103,7 @@ export function usePromoteStudent() {
       modalityName?: string;
       toLevelId?: string;
       toLevelName: string;
-      toLevelColor: ProgressionBeltColor;
+      toLevelColor?: ProgressionBeltColor;
       toSubLevel: number;
       maxSubLevels?: number;
       date: DateISO;

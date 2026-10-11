@@ -10,6 +10,7 @@ import type { Category } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useUpdateCategory } from "@/features/categories";
 import { ModalitiesList } from "./modalities-list";
+import { ModalitiesReviewNotice } from "./modalities-review-notice";
 import { ModalityFormDialog } from "./modality-form-dialog";
 import { InactivateModalityDialog } from "./inactivate-modality-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -65,6 +66,8 @@ export function ModalitiesView() {
           </Button>
         ) : null}
       </PageHeader>
+
+      {canManage ? <ModalitiesReviewNotice /> : null}
 
       <ModalitiesList
         canManage={canManage}

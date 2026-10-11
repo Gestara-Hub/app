@@ -13,13 +13,18 @@ export type OperationalModel = "scheduling" | "classes" | "delivery";
 export type OrganizationBillingTiming = "prepaid" | "postpaid";
 export type OrganizationMidMonthStrategy = "prorated" | "full_cycle";
 
+/**
+ * Area do negocio no Modelo 3 (turmas). So define padroes (trilha, duracao,
+ * vagas) e vocabulario; nunca liga ou desliga recursos. `custom` usa
+ * `Organization.customSegmentName` como rotulo.
+ */
 export type ClassesBusinessSegment =
   | "martial_arts"
-  | "fitness_wellness"
-  | "crossfit_functional"
-  | "dance_arts"
-  | "aquatics_sports"
-  | "education_courses"
+  | "pilates_yoga"
+  | "music_languages"
+  | "dance"
+  | "functional_training"
+  | "swimming_sports"
   | "custom";
 
 export interface OrganizationSettings {
@@ -27,9 +32,13 @@ export interface OrganizationSettings {
   billingTiming?: OrganizationBillingTiming; // 'prepaid' (no ato) ou 'postpaid' (ao final) - default: 'prepaid'
   midMonthStrategy?: OrganizationMidMonthStrategy; // 'prorated' (proporcional) ou 'full_cycle' (ciclo 30 dias) - default: 'prorated'
   onlinePayments?: OnlinePaymentSettings; // cobranca online simulada (plano pago)
-  businessSegments?: ClassesBusinessSegment[];
-  customSegmentName?: string;
   onboardingCompleted?: boolean;
+  /**
+   * `false` quando o setup criou modalidades com a trilha padrao da area: o
+   * passo "Cadastrar modalidades" fica em "Falta revisar" ate o dono conferir.
+   * Ausente = nada a revisar.
+   */
+  modalitiesReviewed?: boolean;
 }
 
 export interface Organization {
@@ -37,6 +46,10 @@ export interface Organization {
   name: string; // 'Corte Nobre'
   segment: string; // 'Barbearia' (vertical/rotulo — nao confundir com `model`)
   model: OperationalModel; // modelo operacional (estrutural)
+  /** Area do negocio no Modelo 3. Ausente = `martial_arts` (tenants antigos). */
+  classSegment?: ClassesBusinessSegment;
+  /** Nome digitado quando `classSegment` e `custom`. */
+  customSegmentName?: string;
   settings?: OrganizationSettings;
   /** Plano GestaraHub (assinatura). Ausente = free. */
   subscription?: Subscription;

@@ -18,22 +18,22 @@ export function LandingHero() {
           {/* Pill announcement badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shadow-2xs backdrop-blur-sm">
             <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Aulas em Grupo ou Individuais • Sistema 100% Gratuito</span>
+            <span>Grátis para sempre • Sem cartão de crédito</span>
           </div>
 
           {/* Headline limpa e objetiva */}
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-foreground leading-[1.15]">
-            <span className="block">Chega de papel e planilhas.</span>
-            <span className="block">A gestão do seu espaço de</span>
+            <span className="block">Chega de caderno e planilha.</span>
+            <span className="block">Gestão simples para</span>
             <span className="block text-primary min-h-[1.2em]">
               <TypewriterText
                 words={[
-                  "Lutas & Artes Marciais.",
-                  "Pilates & Yoga.",
-                  "Música & Instrumentos.",
-                  "Idiomas & Línguas.",
-                  "Dança & Escolas.",
-                  "Boxes & Funcional.",
+                  "academias de luta.",
+                  "estúdios de pilates e yoga.",
+                  "escolas de música.",
+                  "escolas de idiomas.",
+                  "escolas de dança.",
+                  "boxes e funcional.",
                 ]}
               />
             </span>

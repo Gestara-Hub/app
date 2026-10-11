@@ -35,8 +35,11 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: Id; payload: UpdateCategory }) =>
       categoriesService.update(id, payload),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: queryKeys.categories.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.categories.all });
+      // Pode fechar a revisao das modalidades do setup (passo do onboarding).
+      qc.invalidateQueries({ queryKey: queryKeys.organization.detail });
+    },
   });
 }
 

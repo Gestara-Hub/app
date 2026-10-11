@@ -27,16 +27,15 @@ Demais regras:
 
 - **Plano é do aluno**, não da turma: `Client.planId`, `planStartDate`, `billingStrategy`, `cyclePaymentTiming`, `dueDay`, `discount`. `ClassGroup.planId` é legado.
 - **Periodicidades:** mensal, quinzenal (quinzenas de calendário 1–15 e 16–fim) e semanal (**semanas reais**: ciclos de 7 dias a partir da entrada, 4 ou 5 cobranças por mês, sem proporcional).
-- **Plano exige valor maior que zero.** Bolsa integral é desconto de 100% no aluno.
+- **Plano exige valor maior que zero.** Bolsa é condição do aluno, não do plano: o bolsista fica no plano normal da turma (ver "Bolsa de estudo" abaixo).
 - **Desconto** (fixo ou percentual) é aplicado antes do proporcional; nunca deixa o valor negativo.
 - **Pausa é da assinatura do aluno** (`membershipStatus: "paused"`), não da matrícula na turma. Aluno pausado, cancelado ou inativo não gera cobrança.
 - **Atrasado é calculado na leitura:** cobrança em aberto com vencimento passado aparece como atrasada, sem depender de quando foi gravada.
 - **Marcar como pago exige a forma de pagamento** (Pix, Dinheiro, Cartão, Outro), num diálogo que mostra aluno, valor e período de referência.
 - **Troca de plano ou de início de vigência** cancela as mensalidades em aberto do arranjo antigo a partir da nova vigência. Pagas ficam como estão; não há crédito proporcional automático.
 - **Inativar o aluno** cancela as mensalidades em aberto de períodos que ainda não começaram. O que já foi usado continua em aberto (dívida).
-- **"Resetar cobranças"** (ferramenta de teste/correção) pede confirmação e **nunca apaga cobranças pagas**.
-- **Gerar cobranças** confirma a competência e é idempotente: um período de uso nunca gera duas cobranças.
-- Toda operação financeira entra na **Auditoria** (gerar, pagar, desfazer, cancelar, reabrir, resetar).
+- **Geração automática** (11/10/2026): as mensalidades do mês atual e do mês consultado (se já chegou) nascem na leitura de Mensalidades, Dashboard e Financeiro; é idempotente e meses futuros ficam vazios até chegarem. Os botões "Gerar cobranças" e "Resetar cobranças" saíram da tela.
+- Toda operação financeira feita por uma pessoa entra na **Auditoria** (pagar, desfazer, cancelar, reabrir). A geração automática não entra (é o sistema).
 - **Reposição de aula foi removida** do escopo (entidade, tela e regras); não voltar sem nova decisão.
 
 ## Contexto
@@ -63,9 +62,26 @@ Em 22/09/2026 um teste ponta a ponta encontrou 23 bugs, a maioria em Mensalidade
 Estas regras já estão implementadas.
 
 - **Quem cancelou:** toda cobrança cancelada registra se foi pelo **sistema** (troca de plano, troca de regra, inativação, aluno removido da aula) ou pelo **usuário**. "Reverter" só reabre as canceladas pelo usuário; nas do sistema o botão fica desabilitado com a explicação, para não gerar cobrança em dobro.
-- **Geração:** uma mensalidade cancelada **não** impede gerar o mesmo período de novo (ex.: aluno inativado e reativado). Uma mensalidade existente que se **sobrepõe** ao período planejado impede a nova (evita cobrar o mesmo dia duas vezes depois de mudar a regra).
+- **Geração:** uma mensalidade cancelada **pelo sistema** não impede gerar o mesmo período de novo (ex.: aluno inativado e reativado, troca de regra). Cancelada **pelo usuário** ocupa o período e não é recriada pela geração automática. Uma mensalidade existente que se **sobrepõe** ao período planejado impede a nova (evita cobrar o mesmo dia duas vezes depois de mudar a regra).
 - **Troca de regra do aluno:** mudar o momento do pagamento, a entrada no meio do período ou o dia de vencimento funciona como troca de plano: as mensalidades em aberto de períodos que ainda não começaram são canceladas. Regravar a mesma regra efetiva não cancela nada.
 - **Periodicidade do plano:** não pode ser alterada enquanto o plano tiver alunos ativos (crie um novo plano).
 - **Inativação no "Depois do uso":** ao inativar, o período já iniciado é cobrado na hora (valor e vencimento do motor); os períodos futuros continuam cancelados. No "Antecipado", pausado ou cancelado nada novo é gerado.
-- **Resetar cobranças (ferramenta de teste):** remove só **mensalidades** em aberto ou canceladas da competência. Pagas e aulas avulsas ficam. O número no modal é o que será removido. O botão sai na versão final.
+- **Resetar cobranças:** removido da tela em 11/10/2026 (a geração é automática). `billingService.clearCharges` segue só para testes.
 - **Dashboard:** "Mensalidades recebidas" soma só mensalidades. Sem nada gerado no mês aparece "Nenhuma mensalidade gerada no mês".
+
+## Bolsa de estudo (11/10/2026)
+
+- No cadastro do aluno, "Plano & Mensalidade" começa por **como o aluno paga**:
+  - **Paga mensalidade**: plano obrigatório; "Conceder desconto na mensalidade" (fixo ou %) com "Válido até" opcional.
+  - **Bolsista**: **Integral** (plano de referência **opcional**: com plano, o valor entra em "Bolsas concedidas"; sem plano, as mensalidades isentas saem todo mês no vencimento padrão, sem valor de referência, e param depois de "Válida até") ou **Parcial** (plano obrigatório, definida por **% de bolsa** ou **valor a pagar**, com a conta ao vivo "Plano R$ 180,00 → paga R$ 90,00 (bolsa de 50%)"). Motivo com sugestões (Atleta, Social, Família de professor, Parceria) e "Válida até".
+  - **Não paga mensalidade**: sem plano e sem cobrança (avulso ou experimental), escolhido de forma explícita.
+- Bolsa pelo valor a pagar é guardada como bolsa de valor fixo (preço do plano - valor pago); o selo calcula a %.
+- Contrato: `StudentDiscount.scholarship` (bolsa é sempre percentual; integral = 100) e `StudentDiscount.validUntil`. O motor (`@gestarahub/core/billing`) aplica o desconto só nos períodos que começam até `validUntil`; depois volta ao valor cheio do plano.
+- **Bolsa integral**: a mensalidade nasce com status **"Isento"** (`waived`), R$ 0, selo **"Bolsista"**. Nunca fica pendente nem em atraso, fica fora de "A receber" e da inadimplência e não tem ações (marcar pago, cobrar online, cancelar; o serviço recusa).
+- **Bolsa parcial**: mensalidade normal com o valor reduzido e selo **"Bolsa 50%"**.
+- Cada mensalidade com bolsa guarda `scholarshipPercent` e `listAmountCents` (valor sem bolsa). O Resumo do Financeiro mostra **"Bolsas concedidas"** (valor do plano - cobrado, com nº de alunos), informativo, fora do caixa.
+- Mudar desconto ou bolsa do aluno conta como troca de regra: as mensalidades em aberto (inclusive isentas) de períodos que ainda não começaram são canceladas pelo sistema e a geração recria pelo valor novo.
+- Pagamento de professor: "por aluno" conta o bolsista (o professor dá a aula); "% das mensalidades" usa só o pago, então o isento entra com zero.
+- Bolsista integral sem plano não herda o plano da turma (a regra de retrocompatibilidade "aluno sem plano em turma com plano" o ignora). Trocar a bolsa ou sair dela cancela as isentas futuras e recria pela regra nova.
+- Migração do mock (v26): desconto de 100% vira bolsa integral e mensalidades de R$ 0 em aberto viram "Isento".
+

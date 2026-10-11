@@ -6,6 +6,7 @@ import type {
   Charge,
   ClassGroup,
   ClassReservation,
+  ClassesBusinessSegment,
   ClassSessionOverride,
   Client,
   Enrollment,
@@ -18,6 +19,7 @@ import type {
   OnlinePayment,
   OperationalModel,
   Organization,
+  OrganizationSettings,
   SubscriptionTier,
   Plan,
   Professional,
@@ -131,7 +133,11 @@ const STORAGE_KEY = "gestarahub:db";
 //      de classes e organization.subscription (free). Migracao suave.
 // v23: Comunicacao (recurso messaging) — sessao WhatsApp, templates de regua e logs.
 // v24: Onboarding setup — campos de unidade e endereço da Academia limpos para capturar do setup.
-const SEED_VERSION = 24;
+// v25: segmento do Modelo 3 vira `organization.classSegment` (chave unica e renomeada);
+//      sai `settings.businessSegments`. Migracao suave.
+// v26: bolsa de estudo — desconto de 100% vira bolsa integral e mensalidades
+//      de R$ 0 em aberto viram "Isento" (`waived`). Migracao suave.
+const SEED_VERSION = 26;
 
 interface PersistedBlob {
   v: number;
@@ -187,6 +193,53 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
       }
       if (!t.messageLogs || t.messageLogs.length === 0) {
         t.messageLogs = defaultMessageLogs(t.organization.id);
+      }
+    }
+  }
+  if (fromVersion < 25) {
+    const renamed: Record<string, ClassesBusinessSegment> = {
+      martial_arts: "martial_arts",
+      fitness_wellness: "pilates_yoga",
+      education_courses: "music_languages",
+      dance_arts: "dance",
+      crossfit_functional: "functional_training",
+      aquatics_sports: "swimming_sports",
+      custom: "custom",
+    };
+    for (const tenant of Object.values(data.tenants)) {
+      const org = tenant.organization;
+      const legacy = org.settings as
+        | (OrganizationSettings & { businessSegments?: string[]; customSegmentName?: string })
+        | undefined;
+      if (!legacy) continue;
+      const first = legacy.businessSegments?.[0];
+      if (!org.classSegment && first && renamed[first]) org.classSegment = renamed[first];
+      if (!org.customSegmentName && legacy.customSegmentName) {
+        org.customSegmentName = legacy.customSegmentName;
+      }
+      delete legacy.businessSegments;
+      delete legacy.customSegmentName;
+    }
+  }
+  if (fromVersion < 26) {
+    for (const tenant of Object.values(data.tenants)) {
+      const fullScholars = new Set<string>();
+      for (const client of tenant.clients) {
+        const d = client.discount;
+        if (d && d.type === "percentage" && d.value >= 100) {
+          d.scholarship = true;
+          fullScholars.add(client.id);
+        }
+      }
+      for (const charge of tenant.charges) {
+        if (charge.kind !== "membership" || charge.amountCents !== 0) continue;
+        if (charge.status !== "pending" && charge.status !== "overdue") continue;
+        charge.status = "waived";
+        if (fullScholars.has(charge.studentId)) {
+          charge.scholarshipPercent = 100;
+          const plan = tenant.plans.find((p) => p.id === charge.planId);
+          if (plan) charge.listAmountCents = plan.priceCents;
+        }
       }
     }
   }

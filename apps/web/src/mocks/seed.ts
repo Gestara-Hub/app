@@ -1,5 +1,6 @@
 import { ORG_ID, UNIT_ID } from "@/config/tenant";
 import type {
+  ClassesBusinessSegment,
   FinancialCategory,
   FinancialEntryType,
   FinancialSystemCategoryKey,
@@ -218,8 +219,28 @@ export function defaultWhatsAppSession(organizationId: Id): WhatsAppSession {
   };
 }
 
-export function defaultMessageTemplates(organizationId: Id): MessageTemplate[] {
+/** Trechos que mudam conforme a area: lutas fala em treino e tatame; o resto, em aula. */
+function messageTone(segment: ClassesBusinessSegment | undefined) {
+  if (!segment || segment === "martial_arts") {
+    return {
+      closing: " Bons treinos! 🥋",
+      welcomeTail: "acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
+      absenceLine: "nos últimos treinos da {empresa}. Seu lugar no tatame está guardado!",
+    };
+  }
+  return {
+    closing: " Boas aulas!",
+    welcomeTail: "acompanhar suas aulas, horários e evolução. Até a primeira aula!",
+    absenceLine: "nas últimas aulas da {empresa}. Seu lugar na turma está guardado!",
+  };
+}
+
+export function defaultMessageTemplates(
+  organizationId: Id,
+  segment?: ClassesBusinessSegment,
+): MessageTemplate[] {
   const ts = timestamps();
+  const tone = messageTone(segment);
   return [
     {
       id: `tmpl-${organizationId}-before-due`,
@@ -232,7 +253,7 @@ export function defaultMessageTemplates(organizationId: Id): MessageTemplate[] {
       sendHour: "09:00",
       daysOffset: -3,
       content:
-        "Olá, {aluno}! Passando para lembrar que sua mensalidade de {valor} na {empresa} vence em {vencimento}. Pague com facilidade pelo Pix Copia e Cola: {link_pagamento}. Bons treinos! 🥋",
+        `Olá, {aluno}! Passando para lembrar que sua mensalidade de {valor} na {empresa} vence em {vencimento}. Pague com facilidade pelo Pix Copia e Cola: {link_pagamento}.${tone.closing}`,
       availableVariables: ["{aluno}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
       ...ts,
     },
@@ -292,7 +313,7 @@ export function defaultMessageTemplates(organizationId: Id): MessageTemplate[] {
       sendHour: "08:00",
       daysOffset: 0,
       content:
-        "Seja muito bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link {link_app} para acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
+        `Seja muito bem-vindo(a) à {empresa}, {aluno}! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link {link_app} para ${tone.welcomeTail}`,
       availableVariables: ["{aluno}", "{empresa}", "{link_app}"],
       ...ts,
     },
@@ -307,7 +328,7 @@ export function defaultMessageTemplates(organizationId: Id): MessageTemplate[] {
       sendHour: "14:00",
       daysOffset: 14,
       content:
-        "Oi, {aluno}! Tudo bem? Sentimos muito a sua falta nos últimos treinos da {empresa}. Seu lugar no tatame está guardado! Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪",
+        `Oi, {aluno}! Tudo bem? Sentimos muito a sua falta ${tone.absenceLine} Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪`,
       availableVariables: ["{aluno}", "{empresa}"],
       ...ts,
     },

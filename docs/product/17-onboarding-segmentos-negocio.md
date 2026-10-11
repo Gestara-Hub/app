@@ -1,7 +1,9 @@
 # 17 — Onboarding de 1º Acesso e Presets por Segmento de Negócio
 
-> **Status:** Planejado / Refinado (Pronto para implementação futura)
+> **Status:** Histórico. Substituído pela implementação descrita em `docs/frontend/08-decisoes-landing-page-e-onboarding.md` (seções 4.3 e 4.5).
 > **Data:** 26/09/2026
+>
+> **O que mudou (11/10/2026):** a área é um valor único (`Organization.classSegment`), não uma lista (`businessSegments`); as chaves foram renomeadas (`pilates_yoga`, `music_languages`, `dance`, `functional_training`, `swimming_sports`). Seleção múltipla e `getMergedSegmentPreset` não foram adotados.
 
 ---
 

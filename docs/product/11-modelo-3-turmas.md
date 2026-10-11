@@ -205,7 +205,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 - Frequencia e **informativa**: badge no detalhe da turma, com destaque quando `< 75%`. **Nao bloqueia** nada.
 
 **Mensalidade e cobranca**
-- Resumo: o plano e do **aluno**; a academia define a regra padrao (antecipado ou depois do uso; proporcional ou ciclo cheio; dia de vencimento 1 a 28), herdada e personalizavel no aluno; a 1a cobranca nasce no cadastro; "Gerar cobranças" cria as da competencia de forma idempotente; atrasado e derivado na leitura; pagar exige forma de pagamento; aluno pausado, cancelado ou inativo nao gera cobranca. **Detalhes e matriz de exemplos em [15-regras-de-cobranca.md](15-regras-de-cobranca.md)** (antes: "cobranca cheia, sem pro-rata" — substituido).
+- Resumo: o plano e do **aluno**; a academia define a regra padrao (antecipado ou depois do uso; proporcional ou ciclo cheio; dia de vencimento 1 a 28), herdada e personalizavel no aluno; a 1a cobranca nasce no cadastro; as da competencia sao geradas automaticamente na leitura (mes atual e mes consultado ja chegado), de forma idempotente; atrasado e derivado na leitura; pagar exige forma de pagamento; aluno pausado, cancelado ou inativo nao gera cobranca. **Detalhes e matriz de exemplos em [15-regras-de-cobranca.md](15-regras-de-cobranca.md)** (antes: "cobranca cheia, sem pro-rata" — substituido).
 - Aula avulsa: cobranca `dropin` por aula, como acima.
 - Retrocompatibilidade: aluno sem plano proprio matriculado em turma com `planId` legado ainda e cobrado pela regra da academia.
 

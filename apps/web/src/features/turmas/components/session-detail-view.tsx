@@ -33,8 +33,9 @@ import {
 import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Combobox } from "@/components/shared/combobox";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
+import { useSegmentVocabulary } from "@/features/settings";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import {
@@ -81,6 +82,7 @@ const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
 ];
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
+  const vocabulary = useSegmentVocabulary();
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
@@ -467,11 +469,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           <button
                             type="button"
                             onClick={() => setProgressClient(student)}
-                            title="Abrir ficha de evolução e graduação"
+                            title={`Abrir ficha: ${vocabulary.progressTitle.toLowerCase()}`}
                           >
                             <BeltBadge
                               name={currentLvl.name}
                               color={currentLvl.color}
+                              variant={resolveTrackStyle(modalityTrack?.track)}
                               subLevel={currentSub}
                               maxSubLevels={currentLvl.maxSubLevels}
                               size="xs"

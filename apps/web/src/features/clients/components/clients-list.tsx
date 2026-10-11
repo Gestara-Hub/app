@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Award,
   GraduationCap,
   Mail,
   Pencil,
@@ -13,6 +14,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,7 +38,7 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
 import type {
@@ -48,6 +50,7 @@ import type {
   RecordStatus,
 } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
+import { useSegmentVocabulary } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { usePlans } from "@/features/turmas";
 import { useClients } from "../hooks/use-clients";
@@ -69,7 +72,10 @@ const PERIOD_BADGE_CLASSES: Record<PlanPeriod, string> = {
 
 function getEffectivePriceCents(client: Client, plan: Plan): number {
   let price = plan.priceCents;
-  if (client.discount && client.discount.value > 0) {
+  const expired =
+    client.discount?.validUntil !== undefined &&
+    client.discount.validUntil < format(new Date(), "yyyy-MM-dd");
+  if (client.discount && client.discount.value > 0 && !expired) {
     if (client.discount.type === "percentage") {
       price = Math.max(0, price - Math.round((price * client.discount.value) / 100));
     } else {
@@ -88,6 +94,7 @@ function ClientProgressionBadges({
   categoryById: Map<string, Category>;
   onOpenProgress?: (client: Client) => void;
 }) {
+  const vocabulary = useSegmentVocabulary();
   const entries = Object.values(client.progressions ?? {});
   const resolvedBadges = entries
     .map((prog) => {
@@ -104,6 +111,7 @@ function ClientProgressionBadges({
         modalityId: prog.modalityId,
         modalityName: cat.name,
         level: lvl,
+        style: resolveTrackStyle(track),
         subLevel: prog.subLevel,
       };
     })
@@ -121,7 +129,7 @@ function ClientProgressionBadges({
         className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors"
       >
         <GraduationCap className="size-3" />
-        <span>Evolução / Faixa</span>
+        <span>Evolução / {vocabulary.level}</span>
       </button>
     );
   }
@@ -145,6 +153,7 @@ function ClientProgressionBadges({
               : b.level.name
           }
           color={b.level.color}
+          variant={b.style}
           subLevel={b.subLevel}
           maxSubLevels={b.level.maxSubLevels}
           size="xs"
@@ -154,11 +163,71 @@ function ClientProgressionBadges({
   );
 }
 
+/** Bolsa vigente hoje (sem validade ou ainda dentro dela). */
+function activeScholarship(client: Client) {
+  const d = client.discount;
+  if (!d?.scholarship) return null;
+  if (d.validUntil && d.validUntil < format(new Date(), "yyyy-MM-dd")) return null;
+  return d;
+}
+
+const SCHOLARSHIP_BADGE_CLASS =
+  "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25";
+
+function PausedTag() {
+  return (
+    <span className="rounded bg-amber-500/15 px-1 py-0.2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+      Trancado
+    </span>
+  );
+}
+
 function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
+  const scholarship = activeScholarship(client);
+  const isPaused = client.membershipStatus === "paused";
+
+  // Bolsista: selo proprio, separado do plano (integral pode nem ter plano).
+  if (scholarship) {
+    const isFull = scholarship.type === "percentage" && scholarship.value >= 100;
+    const period = plan?.period ?? "monthly";
+    const effectiveCents = plan ? getEffectivePriceCents(client, plan) : 0;
+    const percent =
+      scholarship.type === "percentage"
+        ? scholarship.value
+        : plan && plan.priceCents > 0
+          ? Math.round(((plan.priceCents - effectiveCents) / plan.priceCents) * 100)
+          : 0;
+    return (
+      <span
+        title={[plan ? `Plano: ${plan.name}` : null, scholarship.reason ? `Motivo: ${scholarship.reason}` : null]
+          .filter(Boolean)
+          .join(" · ") || undefined}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+          SCHOLARSHIP_BADGE_CLASS,
+        )}
+      >
+        <Award className="size-3 shrink-0 opacity-75" />
+        {isFull || !plan ? (
+          <span>Bolsista integral</span>
+        ) : (
+          <>
+            <span>Bolsa {percent}%</span>
+            <span className="opacity-50">•</span>
+            <span className="font-semibold tabular-nums">
+              {formatCents(effectiveCents)}/{PERIOD_SHORT[period]}
+            </span>
+          </>
+        )}
+        {isPaused ? <PausedTag /> : null}
+      </span>
+    );
+  }
+
   if (!client.planId || !plan) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-        Sem plano (Avulso)
+        Sem mensalidade
       </span>
     );
   }
@@ -169,7 +238,6 @@ function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
     .trim();
   const effectiveCents = getEffectivePriceCents(client, plan);
   const hasDiscount = effectiveCents < plan.priceCents;
-  const isPaused = client.membershipStatus === "paused";
 
   return (
     <span
@@ -193,11 +261,7 @@ function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
             : "desc."}
         </span>
       ) : null}
-      {isPaused ? (
-        <span className="rounded bg-amber-500/15 px-1 py-0.2 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-          Trancado
-        </span>
-      ) : null}
+      {isPaused ? <PausedTag /> : null}
     </span>
   );
 }
@@ -232,6 +296,7 @@ function ClientRow({
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
+  const vocabulary = useSegmentVocabulary();
   const isActive = client.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -240,7 +305,7 @@ function ClientRow({
           ? [
               {
                 key: "progress",
-                label: "Evolução e Graduação",
+                label: vocabulary.progressTitle,
                 icon: <GraduationCap className="size-4" />,
                 onSelect: () => onOpenProgress(client),
               },
@@ -374,6 +439,7 @@ function ClientCard({
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
+  const vocabulary = useSegmentVocabulary();
   const isActive = client.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -382,7 +448,7 @@ function ClientCard({
           ? [
               {
                 key: "progress",
-                label: "Evolução e Graduação",
+                label: vocabulary.progressTitle,
                 icon: <GraduationCap className="size-4" />,
                 onSelect: () => onOpenProgress(client),
               },

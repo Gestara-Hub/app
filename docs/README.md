@@ -22,7 +22,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 6. [product/15-regras-de-cobranca.md](product/15-regras-de-cobranca.md) — Regras de cobrança das mensalidades (antecipado/pós-pago, proporcional/mês cheio, vencimento). Substitui as regras de mensalidade do doc 11.
 7. [product/17-pitch-gestarahub.md](product/17-pitch-gestarahub.md) — Pitch de negócio (problema, solução, exemplos, modelo de receita e visão de marketplace de parceiros). Base para a apresentação.
 8. [product/18-pesquisa-dores-e-caminhos.md](product/18-pesquisa-dores-e-caminhos.md) — Pesquisa (com fontes) das dores de academias, salões e docerias e dos caminhos de expansão além do marketplace (pagamentos, WhatsApp, canal próprio de captação, crédito, app do aluno).
-7. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Planejado)* Wizard de configuração inicial no 1º login, presets por segmento (`martial_arts`, `fitness_wellness`, `aquatics_sports`, `education_courses`) e pré-criação de modalidades em 1 clique.
+7. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Histórico)* Plano original do wizard de 1º acesso e presets por segmento. A versão implementada está em `frontend/08`, seções 4.3 e 4.5.
 
 ---
 

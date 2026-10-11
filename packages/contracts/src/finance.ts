@@ -285,6 +285,13 @@ export interface FinanceSummary {
   incomeOverdueCents: number;
   /** Saidas vencidas e nao pagas. */
   expenseOverdueCents: number;
+  /**
+   * Bolsas concedidas nas mensalidades do mes (valor do plano - valor cobrado).
+   * Informativo: nao entra no caixa nem no resultado.
+   */
+  scholarshipGrantedCents?: number;
+  /** Alunos com bolsa nas mensalidades do mes. */
+  scholarshipStudents?: number;
 }
 
 /** Ponto do grafico entradas x saidas (ultimos N meses). */

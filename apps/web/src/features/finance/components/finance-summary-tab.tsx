@@ -165,6 +165,7 @@ function VariantSimplified({
                 ? `+ ${formatCents(summary.incomeForecastCents)} a receber no mês`
                 : "Todas as mensalidades recebidas"}
             </p>
+            <ScholarshipNote summary={summary} />
           </div>
         </div>
 
@@ -584,6 +585,14 @@ function VariantExecutive({
                   {summary.incomeForecastCents > 0 ? formatCents(summary.incomeForecastCents) : "R$ 0,00"}
                 </span>
               </div>
+              {summary.scholarshipGrantedCents ? (
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Bolsas concedidas:</span>
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {formatCents(summary.scholarshipGrantedCents)}
+                  </span>
+                </div>
+              ) : null}
               <Link
                 href={financeHref("lancamentos", competence, { type: "income" })}
                 className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline pt-0.5"
@@ -1141,5 +1150,19 @@ export function FinanceSummaryTab({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Bolsas do mes (informativo): quanto deixou de ser cobrado por bolsas. Nao
+ * entra no caixa nem no resultado.
+ */
+function ScholarshipNote({ summary }: { summary: FinanceSummary }) {
+  if (!summary.scholarshipGrantedCents) return null;
+  const students = summary.scholarshipStudents ?? 0;
+  return (
+    <p className="mt-0.5 text-xs text-muted-foreground">
+      {`Bolsas concedidas: ${formatCents(summary.scholarshipGrantedCents)} (${plural(students, "aluno", "alunos")})`}
+    </p>
   );
 }

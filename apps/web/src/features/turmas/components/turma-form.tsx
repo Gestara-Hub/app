@@ -40,7 +40,7 @@ import type {
   Unit,
   Weekday,
 } from "@gestarahub/contracts";
-import { useUnit } from "@/features/settings";
+import { useBusinessSegment, useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
 import { useClassGroups, useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
@@ -93,8 +93,9 @@ export function getInitialStartDate(unit?: Unit): string {
 export function getUnitTimesForWeekday(
   weekday: number,
   unit?: Unit,
+  durationMinutes = 60,
 ): { start: string; end: string } {
-  const fallback = { start: "19:00", end: "20:00" };
+  const fallback = { start: "19:00", end: addMinutesToTime("19:00", durationMinutes) };
   if (!unit?.businessHours || unit.businessHours.length === 0) {
     return fallback;
   }
@@ -105,7 +106,7 @@ export function getUnitTimesForWeekday(
     const start = shift?.start ?? dayConfig.start;
     const shiftEnd = shift?.end ?? dayConfig.end;
     if (start) {
-      const calculatedEnd = addMinutesToTime(start, 60);
+      const calculatedEnd = addMinutesToTime(start, durationMinutes);
       const end = shiftEnd && shiftEnd < calculatedEnd ? shiftEnd : calculatedEnd;
       return { start, end };
     }
@@ -120,7 +121,7 @@ export function getUnitTimesForWeekday(
     const start = shift?.start ?? firstOpen.start;
     const shiftEnd = shift?.end ?? firstOpen.end;
     if (start) {
-      const calculatedEnd = addMinutesToTime(start, 60);
+      const calculatedEnd = addMinutesToTime(start, durationMinutes);
       const end = shiftEnd && shiftEnd < calculatedEnd ? shiftEnd : calculatedEnd;
       return { start, end };
     }
@@ -140,11 +141,12 @@ function slotsToBlocks(
   slots: TurmaFormValues["meetingSlots"],
   unit?: Unit,
   startDate?: string,
+  durationMinutes = 60,
 ): ScheduleBlock[] {
   if (!slots || slots.length === 0) {
     const initialDate = startDate || format(new Date(), "yyyy-MM-dd");
     const weekday = weekdayOf(initialDate);
-    const times = getUnitTimesForWeekday(weekday, unit);
+    const times = getUnitTimesForWeekday(weekday, unit, durationMinutes);
     const dayConfig = unit?.businessHours?.find((b) => b.weekday === weekday);
     const isDayOpen = !dayConfig || !dayConfig.closed;
     return [
@@ -228,6 +230,19 @@ function fitBlockToDays(block: ScheduleBlock, unit?: Unit): ScheduleBlock {
   return block;
 }
 
+function durationLabel(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const rest = mins % 60;
+  return rest ? `${hours}h${rest}` : `${hours}h`;
+}
+
+/** Atalhos de duracao: 45m, 1h e 1h30, mais a duracao padrao da area se for outra. */
+function durationShortcuts(defaultDuration: number): { label: string; mins: number }[] {
+  const mins = Array.from(new Set([45, 60, 90, defaultDuration])).sort((a, b) => a - b);
+  return mins.map((m) => ({ label: durationLabel(m), mins: m }));
+}
+
 /** Editor de encontros: suporta horário principal e horários adicionais opcionais (ex: Sábado). */
 function MeetingSlotsEditor({
   value,
@@ -239,6 +254,7 @@ function MeetingSlotsEditor({
   instructor,
   otherGroups,
   currentGroupId,
+  defaultDuration = 60,
 }: {
   value: TurmaFormValues["meetingSlots"];
   onChange: (v: TurmaFormValues["meetingSlots"]) => void;
@@ -250,20 +266,22 @@ function MeetingSlotsEditor({
   instructor?: { id: string; name: string };
   otherGroups?: ClassGroupView[];
   currentGroupId?: string;
+  /** Duracao padrao da area (ex.: 50 min no pilates): novos horarios e atalhos. */
+  defaultDuration?: number;
 }) {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>(() =>
-    slotsToBlocks(value, unit, startDate),
+    slotsToBlocks(value, unit, startDate, defaultDuration),
   );
   const lastEmittedRef = useRef<string>(JSON.stringify(blocksToSlots(blocks)));
 
   useEffect(() => {
     const currentValJson = JSON.stringify(value ?? []);
     if (currentValJson !== lastEmittedRef.current) {
-      const parsed = slotsToBlocks(value, unit, startDate);
+      const parsed = slotsToBlocks(value, unit, startDate, defaultDuration);
       setBlocks(parsed);
       lastEmittedRef.current = JSON.stringify(blocksToSlots(parsed));
     }
-  }, [value, unit, startDate]);
+  }, [value, unit, startDate, defaultDuration]);
 
   const emitChange = (nextBlocks: ScheduleBlock[]) => {
     const nextSlots = blocksToSlots(nextBlocks);
@@ -277,7 +295,7 @@ function MeetingSlotsEditor({
       // Quando muda apenas o inicio, preserva a duracao atual (ex.: 60m) para nao inverter inicio > fim
       if (patch.start && !patch.end && b.start && b.end) {
         const currentDuration = toMinutes(b.end) - toMinutes(b.start);
-        const durationToKeep = currentDuration > 0 ? currentDuration : 60;
+        const durationToKeep = currentDuration > 0 ? currentDuration : defaultDuration;
         const autoEnd = addMinutesToTime(patch.start, durationToKeep);
         return { ...b, start: patch.start, end: autoEnd };
       }
@@ -313,8 +331,8 @@ function MeetingSlotsEditor({
 
     const times =
       nextDay !== undefined
-        ? getUnitTimesForWeekday(nextDay, unit)
-        : { start: "18:00", end: "19:00" };
+        ? getUnitTimesForWeekday(nextDay, unit, defaultDuration)
+        : { start: "18:00", end: addMinutesToTime("18:00", defaultDuration) };
 
     const maxNum = blocks.reduce(
       (max, b) => Math.max(max, parseInt(b.id.replace(/\D/g, "") || "0", 10)),
@@ -453,11 +471,7 @@ function MeetingSlotsEditor({
 
                     {/* Atalhos discretos de duração da aula */}
                     <div className="flex items-center gap-1">
-                      {[
-                        { label: "45m", mins: 45 },
-                        { label: "1h", mins: 60 },
-                        { label: "1h30", mins: 90 },
-                      ].map((preset) => {
+                      {durationShortcuts(defaultDuration).map((preset) => {
                         const active = durationMinutes === preset.mins;
                         return (
                           <button
@@ -598,6 +612,7 @@ export function TurmaForm({
   const isEdit = Boolean(turma);
   const pending = createMut.isPending || updateMut.isPending;
   const { data: unit } = useUnit();
+  const { classDefaults } = useBusinessSegment();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
   // Turmas ativas: o editor de horarios avisa conflito do instrutor ao vivo.
@@ -606,8 +621,8 @@ export function TurmaForm({
   const openStartDate = useMemo(() => getInitialStartDate(unit), [unit]);
   const initialWeekday = useMemo(() => weekdayOf(openStartDate), [openStartDate]);
   const initialTimes = useMemo(
-    () => getUnitTimesForWeekday(initialWeekday, unit),
-    [initialWeekday, unit],
+    () => getUnitTimesForWeekday(initialWeekday, unit, classDefaults.durationMinutes),
+    [initialWeekday, unit, classDefaults.durationMinutes],
   );
   const isInitialDayOpen = useMemo(() => {
     const dayConfig = unit?.businessHours?.find((b) => b.weekday === initialWeekday);
@@ -640,7 +655,7 @@ export function TurmaForm({
           instructorId: "",
           allowDropin: false,
           sessionPriceCents: 0,
-          capacity: 10,
+          capacity: classDefaults.capacity,
           startDate: openStartDate,
           meetingSlots: isInitialDayOpen
             ? [
@@ -677,7 +692,7 @@ export function TurmaForm({
     const currentSlots = form.getValues("meetingSlots") ?? [];
     if (currentSlots.length === 0 && !form.formState.dirtyFields.meetingSlots) {
       const weekday = weekdayOf(openDate);
-      const times = getUnitTimesForWeekday(weekday, unit);
+      const times = getUnitTimesForWeekday(weekday, unit, classDefaults.durationMinutes);
       const dayConfig = unit.businessHours.find((b) => b.weekday === weekday);
       if (!dayConfig || !dayConfig.closed) {
         form.setValue("meetingSlots", [
@@ -689,7 +704,7 @@ export function TurmaForm({
         ]);
       }
     }
-  }, [unit, isEdit, form]);
+  }, [unit, isEdit, form, classDefaults.durationMinutes]);
 
   // Ao alterar a data de início da turma, atualiza os horários para refletir a configuração da unidade no novo dia da semana
   useEffect(() => {
@@ -699,7 +714,7 @@ export function TurmaForm({
 
     const newWeekday = weekdayOf(startDate);
     const oldWeekday = oldStartDate ? weekdayOf(oldStartDate) : null;
-    const times = getUnitTimesForWeekday(newWeekday, unit);
+    const times = getUnitTimesForWeekday(newWeekday, unit, classDefaults.durationMinutes);
     const dayConfig = unit?.businessHours?.find((b) => b.weekday === newWeekday);
     const isNewDayOpen = !dayConfig || !dayConfig.closed;
 
@@ -722,7 +737,7 @@ export function TurmaForm({
           : [],
       );
     }
-  }, [startDate, unit, isEdit, form]);
+  }, [startDate, unit, isEdit, form, classDefaults.durationMinutes]);
 
   const startDateWeekday = startDate ? weekdayOf(startDate) : null;
   const isStartDateClosed = useMemo(() => {
@@ -952,6 +967,7 @@ export function TurmaForm({
               instructor={selectedInstructor}
               otherGroups={activeGroups}
               currentGroupId={turma?.id}
+              defaultDuration={classDefaults.durationMinutes}
             />
           )}
         />

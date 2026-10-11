@@ -51,8 +51,6 @@ import { useOrganization } from "@/features/settings";
 import {
   useCancelCharge,
   useCharges,
-  useClearCharges,
-  useGenerateCharges,
   useMarkChargePaid,
   useMarkChargePending,
   useActiveRecurringAuthorizations,
@@ -66,6 +64,7 @@ const STATUS_LABEL: Record<ChargeStatus, string> = {
   paid: "Pago",
   overdue: "Atrasado",
   canceled: "Cancelado",
+  waived: "Isento",
 };
 
 const STATUS_CLASS: Record<ChargeStatus, string> = {
@@ -73,6 +72,7 @@ const STATUS_CLASS: Record<ChargeStatus, string> = {
   paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
   canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
+  waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
 
 interface StudentBillingGroup {
@@ -175,12 +175,6 @@ const PERIOD_UNIT: Record<PlanPeriod, string> = {
   weekly: "semana",
 };
 
-const PERIOD_NAME: Record<PlanPeriod, string> = {
-  monthly: "Mensal",
-  biweekly: "Quinzenal",
-  weekly: "Semanal",
-};
-
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
 /** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
@@ -207,6 +201,51 @@ function PaidViaBadge({ charge }: { charge: ChargeView }) {
   );
 }
 
+/** Selo de bolsa: "Bolsista" (integral) ou "Bolsa 50%" (parcial). */
+function ScholarshipBadge({ charge }: { charge: ChargeView }) {
+  // Isento so existe por bolsa integral (dados antigos podem nao ter a %).
+  const percent = charge.scholarshipPercent ?? (charge.status === "waived" ? 100 : undefined);
+  if (percent === undefined || charge.status === "canceled") return null;
+  const full = percent >= 100;
+  return (
+    <span
+      title={
+        charge.listAmountCents !== undefined
+          ? `Valor do plano: ${formatCents(charge.listAmountCents)}`
+          : undefined
+      }
+      className="inline-flex shrink-0 items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] leading-none font-medium text-sky-700 dark:text-sky-300"
+    >
+      {full ? "Bolsista" : `Bolsa ${percent}%`}
+    </span>
+  );
+}
+
+/** Valor da cobranca; com bolsa, mostra antes o valor cheio riscado. */
+function ChargeAmount({ charge, className }: { charge: ChargeView; className: string }) {
+  const showList =
+    charge.status !== "canceled" &&
+    charge.listAmountCents !== undefined &&
+    charge.listAmountCents > charge.amountCents;
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      {showList ? (
+        <span className="text-[11px] tabular-nums text-muted-foreground line-through">
+          {formatCents(charge.listAmountCents ?? 0)}
+        </span>
+      ) : null}
+      <span
+        className={cn(
+          className,
+          charge.status === "canceled" ? "text-muted-foreground/60 line-through" : "text-foreground",
+        )}
+      >
+        {formatCents(charge.amountCents)}
+      </span>
+    </span>
+  );
+}
+
 /** Aviso: aluno com Pix Automatico ativo, mas a cobranca passa do limite. */
 function RecurringLimitBadge({ limitCents }: { limitCents?: number }) {
   if (limitCents === undefined) return null;
@@ -219,6 +258,20 @@ function RecurringLimitBadge({ limitCents }: { limitCents?: number }) {
       Acima do limite do Pix Automático
     </span>
   );
+}
+
+/**
+ * Status do grupo de parcelas do mes (semanal/quinzenal), no padrao das linhas
+ * simples: atraso primeiro, depois pago, parcial ("2 de 4") e pendente.
+ */
+function groupStatusOf(group: StudentBillingGroup): { status: ChargeStatus; label: string } {
+  if (group.activeCount === 0) return { status: "canceled", label: STATUS_LABEL.canceled };
+  if (group.overdueCount > 0) return { status: "overdue", label: STATUS_LABEL.overdue };
+  if (group.paidCount === group.activeCount) return { status: "paid", label: STATUS_LABEL.paid };
+  if (group.paidCount > 0) {
+    return { status: "pending", label: `Parcial · ${group.paidCount} de ${group.activeCount}` };
+  }
+  return { status: "pending", label: STATUS_LABEL.pending };
 }
 
 /** "2026-09" -> "Setembro de 2026". */
@@ -250,10 +303,17 @@ const STATUS_FILTERS: { value: "all" | ChargeStatus; label: string }[] = [
   { value: "overdue", label: "Atrasadas" },
   { value: "paid", label: "Pagas" },
   { value: "canceled", label: "Canceladas" },
+  { value: "waived", label: "Isentas" },
 ];
 
 function isChargeStatus(value: string | null): value is ChargeStatus {
-  return value === "pending" || value === "overdue" || value === "paid" || value === "canceled";
+  return (
+    value === "pending" ||
+    value === "overdue" ||
+    value === "paid" ||
+    value === "canceled" ||
+    value === "waived"
+  );
 }
 
 function isChargeKind(value: string | null): value is ChargeKind {
@@ -328,15 +388,10 @@ export function BillingView() {
     competence,
     kind: kindFilter === "all" ? undefined : kindFilter,
   });
-  // O reset atua so nas mensalidades da competencia, qualquer que seja o filtro.
-  const { data: competenceMemberships } = useCharges({ competence, kind: "membership" });
-
-  const generateMut = useGenerateCharges();
   const paidMut = useMarkChargePaid();
   const pendingMut = useMarkChargePending();
   const cancelMut = useCancelCharge();
   const revertMut = useRevertCharge();
-  const clearMut = useClearCharges();
 
   const can = useCan();
   const canManage = can("billing:manage");
@@ -378,8 +433,11 @@ export function BillingView() {
     setKindFilter("all");
   };
 
-  const activeList = list.filter((c) => c.status !== "canceled");
+  // Isentas (bolsa integral) nao entram nos totais: R$ 0 e nada a receber.
+  const activeList = list.filter((c) => c.status !== "canceled" && c.status !== "waived");
   const activeTotalCents = activeList.reduce((s, c) => s + c.amountCents, 0);
+
+  const waivedCount = list.filter((c) => c.status === "waived").length;
 
   const paidList = list.filter((c) => c.status === "paid");
   const paidCents = paidList.reduce((s, c) => s + c.amountCents, 0);
@@ -389,26 +447,6 @@ export function BillingView() {
 
   const canceledList = list.filter((c) => c.status === "canceled");
   const canceledCents = canceledList.reduce((s, c) => s + c.amountCents, 0);
-
-  const generate = async () => {
-    const ok = await confirmAction({
-      title: `Gerar cobranças de ${competenceLabel(competence)}?`,
-      description:
-        "Cria as mensalidades que vencem neste mês para os alunos ativos, pela regra de cobrança de cada um. Cobranças já existentes não são duplicadas.",
-      confirmLabel: "Gerar cobranças",
-    });
-    if (!ok) return;
-    generateMut.mutate(competence, {
-      onSuccess: (r) =>
-        toast.success(
-          r.created > 0
-            ? `${plural(r.created, "cobrança gerada", "cobranças geradas")}.`
-            : "Nenhuma cobrança nova (já geradas).",
-        ),
-      onError: (err) =>
-        toast.error(getErrorMessage(err, "Não foi possível gerar as cobranças.")),
-    });
-  };
 
   const shiftCompetence = (delta: number) =>
     setCompetence(format(addMonths(parseISO(`${competence}-01`), delta), "yyyy-MM"));
@@ -463,6 +501,9 @@ export function BillingView() {
     if (!canManage) return null;
     const btnSize = compact ? "xs" : "sm";
     const iconCls = compact ? "size-3.5" : "size-4";
+
+    // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
+    if (c.status === "waived") return null;
 
     if (c.status === "canceled") {
       return isSystemCanceled(c) ? (
@@ -547,40 +588,15 @@ export function BillingView() {
     );
   };
 
-  const [confirmClear, setConfirmClear] = useState(false);
-  // Mesmo conjunto que o reset remove: mensalidades em aberto ou canceladas.
-  const resetCount = (competenceMemberships ?? []).filter((c) => c.status !== "paid").length;
+  // Mensalidades nascem sozinhas no mes atual; meses futuros aparecem quando chegarem.
+  const isFutureCompetence = competence > format(new Date(), "yyyy-MM");
 
   return (
     <>
       <PageHeader
         title="Mensalidades"
-        description="Cobranças por competência (mês)."
-      >
-        {canManage ? (
-          <div className="flex items-center gap-2">
-            {list.length > 0 ? (
-              <Button
-                variant="outline"
-                onClick={() => setConfirmClear(true)}
-                disabled={clearMut.isPending}
-                className="text-muted-foreground hover:border-destructive/30 hover:text-destructive"
-                title="Remover cobranças desta competência para testar nova geração"
-              >
-                <RotateCcw className="size-4" />
-                Resetar cobranças
-              </Button>
-            ) : null}
-            <Button
-              onClick={generate}
-              disabled={generateMut.isPending}
-            >
-              <Wallet className="size-4" />
-              Gerar cobranças
-            </Button>
-          </div>
-        ) : null}
-      </PageHeader>
+        description="Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
+      />
 
       {!mounted ? (
         <Skeleton className="h-40 w-full rounded-md" />
@@ -607,7 +623,11 @@ export function BillingView() {
                   </div>
                 )}
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : plural(activeList.length, "ativa", "ativas")}
+                  {isLoading
+                    ? "—"
+                    : waivedCount > 0
+                      ? `${plural(activeList.length, "ativa", "ativas")} · ${plural(waivedCount, "isenta", "isentas")}`
+                      : plural(activeList.length, "ativa", "ativas")}
                 </p>
               </div>
             </div>
@@ -879,12 +899,10 @@ export function BillingView() {
                     icon={<Wallet className="size-8" />}
                     title="Nenhuma cobrança nesta competência."
                     description={
-                      canManage
-                        ? 'Gere as mensalidades do mês com "Gerar cobranças".'
-                        : "Ainda não há cobranças para o mês selecionado."
+                      isFutureCompetence
+                        ? "As mensalidades deste mês aparecem quando ele começar."
+                        : "Nenhum aluno com mensalidade ou aula avulsa neste mês."
                     }
-                    actionLabel={canManage ? "Gerar cobranças" : undefined}
-                    onAction={canManage ? generate : undefined}
                   />
                 </div>
               ) : null
@@ -908,8 +926,9 @@ export function BillingView() {
               ))
             ) : (
               groups.map((group) => {
-                // Caso 1: Multi-ciclo (Semanal ou Quinzenal) com Accordion/Expansão
-                if (group.isMultiCycle) {
+                // Caso 1: Multi-ciclo (Semanal ou Quinzenal) com 2+ parcelas no mes.
+                // Com uma parcela so, cai na linha simples (status e menu diretos).
+                if (group.isMultiCycle && group.charges.length > 1) {
                   const isExpanded = Boolean(expandedKeys[group.key]);
 
                   return (
@@ -930,31 +949,20 @@ export function BillingView() {
                               <p className="truncate text-sm font-medium text-foreground">
                                 {group.studentName}
                               </p>
-                              <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                Mensalidade
-                              </span>
-                              <span className="inline-flex items-center rounded-md border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-                                {group.planPeriod ? PERIOD_NAME[group.planPeriod] : "Parcelas"}
-                              </span>
-
-                              {/* Progresso de pagamento do mês */}
-                              {group.activeCount === 0 ? (
-                                <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-                                  Todas canceladas
-                                </span>
-                              ) : group.paidCount === group.activeCount ? (
-                                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                                  Quitado ({group.paidCount}/{group.activeCount})
-                                </span>
-                              ) : group.overdueCount > 0 ? (
-                                <span className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">
-                                  {group.overdueCount} em atraso
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                  {group.paidCount} de {group.activeCount} pagas
-                                </span>
-                              )}
+                              {/* Status do mes, no mesmo padrao das linhas simples */}
+                              {(() => {
+                                const groupStatus = groupStatusOf(group);
+                                return (
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
+                                      STATUS_CLASS[groupStatus.status],
+                                    )}
+                                  >
+                                    {groupStatus.label}
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
@@ -996,7 +1004,7 @@ export function BillingView() {
                               )}
                             </span>
                             <p className="text-[11px] text-muted-foreground">
-                              {group.charges.length} parcelas
+                              {plural(group.charges.length, "parcela", "parcelas")}
                             </p>
                           </div>
 
@@ -1057,20 +1065,15 @@ export function BillingView() {
                                     {STATUS_LABEL[c.status]}
                                   </span>
                                   <PaidViaBadge charge={c} />
+                                  <ScholarshipBadge charge={c} />
                                   <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  <span
-                                    className={cn(
-                                      "text-xs font-semibold tabular-nums sm:text-sm",
-                                      c.status === "canceled"
-                                        ? "text-muted-foreground/60 line-through"
-                                        : "text-foreground",
-                                    )}
-                                  >
-                                    {formatCents(c.amountCents)}
-                                  </span>
+                                  <ChargeAmount
+                                    charge={c}
+                                    className="text-xs font-semibold tabular-nums sm:text-sm"
+                                  />
 
                                   {renderChargeActions(c, true)}
                                 </div>
@@ -1094,16 +1097,7 @@ export function BillingView() {
                     className="flex-wrap gap-y-2 sm:flex-nowrap [&>div:first-child]:basis-full sm:[&>div:first-child]:basis-0 [&>div:last-child]:ml-auto"
                     actions={
                       <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-sm font-medium tabular-nums",
-                            c.status === "canceled"
-                              ? "text-muted-foreground/60 line-through"
-                              : "text-foreground",
-                          )}
-                        >
-                          {formatCents(c.amountCents)}
-                        </span>
+                        <ChargeAmount charge={c} className="text-sm font-medium tabular-nums" />
 
                         {renderChargeActions(c, false)}
                       </div>
@@ -1117,30 +1111,24 @@ export function BillingView() {
                           <p className="truncate text-sm font-medium text-foreground">
                             {c.studentName}
                           </p>
+                          {/* So a aula avulsa tem selo de tipo; mensalidade e o padrao da tela. */}
                           {c.kind === "dropin" ? (
                             <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                               Aula Avulsa
                             </span>
-                          ) : c.isProrated ? (
-                            <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                              {c.proratedDays
-                                ? `Proporcional (${c.proratedDays}d)`
-                                : "Proporcional"}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                              Mensalidade
+                          ) : null}
+                          {c.status === "waived" ? null : (
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
+                                STATUS_CLASS[c.status],
+                              )}
+                            >
+                              {STATUS_LABEL[c.status]}
                             </span>
                           )}
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                              STATUS_CLASS[c.status],
-                            )}
-                          >
-                            {STATUS_LABEL[c.status]}
-                          </span>
                           <PaidViaBadge charge={c} />
+                          <ScholarshipBadge charge={c} />
                           <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                         </div>
 
@@ -1148,6 +1136,12 @@ export function BillingView() {
                           {c.className ? <span>{c.className}</span> : null}
                           {c.className && c.planName ? <span>·</span> : null}
                           {c.planName ? <span>{c.planName}</span> : null}
+                          {c.planPeriod && c.planPeriod !== "monthly" ? (
+                            <>
+                              <span>·</span>
+                              <span>cobrança por {PERIOD_UNIT[c.planPeriod]}</span>
+                            </>
+                          ) : null}
                           <span>·</span>
                           <span>
                             {c.kind === "dropin"
@@ -1194,40 +1188,6 @@ export function BillingView() {
           if (!open) setChargeToPay(null);
         }}
         onConfirm={(method) => chargeToPay && pay(chargeToPay, method)}
-      />
-
-      {/* Confirmação do reset: pagas nunca são apagadas */}
-      <ConfirmActionDialog
-        open={confirmClear}
-        onOpenChange={setConfirmClear}
-        title="Resetar cobranças da competência"
-        description={
-          <>
-            Remove{" "}
-            {resetCount === 1 ? "a " : "as "}
-            <strong className="text-foreground">
-              {plural(resetCount, "mensalidade em aberto ou cancelada", "mensalidades em aberto ou canceladas")}
-            </strong>{" "}
-            desta competência para gerar de novo. Mensalidades pagas e aulas avulsas são mantidas.
-          </>
-        }
-        confirmLabel="Resetar cobranças"
-        cancelLabel="Voltar"
-        variant="destructive"
-        isPending={clearMut.isPending}
-        onConfirm={async () => {
-          try {
-            const r = await clearMut.mutateAsync(competence);
-            toast.success(
-              r.deleted > 0
-                ? `${plural(r.deleted, "mensalidade removida", "mensalidades removidas")}${r.keptPaid > 0 ? `, ${plural(r.keptPaid, "paga mantida", "pagas mantidas")}` : ""}.`
-                : "Nenhuma mensalidade em aberto para remover.",
-            );
-            setConfirmClear(false);
-          } catch (err) {
-            toast.error(getErrorMessage(err, "Não foi possível resetar as cobranças."));
-          }
-        }}
       />
 
       {/* Confirmação de cancelamento da cobrança */}

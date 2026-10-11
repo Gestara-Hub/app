@@ -39,8 +39,9 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
+import { useSegmentVocabulary } from "@/features/settings";
 import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -167,6 +168,7 @@ function TabButton({
 }
 
 export function TurmaDetailView({ id }: { id: string }) {
+  const vocabulary = useSegmentVocabulary();
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
@@ -502,7 +504,7 @@ export function TurmaDetailView({ id }: { id: string }) {
                             ? [
                                 {
                                   key: "progress",
-                                  label: "Evolução e Graduação",
+                                  label: vocabulary.progressTitle,
                                   icon: <GraduationCap className="size-4" />,
                                   onSelect: () => setProgressClient(student),
                                 },
@@ -541,11 +543,12 @@ export function TurmaDetailView({ id }: { id: string }) {
                                 <button
                                   type="button"
                                   onClick={() => setProgressClient(student)}
-                                  title="Abrir ficha de evolução e graduação"
+                                  title={`Abrir ficha: ${vocabulary.progressTitle.toLowerCase()}`}
                                 >
                                   <BeltBadge
                                     name={currentLvl.name}
                                     color={currentLvl.color}
+                                    variant={resolveTrackStyle(modalityTrack ?? undefined)}
                                     subLevel={currentSub}
                                     maxSubLevels={currentLvl.maxSubLevels}
                                     size="xs"

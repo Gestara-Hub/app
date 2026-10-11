@@ -16,10 +16,11 @@ import {
   chargesDueIn,
   resolveMembershipTerms,
   type CompetenceCharge,
+  type ScheduledCharge,
 } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { addMonths, format, parseISO } from "date-fns";
-import { store } from "@/mocks/store";
+import { persist, store } from "@/mocks/store";
 import {
   apiError,
   newId,
@@ -82,8 +83,9 @@ function toChargeView(c: Charge): ChargeView {
     cycleIndex: c.cycleIndex ?? 1,
     cycleTotal: c.cycleTotal ?? 1,
     studentName: studentName(c.studentId),
-    planName: planOf(c.planId)?.name,
-    planPeriod: planOf(c.planId)?.period,
+    // Bolsista integral sem plano: rotulo proprio, sempre mensal.
+    planName: planOf(c.planId)?.name ?? (!c.planId && c.scholarshipPercent ? "Bolsa integral" : undefined),
+    planPeriod: planOf(c.planId)?.period ?? (!c.planId && c.scholarshipPercent ? "monthly" : undefined),
     className: className(c.classGroupId),
   };
 }
@@ -147,13 +149,15 @@ function coversPeriod(c: Charge, planned: CompetenceCharge): boolean {
  * Ja existe cobranca deste aluno/plano para o periodo planejado? Canceladas nao
  * contam: o periodo cancelado pode ser gerado de novo.
  */
-function hasMembershipCharge(studentId: Id, planId: Id, planned: CompetenceCharge): boolean {
+function hasMembershipCharge(studentId: Id, planId: Id | undefined, planned: CompetenceCharge): boolean {
   return store.charges.some(
     (c) =>
       c.kind === "membership" &&
       c.studentId === studentId &&
       c.planId === planId &&
-      c.status !== "canceled" &&
+      // Cancelada a mao continua "ocupando" o periodo: a geracao automatica
+      // nao a recria. Cancelada pelo sistema (troca de regra) libera o periodo.
+      (c.status !== "canceled" || c.canceledBy === "user") &&
       coversPeriod(c, planned),
   );
 }
@@ -174,27 +178,103 @@ function activeStudentsInPlan(planId: Id): number {
   return ids.size;
 }
 
+/**
+ * Bolsa do aluno nesta mensalidade: percentual, valor sem bolsa e status.
+ * Bolsa integral (valor final zero) nasce "Isento" (`waived`), nunca pendente.
+ */
+export function scholarshipChargeFields(
+  student: Pick<Client, "discount"> | undefined,
+  planned: Pick<ScheduledCharge, "amountCents" | "discountApplied" | "listAmountCents">,
+): Pick<Charge, "status" | "scholarshipPercent" | "listAmountCents"> {
+  const discount = student?.discount;
+  if (!discount?.scholarship || !planned.discountApplied) return { status: "pending" };
+  // Bolsa por "valor a pagar" e guardada como valor fixo: a % sai da conta.
+  const percent =
+    discount.type === "percentage"
+      ? discount.value
+      : planned.listAmountCents > 0
+        ? Math.round(((planned.listAmountCents - planned.amountCents) / planned.listAmountCents) * 100)
+        : 100;
+  return {
+    status: planned.amountCents === 0 ? "waived" : "pending",
+    scholarshipPercent: Math.min(100, Math.max(0, percent)),
+    listAmountCents: planned.listAmountCents,
+  };
+}
+
+/** Isento (bolsa integral) nao tem pagamento, desfazer nem cancelamento manual. */
+function assertNotWaived(c: Charge): void {
+  if (c.status === "waived") {
+    throw apiError(
+      "VALIDATION",
+      "Mensalidade isenta por bolsa. Para cobrar, ajuste a bolsa no cadastro do aluno.",
+      { httpStatus: 409 },
+    );
+  }
+}
+
+/** Bolsista integral sem plano: so ele tem mensalidade (isenta) sem plano. */
+export function isPlanlessScholar(student: Client): boolean {
+  return !student.planId && Boolean(student.discount?.scholarship);
+}
+
+/**
+ * Mensalidades "Isento" do bolsista integral sem plano na competencia: mensais,
+ * no vencimento dele, sem valor de referencia. Para depois de `validUntil`
+ * (sem plano nao ha valor cheio para voltar). Idempotente. Retorna quantas criou.
+ */
+export function planlessScholarCharges(student: Client, competence: string): number {
+  if (!isPlanlessScholar(student) || student.status !== "active") return 0;
+  if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") return 0;
+  const terms = resolveMembershipTerms(
+    {
+      period: "monthly",
+      planPriceCents: 0,
+      startDate: student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd"),
+      strategy: student.billingStrategy,
+      timing: student.cyclePaymentTiming,
+      dueDay: student.dueDay,
+    },
+    store.organization.settings,
+  );
+  const validUntil = student.discount?.validUntil;
+  let created = 0;
+  for (const planned of chargesDueIn(terms, competence)) {
+    if (validUntil && planned.periodStart > validUntil) continue;
+    if (hasMembershipCharge(student.id, undefined, planned)) continue;
+    store.charges.push({
+      ...membershipCharge(student.id, undefined, planned),
+      status: "waived",
+      scholarshipPercent: 100,
+      notes: undefined,
+    });
+    created += 1;
+  }
+  return created;
+}
+
 function membershipCharge(
   studentId: Id,
-  plan: Plan,
+  plan: Plan | undefined,
   planned: CompetenceCharge,
   classGroupId?: Id,
 ): Charge {
   const ts = nowIso();
+  const student = store.clients.find((c) => c.id === studentId);
   return {
     id: newId(),
     organizationId: store.organization.id,
     unitId: store.unit.id,
     studentId,
     kind: "membership",
-    planId: plan.id,
+    planId: plan?.id,
     classGroupId,
     competence: planned.competence,
     periodStart: planned.periodStart,
     periodEnd: planned.periodEnd,
     dueDate: planned.dueDate,
     amountCents: planned.amountCents,
-    status: "pending",
+    ...scholarshipChargeFields(student, planned),
     cycleIndex: planned.cycleIndex,
     cycleTotal: planned.cycleTotal,
     isProrated: planned.isProrated,
@@ -235,7 +315,8 @@ export function cancelOpenMembershipCharges(
   let count = 0;
   for (const c of store.charges) {
     if (c.kind !== "membership" || c.studentId !== studentId) continue;
-    if (c.status !== "pending" && c.status !== "overdue") continue;
+    // Isento (bolsa) futuro tambem sai: a regra nova recria o que valer.
+    if (c.status !== "pending" && c.status !== "overdue" && c.status !== "waived") continue;
     const start = c.periodStart ?? c.dueDate;
     const affected = opts.inclusive ? start >= fromDate : start > fromDate;
     if (!affected) continue;
@@ -272,6 +353,68 @@ export function chargeStartedMembershipPeriods(student: Client, untilDate: strin
       created += 1;
     }
   }
+  return created;
+}
+
+/**
+ * Gera as mensalidades que vencem na competencia para os alunos ativos, pela
+ * regra de cada um (inclui bolsista integral sem plano e o legado sem plano
+ * proprio em turma com plano). Idempotente. Retorna quantas criou.
+ */
+function generateMembershipChargesFor(competence: string): number {
+  let created = 0;
+
+  for (const student of store.clients) {
+    if (student.status !== "active") continue;
+    if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
+    if (isPlanlessScholar(student)) {
+      created += planlessScholarCharges(student, competence);
+      continue;
+    }
+    if (!student.planId) continue;
+    const plan = store.plans.find((p) => p.id === student.planId);
+    if (!plan) continue;
+
+    for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
+      if (hasMembershipCharge(student.id, plan.id, planned)) continue;
+      store.charges.push(membershipCharge(student.id, plan, planned));
+      created += 1;
+    }
+  }
+
+  // Retrocompatibilidade: aluno sem plano proprio matriculado em turma com
+  // plano (dado legado) segue a regra da academia a partir do cadastro.
+  for (const e of store.enrollments) {
+    if (e.status !== "active") continue;
+    const student = store.clients.find((c) => c.id === e.studentId);
+    // Bolsista integral sem plano nao herda o plano da turma.
+    if (!student || student.planId || isPlanlessScholar(student) || student.status !== "active") continue;
+    const turma = store.classGroups.find((t) => t.id === e.classGroupId);
+    const plan = turma?.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
+    if (!turma || !plan) continue;
+
+    for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
+      if (hasMembershipCharge(student.id, plan.id, planned)) continue;
+      store.charges.push(membershipCharge(student.id, plan, planned, turma.id));
+      created += 1;
+    }
+  }
+  return created;
+}
+
+/**
+ * Geracao automatica na leitura: o mes atual e o mes consultado, se ja chegou
+ * (ex.: o calendario virou e as parcelas da semana nova aparecem sozinhas).
+ * Meses futuros aparecem quando chegarem. Sem auditoria (e o sistema).
+ */
+export function autoGenerateMembershipCharges(...competences: (string | undefined)[]): number {
+  const current = todayISO().slice(0, 7);
+  let created = 0;
+  for (const competence of new Set([current, ...competences.filter((c): c is string => Boolean(c))])) {
+    if (competence > current) continue;
+    created += generateMembershipChargesFor(competence);
+  }
+  if (created > 0) persist();
   return created;
 }
 
@@ -362,6 +505,8 @@ export const billingService = {
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return simulateRead(() => {
+      // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas.
+      autoGenerateMembershipCharges(filter?.competence);
       // Pix Automatico: paga na leitura o que venceu dentro do limite.
       applyRecurringAutoPayments();
       let result = store.charges.map(toChargeView);
@@ -390,38 +535,7 @@ export const billingService = {
    */
   generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(() => {
-      let created = 0;
-
-      for (const student of store.clients) {
-        if (student.status !== "active") continue;
-        if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
-        if (!student.planId) continue;
-        const plan = store.plans.find((p) => p.id === student.planId);
-        if (!plan) continue;
-
-        for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
-          if (hasMembershipCharge(student.id, plan.id, planned)) continue;
-          store.charges.push(membershipCharge(student.id, plan, planned));
-          created += 1;
-        }
-      }
-
-      // Retrocompatibilidade: aluno sem plano proprio matriculado em turma com
-      // plano (dado legado) segue a regra da academia a partir do cadastro.
-      for (const e of store.enrollments) {
-        if (e.status !== "active") continue;
-        const student = store.clients.find((c) => c.id === e.studentId);
-        if (!student || student.planId || student.status !== "active") continue;
-        const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-        const plan = turma?.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
-        if (!turma || !plan) continue;
-
-        for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
-          if (hasMembershipCharge(student.id, plan.id, planned)) continue;
-          store.charges.push(membershipCharge(student.id, plan, planned, turma.id));
-          created += 1;
-        }
-      }
+      const created = generateMembershipChargesFor(competence);
 
       if (created > 0) {
         auditLogService.record({
@@ -438,6 +552,7 @@ export const billingService = {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      assertNotWaived(c);
       c.status = "paid";
       c.paidAt = nowIso();
       c.method = method;
@@ -455,6 +570,7 @@ export const billingService = {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      assertNotWaived(c);
       assertNotPaidOnline(c, "desfazer");
       c.status = "pending";
       c.paidAt = undefined;
@@ -471,6 +587,7 @@ export const billingService = {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
+      assertNotWaived(c);
       // Cancelar uma paga online apagaria o recebimento, como o desfazer.
       if (c.status === "paid") assertNotPaidOnline(c, "cancelar");
       c.status = "canceled";

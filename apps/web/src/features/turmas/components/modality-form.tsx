@@ -25,7 +25,10 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -33,9 +36,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   BELT_COLOR_META,
   CRITERIA_TYPE_LABELS,
+  PROGRESSION_TEMPLATES,
   extractTipColorFromText,
-  inferDefaultTrackForModalityName,
-  isMartialArtsLevelName,
+  resolveTrackStyle,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -46,8 +49,12 @@ import type {
   ProgressionBeltColor,
   ProgressionCriteriaType,
   ProgressionLevelStep,
+  ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
+import { segmentDefaultTrack } from "@/lib/business-segment-presets";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCreateCategory, useUpdateCategory } from "@/features/categories";
+import { useBusinessSegment } from "@/features/settings";
 import { modalityFormSchema, type ModalityFormValues } from "../modality-schema";
 
 const QUICK_MODALITY_SUGGESTIONS = [
@@ -73,6 +80,12 @@ function toDefaults(modality?: Category): ModalityFormValues {
 }
 
 const BELT_COLORS = Object.keys(BELT_COLOR_META) as ProgressionBeltColor[];
+/** Cores do estilo nivel: as mesmas, sem a "Neutra" (sem cor ja e o neutro). */
+const LEVEL_COLORS = BELT_COLORS.filter((c) => c !== "slate");
+const NO_COLOR = "none";
+
+type TemplateKey = Exclude<ProgressionTrackTemplateKey, "custom">;
+const ALL_TEMPLATE_KEYS = Object.keys(PROGRESSION_TEMPLATES) as TemplateKey[];
 
 interface ModalityFormProps {
   modality?: Category;
@@ -85,6 +98,9 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
   const createMut = useCreateCategory();
   const updateMut = useUpdateCategory();
   const pending = createMut.isPending || updateMut.isPending;
+  const segment = useBusinessSegment();
+  const { vocabulary } = segment;
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
 
   const [showLevelsEditor, setShowLevelsEditor] = useState(false);
   const [isCustomizePulsing, setIsCustomizePulsing] = useState(false);
@@ -114,7 +130,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
     if (modality?.progressionTrack) {
       return structuredClone(modality.progressionTrack);
     }
-    return inferDefaultTrackForModalityName(modality?.name ?? "");
+    return segmentDefaultTrack(segment, modality?.name ?? "");
   });
 
   const form = useForm<ModalityFormValues>({
@@ -126,12 +142,44 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
 
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
 
+  // Estilo vem da trilha (faixa nas lutas, nivel nas demais), nao da area.
+  const trackStyle = resolveTrackStyle(track);
+  const isBelt = trackStyle === "belt";
+  // "Faixa" so no estilo faixa; numa trilha de niveis de uma academia de luta
+  // (ex.: Yoga) a palavra vira "Nível".
+  const levelWord = isBelt ? "Faixa" : vocabulary.level === "Faixa" ? "Nível" : vocabulary.level;
+  const levelPluralWord = isBelt
+    ? "Faixas"
+    : vocabulary.level === "Faixa"
+      ? "Níveis"
+      : vocabulary.levelPlural;
+  const quickSuggestions: readonly string[] =
+    segment.id === "martial_arts" ? QUICK_MODALITY_SUGGESTIONS : segment.defaultModalities;
+  const suggestedTemplates = segment.trackTemplates;
+  const otherTemplates = ALL_TEMPLATE_KEYS.filter((k) => !suggestedTemplates.includes(k));
+
+  async function applyTemplate(key: TemplateKey) {
+    if (key === track.templateKey) return;
+    if (
+      track.templateKey === "custom" &&
+      !(await confirmAction({
+        title: "Trocar o modelo da trilha?",
+        description: "Os níveis e metas que você personalizou serão substituídos pelos do modelo.",
+        confirmLabel: "Trocar modelo",
+      }))
+    ) {
+      return;
+    }
+    const next = structuredClone(PROGRESSION_TEMPLATES[key].track);
+    setTrack({ ...next, enabled: true });
+  }
+
   const handleSelectQuickSuggestion = (suggestion: string) => {
     form.setValue("name", suggestion, {
       shouldValidate: true,
       shouldDirty: true,
     });
-    const inferred = inferDefaultTrackForModalityName(suggestion);
+    const inferred = segmentDefaultTrack(segment, suggestion);
     setTrack(inferred);
     if (inferred.enabled) {
       triggerCustomizePulse();
@@ -156,7 +204,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
       levels: prev.levels.map((step, i) => {
         if (i !== index) return step;
         const nextStep = { ...step, ...patch };
-        if (patch.name !== undefined && patch.tipColor === undefined) {
+        if (isBelt && patch.name !== undefined && patch.tipColor === undefined && nextStep.color) {
           const detectedTip = extractTipColorFromText(
             patch.name,
             nextStep.color,
@@ -194,27 +242,36 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
       templateKey: "custom",
       levels: [
         ...prev.levels,
-        {
-          id: `lvl-${Date.now()}`,
-          name: `Nível ${prev.levels.length + 1}`,
-          color: "blue",
-          maxSubLevels: 4,
-        },
+        isBelt
+          ? {
+              id: `lvl-${Date.now()}`,
+              name: `Faixa ${prev.levels.length + 1}`,
+              color: "blue",
+              maxSubLevels: 4,
+            }
+          : {
+              id: `lvl-${Date.now()}`,
+              name: `${levelWord} ${prev.levels.length + 1}`,
+              maxSubLevels: 0,
+            },
       ],
     }));
   };
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (track.enabled && track.levels.length === 0) {
-      toast.error("Adicione pelo menos 1 nível na trilha de graduação ou desative a trilha.");
+      toast.error(`Adicione pelo menos 1 etapa na ${vocabulary.trackTitle.toLowerCase()} ou desligue a trilha.`);
       return;
     }
 
     const sanitizedTrack: ModalityProgressionTrack = {
       ...track,
+      style: trackStyle,
       levels: track.levels.map((l, idx) => ({
         ...l,
-        name: l.name.trim() || `Nível ${idx + 1}`,
+        name: l.name.trim() || `${levelWord} ${idx + 1}`,
+        // Estilo nivel: sem ponta e sem subniveis (graus sao so das faixas).
+        ...(isBelt ? {} : { tipColor: undefined, maxSubLevels: 0 }),
       })),
     };
 
@@ -263,6 +320,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
 
   return (
     <FormProvider {...form}>
+      {confirmDialog}
       <form
         id={formId}
         onSubmit={onSubmit}
@@ -279,12 +337,12 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
               disabled={pending}
             />
 
-            {!isEdit ? (
+            {!isEdit && quickSuggestions.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1">
                 <span className="text-[11px] text-muted-foreground mr-0.5">
                   Sugestões:
                 </span>
-                {QUICK_MODALITY_SUGGESTIONS.map((suggestion) => {
+                {quickSuggestions.map((suggestion) => {
                   const isSelected =
                     watchedName.trim().toLowerCase() ===
                     suggestion.toLowerCase();
@@ -309,16 +367,16 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
             ) : null}
           </div>
 
-          {/* Bloco da Trilha de Graduação */}
+          {/* Bloco da trilha de progresso (titulo conforme a area) */}
           <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Award className="size-4 text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground leading-tight">
-                    Trilha de Graduação / Níveis
+                    {vocabulary.trackTitle}
                   </p>
-                  <p className="text-[11px] text-muted-foreground truncate">
+                  <p className="text-[11px] text-muted-foreground">
                     Ordem de evolução e meta para avaliação dos alunos.
                   </p>
                 </div>
@@ -327,7 +385,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                 checked={track.enabled}
                 onCheckedChange={(checked) => {
                   if (checked && track.templateKey !== "custom") {
-                    const inferred = inferDefaultTrackForModalityName(watchedName);
+                    const inferred = segmentDefaultTrack(segment, watchedName);
                     setTrack({ ...inferred, enabled: true });
                   } else {
                     setTrack((prev) => ({ ...prev, enabled: checked }));
@@ -339,7 +397,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                   }
                 }}
                 disabled={pending}
-                aria-label="Ativar trilha de graduação"
+                aria-label={`Ativar ${vocabulary.trackTitle.toLowerCase()}`}
               />
             </div>
 
@@ -353,8 +411,9 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                       className="inline-flex items-center gap-1"
                     >
                       <BeltBadge
-                        levelName={step.name || "Nível"}
+                        levelName={step.name || levelWord}
                         color={step.color}
+                        variant={trackStyle}
                         tipColor={step.tipColor ?? null}
                         subLevel={step.maxSubLevels}
                         maxSubLevels={step.maxSubLevels}
@@ -371,12 +430,13 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                 </div>
 
                 {/* Barra destacada de resumo da regra + botão Personalizar com pulso temporário */}
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/20 bg-background px-2.5 py-2 shadow-2xs">
-                  <div className="flex items-center gap-1.5 text-[11px] min-w-0">
+                {/* No celular empilha: regra em cima (texto inteiro), botao embaixo. */}
+                <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-background px-2.5 py-2 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] min-w-0">
                     <span className="font-medium text-muted-foreground shrink-0">
                       Regra atual:
                     </span>
-                    <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary truncate">
+                    <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
                       {criteriaSummaryText}
                     </span>
                   </div>
@@ -389,7 +449,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                       setShowLevelsEditor((prev) => !prev);
                     }}
                     className={cn(
-                      "h-7 px-2 text-[11px] font-semibold border-primary/35 text-primary hover:bg-primary/10 hover:text-primary shrink-0",
+                      "h-8 w-full px-2 text-[11px] font-semibold border-primary/35 text-primary hover:bg-primary/10 hover:text-primary shrink-0 sm:h-7 sm:w-auto",
                       !showLevelsEditor &&
                         isCustomizePulsing &&
                         "motion-safe:animate-attention-ring",
@@ -412,10 +472,57 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                 {/* Painel expansível: Critério/Meta + Editor de Níveis */}
                 {showLevelsEditor ? (
                   <div className="space-y-3 pt-2.5 border-t border-border/50">
-                    {/* Critério e meta para troca de nível / grau */}
+                    {/* Modelo da trilha: os da area primeiro */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-medium text-muted-foreground">
-                        Critério e meta para troca de nível / grau
+                        Modelo
+                      </label>
+                      <Select
+                        value={track.templateKey ?? "custom"}
+                        onValueChange={(val) => {
+                          if (val !== "custom") void applyTemplate(val as TemplateKey);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-full bg-background text-xs">
+                          <SelectValue>
+                            {track.templateKey && track.templateKey !== "custom"
+                              ? PROGRESSION_TEMPLATES[track.templateKey].label
+                              : "Personalizado"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {track.templateKey === "custom" ? (
+                            <SelectItem value="custom" className="text-xs" disabled>
+                              Personalizado
+                            </SelectItem>
+                          ) : null}
+                          <SelectGroup>
+                            <SelectLabel className="text-[10px]">Sugeridos</SelectLabel>
+                            {suggestedTemplates.map((key) => (
+                              <SelectItem key={key} value={key} className="text-xs">
+                                {PROGRESSION_TEMPLATES[key].label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                          <SelectSeparator />
+                          <SelectGroup>
+                            <SelectLabel className="text-[10px]">Outros modelos</SelectLabel>
+                            {otherTemplates.map((key) => (
+                              <SelectItem key={key} value={key} className="text-xs">
+                                {PROGRESSION_TEMPLATES[key].label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Critério e meta para avançar */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">
+                        {isBelt
+                          ? "Quando troca de faixa ou grau"
+                          : `Quando avança de ${levelWord.toLowerCase()}`}
                       </label>
                       <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                         <Select
@@ -509,7 +616,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <label className="text-[11px] font-medium text-muted-foreground">
-                          Níveis da trilha ({track.levels.length})
+                          {levelPluralWord} da trilha ({track.levels.length})
                         </label>
                         <Button
                           type="button"
@@ -519,7 +626,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                           className="h-6 px-2 text-[11px]"
                         >
                           <Plus className="size-3" />
-                          Adicionar nível
+                          Adicionar {levelWord.toLowerCase()}
                         </Button>
                       </div>
                     <div className="divide-y divide-border/60 rounded-lg border bg-background overflow-hidden">
@@ -578,217 +685,262 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                             }
                             onDragStart={(e) => e.stopPropagation()}
                             draggable={false}
-                            placeholder="Ex.: Faixa Azul"
+                            placeholder={vocabulary.levelName}
                             className="h-7 min-w-[130px] flex-1 border-transparent bg-transparent px-2 text-xs shadow-none hover:border-input focus:border-input focus:bg-background"
                           />
 
-                          {/* Seletor Múltiplo de Cores (Até 2 cores: 1ª Faixa, 2ª Ponta) */}
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="inline-flex h-7 w-30 shrink-0 items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 text-xs shadow-2xs transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                title="Selecionar até 2 cores (1ª Faixa, 2ª Ponta)"
-                              >
-                                <span className="inline-flex items-center gap-1.5 min-w-0">
-                                  <span className="inline-flex items-center shrink-0">
-                                    <span
-                                      className={cn(
-                                        "size-2.5 rounded-full shrink-0",
-                                        BELT_COLOR_META[step.color]
-                                          ?.swatchClass,
-                                      )}
-                                    />
-                                    {step.tipColor &&
-                                    step.tipColor !== step.color ? (
+                          {isBelt ? (
+                            <>
+                            {/* Seletor Múltiplo de Cores (Até 2 cores: 1ª Faixa, 2ª Ponta) */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 w-30 shrink-0 items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 text-xs shadow-2xs transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  title="Selecionar até 2 cores (1ª Faixa, 2ª Ponta)"
+                                >
+                                  <span className="inline-flex items-center gap-1.5 min-w-0">
+                                    <span className="inline-flex items-center shrink-0">
                                       <span
                                         className={cn(
-                                          "-ml-1 size-2.5 rounded-full shrink-0 ring-1 ring-background",
-                                          BELT_COLOR_META[step.tipColor]
+                                          "size-2.5 rounded-full shrink-0",
+                                          BELT_COLOR_META[step.color ?? "slate"]
                                             ?.swatchClass,
                                         )}
                                       />
-                                    ) : null}
-                                  </span>
-                                  <span className="truncate">
-                                    {step.tipColor &&
-                                    step.tipColor !== step.color
-                                      ? `${BELT_COLOR_META[step.color]?.label}/${BELT_COLOR_META[step.tipColor]?.label}`
-                                      : BELT_COLOR_META[step.color]?.label}
-                                  </span>
-                                </span>
-                                <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="start"
-                              onWheel={(e) => e.stopPropagation()}
-                              onTouchMove={(e) => e.stopPropagation()}
-                              className="w-60 p-2 space-y-1.5"
-                            >
-                              <div className="flex items-center justify-between px-1 pb-1 border-b border-border/60">
-                                <span className="text-[10px] font-medium text-muted-foreground">
-                                  Até 2 cores (1ª Faixa • 2ª Ponta)
-                                </span>
-                                {step.tipColor &&
-                                step.tipColor !== step.color ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      updateStep(index, { tipColor: undefined })
-                                    }
-                                    className="text-[10px] font-medium text-primary hover:underline"
-                                  >
-                                    Só 1 cor
-                                  </button>
-                                ) : null}
-                              </div>
-
-                              <div className="grid grid-cols-1 gap-0.5 max-h-80 overflow-y-auto overscroll-contain">
-                                {BELT_COLORS.map((colorKey) => {
-                                  const isPrimary = step.color === colorKey;
-                                  const isTip =
-                                    step.tipColor === colorKey &&
-                                    step.tipColor !== step.color;
-                                  const isSelected = isPrimary || isTip;
-
-                                  const handleToggleColor = () => {
-                                    if (isTip) {
-                                      // Clicou na 2ª cor -> desmarca a ponta
-                                      updateStep(index, {
-                                        tipColor: undefined,
-                                      });
-                                    } else if (isPrimary) {
-                                      // Clicou na 1ª cor -> se tiver 2ª cor, a 2ª vira a 1ª cor
-                                      if (
-                                        step.tipColor &&
-                                        step.tipColor !== step.color
-                                      ) {
-                                        updateStep(index, {
-                                          color: step.tipColor,
-                                          tipColor: undefined,
-                                        });
-                                      }
-                                    } else {
-                                      // Clicou em uma cor não selecionada -> entra como 2ª cor (ponta)
-                                      updateStep(index, {
-                                        tipColor: colorKey,
-                                      });
-                                    }
-                                  };
-
-                                  return (
-                                    <div
-                                      key={colorKey}
-                                      className={cn(
-                                        "group flex items-center justify-between rounded-md px-2 py-1 text-xs transition-colors",
-                                        isSelected
-                                          ? "bg-primary/10 text-foreground font-medium"
-                                          : "hover:bg-muted/60 text-muted-foreground hover:text-foreground",
-                                      )}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={handleToggleColor}
-                                        className="flex flex-1 items-center gap-2 text-left min-w-0"
-                                      >
+                                      {step.tipColor &&
+                                      step.tipColor !== step.color ? (
                                         <span
                                           className={cn(
-                                            "size-3 rounded-full shrink-0",
-                                            BELT_COLOR_META[colorKey]
-                                              .swatchClass,
+                                            "-ml-1 size-2.5 rounded-full shrink-0 ring-1 ring-background",
+                                            BELT_COLOR_META[step.tipColor]
+                                              ?.swatchClass,
                                           )}
                                         />
-                                        <span className="truncate">
-                                          {BELT_COLOR_META[colorKey].label}
-                                        </span>
-                                      </button>
+                                      ) : null}
+                                    </span>
+                                    <span className="truncate">
+                                      {step.tipColor &&
+                                      step.tipColor !== step.color
+                                        ? `${BELT_COLOR_META[step.color ?? "slate"]?.label}/${BELT_COLOR_META[step.tipColor]?.label}`
+                                        : BELT_COLOR_META[step.color ?? "slate"]?.label}
+                                    </span>
+                                  </span>
+                                  <ChevronDown className="size-3.5 shrink-0 opacity-50" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="start"
+                                onWheel={(e) => e.stopPropagation()}
+                                onTouchMove={(e) => e.stopPropagation()}
+                                className="w-60 p-2 space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between px-1 pb-1 border-b border-border/60">
+                                  <span className="text-[10px] font-medium text-muted-foreground">
+                                    Até 2 cores (1ª Faixa • 2ª Ponta)
+                                  </span>
+                                  {step.tipColor &&
+                                  step.tipColor !== step.color ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateStep(index, { tipColor: undefined })
+                                      }
+                                      className="text-[10px] font-medium text-primary hover:underline"
+                                    >
+                                      Só 1 cor
+                                    </button>
+                                  ) : null}
+                                </div>
 
-                                      {isPrimary ? (
-                                        <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary shrink-0">
-                                          1ª Faixa
-                                        </span>
-                                      ) : isTip ? (
+                                <div className="grid grid-cols-1 gap-0.5 max-h-80 overflow-y-auto overscroll-contain">
+                                  {BELT_COLORS.map((colorKey) => {
+                                    const isPrimary = step.color === colorKey;
+                                    const isTip =
+                                      step.tipColor === colorKey &&
+                                      step.tipColor !== step.color;
+                                    const isSelected = isPrimary || isTip;
+
+                                    const handleToggleColor = () => {
+                                      if (isTip) {
+                                        // Clicou na 2ª cor -> desmarca a ponta
+                                        updateStep(index, {
+                                          tipColor: undefined,
+                                        });
+                                      } else if (isPrimary) {
+                                        // Clicou na 1ª cor -> se tiver 2ª cor, a 2ª vira a 1ª cor
+                                        if (
+                                          step.tipColor &&
+                                          step.tipColor !== step.color
+                                        ) {
+                                          updateStep(index, {
+                                            color: step.tipColor,
+                                            tipColor: undefined,
+                                          });
+                                        }
+                                      } else {
+                                        // Clicou em uma cor não selecionada -> entra como 2ª cor (ponta)
+                                        updateStep(index, {
+                                          tipColor: colorKey,
+                                        });
+                                      }
+                                    };
+
+                                    return (
+                                      <div
+                                        key={colorKey}
+                                        className={cn(
+                                          "group flex items-center justify-between rounded-md px-2 py-1 text-xs transition-colors",
+                                          isSelected
+                                            ? "bg-primary/10 text-foreground font-medium"
+                                            : "hover:bg-muted/60 text-muted-foreground hover:text-foreground",
+                                        )}
+                                      >
                                         <button
                                           type="button"
                                           onClick={handleToggleColor}
-                                          className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-secondary-foreground hover:bg-destructive/15 hover:text-destructive shrink-0"
-                                          title="Clique para remover a ponta"
+                                          className="flex flex-1 items-center gap-2 text-left min-w-0"
                                         >
-                                          2ª Ponta ×
+                                          <span
+                                            className={cn(
+                                              "size-3 rounded-full shrink-0",
+                                              BELT_COLOR_META[colorKey]
+                                                .swatchClass,
+                                            )}
+                                          />
+                                          <span className="truncate">
+                                            {BELT_COLOR_META[colorKey].label}
+                                          </span>
                                         </button>
-                                      ) : (
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              updateStep(index, {
-                                                color: colorKey,
-                                                tipColor:
-                                                  step.tipColor === colorKey
-                                                    ? undefined
-                                                    : step.tipColor,
-                                              })
-                                            }
-                                            className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/50"
-                                            title="Definir como 1ª cor (principal)"
-                                          >
-                                            1ª
-                                          </button>
+
+                                        {isPrimary ? (
+                                          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary shrink-0">
+                                            1ª Faixa
+                                          </span>
+                                        ) : isTip ? (
                                           <button
                                             type="button"
                                             onClick={handleToggleColor}
-                                            className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/50"
-                                            title="Definir como 2ª cor (ponta)"
+                                            className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-secondary-foreground hover:bg-destructive/15 hover:text-destructive shrink-0"
+                                            title="Clique para remover a ponta"
                                           >
-                                            2ª
+                                            2ª Ponta ×
                                           </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
+                                        ) : (
+                                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                updateStep(index, {
+                                                  color: colorKey,
+                                                  tipColor:
+                                                    step.tipColor === colorKey
+                                                      ? undefined
+                                                      : step.tipColor,
+                                                })
+                                              }
+                                              className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                                              title="Definir como 1ª cor (principal)"
+                                            >
+                                              1ª
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={handleToggleColor}
+                                              className="rounded border border-border/80 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-primary/50"
+                                              title="Definir como 2ª cor (ponta)"
+                                            >
+                                              2ª
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
 
-                          {/* Sub-níveis / Graus / Etapas */}
-                          {(() => {
-                            const unit = isMartialArtsLevelName(step.name)
-                              ? "graus"
-                              : "etapas";
-                            const zeroLabel =
-                              unit === "etapas" ? "Sem etapas" : "Sem graus";
-                            return (
-                              <Select
-                                value={String(step.maxSubLevels)}
-                                onValueChange={(val) =>
-                                  updateStep(index, {
-                                    maxSubLevels: Number(val),
-                                  })
-                                }
-                              >
-                                <SelectTrigger className="h-7 w-25 shrink-0 text-xs px-2">
-                                  <SelectValue>
-                                    {step.maxSubLevels === 0
-                                      ? zeroLabel
-                                      : `${step.maxSubLevels} ${unit}`}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[0, 2, 3, 4, 5, 6].map((g) => (
-                                    <SelectItem
-                                      key={g}
-                                      value={String(g)}
-                                      className="text-xs"
-                                    >
-                                      {g === 0 ? zeroLabel : `${g} ${unit}`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            );
-                          })()}
+                            {/* Graus da faixa */}
+                            {(() => {
+                              const unit = "graus";
+                              const zeroLabel = "Sem graus";
+                              return (
+                                <Select
+                                  value={String(step.maxSubLevels)}
+                                  onValueChange={(val) =>
+                                    updateStep(index, {
+                                      maxSubLevels: Number(val),
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 w-25 shrink-0 text-xs px-2">
+                                    <SelectValue>
+                                      {step.maxSubLevels === 0
+                                        ? zeroLabel
+                                        : `${step.maxSubLevels} ${unit}`}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {[0, 2, 3, 4, 5, 6].map((g) => (
+                                      <SelectItem
+                                        key={g}
+                                        value={String(g)}
+                                        className="text-xs"
+                                      >
+                                        {g === 0 ? zeroLabel : `${g} ${unit}`}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              );
+                            })()}
+                            </>
+                          ) : (
+                            /* Estilo nivel: uma cor opcional, sem ponta e sem graus */
+                            <Select
+                              value={step.color ?? NO_COLOR}
+                              onValueChange={(val) =>
+                                updateStep(index, {
+                                  color: val === NO_COLOR ? undefined : (val as ProgressionBeltColor),
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-30 shrink-0 text-xs px-2" aria-label="Cor do nível">
+                                <SelectValue>
+                                  <span className="inline-flex items-center gap-1.5">
+                                    {step.color ? (
+                                      <span
+                                        className={cn(
+                                          "size-2.5 rounded-full shrink-0",
+                                          BELT_COLOR_META[step.color].swatchClass,
+                                        )}
+                                      />
+                                    ) : null}
+                                    {step.color ? BELT_COLOR_META[step.color].label : "Sem cor"}
+                                  </span>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_COLOR} className="text-xs">
+                                  Sem cor
+                                </SelectItem>
+                                {LEVEL_COLORS.map((colorKey) => (
+                                  <SelectItem key={colorKey} value={colorKey} className="text-xs">
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <span
+                                        className={cn(
+                                          "size-2.5 rounded-full shrink-0",
+                                          BELT_COLOR_META[colorKey].swatchClass,
+                                        )}
+                                      />
+                                      {BELT_COLOR_META[colorKey].label}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
 
                           <Button
                             type="button"
@@ -797,7 +949,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                             className="size-6 shrink-0 text-destructive/80 hover:text-destructive"
                             disabled={track.levels.length <= 1}
                             onClick={() => removeStep(index)}
-                            aria-label="Remover nível"
+                            aria-label={`Remover ${levelWord.toLowerCase()}`}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
