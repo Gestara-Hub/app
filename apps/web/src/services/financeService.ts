@@ -10,6 +10,7 @@ import type {
   FinanceMonthPoint,
   FinanceSummary,
   FinanceUpcomingItem,
+  FileAttachment,
   FinancialCategory,
   FinancialCategoryFilter,
   FinancialEntry,
@@ -41,6 +42,7 @@ import {
 import { formatCents, plural } from "@gestarahub/core/format";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
 import { financialEntryTypeLabel, paymentMethodLabel, PAYMENT_METHODS } from "@/lib/labels";
 import {
   apiError,
@@ -420,6 +422,15 @@ function validateDescription(description: unknown, fields: ApiErrorField[]): voi
   }
 }
 
+function validateAttachments(attachments: FileAttachment[] | undefined, fields: ApiErrorField[]): void {
+  if (attachments && attachments.length > ENTRY_ATTACHMENT_RULES.maxFiles) {
+    fields.push({
+      field: "receipts",
+      message: `Anexe no máximo ${ENTRY_ATTACHMENT_RULES.maxFiles} arquivos por lançamento.`,
+    });
+  }
+}
+
 function validateCreate(payload: CreateFinancialEntry): void {
   const fields: ApiErrorField[] = [];
   if (!isEntryType(payload.type)) {
@@ -439,6 +450,7 @@ function validateCreate(payload: CreateFinancialEntry): void {
   if (payload.paidNow && !isPaymentMethod(payload.paidNow.method)) {
     fields.push({ field: "method", message: "Selecione a forma de pagamento." });
   }
+  validateAttachments(payload.attachments, fields);
   if (fields.length > 0) throw validationError(fields);
 }
 
@@ -452,6 +464,7 @@ function validateUpdate(entry: FinancialEntry, payload: UpdateFinancialEntry): v
   if (payload.dueDate !== undefined && !isValidDate(payload.dueDate)) {
     fields.push({ field: "dueDate", message: "Informe uma data de vencimento válida." });
   }
+  validateAttachments(payload.attachments, fields);
   if (fields.length > 0) throw validationError(fields);
 }
 
@@ -519,7 +532,20 @@ function describeChanges(before: FinancialEntry, after: FinancialEntry): AuditCh
   if ((before.notes ?? "") !== (after.notes ?? "")) {
     changes.push({ field: "notes", label: "Observações", before: before.notes ?? "", after: after.notes ?? "" });
   }
+  const beforeFiles = attachmentNames(before.attachments);
+  const afterFiles = attachmentNames(after.attachments);
+  if (beforeFiles !== afterFiles) {
+    changes.push({ field: "attachments", label: "Comprovantes", before: beforeFiles, after: afterFiles });
+  }
   return changes;
+}
+
+function attachmentNames(attachments: FileAttachment[] | undefined): string {
+  return (attachments ?? []).map((a) => a.name).join(", ");
+}
+
+function attachmentsNote(count: number): string {
+  return count > 0 ? `, com ${plural(count, "comprovante", "comprovantes")}` : "";
 }
 
 function findEntry(id: Id): FinancialEntry {
@@ -534,6 +560,9 @@ function applyPatch(e: FinancialEntry, payload: UpdateFinancialEntry, ts: string
   if (payload.amountCents !== undefined) e.amountCents = payload.amountCents;
   if (payload.dueDate !== undefined) e.dueDate = payload.dueDate;
   if (payload.notes !== undefined) e.notes = payload.notes.trim() || undefined;
+  if (payload.attachments !== undefined) {
+    e.attachments = payload.attachments.length > 0 ? payload.attachments : undefined;
+  }
   e.updatedAt = ts;
 }
 
@@ -732,6 +761,7 @@ export const financeService = {
           ? { recurrenceId: recurrence.id, recurrenceCompetence: recurrence.startCompetence }
           : {}),
         ...(payload.notes?.trim() ? { notes: payload.notes.trim() } : {}),
+        ...(payload.attachments?.length ? { attachments: payload.attachments } : {}),
         createdAt: ts,
         updatedAt: ts,
       };
@@ -740,10 +770,11 @@ export const financeService = {
 
       const paidNote = payload.paidNow ? `, pago via ${paymentMethodLabel(payload.paidNow.method)}` : "";
       const repeatNote = recurrence ? ", com repetição mensal" : "";
+      const filesNote = attachmentsNote(entry.attachments?.length ?? 0);
       recordEntry(
         entry,
         "created",
-        `lançou a ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}${paidNote}${repeatNote})`,
+        `lançou a ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}${paidNote}${repeatNote}${filesNote})`,
         payload.paidNow
           ? [{ field: "status", label: "Status", before: "", after: PAID_STATUS_LABEL }]
           : undefined,
@@ -829,8 +860,8 @@ export const financeService = {
     });
   },
 
-  /** Marca como pago agora (exige forma de pagamento). */
-  markEntryPaid(id: Id, method: PaymentMethod): Promise<FinancialEntry> {
+  /** Marca como pago agora (exige forma de pagamento); comprovantes somam aos anexos. */
+  markEntryPaid(id: Id, method: PaymentMethod, receipts: FileAttachment[] = []): Promise<FinancialEntry> {
     return simulateWrite(() => {
       const entry = findEntry(id);
       if (!isPaymentMethod(method)) {
@@ -838,15 +869,20 @@ export const financeService = {
       }
       if (entry.status === "paid") throw conflict("Este lançamento já está pago.");
       if (entry.status === "canceled") throw conflict("Lançamento cancelado não pode ser pago.");
+      const attachments = [...(entry.attachments ?? []), ...receipts];
+      const fields: ApiErrorField[] = [];
+      validateAttachments(attachments, fields);
+      if (fields.length > 0) throw validationError(fields);
       const ts = nowIso();
       entry.status = "paid";
       entry.paidAt = ts;
       entry.method = method;
+      if (receipts.length > 0) entry.attachments = attachments;
       entry.updatedAt = ts;
       recordEntry(
         entry,
         "status_changed",
-        `registrou o pagamento da ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}, via ${paymentMethodLabel(method)})`,
+        `registrou o pagamento da ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}, via ${paymentMethodLabel(method)}${attachmentsNote(receipts.length)})`,
         [{ field: "status", label: "Status", before: "Pendente", after: PAID_STATUS_LABEL }],
       );
       return clone(entry);

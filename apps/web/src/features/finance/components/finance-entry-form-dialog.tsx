@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import type {
+  FileAttachment,
   FinancialEntry,
   FinancialEntryType,
   FinancialEntryUpdateScope,
@@ -16,6 +17,7 @@ import type {
 import {
   DateField,
   DialogFormFooter,
+  FileDropField,
   InputCurrency,
   InputText,
   SegmentedChoiceField,
@@ -42,10 +44,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { AttachmentList } from "@/components/shared/attachment-list";
+import { ENTRY_ATTACHMENT_RULES, filesSchema } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import {
+  openFileAttachment,
   useCreateFinanceEntry,
   useFinancialCategories,
   useUpdateFinanceEntry,
@@ -72,8 +77,19 @@ const schema = z
     method: z.string().optional(),
     repeatMonthly: z.boolean(),
     notes: z.string().max(500, "Use no máximo 500 caracteres.").optional(),
+    /** Arquivos novos (ainda nao enviados). */
+    receipts: filesSchema(ENTRY_ATTACHMENT_RULES),
+    /** Anexos ja salvos que continuam no lancamento (edicao). */
+    keptAttachments: z.array(z.custom<FileAttachment>()),
   })
   .superRefine((values, ctx) => {
+    if (values.keptAttachments.length + values.receipts.length > ENTRY_ATTACHMENT_RULES.maxFiles) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["receipts"],
+        message: `Anexe no máximo ${ENTRY_ATTACHMENT_RULES.maxFiles} arquivos por lançamento.`,
+      });
+    }
     if (values.paidNow && !values.method) {
       ctx.addIssue({ code: "custom", path: ["method"], message: "Selecione a forma de pagamento." });
     }
@@ -93,6 +109,25 @@ const TYPE_OPTIONS = [
 ];
 
 const METHOD_OPTIONS = PAYMENT_METHODS.map((m) => ({ value: m, label: paymentMethodLabel(m) }));
+
+/** Depois do primeiro clique em "+ Gerenciar categorias", o botao para de pulsar. */
+const MANAGE_CATEGORIES_SEEN_KEY = "gestarahub_hint_manage_categories_seen";
+
+function manageCategoriesSeen(): boolean {
+  try {
+    return window.localStorage.getItem(MANAGE_CATEGORIES_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markManageCategoriesSeen(): void {
+  try {
+    window.localStorage.setItem(MANAGE_CATEGORIES_SEEN_KEY, "1");
+  } catch {
+    // Navegador sem armazenamento: so volta a pulsar.
+  }
+}
 
 /** Pergunta o escopo da edicao de um lancamento de serie (promessa). */
 function useScopeQuestion() {
@@ -148,6 +183,8 @@ function EntryForm({
   const pending = createMut.isPending || updateMut.isPending;
   const scopeQuestion = useScopeQuestion();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  // O formulario so monta com o dialog aberto (navegador): pode ler o storage aqui.
+  const [pulseCategories, setPulseCategories] = useState(() => !entry && !manageCategoriesSeen());
 
   const form = useForm<EntryFormValues>({
     resolver: zodResolver(schema),
@@ -164,6 +201,8 @@ function EntryForm({
           method: undefined,
           repeatMonthly: false,
           notes: entry.notes ?? "",
+          receipts: [],
+          keptAttachments: entry.attachments ?? [],
         }
       : {
           type: defaultType,
@@ -175,11 +214,25 @@ function EntryForm({
           method: undefined,
           repeatMonthly: false,
           notes: "",
+          receipts: [],
+          keptAttachments: [],
         },
   });
 
   const type = useWatch({ control: form.control, name: "type" });
   const paidNow = useWatch({ control: form.control, name: "paidNow" });
+  const keptAttachments = useWatch({ control: form.control, name: "keptAttachments" });
+  const remainingFiles = ENTRY_ATTACHMENT_RULES.maxFiles - keptAttachments.length;
+
+  const removeKept = (item: FileAttachment) =>
+    form.setValue(
+      "keptAttachments",
+      keptAttachments.filter((a) => a.id !== item.id),
+      { shouldDirty: true },
+    );
+  const openAttachment = async (item: FileAttachment) => {
+    if (!(await openFileAttachment(item.id))) toast.error("Não foi possível abrir o arquivo.");
+  };
   const { data: categories, isPending: categoriesPending } = useFinancialCategories({
     type,
     status: "active",
@@ -210,6 +263,7 @@ function EntryForm({
           amountCents: values.amountCents,
           dueDate: values.dueDate,
           notes: values.notes ?? "",
+          attachments: values.keptAttachments,
         };
         let scope: FinancialEntryUpdateScope = "single";
         if (entry.recurrenceId) {
@@ -217,18 +271,21 @@ function EntryForm({
           if (!answer) return;
           scope = answer;
         }
-        await updateMut.mutateAsync({ id: entry.id, payload, scope });
+        await updateMut.mutateAsync({ id: entry.id, payload, scope, files: values.receipts });
         toast.success(scope === "following" ? "Lançamento e próximos atualizados." : "Lançamento atualizado.");
       } else {
         await createMut.mutateAsync({
-          type: values.type,
-          categoryId: values.categoryId,
-          description: values.description,
-          amountCents: values.amountCents,
-          dueDate: values.dueDate,
-          ...(values.notes?.trim() ? { notes: values.notes.trim() } : {}),
-          ...(values.paidNow && values.method ? { paidNow: { method: values.method as PaymentMethod } } : {}),
-          ...(values.repeatMonthly ? { repeatMonthly: true } : {}),
+          payload: {
+            type: values.type,
+            categoryId: values.categoryId,
+            description: values.description,
+            amountCents: values.amountCents,
+            dueDate: values.dueDate,
+            ...(values.notes?.trim() ? { notes: values.notes.trim() } : {}),
+            ...(values.paidNow && values.method ? { paidNow: { method: values.method as PaymentMethod } } : {}),
+            ...(values.repeatMonthly ? { repeatMonthly: true } : {}),
+          },
+          files: values.receipts,
         });
         toast.success(
           values.repeatMonthly ? "Lançamento criado. Ele vai se repetir todo mês." : "Lançamento criado.",
@@ -260,13 +317,20 @@ function EntryForm({
                 Categoria <span className="text-destructive">*</span>
               </Label>
               {/* Novo lancamento: pulsa ao abrir (2x, depois da animacao do modal)
-                  para lembrar que da para criar a categoria aqui mesmo. */}
+                  para lembrar que da para criar a categoria aqui mesmo, ate o
+                  usuario clicar nele a primeira vez. */}
               <button
                 type="button"
-                onClick={() => setCategoriesOpen(true)}
+                onClick={() => {
+                  if (pulseCategories) {
+                    markManageCategoriesSeen();
+                    setPulseCategories(false);
+                  }
+                  setCategoriesOpen(true);
+                }}
                 className={cn(
                   "-mr-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-primary hover:underline",
-                  !entry && "motion-safe:animate-attention-ring [animation-delay:350ms]",
+                  pulseCategories && "motion-safe:animate-attention-ring [animation-delay:350ms]",
                 )}
               >
                 + Gerenciar categorias
@@ -334,6 +398,30 @@ function EntryForm({
             rows={2}
             disabled={pending}
           />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="receipts" className="text-sm">
+              Comprovantes (opcional)
+            </Label>
+            <AttachmentList
+              items={keptAttachments}
+              onOpen={openAttachment}
+              onRemove={removeKept}
+              disabled={pending}
+            />
+            {remainingFiles > 0 ? (
+              <FileDropField<EntryFormValues>
+                name="receipts"
+                disabled={pending}
+                {...ENTRY_ATTACHMENT_RULES}
+                maxFiles={remainingFiles}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Limite de {ENTRY_ATTACHMENT_RULES.maxFiles} arquivos. Remova um para anexar outro.
+              </p>
+            )}
+          </div>
         </DialogBody>
         <DialogFormFooter
           isPending={pending}

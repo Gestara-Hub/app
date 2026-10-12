@@ -28,7 +28,7 @@ interface PaymentDialogProps {
   confirmLabel: string;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
-  /** `receipts` ainda nao e enviado ao service (upload entra com o backend). */
+  /** `receipts`: so o lancamento guarda hoje; mensalidade e professor ignoram. */
   onConfirm: (method: PaymentMethod, receipts: File[]) => void;
 }
 

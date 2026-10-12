@@ -1,3 +1,4 @@
+import type { FileAttachment } from "./attachment";
 import type { PaymentMethod } from "./billing";
 import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 
@@ -65,6 +66,8 @@ export interface FinancialEntry {
   /** Competencia "YYYY-MM" que a recorrencia materializou (idempotencia). */
   recurrenceCompetence?: string;
   notes?: string;
+  /** Comprovantes, notas e boletos (entrada ou saida). */
+  attachments?: FileAttachment[];
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
@@ -102,7 +105,7 @@ export type CreateFinancialEntry = Omit<
 };
 
 export type UpdateFinancialEntry = Partial<
-  Pick<FinancialEntry, "categoryId" | "description" | "amountCents" | "dueDate" | "notes">
+  Pick<FinancialEntry, "categoryId" | "description" | "amountCents" | "dueDate" | "notes" | "attachments">
 >;
 
 /** Escopo da edicao de um lancamento de serie. */

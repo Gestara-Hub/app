@@ -3,8 +3,8 @@ import { RECEIPT_FILE_RULES, filesSchema } from "./files";
 
 /**
  * Formulario de registrar pagamento (mensalidade, lancamento, professor):
- * forma obrigatoria + comprovantes opcionais (imagem ou PDF). Os arquivos ainda
- * nao sao enviados: o mock so recebe a forma; o upload entra com o backend.
+ * forma obrigatoria + comprovantes opcionais (imagem ou PDF). Lancamentos
+ * guardam os arquivos (anexos); mensalidade e professor ainda recebem so a forma.
  */
 export const paymentFormSchema = z.object({
   method: z.enum(["pix", "cash", "card", "other"], { error: "Selecione a forma de pagamento." }),

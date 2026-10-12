@@ -1,4 +1,5 @@
 export * from "./common";
+export * from "./attachment";
 export * from "./permission";
 export * from "./user";
 export * from "./organization";

@@ -9,7 +9,7 @@ import {
 } from "react-hook-form";
 import { FileText, File as FileIcon, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fileIssue, formatBytes, sameFile, type FileRules } from "@/lib/files";
+import { fileIssue, fileTypeLabel, formatBytes, sameFile, type FileRules } from "@/lib/files";
 import { cn } from "@/lib/utils";
 import { FieldShell, fieldAria } from "./field-shell";
 
@@ -40,14 +40,6 @@ function FileThumb({ file }: { file: File }) {
       <Icon className="size-4" />
     </span>
   );
-}
-
-/** Rotulo curto do tipo ("PDF", "PNG"); cai no MIME quando nao ha subtipo. */
-function typeLabel(file: File): string {
-  const sub = file.type.split("/")[1];
-  if (sub) return sub.replace("jpeg", "jpg").toUpperCase();
-  const ext = file.name.split(".").pop();
-  return ext && ext !== file.name ? ext.toUpperCase() : "Arquivo";
 }
 
 export interface FileDropzoneProps extends FileRules {
@@ -208,7 +200,7 @@ export function FileDropzone({
                     {file.name}
                   </p>
                   <p className={cn("text-xs", issue ? "text-destructive" : "text-muted-foreground")}>
-                    {issue ?? `${typeLabel(file)} · ${formatBytes(file.size)}`}
+                    {issue ?? `${fileTypeLabel(file.name, file.type)} · ${formatBytes(file.size)}`}
                   </p>
                 </div>
                 <Button

@@ -730,23 +730,12 @@ function VariantExecutive({
         </div>
 
         {/* Categorias com visual de Barras Proporcionais */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-5 flex flex-col justify-between">
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Destino das Receitas e Custos</h3>
-                <p className="text-xs text-muted-foreground">Clique numa categoria para abrir seus lançamentos</p>
-              </div>
-              <Badge variant="outline" className="text-[10px]">
-                {categories?.length ?? 0} {plural(categories?.length ?? 0, "categoria", "categorias")}
-              </Badge>
-            </div>
-            <ModernCategoryBreakdown categories={categories ?? []} competence={competence} />
+        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-5">
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-foreground">Destino das Receitas e Custos</h3>
+            <p className="text-xs text-muted-foreground">Clique numa categoria para abrir seus lançamentos</p>
           </div>
-
-          <div className="mt-4 rounded-xl border border-dashed border-border p-2.5 text-center text-xs text-muted-foreground">
-            Categorias automáticas de mensalidades e professores integradas.
-          </div>
+          <ModernCategoryBreakdown categories={categories ?? []} competence={competence} />
         </div>
       </div>
 
@@ -767,9 +756,6 @@ function ModernCategoryBreakdown({
   categories: FinanceCategoryTotal[];
   competence?: string;
 }) {
-  const incomes = categories.filter((c) => c.type === "income");
-  const expenses = categories.filter((c) => c.type === "expense");
-
   const buildCategoryHref = (item: FinanceCategoryTotal) => {
     if (!competence) return "#";
     const isTeacher =
@@ -783,89 +769,104 @@ function ModernCategoryBreakdown({
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      {/* Entradas */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            Entradas
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            {formatCents(incomes.reduce((acc, c) => acc + c.totalCents, 0))}
-          </span>
-        </div>
-        {incomes.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Sem entradas pagas no período.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {incomes.map((item) => (
-              <Link
-                key={item.categoryId}
-                href={buildCategoryHref(item)}
-                className="group -mx-2 block rounded-xl p-2 transition-all hover:bg-muted/60"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                    <span className="truncate">{item.categoryName}</span>
-                    <ArrowUpRight className="size-3 shrink-0 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary" />
-                  </span>
-                  <span className="ml-2 shrink-0 font-semibold tabular-nums text-foreground">
-                    {formatCents(item.totalCents)}{" "}
-                    <span className="text-[10px] font-normal text-muted-foreground">({item.percent}%)</span>
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-emerald-500 transition-all group-hover:bg-emerald-400"
-                    style={{ width: `${Math.max(3, item.percent)}%` }}
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <CategoryColumn
+        title="Entradas"
+        emptyText="Sem entradas pagas no período."
+        tone="income"
+        items={categories.filter((c) => c.type === "income")}
+        hrefOf={buildCategoryHref}
+      />
+      <CategoryColumn
+        title="Saídas & Custos"
+        emptyText="Sem despesas pagas no período."
+        tone="expense"
+        items={categories.filter((c) => c.type === "expense")}
+        hrefOf={buildCategoryHref}
+      />
+    </div>
+  );
+}
 
-      {/* Saídas */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-            Saídas & Custos
+const CATEGORY_TONE = {
+  income: {
+    title: "text-emerald-600 dark:text-emerald-400",
+    bar: "bg-emerald-500 group-hover:bg-emerald-400",
+  },
+  expense: {
+    title: "text-rose-600 dark:text-rose-400",
+    bar: "bg-rose-500 group-hover:bg-rose-400",
+  },
+} as const;
+
+/**
+ * Uma coluna (entradas ou saidas). Com uma categoria so, o total e a
+ * porcentagem repetiriam o valor da linha: aparecem so com 2 ou mais.
+ */
+function CategoryColumn({
+  title,
+  emptyText,
+  tone,
+  items,
+  hrefOf,
+}: {
+  title: string;
+  emptyText: string;
+  tone: keyof typeof CATEGORY_TONE;
+  items: FinanceCategoryTotal[];
+  hrefOf: (item: FinanceCategoryTotal) => string;
+}) {
+  const styles = CATEGORY_TONE[tone];
+  const showShare = items.length > 1;
+  const totalCents = items.reduce((acc, c) => acc + c.totalCents, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className={cn("text-xs font-semibold uppercase tracking-wider", styles.title)}>
+          {title}
+        </span>
+        {showShare ? (
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {formatCents(totalCents)}
           </span>
-          <span className="text-[11px] text-muted-foreground">
-            {formatCents(expenses.reduce((acc, c) => acc + c.totalCents, 0))}
-          </span>
-        </div>
-        {expenses.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Sem despesas pagas no período.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {expenses.map((item) => (
-              <Link
-                key={item.categoryId}
-                href={buildCategoryHref(item)}
-                className="group -mx-2 block rounded-xl p-2 transition-all hover:bg-muted/60"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                    <span className="truncate">{item.categoryName}</span>
-                    <ArrowUpRight className="size-3 shrink-0 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary" />
-                  </span>
-                  <span className="ml-2 shrink-0 font-semibold tabular-nums text-foreground">
-                    {formatCents(item.totalCents)}{" "}
-                    <span className="text-[10px] font-normal text-muted-foreground">({item.percent}%)</span>
-                  </span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        ) : null}
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{emptyText}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((item) => (
+            <Link
+              key={item.categoryId}
+              href={hrefOf(item)}
+              className="group -mx-2 block rounded-xl p-2 transition-all hover:bg-muted/60"
+            >
+              <div className="flex items-start justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5 font-medium text-foreground transition-colors group-hover:text-primary">
+                  <span className="break-words">{item.categoryName}</span>
+                  <ArrowUpRight className="size-3 shrink-0 -translate-x-1 text-primary opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                  {formatCents(item.totalCents)}
+                  {showShare ? (
+                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                      ({item.percent}%)
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              {showShare ? (
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
-                    className="h-full rounded-full bg-rose-500 transition-all group-hover:bg-rose-400"
+                    className={cn("h-full rounded-full transition-all", styles.bar)}
                     style={{ width: `${Math.max(3, item.percent)}%` }}
                   />
                 </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+              ) : null}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -895,7 +896,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
           <Clock className="size-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Compromissos Financeiros Próximos (7 dias)</h3>
           <Badge variant="outline" className="text-[11px] font-normal">
-            {items.length} {plural(items.length, "vencimento", "vencimentos")}
+            {plural(items.length, "vencimento", "vencimentos")}
           </Badge>
         </div>
 

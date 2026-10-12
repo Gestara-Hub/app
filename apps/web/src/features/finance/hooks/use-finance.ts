@@ -14,12 +14,36 @@ import type {
   UpdateFinancialEntry,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
+import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
+import { attachmentsService } from "@/services/attachmentsService";
 import { financeService } from "@/services/financeService";
 
 // Toda mutation do Financeiro invalida `finance.all` (resumo, serie, lista...).
 function useInvalidateFinance() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: queryKeys.finance.all });
+}
+
+function uploadEntryFiles(files: File[]) {
+  return files.length > 0 ? attachmentsService.upload(files, ENTRY_ATTACHMENT_RULES) : Promise.resolve([]);
+}
+
+/**
+ * Abre um anexo numa nova aba. A aba abre no clique (sem bloqueio de pop-up) e
+ * recebe o arquivo quando ele chega. Devolve false se o arquivo nao existe.
+ */
+export async function openFileAttachment(id: Id): Promise<boolean> {
+  const tab = window.open("", "_blank");
+  const url = await attachmentsService.openUrl(id);
+  if (!url) {
+    tab?.close();
+    return false;
+  }
+  if (tab) tab.location.href = url;
+  else window.location.assign(url);
+  // Da tempo da aba carregar antes de liberar a memoria.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return true;
 }
 
 // --- Resumo -----------------------------------------------------------------
@@ -66,7 +90,13 @@ export function useFinanceEntries(filter: FinancialEntryFilter) {
 export function useCreateFinanceEntry() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    mutationFn: (payload: CreateFinancialEntry) => financeService.createEntry(payload),
+    // Envia os arquivos novos antes e grava os anexos junto com o lancamento.
+    mutationFn: async ({ payload, files = [] }: { payload: CreateFinancialEntry; files?: File[] }) => {
+      const uploaded = await uploadEntryFiles(files);
+      return financeService.createEntry(
+        uploaded.length > 0 ? { ...payload, attachments: [...(payload.attachments ?? []), ...uploaded] } : payload,
+      );
+    },
     onSuccess: invalidate,
   });
 }
@@ -74,15 +104,25 @@ export function useCreateFinanceEntry() {
 export function useUpdateFinanceEntry() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       payload,
       scope,
+      files = [],
     }: {
       id: Id;
       payload: UpdateFinancialEntry;
       scope: FinancialEntryUpdateScope;
-    }) => financeService.updateEntry(id, payload, scope),
+      /** Arquivos novos; `payload.attachments` traz os anexos que ficaram. */
+      files?: File[];
+    }) => {
+      const uploaded = await uploadEntryFiles(files);
+      return financeService.updateEntry(
+        id,
+        uploaded.length > 0 ? { ...payload, attachments: [...(payload.attachments ?? []), ...uploaded] } : payload,
+        scope,
+      );
+    },
     onSuccess: invalidate,
   });
 }
@@ -90,8 +130,8 @@ export function useUpdateFinanceEntry() {
 export function useMarkFinanceEntryPaid() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    mutationFn: ({ id, method }: { id: Id; method: PaymentMethod }) =>
-      financeService.markEntryPaid(id, method),
+    mutationFn: async ({ id, method, receipts = [] }: { id: Id; method: PaymentMethod; receipts?: File[] }) =>
+      financeService.markEntryPaid(id, method, await uploadEntryFiles(receipts)),
     onSuccess: invalidate,
   });
 }

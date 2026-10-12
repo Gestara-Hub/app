@@ -26,6 +26,20 @@ export const RECEIPT_FILE_RULES = {
   acceptLabel: "imagem ou PDF",
 } as const satisfies FileRules;
 
+/** Anexos de lancamento (entrada ou saida): mesmos tipos, ate 10 no total. */
+export const ENTRY_ATTACHMENT_RULES = {
+  ...RECEIPT_FILE_RULES,
+  maxFiles: 10,
+} as const satisfies FileRules;
+
+/** Rotulo curto do tipo ("PDF", "PNG"); cai na extensao quando nao ha MIME. */
+export function fileTypeLabel(name: string, contentType: string): string {
+  const sub = contentType.split("/")[1];
+  if (sub) return sub.replace("jpeg", "jpg").toUpperCase();
+  const ext = name.split(".").pop();
+  return ext && ext !== name ? ext.toUpperCase() : "Arquivo";
+}
+
 /** Bytes -> "820 KB", "1,2 MB". */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

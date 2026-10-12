@@ -12,6 +12,7 @@ import {
   Ban,
   CheckCircle2,
   ChevronRight,
+  Paperclip,
   Pencil,
   Plus,
   Repeat,
@@ -223,9 +224,9 @@ export function FinanceEntriesTab({
 
   // --- Acoes (todas com dinheiro confirmam) -------------------------------
 
-  const pay = (row: FinanceEntryView, method: PaymentMethod) =>
+  const pay = (row: FinanceEntryView, method: PaymentMethod, receipts: File[]) =>
     paidMut.mutate(
-      { id: row.id, method },
+      { id: row.id, method, receipts },
       {
         onSuccess: () => {
           toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
@@ -409,6 +410,15 @@ export function FinanceEntriesTab({
             <span className="inline-flex items-center gap-0.5" title="Repete todo mês">
               <Repeat className="size-3" aria-hidden />
               <span>mensal</span>
+            </span>
+          ) : null}
+          {row.entry?.attachments?.length ? (
+            <span
+              className="inline-flex items-center gap-0.5"
+              title={plural(row.entry.attachments.length, "comprovante", "comprovantes")}
+            >
+              <Paperclip className="size-3" aria-hidden />
+              <span>{row.entry.attachments.length}</span>
             </span>
           ) : null}
         </>
@@ -663,7 +673,7 @@ export function FinanceEntriesTab({
         onOpenChange={(open) => {
           if (!open) setPaying(null);
         }}
-        onConfirm={(method) => paying && pay(paying, method)}
+        onConfirm={(method, receipts) => paying && pay(paying, method, receipts)}
       />
       <FinancialCategoryManagerDialog
         type={categoryType}

@@ -354,7 +354,8 @@ Rota nova `/finance` (menu **"Financeiro"**, ícone de carteira, depois de "Mens
 ### 7.2 Lançamentos (`?tab=lancamentos`)
 - Lista das entradas e saídas do mês, **unificada** (cobranças dos alunos aparecem agregadas como "Mensalidades de outubro — 42 pagas / 5 pendentes", com link para Mensalidades, sem listar aluno por aluno aqui). **[DECIDIR]** agregar ou listar individualmente.
 - Filtros: tipo (Entradas / Saídas), status (Pago / Pendente / Atrasado / Cancelado), categoria, busca.
-- **Novo lançamento:** Entrada ou Saída, categoria, descrição, valor, vencimento, "Já foi pago" (forma de pagamento), "Repetir todo mês".
+- **Novo lançamento:** Entrada ou Saída, categoria, descrição, valor, vencimento, "Já foi pago" (forma de pagamento), "Repetir todo mês", observações e "Comprovantes (opcional)".
+- **Comprovantes do lançamento** (entrada ou saída): vários arquivos (imagem ou PDF, até 10 MB cada, no máximo 10 por lançamento; `ENTRY_ATTACHMENT_RULES`). Na edição, os já salvos aparecem em lista (clicar abre o arquivo numa nova aba; o X tira ao salvar). Os comprovantes do "Marcar como pago" somam aos anexos do lançamento. A linha mostra um clipe com a quantidade. Repetição mensal não copia anexos para os meses seguintes.
 - Menu da linha: Marcar pago, Desfazer pagamento, Editar, Cancelar (todas as ações com dinheiro confirmam).
 
 ### 7.3 Professores (`?tab=professores`)
@@ -378,10 +379,11 @@ Estados obrigatórios em todas as telas: carregando (skeleton), vazio com CTA, e
 
 - **Store:** `financialCategories`, `financialEntries`, `financialRecurrences`, `teacherPayRules`, `teacherPayouts`, `onlinePayments`, `recurringAuthorizations` no tenant; `organization.subscription`. Subir a versão do seed.
 - **Services** (`apps/web/src/services/`), todos com `simulateRead` / `simulateWrite`, escopo carimbado e Auditoria:
-  - `financeService`: `getSummary(competence)`, `getMonthlySeries(months)`, `listEntries(filter)`, `createEntry`, `updateEntry(id, payload, scope: "single" | "following")`, `markEntryPaid(id, method)`, `markEntryPending`, `cancelEntry`, `endRecurrence(recurrenceId)`, `listCategories`, `createCategory`, `updateCategory`.
+  - `financeService`: `getSummary(competence)`, `getMonthlySeries(months)`, `listEntries(filter)`, `createEntry`, `updateEntry(id, payload, scope: "single" | "following")`, `markEntryPaid(id, method, receipts?)`, `markEntryPending`, `cancelEntry`, `endRecurrence(recurrenceId)`, `listCategories`, `createCategory`, `updateCategory`.
   - `teacherPayService`: `listRules`, `saveRule(professionalId, payload)`, `listPayouts(competence)`, `getPayoutPreview(professionalId, competence)`, `closePayout(id, adjustments)`, `reopenPayout`, `markPayoutPaid(id, method)`, `markPayoutUnpaid`.
   - `onlinePaymentsService`: `createForCharge(chargeId, method)`, `simulatePaid(onlinePaymentId)`, `listForCharge(chargeId)`, `requestRecurring(studentId, maxAmountCents)`, `simulateAuthorize(id)`, `revokeRecurring(id)`.
   - `subscriptionService`: `get()`, `setTier(tier)`.
+  - `attachmentsService`: `upload(files, rules)` devolve `FileAttachment[]` (id, nome, MIME, tamanho, data) e `openUrl(id)` devolve um endereço temporário do arquivo. O store guarda só os metadados (`FinancialEntry.attachments`); o conteúdo fica no IndexedDB do navegador (`mocks/file-blobs.ts`, com Map em memória sem IndexedDB). Os hooks enviam os arquivos antes de criar, editar ou marcar pago.
 - **Funções puras** em `packages/core/src/finance.ts`: `computeTeacherPayout`, `attributeMembershipsToTeachers`, `summarizeCashFlow`, `isOverdue`, `competenceOf`. Testadas com `node --test`.
 - **queryKeys:** `finance.summary(competence)`, `finance.series(months)`, `finance.entries(filter)`, `finance.categories`, `teacherPay.rules`, `teacherPay.payouts(competence)`, `teacherPay.preview(professionalId, competence)`, `onlinePayments.forCharge(chargeId)`, `subscription`.
 - **Invalidação:** marcar uma cobrança como paga (Mensalidades) invalida `finance.*`. Mudanças em presença, matrícula e substituição invalidam `teacherPay.preview`.
@@ -404,7 +406,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 - Conciliação bancária e importação de extrato (OFX).
 - Várias contas ou caixas (tudo em um caixa único).
 - Nota fiscal.
-- **Guardar comprovantes de pagamento.** Os três diálogos de registrar pagamento (mensalidade, lançamento, professor; `PaymentDialog`) já têm o campo "Comprovante (opcional)" (`FileDropField`, imagem ou PDF, até 10 MB cada, no máximo 5; regras em `RECEIPT_FILE_RULES`), validado pelo RHF + Zod. Os arquivos **não são enviados**: o mock recebe só a forma de pagamento. Na fase de backend: upload para storage compatível com S3 com link assinado (nunca público), metadados do anexo (nome, MIME, tamanho, quem enviou, quando) ligados à cobrança, ao lançamento ou ao pagamento do professor, visualização só com `finance:view` e prazo de retenção por LGPD (comprovante pode ter CPF e dados bancários).
+- **Guardar comprovantes de mensalidade e de professor.** Os diálogos de registrar pagamento (`PaymentDialog`) têm o campo "Comprovante (opcional)" (`FileDropField`, imagem ou PDF, até 10 MB cada, no máximo 5; regras em `RECEIPT_FILE_RULES`), validado pelo RHF + Zod. Só os **lançamentos** guardam os arquivos (seção 7.2); na mensalidade e no pagamento do professor o mock ainda recebe só a forma de pagamento. Na fase de backend: upload para storage compatível com S3 com link assinado (nunca público), metadados do anexo (nome, MIME, tamanho, quem enviou, quando) ligados à cobrança, ao lançamento ou ao pagamento do professor, visualização só com `finance:view` e prazo de retenção por LGPD (comprovante pode ter CPF e dados bancários).
 - Exportação e relatórios (vão para o módulo **Relatórios**, que lê estes dados).
 - Envio automático de mensagens de cobrança (vai para o módulo **Comunicação**).
 - Financeiro para os modelos de agendamento e encomenda (contratos já neutros; telas depois).
