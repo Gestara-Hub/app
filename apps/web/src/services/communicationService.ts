@@ -17,9 +17,11 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { defaultMessageLogs, defaultMessageTemplates, defaultWhatsAppSession } from "@/mocks/seed";
-import { store } from "@/mocks/store";
+import { persist, store } from "@/mocks/store";
+import { format, parseISO } from "date-fns";
+import { isBirthdayToday } from "@/lib/birthdays";
 import { auditLogService } from "./auditLogService";
-import { assertFeature } from "./subscriptionService";
+import { assertFeature, tenantHasFeature } from "./subscriptionService";
 
 function ensureSession(): WhatsAppSession {
   if (!store.communicationSession) {
@@ -40,6 +42,61 @@ function ensureLogs(): MessageLog[] {
     store.messageLogs = defaultMessageLogs(store.organization.id);
   }
   return store.messageLogs;
+}
+
+/** Troca as variaveis do modelo ({aluno}, {empresa}) pelos valores. */
+function fillTemplate(content: string, values: Record<string, string>): string {
+  return content.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+}
+
+/**
+ * Parabens automatico: no dia do aniversario (data de nascimento do cadastro),
+ * a partir do horario da regra, uma mensagem por aluno por dia. So com o
+ * recurso de mensagens, WhatsApp conectado e a regra ligada. Roda na leitura,
+ * como a geracao automatica de mensalidades. Retorna quantas enviou.
+ */
+function runBirthdayGreetings(): number {
+  if (!tenantHasFeature("messaging")) return 0;
+  const session = ensureSession();
+  if (session.status !== "connected") return 0;
+  const template = ensureTemplates().find((t) => t.trigger === "birthday_greeting");
+  if (!template?.enabled) return 0;
+  const now = new Date();
+  const today = format(now, "yyyy-MM-dd");
+  if (format(now, "HH:mm") < template.sendHour) return 0;
+
+  const logs = ensureLogs();
+  let sent = 0;
+  for (const client of store.clients) {
+    if (client.status !== "active" || !client.phone) continue;
+    if (!isBirthdayToday(client.birthDate, today)) continue;
+    const phone = client.phone.replace(/\D/g, "");
+    const alreadySent = logs.some(
+      (log) =>
+        log.trigger === "birthday_greeting" &&
+        log.recipientPhone === phone &&
+        format(parseISO(log.sentAt), "yyyy-MM-dd") === today,
+    );
+    if (alreadySent) continue;
+    logs.unshift({
+      id: `msg-${store.organization.id}-birthday-${client.id}-${today}`,
+      organizationId: store.organization.id,
+      recipientName: client.name,
+      recipientPhone: phone,
+      trigger: "birthday_greeting",
+      category: "retention",
+      content: fillTemplate(template.content, {
+        aluno: client.name,
+        empresa: store.organization.name,
+      }),
+      status: "delivered",
+      sentAt: nowIso(),
+    });
+    session.monthlyQuota.used += 1;
+    sent += 1;
+  }
+  if (sent > 0) persist();
+  return sent;
 }
 
 export const communicationService = {
@@ -151,6 +208,7 @@ export const communicationService = {
     search?: string;
   }): Promise<MessageLog[]> {
     return simulateRead(() => {
+      runBirthdayGreetings();
       let logs = [...ensureLogs()];
 
       if (filter?.trigger && filter.trigger !== "all") {
@@ -257,6 +315,7 @@ export const communicationService = {
 
   getMetrics(): Promise<CommunicationMetrics> {
     return simulateRead(() => {
+      runBirthdayGreetings();
       const session = ensureSession();
       const templates = ensureTemplates();
       const logs = ensureLogs();

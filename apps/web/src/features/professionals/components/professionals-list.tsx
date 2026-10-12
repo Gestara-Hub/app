@@ -330,6 +330,8 @@ function ProfessionalSkeletonCards({ showAction }: { showAction: boolean }) {
   );
 }
 
+const DEFAULT_STATUS: "all" | RecordStatus = "active";
+
 export function ProfessionalsList({
   canManage,
   onEdit,
@@ -337,7 +339,8 @@ export function ProfessionalsList({
   onReactivate,
 }: ProfessionalsListProps) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
+  const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("professionals", "list");
   const isClasses = useModel() === "classes";
 
@@ -350,12 +353,13 @@ export function ProfessionalsList({
   const professionals = data ?? [];
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.status);
+  // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
+  const hasFilters = status !== DEFAULT_STATUS;
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setStatus("all");
+    setStatus(DEFAULT_STATUS);
   };
 
   let items: ReactNode[] = [];

@@ -5,9 +5,11 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   AlertCircle,
+  Check,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
+  FileText,
   GraduationCap,
   RotateCcw,
   User,
@@ -19,6 +21,12 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -32,6 +40,12 @@ import {
 } from "@/components/ui/dialog";
 import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
 import { BeltBadge } from "@/components/shared/belt-badge";
+import {
+  ListItemActionsMenu,
+  type ListItemAction,
+} from "@/components/shared/list-item-actions-menu";
+import { BirthdayBadge } from "@/components/shared/birthday-badge";
+import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { Combobox } from "@/components/shared/combobox";
 import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
@@ -60,24 +74,38 @@ import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
 import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
-const STATUSES: { value: AttendanceStatus; label: string; active: string }[] = [
+/**
+ * Botoes de presenca so com icone e cor (mesmas cores do resumo: verde
+ * presentes, vermelho faltas, ambar justificadas). O nome fica no title e no
+ * aria-label. Marcado = preenchido; desmarcado = contorno com o icone colorido.
+ */
+const STATUSES: {
+  value: AttendanceStatus;
+  label: string;
+  icon: typeof Check;
+  idle: string;
+  active: string;
+}[] = [
   {
     value: "present",
     label: "Presente",
-    active:
-      "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+    icon: Check,
+    idle: "text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 dark:text-emerald-400 dark:hover:bg-emerald-950/40",
+    active: "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500",
   },
   {
     value: "absent",
     label: "Faltou",
-    active:
-      "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
+    icon: X,
+    idle: "text-red-600 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:hover:bg-red-950/40",
+    active: "border-red-600 bg-red-600 text-white dark:border-red-500 dark:bg-red-500",
   },
   {
     value: "justified",
     label: "Justificada",
-    active:
-      "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+    icon: FileText,
+    idle: "text-amber-600 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:hover:bg-amber-950/40",
+    active: "border-amber-500 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-500",
   },
 ];
 
@@ -92,6 +120,26 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const cancelReservationMut = useCancelReservation();
   const restoreMut = useRestorePrimaryInstructor();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+
+  // Avulso/experimental sai da aula (cobranca avulsa em aberto e cancelada).
+  async function removeFromSession(studentId: string, studentName: string) {
+    const ok = await confirmAction({
+      title: "Remover da aula?",
+      description: `${studentName} sai desta aula. Se houver cobrança avulsa em aberto, ela é cancelada.`,
+      confirmLabel: "Remover",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    cancelReservationMut.mutate(
+      { sessionId, studentId },
+      {
+        onSuccess: () => toast.success("Aluno removido da aula."),
+        onError: (err) =>
+          toast.error(getErrorMessage(err, "Não foi possível remover o aluno da aula.")),
+      },
+    );
+  }
+
   const can = useCan();
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
@@ -425,49 +473,86 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {null}
         </ListContainer>
       ) : (
-        <ListContainer>
-          {session.roster.map((r) => {
-            const isEnrolled = r.kind === "enrolled" || !r.kind;
-            const isTrial = r.kind === "trial";
-            const student = clientById.get(r.studentId);
-            const prog =
-              modalityTrack && student
-                ? student.progressions?.[modalityTrack.modalityId]
-                : undefined;
-            const currentLvl = modalityTrack
-              ? (modalityTrack.track.levels.find(
-                  (l) =>
-                    l.id === prog?.levelId || l.name === prog?.levelName,
-                ) ?? modalityTrack.track.levels[0])
-              : null;
-            const currentSub = prog?.subLevel ?? 0;
+        // Dica com o nome de cada acao (icones sem texto); atraso curto para nao piscar.
+        <TooltipProvider delayDuration={200}>
+          <ListContainer>
+            {session.roster.map((r) => {
+              const isEnrolled = r.kind === "enrolled" || !r.kind;
+              const isTrial = r.kind === "trial";
+              const student = clientById.get(r.studentId);
+              const prog =
+                modalityTrack && student
+                  ? student.progressions?.[modalityTrack.modalityId]
+                  : undefined;
+              const currentLvl = modalityTrack
+                ? (modalityTrack.track.levels.find(
+                    (l) =>
+                      l.id === prog?.levelId || l.name === prog?.levelName,
+                  ) ?? modalityTrack.track.levels[0])
+                : null;
+              const currentSub = prog?.subLevel ?? 0;
+              const rowActions: ListItemAction[] = [
+                ...(student
+                  ? [
+                      {
+                        key: "progress",
+                        label: vocabulary.progressTitle,
+                        icon: <GraduationCap className="size-4" />,
+                        onSelect: () => setProgressClient(student),
+                      },
+                    ]
+                  : []),
+                ...(!isEnrolled && canEnroll
+                  ? [
+                      {
+                        key: "remove",
+                        label: "Remover da aula",
+                        icon: <X className="size-4" />,
+                        destructive: true,
+                        disabled: cancelReservationMut.isPending,
+                        onSelect: () => void removeFromSession(r.studentId, r.studentName),
+                      },
+                    ]
+                  : []),
+              ];
 
-            return (
-              <ListRow key={r.studentId}>
-                <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <InitialsAvatar name={r.studentName} />
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium truncate text-foreground">
-                          {r.studentName}
-                        </span>
-                        {isEnrolled ? (
-                          <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            Matriculado
+              return (
+                <ListRow key={r.studentId}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <InitialsAvatar name={r.studentName} />
+                      <div className="min-w-0 space-y-1">
+                        {/* Linha 1: nome e so o que pede atencao (matriculado e o padrao) */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium truncate text-foreground">
+                            {r.studentName}
                           </span>
-                        ) : isTrial ? (
-                          <span className="inline-flex items-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 text-[10px] font-medium">
-                            Experimental
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
-                            Avulso
-                          </span>
-                        )}
+                          {isEnrolled ? null : isTrial ? (
+                            <span className="inline-flex items-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 text-[10px] font-medium">
+                              Experimental
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
+                              Avulso
+                            </span>
+                          )}
+                          <BirthdayBadge
+                            birthDate={student?.birthDate}
+                            date={session.date}
+                            showUpcoming
+                            compact
+                          />
+                          <LevelChangeBadge
+                            level={currentLvl}
+                            birthDate={student?.birthDate}
+                            levelWord={vocabulary.level}
+                          />
+                        </div>
+                        {/* Linha 2: faixa/nivel sempre no mesmo lugar */}
                         {currentLvl && student ? (
                           <button
                             type="button"
+                            className="block"
                             onClick={() => setProgressClient(student)}
                             title={`Abrir ficha: ${vocabulary.progressTitle.toLowerCase()}`}
                           >
@@ -483,100 +568,87 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         ) : null}
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {student ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Evolução e avaliação de ${r.studentName}`}
+                              onClick={() => setProgressClient(student)}
+                            >
+                              <GraduationCap className="size-4 text-muted-foreground hover:text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent sideOffset={4}>{vocabulary.progressTitle}</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+
+                      {isFutureSession ? (
+                        <span className="text-xs text-muted-foreground">
+                          Chamada abre em {shortDate}
+                        </span>
+                      ) : null}
+                      {isFutureSession ? null : STATUSES.map((s) => {
+                        const on = r.attendance === s.value;
+                        const Icon = s.icon;
+                        return (
+                          <Tooltip key={s.value}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                aria-pressed={on}
+                                aria-label={`${s.label}: ${r.studentName}`}
+                                disabled={!canMark || markMut.isPending || bulkPending}
+                                onClick={() =>
+                                  markMut.mutate(
+                                    {
+                                      sessionId,
+                                      studentId: r.studentId,
+                                      status: s.value,
+                                    },
+                                    {
+                                      onError: (err) =>
+                                        toast.error(
+                                          getErrorMessage(err, "Não foi possível marcar a presença."),
+                                        ),
+                                    },
+                                  )
+                                }
+                                className={cn(
+                                  "inline-flex size-9 items-center justify-center rounded-md border transition-colors disabled:opacity-50 sm:size-8",
+                                  on ? s.active : cn("border-input bg-background", s.idle),
+                                )}
+                              >
+                                <Icon className="size-4" strokeWidth={on ? 2.75 : 2.25} aria-hidden />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent sideOffset={4}>{s.label}</TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+
+                      {/* Menu sempre no fim da linha (ou o espaco dele): os botoes de presenca ficam alinhados */}
+                      {rowActions.length > 0 ? (
+                        <ListItemActionsMenu
+                          title="Mais opções"
+                          ariaLabel={`Ações de ${r.studentName}`}
+                          variant="ghost"
+                          actions={rowActions}
+                        />
+                      ) : (
+                        <span aria-hidden className="size-8 shrink-0" />
+                      )}
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {student ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        title={`Evolução e avaliação de ${r.studentName}`}
-                        aria-label={`Evolução e avaliação de ${r.studentName}`}
-                        onClick={() => setProgressClient(student)}
-                      >
-                        <GraduationCap className="size-4 text-muted-foreground hover:text-primary" />
-                      </Button>
-                    ) : null}
-
-                    {isFutureSession ? (
-                      <span className="text-xs text-muted-foreground">
-                        Chamada abre em {shortDate}
-                      </span>
-                    ) : null}
-                    {isFutureSession ? null : STATUSES.map((s) => {
-                      const on = r.attendance === s.value;
-                      return (
-                        <button
-                          key={s.value}
-                          type="button"
-                          aria-pressed={on}
-                          aria-label={`${s.label}: ${r.studentName}`}
-                          disabled={!canMark || markMut.isPending || bulkPending}
-                          onClick={() =>
-                            markMut.mutate(
-                              {
-                                sessionId,
-                                studentId: r.studentId,
-                                status: s.value,
-                              },
-                              {
-                                onError: (err) =>
-                                  toast.error(
-                                    getErrorMessage(err, "Não foi possível marcar a presença."),
-                                  ),
-                              },
-                            )
-                          }
-                          className={cn(
-                            "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
-                            on
-                              ? s.active
-                              : "border-input bg-background text-muted-foreground hover:bg-accent",
-                          )}
-                        >
-                          {s.label}
-                        </button>
-                      );
-                    })}
-
-                    {!isEnrolled && canEnroll ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title={`Remover ${r.studentName} da aula`}
-                        aria-label={`Remover ${r.studentName} da aula`}
-                        disabled={cancelReservationMut.isPending}
-                        onClick={async () => {
-                          const ok = await confirmAction({
-                            title: "Remover da aula?",
-                            description: `${r.studentName} sai desta aula. Se houver cobrança avulsa em aberto, ela é cancelada.`,
-                            confirmLabel: "Remover",
-                            variant: "destructive",
-                          });
-                          if (!ok) return;
-                          cancelReservationMut.mutate(
-                            { sessionId, studentId: r.studentId },
-                            {
-                              onSuccess: () =>
-                                toast.success("Aluno removido da aula."),
-                              onError: (err) =>
-                                toast.error(
-                                  getErrorMessage(err, "Não foi possível remover o aluno da aula."),
-                                ),
-                            },
-                          );
-                        }}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </ListRow>
-            );
-          })}
-        </ListContainer>
+                </ListRow>
+              );
+            })}
+          </ListContainer>
+        </TooltipProvider>
       )}
 
       <StudentProgressDialog

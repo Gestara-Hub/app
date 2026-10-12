@@ -180,6 +180,14 @@ O visual vem da **trilha** (`ModalityProgressionTrack.style`), não da área, po
 - Textos do editor seguem o estilo: "Quando troca de faixa ou grau" ou "Quando avança de nível/módulo/fase", "Adicionar fase" etc.
 - Sugestões rápidas de nome de modalidade seguem a área (Lutas mantém a lista de lutas; Personalizado não mostra sugestões).
 
+#### Faixa etária por nível (12/10/2026)
+
+- Cada nível pode ter **idade de / até** (`ProgressionLevelStep.minAge` / `maxAge`, opcionais). No editor da trilha, o interruptor "Idade por faixa/nível" mostra os campos; desligar apaga as idades.
+- Modelo Jiu-Jitsu com as idades da IBJJF/CBJJ: Branca (todas), Cinza 4–15, Amarela 7–15, Laranja 10–15, Verde 13–15, Azul 16+, Roxa 16+, Marrom 18+, Preta 19+. Trilhas `bjj_adult` já salvas ganharam essas idades (migração v27).
+- Na ficha do aluno, "Nova faixa" e "Faixa atual" mostram só os níveis da idade **na data escolhida** (data de nascimento do cadastro). "Mostrar todas" libera as exceções, com o aviso "fora da idade". Sem data de nascimento, mostra tudo com a dica para cadastrá-la.
+- O próximo nível sugerido e o "Apto" pulam os níveis de outra idade (16 anos na Verde → Azul).
+- Quem passou da idade do nível atual aparece com o selo **"Trocar faixa"** na lista de chamada e na turma, no aviso da ficha e no Dashboard ("N alunos precisam trocar de faixa pela idade").
+
 Fora de escopo (recurso novo, não configuração): capacidade por aparelho, raia, turmas por faixa etária e o card "Prontos para graduar/avançar" no dashboard.
 
 ---

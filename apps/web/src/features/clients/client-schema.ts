@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { z } from "zod";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,35 @@ export const clientFormSchema = z.object({
       message: "Informe um e-mail válido.",
     }),
   notes: z.string().trim().optional(),
+  birthDate: z
+    .string()
+    .optional()
+    // Data local (nao UTC), como no resto do app.
+    .refine((v) => !v || v <= format(new Date(), "yyyy-MM-dd"), {
+      message: "A data de nascimento não pode ser futura.",
+    }),
+  guardians: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Informe o nome do responsável."),
+        relationship: z.string().trim().optional(),
+        phone: z
+          .string()
+          .trim()
+          .optional()
+          .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
+            message: "Informe um telefone válido.",
+          }),
+        email: z
+          .string()
+          .trim()
+          .optional()
+          .refine((v) => !v || EMAIL_RE.test(v), {
+            message: "Informe um e-mail válido.",
+          }),
+      }),
+    )
+    .optional(),
 
   // Endereço estruturado (opcional)
   address: addressSchema.optional(),

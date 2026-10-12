@@ -39,6 +39,8 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
+import { BirthdayBadge } from "@/components/shared/birthday-badge";
+import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useSegmentVocabulary } from "@/features/settings";
@@ -535,10 +537,20 @@ export function TurmaDetailView({ id }: { id: string }) {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
+                            {/* Linha 1: nome e o que pede atencao */}
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="truncate text-sm font-medium">
                                 {e.studentName}
                               </p>
+                              <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />
+                              <LevelChangeBadge
+                                level={currentLvl}
+                                birthDate={student?.birthDate}
+                                levelWord={vocabulary.level}
+                              />
+                            </div>
+                            {/* Linha 2: faixa/nivel sempre no mesmo lugar, depois contato */}
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                               {currentLvl && student ? (
                                 <button
                                   type="button"
@@ -555,15 +567,15 @@ export function TurmaDetailView({ id }: { id: string }) {
                                   />
                                 </button>
                               ) : null}
+                              <span className="truncate text-xs text-muted-foreground">
+                                {[
+                                  phone ? formatPhone(phone) : null,
+                                  `desde ${format(parseISO(e.enrolledAt), "dd/MM/yy")}`,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
                             </div>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {[
-                                phone ? formatPhone(phone) : null,
-                                `desde ${format(parseISO(e.enrolledAt), "dd/MM/yy")}`,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
                           </div>
                           <FreqBadge
                             rate={e.attendanceRate}

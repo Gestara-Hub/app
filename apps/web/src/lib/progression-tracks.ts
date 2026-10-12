@@ -134,6 +134,7 @@ export const PROGRESSION_TEMPLATES: Record<
     track: ModalityProgressionTrack;
   }
 > = {
+  // Idades por faixa: sistema de graduacao IBJJF/CBJJ (infantil 4 a 15, adulto 16+).
   bjj_adult: {
     label: "Jiu-Jitsu (Faixas + 4 Graus)",
     description:
@@ -147,14 +148,14 @@ export const PROGRESSION_TEMPLATES: Record<
       targetMonths: 6,
       levels: [
         { id: "lvl-white", name: "Faixa Branca", color: "white", maxSubLevels: 4 },
-        { id: "lvl-kids-gray", name: "Faixa Cinza", color: "gray", maxSubLevels: 4 },
-        { id: "lvl-kids-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 4 },
-        { id: "lvl-kids-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 4 },
-        { id: "lvl-kids-green", name: "Faixa Verde", color: "green", maxSubLevels: 4 },
-        { id: "lvl-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 4 },
-        { id: "lvl-purple", name: "Faixa Roxa", color: "purple", maxSubLevels: 4 },
-        { id: "lvl-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 4 },
-        { id: "lvl-black", name: "Faixa Preta", color: "black", maxSubLevels: 6 },
+        { id: "lvl-kids-gray", name: "Faixa Cinza", color: "gray", maxSubLevels: 4, minAge: 4, maxAge: 15 },
+        { id: "lvl-kids-yellow", name: "Faixa Amarela", color: "yellow", maxSubLevels: 4, minAge: 7, maxAge: 15 },
+        { id: "lvl-kids-orange", name: "Faixa Laranja", color: "orange", maxSubLevels: 4, minAge: 10, maxAge: 15 },
+        { id: "lvl-kids-green", name: "Faixa Verde", color: "green", maxSubLevels: 4, minAge: 13, maxAge: 15 },
+        { id: "lvl-blue", name: "Faixa Azul", color: "blue", maxSubLevels: 4, minAge: 16 },
+        { id: "lvl-purple", name: "Faixa Roxa", color: "purple", maxSubLevels: 4, minAge: 16 },
+        { id: "lvl-brown", name: "Faixa Marrom", color: "brown", maxSubLevels: 4, minAge: 18 },
+        { id: "lvl-black", name: "Faixa Preta", color: "black", maxSubLevels: 6, minAge: 19 },
       ],
     },
   },
@@ -505,7 +506,9 @@ export function resolveTrackStyle(track?: ModalityProgressionTrack): Progression
   if (!track) return "levels";
   if (track.style) return track.style;
   const key = track.templateKey;
-  if (key && key !== "custom") return PROGRESSION_TEMPLATES[key].track.style ?? "levels";
+  // Chave desconhecida (dado antigo) cai na regra pelos nomes, sem quebrar.
+  const template = key && key !== "custom" ? PROGRESSION_TEMPLATES[key] : undefined;
+  if (template) return template.track.style ?? "levels";
   return track.levels.some((l) => isMartialArtsLevelName(l.name)) ? "belt" : "levels";
 }
 
@@ -518,10 +521,58 @@ export function resolveModalityTrack(
   return inferDefaultTrackForModalityName(modality?.name ?? "");
 }
 
+// --- Faixa etaria por nivel ------------------------------------------------
+
+/** Idade completa em `onDate` (YYYY-MM-DD), pela data local. Sem nascimento = null. */
+export function ageAt(birthDate: string | undefined, onDate: string): number | null {
+  if (!birthDate || birthDate.length < 10) return null;
+  const [by, bm, bd] = birthDate.split("-").map(Number);
+  const [y, m, d] = onDate.split("-").map(Number);
+  let age = y - by;
+  if (m < bm || (m === bm && d < bd)) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+/** O nivel vale para a idade? Sem idade conhecida ou sem limites = vale. */
+export function isLevelAllowedForAge(level: ProgressionLevelStep, age: number | null): boolean {
+  if (age === null) return true;
+  if (level.minAge !== undefined && age < level.minAge) return false;
+  if (level.maxAge !== undefined && age > level.maxAge) return false;
+  return true;
+}
+
+/** "4 a 15 anos", "a partir de 16 anos", "até 15 anos" ou null (todas as idades). */
+export function levelAgeLabel(level: Pick<ProgressionLevelStep, "minAge" | "maxAge">): string | null {
+  const { minAge, maxAge } = level;
+  if (minAge !== undefined && maxAge !== undefined) return `${minAge} a ${maxAge} anos`;
+  if (minAge !== undefined) return `a partir de ${minAge} anos`;
+  if (maxAge !== undefined) return `até ${maxAge} anos`;
+  return null;
+}
+
+/** A trilha usa idade em algum nivel? (liga o filtro e o editor de idades) */
+export function trackUsesAges(track?: ModalityProgressionTrack): boolean {
+  return Boolean(track?.levels.some((l) => l.minAge !== undefined || l.maxAge !== undefined));
+}
+
+/**
+ * O aluno "passou da idade" do nivel atual (ex.: fez 16 anos na faixa Verde,
+ * que vai ate 15): precisa trocar de nivel.
+ */
+export function isAgedOutOfLevel(level: ProgressionLevelStep | undefined, age: number | null): boolean {
+  return Boolean(level && age !== null && level.maxAge !== undefined && age > level.maxAge);
+}
+
+/**
+ * Proximo passo na trilha. Com `age`, pula os niveis de outra faixa etaria:
+ * um aluno de 16 anos na Verde (ate 15) vai direto para a Azul; e nao ganha
+ * grau num nivel que ja nao vale para a idade dele.
+ */
 export function computeNextPromotionStep(
   track: ModalityProgressionTrack,
   currentLevelIdOrName: string,
   currentSubLevel: number,
+  age: number | null = null,
 ): {
   nextLevel: ProgressionLevelStep;
   nextSubLevel: number;
@@ -536,19 +587,18 @@ export function computeNextPromotionStep(
   const currentStep = idx >= 0 ? track.levels[idx] : track.levels[0];
   const currentIndex = idx >= 0 ? idx : 0;
 
-  if (currentSubLevel < currentStep.maxSubLevels) {
+  if (currentSubLevel < currentStep.maxSubLevels && isLevelAllowedForAge(currentStep, age)) {
     return {
       nextLevel: currentStep,
       nextSubLevel: currentSubLevel + 1,
       isNewBelt: false,
     };
   }
-  if (currentIndex + 1 < track.levels.length) {
-    return {
-      nextLevel: track.levels[currentIndex + 1],
-      nextSubLevel: 0,
-      isNewBelt: true,
-    };
+  const next = track.levels
+    .slice(currentIndex + 1)
+    .find((l) => isLevelAllowedForAge(l, age));
+  if (next) {
+    return { nextLevel: next, nextSubLevel: 0, isNewBelt: true };
   }
   return null;
 }

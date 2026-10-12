@@ -23,6 +23,8 @@ export interface ConfirmActionDialogProps {
   highlightAction?: "confirm" | "cancel";
   isPending?: boolean;
   onConfirm: () => Promise<void> | void;
+  /** Conteudo extra entre o texto e os botoes (ex.: campo de motivo). */
+  children?: ReactNode;
 }
 
 export function ConfirmActionDialog({
@@ -36,6 +38,7 @@ export function ConfirmActionDialog({
   highlightAction = "confirm",
   isPending = false,
   onConfirm,
+  children,
 }: ConfirmActionDialogProps) {
   const handleConfirm = async (event: React.MouseEvent) => {
     event.preventDefault();
@@ -49,6 +52,7 @@ export function ConfirmActionDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           {highlightAction === "cancel" ? (
             <>

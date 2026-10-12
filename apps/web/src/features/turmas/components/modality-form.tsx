@@ -39,6 +39,7 @@ import {
   PROGRESSION_TEMPLATES,
   extractTipColorFromText,
   resolveTrackStyle,
+  trackUsesAges,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
@@ -83,9 +84,32 @@ const BELT_COLORS = Object.keys(BELT_COLOR_META) as ProgressionBeltColor[];
 /** Cores do estilo nivel: as mesmas, sem a "Neutra" (sem cor ja e o neutro). */
 const LEVEL_COLORS = BELT_COLORS.filter((c) => c !== "slate");
 const NO_COLOR = "none";
+/** Campo de idade compacto, sem as setinhas do input numerico. */
+const AGE_INPUT_CLASS =
+  "h-7 w-16 px-2 text-base tabular-nums md:text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 type TemplateKey = Exclude<ProgressionTrackTemplateKey, "custom">;
 const ALL_TEMPLATE_KEYS = Object.keys(PROGRESSION_TEMPLATES) as TemplateKey[];
+
+function isTemplateKey(value: string): value is TemplateKey {
+  return Object.prototype.hasOwnProperty.call(PROGRESSION_TEMPLATES, value);
+}
+
+/** Assinatura comparavel da trilha: niveis e metas (ignora ids e o rotulo do modelo). */
+function trackSignature(t: ModalityProgressionTrack): string {
+  return JSON.stringify({
+    criteriaType: t.criteriaType,
+    targetAttendances: t.targetAttendances,
+    targetMonths: t.targetMonths,
+    levels: t.levels.map((l) => [l.name.trim(), l.color ?? null, l.tipColor ?? null, l.maxSubLevels, l.minAge ?? null, l.maxAge ?? null]),
+  });
+}
+
+/** A trilha foi personalizada (difere de todos os modelos)? */
+function isCustomizedTrack(t: ModalityProgressionTrack): boolean {
+  const signature = trackSignature(t);
+  return !ALL_TEMPLATE_KEYS.some((k) => trackSignature(PROGRESSION_TEMPLATES[k].track) === signature);
+}
 
 interface ModalityFormProps {
   modality?: Category;
@@ -142,6 +166,11 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
 
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
 
+  // Faixa etaria por nivel: ligada quando a trilha ja tem idade (ex.: modelo
+  // de Jiu-Jitsu) ou quando o usuario liga o interruptor.
+  const [agesEnabled, setAgesEnabled] = useState(false);
+  const showAges = agesEnabled || trackUsesAges(track);
+
   // Estilo vem da trilha (faixa nas lutas, nivel nas demais), nao da area.
   const trackStyle = resolveTrackStyle(track);
   const isBelt = trackStyle === "belt";
@@ -159,9 +188,11 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
   const otherTemplates = ALL_TEMPLATE_KEYS.filter((k) => !suggestedTemplates.includes(k));
 
   async function applyTemplate(key: TemplateKey) {
-    if (key === track.templateKey) return;
+    if (key === track.templateKey || !isTemplateKey(key)) return;
+    // So pergunta quando ha personalizacao de verdade (niveis ou metas diferentes
+    // de qualquer modelo); trocar entre modelos intactos e direto.
     if (
-      track.templateKey === "custom" &&
+      isCustomizedTrack(track) &&
       !(await confirmAction({
         title: "Trocar o modelo da trilha?",
         description: "Os níveis e metas que você personalizou serão substituídos pelos do modelo.",
@@ -480,13 +511,15 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                       <Select
                         value={track.templateKey ?? "custom"}
                         onValueChange={(val) => {
-                          if (val !== "custom") void applyTemplate(val as TemplateKey);
+                          // O Select pode emitir "" (ex.: quando a opcao "Personalizado"
+                          // some da lista); so modelos conhecidos sao aplicados.
+                          if (isTemplateKey(val)) void applyTemplate(val);
                         }}
                       >
                         <SelectTrigger className="h-8 w-full bg-background text-xs">
                           <SelectValue>
                             {track.templateKey && track.templateKey !== "custom"
-                              ? PROGRESSION_TEMPLATES[track.templateKey].label
+                              ? (PROGRESSION_TEMPLATES[track.templateKey]?.label ?? "Personalizado")
                               : "Personalizado"}
                           </SelectValue>
                         </SelectTrigger>
@@ -618,6 +651,26 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                         <label className="text-[11px] font-medium text-muted-foreground">
                           {levelPluralWord} da trilha ({track.levels.length})
                         </label>
+                        <label className="ml-auto mr-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Switch
+                            checked={showAges}
+                            onCheckedChange={(checked) => {
+                              setAgesEnabled(checked);
+                              // Desligar apaga as idades: a trilha volta a valer para todos.
+                              // Sem idade cadastrada, nao ha o que apagar (nao vira "personalizado").
+                              if (!checked && trackUsesAges(track)) {
+                                setTrack((prev) => ({
+                                  ...prev,
+                                  templateKey: "custom",
+                                  levels: prev.levels.map((l) => ({ ...l, minAge: undefined, maxAge: undefined })),
+                                }));
+                              }
+                            }}
+                            aria-label="Definir idade por nível"
+                            className="scale-75"
+                          />
+                          Idade por {levelWord.toLowerCase()}
+                        </label>
                         <Button
                           type="button"
                           variant="outline"
@@ -662,7 +715,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                             setDragOverIndex(null);
                           }}
                           className={cn(
-                            "flex items-center gap-1.5 px-2 py-1.5 transition-colors",
+                            "flex flex-wrap items-center gap-1.5 px-2 py-1.5 transition-colors",
                             draggedIndex === index
                               ? "bg-primary/10 opacity-80"
                               : "hover:bg-muted/25",
@@ -942,6 +995,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                             </Select>
                           )}
 
+
                           <Button
                             type="button"
                             variant="ghost"
@@ -953,6 +1007,48 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
+
+                          {/* Faixa etaria em linha propria (sem espremer a linha do nivel) */}
+                          {showAges ? (
+                            <div className="flex basis-full items-center gap-2 pb-0.5 pl-9 text-xs text-muted-foreground">
+                              <span className="font-medium">Idade</span>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={120}
+                                value={step.minAge ?? ""}
+                                onChange={(e) =>
+                                  updateStep(index, {
+                                    minAge: e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
+                                  })
+                                }
+                                placeholder="de"
+                                aria-label={`Idade mínima: ${step.name || levelWord}`}
+                                className={AGE_INPUT_CLASS}
+                              />
+                              <span>a</span>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                max={120}
+                                value={step.maxAge ?? ""}
+                                onChange={(e) =>
+                                  updateStep(index, {
+                                    maxAge: e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
+                                  })
+                                }
+                                placeholder="até"
+                                aria-label={`Idade máxima: ${step.name || levelWord}`}
+                                className={AGE_INPUT_CLASS}
+                              />
+                              <span>anos</span>
+                              <span className="hidden text-[11px] text-muted-foreground/70 sm:inline">
+                                · vazio = sem limite
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>

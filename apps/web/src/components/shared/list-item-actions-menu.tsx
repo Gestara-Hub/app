@@ -114,7 +114,8 @@ export function ListItemContextMenu({
 }) {
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="block">{children}</ContextMenuTrigger>
+      {/* h-full: em grade de cards, o card ocupa a altura da linha (todos iguais) */}
+      <ContextMenuTrigger className="block h-full">{children}</ContextMenuTrigger>
       <ContextMenuContent className="min-w-48" onCloseAutoFocus={onCloseAutoFocus}>
         <ActionItems actions={actions} kind="context" />
       </ContextMenuContent>

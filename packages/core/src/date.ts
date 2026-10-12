@@ -24,3 +24,36 @@ export function isPastSlot(date: string | undefined, start: string): boolean {
   if (date > today) return false;
   return Boolean(start) && start < nowTime();
 }
+
+const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function utcDayOf(iso: string): number {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+/**
+ * Data curta e relativa (pt-BR) para listas e historicos:
+ * - "hoje", "ontem", "há 3 dias" (ate 6 dias); no futuro "amanhã", "em 3 dias";
+ * - "28 jan" no mesmo ano;
+ * - "01/2026" em outro ano.
+ * Com `relative: false`, so a forma curta ("28 jan" / "01/2026").
+ */
+export function relativeDateLabel(
+  iso: string,
+  opts: { today?: string; relative?: boolean } = {},
+): string {
+  if (!iso || iso.length < 10) return iso ?? "";
+  const today = opts.today ?? todayISO();
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (opts.relative !== false) {
+    const diff = Math.round((utcDayOf(today) - utcDayOf(iso)) / 86_400_000);
+    if (diff === 0) return "hoje";
+    if (diff === 1) return "ontem";
+    if (diff === -1) return "amanhã";
+    if (diff > 1 && diff <= 6) return `há ${diff} dias`;
+    if (diff < -1 && diff >= -6) return `em ${-diff} dias`;
+  }
+  if (y === Number(today.slice(0, 4))) return `${d} ${MONTHS_SHORT[m - 1]}`;
+  return `${String(m).padStart(2, "0")}/${y}`;
+}

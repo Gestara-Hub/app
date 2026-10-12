@@ -85,3 +85,17 @@ Estas regras já estão implementadas.
 - Bolsista integral sem plano não herda o plano da turma (a regra de retrocompatibilidade "aluno sem plano em turma com plano" o ignora). Trocar a bolsa ou sair dela cancela as isentas futuras e recria pela regra nova.
 - Migração do mock (v26): desconto de 100% vira bolsa integral e mensalidades de R$ 0 em aberto viram "Isento".
 
+## Troca de plano e cobrança em dobro (12/10/2026)
+
+- **Regra 1 (proteção de fundo):** nunca duas mensalidades para os mesmos dias do mesmo aluno, **em qualquer plano** (`membershipPeriodTaken`). Vale para a 1ª cobrança da troca de plano e para a geração automática. Cancelada pelo sistema libera o período; cancelada pelo usuário só ocupa o período no **mesmo plano** (a geração automática não a recria, mas a correção de plano pode cobrar o período no plano novo).
+- **Regra 2 (troca de plano):** período atual **em aberto** → é cancelado pelo sistema e o plano novo cobra a partir do início (cobre "plano errado, ainda não pago"). Período atual **pago** → o cadastro sugere o "Início do plano" no dia seguinte ao último período pago e avisa: "O período de 11/10 a 31/10 já foi pago no plano Pro. O plano novo vale a partir de 01/11. Se o plano estava errado, desfaça o pagamento em Mensalidades antes de trocar." Se o início ficar dentro do período pago, ele é pulado (não é cobrado de novo).
+- **Regra 3 (motivo do cancelamento):** "Cancelar cobrança" tem o campo **Motivo (opcional)**, texto livre com sugestões (Plano errado, Cobrança duplicada, Aluno desistiu). Fica em `Charge.cancelReason`, aparece na linha cancelada e na Auditoria. Cancelamentos do sistema mostram a nota deles (ex.: "Cancelada na inativação do aluno").
+- **Substituída** (12/10/2026): cobrança cancelada pelo sistema porque outra tomou o lugar (troca de plano, data de início, regra de cobrança, desconto ou bolsa) fica com `Charge.replaced` e a nota "Substituída pela troca de ...". Aparece como **"Substituída"** (cinza), **não conta** no card "Cancelado" (não é dinheiro perdido), fica **oculta da lista por padrão** ("N cobranças substituídas... estão ocultas. Mostrar") e tem o filtro "Substituídas". Sem ações (reabrir cobraria em dobro). Canceladas à mão, na inativação e na saída da aula continuam "Cancelada" e contam no card. Migração v28 converte as antigas pelas notas.
+- **Reabrir** uma cancelada é recusado quando outra mensalidade já cobre o mesmo período.
+- Fora de escopo: cobrar a diferença proporcional num upgrade (seria uma ação separada, "Cobrar diferença").
+
+## Inativação com mensalidades em aberto (12/10/2026)
+
+- Ao inativar, mensalidades de **períodos que ainda não começaram** são sempre canceladas (como antes).
+- Se houver mensalidades **em aberto de períodos já iniciados** (pendentes ou atrasadas), o diálogo pergunta: **"Manter para receber"** (padrão: continuam como dívida em Mensalidades) ou **"Cancelar a cobrança"** (canceladas como decisão do usuário, motivo "Aluno inativado", contam no card "Cancelado" e podem ser reabertas). `clientsService.remove(id, { cancelOpenCharges })`.
+

@@ -137,7 +137,11 @@ const STORAGE_KEY = "gestarahub:db";
 //      sai `settings.businessSegments`. Migracao suave.
 // v26: bolsa de estudo — desconto de 100% vira bolsa integral e mensalidades
 //      de R$ 0 em aberto viram "Isento" (`waived`). Migracao suave.
-const SEED_VERSION = 26;
+// v27: faixa etaria por nivel; trilhas de Jiu-Jitsu (modelo bjj_adult) ja
+//      salvas ganham as idades da IBJJF/CBJJ nos niveis sem idade. Migracao suave.
+// v28: cobrancas canceladas pelo sistema por troca (plano, regra, bolsa) viram
+//      "Substituída" (`replaced`), fora do total de canceladas. Migracao suave.
+const SEED_VERSION = 28;
 
 interface PersistedBlob {
   v: number;
@@ -240,6 +244,46 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
           const plan = tenant.plans.find((p) => p.id === charge.planId);
           if (plan) charge.listAmountCents = plan.priceCents;
         }
+      }
+    }
+  }
+  if (fromVersion < 27) {
+    const bjjAges: Record<string, { minAge: number; maxAge?: number }> = {
+      "lvl-kids-gray": { minAge: 4, maxAge: 15 },
+      "lvl-kids-yellow": { minAge: 7, maxAge: 15 },
+      "lvl-kids-orange": { minAge: 10, maxAge: 15 },
+      "lvl-kids-green": { minAge: 13, maxAge: 15 },
+      "lvl-blue": { minAge: 16 },
+      "lvl-purple": { minAge: 16 },
+      "lvl-brown": { minAge: 18 },
+      "lvl-black": { minAge: 19 },
+    };
+    for (const tenant of Object.values(data.tenants)) {
+      for (const category of tenant.categories) {
+        const track = category.progressionTrack;
+        if (track?.templateKey !== "bjj_adult") continue;
+        for (const level of track.levels) {
+          const ages = bjjAges[level.id];
+          if (!ages || level.minAge !== undefined || level.maxAge !== undefined) continue;
+          level.minAge = ages.minAge;
+          if (ages.maxAge !== undefined) level.maxAge = ages.maxAge;
+        }
+      }
+    }
+  }
+  if (fromVersion < 28) {
+    const replacedNotes: Record<string, string> = {
+      "Cancelada por troca de plano": "Substituída pela troca de plano",
+      "Cancelada por troca da regra de cobrança": "Substituída pela troca da regra de cobrança",
+      "Cancelada por troca da bolsa": "Substituída pela troca da bolsa",
+    };
+    for (const tenant of Object.values(data.tenants)) {
+      for (const charge of tenant.charges) {
+        if (charge.status !== "canceled" || charge.canceledBy !== "system") continue;
+        const note = charge.notes ? replacedNotes[charge.notes] : undefined;
+        if (!note) continue;
+        charge.replaced = true;
+        charge.notes = note;
       }
     }
   }

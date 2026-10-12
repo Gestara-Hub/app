@@ -232,6 +232,8 @@ function SkeletonRows({ showAction }: { showAction: boolean }) {
   ));
 }
 
+const DEFAULT_STATUS: "all" | RecordStatus = "active";
+
 export function ModalitiesList({
   canManage,
   onEdit,
@@ -239,7 +241,8 @@ export function ModalitiesList({
   onReactivate,
 }: ModalitiesListProps) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  // Padrao: so ativas (o dia a dia); inativas ficam a um clique no filtro.
+  const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("modalities", "list");
 
   const filter: CategoryFilter = {
@@ -251,12 +254,13 @@ export function ModalitiesList({
   const modalities = data ?? [];
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = status !== "all";
+  // O padrao (ativas) nao conta como filtro aplicado; limpar volta para ele.
+  const hasFilters = status !== DEFAULT_STATUS;
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setStatus("all");
+    setStatus(DEFAULT_STATUS);
   };
 
   let items: ReactNode[] = [];

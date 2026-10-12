@@ -37,6 +37,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
+import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
@@ -367,6 +368,7 @@ function ClientRow({
                 {client.name}
               </p>
               <RecordStatusBadge status={client.status} />
+              <BirthdayBadge birthDate={client.birthDate} showUpcoming />
               {isClasses ? (
                 <ClientProgressionBadges
                   client={client}
@@ -499,7 +501,7 @@ function ClientCard({
         }
       }}
       className={cn(
-        "group flex flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all",
+        "group flex h-full flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all",
         canManage &&
           "cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
@@ -514,6 +516,7 @@ function ClientCard({
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <RecordStatusBadge status={client.status} />
+                <BirthdayBadge birthDate={client.birthDate} showUpcoming compact />
                 {isClasses ? (
                   <ClientProgressionBadges
                     client={client}
@@ -645,6 +648,8 @@ function ClientSkeletonCards({
   );
 }
 
+const DEFAULT_STATUS: "all" | RecordStatus = "active";
+
 export function ClientsList({
   canManage,
   onEdit,
@@ -654,7 +659,8 @@ export function ClientsList({
 }: ClientsListProps) {
   const isClasses = useModel() === "classes";
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
+  const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("clients", "list");
 
   const filter: ClientFilter = {
@@ -677,12 +683,13 @@ export function ClientsList({
   );
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = status !== "all";
+  // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
+  const hasFilters = status !== DEFAULT_STATUS;
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setStatus("all");
+    setStatus(DEFAULT_STATUS);
   };
 
   let items: ReactNode[] = [];

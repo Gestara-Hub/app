@@ -47,8 +47,13 @@ export interface StudentPromotionHistoryEntry {
   monthsInLevel?: number;
   isExam?: boolean;
   notes?: string;
+  /** Quem graduou (professor ou banca), texto livre. */
+  examiner?: string;
   createdAt: DateTimeISO;
 }
+
+/** Como o aluno chegou na modalidade ("Ponto de partida"). */
+export type StudentProgressionOrigin = "started_here" | "transfer" | "before_system";
 
 export interface StudentModalityProgression {
   modalityId: Id;
@@ -60,6 +65,12 @@ export interface StudentModalityProgression {
   maxSubLevels?: number;
   promotedAt: DateISO;
   initialAttendanceOffset?: number;
+  /** Ponto de partida: comecou aqui, veio de outra academia ou ja treinava antes do sistema. */
+  origin?: StudentProgressionOrigin;
+  /** Academia de origem (so `transfer`). */
+  originAcademy?: string;
+  /** Professor que graduou na origem (so `transfer`). */
+  originTeacher?: string;
   nextExamDate?: DateISO;
   strengths: string[];
   focusAreas: string[];
@@ -83,12 +94,25 @@ export interface StudentProgressionOverview {
   items: StudentModalityOverviewItem[];
 }
 
+/** Responsavel pelo aluno (pais, avos, tutor). */
+export interface StudentGuardian {
+  name: string;
+  /** Parentesco em texto livre ("Mãe", "Pai", "Avó"...). */
+  relationship?: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface Client {
   id: Id;
   organizationId: Id;
   name: string;
   phone: string;
   email?: string;
+  /** Aniversariantes do mes/dia (relatorio, avisos, mensagem de parabens). */
+  birthDate?: DateISO;
+  /** Responsaveis (menores de idade ou contato extra). */
+  guardians?: StudentGuardian[];
   notes?: string;
   address?: Address;
   // Gestão de planos e mensalidade (vínculo no aluno)

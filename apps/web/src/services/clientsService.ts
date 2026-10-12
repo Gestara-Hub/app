@@ -35,6 +35,7 @@ import {
   cancelOpenMembershipCharges,
   chargeStartedMembershipPeriods,
   isPlanlessScholar,
+  membershipPeriodTaken,
   planlessScholarCharges,
   scholarshipChargeFields,
   studentMembershipTerms,
@@ -127,6 +128,14 @@ function validateClient(
   if (has("email") && payload.email && !EMAIL_RE.test(payload.email)) {
     fields.push({ field: "email", message: "Informe um e-mail válido." });
   }
+  if (has("birthDate") && payload.birthDate && payload.birthDate > todayISO()) {
+    fields.push({ field: "birthDate", message: "A data de nascimento não pode ser futura." });
+  }
+  payload.guardians?.forEach((g, i) => {
+    if (!g.name?.trim()) {
+      fields.push({ field: `guardians.${i}.name`, message: "Informe o nome do responsável." });
+    }
+  });
   // So a bolsa integral dispensa plano; a parcial cobra uma parte dele.
   const d = payload.discount;
   if (d?.scholarship && !payload.planId && !(d.type === "percentage" && d.value >= 100)) {
@@ -173,6 +182,8 @@ export const clientsService = {
         name: payload.name.trim(),
         phone: payload.phone.trim(),
         email: payload.email?.trim() || undefined,
+        birthDate: payload.birthDate || undefined,
+        guardians: payload.guardians?.length ? payload.guardians : undefined,
         notes: payload.notes?.trim() || undefined,
         address: payload.address,
         planId: payload.planId || undefined,
@@ -224,8 +235,9 @@ export const clientsService = {
         Boolean(updated.planId) &&
         (current.planId !== updated.planId || current.planStartDate !== updated.planStartDate);
       if (planChanged && current.planId && updated.planStartDate) {
-        cancelOpenMembershipCharges(updated.id, updated.planStartDate, "Cancelada por troca de plano", {
+        cancelOpenMembershipCharges(updated.id, updated.planStartDate, "Substituída pela troca de plano", {
           inclusive: true,
+          replaced: true,
         });
       }
       // Troca da regra (momento do pagamento, entrada no meio do periodo ou dia
@@ -246,7 +258,9 @@ export const clientsService = {
           // Desconto ou bolsa (valor, tipo, validade) muda o valor dos proximos periodos.
           JSON.stringify(current.discount ?? null) !== JSON.stringify(updated.discount ?? null));
       if (!planChanged && rulesChanged && current.planId === updated.planId) {
-        cancelOpenMembershipCharges(updated.id, todayISO(), "Cancelada por troca da regra de cobrança");
+        cancelOpenMembershipCharges(updated.id, todayISO(), "Substituída pela troca da regra de cobrança", {
+          replaced: true,
+        });
       }
       if (
         updated.planId &&
@@ -254,15 +268,18 @@ export const clientsService = {
         (payload.initialCharge.amountCents > 0 || updated.discount?.scholarship)
       ) {
         const charge = initialMembershipCharge(updated, payload.initialCharge);
-        const exists = store.charges.some(
-          (c) =>
-            c.kind === "membership" &&
-            c.studentId === updated.id &&
-            c.planId === updated.planId &&
-            c.status !== "canceled" &&
-            (c.periodStart ? c.periodStart === charge.periodStart : c.competence === charge.competence),
-        );
-        if (!exists) store.charges.push(charge);
+        // Mesmo periodo ja cobrado (em qualquer plano, ex.: mes pago no plano
+        // antigo) nao gera outra mensalidade.
+        const taken =
+          charge.periodStart && charge.periodEnd
+            ? membershipPeriodTaken(updated.id, updated.planId, {
+                periodStart: charge.periodStart,
+                periodEnd: charge.periodEnd,
+                competence: charge.competence ?? "",
+                cycleIndex: charge.cycleIndex ?? 1,
+              })
+            : false;
+        if (!taken) store.charges.push(charge);
       }
 
       // Bolsista integral sem plano: trocar a bolsa ou sair dela cancela as
@@ -273,7 +290,9 @@ export const clientsService = {
           JSON.stringify(current.discount) !== JSON.stringify(updated.discount) ||
           current.planStartDate !== updated.planStartDate)
       ) {
-        cancelOpenMembershipCharges(updated.id, todayISO(), "Cancelada por troca da bolsa");
+        cancelOpenMembershipCharges(updated.id, todayISO(), "Substituída pela troca da bolsa", {
+          replaced: true,
+        });
       }
       ensurePlanlessScholarCharges(updated);
 
@@ -287,7 +306,13 @@ export const clientsService = {
   },
 
   // remove = inativacao logica; cliente permanece no historico.
-  remove(id: Id): Promise<void> {
+  /**
+   * Inativa o aluno. Mensalidades de periodos futuros sempre saem. As em aberto
+   * de periodos ja iniciados ficam como divida, salvo `cancelOpenCharges`: ai
+   * sao canceladas como decisao do usuario (motivo "Aluno inativado"), contam
+   * como nao cobradas e podem ser reabertas.
+   */
+  remove(id: Id, opts: { cancelOpenCharges?: boolean } = {}): Promise<void> {
     return simulateWrite(() => {
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
@@ -308,10 +333,24 @@ export const clientsService = {
       // Mensalidades de periodos que ainda nao comecaram deixam de valer; o que
       // ja foi usado continua em aberto como divida.
       const canceled = cancelOpenMembershipCharges(id, todayISO(), "Cancelada na inativação do aluno");
+      // Escolha do usuario: nao cobrar tambem o que ja estava em aberto.
+      let waivedDebt = 0;
+      if (opts.cancelOpenCharges) {
+        const ts = nowIso();
+        for (const c of store.charges) {
+          if (c.kind !== "membership" || c.studentId !== id) continue;
+          if (c.status !== "pending" && c.status !== "overdue") continue;
+          c.status = "canceled";
+          c.canceledBy = "user";
+          c.cancelReason = "Aluno inativado";
+          c.updatedAt = ts;
+          waivedDebt += 1;
+        }
+      }
       auditLogService.record({
         action: "inactivated",
         target: { type: "client", id, label: name },
-        predicate: `inativou o ${clientNoun()} ${name}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}`,
+        predicate: `inativou o ${clientNoun()} ${name}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}${waivedDebt > 0 ? `; cancelou também ${plural(waivedDebt, "mensalidade em aberto", "mensalidades em aberto")} (não serão cobradas)` : ""}`,
       });
     });
   },
@@ -450,6 +489,7 @@ export const clientsService = {
     monthsInLevel?: number;
     isExam?: boolean;
     notes?: string;
+    examiner?: string;
   }): Promise<Client> {
     return simulateWrite(() => {
       const idx = store.clients.findIndex((c) => c.id === payload.studentId);
@@ -470,6 +510,7 @@ export const clientsService = {
         monthsInLevel: payload.monthsInLevel,
         isExam: payload.isExam,
         notes: payload.notes?.trim() || undefined,
+        examiner: payload.examiner?.trim() || undefined,
         createdAt: ts,
       };
 
@@ -483,6 +524,9 @@ export const clientsService = {
         maxSubLevels: payload.maxSubLevels ?? prev?.maxSubLevels ?? 4,
         promotedAt: payload.date,
         initialAttendanceOffset: 0,
+        origin: prev?.origin,
+        originAcademy: prev?.originAcademy,
+        originTeacher: prev?.originTeacher,
         nextExamDate: undefined,
         strengths: prev?.strengths ?? [],
         focusAreas: prev?.focusAreas ?? [],

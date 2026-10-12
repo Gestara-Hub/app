@@ -2,16 +2,13 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { addMonths, format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import {
   AlertCircle,
   Ban,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Info,
   Lock,
   QrCode,
@@ -32,6 +29,14 @@ import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { paymentMethodLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
@@ -48,6 +53,7 @@ import type {
 } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
+import { CompetencePicker } from "@/features/finance";
 import {
   useCancelCharge,
   useCharges,
@@ -74,6 +80,12 @@ const STATUS_CLASS: Record<ChargeStatus, string> = {
   canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
+
+/** Substituida: cancelada pelo sistema porque outra cobranca tomou o lugar. */
+const isReplaced = (c: ChargeView) => c.status === "canceled" && Boolean(c.replaced);
+const REPLACED_CLASS = "border-border/60 bg-muted/40 text-muted-foreground";
+const statusLabelOf = (c: ChargeView) => (isReplaced(c) ? "Substituída" : STATUS_LABEL[c.status]);
+const statusClassOf = (c: ChargeView) => (isReplaced(c) ? REPLACED_CLASS : STATUS_CLASS[c.status]);
 
 interface StudentBillingGroup {
   key: string;
@@ -274,12 +286,6 @@ function groupStatusOf(group: StudentBillingGroup): { status: ChargeStatus; labe
   return { status: "pending", label: STATUS_LABEL.pending };
 }
 
-/** "2026-09" -> "Setembro de 2026". */
-function competenceLabel(competence: string): string {
-  const label = format(parseISO(`${competence}-01`), "MMMM 'de' yyyy", { locale: ptBR });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
 /** Periodo de uso que a cobranca paga, quando conhecido ("01/10 a 31/10"). */
 function referenceLabel(c: ChargeView): string | null {
   return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
@@ -297,23 +303,50 @@ function getCycleTitle(c: ChargeView): string {
   return "Mensalidade";
 }
 
-const STATUS_FILTERS: { value: "all" | ChargeStatus; label: string }[] = [
-  { value: "all", label: "Todos" },
+/** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
+const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
+
+/** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
+function cancelReasonOf(c: ChargeView): string | undefined {
+  if (c.status !== "canceled") return undefined;
+  return c.cancelReason ?? (c.canceledBy === "system" ? c.notes : undefined);
+}
+
+const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
+  all: "Todos os tipos",
+  membership: "Mensalidades",
+  dropin: "Aulas avulsas",
+};
+
+/** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
+type StatusFilterValue = "all" | ChargeStatus | "replaced";
+
+const STATUS_FILTERS: { value: StatusFilterValue; label: string }[] = [
+  { value: "all", label: "Todos os status" },
   { value: "pending", label: "Pendentes" },
   { value: "overdue", label: "Atrasadas" },
   { value: "paid", label: "Pagas" },
   { value: "canceled", label: "Canceladas" },
   { value: "waived", label: "Isentas" },
+  { value: "replaced", label: "Substituídas" },
 ];
 
-function isChargeStatus(value: string | null): value is ChargeStatus {
+function isStatusFilterValue(value: string | null): value is Exclude<StatusFilterValue, "all"> {
   return (
     value === "pending" ||
     value === "overdue" ||
     value === "paid" ||
     value === "canceled" ||
-    value === "waived"
+    value === "waived" ||
+    value === "replaced"
   );
+}
+
+/** A cobranca entra no filtro? "Todos" esconde as substituidas (sao ruido). */
+function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean {
+  if (filter === "replaced") return isReplaced(c);
+  if (isReplaced(c)) return false;
+  return filter === "all" || c.status === filter;
 }
 
 function isChargeKind(value: string | null): value is ChargeKind {
@@ -336,7 +369,7 @@ function useBillingFilters() {
   const competence =
     monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam) ? monthParam : currentCompetence();
   const statusParam = searchParams.get("status");
-  const statusFilter: "all" | ChargeStatus = isChargeStatus(statusParam) ? statusParam : "all";
+  const statusFilter: StatusFilterValue = isStatusFilterValue(statusParam) ? statusParam : "all";
   const kindParam = searchParams.get("kind");
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
 
@@ -354,11 +387,22 @@ function useBillingFilters() {
 
   const setCompetence = (next: string) =>
     update({ month: next === currentCompetence() ? null : next });
-  const setStatusFilter = (next: "all" | ChargeStatus) =>
+  const setStatusFilter = (next: StatusFilterValue) =>
     update({ status: next === "all" ? null : next });
   const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
+  // Uma unica troca de URL: duas seguidas (status e tipo) se sobrescreviam,
+  // porque o router.replace ainda nao tinha atualizado a URL na segunda.
+  const clearFilters = () => update({ status: null, kind: null });
 
-  return { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter };
+  return {
+    competence,
+    statusFilter,
+    kindFilter,
+    setCompetence,
+    setStatusFilter,
+    setKindFilter,
+    clearFilters,
+  };
 }
 
 export function BillingView() {
@@ -367,9 +411,18 @@ export function BillingView() {
     () => true,
     () => false,
   );
-  const { competence, statusFilter, kindFilter, setCompetence, setStatusFilter, setKindFilter } =
+  const {
+    competence,
+    statusFilter,
+    kindFilter,
+    setCompetence,
+    setStatusFilter,
+    setKindFilter,
+    clearFilters,
+  } =
     useBillingFilters();
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [search, setSearch] = useState("");
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
   const shownChargeToCancel = useRetainedValue(chargeToCancel);
@@ -422,15 +475,14 @@ export function BillingView() {
   const query = normalizeText(search);
   const filteredList = list.filter(
     (c) =>
-      (statusFilter === "all" || c.status === statusFilter) &&
+      matchesStatusFilter(c, statusFilter) &&
       (query === "" || normalizeText(c.studentName).includes(query)),
   );
   const groups = groupCharges(filteredList);
   const hasListFilters = statusFilter !== "all" || kindFilter !== "all" || query !== "";
   const clearListFilters = () => {
     setSearch("");
-    setStatusFilter("all");
-    setKindFilter("all");
+    clearFilters();
   };
 
   // Isentas (bolsa integral) nao entram nos totais: R$ 0 e nada a receber.
@@ -445,11 +497,10 @@ export function BillingView() {
   const overdueList = list.filter((c) => c.status === "overdue");
   const overdueCents = overdueList.reduce((s, c) => s + c.amountCents, 0);
 
-  const canceledList = list.filter((c) => c.status === "canceled");
+  // So o que deixou de ser cobrado: substituida (troca de plano/regra/bolsa) nao e perda.
+  const canceledList = list.filter((c) => c.status === "canceled" && !isReplaced(c));
+  const replacedCount = list.filter(isReplaced).length;
   const canceledCents = canceledList.reduce((s, c) => s + c.amountCents, 0);
-
-  const shiftCompetence = (delta: number) =>
-    setCompetence(format(addMonths(parseISO(`${competence}-01`), delta), "yyyy-MM"));
 
   const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
@@ -504,6 +555,9 @@ export function BillingView() {
 
     // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
     if (c.status === "waived") return null;
+
+    // Substituida: outra cobranca ja cobre o periodo; nada a fazer nela.
+    if (isReplaced(c)) return null;
 
     if (c.status === "canceled") {
       return isSystemCanceled(c) ? (
@@ -596,7 +650,10 @@ export function BillingView() {
       <PageHeader
         title="Mensalidades"
         description="Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
-      />
+      >
+        {/* Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses) */}
+        <CompetencePicker competence={competence} onChange={setCompetence} />
+      </PageHeader>
 
       {!mounted ? (
         <Skeleton className="h-40 w-full rounded-md" />
@@ -754,108 +811,54 @@ export function BillingView() {
             </div>
           </div>
 
-          {/* Busca por aluno */}
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Buscar aluno..."
-            aria-label="Buscar aluno"
-          />
-
-          {/* Filters Bar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Competência</span>
-                <div className="inline-flex items-center rounded-md border border-border/70 bg-background">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-9 rounded-r-none"
-                    aria-label="Competência anterior"
-                    onClick={() => shiftCompetence(-1)}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <span
-                    className="min-w-36 px-2 text-center font-medium tabular-nums"
-                    aria-live="polite"
-                  >
-                    {competenceLabel(competence)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-9 rounded-l-none"
-                    aria-label="Próxima competência"
-                    onClick={() => shiftCompetence(1)}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="inline-flex rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setKindFilter("all")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md font-medium transition-colors",
-                    kindFilter === "all"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Todas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setKindFilter("membership")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md font-medium transition-colors",
-                    kindFilter === "membership"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Mensalidades
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setKindFilter("dropin")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md font-medium transition-colors",
-                    kindFilter === "dropin"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Aulas Avulsas
-                </button>
-              </div>
-
-              <div
-                role="group"
-                aria-label="Filtrar por situação"
-                className="inline-flex max-w-full overflow-x-auto rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs"
+          {/* Busca + filtros (padrao das listas: busca e selects lado a lado) */}
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar aluno..."
+              aria-label="Buscar aluno"
+            />
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Select
+                value={kindFilter}
+                onValueChange={(v) => setKindFilter(v as "all" | ChargeKind)}
               >
-                {STATUS_FILTERS.map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    aria-pressed={statusFilter === f.value}
-                    onClick={() => setStatusFilter(f.value)}
-                    className={cn(
-                      "shrink-0 rounded-md px-2.5 py-1 font-medium transition-colors",
-                      statusFilter === f.value
-                        ? "bg-background text-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+                <SelectTrigger className="sm:w-44" aria-label="Filtrar por tipo">
+                  <SelectValue>{KIND_FILTER_LABEL[kindFilter]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(KIND_FILTER_LABEL) as ("all" | ChargeKind)[]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {KIND_FILTER_LABEL[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
+              >
+                <SelectTrigger className="sm:w-44" aria-label="Filtrar por situação">
+                  <SelectValue>
+                    {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTERS.map((f) => {
+                    // Quantas ha no mes (com o tipo escolhido), para achar rapido.
+                    const count = list.filter((c) => matchesStatusFilter(c, f.value)).length;
+                    return (
+                      <SelectItem key={f.value} value={f.value}>
+                        <span className="flex w-full items-center justify-between gap-3">
+                          {f.label}
+                          <span className="tabular-nums text-muted-foreground">{count}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -867,6 +870,20 @@ export function BillingView() {
             hasFilters={hasListFilters}
             onClearFilters={clearListFilters}
           />
+          {statusFilter === "all" && replacedCount > 0 ? (
+            <p className="-mt-2 text-xs text-muted-foreground">
+              {replacedCount === 1
+                ? "1 cobrança substituída por troca de plano ou regra está oculta."
+                : `${replacedCount} cobranças substituídas por troca de plano ou regra estão ocultas.`}{" "}
+              <button
+                type="button"
+                onClick={() => setStatusFilter("replaced")}
+                className="font-medium text-primary hover:underline"
+              >
+                Mostrar
+              </button>
+            </p>
+          ) : null}
 
           {/* List */}
           <ListContainer
@@ -1059,10 +1076,10 @@ export function BillingView() {
                                   <span
                                     className={cn(
                                       "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shrink-0",
-                                      STATUS_CLASS[c.status],
+                                      statusClassOf(c),
                                     )}
                                   >
-                                    {STATUS_LABEL[c.status]}
+                                    {statusLabelOf(c)}
                                   </span>
                                   <PaidViaBadge charge={c} />
                                   <ScholarshipBadge charge={c} />
@@ -1121,10 +1138,10 @@ export function BillingView() {
                             <span
                               className={cn(
                                 "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                                STATUS_CLASS[c.status],
+                                statusClassOf(c),
                               )}
                             >
-                              {STATUS_LABEL[c.status]}
+                              {statusLabelOf(c)}
                             </span>
                           )}
                           <PaidViaBadge charge={c} />
@@ -1152,6 +1169,12 @@ export function BillingView() {
                             <>
                               <span>·</span>
                               <span>referente a {referenceLabel(c)}</span>
+                            </>
+                          ) : null}
+                          {cancelReasonOf(c) ? (
+                            <>
+                              <span>·</span>
+                              <span>{cancelReasonOf(c)}</span>
                             </>
                           ) : null}
                           {c.status === "paid" && c.method ? (
@@ -1194,7 +1217,10 @@ export function BillingView() {
       <ConfirmActionDialog
         open={chargeToCancel !== null}
         onOpenChange={(open) => {
-          if (!open) setChargeToCancel(null);
+          if (!open) {
+            setChargeToCancel(null);
+            setCancelReason("");
+          }
         }}
         title="Cancelar cobrança"
         description={
@@ -1223,14 +1249,43 @@ export function BillingView() {
         onConfirm={async () => {
           if (!chargeToCancel) return;
           try {
-            await cancelMut.mutateAsync(chargeToCancel.id);
+            await cancelMut.mutateAsync({ id: chargeToCancel.id, reason: cancelReason });
             toast.success("Cobrança cancelada com sucesso.");
             setChargeToCancel(null);
+            setCancelReason("");
           } catch (err) {
             toast.error(getErrorMessage(err, "Não foi possível cancelar a cobrança."));
           }
         }}
-      />
+      >
+        <div className="space-y-1.5">
+          <label htmlFor="cancel-reason" className="text-sm font-medium text-foreground">
+            Motivo (opcional)
+          </label>
+          <Input
+            id="cancel-reason"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Informe o motivo do cancelamento"
+            maxLength={120}
+            disabled={cancelMut.isPending}
+            className="text-base md:text-sm"
+          />
+          <div className="flex flex-wrap gap-1">
+            {CANCEL_REASON_SUGGESTIONS.map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                disabled={cancelMut.isPending}
+                onClick={() => setCancelReason(reason)}
+                className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                + {reason}
+              </button>
+            ))}
+          </div>
+        </div>
+      </ConfirmActionDialog>
     </>
   );
 }

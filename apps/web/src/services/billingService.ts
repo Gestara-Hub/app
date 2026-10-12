@@ -99,11 +99,12 @@ function recordChargeEvent(
   c: Charge,
   action: "status_changed" | "cancelled",
   verb: string,
+  reason?: string,
 ): void {
   auditLogService.record({
     action,
     target: { type: "charge", id: c.id, label: chargeLabel(c) },
-    predicate: `${verb} ${chargeLabel(c)} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})`,
+    predicate: `${verb} ${chargeLabel(c)} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})${reason ? `: ${reason}` : ""}`,
   });
 }
 
@@ -137,7 +138,9 @@ function validatePlan(payload: Partial<CreatePlan>): void {
  * sobreposicao (depois de mudar a regra os periodos podem nao bater o inicio, e
  * o mesmo dia nunca e cobrado duas vezes); dado antigo compara inicio/competencia.
  */
-function coversPeriod(c: Charge, planned: CompetenceCharge): boolean {
+type ChargePeriod = Pick<CompetenceCharge, "periodStart" | "periodEnd" | "competence" | "cycleIndex">;
+
+function coversPeriod(c: Charge, planned: ChargePeriod): boolean {
   if (c.periodStart && c.periodEnd) {
     return c.periodStart <= planned.periodEnd && c.periodEnd >= planned.periodStart;
   }
@@ -146,20 +149,30 @@ function coversPeriod(c: Charge, planned: CompetenceCharge): boolean {
 }
 
 /**
- * Ja existe cobranca deste aluno/plano para o periodo planejado? Canceladas nao
- * contam: o periodo cancelado pode ser gerado de novo.
+ * O periodo ja tem mensalidade deste aluno? Vale para QUALQUER plano: nunca duas
+ * cobrancas para os mesmos dias (ex.: troca de plano com o mes ja pago no plano
+ * antigo pula esse mes). Cancelada pelo usuario so ocupa o periodo no mesmo
+ * plano (a geracao automatica nao a recria; trocar o plano por correcao, sim).
+ * Cancelada pelo sistema libera o periodo.
  */
-function hasMembershipCharge(studentId: Id, planId: Id | undefined, planned: CompetenceCharge): boolean {
+export function membershipPeriodTaken(
+  studentId: Id,
+  planId: Id | undefined,
+  period: ChargePeriod,
+  exceptChargeId?: Id,
+): boolean {
   return store.charges.some(
     (c) =>
+      c.id !== exceptChargeId &&
       c.kind === "membership" &&
       c.studentId === studentId &&
-      c.planId === planId &&
-      // Cancelada a mao continua "ocupando" o periodo: a geracao automatica
-      // nao a recria. Cancelada pelo sistema (troca de regra) libera o periodo.
-      (c.status !== "canceled" || c.canceledBy === "user") &&
-      coversPeriod(c, planned),
+      (c.status !== "canceled" || (c.canceledBy === "user" && c.planId === planId)) &&
+      coversPeriod(c, period),
   );
+}
+
+function hasMembershipCharge(studentId: Id, planId: Id | undefined, planned: CompetenceCharge): boolean {
+  return membershipPeriodTaken(studentId, planId, planned);
 }
 
 /** Alunos ativos no plano (inclui o legado: sem plano proprio, em turma com o plano). */
@@ -310,7 +323,8 @@ export function cancelOpenMembershipCharges(
   studentId: Id,
   fromDate: string,
   note: string,
-  opts: { inclusive?: boolean } = {},
+  /** `replaced`: outra cobranca toma o lugar (troca), nao e perda. */
+  opts: { inclusive?: boolean; replaced?: boolean } = {},
 ): number {
   let count = 0;
   for (const c of store.charges) {
@@ -322,6 +336,7 @@ export function cancelOpenMembershipCharges(
     if (!affected) continue;
     c.status = "canceled";
     c.canceledBy = "system";
+    c.replaced = opts.replaced || undefined;
     c.notes = note;
     c.updatedAt = nowIso();
     count += 1;
@@ -583,7 +598,7 @@ export const billingService = {
   },
 
   // Cancela a cobrança (mantém o título no histórico sem compor o total a receber).
-  cancelCharge(id: Id): Promise<ChargeView> {
+  cancelCharge(id: Id, reason?: string): Promise<ChargeView> {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
@@ -592,12 +607,13 @@ export const billingService = {
       if (c.status === "paid") assertNotPaidOnline(c, "cancelar");
       c.status = "canceled";
       c.canceledBy = "user";
+      c.cancelReason = reason?.trim() || undefined;
       c.paidAt = undefined;
       c.method = undefined;
       c.paidVia = undefined;
       c.updatedAt = nowIso();
       cancelOnlinePaymentsForCharge(c.id);
-      recordChargeEvent(c, "cancelled", "cancelou a");
+      recordChargeEvent(c, "cancelled", "cancelou a", c.cancelReason);
       return clone(toChargeView(c));
     });
   },
@@ -619,8 +635,36 @@ export const billingService = {
           { httpStatus: 409 },
         );
       }
+      // Reabrir nao pode duplicar: outra mensalidade ja cobre o periodo (ex.:
+      // o plano foi trocado depois do cancelamento).
+      const { periodStart, periodEnd } = c;
+      if (
+        c.kind === "membership" &&
+        periodStart &&
+        periodEnd &&
+        store.charges.some(
+          (o) =>
+            o.id !== c.id &&
+            o.kind === "membership" &&
+            o.studentId === c.studentId &&
+            o.status !== "canceled" &&
+            coversPeriod(o, {
+              periodStart,
+              periodEnd,
+              competence: c.competence ?? "",
+              cycleIndex: c.cycleIndex ?? 1,
+            }),
+        )
+      ) {
+        throw apiError(
+          "VALIDATION",
+          "Já existe outra mensalidade para este período. Cancele-a antes de reabrir esta.",
+          { httpStatus: 409 },
+        );
+      }
       c.status = "pending";
       c.canceledBy = undefined;
+      c.cancelReason = undefined;
       c.updatedAt = nowIso();
       recordChargeEvent(c, "status_changed", "reabriu a");
       return clone(toChargeView(c));

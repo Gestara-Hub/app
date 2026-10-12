@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  useFieldArray,
   useForm,
   FormProvider,
   useWatch,
@@ -9,7 +10,18 @@ import {
   type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, FileText, MapPin, Percent, SlidersHorizontal, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  AlertTriangle,
+  FileText,
+  MapPin,
+  Percent,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   AddressFields,
@@ -32,12 +44,12 @@ import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
-import { usePlans } from "@/features/turmas";
+import { useCharges, usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
-import { format } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
 const MEMBERSHIP_STATUS_OPTIONS = [
@@ -72,6 +84,8 @@ const SCHOLARSHIP_KIND_OPTIONS: SegmentedChoiceOption[] = [
   { value: "full", label: "Integral", description: "Não paga mensalidade" },
   { value: "partial", label: "Parcial", description: "Paga uma parte" },
 ];
+
+const GUARDIAN_RELATIONSHIPS = ["Mãe", "Pai", "Avó", "Avô", "Tio(a)"];
 
 const SCHOLARSHIP_REASONS = ["Atleta", "Social", "Família de professor", "Parceria"];
 
@@ -109,6 +123,13 @@ function toDefaults(
     phone: client?.phone ?? "",
     email: client?.email ?? "",
     notes: client?.notes ?? "",
+    birthDate: client?.birthDate ?? "",
+    guardians: (client?.guardians ?? []).map((g) => ({
+      name: g.name,
+      relationship: g.relationship ?? "",
+      phone: g.phone ?? "",
+      email: g.email ?? "",
+    })),
     address: {
       postalCode: addr?.postalCode ?? "",
       street: addr?.street ?? "",
@@ -237,6 +258,12 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     control: form.control,
     name: "notes",
   });
+  const birthDate = useWatch({ control: form.control, name: "birthDate" });
+  const {
+    fields: guardianFields,
+    append: appendGuardian,
+    remove: removeGuardian,
+  } = useFieldArray({ control: form.control, name: "guardians" });
   const firstChargeAmount = useWatch({
     control: form.control,
     name: "firstChargeAmount",
@@ -268,6 +295,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     ),
   );
   const [notesOpen, setNotesOpen] = useState(Boolean(client?.notes?.trim()));
+  // Responsaveis: sempre comeca recolhido (o selo mostra quantos ha).
+  const [guardiansOpen, setGuardiansOpen] = useState(false);
 
   const selectedPlan = useMemo(
     () => plans?.find((p) => p.id === selectedPlanId),
@@ -403,6 +432,41 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
 
   // A 1a cobranca aparece no cadastro e quando o aluno troca de plano.
   const showFirstCharge = Boolean(selectedPlanId && (!isEdit || selectedPlanId !== client?.planId));
+
+  // Troca de plano com periodo ja pago: o plano novo comeca no periodo seguinte
+  // (o servico tambem nunca cobra os mesmos dias duas vezes).
+  const isPlanSwitch = Boolean(isEdit && client?.planId && selectedPlanId && selectedPlanId !== client.planId);
+  const { data: studentCharges } = useCharges(
+    isPlanSwitch && client ? { studentId: client.id, kind: "membership" } : undefined,
+  );
+  const lastPaidPeriod = useMemo(() => {
+    if (!isPlanSwitch) return null;
+    const paid = (studentCharges ?? []).filter(
+      (c) => c.studentId === client?.id && c.status === "paid" && c.periodStart && c.periodEnd,
+    );
+    if (paid.length === 0) return null;
+    return paid.reduce((a, b) => ((b.periodEnd ?? "") > (a.periodEnd ?? "") ? b : a));
+  }, [isPlanSwitch, studentCharges, client?.id]);
+  const paidUntil = lastPaidPeriod?.periodEnd;
+  const nextAfterPaid = paidUntil ? format(addDays(parseISO(paidUntil), 1), "yyyy-MM-dd") : undefined;
+
+  // Ao escolher o plano novo, sugere o inicio logo depois do ultimo periodo pago.
+  const suggestedForPlanRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!isPlanSwitch || !nextAfterPaid || !selectedPlanId) return;
+    if (suggestedForPlanRef.current === selectedPlanId) return;
+    suggestedForPlanRef.current = selectedPlanId;
+    if ((planStartDate || "") < nextAfterPaid) {
+      form.setValue("planStartDate", nextAfterPaid, { shouldDirty: true });
+    }
+  }, [isPlanSwitch, nextAfterPaid, selectedPlanId, planStartDate, form]);
+
+  const planSwitchNotice =
+    isPlanSwitch && lastPaidPeriod && paidUntil && nextAfterPaid
+      ? (planStartDate || "") <= paidUntil
+        ? `O período de ${shortDate(lastPaidPeriod.periodStart ?? "")} a ${shortDate(paidUntil)} já foi pago${lastPaidPeriod.planName ? ` no plano ${lastPaidPeriod.planName}` : ""} e não será cobrado de novo. O plano novo começa a cobrar no período seguinte.`
+        : `O período de ${shortDate(lastPaidPeriod.periodStart ?? "")} a ${shortDate(paidUntil)} já foi pago${lastPaidPeriod.planName ? ` no plano ${lastPaidPeriod.planName}` : ""}. O plano novo vale a partir de ${shortDate(nextAfterPaid)}. Se o plano estava errado, desfaça o pagamento em Mensalidades antes de trocar.`
+      : null;
   const usesOrgRule =
     billingStrategy === (orgSettings?.midMonthStrategy ?? "prorated") &&
     cyclePaymentTiming === (orgSettings?.billingTiming ?? "prepaid");
@@ -466,6 +530,27 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     : undefined;
 
   const notesBadge = notesValue?.trim() ? "Preenchido" : undefined;
+  const guardiansBadge =
+    guardianFields.length > 0
+      ? `${guardianFields.length} ${guardianFields.length === 1 ? "responsável" : "responsáveis"}`
+      : undefined;
+
+  // Idade pela data local; menor de idade sugere cadastrar um responsavel.
+  const age = useMemo(() => {
+    if (!birthDate) return null;
+    const [y, m, d] = birthDate.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    const today = new Date();
+    let years = today.getFullYear() - y;
+    if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) years -= 1;
+    return years >= 0 ? years : null;
+  }, [birthDate]);
+  const birthDateHint =
+    age === null
+      ? "Usada para lembrar os aniversariantes."
+      : age < 18 && guardianFields.length === 0
+        ? `${age} ${age === 1 ? "ano" : "anos"}. Menor de idade: cadastre um responsável abaixo.`
+        : `${age} ${age === 1 ? "ano" : "anos"}.`;
 
   const onInvalid = useCallback((errors: FieldErrors<ClientFormValues>) => {
     if (errors.address) {
@@ -488,6 +573,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     }
     if (errors.notes) {
       setNotesOpen(true);
+    }
+    if (errors.guardians) {
+      setGuardiansOpen(true);
     }
   }, []);
 
@@ -587,6 +675,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       phone: values.phone,
       email: values.email || undefined,
       notes: values.notes || undefined,
+      birthDate: values.birthDate || undefined,
+      guardians: (values.guardians ?? []).length
+        ? (values.guardians ?? []).map((g) => ({
+            name: g.name.trim(),
+            relationship: g.relationship?.trim() || undefined,
+            phone: g.phone?.trim() || undefined,
+            email: g.email?.trim() || undefined,
+          }))
+        : undefined,
       address: addressPayload,
       planId,
       // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
@@ -692,6 +789,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
               }
               disabled={pending}
             />
+            <DateField<ClientFormValues>
+              name="birthDate"
+              label="Data de nascimento"
+              max={todayDateISO}
+              hint={birthDateHint}
+              disabled={pending}
+            />
           </div>
         </div>
 
@@ -772,6 +876,16 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                       />
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+
+              {planSwitchNotice ? (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] p-3 text-xs text-amber-800 dark:text-amber-300"
+                >
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <p>{planSwitchNotice}</p>
                 </div>
               ) : null}
 
@@ -1040,6 +1154,104 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
               ) : null}
             </div>
           </CollapsibleSection>
+        ) : null}
+
+        {/* Responsáveis (opcional, so turmas): recolhido por padrão */}
+        {isClasses ? (
+          <CollapsibleSection
+            title="Responsáveis (opcional)"
+            icon={<Users className="h-4 w-4" />}
+            badge={guardiansBadge}
+            open={guardiansOpen}
+            onOpenChange={setGuardiansOpen}
+          >
+            <div className="space-y-3">
+              {guardianFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Pais, avós ou outra pessoa para contato. Recomendado para menores de idade.
+                </p>
+        ) : null}
+
+            {guardianFields.map((field, index) => (
+              <div
+                key={field.id}
+                className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground">
+                    Responsável {index + 1}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeGuardian(index)}
+                    disabled={pending}
+                    aria-label={`Remover responsável ${index + 1}`}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <InputText<ClientFormValues>
+                    name={`guardians.${index}.name`}
+                    label="Nome"
+                    placeholder="Informe o nome do responsável"
+                    required
+                    disabled={pending}
+                  />
+                  <InputText<ClientFormValues>
+                    name={`guardians.${index}.relationship`}
+                    label="Parentesco"
+                    placeholder="Informe o parentesco (opcional)"
+                    disabled={pending}
+                  />
+                  <InputPhone<ClientFormValues>
+                    name={`guardians.${index}.phone`}
+                    label="Telefone (WhatsApp)"
+                    disabled={pending}
+                  />
+                  <InputText<ClientFormValues>
+                    name={`guardians.${index}.email`}
+                    type="email"
+                    label="E-mail"
+                    placeholder="Informe o e-mail (opcional)"
+                    disabled={pending}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {GUARDIAN_RELATIONSHIPS.map((relationship) => (
+                    <button
+                      key={relationship}
+                      type="button"
+                      disabled={pending}
+                      onClick={() =>
+                        form.setValue(`guardians.${index}.relationship`, relationship, {
+                          shouldDirty: true,
+                        })
+                      }
+                      className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      + {relationship}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendGuardian({ name: "", relationship: "", phone: "", email: "" })}
+              disabled={pending}
+            >
+              <Plus className="size-4" />
+              Adicionar responsável
+            </Button>
+          </div>
+        </CollapsibleSection>
         ) : null}
 
         {/* Bloco 3: Endereço Estruturado (Opcional) */}

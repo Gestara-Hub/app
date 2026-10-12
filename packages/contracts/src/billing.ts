@@ -63,6 +63,14 @@ export interface Charge {
   /** Como foi paga (ausente em dados antigos = manual). */
   paidVia?: ChargePaidVia;
   canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
+  /** Motivo do cancelamento manual (texto livre, ex.: "Plano errado"). */
+  cancelReason?: string;
+  /**
+   * Cancelada pelo sistema porque outra cobranca tomou o lugar (troca de plano,
+   * regra, desconto ou bolsa). Mostrada como "Substituída", fora do total de
+   * canceladas (nao e dinheiro perdido) e oculta da lista por padrao.
+   */
+  replaced?: boolean;
   /** Bolsa aplicada nesta mensalidade (100 = integral). */
   scholarshipPercent?: number;
   /** Valor sem desconto/bolsa (base para "bolsas concedidas"). So com bolsa. */

@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Award,
   Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Clock,
   Flame,
   GraduationCap,
+  History,
   MessageSquarePlus,
   Pencil,
   Plus,
@@ -19,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { todayISO } from "@gestarahub/core/date";
+import { relativeDateLabel, todayISO } from "@gestarahub/core/date";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type {
   Client,
@@ -40,13 +39,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,11 +47,17 @@ import { BeltBadge } from "@/components/shared/belt-badge";
 import {
   CRITERIA_TYPE_LABELS,
   computeNextPromotionStep,
+  ageAt,
+  isAgedOutOfLevel,
+  levelAgeLabel,
   resolveModalityTrack,
   resolveTrackStyle,
+  trackUsesAges,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useSegmentVocabulary } from "@/features/settings";
+import { GraduatePanel, type GraduateResult } from "./graduate-panel";
+import { StartingPointPanel, type StartingPointResult } from "./starting-point-panel";
 import {
   useAddSessionEvaluation,
   usePromoteStudent,
@@ -112,6 +110,16 @@ function formatDatePtBr(iso?: string): string {
   const [y, m, d] = iso.slice(0, 10).split("-");
   if (!y || !m || !d) return iso;
   return `${d}/${m}/${y}`;
+}
+
+/**
+ * "Graduado hoje", "Graduado há 3 dias", "Graduado em 28 jan", "Graduado em 01/2025"
+ * (`promotedOn` vem do vocabulario: "Graduado em", "Avançou em").
+ */
+function promotedOnLabel(promotedOn: string, iso: string): string {
+  const label = relativeDateLabel(iso);
+  const isRelative = /^(hoje|ontem|há |amanhã|em \d)/.test(label);
+  return isRelative ? `${promotedOn.replace(/ em$/, "")} ${label}` : `${promotedOn} ${label}`;
 }
 
 function computeMonthsBetween(fromIso?: string): number {
@@ -178,19 +186,13 @@ function StudentProgressDialogContent({
   }, [activeItem]);
   const trackStyle = resolveTrackStyle(activeTrack ?? undefined);
 
-  // Manual level adjustment panel state
-  const [showAdjustPanel, setShowAdjustPanel] = useState(false);
-  const [adjustLevelId, setAdjustLevelId] = useState("");
-  const [adjustSubLevel, setAdjustSubLevel] = useState(0);
-  const [adjustPromotedAt, setAdjustPromotedAt] = useState(todayISO());
-  const [adjustOffset, setAdjustOffset] = useState(0);
+  // Faixa etaria por nivel: a sugestao e o aviso de troca usam a idade de hoje.
+  const usesAges = trackUsesAges(activeTrack ?? undefined);
+  const ageToday = ageAt(client.birthDate, todayISO());
 
-  // Promotion / Exam panel state
+  // Paineis "Ponto de partida" e "Graduar" (o estado de cada um fica no painel).
+  const [showAdjustPanel, setShowAdjustPanel] = useState(false);
   const [showPromotePanel, setShowPromotePanel] = useState(false);
-  const [targetLevelId, setTargetLevelId] = useState("");
-  const [targetSubLevel, setTargetSubLevel] = useState(0);
-  const [promoteDate, setPromoteDate] = useState(todayISO());
-  const [promoteNotes, setPromoteNotes] = useState("");
 
   // Tags input state
   const [newStrength, setNewStrength] = useState("");
@@ -207,44 +209,11 @@ function StudentProgressDialogContent({
   }
 
   function handleToggleAdjustPanel() {
-    if (!showAdjustPanel && activeItem && activeTrack) {
-      const defaultLevel = activeTrack.levels[0];
-      const matchedLvl =
-        activeTrack.levels.find(
-          (l) =>
-            l.id === activeItem.progression?.levelId ||
-            l.name === activeItem.progression?.levelName,
-        ) ?? defaultLevel;
-      setAdjustLevelId(matchedLvl?.id ?? "");
-      setAdjustSubLevel(activeItem.progression?.subLevel ?? 0);
-      setAdjustPromotedAt(activeItem.progression?.promotedAt ?? todayISO());
-      setAdjustOffset(activeItem.progression?.initialAttendanceOffset ?? 0);
-    }
     setShowAdjustPanel((prev) => !prev);
     setShowPromotePanel(false);
   }
 
   function handleTogglePromotePanel() {
-    if (!showPromotePanel && activeItem && activeTrack) {
-      const defaultLevel = activeTrack.levels[0];
-      const matchedLvl =
-        activeTrack.levels.find(
-          (l) =>
-            l.id === activeItem.progression?.levelId ||
-            l.name === activeItem.progression?.levelName,
-        ) ?? defaultLevel;
-      const currentLvlId = matchedLvl?.id ?? "";
-      const currentSub = activeItem.progression?.subLevel ?? 0;
-      const step = computeNextPromotionStep(
-        activeTrack,
-        currentLvlId,
-        currentSub,
-      );
-      setTargetLevelId(step?.nextLevel.id ?? currentLvlId);
-      setTargetSubLevel(step?.nextSubLevel ?? currentSub);
-      setPromoteDate(todayISO());
-      setPromoteNotes("");
-    }
     setShowPromotePanel((prev) => !prev);
     setShowAdjustPanel(false);
   }
@@ -260,8 +229,10 @@ function StudentProgressDialogContent({
 
   const nextStep =
     activeTrack && currentLevel
-      ? computeNextPromotionStep(activeTrack, currentLevel.id, currentSubLevel)
+      ? computeNextPromotionStep(activeTrack, currentLevel.id, currentSubLevel, ageToday)
       : null;
+  // Passou da idade do nivel atual (ex.: fez 16 anos na Verde): precisa trocar.
+  const agedOut = usesAges && isAgedOutOfLevel(currentLevel, ageToday);
 
   const presentSincePromotion = activeItem?.presentSincePromotion ?? 0;
   const totalPresent = activeItem?.totalPresentInModality ?? 0;
@@ -297,63 +268,59 @@ function StudentProgressDialogContent({
   const evaluations = activeItem?.progression?.evaluations ?? [];
   const promotionHistory = activeItem?.progression?.promotionHistory ?? [];
 
-  async function handleSaveManualAdjustment() {
-    if (!client || !activeItem || !activeTrack) return;
-    const targetLvl =
-      activeTrack.levels.find((l) => l.id === adjustLevelId) ??
-      activeTrack.levels[0];
-    if (!targetLvl) return;
-
+  async function handleSaveStartingPoint(result: StartingPointResult) {
+    if (!client || !activeItem) return;
     try {
       await saveMut.mutateAsync({
         studentId: client.id,
         progression: {
+          ...(activeItem.progression ?? {}),
           modalityId: activeItem.modality.id,
           modalityName: activeItem.modality.name,
-          levelId: targetLvl.id,
-          levelName: targetLvl.name,
-          levelColor: targetLvl.color,
-          subLevel: adjustSubLevel,
-          maxSubLevels: targetLvl.maxSubLevels,
-          promotedAt: adjustPromotedAt || todayISO(),
-          initialAttendanceOffset: Math.max(0, Number(adjustOffset) || 0),
+          levelId: result.level.id,
+          levelName: result.level.name,
+          levelColor: result.level.color,
+          subLevel: result.subLevel,
+          maxSubLevels: result.level.maxSubLevels,
+          promotedAt: result.promotedAt,
+          initialAttendanceOffset: result.initialAttendanceOffset,
+          origin: result.origin,
+          originAcademy: result.originAcademy,
+          originTeacher: result.originTeacher,
           strengths,
           focusAreas,
           evaluations,
           promotionHistory,
         },
       });
-      toast.success("Histórico inicial atualizado com sucesso!");
+      toast.success("Ponto de partida salvo.");
       setShowAdjustPanel(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao atualizar o histórico inicial."));
+      toast.error(getErrorMessage(err, "Não foi possível salvar o ponto de partida."));
     }
   }
 
-  async function handlePromote() {
-    if (!client || !activeItem || !activeTrack || !targetLevelId) return;
-    const targetLvl = activeTrack.levels.find((l) => l.id === targetLevelId);
-    if (!targetLvl) return;
-
+  async function handleGraduate(result: GraduateResult) {
+    if (!client || !activeItem) return;
     try {
       await promoteMut.mutateAsync({
         studentId: client.id,
         modalityId: activeItem.modality.id,
         modalityName: activeItem.modality.name,
-        toLevelId: targetLvl.id,
-        toLevelName: targetLvl.name,
-        toLevelColor: targetLvl.color,
-        toSubLevel: targetSubLevel,
-        maxSubLevels: targetLvl.maxSubLevels,
-        date: promoteDate || todayISO(),
+        toLevelId: result.level.id,
+        toLevelName: result.level.name,
+        toLevelColor: result.level.color,
+        toSubLevel: result.subLevel,
+        maxSubLevels: result.level.maxSubLevels,
+        date: result.date,
         attendancesCompleted: presentSincePromotion,
         monthsInLevel,
         isExam: true,
-        notes: promoteNotes.trim() || undefined,
+        notes: result.notes,
+        examiner: result.examiner,
       });
       toast.success("Evolução registrada com sucesso!");
       setShowPromotePanel(false);
-      setPromoteNotes("");
     } catch (err) {
       toast.error(getErrorMessage(err, "Erro ao registrar a evolução."));
     }
@@ -415,12 +382,6 @@ function StudentProgressDialogContent({
     }
   }
 
-  const adjustSelectedLevel = activeTrack?.levels.find(
-    (l) => l.id === adjustLevelId,
-  );
-  const promoteSelectedLevel = activeTrack?.levels.find(
-    (l) => l.id === targetLevelId,
-  );
 
   return (
     <DialogContent
@@ -537,6 +498,18 @@ function StudentProgressDialogContent({
                 </div>
               ) : null}
 
+              {/* Passou da idade do nivel atual: precisa trocar (ex.: 16 anos na Verde) */}
+              {agedOut && currentLevel ? (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] p-3 text-xs text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <p>
+                    Com {ageToday} anos, {currentLevel.name} não vale mais (
+                    {levelAgeLabel(currentLevel)}).
+                    {nextStep ? ` Sugestão: ${nextStep.nextLevel.name}.` : ""}
+                  </p>
+                </div>
+              ) : null}
+
               {/* Card Principal: Nível Atual + Meta para Próxima Graduação */}
               <div className="rounded-xl border bg-card p-4 shadow-2xs space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -564,359 +537,74 @@ function StudentProgressDialogContent({
                       />
                       <span className="text-xs text-muted-foreground">
                         {promotedAt
-                          ? `${vocabulary.promotedOn} ${formatDatePtBr(promotedAt)}`
+                          ? promotedOnLabel(vocabulary.promotedOn, promotedAt)
                           : "Início da jornada"}
                       </span>
+                      {activeItem.progression?.origin === "transfer" ? (
+                        <span className="text-xs text-muted-foreground">
+                          · Veio de {activeItem.progression.originAcademy || "outra academia"}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Ponto de partida: usado uma vez por aluno, por isso discreto */}
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="h-8 text-xs"
+                      className="h-8 text-xs text-muted-foreground"
+                      aria-expanded={showAdjustPanel}
                       onClick={handleToggleAdjustPanel}
                     >
-                      {showAdjustPanel ? (
-                        <ChevronUp className="size-3.5" />
-                      ) : (
-                        <ChevronDown className="size-3.5" />
-                      )}
-                      Editar histórico inicial
+                      <History className="size-3.5" />
+                      Ponto de partida
                     </Button>
-                    {nextStep ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={handleTogglePromotePanel}
-                      >
-                        <Award className="size-3.5" />
-                        {vocabulary.promoteVerb}
-                      </Button>
-                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 text-xs"
+                      aria-expanded={showPromotePanel}
+                      onClick={handleTogglePromotePanel}
+                    >
+                      <Award className="size-3.5" />
+                      {vocabulary.promoteVerb}
+                    </Button>
                   </div>
                 </div>
 
-                {/* Painel de Ajuste de Histórico / Ponto de Partida Inicial */}
+                {/* Ponto de partida (antes "Historico inicial"): usado uma vez por aluno */}
                 {showAdjustPanel ? (
-                  <div className="rounded-xl border border-border/80 bg-muted/40 p-4 space-y-4">
-                    <div className="flex items-start justify-between gap-2 border-b border-border/40 pb-3">
-                      <div>
-                        <h4 className="text-xs font-semibold text-foreground">
-                          Histórico Inicial e Ponto de Partida
-                        </h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          {vocabulary.currentLevel} e presenças já acumuladas antes do sistema.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowAdjustPanel(false)}
-                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Fechar painel"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                      {/* Faixa / Nível atual */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">
-                          {vocabulary.currentLevel}
-                        </label>
-                        <Select
-                          value={adjustLevelId}
-                          onValueChange={(value) => {
-                            setAdjustLevelId(value);
-                            setAdjustSubLevel(0);
-                          }}
-                        >
-                          <SelectTrigger className="h-9 w-full text-xs">
-                            <SelectValue placeholder={vocabulary.selectLevel} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activeTrack.levels.map((lvl) => (
-                              <SelectItem
-                                key={lvl.id}
-                                value={lvl.id}
-                                className="text-xs"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <BeltBadge
-                                    name={lvl.name}
-                                    color={lvl.color}
-                                    variant={trackStyle}
-                                    size="xs"
-                                    showLabel={false}
-                                  />
-                                  <span>{lvl.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Graus na faixa (se a modalidade tiver graus) */}
-                      {adjustSelectedLevel &&
-                      adjustSelectedLevel.maxSubLevels > 0 ? (
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-medium text-muted-foreground">
-                            Grau atual
-                          </label>
-                          <Select
-                            value={String(adjustSubLevel)}
-                            onValueChange={(value) =>
-                              setAdjustSubLevel(Number(value))
-                            }
-                          >
-                            <SelectTrigger className="h-9 w-full text-xs">
-                              <SelectValue placeholder="Selecione o grau" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0" className="text-xs">
-                                Sem grau (Liso)
-                              </SelectItem>
-                              {Array.from({
-                                length: adjustSelectedLevel.maxSubLevels,
-                              }).map((_, idx) => (
-                                <SelectItem
-                                  key={idx + 1}
-                                  value={String(idx + 1)}
-                                  className="text-xs"
-                                >
-                                  {idx + 1}º grau
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : null}
-
-                      {/* Data da graduação */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">
-                          Data de início {vocabulary.inLevel}
-                        </label>
-                        <Input
-                          type="date"
-                          value={adjustPromotedAt}
-                          onChange={(e) => setAdjustPromotedAt(e.target.value)}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-
-                      {/* Presenças já acumuladas */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-medium text-muted-foreground">
-                            Presenças já acumuladas {vocabulary.inLevel}
-                          </label>
-                          {targetAttendances > 0 ? (
-                            <span className="text-[10px] text-muted-foreground">
-                              Meta: {targetAttendances} aulas
-                            </span>
-                          ) : null}
-                        </div>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          value={adjustOffset}
-                          onChange={(e) =>
-                            setAdjustOffset(Math.max(0, Number(e.target.value)))
-                          }
-                          className="h-9 text-xs"
-                        />
-                        <p className="text-[10px] text-muted-foreground">
-                          Aulas realizadas antes do uso do GestaraHub ou em outra academia.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-3">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setShowAdjustPanel(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="h-8 text-xs"
-                        disabled={saveMut.isPending}
-                        onClick={handleSaveManualAdjustment}
-                      >
-                        Salvar histórico
-                      </Button>
-                    </div>
-                  </div>
+                  <StartingPointPanel
+                    key={`start-${activeItem.modality.id}`}
+                    track={activeTrack}
+                    trackStyle={trackStyle}
+                    vocabulary={vocabulary}
+                    birthDate={client.birthDate}
+                    progression={activeItem.progression}
+                    isPending={saveMut.isPending}
+                    onCancel={() => setShowAdjustPanel(false)}
+                    onSave={handleSaveStartingPoint}
+                  />
                 ) : null}
 
-                {/* Painel de Graduação / Registro de Exame */}
+                {/* Graduar: cartoes de decisao (grau, proximo nivel ou outro) */}
                 {showPromotePanel ? (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Award className="size-4 text-primary" />
-                        <p className="text-xs font-semibold text-foreground">
-                          Registrar {vocabulary.promotionLower}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowPromotePanel(false)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">
-                          {vocabulary.newLevel}
-                        </label>
-                        <Select
-                          value={targetLevelId}
-                          onValueChange={(value) => {
-                            setTargetLevelId(value);
-                            setTargetSubLevel(0);
-                          }}
-                        >
-                          <SelectTrigger className="h-9 w-full text-xs">
-                            <SelectValue placeholder={vocabulary.selectLevel} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activeTrack.levels.map((lvl) => (
-                              <SelectItem
-                                key={lvl.id}
-                                value={lvl.id}
-                                className="text-xs"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <BeltBadge
-                                    name={lvl.name}
-                                    color={lvl.color}
-                                    variant={trackStyle}
-                                    size="xs"
-                                    showLabel={false}
-                                  />
-                                  <span>{lvl.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {promoteSelectedLevel &&
-                      promoteSelectedLevel.maxSubLevels > 0 ? (
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-medium text-muted-foreground">
-                            Novo Grau
-                          </label>
-                          <Select
-                            value={String(targetSubLevel)}
-                            onValueChange={(value) =>
-                              setTargetSubLevel(Number(value))
-                            }
-                          >
-                            <SelectTrigger className="h-9 w-full text-xs">
-                              <SelectValue placeholder="Selecione o grau" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="0" className="text-xs">
-                                Sem grau (Liso)
-                              </SelectItem>
-                              {Array.from({
-                                length: promoteSelectedLevel.maxSubLevels,
-                              }).map((_, idx) => (
-                                <SelectItem
-                                  key={idx + 1}
-                                  value={String(idx + 1)}
-                                  className="text-xs"
-                                >
-                                  {idx + 1}º grau
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : null}
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-muted-foreground">
-                          {vocabulary.promotionDate}
-                        </label>
-                        <Input
-                          type="date"
-                          value={promoteDate}
-                          onChange={(e) => setPromoteDate(e.target.value)}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">
-                        Observação do exame / avaliador (opcional)
-                      </label>
-                      <Input
-                        placeholder="Ex.: Exame com Mestre Carlos — excelente guarda e postura"
-                        value={promoteNotes}
-                        onChange={(e) => setPromoteNotes(e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      {promoteSelectedLevel ? (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Resultado:</span>
-                          <BeltBadge
-                            name={promoteSelectedLevel.name}
-                            color={promoteSelectedLevel.color}
-                            variant={trackStyle}
-                            subLevel={targetSubLevel}
-                            maxSubLevels={promoteSelectedLevel.maxSubLevels}
-                            size="xs"
-                          />
-                        </div>
-                      ) : (
-                        <span />
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => setShowPromotePanel(false)}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-8 text-xs"
-                          disabled={promoteMut.isPending}
-                          onClick={handlePromote}
-                        >
-                          <CheckCircle2 className="size-3.5" />
-                          Confirmar {vocabulary.promotionLower}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <GraduatePanel
+                    key={`graduate-${activeItem.modality.id}-${currentLevel.id}-${currentSubLevel}`}
+                    track={activeTrack}
+                    trackStyle={trackStyle}
+                    vocabulary={vocabulary}
+                    birthDate={client.birthDate}
+                    currentLevel={currentLevel}
+                    currentSubLevel={currentSubLevel}
+                    presentSincePromotion={presentSincePromotion}
+                    monthsInLevel={monthsInLevel}
+                    isPending={promoteMut.isPending}
+                    onCancel={() => setShowPromotePanel(false)}
+                    onConfirm={handleGraduate}
+                  />
                 ) : null}
 
                 {/* Progresso da Meta (Presenças / Tempo / Exame) */}
@@ -1002,7 +690,9 @@ function StudentProgressDialogContent({
                           />
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          Desde {formatDatePtBr(promotedAt)}
+                          <span title={promotedAt ? formatDatePtBr(promotedAt) : undefined}>
+                            Desde {promotedAt ? relativeDateLabel(promotedAt, { relative: false }) : "—"}
+                          </span>
                         </p>
                       </div>
                     )}
@@ -1309,13 +999,16 @@ function StudentProgressDialogContent({
                                   </span>
                                 ) : null}
                               </div>
+                              {promo.examiner ? (
+                                <p className="text-[11px] text-muted-foreground">Por {promo.examiner}</p>
+                              ) : null}
                               {promo.notes ? (
                                 <p className="text-foreground/90">{promo.notes}</p>
                               ) : null}
                             </div>
                             <span className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                               <Calendar className="size-3" />
-                              {formatDatePtBr(promo.date)}
+                              <span title={formatDatePtBr(promo.date)}>{relativeDateLabel(promo.date)}</span>
                             </span>
                           </div>
                         ))}
@@ -1345,7 +1038,7 @@ function StudentProgressDialogContent({
                             </div>
                             <span className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                               <Calendar className="size-3" />
-                              {formatDatePtBr(ev.date)}
+                              <span title={formatDatePtBr(ev.date)}>{relativeDateLabel(ev.date)}</span>
                             </span>
                           </div>
                         ))}

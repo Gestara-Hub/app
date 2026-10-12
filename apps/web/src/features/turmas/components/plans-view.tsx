@@ -343,9 +343,12 @@ function PlanSkeletonCards({ showAction }: { showAction: boolean }) {
   );
 }
 
+const DEFAULT_STATUS: "all" | RecordStatus = "active";
+
 export function PlansView() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | RecordStatus>("all");
+  // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
+  const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("plans", "list");
 
   const { data: allPlans, isLoading } = usePlans({
@@ -378,12 +381,13 @@ export function PlansView() {
   const reactivateMut = useReactivatePlan();
 
   const hasSearch = Boolean(search.trim());
-  const hasFilters = status !== "all";
+  // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
+  const hasFilters = status !== DEFAULT_STATUS;
 
   const clearSearch = () => setSearch("");
   const clearAll = () => {
     setSearch("");
-    setStatus("all");
+    setStatus(DEFAULT_STATUS);
   };
 
   const openNew = () => {

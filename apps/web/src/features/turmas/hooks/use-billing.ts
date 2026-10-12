@@ -103,7 +103,8 @@ export function useMarkChargePending() {
 export function useCancelCharge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: Id) => billingService.cancelCharge(id),
+    mutationFn: ({ id, reason }: { id: Id; reason?: string }) =>
+      billingService.cancelCharge(id, reason),
     onSuccess: () => invalidateMoney(qc),
   });
 }

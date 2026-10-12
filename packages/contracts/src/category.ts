@@ -48,6 +48,10 @@ export interface ProgressionLevelStep {
   color?: ProgressionBeltColor;
   tipColor?: ProgressionBeltColor;
   maxSubLevels: number;
+  /** Idade minima para o nivel (inclusive). Ausente = sem minimo. */
+  minAge?: number;
+  /** Idade maxima para o nivel (inclusive). Ausente = sem maximo. */
+  maxAge?: number;
 }
 
 export interface ModalityProgressionTrack {

@@ -69,7 +69,8 @@ export function useUpdateClient() {
 export function useInactivateClient() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: Id) => clientsService.remove(id),
+    mutationFn: ({ id, cancelOpenCharges }: { id: Id; cancelOpenCharges?: boolean }) =>
+      clientsService.remove(id, { cancelOpenCharges }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
       // Cadastro, troca de plano e inativacao criam ou cancelam mensalidades.
@@ -111,6 +112,7 @@ export function usePromoteStudent() {
       monthsInLevel?: number;
       isExam?: boolean;
       notes?: string;
+      examiner?: string;
     }) => clientsService.promoteStudent(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });

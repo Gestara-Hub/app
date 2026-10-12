@@ -248,18 +248,18 @@ export const reportsService = {
           const plansById = new Map(store.plans.map((p) => [p.id, p.name]));
           const targetMonthNum = parseInt(month, 10);
 
-          // Verifica se algum cliente possui data de nascimento no mês selecionado
+          // Alunos ativos com data de nascimento no mes selecionado.
           const rows: BirthdayRow[] = store.clients
-            .map((c, idx) => {
-              // Se tiver notas com formato de data ou simulação baseada no cadastro
-              const day = ((idx * 7 + 3) % 28) + 1;
+            .filter((c) => c.status === "active" && c.birthDate?.slice(5, 7) === month)
+            .map((c) => {
+              const birthDate = c.birthDate as string;
               return {
                 id: c.id,
                 name: c.name,
                 phone: c.phone || "Não informado",
-                birthDate: `1995-${month}-${String(day).padStart(2, "0")}`,
-                day,
-                planName: (c.planId && plansById.get(c.planId)) || "Plano Geral",
+                birthDate,
+                day: Number(birthDate.slice(8, 10)),
+                planName: (c.planId && plansById.get(c.planId)) || "Sem plano",
               };
             })
             .sort((a, b) => a.day - b.day);

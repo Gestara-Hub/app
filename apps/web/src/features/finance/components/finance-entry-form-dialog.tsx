@@ -44,6 +44,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { handleFormApiError } from "@/lib/form-errors";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import {
   useCreateFinanceEntry,
   useFinancialCategories,
@@ -258,10 +259,15 @@ function EntryForm({
               <Label htmlFor="categoryId">
                 Categoria <span className="text-destructive">*</span>
               </Label>
+              {/* Novo lancamento: pulsa ao abrir (2x, depois da animacao do modal)
+                  para lembrar que da para criar a categoria aqui mesmo. */}
               <button
                 type="button"
                 onClick={() => setCategoriesOpen(true)}
-                className="text-xs font-medium text-primary hover:underline"
+                className={cn(
+                  "-mr-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium text-primary hover:underline",
+                  !entry && "motion-safe:animate-attention-ring [animation-delay:350ms]",
+                )}
               >
                 + Gerenciar categorias
               </button>
