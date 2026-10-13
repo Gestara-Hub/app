@@ -23,6 +23,34 @@ export type StudentCyclePaymentTiming = "prepaid" | "postpaid";
 
 export type EvaluationEntryTone = "positive" | "attention" | "general";
 
+/**
+ * Meta de treino do aluno na modalidade ("Drill lateral · 20", "Defesa de
+ * costas"). Substitui os antigos "pontos a melhorar": sem `target`, funciona
+ * como um foco que o professor marca como feito.
+ */
+export interface StudentGoal {
+  id: Id;
+  title: string;
+  /** Quantidade alvo (opcional). */
+  target?: number;
+  /** Quanto ja foi feito (so conta com `target`). */
+  progress: number;
+  /** Feita: com alvo, ao chegar nele; sem alvo, marcada pelo professor. */
+  completedAt?: DateISO;
+  createdAt: DateTimeISO;
+}
+
+/** Avanco de meta registrado numa aula (guarda o titulo da epoca). */
+export interface StudentGoalProgressEntry {
+  goalId: Id;
+  title: string;
+  /** Quanto somou (meta com alvo). */
+  amount?: number;
+  /** Marcou como feita (meta sem alvo, ou chegou no alvo). */
+  completed?: boolean;
+}
+
+/** Registro de aula do aluno (individual ou da turma inteira, pela chamada). */
 export interface StudentEvaluationEntry {
   id: Id;
   date: DateISO;
@@ -31,6 +59,11 @@ export interface StudentEvaluationEntry {
   sessionId?: Id;
   tone: EvaluationEntryTone;
   note: string;
+  /** Anotacao da turma inteira (registro em lote na chamada). */
+  classNote?: string;
+  /** Lembrete para a proxima aula: aparece na chamada como "Para hoje". */
+  nextClassNote?: string;
+  goalProgress?: StudentGoalProgressEntry[];
   authorName?: string;
   createdAt: DateTimeISO;
 }
@@ -73,7 +106,8 @@ export interface StudentModalityProgression {
   originTeacher?: string;
   nextExamDate?: DateISO;
   strengths: string[];
-  focusAreas: string[];
+  /** Metas de treino (antes "pontos a melhorar"; migracao v29). */
+  goals: StudentGoal[];
   evaluations: StudentEvaluationEntry[];
   promotionHistory: StudentPromotionHistoryEntry[];
   updatedAt: DateTimeISO;
@@ -92,6 +126,43 @@ export interface StudentProgressionOverview {
   studentId: Id;
   studentName: string;
   items: StudentModalityOverviewItem[];
+}
+
+/** Novo registro de aula de um aluno (o autor vem da sessao). */
+export interface CreateStudentClassRecord {
+  studentId: Id;
+  modalityId: Id;
+  classGroupId?: Id;
+  classGroupName?: string;
+  sessionId?: Id;
+  date: DateISO;
+  tone: EvaluationEntryTone;
+  note?: string;
+  nextClassNote?: string;
+  goalProgress?: { goalId: Id; amount?: number; completed?: boolean }[];
+}
+
+/**
+ * Registro da turma inteira pela chamada: vira um registro na ficha de cada
+ * aluno marcado. Com `classNote`, todos os listados ganham o registro.
+ */
+export interface CreateClassRecordsBatch {
+  sessionId: Id;
+  classGroupId: Id;
+  classGroupName: string;
+  modalityId: Id;
+  date: DateISO;
+  classNote?: string;
+  entries: { studentId: Id; tone?: EvaluationEntryTone; note?: string }[];
+}
+
+/**
+ * Sugestoes de pontos fortes e de metas, aprendidas do que o espaco ja
+ * preencheu na MESMA modalidade (sem listas fixas), do mais usado ao menos.
+ */
+export interface ProgressionTermSuggestions {
+  strengths: string[];
+  goals: string[];
 }
 
 /** Responsavel pelo aluno (pais, avos, tutor). */

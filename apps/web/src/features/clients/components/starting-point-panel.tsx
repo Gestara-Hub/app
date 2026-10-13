@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, History, Sparkles, X } from "lucide-react";
+import { Building2, History, Sparkles } from "lucide-react";
 import type {
   ModalityProgressionTrack,
   ProgressionLevelStep,
@@ -11,6 +11,7 @@ import type {
 } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
 import { Button } from "@/components/ui/button";
+import { DialogBody } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SegmentVocabulary } from "@/lib/business-segment-presets";
 import { ageAt, isLevelAllowedForAge, levelAgeLabel, trackUsesAges } from "@/lib/progression-tracks";
@@ -117,24 +118,11 @@ export function StartingPointPanel({
     });
   }
 
+  // Corpo e rodape do modal (padrao: corpo rola, rodape fixo); o titulo vem do modal.
   return (
-    <div className="space-y-4 rounded-xl border border-border/80 bg-muted/30 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Ponto de partida</p>
-          <p className="text-xs text-muted-foreground">
-            Como o aluno chegou e de onde ele começa na trilha.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground"
-          aria-label="Fechar"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
+    <>
+      <DialogBody className="space-y-4">
+      <p className="text-sm text-muted-foreground">Como o aluno chegou e de onde ele começa na trilha.</p>
 
       <div className="grid gap-2 sm:grid-cols-3">
         {ORIGINS.map((o) => (
@@ -170,7 +158,7 @@ export function StartingPointPanel({
           {origin === "transfer" ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="origin-academy" className="text-xs font-medium text-foreground">
+                <label htmlFor="origin-academy" className="text-sm font-medium text-foreground">
                   Academia de origem
                 </label>
                 <Input
@@ -182,7 +170,7 @@ export function StartingPointPanel({
                 />
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="origin-teacher" className="text-xs font-medium text-foreground">
+                <label htmlFor="origin-teacher" className="text-sm font-medium text-foreground">
                   Professor que {isBelt ? "graduou" : "avaliou"}
                 </label>
                 <Input
@@ -198,7 +186,7 @@ export function StartingPointPanel({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor="start-level" className="text-xs font-medium text-foreground">
+              <label htmlFor="start-level" className="text-sm font-medium text-foreground">
                 {levelLabel} atual
               </label>
               <LevelSelect
@@ -237,12 +225,12 @@ export function StartingPointPanel({
             </div>
             {level && level.maxSubLevels > 0 ? (
               <div className="space-y-1.5">
-                <span className="text-xs font-medium text-foreground">Grau atual</span>
+                <span className="text-sm font-medium text-foreground">Grau atual</span>
                 <DegreePicker max={level.maxSubLevels} value={sub} onChange={setSub} />
               </div>
             ) : null}
             <div className="space-y-1.5">
-              <label htmlFor="start-since" className="text-xs font-medium text-foreground">
+              <label htmlFor="start-since" className="text-sm font-medium text-foreground">
                 {isBelt ? "Graduado nesta faixa em" : `Nest${levelLower === "fase" ? "a" : "e"} ${levelLower} desde`}
               </label>
               <Input
@@ -255,7 +243,7 @@ export function StartingPointPanel({
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="start-offset" className="text-xs font-medium text-foreground">
+              <label htmlFor="start-offset" className="text-sm font-medium text-foreground">
                 Aulas já feitas {vocabulary.inLevel}
               </label>
               <Input
@@ -275,14 +263,15 @@ export function StartingPointPanel({
         </div>
       )}
 
-      <div className="flex justify-end gap-2 border-t border-border/60 pt-3">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+      </DialogBody>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
           Cancelar
         </Button>
-        <Button type="button" size="sm" disabled={isPending} onClick={save}>
-          {isPending ? "Salvando..." : "Salvar ponto de partida"}
+        <Button type="button" disabled={isPending} onClick={save}>
+          {isPending ? "Salvando..." : "Salvar"}
         </Button>
       </div>
-    </div>
+    </>
   );
 }

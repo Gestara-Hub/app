@@ -42,7 +42,8 @@ export interface SegmentVocabulary {
   /** "Trilha de graduação", "Trilha de níveis". */
   trackTitle: string;
   /** Titulo da ficha do aluno: "Evolução e graduação", "Evolução e níveis". */
-  progressTitle: string;
+  /** Titulo do modal de graduacao/niveis: "Graduação", "Níveis", "Módulos". */
+  levelsTitle: string;
 }
 
 export interface BusinessSegmentPreset {
@@ -96,7 +97,7 @@ function vocabulary(
     promotedOn: promotion.promotedOn,
     promotionDate: promotion.date,
     trackTitle: isMartial ? "Trilha de graduação" : `Trilha de ${pluralLower}`,
-    progressTitle: isMartial ? "Evolução e graduação" : `Evolução e ${pluralLower}`,
+    levelsTitle: isMartial ? "Graduação" : levelPlural,
   };
 }
 

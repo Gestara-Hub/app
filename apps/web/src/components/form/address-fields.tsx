@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useFormContext,
   type FieldValues,
@@ -11,9 +11,17 @@ import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { BRAZIL_STATES, normalizeStateUf } from "@/lib/brazil-states";
 import { fetchAddressByCep } from "@/lib/cep";
 import { FieldShell, fieldAria } from "./field-shell";
 import { InputText } from "./input-text";
+import { SelectField } from "./select-field";
+
+const STATE_OPTIONS = BRAZIL_STATES.map((s) => ({
+  value: s.uf,
+  label: `${s.uf} · ${s.name}`,
+  shortLabel: s.uf,
+}));
 
 interface AddressFieldsProps<T extends FieldValues = FieldValues> {
   prefix?: Path<T> | string;
@@ -40,6 +48,16 @@ export function AddressFields<T extends FieldValues = FieldValues>({
   const postalCodeField = getFieldName("postalCode");
   const postalCodeValue = (watch(postalCodeField) as string) ?? "";
   const postalCodeState = getFieldState(postalCodeField);
+
+  // UF vem de select: valor antigo digitado ("sp", "São Paulo") vira a sigla;
+  // texto que nao e estado e limpo. Sem marcar o formulario como alterado.
+  const stateField = getFieldName("state");
+  const stateValue = watch(stateField) as string | undefined;
+  useEffect(() => {
+    if (!stateValue) return;
+    const uf = normalizeStateUf(stateValue);
+    if (uf !== stateValue) setValue(stateField, uf as PathValue<T, Path<T>>);
+  }, [stateValue, stateField, setValue]);
 
   const executeLookup = useCallback(
     async (rawCep: string, isManual = false) => {
@@ -77,7 +95,7 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           );
           setValue(
             getFieldName("state"),
-            result.state as PathValue<T, Path<T>>,
+            normalizeStateUf(result.state) as PathValue<T, Path<T>>,
             { shouldValidate: true, shouldDirty: true },
           );
           toast.success("Endereço preenchido pelo CEP.");
@@ -198,10 +216,11 @@ export function AddressFields<T extends FieldValues = FieldValues>({
           required={required}
           disabled={disabled || loading}
         />
-        <InputText<T>
-          name={getFieldName("state")}
+        <SelectField<T>
+          name={stateField}
           label="Estado (UF)"
-          placeholder="UF"
+          placeholder="Selecione"
+          options={STATE_OPTIONS}
           required={required}
           disabled={disabled || loading}
         />

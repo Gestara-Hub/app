@@ -296,3 +296,34 @@ Estas regras já estão implementadas e prevalecem sobre o texto acima quando ho
 - **Datas:** matrícula e cancelamento são comparados pela data **local** (uma matrícula às 22h conta na aula daquele dia).
 - **Calendário:** semana, visão, modalidade e instrutor ficam na URL. No celular, sem escolha na URL, abre em Lista.
 - **Cancelamento em lote de matrículas:** cancela exatamente os selecionados, com ou sem busca ativa.
+
+---
+
+## Evolução do aluno: Graduação e Registros de aula (12/10/2026)
+
+O antigo modal único "Evolução e graduação" virou **dois modais**, porque graduar é raro e registrar é toda aula. Sugestão validada com um professor de Jiu-Jitsu que testa o sistema.
+
+- **Graduação** (título "Graduação" nas lutas; nas outras áreas, o nome dos níveis: "Níveis", "Módulos"...): a **Jornada**, a trilha inteira em pé.
+  - Níveis já conquistados com data e quem graduou; os de antes do sistema aparecem como "Antes do sistema" ou "Veio de {academia}".
+  - O nível atual em destaque: graus como bolinhas (passe o mouse para ver a data), progresso pelo critério da modalidade (aulas, tempo ou os dois), próximo passo, selo "Apto" e o botão **Graduar** (o painel de graduação já aprovado).
+  - Os próximos níveis apagados, sem texto de idade. Níveis de outra idade que o aluno nunca teve não aparecem (adulto não vê faixas infantis).
+  - As bolinhas de grau não recebem foco (o modal abria a dica sozinho); a data aparece ao passar o mouse ("1º grau hoje", "2º grau em 28 jan") e vai em texto para leitor de tela.
+  - "Ajustar ponto de partida" no fim, discreto (usado uma vez por aluno).
+  - Graduar e Ponto de partida trocam o conteúdo do próprio modal no padrão dos outros: título no cabeçalho ("Registrar graduação", "Ponto de partida"), corpo que rola e rodapé fixo com "Cancelar" (volta para a trilha) e a ação. Sem caixa ou fundo próprio.
+- **Registros de aula** (a **Linha do tempo**):
+  - **Metas** no topo, como selos com o avanço ("Raspagem 18/30"). Clicar no selo: marcar como feita, reabrir ou remover. "+ Nova meta" pede o nome (com sugestões aprendidas) e a quantidade opcional.
+  - **Pontos fortes** em uma linha, com sugestões aprendidas.
+  - **Caixa de registro**: tom (Evolução, Ajustar, Observação), anotação e, em "+ Metas e próxima aula", o avanço das metas (+1, +5 ou "feita") e o campo "Para a próxima aula".
+  - **Linha do tempo** com os registros, do mais novo ao mais antigo (10 por vez), mostrando turma, autor, anotação da turma, metas avançadas e o lembrete.
+- **Metas substituem "Pontos a melhorar".** Meta sem quantidade funciona como um foco que o professor marca como feito. Os pontos a melhorar já salvos viraram metas sem quantidade (migração v29).
+- **Lembrete "Para hoje":** o "Para a próxima aula" do registro mais recente **anterior** à data da aula aparece na chamada, abaixo do aluno, e no topo da caixa de registro.
+- **Registrar a aula (turma inteira):** na chamada, com presentes e trilha na modalidade, o botão "Registrar a aula" abre a lista dos presentes.
+  - Um toque no tom de quem se destacou e anotação só para quem precisar.
+  - A "Anotação da turma" entra no registro de **todos** os presentes.
+  - Cada marcação vira um registro na ficha do aluno, já com aula, data e turma.
+  - É um atalho a mais; o registro individual continua no modal do aluno.
+- **Entradas:**
+  - Alunos: clicar na linha abre Registros de aula; o selo da faixa abre Graduação; o menu ⋮ tem os dois. Aluno sem faixa mostra "Definir faixa".
+  - Turma e chamada: menu ⋮ com os dois; o selo da faixa abre Graduação. Na chamada, o ícone ao lado do aluno abre Registros de aula já com a aula escolhida.
+- **Autor do registro:** quem está logado (carimbado pelo service, nunca enviado pela tela).
+- Código: `StudentGraduationDialog`, `StudentRecordsDialog`, `ClassRecordsDialog`; service `clientsService.addClassRecord`, `addClassRecords`, `updateStrengths`, `addGoal`, `setGoalCompleted`, `removeGoal`; contrato `StudentGoal`, `CreateStudentClassRecord`, `CreateClassRecordsBatch`.

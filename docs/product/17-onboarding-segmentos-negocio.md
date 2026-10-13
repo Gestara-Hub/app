@@ -123,7 +123,7 @@ Como o Wizard de 1º Acesso **já cria as modalidades padrão** de acordo com o 
      - Se o negócio for **`aquatics_sports`** (Natação) ou **`education_courses`** (Idiomas), `PROGRESSION_TEMPLATES` incluirá os templates dedicados (`Natação: Adaptação → Avançado (Toucas)` e `Idiomas/Cursos: Básico A1 → Fluente`) e já selecionará o template do segmento por padrão.
 
 4. **Modal de Evolução do Aluno (`StudentProgressDialog`) e Configurações:**
-   - **Evolução do Aluno:** Alimentar as sugestões de tags de *Pontos fortes* e *Pontos de atenção* de acordo com o segmento da modalidade (ex.: *Guarda fechada / Passagem* para Lutas vs. *Respiração / Pernada* para Natação vs. *Conversação / Gramática* para Idiomas).
+   - **Evolução do Aluno:** Alimentar as sugestões de tags de *Pontos fortes* e *Pontos de atenção* de acordo com o segmento da modalidade (ex.: *Guarda fechada / Passagem* para Lutas vs. *Respiração / Pernada* para Natação vs. *Conversação / Gramática* para Idiomas). *Não adotado: as sugestões são aprendidas do uso (doc 08, seção 4.5).*
    - **Configurações → Dados do Negócio:** Adicionar a seção **"Segmento de atuação"** permitindo alterar os segmentos e recarregar os presets de sugestões a qualquer momento.
 
 ---

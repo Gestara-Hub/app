@@ -141,7 +141,9 @@ const STORAGE_KEY = "gestarahub:db";
 //      salvas ganham as idades da IBJJF/CBJJ nos niveis sem idade. Migracao suave.
 // v28: cobrancas canceladas pelo sistema por troca (plano, regra, bolsa) viram
 //      "Substituída" (`replaced`), fora do total de canceladas. Migracao suave.
-const SEED_VERSION = 28;
+// v29: "pontos a melhorar" (`focusAreas`) do progresso viram metas sem
+//      quantidade (`goals`). Migracao suave.
+const SEED_VERSION = 29;
 
 interface PersistedBlob {
   v: number;
@@ -284,6 +286,24 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
         if (!note) continue;
         charge.replaced = true;
         charge.notes = note;
+      }
+    }
+  }
+  if (fromVersion < 29) {
+    for (const tenant of Object.values(data.tenants)) {
+      for (const client of tenant.clients) {
+        for (const [modalityId, progression] of Object.entries(client.progressions ?? {})) {
+          const legacy = progression as typeof progression & { focusAreas?: string[] };
+          if (!legacy.goals) {
+            legacy.goals = (legacy.focusAreas ?? []).map((title, index) => ({
+              id: `goal-${client.id}-${modalityId}-${index}`,
+              title,
+              progress: 0,
+              createdAt: progression.updatedAt,
+            }));
+          }
+          delete legacy.focusAreas;
+        }
       }
     }
   }

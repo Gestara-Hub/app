@@ -12,7 +12,8 @@ import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
-import { StudentProgressDialog } from "./student-progress-dialog";
+import { StudentGraduationDialog } from "./student-graduation-dialog";
+import { StudentRecordsDialog } from "./student-records-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ClientsView() {
@@ -22,7 +23,9 @@ export function ClientsView() {
     client?: Client;
   }>({ open: false });
   const [inactivating, setInactivating] = useState<Client | null>(null);
-  const [progressClient, setProgressClient] = useState<Client | null>(null);
+  // Dois modais: Graduação (raro) e Registros de aula (toda aula).
+  const [graduationClient, setGraduationClient] = useState<Client | null>(null);
+  const [recordsClient, setRecordsClient] = useState<Client | null>(null);
 
   const updateMut = useUpdateClient();
   const canManage = useCan()("clients:manage");
@@ -82,7 +85,8 @@ export function ClientsView() {
         canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
-        onOpenProgress={isClasses ? setProgressClient : undefined}
+        onOpenGraduation={isClasses ? setGraduationClient : undefined}
+        onOpenRecords={isClasses ? setRecordsClient : undefined}
         onInactivate={setInactivating}
         onReactivate={reactivate}
       />
@@ -96,14 +100,22 @@ export function ClientsView() {
       />
 
       {isClasses ? (
-        <StudentProgressDialog
-          client={progressClient}
-          open={Boolean(progressClient)}
-          onOpenChange={(open) => {
-            if (!open) setProgressClient(null);
-          }}
-          onEditClient={openEdit}
-        />
+        <>
+          <StudentGraduationDialog
+            client={graduationClient}
+            open={Boolean(graduationClient)}
+            onOpenChange={(open) => {
+              if (!open) setGraduationClient(null);
+            }}
+          />
+          <StudentRecordsDialog
+            client={recordsClient}
+            open={Boolean(recordsClient)}
+            onOpenChange={(open) => {
+              if (!open) setRecordsClient(null);
+            }}
+          />
+        </>
       ) : null}
 
       <InactivateClientDialog

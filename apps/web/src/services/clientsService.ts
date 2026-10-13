@@ -4,12 +4,17 @@ import type {
   Charge,
   Client,
   ClientFilter,
+  CreateClassRecordsBatch,
   CreateClient,
   CreateClientInitialCharge,
+  CreateStudentClassRecord,
   DateISO,
-  EvaluationEntryTone,
   Id,
   ProgressionBeltColor,
+  ProgressionTermSuggestions,
+  StudentEvaluationEntry,
+  StudentGoal,
+  StudentGoalProgressEntry,
   StudentModalityOverviewItem,
   StudentModalityProgression,
   StudentProgressionOverview,
@@ -19,9 +24,11 @@ import { chargesDueIn } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { getCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import {
   newId,
+  normalizeText,
   notFoundError,
   nowIso,
   simulateRead,
@@ -102,6 +109,150 @@ function ensurePlanlessScholarCharges(client: Client): void {
   for (const competence of new Set([start, current])) {
     planlessScholarCharges(client, competence);
   }
+}
+
+// --- Sugestoes da evolucao (aprendidas do uso) ----------------------------
+
+type ProgressionTermKind = "strengths" | "goals";
+
+/** Ate quantos termos a sugestao devolve (a tela mostra 6; a busca ao digitar usa todos). */
+const MAX_TERM_SUGGESTIONS = 40;
+
+/**
+ * Termos ja usados (pontos fortes ou focos) NA modalidade, do mais usado ao
+ * menos. So a propria modalidade: termos de Jiu-Jitsu nao sugerem no Muay Thai.
+ * Cada aluno conta uma vez por termo; maiusculas e acentos nao diferenciam, e
+ * a grafia exibida e a mais usada.
+ */
+function progressionTermSuggestions(kind: ProgressionTermKind, modalityId: Id): string[] {
+  const byKey = new Map<string, { students: Set<Id>; spellings: Map<string, number> }>();
+  for (const client of store.clients) {
+    const progression = client.progressions?.[modalityId];
+    if (!progression) continue;
+    const terms = kind === "strengths" ? progression.strengths ?? [] : (progression.goals ?? []).map((g) => g.title);
+    for (const raw of terms) {
+      const term = raw.trim();
+      const key = normalizeText(term);
+      if (!key) continue;
+      const entry = byKey.get(key) ?? { students: new Set<Id>(), spellings: new Map<string, number>() };
+      entry.students.add(client.id);
+      entry.spellings.set(term, (entry.spellings.get(term) ?? 0) + 1);
+      byKey.set(key, entry);
+    }
+  }
+  return [...byKey.values()]
+    .map((entry) => ({
+      count: entry.students.size,
+      label: [...entry.spellings].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"))[0][0],
+    }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"))
+    .slice(0, MAX_TERM_SUGGESTIONS)
+    .map((term) => term.label);
+}
+
+// --- Progresso por modalidade (graduacao, metas, registros) -----------------
+
+/** Progresso do aluno na modalidade; sem registro ainda, comeca no 1o nivel. */
+function progressionOf(client: Client, modalityId: Id, date: DateISO): StudentModalityProgression {
+  const prev = client.progressions?.[modalityId];
+  if (prev) {
+    return {
+      ...prev,
+      strengths: [...(prev.strengths ?? [])],
+      goals: (prev.goals ?? []).map((g) => ({ ...g })),
+      evaluations: [...(prev.evaluations ?? [])],
+    };
+  }
+  const modality = store.categories.find((c) => c.id === modalityId);
+  const firstLevel = resolveModalityTrack(modality).levels[0] ?? {
+    id: "lvl-default",
+    name: "Iniciante",
+    color: "white" as const,
+    maxSubLevels: 4,
+  };
+  return {
+    modalityId,
+    modalityName: modality?.name,
+    levelId: firstLevel.id,
+    levelName: firstLevel.name,
+    levelColor: firstLevel.color,
+    subLevel: 0,
+    maxSubLevels: firstLevel.maxSubLevels,
+    promotedAt: date,
+    strengths: [],
+    goals: [],
+    evaluations: [],
+    promotionHistory: [],
+    updatedAt: nowIso(),
+  };
+}
+
+/** Grava o progresso da modalidade no aluno (substitui o registro do indice). */
+function writeProgression(idx: number, progression: StudentModalityProgression): Client {
+  const current = store.clients[idx];
+  const ts = nowIso();
+  const updated: Client = {
+    ...current,
+    progressions: {
+      ...(current.progressions ?? {}),
+      [progression.modalityId]: { ...progression, updatedAt: ts },
+    },
+    updatedAt: ts,
+  };
+  store.clients[idx] = updated;
+  return updated;
+}
+
+function clientIndex(id: Id): number {
+  const idx = store.clients.findIndex((c) => c.id === id);
+  if (idx === -1) throw notFoundError(NOT_FOUND);
+  return idx;
+}
+
+function findGoal(progression: StudentModalityProgression, goalId: Id): StudentGoal {
+  const goal = progression.goals.find((g) => g.id === goalId);
+  if (!goal) throw notFoundError("Meta não encontrada.");
+  return goal;
+}
+
+/**
+ * Soma o avanco das metas no registro (com alvo: +amount, feita ao chegar no
+ * alvo; sem alvo: `completed` marca como feita). Devolve o resumo para o registro.
+ */
+function applyGoalProgress(
+  progression: StudentModalityProgression,
+  items: CreateStudentClassRecord["goalProgress"],
+  date: DateISO,
+): StudentGoalProgressEntry[] {
+  const entries: StudentGoalProgressEntry[] = [];
+  for (const item of items ?? []) {
+    const goal = progression.goals.find((g) => g.id === item.goalId);
+    if (!goal || goal.completedAt) continue;
+    if (goal.target) {
+      const amount = Math.max(0, Math.round(item.amount ?? 0));
+      if (amount === 0) continue;
+      goal.progress = Math.min(goal.target, goal.progress + amount);
+      const completed = goal.progress >= goal.target;
+      if (completed) goal.completedAt = date;
+      entries.push({ goalId: goal.id, title: goal.title, amount, ...(completed ? { completed } : {}) });
+    } else if (item.completed) {
+      goal.completedAt = date;
+      entries.push({ goalId: goal.id, title: goal.title, completed: true });
+    }
+  }
+  return entries;
+}
+
+function newClassRecord(
+  input: Omit<StudentEvaluationEntry, "id" | "createdAt" | "authorName">,
+): StudentEvaluationEntry {
+  const author = getCurrentActor()?.name;
+  return {
+    id: newId(),
+    ...input,
+    ...(author ? { authorName: author } : {}),
+    createdAt: nowIso(),
+  };
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -444,6 +595,14 @@ export const clientsService = {
     });
   },
 
+  /** Sugestoes de pontos fortes e focos para a modalidade (aprendidas do uso). */
+  getProgressionTermSuggestions(modalityId: Id): Promise<ProgressionTermSuggestions> {
+    return simulateRead(() => ({
+      strengths: progressionTermSuggestions("strengths", modalityId),
+      goals: progressionTermSuggestions("goals", modalityId),
+    }));
+  },
+
   saveModalityProgression(
     studentId: Id,
     progression: Omit<StudentModalityProgression, "updatedAt">,
@@ -529,7 +688,7 @@ export const clientsService = {
         originTeacher: prev?.originTeacher,
         nextExamDate: undefined,
         strengths: prev?.strengths ?? [],
-        focusAreas: prev?.focusAreas ?? [],
+        goals: prev?.goals ?? [],
         evaluations: prev?.evaluations ?? [],
         promotionHistory: [historyEntry, ...(prev?.promotionHistory ?? [])],
         updatedAt: ts,
@@ -553,77 +712,141 @@ export const clientsService = {
     });
   },
 
-  addSessionEvaluation(payload: {
-    studentId: Id;
-    modalityId: Id;
-    modalityName?: string;
-    classGroupId?: Id;
-    classGroupName?: string;
-    sessionId?: Id;
-    date: DateISO;
-    tone: EvaluationEntryTone;
-    note: string;
-    authorName?: string;
-  }): Promise<Client> {
+  /** Registro de aula de um aluno: anotacao, avanco de metas e lembrete. */
+  addClassRecord(payload: CreateStudentClassRecord): Promise<Client> {
     return simulateWrite(() => {
-      const idx = store.clients.findIndex((c) => c.id === payload.studentId);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
-      const current = store.clients[idx];
-      const ts = nowIso();
-      const modality = store.categories.find((c) => c.id === payload.modalityId);
-      const track = resolveModalityTrack(modality);
-      const firstLevel = track.levels[0] ?? {
-        id: "lvl-default",
-        name: "Iniciante",
-        color: "white" as const,
-        maxSubLevels: 4,
-      };
-      const prev = current.progressions?.[payload.modalityId];
-
-      const evaluation = {
-        id: newId(),
+      const note = payload.note?.trim() ?? "";
+      const nextClassNote = payload.nextClassNote?.trim() ?? "";
+      const hasGoals = (payload.goalProgress ?? []).some((g) => (g.amount ?? 0) > 0 || g.completed);
+      if (!note && !nextClassNote && !hasGoals) {
+        throw validationError([{ field: "note", message: "Escreva uma anotação ou avance uma meta." }]);
+      }
+      const idx = clientIndex(payload.studentId);
+      const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
+      const goalProgress = applyGoalProgress(progression, payload.goalProgress, payload.date);
+      const record = newClassRecord({
         date: payload.date,
         classGroupId: payload.classGroupId,
         classGroupName: payload.classGroupName,
         sessionId: payload.sessionId,
         tone: payload.tone,
-        note: payload.note.trim(),
-        authorName: payload.authorName,
-        createdAt: ts,
-      };
-
-      const nextProgression: StudentModalityProgression = prev
-        ? {
-            ...prev,
-            evaluations: [evaluation, ...prev.evaluations],
-            updatedAt: ts,
-          }
-        : {
-            modalityId: payload.modalityId,
-            modalityName: payload.modalityName ?? modality?.name,
-            levelId: firstLevel.id,
-            levelName: firstLevel.name,
-            levelColor: firstLevel.color,
-            subLevel: 0,
-            maxSubLevels: firstLevel.maxSubLevels,
-            promotedAt: payload.date,
-            strengths: [],
-            focusAreas: [],
-            evaluations: [evaluation],
-            promotionHistory: [],
-            updatedAt: ts,
-          };
-
-      const updated: Client = {
-        ...current,
-        progressions: {
-          ...(current.progressions ?? {}),
-          [payload.modalityId]: nextProgression,
-        },
-        updatedAt: ts,
-      };
-      store.clients[idx] = updated;
+        note,
+        ...(nextClassNote ? { nextClassNote } : {}),
+        ...(goalProgress.length ? { goalProgress } : {}),
+      });
+      progression.evaluations = [record, ...progression.evaluations];
+      const updated = writeProgression(idx, progression);
+      auditLogService.record({
+        action: "updated",
+        target: { type: "client", id: updated.id, label: updated.name },
+        predicate: `registrou a aula de ${updated.name}${payload.classGroupName ? ` (${payload.classGroupName})` : ""}`,
+      });
       return clone(updated);
+    });
+  },
+
+  /**
+   * Registro da turma inteira pela chamada: um registro na ficha de cada aluno
+   * marcado (tom ou anotacao). Com anotacao da turma, todos os listados ganham.
+   * Devolve quantos registros criou.
+   */
+  addClassRecords(payload: CreateClassRecordsBatch): Promise<number> {
+    return simulateWrite(() => {
+      const classNote = payload.classNote?.trim() ?? "";
+      let created = 0;
+      for (const entry of payload.entries) {
+        const note = entry.note?.trim() ?? "";
+        if (!entry.tone && !note && !classNote) continue;
+        const idx = store.clients.findIndex((c) => c.id === entry.studentId);
+        if (idx === -1) continue;
+        const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
+        progression.evaluations = [
+          newClassRecord({
+            date: payload.date,
+            classGroupId: payload.classGroupId,
+            classGroupName: payload.classGroupName,
+            sessionId: payload.sessionId,
+            tone: entry.tone ?? "general",
+            note,
+            ...(classNote ? { classNote } : {}),
+          }),
+          ...progression.evaluations,
+        ];
+        writeProgression(idx, progression);
+        created += 1;
+      }
+      if (created === 0) {
+        throw validationError([{ field: "entries", message: "Marque ao menos um aluno ou escreva a anotação da turma." }]);
+      }
+      auditLogService.record({
+        action: "updated",
+        target: { type: "class_group", id: payload.classGroupId, label: payload.classGroupName },
+        predicate: `registrou a aula de ${payload.classGroupName} (${plural(created, "aluno", "alunos")})`,
+      });
+      return created;
+    });
+  },
+
+  /** Pontos fortes do aluno na modalidade. */
+  updateStrengths(studentId: Id, modalityId: Id, strengths: string[]): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = clientIndex(studentId);
+      const progression = progressionOf(store.clients[idx], modalityId, todayISO());
+      progression.strengths = [...new Set(strengths.map((t) => t.trim()).filter(Boolean))];
+      return clone(writeProgression(idx, progression));
+    });
+  },
+
+  addGoal(studentId: Id, modalityId: Id, input: { title: string; target?: number }): Promise<Client> {
+    return simulateWrite(() => {
+      const title = input.title.trim();
+      const fields: ApiErrorField[] = [];
+      if (!title) fields.push({ field: "title", message: "Informe a meta." });
+      else if (title.length > 80) fields.push({ field: "title", message: "Use no máximo 80 caracteres." });
+      if (input.target !== undefined && (!Number.isInteger(input.target) || input.target < 1)) {
+        fields.push({ field: "target", message: "Informe uma quantidade maior que zero." });
+      }
+      if (fields.length > 0) throw validationError(fields);
+      const idx = clientIndex(studentId);
+      const progression = progressionOf(store.clients[idx], modalityId, todayISO());
+      progression.goals = [
+        ...progression.goals,
+        {
+          id: newId(),
+          title,
+          ...(input.target ? { target: input.target } : {}),
+          progress: 0,
+          createdAt: nowIso(),
+        },
+      ];
+      return clone(writeProgression(idx, progression));
+    });
+  },
+
+  /** Marca a meta como feita ou reabre. */
+  setGoalCompleted(studentId: Id, modalityId: Id, goalId: Id, completed: boolean): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = clientIndex(studentId);
+      const progression = progressionOf(store.clients[idx], modalityId, todayISO());
+      const goal = findGoal(progression, goalId);
+      if (completed) {
+        goal.completedAt = todayISO();
+        if (goal.target) goal.progress = goal.target;
+      } else {
+        delete goal.completedAt;
+        if (goal.target && goal.progress >= goal.target) goal.progress = goal.target - 1;
+      }
+      return clone(writeProgression(idx, progression));
+    });
+  },
+
+  removeGoal(studentId: Id, modalityId: Id, goalId: Id): Promise<Client> {
+    return simulateWrite(() => {
+      const idx = clientIndex(studentId);
+      const progression = progressionOf(store.clients[idx], modalityId, todayISO());
+      findGoal(progression, goalId);
+      progression.goals = progression.goals.filter((g) => g.id !== goalId);
+      return clone(writeProgression(idx, progression));
     });
   },
 };

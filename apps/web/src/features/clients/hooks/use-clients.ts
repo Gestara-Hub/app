@@ -9,9 +9,10 @@ import { queryKeys } from "@/lib/queryKeys";
 import { clientsService } from "@/services/clientsService";
 import type {
   ClientFilter,
+  CreateClassRecordsBatch,
   CreateClient,
+  CreateStudentClassRecord,
   DateISO,
-  EvaluationEntryTone,
   Id,
   ProgressionBeltColor,
   StudentModalityProgression,
@@ -38,6 +39,15 @@ export function useStudentProgressionOverview(studentId?: Id) {
     queryKey: [...queryKeys.clients.all, "progression", studentId ?? ""],
     queryFn: () => clientsService.getProgressionOverview(studentId!),
     enabled: Boolean(studentId),
+  });
+}
+
+/** Pontos fortes e focos ja usados pelo espaco (atualiza ao salvar a ficha: `clients.all`). */
+export function useProgressionTermSuggestions(modalityId?: Id) {
+  return useQuery({
+    queryKey: queryKeys.clients.progressionTerms(modalityId ?? ""),
+    queryFn: () => clientsService.getProgressionTermSuggestions(modalityId!),
+    enabled: Boolean(modalityId),
   });
 }
 
@@ -120,24 +130,51 @@ export function usePromoteStudent() {
   });
 }
 
-export function useAddSessionEvaluation() {
+/** Toda escrita de progresso invalida `clients.all` (ficha, lista, sugestoes). */
+function useClientsMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: {
-      studentId: Id;
-      modalityId: Id;
-      modalityName?: string;
-      classGroupId?: Id;
-      classGroupName?: string;
-      sessionId?: Id;
-      date: DateISO;
-      tone: EvaluationEntryTone;
-      note: string;
-      authorName?: string;
-    }) => clientsService.addSessionEvaluation(payload),
+    mutationFn: fn,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
     },
   });
+}
+
+export function useAddClassRecord() {
+  return useClientsMutation((payload: CreateStudentClassRecord) => clientsService.addClassRecord(payload));
+}
+
+/** Registro da turma inteira (chamada). */
+export function useAddClassRecords() {
+  return useClientsMutation((payload: CreateClassRecordsBatch) => clientsService.addClassRecords(payload));
+}
+
+export function useUpdateStrengths() {
+  return useClientsMutation(
+    ({ studentId, modalityId, strengths }: { studentId: Id; modalityId: Id; strengths: string[] }) =>
+      clientsService.updateStrengths(studentId, modalityId, strengths),
+  );
+}
+
+export function useAddGoal() {
+  return useClientsMutation(
+    ({ studentId, modalityId, title, target }: { studentId: Id; modalityId: Id; title: string; target?: number }) =>
+      clientsService.addGoal(studentId, modalityId, { title, target }),
+  );
+}
+
+export function useSetGoalCompleted() {
+  return useClientsMutation(
+    ({ studentId, modalityId, goalId, completed }: { studentId: Id; modalityId: Id; goalId: Id; completed: boolean }) =>
+      clientsService.setGoalCompleted(studentId, modalityId, goalId, completed),
+  );
+}
+
+export function useRemoveGoal() {
+  return useClientsMutation(
+    ({ studentId, modalityId, goalId }: { studentId: Id; modalityId: Id; goalId: Id }) =>
+      clientsService.removeGoal(studentId, modalityId, goalId),
+  );
 }
 

@@ -20,6 +20,8 @@ import { FieldShell, fieldAria } from "./field-shell";
 export interface SelectOption {
   label: string;
   value: string;
+  /** Texto do campo depois de escolhido, quando a lista usa um rotulo longo ("SP" para "SP · São Paulo"). */
+  shortLabel?: string;
 }
 
 interface SelectFieldProps<T extends FieldValues> {
@@ -93,7 +95,7 @@ export function SelectField<T extends FieldValues>({
                     )}
                   >
                     <span className="truncate">
-                      {selected ? selected.label : placeholder}
+                      {selected ? (selected.shortLabel ?? selected.label) : placeholder}
                     </span>
                   </button>
                 </DropdownMenuTrigger>

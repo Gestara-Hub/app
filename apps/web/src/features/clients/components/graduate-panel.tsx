@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ArrowRight, Award, CheckCircle2, Circle, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award, CheckCircle2, Circle } from "lucide-react";
 import type {
   ModalityProgressionTrack,
   ProgressionCriteriaType,
@@ -11,6 +11,7 @@ import type {
 import { todayISO } from "@gestarahub/core/date";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
+import { DialogBody } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -292,23 +293,10 @@ export function GraduatePanel({
   );
   const otherOutOfAge = usesAges && otherLevel && !isLevelAllowedForAge(otherLevel, age);
 
+  // Corpo e rodape do modal (padrao: corpo rola, rodape fixo); o titulo vem do modal.
   return (
-    <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/[0.03] p-4">
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Award className="size-4 text-primary" />
-          Registrar {vocabulary.promotionLower}
-        </p>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground"
-          aria-label="Fechar"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-
+    <>
+      <DialogBody className="space-y-4">
       {/* Decisao: grau, proximo nivel ou outro */}
       <div className="grid gap-2 sm:grid-cols-3">
         {canGetDegree ? (
@@ -352,7 +340,7 @@ export function GraduatePanel({
       {choice === "other" ? (
         <div className="grid gap-3 rounded-xl border border-border/60 bg-background p-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label htmlFor="graduate-other-level" className="text-xs font-medium text-foreground">
+            <label htmlFor="graduate-other-level" className="text-sm font-medium text-foreground">
               {isBelt ? "Faixa" : vocabulary.level}
             </label>
             <LevelSelect
@@ -391,7 +379,7 @@ export function GraduatePanel({
           </div>
           {otherLevel && otherLevel.maxSubLevels > 0 ? (
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-foreground">Grau</span>
+              <span className="text-sm font-medium text-foreground">Grau</span>
               <DegreePicker max={otherLevel.maxSubLevels} value={otherSub} onChange={setOtherSub} />
             </div>
           ) : null}
@@ -472,7 +460,7 @@ export function GraduatePanel({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor="graduate-date" className="text-xs font-medium text-foreground">
+          <label htmlFor="graduate-date" className="text-sm font-medium text-foreground">
             {vocabulary.promotionDate}
           </label>
           <Input
@@ -485,7 +473,7 @@ export function GraduatePanel({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="graduate-examiner" className="text-xs font-medium text-foreground">
+          <label htmlFor="graduate-examiner" className="text-sm font-medium text-foreground">
             Quem {isBelt ? "graduou" : "avaliou"} (opcional)
           </label>
           <Input
@@ -498,7 +486,7 @@ export function GraduatePanel({
         </div>
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="graduate-notes" className="text-xs font-medium text-foreground">
+        <label htmlFor="graduate-notes" className="text-sm font-medium text-foreground">
           Observação (opcional)
         </label>
         <Textarea
@@ -511,13 +499,13 @@ export function GraduatePanel({
         />
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-border/60 pt-3">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+      </DialogBody>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
           Cancelar
         </Button>
         <Button
           type="button"
-          size="sm"
           disabled={isPending || !target || !date || unchanged}
           onClick={() =>
             target &&
@@ -534,6 +522,6 @@ export function GraduatePanel({
           {isPending ? "Salvando..." : `Confirmar ${vocabulary.promotionLower}`}
         </Button>
       </div>
-    </div>
+    </>
   );
 }

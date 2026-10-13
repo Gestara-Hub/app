@@ -190,6 +190,15 @@ O visual vem da **trilha** (`ModalityProgressionTrack.style`), não da área, po
 
 Fora de escopo (recurso novo, não configuração): capacidade por aparelho, raia, turmas por faixa etária e o card "Prontos para graduar/avançar" no dashboard.
 
+#### Pontos fortes e metas: sugestões aprendidas (12/10/2026)
+
+- **Sem listas fixas.** As sugestões de "Pontos fortes" e de metas (antes "Pontos a Melhorar") nos Registros de aula não dependem da área nem do nome da modalidade (a lista única de Jiu-Jitsu foi removida). Listas por área ou por tipo de modalidade foram avaliadas e descartadas: o nome da modalidade é texto livre e não identifica o tipo com segurança.
+- **Só a mesma modalidade:** os termos já usados **nesta modalidade** com os alunos, os mais usados antes. Termos de outra modalidade não entram (Jiu-Jitsu não sugere no Muay Thai), nem como complemento. Sem nenhum termo, a linha de sugestões não aparece (só o campo).
+- **Do espaço inteiro (tenant), não do usuário:** conta o que **qualquer** usuário do espaço preencheu em qualquer aluno daquela modalidade, e vale para todos os usuários do espaço. Nunca mistura espaços diferentes. A sugestão mostra só o termo, nunca de qual aluno veio, então o professor que vê só os próprios alunos também aproveita o vocabulário da equipe. No mock, os dados do espaço ficam no navegador (como todo o resto); com o backend, a consulta agrupa por termo filtrando `organizationId` e `modalityId`.
+- **Até 6 sugestões**, sem as que o aluno já tem. Digitando, as sugestões passam a ser as que contêm o texto.
+- Maiúsculas e acentos não diferenciam: "guarda fechada" e "Guarda Fechada" são o mesmo termo, exibido e salvo com a grafia mais usada. Cada aluno conta uma vez por termo.
+- Código: `clientsService.getProgressionTermSuggestions(modalityId)` → `ProgressionTermSuggestions` (`strengths`, `goals`); telas em `ProgressionTermsEditor` (pontos fortes) e "Nova meta". Modais da evolução: doc 11, seção "Evolução do aluno".
+
 ---
 
 ## 5. Mapeamento de Arquivos Atuais no Working Tree

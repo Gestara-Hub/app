@@ -9,6 +9,7 @@ import {
   AlertCircle,
   ChevronLeft,
   GraduationCap,
+  MessageSquarePlus,
   Pencil,
   Search,
   UserCheck,
@@ -47,6 +48,7 @@ import { useSegmentVocabulary } from "@/features/settings";
 import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { todayISO } from "@gestarahub/core/date";
 import { formatPhone, plural, pluralWord } from "@gestarahub/core/format";
 import {
   isApiError,
@@ -56,7 +58,7 @@ import {
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
-import { StudentProgressDialog, useClients } from "@/features/clients";
+import { StudentGraduationDialog, StudentRecordsDialog, useClients } from "@/features/clients";
 import {
   useCancelEnrollment,
   useClassGroup,
@@ -189,7 +191,8 @@ export function TurmaDetailView({ id }: { id: string }) {
   const [enrollOpen, setEnrollOpen] = useState(
     () => searchParams?.get("enroll") === "true",
   );
-  const [progressClient, setProgressClient] = useState<Client | null>(null);
+  const [graduationClient, setGraduationClient] = useState<Client | null>(null);
+  const [recordsClient, setRecordsClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<Tab>("enrolled");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
@@ -505,10 +508,16 @@ export function TurmaDetailView({ id }: { id: string }) {
                           ...(student
                             ? [
                                 {
-                                  key: "progress",
-                                  label: vocabulary.progressTitle,
+                                  key: "records",
+                                  label: "Registros de aula",
+                                  icon: <MessageSquarePlus className="size-4" />,
+                                  onSelect: () => setRecordsClient(student),
+                                },
+                                {
+                                  key: "graduation",
+                                  label: vocabulary.levelsTitle,
                                   icon: <GraduationCap className="size-4" />,
-                                  onSelect: () => setProgressClient(student),
+                                  onSelect: () => setGraduationClient(student),
                                 },
                               ]
                             : []),
@@ -554,8 +563,8 @@ export function TurmaDetailView({ id }: { id: string }) {
                               {currentLvl && student ? (
                                 <button
                                   type="button"
-                                  onClick={() => setProgressClient(student)}
-                                  title={`Abrir ficha: ${vocabulary.progressTitle.toLowerCase()}`}
+                                  onClick={() => setGraduationClient(student)}
+                                  title={`Abrir ${vocabulary.levelsTitle.toLowerCase()}`}
                                 >
                                   <BeltBadge
                                     name={currentLvl.name}
@@ -669,12 +678,21 @@ export function TurmaDetailView({ id }: { id: string }) {
         </section>
       ) : null}
 
-      <StudentProgressDialog
-        client={progressClient}
-        open={Boolean(progressClient)}
+      <StudentGraduationDialog
+        client={graduationClient}
+        open={Boolean(graduationClient)}
         onOpenChange={(open) => {
-          if (!open) setProgressClient(null);
+          if (!open) setGraduationClient(null);
         }}
+        initialModalityId={turma?.modalityId}
+      />
+      <StudentRecordsDialog
+        client={recordsClient}
+        open={Boolean(recordsClient)}
+        onOpenChange={(open) => {
+          if (!open) setRecordsClient(null);
+        }}
+        context={turma ? { date: todayISO(), modalityId: turma.modalityId } : undefined}
       />
 
       <AlertDialog

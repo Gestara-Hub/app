@@ -11,6 +11,8 @@ import {
   ChevronRight,
   FileText,
   GraduationCap,
+  MessageSquarePlus,
+  NotebookPen,
   RotateCcw,
   User,
   UserCheck,
@@ -61,7 +63,13 @@ import {
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
-import { StudentProgressDialog, useClients } from "@/features/clients";
+import {
+  ClassRecordsDialog,
+  StudentGraduationDialog,
+  StudentRecordsDialog,
+  nextClassReminder,
+  useClients,
+} from "@/features/clients";
 import {
   useCancelReservation,
   useClassGroup,
@@ -148,7 +156,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [substituteOpen, setSubstituteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
-  const [progressClient, setProgressClient] = useState<Client | null>(null);
+  // Dois modais por aluno (Graduação e Registros de aula) e o registro da turma inteira.
+  const [graduationClient, setGraduationClient] = useState<Client | null>(null);
+  const [recordsClient, setRecordsClient] = useState<Client | null>(null);
+  const [classRecordsOpen, setClassRecordsOpen] = useState(false);
 
   const clientById = useMemo(
     () => new Map((clients ?? []).map((c) => [c.id, c])),
@@ -222,6 +233,21 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     justified: session.roster.filter((r) => r.attendance === "justified").length,
     pending: session.roster.filter((r) => !r.attendance).length,
   };
+
+  // Registro de aula: so com trilha na modalidade (os registros ficam nela).
+  const recordSession = modalityTrack?.modalityId
+    ? {
+        sessionId: session.id,
+        date: session.date,
+        classGroupId: session.classGroupId,
+        classGroupName: session.className,
+        modalityId: modalityTrack.modalityId,
+      }
+    : null;
+  const presentStudents = session.roster
+    .filter((r) => r.attendance === "present")
+    .map((r) => clientById.get(r.studentId))
+    .filter((c): c is Client => Boolean(c));
 
   const markAllPresent = async () => {
     setBulkPending(true);
@@ -444,16 +470,24 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
               <span className="text-muted-foreground">a marcar</span>
             </span>
           </div>
-          {canMark && counts.pending > 0 ? (
-            <Button
-              size="sm"
-              onClick={markAllPresent}
-              disabled={bulkPending || markMut.isPending}
-            >
-              <CheckCheck className="size-4" />
-              {bulkPending ? "Marcando..." : "Marcar todos como presentes"}
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {canMark && recordSession && presentStudents.length > 0 ? (
+              <Button size="sm" variant="outline" onClick={() => setClassRecordsOpen(true)}>
+                <MessageSquarePlus className="size-4" />
+                Registrar a aula
+              </Button>
+            ) : null}
+            {canMark && counts.pending > 0 ? (
+              <Button
+                size="sm"
+                onClick={markAllPresent}
+                disabled={bulkPending || markMut.isPending}
+              >
+                <CheckCheck className="size-4" />
+                {bulkPending ? "Marcando..." : "Marcar todos como presentes"}
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -491,14 +525,26 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   ) ?? modalityTrack.track.levels[0])
                 : null;
               const currentSub = prog?.subLevel ?? 0;
+              // "Para a próxima aula" do registro anterior vira o lembrete de hoje.
+              const reminder = modalityTrack ? nextClassReminder(prog, session.date) : undefined;
               const rowActions: ListItemAction[] = [
                 ...(student
                   ? [
+                      ...(recordSession
+                        ? [
+                            {
+                              key: "records",
+                              label: "Registros de aula",
+                              icon: <MessageSquarePlus className="size-4" />,
+                              onSelect: () => setRecordsClient(student),
+                            },
+                          ]
+                        : []),
                       {
-                        key: "progress",
-                        label: vocabulary.progressTitle,
+                        key: "graduation",
+                        label: vocabulary.levelsTitle,
                         icon: <GraduationCap className="size-4" />,
-                        onSelect: () => setProgressClient(student),
+                        onSelect: () => setGraduationClient(student),
                       },
                     ]
                   : []),
@@ -553,8 +599,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           <button
                             type="button"
                             className="block"
-                            onClick={() => setProgressClient(student)}
-                            title={`Abrir ficha: ${vocabulary.progressTitle.toLowerCase()}`}
+                            onClick={() => setGraduationClient(student)}
+                            title={`Abrir ${vocabulary.levelsTitle.toLowerCase()}`}
                           >
                             <BeltBadge
                               name={currentLvl.name}
@@ -566,24 +612,30 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             />
                           </button>
                         ) : null}
+                        {reminder ? (
+                          <p className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-800 dark:text-amber-300">
+                            <NotebookPen className="size-3 shrink-0" aria-hidden />
+                            Para hoje: {reminder}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      {student ? (
+                      {student && recordSession ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon-sm"
-                              aria-label={`Evolução e avaliação de ${r.studentName}`}
-                              onClick={() => setProgressClient(student)}
+                              aria-label={`Registrar aula de ${r.studentName}`}
+                              onClick={() => setRecordsClient(student)}
                             >
-                              <GraduationCap className="size-4 text-muted-foreground hover:text-primary" />
+                              <MessageSquarePlus className="size-4 text-muted-foreground hover:text-primary" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent sideOffset={4}>{vocabulary.progressTitle}</TooltipContent>
+                          <TooltipContent sideOffset={4}>Registrar aula</TooltipContent>
                         </Tooltip>
                       ) : null}
 
@@ -651,12 +703,27 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         </TooltipProvider>
       )}
 
-      <StudentProgressDialog
-        client={progressClient}
-        open={Boolean(progressClient)}
+      <StudentGraduationDialog
+        client={graduationClient}
+        open={Boolean(graduationClient)}
         onOpenChange={(open) => {
-          if (!open) setProgressClient(null);
+          if (!open) setGraduationClient(null);
         }}
+        initialModalityId={modalityTrack?.modalityId}
+      />
+      <StudentRecordsDialog
+        client={recordsClient}
+        open={Boolean(recordsClient)}
+        onOpenChange={(open) => {
+          if (!open) setRecordsClient(null);
+        }}
+        context={recordSession ?? undefined}
+      />
+      <ClassRecordsDialog
+        open={classRecordsOpen}
+        onOpenChange={setClassRecordsOpen}
+        session={recordSession}
+        students={presentStudents}
       />
 
       {/* Diálogo para Adicionar Aluno Avulso / Experimental */}

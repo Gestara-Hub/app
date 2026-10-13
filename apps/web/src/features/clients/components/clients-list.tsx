@@ -6,6 +6,7 @@ import {
   Award,
   GraduationCap,
   Mail,
+  MessageSquarePlus,
   Pencil,
   Phone,
   Power,
@@ -89,11 +90,11 @@ function getEffectivePriceCents(client: Client, plan: Plan): number {
 function ClientProgressionBadges({
   client,
   categoryById,
-  onOpenProgress,
+  onOpenGraduation,
 }: {
   client: Client;
   categoryById: Map<string, Category>;
-  onOpenProgress?: (client: Client) => void;
+  onOpenGraduation?: (client: Client) => void;
 }) {
   const vocabulary = useSegmentVocabulary();
   const entries = Object.values(client.progressions ?? {});
@@ -119,18 +120,18 @@ function ClientProgressionBadges({
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   if (resolvedBadges.length === 0) {
-    if (!onOpenProgress) return null;
+    if (!onOpenGraduation) return null;
     return (
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          onOpenProgress(client);
+          onOpenGraduation(client);
         }}
         className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors"
       >
         <GraduationCap className="size-3" />
-        <span>Evolução / {vocabulary.level}</span>
+        <span>Definir {vocabulary.level.toLowerCase()}</span>
       </button>
     );
   }
@@ -139,9 +140,9 @@ function ClientProgressionBadges({
     <div
       className="inline-flex flex-wrap items-center gap-1.5"
       onClick={(e) => {
-        if (onOpenProgress) {
+        if (onOpenGraduation) {
           e.stopPropagation();
-          onOpenProgress(client);
+          onOpenGraduation(client);
         }
       }}
     >
@@ -271,7 +272,8 @@ interface ClientsListProps {
   canManage: boolean;
   onCreate: () => void;
   onEdit: (client: Client) => void;
-  onOpenProgress?: (client: Client) => void;
+  onOpenGraduation?: (client: Client) => void;
+  onOpenRecords?: (client: Client) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
 }
@@ -283,7 +285,8 @@ function ClientRow({
   canManage,
   isClasses,
   onEdit,
-  onOpenProgress,
+  onOpenGraduation,
+  onOpenRecords,
   onInactivate,
   onReactivate,
 }: {
@@ -293,7 +296,8 @@ function ClientRow({
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
-  onOpenProgress?: (c: Client) => void;
+  onOpenGraduation?: (c: Client) => void;
+  onOpenRecords?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -302,13 +306,23 @@ function ClientRow({
 
   const actions: ListItemAction[] = canManage
     ? [
-        ...(isClasses && onOpenProgress
+        ...(isClasses && onOpenRecords
           ? [
               {
-                key: "progress",
-                label: vocabulary.progressTitle,
+                key: "records",
+                label: "Registros de aula",
+                icon: <MessageSquarePlus className="size-4" />,
+                onSelect: () => onOpenRecords(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onOpenGraduation
+          ? [
+              {
+                key: "graduation",
+                label: vocabulary.levelsTitle,
                 icon: <GraduationCap className="size-4" />,
-                onSelect: () => onOpenProgress(client),
+                onSelect: () => onOpenGraduation(client),
               },
             ]
           : []),
@@ -336,8 +350,8 @@ function ClientRow({
     : [];
 
   const handleRowClick = () => {
-    if (isClasses && onOpenProgress) {
-      onOpenProgress(client);
+    if (isClasses && onOpenRecords) {
+      onOpenRecords(client);
     } else {
       onEdit(client);
     }
@@ -373,7 +387,7 @@ function ClientRow({
                 <ClientProgressionBadges
                   client={client}
                   categoryById={categoryById}
-                  onOpenProgress={onOpenProgress}
+                  onOpenGraduation={onOpenGraduation}
                 />
               ) : null}
             </div>
@@ -427,7 +441,8 @@ function ClientCard({
   canManage,
   isClasses,
   onEdit,
-  onOpenProgress,
+  onOpenGraduation,
+  onOpenRecords,
   onInactivate,
   onReactivate,
 }: {
@@ -437,7 +452,8 @@ function ClientCard({
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
-  onOpenProgress?: (c: Client) => void;
+  onOpenGraduation?: (c: Client) => void;
+  onOpenRecords?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
@@ -446,13 +462,23 @@ function ClientCard({
 
   const actions: ListItemAction[] = canManage
     ? [
-        ...(isClasses && onOpenProgress
+        ...(isClasses && onOpenRecords
           ? [
               {
-                key: "progress",
-                label: vocabulary.progressTitle,
+                key: "records",
+                label: "Registros de aula",
+                icon: <MessageSquarePlus className="size-4" />,
+                onSelect: () => onOpenRecords(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onOpenGraduation
+          ? [
+              {
+                key: "graduation",
+                label: vocabulary.levelsTitle,
                 icon: <GraduationCap className="size-4" />,
-                onSelect: () => onOpenProgress(client),
+                onSelect: () => onOpenGraduation(client),
               },
             ]
           : []),
@@ -481,8 +507,8 @@ function ClientCard({
 
   const handleCardClick = () => {
     if (!canManage) return;
-    if (isClasses && onOpenProgress) {
-      onOpenProgress(client);
+    if (isClasses && onOpenRecords) {
+      onOpenRecords(client);
     } else {
       onEdit(client);
     }
@@ -521,7 +547,7 @@ function ClientCard({
                   <ClientProgressionBadges
                     client={client}
                     categoryById={categoryById}
-                    onOpenProgress={onOpenProgress}
+                    onOpenGraduation={onOpenGraduation}
                   />
                 ) : null}
               </div>
@@ -653,7 +679,8 @@ const DEFAULT_STATUS: "all" | RecordStatus = "active";
 export function ClientsList({
   canManage,
   onEdit,
-  onOpenProgress,
+  onOpenGraduation,
+  onOpenRecords,
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
@@ -752,7 +779,8 @@ export function ClientsList({
         canManage={canManage}
         isClasses={isClasses}
         onEdit={onEdit}
-        onOpenProgress={onOpenProgress}
+        onOpenGraduation={onOpenGraduation}
+        onOpenRecords={onOpenRecords}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
       />
@@ -822,7 +850,8 @@ export function ClientsList({
               canManage={canManage}
               isClasses={isClasses}
               onEdit={onEdit}
-              onOpenProgress={onOpenProgress}
+              onOpenGraduation={onOpenGraduation}
+              onOpenRecords={onOpenRecords}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
             />

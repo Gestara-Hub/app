@@ -30,6 +30,7 @@ export const queryKeys = {
     all: ["clients"] as const,
     list: (filter?: ClientFilter) => ["clients", "list", filter] as const,
     detail: (id: Id) => ["clients", "detail", id] as const,
+    progressionTerms: (modalityId: Id) => ["clients", "progression-terms", modalityId] as const,
   },
   professionals: {
     all: ["professionals"] as const,
