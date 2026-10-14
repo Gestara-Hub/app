@@ -12,6 +12,7 @@ import {
   Info,
   Lock,
   MessageCircle,
+  Plus,
   QrCode,
   RotateCcw,
   RotateCw,
@@ -66,6 +67,7 @@ import {
 } from "../hooks/use-billing";
 import { RegisterPaymentDialog } from "./register-payment-dialog";
 import { OnlineChargeDialog } from "./online-charge-dialog";
+import { NewExtraChargeDialog } from "./new-extra-charge-dialog";
 
 const STATUS_LABEL: Record<ChargeStatus, string> = {
   pending: "Pendente",
@@ -293,7 +295,16 @@ function referenceLabel(c: ChargeView): string | null {
   return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
 }
 
+/** "parcela 2 de 3" da cobranca avulsa parcelada. */
+function installmentLabel(c: ChargeView): string | null {
+  return c.kind === "extra" && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
+}
+
 function getCycleTitle(c: ChargeView): string {
+  if (c.kind === "extra") {
+    const installment = installmentLabel(c);
+    return installment ? `${c.description ?? "Cobrança avulsa"}, ${installment}` : c.description ?? "Cobrança avulsa";
+  }
   if (c.isProrated) {
     return c.proratedDays ? `Proporcional (${c.proratedDays} dias)` : "Proporcional";
   }
@@ -307,6 +318,8 @@ function getCycleTitle(c: ChargeView): string {
 
 /** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
 const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
+/** Avulsa nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
+const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
 
 /** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
 function cancelReasonOf(c: ChargeView): string | undefined {
@@ -318,6 +331,7 @@ const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
   all: "Todos os tipos",
   membership: "Mensalidades",
   dropin: "Aulas avulsas",
+  extra: "Cobranças avulsas",
 };
 
 /** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
@@ -352,14 +366,14 @@ function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean 
 }
 
 function isChargeKind(value: string | null): value is ChargeKind {
-  return value === "membership" || value === "dropin";
+  return value === "membership" || value === "dropin" || value === "extra";
 }
 
 const currentCompetence = () => format(new Date(), "yyyy-MM");
 
 /**
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
- * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin`. Padroes
+ * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra`. Padroes
  * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
  */
 function useBillingFilters() {
@@ -424,6 +438,7 @@ export function BillingView() {
   } =
     useBillingFilters();
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
+  const [newChargeOpen, setNewChargeOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [search, setSearch] = useState("");
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
@@ -480,7 +495,9 @@ export function BillingView() {
   const filteredList = list.filter(
     (c) =>
       matchesStatusFilter(c, statusFilter) &&
-      (query === "" || normalizeText(c.studentName).includes(query)),
+      (query === "" ||
+        normalizeText(c.studentName).includes(query) ||
+        (c.description !== undefined && normalizeText(c.description).includes(query))),
   );
   const groups = groupCharges(filteredList);
   const hasListFilters = statusFilter !== "all" || kindFilter !== "all" || query !== "";
@@ -677,6 +694,12 @@ export function BillingView() {
       >
         {/* Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses) */}
         <CompetencePicker competence={competence} onChange={setCompetence} />
+        {canManage ? (
+          <Button onClick={() => setNewChargeOpen(true)}>
+            <Plus className="size-4" />
+            Nova cobrança
+          </Button>
+        ) : null}
       </PageHeader>
 
       {!mounted ? (
@@ -933,7 +956,9 @@ export function BillingView() {
                       : list.length === 0
                         ? kindFilter === "dropin"
                           ? "Nenhuma aula avulsa neste mês."
-                          : "Nenhuma mensalidade neste mês."
+                          : kindFilter === "extra"
+                            ? "Nenhuma cobrança avulsa neste mês."
+                            : "Nenhuma mensalidade neste mês."
                         : "Nenhuma cobrança com esta situação no mês."}
                   </p>
                   <Button variant="outline" size="sm" onClick={clearListFilters}>
@@ -1180,6 +1205,13 @@ export function BillingView() {
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                          {c.kind === "extra" ? <span>{c.description}</span> : null}
+                          {installmentLabel(c) ? (
+                            <>
+                              <span>·</span>
+                              <span>{installmentLabel(c)}</span>
+                            </>
+                          ) : null}
                           {c.className ? <span>{c.className}</span> : null}
                           {c.className && c.planName ? <span>·</span> : null}
                           {c.planName ? <span>{c.planName}</span> : null}
@@ -1228,6 +1260,15 @@ export function BillingView() {
       )}
 
       {confirmDialog}
+      <NewExtraChargeDialog
+        open={newChargeOpen}
+        onOpenChange={setNewChargeOpen}
+        onCreated={(created) => {
+          // Vencimento em outro mes: abre o mes da primeira parcela, onde ela aparece.
+          const first = created[0]?.competence;
+          if (first && first !== competence) setCompetence(first);
+        }}
+      />
       <OnlineChargeDialog
         charge={chargeToCollect}
         onOpenChange={(open) => {
@@ -1302,7 +1343,10 @@ export function BillingView() {
             className="text-base md:text-sm"
           />
           <div className="flex flex-wrap gap-1">
-            {CANCEL_REASON_SUGGESTIONS.map((reason) => (
+            {(shownChargeToCancel?.kind === "extra"
+              ? EXTRA_CANCEL_REASON_SUGGESTIONS
+              : CANCEL_REASON_SUGGESTIONS
+            ).map((reason) => (
               <button
                 key={reason}
                 type="button"

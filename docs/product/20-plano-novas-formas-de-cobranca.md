@@ -1,6 +1,6 @@
 # 20 — Plano: novas formas de cobrança (curso fechado, pacote de aulas, cobrança avulsa)
 
-> **Status:** 14/10/2026. **Proposta**, aguardando as decisões da seção 5. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
+> **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fase A (cobrança avulsa) entregue em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seção "Cobrança avulsa"); B, C e D pendentes. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
 > Base: regras atuais em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), motor em `packages/core/src/billing.ts`, contratos em `packages/contracts/src/billing.ts` e `class.ts`.
 
 ## 1. O que existe hoje
@@ -39,7 +39,7 @@ Cada fase fecha com testes de regra (`packages/core`), de service (Vitest) e de 
 
 | Fase | Entrega | Tamanho |
 |---|---|---|
-| **A. Cobrança avulsa** | "Nova cobrança" no aluno e em Mensalidades: descrição, valor, vencimento, 1 a 12 parcelas. Aparece em Mensalidades (filtro "Tipo"), no Financeiro, no lembrete de WhatsApp e no pagamento online. Base para B e C. | Pequeno |
+| **A. Cobrança avulsa** ✅ 14/10/2026 | "Nova cobrança" no aluno e em Mensalidades: descrição, valor, vencimento, 1 a 12 parcelas. Aparece em Mensalidades (filtro "Tipo"), no Financeiro e no pagamento online. O lembrete de WhatsApp ficou para a D. Base para B e C. | Pequeno |
 | **B. Curso fechado** | Forma de cobrança na turma; matrícula pergunta "à vista ou parcelado" e gera as parcelas; turma terminada encerra a matrícula ("Concluído"); cancelamento cancela só as parcelas futuras; vagas e lista de espera como hoje. Padrão por área. | Médio |
 | **C. Pacote de aulas** | Cadastro de pacotes (em Planos); venda ao aluno gera a cobrança; a chamada gasta uma aula; saldo na ficha, na chamada e no aluno; validade; aviso de "última aula" e de vencimento; renovar. Aluno com pacote entra em qualquer aula das modalidades do pacote, como o avulso hoje, mas gastando crédito. | Médio a grande |
 | **D. Acabamento** | Modelos de WhatsApp novos ("parcela do curso", "pacote acabando"); "Para fazer hoje" com pacotes acabando; certificado de conclusão do curso (PDF simples no navegador); relatórios por curso e por pacote; repasse de professor incluindo curso e pacote (decisão 5). | Médio |
@@ -66,3 +66,18 @@ Cada fase fecha com testes de regra (`packages/core`), de service (Vitest) e de 
 - **Financeiro:** entradas novas entram no resumo como as mensalidades; nada novo no cálculo.
 - **Configuração inicial e página:** a área sugere a forma de cobrança da primeira turma; a página pode citar "cursos com valor fechado" e "pacotes de aulas" quando B e C existirem.
 - **Backend:** tabelas novas (`lesson_packages`, `student_packages`) e campos na turma e na matrícula; o gasto de aula do pacote acontece junto da chamada, na mesma transação.
+
+## 7. Fase A entregue (14/10/2026)
+
+O que foi feito: `ChargeKind` `"extra"`, `Charge.description` e `Charge.installmentGroupId`, `CreateExtraCharge`, `splitInstallments` e `describeCharge` no core, `billingService.createExtraCharge`, diálogo `NewExtraChargeDialog` (Mensalidades e menu do aluno), filtro "Cobranças avulsas", categoria de sistema "Cobranças avulsas" (`extras`) e migração v33.
+
+Decisões tomadas na implementação:
+
+- **Inativar o aluno mantém todas as avulsas em aberto**, inclusive parcelas futuras, mesmo com "Cancelar a cobrança" das mensalidades (a escolha do diálogo é só das mensalidades). Mesmo espírito da decisão 1: o que foi comprado continua devido; para não cobrar, cancela-se a parcela à mão. O diálogo avisa.
+- **Sem lembrete de WhatsApp para avulsa** até a fase D (os modelos falam de "mensalidade"). O "Cobrar online" monta o texto próprio ("Segue a cobrança "Kimono"...").
+- **Resto dos centavos na primeira parcela**; dia 31 cai no último dia dos meses curtos e volta a 31 (calculado sempre a partir do 1º vencimento). Total menor que o número de parcelas é recusado (parcela de R$ 0 não é cobrança).
+- **Só aluno ativo** recebe cobrança avulsa (o inativo é recusado com mensagem no campo Aluno).
+- **Rótulo nas auditorias:** "parcela 2 de 3 da cobrança avulsa "Kimono" de Ana" (`describeCharge`, também usado pelo pagamento online).
+- **Motivos sugeridos ao cancelar** uma avulsa trocam "Plano errado" por "Lançada por engano".
+- Depois de lançar em Mensalidades, a tela abre o mês da primeira parcela quando ele for outro.
+- A tela continua com o nome "Mensalidades" (renomear para "Cobranças", seção 6, segue em avaliação).

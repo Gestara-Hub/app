@@ -71,7 +71,11 @@ function whatsappMessage(input: {
 }): string {
   const firstName = input.studentName.split(" ")[0] || input.studentName;
   const what =
-    input.charge.kind === "dropin" ? "a aula avulsa" : "a mensalidade";
+    input.charge.kind === "dropin"
+      ? "a aula avulsa"
+      : input.charge.kind === "extra"
+        ? `${(input.charge.cycleTotal ?? 1) > 1 ? `a parcela ${input.charge.cycleIndex ?? 1} de ${input.charge.cycleTotal} de` : "a cobrança"} "${input.charge.description ?? ""}"`
+        : "a mensalidade";
   const from = input.orgName ? ` da ${input.orgName}` : "";
   const header = `Olá, ${firstName}! Segue ${what}${from} no valor de ${formatCents(input.payment.amountCents)}, com vencimento em ${shortDate(input.charge.dueDate)}.`;
   const body =

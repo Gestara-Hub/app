@@ -78,6 +78,7 @@ const DEFAULT_FINANCIAL_CATEGORIES: {
 }[] = [
   { key: "memberships", type: "income", name: "Mensalidades", systemKey: "memberships" },
   { key: "dropins", type: "income", name: "Aulas avulsas", systemKey: "dropins" },
+  { key: "extras", type: "income", name: "Cobranças avulsas", systemKey: "extras" },
   { key: "products", type: "income", name: "Venda de produtos" },
   { key: "events", type: "income", name: "Eventos e seminários" },
   { key: "graduation", type: "income", name: "Taxa de graduação" },
@@ -100,7 +101,20 @@ export function systemFinancialCategoryId(
 }
 
 export function defaultFinancialCategories(organizationId: Id): FinancialCategory[] {
-  return DEFAULT_FINANCIAL_CATEGORIES.map((c) => ({
+  return DEFAULT_FINANCIAL_CATEGORIES.map(toFinancialCategory(organizationId));
+}
+
+/** Categoria de sistema padrao do tenant pela chave (migracoes do mock). */
+export function defaultSystemFinancialCategory(
+  organizationId: Id,
+  key: FinancialSystemCategoryKey,
+): FinancialCategory | undefined {
+  const def = DEFAULT_FINANCIAL_CATEGORIES.find((c) => c.systemKey === key);
+  return def ? toFinancialCategory(organizationId)(def) : undefined;
+}
+
+function toFinancialCategory(organizationId: Id) {
+  return (c: (typeof DEFAULT_FINANCIAL_CATEGORIES)[number]): FinancialCategory => ({
     id: `fcat-${organizationId}-${c.key}`,
     organizationId,
     type: c.type,
@@ -108,7 +122,7 @@ export function defaultFinancialCategories(organizationId: Id): FinancialCategor
     ...(c.systemKey ? { system: true, systemKey: c.systemKey } : {}),
     status: "active",
     ...timestamps(),
-  }));
+  });
 }
 
 // --- Tenant 1: "Corte Nobre" (Modelo 1 — atendimento individual) -----------

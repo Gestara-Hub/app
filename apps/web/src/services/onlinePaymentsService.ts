@@ -8,6 +8,7 @@ import type {
   PaymentMethod,
   RecurringAuthorization,
 } from "@gestarahub/contracts";
+import { describeCharge } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import {
@@ -77,10 +78,7 @@ function studentName(id: Id): string {
 }
 
 function chargeLabel(c: Charge): string {
-  const who = studentName(c.studentId);
-  return c.kind === "dropin"
-    ? `aula avulsa de ${who}`
-    : `mensalidade de ${who}`;
+  return describeCharge(c, studentName(c.studentId));
 }
 
 function isOpen(c: Charge): boolean {

@@ -45,15 +45,19 @@ export function InactivateClientDialog({
 
   // Mensalidades em aberto de periodos ja iniciados: as futuras saem sempre;
   // estas o usuario decide se continua cobrando.
-  const { data: charges } = useCharges(
-    isClasses && shown ? { studentId: shown.id, kind: "membership" } : { studentId: "" },
-  );
+  const { data: charges } = useCharges(isClasses && shown ? { studentId: shown.id } : { studentId: "" });
   const today = todayISO();
+  const isOpen = (c: { status: string }) => c.status === "pending" || c.status === "overdue";
   const openCharges = (charges ?? []).filter(
     (c) =>
       c.studentId === shown?.id &&
-      (c.status === "pending" || c.status === "overdue") &&
+      c.kind === "membership" &&
+      isOpen(c) &&
       (c.periodStart ?? c.dueDate) <= today,
+  );
+  // Cobrancas avulsas em aberto (inclusive parcelas futuras) seguem como divida.
+  const openExtras = (charges ?? []).filter(
+    (c) => c.studentId === shown?.id && c.kind === "extra" && isOpen(c),
   );
   const openTotal = openCharges.reduce((sum, c) => sum + c.amountCents, 0);
 
@@ -106,6 +110,13 @@ export function InactivateClientDialog({
       isPending={inactivateMut.isPending}
       onConfirm={handleConfirm}
     >
+      {openExtras.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {openExtras.length === 1
+            ? "A cobrança avulsa em aberto continua para receber."
+            : `As ${openExtras.length} cobranças avulsas em aberto continuam para receber.`}
+        </p>
+      ) : null}
       {openCharges.length > 0 ? (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">

@@ -23,7 +23,7 @@ export type FinancialEntryDisplayStatus = FinancialEntryStatus | "overdue";
  * Chave das categorias de sistema (representam fontes automaticas). Nao podem
  * ser apagadas, renomeadas nem escolhidas num lancamento manual.
  */
-export type FinancialSystemCategoryKey = "memberships" | "dropins" | "teachers";
+export type FinancialSystemCategoryKey = "memberships" | "dropins" | "extras" | "teachers";
 
 export interface FinancialCategory {
   id: Id;

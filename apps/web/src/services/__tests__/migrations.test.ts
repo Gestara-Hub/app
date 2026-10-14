@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 32;
+const CURRENT_VERSION = 33;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -466,6 +466,41 @@ describe("v32: Música & Idiomas vira Música ou Idiomas e reforço", () => {
       }),
     );
     expect(store.organization.classSegment).toBe("dance");
-    expect(saved()?.v).toBe(32);
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+});
+
+describe("v33: categoria de sistema das cobranças avulsas", () => {
+  it("tenant com categorias ganha \"Cobranças avulsas\" (uma vez); tenant sem categorias segue sem", async () => {
+    const world = oldWorld((t) => {
+      t.financialCategories = t.financialCategories.filter((c) => c.systemKey !== "extras");
+    });
+    const otherId = Object.keys(world.tenants).find((id) => id !== ACADEMY_ORG)!;
+    world.tenants[otherId].financialCategories = [];
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+
+    const { store, saved } = await hydrate(32, world);
+    const extras = store.financialCategories.filter((c) => c.systemKey === "extras");
+    expect(extras).toEqual([
+      expect.objectContaining({
+        id: `fcat-${ACADEMY_ORG}-extras`,
+        organizationId: ACADEMY_ORG,
+        name: "Cobranças avulsas",
+        type: "income",
+        system: true,
+        status: "active",
+      }),
+    ]);
+    expect(store.financialCategories).toHaveLength(before + 1);
+    expect(saved()?.data.tenants[otherId].financialCategories).toEqual([]);
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+
+  it("não duplica quando a categoria já existe", async () => {
+    const world = oldWorld(() => {});
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+    const { store } = await hydrate(32, world);
+    expect(store.financialCategories).toHaveLength(before);
+    expect(store.financialCategories.filter((c) => c.systemKey === "extras")).toHaveLength(1);
   });
 });

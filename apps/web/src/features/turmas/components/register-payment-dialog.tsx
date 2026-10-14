@@ -47,9 +47,16 @@ export function RegisterPaymentDialog({
             <dt className="text-muted-foreground">Aluno</dt>
             <dd className="font-medium text-foreground">{charge.studentName}</dd>
             <dt className="text-muted-foreground">
-              {charge.kind === "dropin" ? "Aula avulsa" : "Mensalidade"}
+              {charge.kind === "dropin"
+                ? "Aula avulsa"
+                : charge.kind === "extra"
+                  ? "Cobrança avulsa"
+                  : "Mensalidade"}
             </dt>
             <dd className="text-foreground">
+              {charge.kind === "extra"
+                ? `${charge.description ?? ""}${(charge.cycleTotal ?? 1) > 1 ? ` (parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal})` : ""} · `
+                : ""}
               vence {shortDate(charge.dueDate)}
               {reference ? ` · referente a ${reference}` : ""}
             </dd>

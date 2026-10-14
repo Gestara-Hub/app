@@ -40,6 +40,7 @@ import {
   createInitialWorld,
   defaultFinancialCategories,
   defaultMessageTemplates,
+  defaultSystemFinancialCategory,
   defaultWhatsAppConnection,
 } from "./seed";
 
@@ -149,7 +150,9 @@ const STORAGE_KEY = "gestarahub:db";
 // v31: modelos de mensagem criados antes da area ganham o texto da propria area.
 // v32: "Música & Idiomas" (`music_languages`) se divide em `music` e
 //      `languages` (escolhido pelos nomes das modalidades). Migracao suave.
-const SEED_VERSION = 32;
+// v33: cobranca avulsa (`ChargeKind` "extra"): tenants com categorias
+//      financeiras ganham a categoria de sistema "Cobranças avulsas". Migracao suave.
+const SEED_VERSION = 33;
 
 /** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
 const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
@@ -368,6 +371,17 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
       if (org.segment === "Música & Idiomas") {
         org.segment = teachesLanguages ? "Idiomas e reforço" : "Música";
       }
+    }
+  }
+  if (fromVersion < 33) {
+    // So tenants que ja tem as categorias padrao (os de turmas): quem nao tem
+    // nenhuma segue sem (o Financeiro usa o id deterministico como fallback).
+    for (const tenant of Object.values(data.tenants)) {
+      const categories = tenant.financialCategories ?? [];
+      if (categories.length === 0) continue;
+      if (categories.some((c) => c.systemKey === "extras")) continue;
+      const extras = defaultSystemFinancialCategory(tenant.organization.id, "extras");
+      if (extras) categories.push(extras);
     }
   }
   return data;

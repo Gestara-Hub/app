@@ -5,6 +5,7 @@ import type {
   ChargeStatus,
   ChargeView,
   Client,
+  CreateExtraCharge,
   CreatePlan,
   Id,
   PaymentMethod,
@@ -14,7 +15,10 @@ import type {
 } from "@gestarahub/contracts";
 import {
   chargesDueIn,
+  describeCharge,
+  MAX_INSTALLMENTS,
   resolveMembershipTerms,
+  splitInstallments,
   type CompetenceCharge,
   type ScheduledCharge,
 } from "@gestarahub/core/billing";
@@ -92,8 +96,7 @@ function toChargeView(c: Charge): ChargeView {
 }
 
 function chargeLabel(c: Charge): string {
-  const who = studentName(c.studentId);
-  return c.kind === "dropin" ? `aula avulsa de ${who}` : `mensalidade de ${who}`;
+  return describeCharge(c, studentName(c.studentId));
 }
 
 function recordChargeEvent(
@@ -121,6 +124,38 @@ function assertNotPaidOnline(c: Charge, verb: "desfazer" | "cancelar"): void {
     `Não é possível ${verb} um pagamento feito ${via}: seria um estorno, que não existe nesta versão.`,
     { httpStatus: 409 },
   );
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const EXTRA_DESCRIPTION_MAX = 80;
+
+function isValidDate(value: unknown): value is string {
+  return typeof value === "string" && DATE_RE.test(value) && !Number.isNaN(parseISO(value).getTime());
+}
+
+function validateExtraCharge(payload: Partial<CreateExtraCharge>): void {
+  const fields: ApiErrorField[] = [];
+  if (!payload.studentId) fields.push({ field: "studentId", message: "Selecione o aluno." });
+  const description = payload.description?.trim() ?? "";
+  if (!description) {
+    fields.push({ field: "description", message: "Descreva a cobrança." });
+  } else if (description.length > EXTRA_DESCRIPTION_MAX) {
+    fields.push({ field: "description", message: `Use no máximo ${EXTRA_DESCRIPTION_MAX} caracteres.` });
+  }
+  if (!Number.isInteger(payload.totalCents) || (payload.totalCents ?? 0) <= 0) {
+    fields.push({ field: "totalCents", message: "Informe o valor." });
+  }
+  if (!isValidDate(payload.firstDueDate)) {
+    fields.push({ field: "firstDueDate", message: "Informe o vencimento." });
+  }
+  const n = payload.installments;
+  if (!Number.isInteger(n) || (n ?? 0) < 1 || (n ?? 0) > MAX_INSTALLMENTS) {
+    fields.push({ field: "installments", message: `Escolha de 1 a ${MAX_INSTALLMENTS} parcelas.` });
+  } else if (Number.isInteger(payload.totalCents) && (payload.totalCents ?? 0) < (n ?? 1)) {
+    // Parcela de R$ 0 nao e cobranca.
+    fields.push({ field: "installments", message: "Cada parcela precisa de pelo menos R$ 0,01." });
+  }
+  if (fields.length > 0) throw validationError(fields);
 }
 
 function validatePlan(payload: Partial<CreatePlan>): void {
@@ -561,6 +596,60 @@ export const billingService = {
         });
       }
       return { created };
+    });
+  },
+
+  /**
+   * Cobranca avulsa (taxa de matricula, material, uniforme, exame, evento),
+   * a vista ou em ate 12 parcelas mensais. Cada parcela e uma `Charge` "extra"
+   * em aberto, na competencia do proprio vencimento, ligadas pelo
+   * `installmentGroupId`. Nao passa pelo motor de mensalidades.
+   */
+  createExtraCharge(payload: CreateExtraCharge): Promise<ChargeView[]> {
+    return simulateWrite(() => {
+      validateExtraCharge(payload);
+      const student = store.clients.find((c) => c.id === payload.studentId);
+      if (!student) {
+        throw validationError([{ field: "studentId", message: "Aluno não encontrado." }]);
+      }
+      if (student.status !== "active") {
+        throw validationError([
+          { field: "studentId", message: "Aluno inativo. Reative o cadastro para lançar a cobrança." },
+        ]);
+      }
+      const description = payload.description.trim();
+      const parts = splitInstallments(payload.totalCents, payload.installments, payload.firstDueDate);
+      const isSplit = parts.length > 1;
+      const groupId = isSplit ? newId() : undefined;
+      const ts = nowIso();
+      const created: Charge[] = parts.map((part) => ({
+        id: newId(),
+        organizationId: store.organization.id,
+        unitId: store.unit.id,
+        studentId: student.id,
+        kind: "extra",
+        description,
+        installmentGroupId: groupId,
+        competence: part.dueDate.slice(0, 7),
+        dueDate: part.dueDate,
+        amountCents: part.amountCents,
+        status: "pending",
+        cycleIndex: isSplit ? part.index : undefined,
+        cycleTotal: isSplit ? part.total : undefined,
+        createdAt: ts,
+        updatedAt: ts,
+      }));
+      store.charges.push(...created);
+      auditLogService.record({
+        action: "created",
+        target: {
+          type: "charge",
+          id: created[0].id,
+          label: describeCharge({ kind: "extra", description }, student.name),
+        },
+        predicate: `lançou a cobrança avulsa "${description}" para ${student.name} (${formatCents(payload.totalCents)}${isSplit ? `, em ${parts.length} parcelas` : ""})`,
+      });
+      return clone(created.map(toChargeView));
     });
   },
 

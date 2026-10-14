@@ -225,8 +225,14 @@ function chargeCompetence(c: Charge): string {
   return c.competence ?? competenceOf(c.dueDate);
 }
 
+const CHARGE_CATEGORY_KEY: Record<ChargeKind, FinancialSystemCategoryKey> = {
+  membership: "memberships",
+  dropin: "dropins",
+  extra: "extras",
+};
+
 function chargeCategoryId(kind: ChargeKind): Id {
-  return systemCategoryId(kind === "dropin" ? "dropins" : "memberships");
+  return systemCategoryId(CHARGE_CATEGORY_KEY[kind]);
 }
 
 /** Pagamento de professor persistido (fechado/pago) como item de caixa. */
@@ -317,6 +323,7 @@ function toEntryView(e: FinancialEntry, today: string): FinanceEntryView {
 const CHARGE_ROW_TITLE: Record<ChargeKind, string> = {
   membership: "Mensalidades",
   dropin: "Aulas avulsas",
+  extra: "Cobranças avulsas",
 };
 
 /** Linha agregada das cobrancas de um kind na competencia (D7). */
@@ -669,7 +676,7 @@ export const financeService = {
       const rows: FinanceEntryView[] = [];
 
       const charges = store.charges.filter((c) => chargeCompetence(c) === competence);
-      for (const kind of ["membership", "dropin"] as const) {
+      for (const kind of ["membership", "dropin", "extra"] as const) {
         const row = chargeAggregateRow(kind, competence, charges.filter((c) => c.kind === kind));
         if (row) rows.push(row);
       }

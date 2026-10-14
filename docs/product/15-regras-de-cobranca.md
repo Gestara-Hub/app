@@ -99,3 +99,21 @@ Estas regras já estão implementadas.
 - Ao inativar, mensalidades de **períodos que ainda não começaram** são sempre canceladas (como antes).
 - Se houver mensalidades **em aberto de períodos já iniciados** (pendentes ou atrasadas), o diálogo pergunta: **"Manter para receber"** (padrão: continuam como dívida em Mensalidades) ou **"Cancelar a cobrança"** (canceladas como decisão do usuário, motivo "Aluno inativado", contam no card "Cancelado" e podem ser reabertas). `clientsService.remove(id, { cancelOpenCharges })`.
 
+
+## Cobrança avulsa (14/10/2026)
+
+Fase A do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md). Cobrar qualquer valor de um aluno fora da mensalidade: taxa de matrícula, material, uniforme, kimono, taxa do exame de faixa, evento.
+
+- **Onde lançar:** botão **"+ Nova cobrança"** no topo de Mensalidades (escolhe o aluno) e **"Nova cobrança"** no menu do aluno em Alunos (aluno fixo). Exige a mesma permissão de marcar pago (`billing:manage`: proprietário e gerente).
+- **Campos:** Aluno*, Descrição* (até 80 caracteres, com sugestões: Taxa de matrícula, Material, Uniforme, Exame de faixa (lutas) ou Exame de graduação (demais áreas), Evento), Valor* (total), Vencimento* (padrão hoje) e Parcelas (à vista ou 2x a 12x). Com parcelas, a tela mostra a conta: "3x de R$ 33,34 (a primeira) e R$ 33,33: 10/10, 10/11 e 10/12."
+- **Parcelas:** centavos inteiros; o resto da divisão vai para a **primeira** parcela. Vencimentos mensais no mesmo dia do primeiro; dia que não existe cai no último dia do mês e volta ao dia original depois (31/01, 28/02, 31/03). Cada parcela precisa de pelo menos R$ 0,01. Motor: `splitInstallments` em `packages/core/src/billing.ts`.
+- **Modelo:** cada parcela é uma `Charge` com `kind: "extra"`, em aberto, `competence` = mês do próprio vencimento, `description`, e (parcelada) o mesmo `installmentGroupId` e `cycleIndex`/`cycleTotal` ("parcela 2 de 3"). Sem plano, sem período de uso. Só aluno ativo.
+- **Ações:** as mesmas das mensalidades: marcar pago (com a forma), desfazer, cancelar com motivo (sugestões: Lançada por engano, Cobrança duplicada, Aluno desistiu), reabrir e cobrar online (Pro, mesmas travas). Atraso é derivado na leitura. Reabrir não checa período de mensalidade.
+- **Mensalidades não enxergam a avulsa:** não ocupa período (`membershipPeriodTaken`), não impede a geração automática e não é cancelada na troca de plano, regra, desconto ou bolsa.
+- **Inativar o aluno mantém as avulsas em aberto, inclusive as parcelas futuras** (a compra foi feita, a dívida continua). Vale também quando o dono escolhe "Cancelar a cobrança" das mensalidades em aberto: essa escolha é só das mensalidades. O diálogo de inativação avisa: "A cobrança avulsa em aberto continua para receber." Para não cobrar, cancele as parcelas em Mensalidades.
+- **WhatsApp:** a avulsa **não tem** "Lembrar no WhatsApp" até a fase D (os modelos falam de "mensalidade"). O envio do Pix ou link pelo "Cobrar online" funciona, com o texto da avulsa.
+- **Tela:** filtro "Tipo" com "Cobranças avulsas" (`?kind=extra`). Linha: nome do aluno; abaixo, a descrição, "parcela 2 de 3" quando parcelada e o vencimento. Entra nos cartões do mês como as aulas avulsas. A busca também acha pela descrição.
+- **Financeiro:** categoria de sistema **"Cobranças avulsas"** (`systemKey: "extras"`), linha agregada própria em Lançamentos e soma no Resumo como as demais cobranças. Migração do mock v33 cria a categoria nos espaços que já tinham as categorias padrão.
+- **Pagamento do professor:** "% das mensalidades" continua só com mensalidades pagas; a avulsa não entra (decisão 7 do doc 20 vale para curso e pacote).
+- **Auditoria:** uma entrada por lançamento, `lançou a cobrança avulsa "Kimono" para Ana (R$ 300,00, em 3 parcelas)`; as ações seguintes citam `parcela 2 de 3 da cobrança avulsa "Kimono" de Ana`.
+- Testes: `packages/core/test/installments.test.ts`, `apps/web/src/services/__tests__/extra-charges.test.ts` (e a v33 em `migrations.test.ts`), `apps/web/e2e/cobranca-avulsa.spec.ts`.

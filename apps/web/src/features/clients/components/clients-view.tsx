@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
+import { NewExtraChargeDialog } from "@/features/turmas";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
@@ -26,9 +27,13 @@ export function ClientsView() {
   // Dois modais: Graduação (raro) e Registros de aula (toda aula).
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
+  // Cobranca avulsa com o aluno fixo.
+  const [chargeClient, setChargeClient] = useState<Client | null>(null);
 
   const updateMut = useUpdateClient();
-  const canManage = useCan()("clients:manage");
+  const can = useCan();
+  const canManage = can("clients:manage");
+  const canCharge = isClasses && can("billing:manage");
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (client: Client) => setFormState({ open: true, client });
@@ -87,6 +92,7 @@ export function ClientsView() {
         onEdit={openEdit}
         onOpenGraduation={isClasses ? setGraduationClient : undefined}
         onOpenRecords={isClasses ? setRecordsClient : undefined}
+        onNewCharge={canCharge ? setChargeClient : undefined}
         onInactivate={setInactivating}
         onReactivate={reactivate}
       />
@@ -107,6 +113,13 @@ export function ClientsView() {
             onOpenChange={(open) => {
               if (!open) setGraduationClient(null);
             }}
+          />
+          <NewExtraChargeDialog
+            open={Boolean(chargeClient)}
+            onOpenChange={(open) => {
+              if (!open) setChargeClient(null);
+            }}
+            student={chargeClient}
           />
           <StudentRecordsDialog
             client={recordsClient}

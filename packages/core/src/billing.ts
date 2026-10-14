@@ -1,5 +1,6 @@
 import { addDays, addMonths, format, parseISO } from "date-fns";
 import type {
+  ChargeKind,
   DateISO,
   PlanPeriod,
   StudentBillingStrategy,
@@ -308,4 +309,63 @@ export function chargesDueIn(terms: MembershipTerms, competence: string): Compet
     if (c.competence === competence) found.push(c);
   }
   return found.map((c, idx) => ({ ...c, cycleIndex: idx + 1, cycleTotal: found.length }));
+}
+
+// --- Cobranca avulsa (parcelas) ---------------------------------------------
+
+export const MAX_INSTALLMENTS = 12;
+
+export interface Installment {
+  /** 1-based. */
+  index: number;
+  total: number;
+  amountCents: number;
+  dueDate: DateISO;
+}
+
+/**
+ * Divide o valor de uma cobranca avulsa em parcelas mensais. Centavos inteiros;
+ * o resto da divisao vai para a PRIMEIRA parcela (10000 / 3 = 3334, 3333, 3333).
+ * Vencimentos mensais no mesmo dia do primeiro, limitado ao ultimo dia dos
+ * meses mais curtos e sempre calculado a partir do primeiro (31/01, 28/02, 31/03).
+ */
+export function splitInstallments(
+  totalCents: number,
+  installments: number,
+  firstDueDate: DateISO,
+): Installment[] {
+  if (!Number.isInteger(installments) || installments < 1 || installments > MAX_INSTALLMENTS) {
+    throw new RangeError(`installments must be an integer from 1 to ${MAX_INSTALLMENTS}`);
+  }
+  if (!Number.isInteger(totalCents) || totalCents < 0) {
+    throw new RangeError("totalCents must be a non-negative integer");
+  }
+  const first = parseISO(firstDueDate);
+  if (Number.isNaN(first.getTime())) throw new RangeError("firstDueDate must be a valid date");
+  const base = Math.floor(totalCents / installments);
+  const remainder = totalCents - base * installments;
+  const anchorDay = first.getDate();
+  return Array.from({ length: installments }, (_, k) => ({
+    index: k + 1,
+    total: installments,
+    amountCents: k === 0 ? base + remainder : base,
+    dueDate: toISO(dayInMonth(addMonths(firstOfMonth(first), k), anchorDay)),
+  }));
+}
+
+/**
+ * Como a cobranca aparece em auditoria e mensagens, depois de "da"/"a":
+ * "mensalidade de Ana", "aula avulsa de Ana", "cobrança avulsa "Kimono" de Ana"
+ * e, parcelada, "parcela 2 de 3 da cobrança avulsa "Kimono" de Ana".
+ */
+export function describeCharge(
+  charge: { kind: ChargeKind; description?: string; cycleIndex?: number; cycleTotal?: number },
+  studentName: string,
+): string {
+  if (charge.kind === "dropin") return `aula avulsa de ${studentName}`;
+  if (charge.kind !== "extra") return `mensalidade de ${studentName}`;
+  const extra = `cobrança avulsa "${charge.description ?? ""}" de ${studentName}`;
+  return (charge.cycleTotal ?? 1) > 1
+    ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} da ${extra}`
+    : extra;
 }

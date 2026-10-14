@@ -24,6 +24,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type {
+  ChargeKind,
   FinanceEntryView,
   FinancialEntryDisplayStatus,
   FinancialEntryFilter,
@@ -120,8 +121,9 @@ function chargeCountsLabel(counts: NonNullable<FinanceEntryView["chargeCounts"]>
 }
 
 /** Kind da linha agregada ("charges:<kind>:<competence>"). */
-function chargeKindOf(row: FinanceEntryView): "membership" | "dropin" {
-  return row.id.split(":")[1] === "dropin" ? "dropin" : "membership";
+function chargeKindOf(row: FinanceEntryView): ChargeKind {
+  const kind = row.id.split(":")[1];
+  return kind === "dropin" || kind === "extra" ? kind : "membership";
 }
 
 function EntriesSkeleton() {

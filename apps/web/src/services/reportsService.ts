@@ -5,6 +5,7 @@ import type {
   BirthdayRow,
   BillingStatementReportData,
   BillingStatementRow,
+  ChargeKind,
   ChurnReportData,
   DRECategoryRow,
   DREStatementReportData,
@@ -292,7 +293,17 @@ export const reportsService = {
               ((ch.competence && ch.competence === competence) ||
                 (ch.paidAt && ch.paidAt.startsWith(competence))),
           );
-          const membershipRevenueCents = paidCharges.reduce((acc, c) => acc + c.amountCents, 0);
+          // Cada tipo de cobranca vira uma linha propria (mensalidade, aula avulsa, cobranca avulsa).
+          const CHARGE_INCOME_LABEL: Record<ChargeKind, string> = {
+            membership: "Mensalidades de Alunos",
+            dropin: "Aulas Avulsas",
+            extra: "Cobranças Avulsas",
+          };
+          const chargeRevenue = new Map<string, number>();
+          paidCharges.forEach((c) => {
+            const label = CHARGE_INCOME_LABEL[c.kind];
+            chargeRevenue.set(label, (chargeRevenue.get(label) ?? 0) + c.amountCents);
+          });
 
           // 2. Receitas avulsas e produtos de lançamentos financeiros
           const manualIncomes = store.financialEntries.filter(
@@ -304,9 +315,7 @@ export const reportsService = {
 
           // Agrupa receitas por categoria
           const incomeMap = new Map<string, number>();
-          if (membershipRevenueCents > 0) {
-            incomeMap.set("Mensalidades de Alunos", membershipRevenueCents);
-          }
+          chargeRevenue.forEach((cents, label) => incomeMap.set(label, cents));
           manualIncomes.forEach((e) => {
             const catName = categoriesById.get(e.categoryId) || "Outras Receitas";
             incomeMap.set(catName, (incomeMap.get(catName) || 0) + e.amountCents);

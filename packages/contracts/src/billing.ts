@@ -5,7 +5,8 @@ import type { ChargePaidVia } from "./finance";
  * Billing & plans (financial). Record/status only, no payment gateway.
  * Membership charges follow the organization's billing rules (prepaid or
  * postpaid, prorated or full cycle), computed by @gestarahub/core/billing.
- * Paused/canceled memberships generate no charge; drop-in = drop-in charge.
+ * Paused/canceled memberships generate no charge; drop-in = drop-in charge;
+ * extra = one-off charge (fee, material, event), optionally in installments.
  */
 
 /** Plan periodicity: monthly, biweekly, or weekly (recurring memberships). */
@@ -32,8 +33,11 @@ export interface PlanFilter {
   status?: RecordStatus;
 }
 
-/** Student charge (recurring membership or single drop-in session). */
-export type ChargeKind = "membership" | "dropin";
+/**
+ * Student charge: recurring membership, single drop-in session or extra
+ * (one-off charge such as enrollment fee, material, uniform, exam or event).
+ */
+export type ChargeKind = "membership" | "dropin" | "extra";
 /** `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso. */
 export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
@@ -75,6 +79,11 @@ export interface Charge {
   scholarshipPercent?: number;
   /** Valor sem desconto/bolsa (base para "bolsas concedidas"). So com bolsa. */
   listAmountCents?: number;
+  /** Extra charge: what is being charged ("Taxa de matrícula", "Kimono"). */
+  description?: string;
+  /** Extra charge in installments: shared by every installment of the same purchase. */
+  installmentGroupId?: Id;
+  /** Position in the competence (membership) or installment number (extra, "2 de 3"). */
   cycleIndex?: number;
   cycleTotal?: number;
   isProrated?: boolean;
@@ -82,6 +91,19 @@ export interface Charge {
   notes?: string;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
+}
+
+/**
+ * New extra charge (cobranca avulsa). `totalCents` is split into
+ * `installments` monthly charges (1 to 12) starting at `firstDueDate`.
+ * Tenant fields are stamped by the service.
+ */
+export interface CreateExtraCharge {
+  studentId: Id;
+  description: string;
+  totalCents: number;
+  firstDueDate: DateISO;
+  installments: number;
 }
 
 export interface ChargeFilter {

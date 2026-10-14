@@ -11,6 +11,7 @@ import { billingService } from "@/services/billingService";
 import { onlinePaymentsService } from "@/services/onlinePaymentsService";
 import type {
   ChargeFilter,
+  CreateExtraCharge,
   CreatePlan,
   Id,
   OnlinePaymentMethod,
@@ -80,6 +81,15 @@ export function useCharges(filter?: ChargeFilter) {
   return useQuery({
     queryKey: queryKeys.billing.charges(filter),
     queryFn: () => billingService.listCharges(filter),
+  });
+}
+
+/** Cobranca avulsa (a vista ou parcelada). */
+export function useCreateExtraCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateExtraCharge) => billingService.createExtraCharge(payload),
+    onSuccess: () => invalidateMoney(qc),
   });
 }
 
