@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
@@ -72,6 +72,7 @@ import {
 } from "../hooks/use-turmas";
 import { EndedBadge, slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
+import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
 import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -216,7 +217,15 @@ function TabButton({
   );
 }
 
-export function TurmaDetailView({ id }: { id: string }) {
+export function TurmaDetailView({
+  id,
+  enrollCompletesSetup = false,
+}: {
+  id: string;
+  /** A 1a matricula conclui a configuracao inicial (area de curso): comemora. */
+  enrollCompletesSetup?: boolean;
+}) {
+  const [celebrateEnroll, setCelebrateEnroll] = useState(false);
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
@@ -231,6 +240,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const canEditTurma = can("classes:manage");
 
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [enrollOpen, setEnrollOpen] = useState(
     () => searchParams?.get("enroll") === "true",
@@ -457,6 +467,19 @@ export function TurmaDetailView({ id }: { id: string }) {
         turma={turma}
         enrolledIds={enrolledIds}
         waitlistedIds={waitlistedIds}
+        onEnrolled={() => {
+          if (enrollCompletesSetup) setCelebrateEnroll(true);
+        }}
+      />
+      <SetupCompleteDialog
+        variant="enrolled"
+        groupName={turma.name}
+        open={celebrateEnroll}
+        onOpenChange={setCelebrateEnroll}
+        onPrimary={() => {
+          setCelebrateEnroll(false);
+          router.push("/classes/billing");
+        }}
       />
 
       <div

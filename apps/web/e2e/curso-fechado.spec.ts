@@ -5,7 +5,7 @@ import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fi
 
 const TS = "2026-09-01T12:00:00.000Z";
 
-/** A linha inteira (texto + valor + acoes) de um aluno na lista de Mensalidades. */
+/** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
 
 /** Aluno sem plano: so paga o curso. */
@@ -61,9 +61,11 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await form.getByLabel("Termina em").fill("2026-11-30");
   await form.getByRole("button", { name: "Adicionar", exact: true }).click();
 
-  // Primeira turma com aluno cadastrado: comemora e leva a matricular.
-  const party = page.getByRole("alertdialog", { name: "Sua academia está pronta!" });
-  await party.getByRole("button", { name: "Matricular alunos agora" }).click();
+  // Area de curso: ainda falta matricular, entao criar so avisa (sem comemorar).
+  await expect(page.getByText('Turma "Confeitaria Básica" criada com sucesso.')).toBeVisible();
+  const party = page.getByRole("alertdialog", { name: "Seu espaço está pronto!" });
+  await expect(party).toHaveCount(0);
+  await page.getByRole("button", { name: "Matricular alunos" }).click();
   await expect(page).toHaveURL(/\/classes\/[^/?]+\?enroll=true$/);
   const classUrl = page.url().replace("?enroll=true", "");
   await expect(page.getByTestId("class-billing-summary")).toHaveText("Curso · R$ 800,00 em até 4x · termina 30/11");
@@ -79,9 +81,13 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   );
   await enroll.getByRole("button", { name: "Matricular 1 aluno" }).click();
   await expect(page.getByText("Aluno matriculado.")).toBeVisible();
+  // A 1a matricula do curso fecha a configuracao inicial: agora comemora.
+  await expect(party).toContainText("Alunos matriculados no curso");
+  await party.getByRole("button", { name: "Agora não" }).click();
+  await expect(party).toBeHidden();
   await waitForStore(page, (raw) => raw.includes('"kind":"course"'));
 
-  // Mensalidades, tipo "Cursos": uma parcela por mês. O servidor do `pnpm dev`
+  // Cobranças, tipo "Cursos": uma parcela por mês. O servidor do `pnpm dev`
   // usa a data real; abrir um mes pela URL pode descasar a hidratacao, entao
   // os meses sao trocados pela tela.
   await page.goto("/classes/billing");

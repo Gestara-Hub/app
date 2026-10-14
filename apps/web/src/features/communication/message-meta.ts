@@ -8,10 +8,10 @@ import type {
 
 /** Nome curto de cada tipo de mensagem e onde o botao aparece no sistema. */
 export const TRIGGER_META: Record<MessageTrigger, { label: string; where: string }> = {
-  billing_before_due: { label: "Mensalidade a vencer", where: "Mensalidades: menu da mensalidade a vencer" },
-  billing_due_date: { label: "Vence hoje", where: "Mensalidades: menu da mensalidade que vence hoje" },
-  billing_after_due: { label: "Em atraso", where: "Mensalidades: menu da mensalidade atrasada" },
-  billing_critical: { label: "Atraso de 10 dias", where: "Mensalidades: atraso de 10 dias ou mais" },
+  billing_before_due: { label: "Mensalidade a vencer", where: "Cobranças: menu da mensalidade a vencer" },
+  billing_due_date: { label: "Vence hoje", where: "Cobranças: menu da mensalidade que vence hoje" },
+  billing_after_due: { label: "Em atraso", where: "Cobranças: menu da mensalidade atrasada" },
+  billing_critical: { label: "Atraso de 10 dias", where: "Cobranças: atraso de 10 dias ou mais" },
   welcome_student: { label: "Boas-vindas", where: "Ao cadastrar um aluno" },
   absence_alert: { label: "Sentimos sua falta", where: "Dashboard: Para fazer hoje, alunos com 3 faltas seguidas" },
   birthday_greeting: { label: "Aniversário", where: "Dashboard: Para fazer hoje e aniversariantes do mês" },

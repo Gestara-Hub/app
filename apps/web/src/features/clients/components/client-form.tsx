@@ -46,9 +46,9 @@ import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } 
 import { useModel } from "@/features/auth";
 import { useWhatsAppSend } from "@/features/communication";
 import { useCharges, usePlans } from "@/features/turmas";
-import { useOrganization } from "@/features/settings";
+import { useBusinessSegment, useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
-import { clientFormSchema, type ClientFormValues } from "../client-schema";
+import { clientFormSchema, defaultPaymentMode, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
@@ -102,19 +102,12 @@ function toDefaults(
   client?: Client,
   orgSettings?: OrganizationSettings,
   isClasses = true,
+  isCourseArea = false,
 ): ClientFormValues {
   const addr = client?.address;
   const isScholar = Boolean(client?.discount?.scholarship);
   const hasDiscount = Boolean(!isScholar && client?.discount && client.discount.value > 0);
-  // Novo aluno comeca em "Paga mensalidade"; aluno salvo sem plano e sem bolsa
-  // e "Não paga mensalidade". Fora do modelo de turmas nao ha essa escolha.
-  const paymentMode = !isClasses
-    ? undefined
-    : isScholar
-      ? "scholarship"
-      : client && !client.planId
-        ? "none"
-        : "membership";
+  const paymentMode = defaultPaymentMode({ client, isClasses, isCourseArea });
   const initialStartDate = client?.planStartDate || todayDateISO;
   const initialStrategy = client?.billingStrategy || orgSettings?.midMonthStrategy || "prorated";
   const initialTiming = client?.cyclePaymentTiming || orgSettings?.billingTiming || "prepaid";
@@ -180,6 +173,8 @@ interface ClientFormProps {
 export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
+  // Area de curso fechado: aluno novo comeca em "Não paga mensalidade".
+  const isCourseArea = useBusinessSegment().defaultBillingMode === "course";
   const createMut = useCreateClient();
   // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
   const whatsapp = useWhatsAppSend();
@@ -211,7 +206,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     resolver: zodResolver(clientFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(client, orgSettings, isClasses),
+    defaultValues: toDefaults(client, orgSettings, isClasses, isCourseArea),
   });
 
   const isDirty = form.formState.isDirty;
@@ -287,8 +282,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       if (orgSettings.defaultDueDay) {
         form.setValue("dueDay", orgSettings.defaultDueDay);
       }
+      // A area vem da mesma organizacao: corrige o padrao se ainda nao mexeram.
+      const mode = defaultPaymentMode({ isClasses, isCourseArea });
+      if (mode && !form.getFieldState("paymentMode").isDirty && form.getValues("paymentMode") !== mode) {
+        form.resetField("paymentMode", { defaultValue: mode });
+      }
     }
-  }, [orgSettings, client, form]);
+  }, [orgSettings, client, form, isClasses, isCourseArea]);
 
   const [planOpen, setPlanOpen] = useState(() => !client);
   const [addressOpen, setAddressOpen] = useState(
@@ -469,7 +469,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     isPlanSwitch && lastPaidPeriod && paidUntil && nextAfterPaid
       ? (planStartDate || "") <= paidUntil
         ? `O período de ${shortDate(lastPaidPeriod.periodStart ?? "")} a ${shortDate(paidUntil)} já foi pago${lastPaidPeriod.planName ? ` no plano ${lastPaidPeriod.planName}` : ""} e não será cobrado de novo. O plano novo começa a cobrar no período seguinte.`
-        : `O período de ${shortDate(lastPaidPeriod.periodStart ?? "")} a ${shortDate(paidUntil)} já foi pago${lastPaidPeriod.planName ? ` no plano ${lastPaidPeriod.planName}` : ""}. O plano novo vale a partir de ${shortDate(nextAfterPaid)}. Se o plano estava errado, desfaça o pagamento em Mensalidades antes de trocar.`
+        : `O período de ${shortDate(lastPaidPeriod.periodStart ?? "")} a ${shortDate(paidUntil)} já foi pago${lastPaidPeriod.planName ? ` no plano ${lastPaidPeriod.planName}` : ""}. O plano novo vale a partir de ${shortDate(nextAfterPaid)}. Se o plano estava errado, desfaça o pagamento em Cobranças antes de trocar.`
       : null;
   const usesOrgRule =
     billingStrategy === (orgSettings?.midMonthStrategy ?? "prorated") &&
@@ -1154,7 +1154,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     label="Válida até (opcional)"
                     hint={
                       isFullScholarship && !selectedPlanId
-                        ? "Depois dessa data, deixa de aparecer em Mensalidades."
+                        ? "Depois dessa data, deixa de aparecer em Cobranças."
                         : "Depois dessa data, volta ao valor cheio do plano."
                     }
                     disabled={pending}

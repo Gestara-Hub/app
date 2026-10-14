@@ -100,7 +100,7 @@ export const queryKeys = {
     charges: (filter?: ChargeFilter) => ["billing", "charges", filter] as const,
   },
   // Financeiro do negocio (plano pago). Marcar uma cobranca como paga
-  // (Mensalidades) invalida `finance.all`; presenca/matricula/substituicao
+  // (Cobrancas) invalida `finance.all`; presenca/matricula/substituicao
   // invalidam `teacherPay.all` (a previa depende delas).
   finance: {
     all: ["finance"] as const,

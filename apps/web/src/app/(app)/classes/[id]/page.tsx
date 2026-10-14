@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requirePermission } from "@/features/auth/require-permission";
-import { TurmaDetailView } from "@/features/turmas";
+import { ClassDetailScreen } from "./class-detail-screen";
 
 export default async function ClassGroupPage({
   params,
@@ -12,7 +12,7 @@ export default async function ClassGroupPage({
   const { id } = await params;
   return (
     <Suspense fallback={<Skeleton className="h-40 w-full rounded-md" />}>
-      <TurmaDetailView id={id} />
+      <ClassDetailScreen id={id} />
     </Suspense>
   );
 }

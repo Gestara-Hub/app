@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isStepSatisfied, type OnboardingStep } from "../hooks/use-onboarding-steps";
+import { isStepSatisfied, type OnboardingStep } from "../onboarding-steps";
 
 // Fases do setup para agendamento individual (Barbearia, Clínica, etc.)
 const GROUPS_DEFAULT = [
@@ -42,7 +42,7 @@ const GROUPS_CLASSES = [
   {
     id: "config",
     label: "Fase 1: Configuração",
-    description: "Horário de funcionamento, regras de cobrança, modalidades e planos.",
+    description: "Horário de funcionamento, regras da mensalidade, modalidades e planos.",
     stepIds: ["hours", "billing", "modalities", "plans"],
   },
   {
@@ -59,6 +59,33 @@ const GROUPS_CLASSES = [
   },
 ] as const;
 
+// Area de curso fechado: sem mensalidade, a menos que alguma turma cobre mensalidade
+// (ai "billing" e "plans" voltam e a fase 1 cita os dois).
+function courseGroups(hasMembershipSteps: boolean) {
+  return [
+    {
+      id: "config",
+      label: "Fase 1: Configuração",
+      description: hasMembershipSteps
+        ? "Horário de funcionamento, regras da mensalidade, modalidades e planos."
+        : "Horário de funcionamento e modalidades.",
+      stepIds: ["hours", "billing", "modalities", "plans"],
+    },
+    {
+      id: "people",
+      label: "Fase 2: Pessoas",
+      description: "Professores, instrutores e alunos.",
+      stepIds: ["team", "clients"],
+    },
+    {
+      id: "ops",
+      label: "Fase 3: Cursos & Matrículas",
+      description: "Criação do curso e matrícula dos alunos.",
+      stepIds: ["classes", "enroll"],
+    },
+  ];
+}
+
 /**
  * Checklist de primeiros passos no padrão Setup Guide unificado:
  * - Layout em coluna contínua (sem o zigue-zague e sem cards órfãos).
@@ -71,6 +98,7 @@ export function OnboardingChecklist({
   doneCount,
   total,
   isClasses = false,
+  isCourseArea = false,
   highlightNextStep = false,
   onStartTour,
 }: {
@@ -78,10 +106,16 @@ export function OnboardingChecklist({
   doneCount: number;
   total: number;
   isClasses?: boolean;
+  /** Area de curso fechado (fase 3 de cursos, mensalidade so se alguma turma cobrar). */
+  isCourseArea?: boolean;
   highlightNextStep?: boolean;
   onStartTour: () => void;
 }) {
-  const groups = isClasses ? GROUPS_CLASSES : GROUPS_DEFAULT;
+  const groups = !isClasses
+    ? GROUPS_DEFAULT
+    : isCourseArea
+      ? courseGroups(steps.some((s) => s.id === "billing"))
+      : GROUPS_CLASSES;
   const activeStepRef = useRef<HTMLElement | null>(null);
   const [expandedCompletedGroups, setExpandedCompletedGroups] = useState<
     Record<string, boolean>
@@ -89,13 +123,14 @@ export function OnboardingChecklist({
 
   const stepShort: Record<string, string> = {
     hours: "horário",
-    billing: "regras de cobrança",
+    billing: "regras da mensalidade",
     categories: "categorias",
     services: "serviços",
     modalities: "modalidades",
     roles: "cargos",
     team: isClasses ? "professores" : "equipe",
-    classes: "turmas",
+    classes: isCourseArea ? "curso" : "turmas",
+    enroll: "matrículas",
     plans: "planos",
     clients: isClasses ? "alunos" : "clientes",
     appointment: "agendamento",

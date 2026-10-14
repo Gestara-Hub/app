@@ -178,7 +178,7 @@ function activeAuthorizationOf(
  * vencimento ate hoje (data local) e valor dentro do limite sao pagas com
  * `paidVia = "recurring"` e `method = "pix"`. Acima do limite ficam em aberto
  * (a tela mostra o aviso). Chamado no inicio das leituras de cobranca
- * (Mensalidades e Financeiro). Idempotente; persiste quando muda algo.
+ * (Cobrancas e Financeiro). Idempotente; persiste quando muda algo.
  * Retorna quantas pagou.
  */
 export function applyRecurringAutoPayments(): number {
@@ -451,7 +451,7 @@ export const onlinePaymentsService = {
     });
   },
 
-  /** Autorizacoes ativas do tenant (aviso de limite nas Mensalidades). */
+  /** Autorizacoes ativas do tenant (aviso de limite em Cobrancas). */
   listActiveRecurring(): Promise<RecurringAuthorization[]> {
     return simulateRead(() =>
       clone(store.recurringAuthorizations.filter((a) => a.status === "active")),

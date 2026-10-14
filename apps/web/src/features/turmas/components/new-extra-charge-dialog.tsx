@@ -200,7 +200,7 @@ function ExtraChargeForm({
 
 /**
  * Nova cobranca avulsa (taxa, material, uniforme, exame, evento), a vista ou
- * parcelada. Em Mensalidades escolhe o aluno; na lista de alunos ja vem fixo.
+ * parcelada. Em Cobrancas escolhe o aluno; na lista de alunos ja vem fixo.
  */
 export function NewExtraChargeDialog({
   open,

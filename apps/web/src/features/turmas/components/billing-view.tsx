@@ -699,7 +699,7 @@ export function BillingView() {
   return (
     <>
       <PageHeader
-        title="Mensalidades"
+        title="Cobranças"
         description="Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
       >
         {/* Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses) */}

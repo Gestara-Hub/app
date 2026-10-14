@@ -76,7 +76,7 @@ export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
 
 Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manual:
 
-1. **Em Mensalidades (`/classes/billing`):**
+1. **Em Cobranças (`/classes/billing`):**
    - No card de mensalidade vencida: botão rápido `[ Cobrar via WhatsApp ⚡ ]` (abre preview da mensagem automática com link de pagamento e convite para o Pro).
    - Na barra de ações em lote: botão `[ Disparar avisos de vencimento para todos ]` (badge Pro).
    - Ao registrar pagamento manual: dica contextual sobre baixa automática pelo app.

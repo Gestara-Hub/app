@@ -4,7 +4,9 @@
 
 ## Decisao
 
-A academia define **uma regra padrão de cobrança** em Configurações → Regras de Cobrança, aplicada a cada **nova matrícula em plano**. O aluno guarda a própria regra (pode ser personalizada no cadastro) e ela não muda quando a academia muda a regra depois.
+A academia define **uma regra padrão de cobrança** em Configurações → Regras da mensalidade, aplicada a cada **nova matrícula em plano**. O aluno guarda a própria regra (pode ser personalizada no cadastro) e ela não muda quando a academia muda a regra depois.
+
+**Só mensalidade (14/10/2026):** as regras valem apenas para mensalidades (plano do aluno). Cursos, cobranças avulsas e aulas avulsas usam o valor e o vencimento definidos na hora. O cartão em Configurações se chama **"Regras da mensalidade"** e diz isso numa linha: "Valem só para mensalidades. Cursos e cobranças avulsas usam o valor e o vencimento definidos na hora." Na área de curso, o passo "Definir regras da mensalidade" só aparece nos primeiros passos se houver turma ativa cobrando mensalidade (doc frontend 08, "Primeiros passos pela forma de cobrança").
 
 A regra tem três partes:
 
@@ -44,7 +46,7 @@ Em 22/09/2026 um teste ponta a ponta encontrou 23 bugs, a maioria em Mensalidade
 
 ## Escopo
 
-- Tela: `apps/web/src/features/settings/components/organization-settings-card.tsx` (Regras de Cobrança, com prévia calculada pelo motor) e `features/turmas/components/billing-view.tsx` (Mensalidades).
+- Tela: `apps/web/src/features/settings/components/organization-settings-card.tsx` (Regras da mensalidade, com prévia calculada pelo motor) e `features/turmas/components/billing-view.tsx` (Cobranças).
 - Regras: `packages/core/src/billing.ts` (motor), `apps/web/src/services/billingService.ts` e `clientsService.ts`.
 - Testes: `packages/core/test/billing.test.ts`, `apps/web/src/services/__tests__/billing.test.ts`, `apps/web/e2e/mensalidades.spec.ts`.
 
@@ -138,3 +140,11 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Pagamento do professor:** "% das mensalidades" continua só com mensalidades pagas; o curso entra na fase D (decisão 7 do doc 20).
 - **Auditoria:** `matriculou Ana no curso Confeitaria (R$ 800,00, em 4 parcelas)` (também na promoção da lista de espera para curso); `cancelou a matrícula de Ana no curso Confeitaria e 2 parcelas futuras`; as ações citam `parcela 2 de 4 do curso "Confeitaria" de Ana`.
 - Testes: `packages/core/test/courses.test.ts`, `apps/web/src/services/__tests__/courses.test.ts` (e a v34 em `migrations.test.ts`), `apps/web/e2e/curso-fechado.spec.ts`.
+
+
+## Tela "Cobranças" (14/10/2026)
+
+A tela `/classes/billing` (antes "Mensalidades") passou a se chamar **"Cobranças"**: além das mensalidades, mostra aulas avulsas, cobranças avulsas e parcelas de curso. A rota não mudou. Mudaram o item do menu, o título da tela e os textos que levam até ela ("Ver em Cobranças" no Financeiro, "Acompanhar Cobranças" na comemoração do setup, avisos do cadastro e da inativação do aluno, Pagamento online, onde aparece cada lembrete em Comunicação, tour).
+
+"Mensalidades" continua onde nomeia o **tipo** de cobrança: opção do filtro "Tipo", categoria de sistema do Financeiro, card "Mensalidades recebidas" do Dashboard, planos, regras da mensalidade, "Paga mensalidade" no cadastro do aluno, relatórios e textos da landing. As menções a "Mensalidades" como tela nas seções acima são históricas e valem para "Cobranças".
+

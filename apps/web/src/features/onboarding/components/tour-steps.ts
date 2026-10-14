@@ -39,7 +39,7 @@ export const TOUR_STEPS_CLASSES: TourStep[] = [
   {
     target: '[data-tour="nav-group-financial"]',
     title: "Financeiro",
-    body: "Aqui você acompanha as mensalidades geradas, registra baixas de pagamento e controla quem está em dia ou pendente.",
+    body: "Aqui você acompanha as cobranças, registra os pagamentos e vê quem está em dia ou pendente.",
   },
   {
     target: '[data-tour="nav-group-catalog"]',
@@ -49,7 +49,7 @@ export const TOUR_STEPS_CLASSES: TourStep[] = [
   {
     target: '[data-tour="nav-settings"]',
     title: "Configurações",
-    body: "No rodapé você ajusta o horário de funcionamento, regras padrão de cobrança e permissões de usuários.",
+    body: "No rodapé você ajusta o horário de funcionamento, as regras da mensalidade e as permissões de usuários.",
   },
   {
     target: '[data-tour="onboarding-checklist"]',

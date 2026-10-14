@@ -18,7 +18,7 @@ Responde às dores da pesquisa: "não sei quanto lucrei", contas misturadas, men
 
 | Continua como está (grátis) | Novo: Financeiro (agora no plano Grátis) | Plano Pro (pago) |
 |---|---|---|
-| **Mensalidades** (`/classes/billing`): cobranças dos alunos, gerar, marcar pago, reverter. Regras do doc 15. | **Visão do dinheiro do negócio**: entradas manuais, despesas, fluxo de caixa, saldo, previsto, lucro. | **Pagamento online integrado** (Pix, link, Pix Automático) no app e web com baixa automática. |
+| **Cobranças** (`/classes/billing`, antes "Mensalidades"): cobranças dos alunos, gerar, marcar pago, reverter. Regras do doc 15. | **Visão do dinheiro do negócio**: entradas manuais, despesas, fluxo de caixa, saldo, previsto, lucro. | **Pagamento online integrado** (Pix, link, Pix Automático) no app e web com baixa automática. |
 | **Planos** de mensalidade do aluno (`Plan`). | **Pagamento dos professores** com regras (mensal, por aula, porcentagem) e fechamento manual. | **Lembretes e avisos automáticos via WhatsApp** (redução de inadimplência). |
 
 **Regra de ouro:** o Financeiro **não duplica** as cobranças dos alunos. Elas vivem em `Charge` e são lidas como fonte de entrada. Lançamentos manuais (`FinancialEntry`) cobrem só o que não nasce de uma cobrança de aluno nem de um pagamento a professor.

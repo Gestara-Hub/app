@@ -10,7 +10,7 @@ import {
 /**
  * Grava a configuracao do pagamento online (fica em
  * `organization.settings.onlinePayments`). Ligar/desligar muda o que as
- * Mensalidades oferecem e o processamento do Pix Automatico.
+ * Cobrancas oferecem e o processamento do Pix Automatico.
  */
 export function useUpdateOnlinePaymentSettings() {
   const qc = useQueryClient();

@@ -1,13 +1,13 @@
 import type { Page } from "@playwright/test";
 import { editWorld, expect, loginAs, seedAcademy, student, test } from "./fixtures";
 
-/** Com a cobranca ja configurada, as Regras de Cobranca abrem pelo clique. */
+/** Com a cobranca ja configurada, as Regras da mensalidade abrem pelo clique. */
 async function openBillingRules(page: Page) {
-  const trigger = page.getByRole("button", { name: /Regras de Cobrança/ });
+  const trigger = page.getByRole("button", { name: /Regras da mensalidade/ });
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
 }
 
-test("prévia das regras de cobrança mostra as 4 combinações", async ({ page }) => {
+test("prévia das regras da mensalidade mostra as 4 combinações", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings#billing-rules");
   await openBillingRules(page);
@@ -80,7 +80,7 @@ test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
   await expect(page.getByText("Horários de funcionamento salvos.")).toHaveCount(0);
 });
 
-test("configuração inicial: o Continuar leva ao passo e às Regras de Cobrança abertas", async ({ page }) => {
+test("configuração inicial: o Continuar leva ao passo e às Regras da mensalidade abertas", async ({ page }) => {
   await loginAs(page, "Ana Ribeiro");
   await editWorld(page, "org-academia-x", (t) => {
     t.unit.businessHours = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, closed: true, shifts: [] }));
@@ -99,12 +99,12 @@ test("configuração inicial: o Continuar leva ao passo e às Regras de Cobranç
 
   await page.getByRole("switch").nth(1).click(); // segunda-feira
   await page.getByRole("button", { name: "Salvar horários" }).click();
-  await expect(banner).toContainText("Definir regras de cobrança");
+  await expect(banner).toContainText("Definir regras da mensalidade");
 
-  // O Continuar leva as Regras de Cobranca ja abertas; o cartao pulsa ate o clique.
+  // O Continuar leva as Regras da mensalidade ja abertas; o cartao pulsa ate o clique.
   await banner.getByRole("link", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/tab=geral#billing-rules$/);
-  await expect(page.getByRole("button", { name: /Regras de Cobrança/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: /Regras da mensalidade/ })).toHaveAttribute("aria-expanded", "true");
   const billingCard = page.locator("#billing-rules");
   await expect(billingCard).toHaveClass(/animate-attention-ring/);
   await page.getByRole("radio", { name: /^Depois do uso/ }).click();
@@ -120,12 +120,12 @@ test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard
   await expect(page.getByRole("heading", { name: "Primeiros passos da sua unidade" })).toBeVisible();
 });
 
-test("hash repetido na URL ainda abre as Regras de Cobrança", async ({ page }) => {
+test("hash repetido na URL ainda abre as Regras da mensalidade", async ({ page }) => {
   await seedAcademy(page);
   // O link abre o cartao sozinho enquanto a cobranca nao foi configurada.
   await editWorld(page, "org-academia-x", (t) => delete t.organization.settings.billingTiming);
   await page.goto("/settings?tab=geral#billing-rules#billing-rules");
-  await expect(page.getByRole("button", { name: /Regras de Cobrança/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: /Regras da mensalidade/ })).toHaveAttribute("aria-expanded", "true");
 });
 
 test("fora da tela do próximo passo o Continuar pulsa; nela, some", async ({ page }) => {

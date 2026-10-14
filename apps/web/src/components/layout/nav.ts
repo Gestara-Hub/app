@@ -147,7 +147,7 @@ export const MAIN_NAV: NavItem[] = [
 
   // Bloco 2: Financeiro
   {
-    label: "Mensalidades",
+    label: "Cobranças",
     href: "/classes/billing",
     icon: Wallet,
     permission: "billing:view",

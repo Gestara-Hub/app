@@ -4,40 +4,29 @@ import { useClients } from "@/features/clients";
 import { useServices } from "@/features/services";
 import { useProfessionals } from "@/features/professionals";
 import { useAppointments } from "@/features/appointments";
-import { useOrganization, useUnit } from "@/features/settings";
+import { useBusinessSegment, useOrganization, useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useClassGroups, usePlans } from "@/features/turmas";
+import {
+  buildClassesOnboardingSteps,
+  buildSchedulingOnboardingSteps,
+  summarizeOnboardingSteps,
+  type OnboardingStep,
+} from "../onboarding-steps";
 
-export interface OnboardingStep {
-  id: string;
-  label: string;
-  description: string;
-  /** Destino do CTA (deep-link para a tela do passo). */
-  href: string;
-  cta: string;
-  done: boolean;
-  /**
-   * Existe mas falta o dono conferir (ex.: modalidades criadas no setup). Nao
-   * conta como concluido, mas ja libera os passos que dependem dele.
-   */
-  needsReview?: boolean;
-  /** Ids de passos que precisam estar concluidos antes deste (senao, bloqueado). */
-  requires?: string[];
-}
-
-/** Libera os passos que dependem dele: concluido ou so faltando revisar. */
-export function isStepSatisfied(step: OnboardingStep): boolean {
-  return step.done || Boolean(step.needsReview);
-}
+export { isStepSatisfied, type OnboardingStep } from "../onboarding-steps";
 
 /**
  * Passos do onboarding com conclusao derivada do dado real (nao manual): cada
  * passo se marca sozinho quando a entidade correspondente passa a existir.
- * Contextualizado ao modelo operacional (atendimento individual vs turmas/academia).
+ * Contextualizado ao modelo operacional (atendimento individual vs turmas) e,
+ * nas turmas, a forma de cobranca da area (mensalidade ou curso fechado).
+ * A montagem dos passos fica em `../onboarding-steps` (pura, testada).
  */
 export function useOnboardingSteps() {
   const model = useModel();
+  const segment = useBusinessSegment();
   const unitQuery = useUnit();
   const orgQuery = useOrganization();
   const servicesQuery = useServices();
@@ -49,17 +38,14 @@ export function useOnboardingSteps() {
   const plansQuery = usePlans();
 
   const isClasses = model === "classes";
+  const isCourseArea = isClasses && segment.defaultBillingMode === "course";
 
   const hoursSet = Boolean(
     unitQuery.data?.businessHours?.some((day) => !day.closed),
   );
-  const billingSet = Boolean(orgQuery.data?.settings?.billingTiming);
-  const hasModalities = (categoriesQuery.data?.length ?? 0) > 0;
-  const modalitiesNeedReview =
-    hasModalities && orgQuery.data?.settings?.modalitiesReviewed === false;
 
-  let steps: OnboardingStep[] = [];
-  let isReady = false;
+  let steps: OnboardingStep[];
+  let isReady: boolean;
 
   if (isClasses) {
     isReady =
@@ -71,69 +57,17 @@ export function useOnboardingSteps() {
       !clientsQuery.isPending &&
       !plansQuery.isPending;
 
-    steps = [
-      {
-        id: "hours",
-        label: "Definir horário de funcionamento",
-        description: "Configure os dias e horários de funcionamento da unidade.",
-        href: "/settings?tab=horarios",
-        cta: "Configurar",
-        done: hoursSet,
-      },
-      {
-        id: "billing",
-        label: "Definir regras de cobrança",
-        description: "Configure o regime padrão (pré/pós-pago) e vencimentos.",
-        href: "/settings?tab=geral#billing-rules",
-        cta: "Configurar",
-        done: billingSet,
-      },
-      {
-        id: "modalities",
-        label: "Cadastrar modalidades",
-        description: modalitiesNeedReview
-          ? "Confira os níveis e as metas das modalidades criadas."
-          : "Adicione as modalidades ou atividades oferecidas.",
-        href: "/classes/modalities",
-        cta: modalitiesNeedReview ? "Revisar" : "Adicionar",
-        done: hasModalities && !modalitiesNeedReview,
-        needsReview: modalitiesNeedReview,
-      },
-      {
-        id: "plans",
-        label: "Criar planos de mensalidade",
-        description: "Defina os planos para cobrança dos alunos.",
-        href: "/classes/plans",
-        cta: "Criar",
-        done: (plansQuery.data?.length ?? 0) > 0,
-        requires: ["modalities"],
-      },
-      {
-        id: "team",
-        label: "Cadastrar professores e instrutores",
-        description: "Cadastre os professores e instrutores que ministram as aulas.",
-        href: "/team",
-        cta: "Adicionar",
-        done: (professionalsQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "clients",
-        label: "Cadastrar alunos",
-        description: "Cadastre os alunos que frequentarão as turmas.",
-        href: "/clients",
-        cta: "Adicionar",
-        done: (clientsQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "classes",
-        label: "Criar a primeira turma",
-        description: "A etapa final para abrir as matrículas e ativar o seu painel do dia a dia.",
-        href: "/classes",
-        cta: "Criar",
-        done: (classGroupsQuery.data?.length ?? 0) > 0,
-        requires: ["hours", "modalities", "team", "clients"],
-      },
-    ];
+    steps = buildClassesOnboardingSteps({
+      hoursSet,
+      billingSet: Boolean(orgQuery.data?.settings?.billingTiming),
+      modalitiesCount: categoriesQuery.data?.length ?? 0,
+      modalitiesNeedReview: orgQuery.data?.settings?.modalitiesReviewed === false,
+      plansCount: plansQuery.data?.length ?? 0,
+      professionalsCount: professionalsQuery.data?.length ?? 0,
+      clientsCount: clientsQuery.data?.length ?? 0,
+      classGroups: classGroupsQuery.data ?? [],
+      isCourseArea,
+    });
   } else {
     isReady =
       !unitQuery.isPending &&
@@ -142,64 +76,20 @@ export function useOnboardingSteps() {
       !clientsQuery.isPending &&
       !appointmentsQuery.isPending;
 
-    steps = [
-      {
-        id: "hours",
-        label: "Definir horário de funcionamento",
-        description: "Configure o expediente da unidade — base da agenda.",
-        href: "/settings?tab=horarios",
-        cta: "Configurar",
-        done: hoursSet,
-      },
-      {
-        id: "services",
-        label: "Cadastrar serviços",
-        description: "Adicione o que o seu negócio oferece.",
-        href: "/services",
-        cta: "Adicionar",
-        done: (servicesQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "team",
-        label: "Montar a equipe",
-        description: "Cadastre os profissionais que fazem os atendimentos.",
-        href: "/team",
-        cta: "Adicionar",
-        done: (professionalsQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "clients",
-        label: "Adicionar clientes",
-        description: "Comece a montar sua base de clientes.",
-        href: "/clients",
-        cta: "Adicionar",
-        done: (clientsQuery.data?.length ?? 0) > 0,
-      },
-      {
-        id: "appointment",
-        label: "Criar o primeiro agendamento",
-        description: "Agende o primeiro atendimento na sua agenda.",
-        href: "/schedule",
-        cta: "Criar",
-        done: (appointmentsQuery.data?.length ?? 0) > 0,
-        requires: ["services", "team", "clients"],
-      },
-    ];
+    steps = buildSchedulingOnboardingSteps({
+      hoursSet,
+      servicesCount: servicesQuery.data?.length ?? 0,
+      professionalsCount: professionalsQuery.data?.length ?? 0,
+      clientsCount: clientsQuery.data?.length ?? 0,
+      appointmentsCount: appointmentsQuery.data?.length ?? 0,
+    });
   }
-
-  const doneCount = steps.filter((step) => step.done).length;
-  const satisfiedById = Object.fromEntries(steps.map((s) => [s.id, isStepSatisfied(s)]));
-  const isLocked = (step: OnboardingStep) =>
-    (step.requires ?? []).some((id) => !satisfiedById[id]);
-  const nextStep = steps.find((step) => !step.done && !isLocked(step)) ?? null;
 
   return {
     steps,
-    doneCount,
-    total: steps.length,
+    ...summarizeOnboardingSteps(steps),
     isReady,
-    isComplete: doneCount === steps.length,
     isClasses,
-    nextStep,
+    isCourseArea,
   };
 }

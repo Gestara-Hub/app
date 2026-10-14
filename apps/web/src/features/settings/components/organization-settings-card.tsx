@@ -268,7 +268,7 @@ function OrgUnitForm({
       : `Vence todo dia ${isValidDueDay ? currentDueDay : 10}`;
   const billingSummary = `${timingSummary} • ${strategySummary} • ${dueSummary}`;
 
-  // Só expande e destaca automaticamente as regras de cobrança na etapa guiada do onboarding
+  // Só expande e destaca automaticamente as regras da mensalidade na etapa guiada do onboarding
   // (ou seja, quando o passo de cobrança ainda estiver pendente de confirmação).
   const shouldFocusBilling =
     isBillingUnconfirmed &&
@@ -382,7 +382,7 @@ function OrgUnitForm({
       }
       toast.success(
         isBillingUnconfirmed
-          ? "Regras de cobrança confirmadas com sucesso."
+          ? "Regras da mensalidade confirmadas com sucesso."
           : "Configurações salvas.",
       );
       if (typeof window !== "undefined" && window.location.hash) {
@@ -514,7 +514,7 @@ function OrgUnitForm({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Seção 3: Regras de Cobrança (específico para turmas e mensalidades) */}
+          {/* Seção 3: Regras da mensalidade (só turmas que cobram mensalidade) */}
           {isClasses ? (
             <AccordionItem
               value="billing"
@@ -534,7 +534,7 @@ function OrgUnitForm({
                   </div>
                   <div className="min-w-0 text-left">
                     <h3 className="font-semibold text-foreground text-sm leading-tight">
-                      Regras de Cobrança
+                      Regras da mensalidade
                     </h3>
                     <p className="text-xs text-muted-foreground truncate mt-0.5 font-normal">
                       {billingSummary}
@@ -543,6 +543,9 @@ function OrgUnitForm({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-5 border-t border-border/40 mt-1">
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Valem só para mensalidades. Cursos e cobranças avulsas usam o valor e o vencimento definidos na hora.
+                </p>
                 {isBillingUnconfirmed ? (
                   <div className="mt-3 mb-2 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground">
                     <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />

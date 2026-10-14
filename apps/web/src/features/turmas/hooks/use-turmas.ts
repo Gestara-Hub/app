@@ -23,7 +23,7 @@ import type {
 
 /**
  * Matricula em curso gera ou cancela parcelas: alem das turmas, atualiza
- * Mensalidades, Financeiro, pagamento de professores e Auditoria.
+ * Cobrancas, Financeiro, pagamento de professores e Auditoria.
  */
 function invalidateEnrollmentMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.classes.all });

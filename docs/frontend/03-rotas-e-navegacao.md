@@ -46,11 +46,11 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas. |
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
 | `/classes/plans` | Planos | `classes` | `billing:view` | Planos de mensalidade. |
-| `/classes/billing` | Mensalidades | `classes` | `billing:view` | Cobrancas por competencia. |
+| `/classes/billing` | Cobranças | `classes` | `billing:view` | Cobrancas por competencia: mensalidades, aulas avulsas, cobrancas avulsas e parcelas de curso (antes "Mensalidades", renomeada em 14/10/2026). |
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
-| `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras de cobranca, "Apagar dados da demonstração" (aba Dados). |
+| `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras da mensalidade, "Apagar dados da demonstração" (aba Dados). |
 
 Notas:
 

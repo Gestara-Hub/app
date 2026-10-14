@@ -141,3 +141,26 @@ function isPartialScholarship(data: { paymentMode?: string; scholarshipKind?: st
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;
 
+
+export type ClientPaymentMode = NonNullable<ClientFormValues["paymentMode"]>;
+
+/**
+ * Forma de pagamento inicial do formulario. Fora do modelo de turmas nao ha
+ * escolha. Aluno salvo mantem o que tem: bolsa, sem plano = "Não paga
+ * mensalidade", com plano = "Paga mensalidade". Aluno novo comeca em "Paga
+ * mensalidade", exceto na area de curso fechado, onde comeca sem mensalidade.
+ */
+export function defaultPaymentMode({
+  client,
+  isClasses,
+  isCourseArea,
+}: {
+  client?: { planId?: string; discount?: { scholarship?: boolean } };
+  isClasses: boolean;
+  isCourseArea: boolean;
+}): ClientPaymentMode | undefined {
+  if (!isClasses) return undefined;
+  if (client?.discount?.scholarship) return "scholarship";
+  if (client) return client.planId ? "membership" : "none";
+  return isCourseArea ? "none" : "membership";
+}

@@ -17,6 +17,8 @@ export interface OnboardingWelcomeDialogProps {
   onStartTour: () => void;
   onStartSetup: () => void;
   isClasses?: boolean;
+  /** Area de curso fechado: textos sem mensalidade. */
+  isCourseArea?: boolean;
 }
 
 /**
@@ -31,6 +33,7 @@ export function OnboardingWelcomeDialog({
   onStartTour,
   onStartSetup,
   isClasses = true,
+  isCourseArea = false,
 }: OnboardingWelcomeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,8 +93,9 @@ export function OnboardingWelcomeDialog({
                   </span>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-snug">
-                  Conheça os atalhos essenciais: turmas, planos de mensalidade,
-                  alunos e configurações.
+                  {isCourseArea
+                    ? "Conheça os atalhos essenciais: cursos, alunos, cobranças e configurações."
+                    : "Conheça os atalhos essenciais: turmas, planos de mensalidade, alunos e configurações."}
                 </p>
               </div>
             </div>
@@ -123,7 +127,9 @@ export function OnboardingWelcomeDialog({
                   </h3>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-snug">
-                  Siga o checklist no seu ritmo para definir horários de funcionamento, regras de cobrança e turmas.
+                  {isCourseArea
+                    ? "Siga o checklist no seu ritmo para definir horários de funcionamento, cursos e matrículas."
+                    : "Siga o checklist no seu ritmo para definir horários de funcionamento, regras da mensalidade e turmas."}
                 </p>
               </div>
             </div>

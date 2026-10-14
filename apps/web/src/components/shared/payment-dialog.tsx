@@ -36,7 +36,7 @@ interface PaymentDialogProps {
 /**
  * Registrar pagamento (RHF + Zod): resumo, forma de pagamento obrigatoria e
  * comprovantes opcionais (imagem ou PDF). O proprio modal e a confirmacao da
- * acao com dinheiro. Usado por Mensalidades, Lancamentos e Professores.
+ * acao com dinheiro. Usado por Cobrancas, Lancamentos e Professores.
  */
 export function PaymentDialog({
   open,

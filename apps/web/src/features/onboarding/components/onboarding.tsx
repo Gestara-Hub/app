@@ -19,7 +19,7 @@ export function Onboarding() {
   const user = useCurrentUser();
   const [state, update] = useOnboardingState();
   const { data: organization, isLoading: orgLoading } = useOrganization();
-  const { steps, doneCount, total, isReady, isComplete, isClasses } =
+  const { steps, doneCount, total, isReady, isComplete, isClasses, isCourseArea } =
     useOnboardingSteps();
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -40,6 +40,7 @@ export function Onboarding() {
           doneCount={doneCount}
           total={total}
           isClasses={isClasses}
+          isCourseArea={isCourseArea}
           highlightNextStep={!tourOpen && !welcomeOpen}
           onStartTour={() => {
             update({ seen: true });
@@ -61,6 +62,7 @@ export function Onboarding() {
           update({ seen: true });
         }}
         isClasses={isClasses}
+        isCourseArea={isCourseArea}
       />
 
       {tourOpen ? (

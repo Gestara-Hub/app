@@ -107,7 +107,7 @@ async function createClass(page: Page, name: string, moveToWednesday = false) {
 test("turma que conclui a configuração inicial comemora; as seguintes mostram o aviso", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
   await createClass(page, "Jiu-Jitsu Noturno");
-  const party = page.getByRole("alertdialog", { name: "Sua academia está pronta!" });
+  const party = page.getByRole("alertdialog", { name: "Seu espaço está pronto!" });
   await expect(party).toContainText("Jiu-Jitsu Noturno");
   await party.getByRole("button", { name: "Agora não" }).click();
   await expect(party).toBeHidden();
@@ -123,7 +123,7 @@ test("primeira turma com a configuração incompleta (sem alunos) não comemora"
   await seedAcademy(page);
   await createClass(page, "Jiu-Jitsu Noturno");
   await expect(page.getByText('Turma "Jiu-Jitsu Noturno" criada com sucesso.')).toBeVisible();
-  await expect(page.getByRole("alertdialog", { name: "Sua academia está pronta!" })).toHaveCount(0);
+  await expect(page.getByRole("alertdialog", { name: "Seu espaço está pronto!" })).toHaveCount(0);
 });
 
 const SESSION_PAST = "/classes/sessions/cg-1~2026-09-21~17%3A00";

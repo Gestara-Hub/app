@@ -24,7 +24,7 @@ const CHOICES: { value: OpenChargesChoice; title: string; desc: string }[] = [
   {
     value: "keep",
     title: "Manter para receber",
-    desc: "Continuam em Mensalidades como pendentes ou atrasadas.",
+    desc: "Continuam em Cobranças como pendentes ou atrasadas.",
   },
   {
     value: "cancel",

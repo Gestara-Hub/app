@@ -41,6 +41,8 @@ interface EnrollStudentsDialogProps {
   turma: ClassGroupView;
   enrolledIds: Set<Id>;
   waitlistedIds: Set<Id>;
+  /** Chamado com quantos entraram, depois de pelo menos uma matricula. */
+  onEnrolled?: (count: number) => void;
 }
 
 /**
@@ -55,6 +57,7 @@ export function EnrollStudentsDialog({
   turma,
   enrolledIds,
   waitlistedIds,
+  onEnrolled,
 }: EnrollStudentsDialogProps) {
   const { data: clients } = useClients({ status: "active" });
   const enrollMut = useEnroll();
@@ -206,6 +209,7 @@ export function EnrollStudentsDialog({
         ok === 1 ? "Aluno matriculado." : `${ok} alunos matriculados.`,
       );
       close();
+      onEnrolled?.(ok);
     }
     // Erro do pagamento do curso volta para o campo (nenhum entrou).
     if (lastError && !(ok === 0 && applyCourseErrors(courseForm, lastError))) {

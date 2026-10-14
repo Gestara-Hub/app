@@ -496,7 +496,7 @@ export function TurmasView({
         groupName={createdTurmaForEnroll?.name}
         open={createdTurmaForEnroll !== null && celebrate}
         onOpenChange={(open) => !open && setCreatedTurmaForEnroll(null)}
-        onEnroll={() => {
+        onPrimary={() => {
           if (createdTurmaForEnroll) {
             router.push(`/classes/${createdTurmaForEnroll.id}?enroll=true`);
           }

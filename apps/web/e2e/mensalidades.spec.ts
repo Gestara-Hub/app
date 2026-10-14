@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { classGroup, editWorld, enrollment, expect, seedAcademy, student, test } from "./fixtures";
 
-/** A linha inteira (texto + valor + acoes) de um aluno na lista de Mensalidades. */
+/** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
 
 /** Abre o menu ⋮ da mensalidade e escolhe a acao. */

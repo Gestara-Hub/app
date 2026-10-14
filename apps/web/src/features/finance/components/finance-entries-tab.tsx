@@ -378,7 +378,7 @@ export function FinanceEntriesTab({
       trailing = (
         <Button asChild variant="ghost" size="sm" className="text-xs">
           <Link href={billingHref(competence, { kind: chargeKindOf(row) })}>
-            Ver em Mensalidades
+            Ver em Cobranças
             <ChevronRight className="size-3.5" />
           </Link>
         </Button>

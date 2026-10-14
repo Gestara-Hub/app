@@ -15,7 +15,7 @@ O GestaraHub e organizado em modulos funcionais. Cada organizacao tem um modelo 
 | Calendario | `/classes/calendar` | `classes` | `classes:view` |
 | Modalidades | `/classes/modalities` | `classes` | `classes:manage` |
 | Planos | `/classes/plans` | `classes` | `billing:view` |
-| Mensalidades | `/classes/billing` | `classes` | `billing:view` |
+| Cobranças | `/classes/billing` | `classes` | `billing:view` |
 | Usuarios (rodape) | `/users` | todos | `users:view` |
 | Auditoria (rodape) | `/audit` | todos | `audit:view` |
 | Configuracoes (rodape) | `/settings` | todos | `settings:view` |
@@ -261,7 +261,8 @@ Abas:
 ## Modulo: Onboarding
 
 - Checklist de primeiros passos por modelo, com atalhos para cada tela, banner no topo e dialogo de boas-vindas.
-  - Academia: horario de funcionamento, regras de cobranca, modalidades, planos, professores/instrutores, alunos, primeira turma.
+  - Academia: horario de funcionamento, regras da mensalidade, modalidades, planos, professores/instrutores, alunos, primeira turma.
+  - Area de curso fechado (gastronomia, artes, beleza): horario de funcionamento, modalidades, professores/instrutores, alunos, primeiro curso, matricular alunos no curso. Regras da mensalidade e planos voltam se houver turma ativa cobrando mensalidade (doc frontend 08).
   - Atendimento: horario de funcionamento, servicos, equipe, clientes, primeiro agendamento.
 - Tour guiado pelos itens do menu.
 

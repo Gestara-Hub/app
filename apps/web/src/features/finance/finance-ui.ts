@@ -12,8 +12,8 @@ export function fullDate(date: string): string {
 }
 
 /**
- * Link para Mensalidades na competencia (e, opcional, no status/kind).
- * Obs.: a tela de Mensalidades ainda precisa ler estes parametros.
+ * Link para Cobrancas na competencia (e, opcional, no status/kind).
+ * Obs.: a tela de Cobrancas ainda precisa ler estes parametros.
  */
 export function billingHref(
   competence: string,

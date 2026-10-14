@@ -21,7 +21,7 @@ import type {
 } from "@gestarahub/contracts";
 
 /**
- * Toda mutation de cobranca mexe no dinheiro: invalida Mensalidades, o
+ * Toda mutation de cobranca mexe no dinheiro: invalida Cobrancas, o
  * Financeiro (le as cobrancas como entrada), a previa dos professores, os
  * pagamentos online e a Auditoria.
  */

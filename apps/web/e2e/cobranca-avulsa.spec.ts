@@ -5,7 +5,7 @@ import { expect, seedAcademy, student, test } from "./fixtures";
 
 const TS = "2026-09-01T12:00:00.000Z";
 
-/** A linha inteira (texto + valor + acoes) de um aluno na lista de Mensalidades. */
+/** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
 
 /** Abre o menu ⋮ da cobranca e escolhe a acao. */
@@ -36,7 +36,7 @@ function extraCharge(id: string, studentId: string, over: Record<string, unknown
   };
 }
 
-test("Mensalidades: nova cobrança com sugestão e 3 parcelas, filtro por tipo na URL", async ({ page }) => {
+test("Cobranças: nova cobrança com sugestão e 3 parcelas, filtro por tipo na URL", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [noPlan("c-e", "Aluno Extra")]) });
   await page.goto("/classes/billing");
   await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
@@ -94,7 +94,7 @@ test("Mensalidades: nova cobrança com sugestão e 3 parcelas, filtro por tipo n
   await expect(rowOf(page, "Aluno Extra")).toHaveCount(0);
 });
 
-test("Mensalidades: marcar a avulsa como paga com Pix e cancelar outra com motivo", async ({ page }) => {
+test("Cobranças: marcar a avulsa como paga com Pix e cancelar outra com motivo", async ({ page }) => {
   await seedAcademy(page, {
     extra: (t) => {
       t.clients = [noPlan("c-k1", "Aluno K1"), noPlan("c-k2", "Aluno K2")];

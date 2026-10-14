@@ -167,7 +167,7 @@ describe("cobrança avulsa: lançar", () => {
   });
 });
 
-describe("cobrança avulsa: ações de Mensalidades", () => {
+describe("cobrança avulsa: ações de Cobranças", () => {
   beforeEach(() => resetAcademy());
 
   it("pagar, recusar pagar de novo, desfazer, cancelar com motivo e reabrir", async () => {

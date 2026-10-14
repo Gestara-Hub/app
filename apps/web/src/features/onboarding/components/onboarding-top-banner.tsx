@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/features/auth";
-import { useOnboardingSteps, type OnboardingStep } from "../hooks/use-onboarding-steps";
+import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
+import type { OnboardingStep } from "../onboarding-steps";
 
 /**
  * Pagina do passo = o caminho exato do seu destino. Subpaginas (ex.:

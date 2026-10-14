@@ -61,7 +61,7 @@ function toValues(s?: OnlinePaymentSettings): Values {
 }
 
 const BENEFITS = [
-  "Pix copia e cola e QR Code direto das Mensalidades",
+  "Pix copia e cola e QR Code direto em Cobranças",
   "Link de pagamento para enviar pelo WhatsApp",
   "Pix Automático: a mensalidade é paga sozinha no vencimento",
 ] as const;
@@ -187,7 +187,7 @@ function OnlinePaymentsForm({
               Cobrança online
             </CardTitle>
             <CardDescription>
-              Com a opção ligada, as Mensalidades ganham a ação &quot;Cobrar
+              Com a opção ligada, as cobranças ganham a ação &quot;Cobrar
               online&quot; (Pix ou link) e os alunos podem autorizar o Pix
               Automático.
             </CardDescription>

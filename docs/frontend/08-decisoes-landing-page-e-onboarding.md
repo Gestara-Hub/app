@@ -180,6 +180,22 @@ Onde aparece:
 - **Telas de aluno, turma, aula e relatórios**: "Faixa" ou "Nível/Módulo/Fase", "Graduar" ou "Avançar", conforme a **trilha da modalidade** (ver "Palavras pela trilha da modalidade" abaixo). "Aluno" não muda.
 - **Comunicação**: Lutas fala em treino e tatame; as demais, em aulas. Ao trocar de área, só os modelos ainda no texto padrão mudam; os editados ficam como estão.
 - **Configurações**: campo "Área do espaço" em Identificação do Negócio. Na "Outra área", aparecem "O que você ensina?" e "Como seus alunos avançam?" (as mesmas 4 opções do setup). Trocar muda só padrões e palavras daí em diante; modalidades, trilhas e turmas existentes não mudam.
+- **Primeiros passos e cadastro do aluno**: seguem a forma de cobrança da área (ver abaixo).
+
+#### Primeiros passos pela forma de cobrança (14/10/2026)
+
+As regras da mensalidade e os planos só fazem sentido onde há mensalidade. Áreas que cobram por curso fechado (`defaultBillingMode === "course"`: Gastronomia, Artes e artesanato, Beleza e cursos livres) começam sem eles. "Outra área" segue como mensalidade (não há sinal confiável de curso).
+- **Área de mensalidade (sem mudança)**: Definir horário de funcionamento → Definir regras da mensalidade → Cadastrar modalidades → Criar planos de mensalidade → Cadastrar professores e instrutores → Cadastrar alunos → Criar a primeira turma.
+- **Área de curso**: Definir horário de funcionamento → Cadastrar modalidades → Cadastrar professores e instrutores → Cadastrar alunos → **Criar o primeiro curso** → **Matricular alunos no curso**. A fase 3 do checklist vira "Cursos & Matrículas".
+  - "Criar o primeiro curso" conclui com qualquer turma criada; "Matricular alunos no curso" (requer o curso) conclui quando algum curso (`billingMode: "course"`) tem matrícula ativa, e o "Continuar" abre a matrícula do curso ativo (`/classes/{id}?enroll=true`).
+  - "Cadastrar alunos" continua: cadastrar e matricular são ações diferentes.
+  - **Se houver turma ativa cobrando mensalidade** (ou turma antiga sem `billingMode`), "Definir regras da mensalidade" e "Criar planos de mensalidade" voltam ao checklist.
+  - Criar o curso com só a matrícula faltando mostra só o aviso "Turma criada" com a ação "Matricular alunos". A comemoração ("Seu espaço está pronto!") vem na 1ª matrícula do curso, quando a configuração inicial está mesmo 100% concluída, e leva às cobranças geradas.
+  - O título da comemoração é "Seu espaço está pronto!" em todas as áreas (antes "Sua academia está pronta!").
+- Boas-vindas, tour e checklist não citam mensalidade na área de curso ("cursos, alunos, cobranças e configurações"; "horários de funcionamento, cursos e matrículas").
+- O checklist só esconde passos: mensalidade, planos e regras continuam disponíveis em qualquer área.
+- **Cadastro do aluno**: na área de curso, o aluno novo começa em "Não paga mensalidade"; editar mantém a forma salva. Demais áreas começam em "Paga mensalidade".
+- Código: `buildClassesOnboardingSteps` (pura, em `features/onboarding/onboarding-steps.ts`, testada em `features/onboarding/__tests__/onboarding-steps.test.ts`); o hook `useOnboardingSteps` só junta os dados. Padrão do aluno: `defaultPaymentMode` em `features/clients/client-schema.ts`.
 
 #### Estilo da trilha (11/10/2026)
 

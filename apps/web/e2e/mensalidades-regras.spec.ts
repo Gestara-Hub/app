@@ -6,7 +6,7 @@ test.describe.configure({ timeout: 60_000 });
 
 const TS = "2026-09-01T12:00:00.000Z";
 
-/** A linha inteira (texto + valor + acoes) de um aluno na lista de Mensalidades. */
+/** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
 
 /** Abre o menu ⋮ da mensalidade e escolhe a acao. */

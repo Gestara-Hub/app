@@ -185,9 +185,9 @@ function materializeAll(): number {
 /** Garante a materializacao numa leitura (persiste so se criou algo). */
 function ensureMaterialized(competence?: string): void {
   // Mensalidades do mes (e do mes consultado, se ja chegou) geradas na leitura,
-  // sem depender de alguem abrir Mensalidades.
+  // sem depender de alguem abrir Cobrancas.
   autoGenerateMembershipCharges(competence);
-  // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Mensalidades.
+  // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Cobrancas.
   applyRecurringAutoPayments();
   if (materializeAll() > 0) persist();
 }
@@ -207,7 +207,7 @@ function openPreviews() {
 
 // --- Fontes de caixa --------------------------------------------------------
 
-/** Status efetivo da cobranca (atraso derivado, como em Mensalidades). */
+/** Status efetivo da cobranca (atraso derivado, como em Cobrancas). */
 function chargeStatus(c: Charge): FinancialEntryDisplayStatus {
   if (c.status === "pending" || c.status === "overdue") {
     return c.dueDate < todayISO() ? "overdue" : "pending";

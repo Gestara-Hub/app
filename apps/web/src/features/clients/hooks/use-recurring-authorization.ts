@@ -12,7 +12,7 @@ import { onlinePaymentsService } from "@/services/onlinePaymentsService";
 
 /**
  * Pix Automatico do aluno. Ativar ja paga as mensalidades vencidas dentro do
- * limite, entao toda mutation invalida tambem Mensalidades e Financeiro.
+ * limite, entao toda mutation invalida tambem Cobrancas e Financeiro.
  */
 function invalidateRecurring(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });

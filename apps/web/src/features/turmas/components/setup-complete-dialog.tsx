@@ -22,24 +22,29 @@ import { ConfettiBurst } from "@/components/shared/confetti-burst";
 const NEXT_STEPS = [
   { icon: UserPlus, title: "Matricular alunos na turma" },
   { icon: CalendarCheck, title: "Fazer chamada no Calendário" },
-  { icon: Wallet, title: "Acompanhar Mensalidades" },
+  { icon: Wallet, title: "Acompanhar Cobranças" },
 ];
 
 /**
- * Comemoracao do setup inicial concluido, quando a 1a turma criada fecha as 7
- * etapas do guia. Permite ir direto para a matricula ou criar a proxima turma.
+ * Comemoracao da configuracao inicial concluida. `created`: a 1a turma fecha o
+ * guia (leva a matricular). `enrolled`: na area de curso, o guia so fecha na
+ * 1a matricula do curso (leva as cobrancas geradas).
  */
 export function SetupCompleteDialog({
   groupName,
   open,
   onOpenChange,
-  onEnroll,
+  onPrimary,
+  variant = "created",
 }: {
   groupName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEnroll: () => void;
+  onPrimary: () => void;
+  variant?: "created" | "enrolled";
 }) {
+  const enrolled = variant === "enrolled";
+  const steps = enrolled ? NEXT_STEPS.slice(1) : NEXT_STEPS;
   const enrollRef = useRef<HTMLButtonElement>(null);
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -60,11 +65,12 @@ export function SetupCompleteDialog({
             <span>Configuração inicial 100% concluída</span>
           </div>
           <AlertDialogTitle className="relative mt-2 text-xl sm:text-2xl font-bold">
-            Sua academia está pronta!
+            Seu espaço está pronto!
           </AlertDialogTitle>
           <AlertDialogDescription className="relative mt-1 text-center text-xs sm:text-sm">
-            A turma <strong className="text-foreground">&ldquo;{groupName}&rdquo;</strong> foi
-            criada.
+            {enrolled ? "Alunos matriculados no curso " : "A turma "}
+            <strong className="text-foreground">&ldquo;{groupName}&rdquo;</strong>
+            {enrolled ? "." : " foi criada."}
           </AlertDialogDescription>
         </div>
 
@@ -74,7 +80,7 @@ export function SetupCompleteDialog({
               Sua operação no dia a dia
             </p>
             <ul className="space-y-2">
-              {NEXT_STEPS.map(({ icon: Icon, title }) => (
+              {steps.map(({ icon: Icon, title }) => (
                 <li key={title} className="flex items-center gap-2.5">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-background border border-border/60 text-muted-foreground shadow-2xs">
                     <Icon className="size-3.5" />
@@ -88,8 +94,8 @@ export function SetupCompleteDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button ref={enrollRef} className="h-10 w-full gap-1.5" onClick={onEnroll}>
-              Matricular alunos agora
+            <Button ref={enrollRef} className="h-10 w-full gap-1.5" onClick={onPrimary}>
+              {enrolled ? "Ver as cobranças" : "Matricular alunos agora"}
               <ArrowRight className="size-4" />
             </Button>
             <AlertDialogCancel className="h-9 w-full">

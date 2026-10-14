@@ -281,7 +281,7 @@ Features existentes (rota tecnica em ingles, rotulo de UI em PT; itens com model
 | `roles` | (dentro de Equipe) | Cargos | CRUD de cargos (`Role`). |
 | `services` | `/services` | Serviços | `scheduling`. Catalogo de servicos. |
 | `categories` | (dentro de Serviços / Modalidades) | Categorias | Entidade `Category`. |
-| `turmas` | `/classes`, `/classes/[id]`, `/classes/sessions/[sessionId]`, `/classes/calendar`, `/classes/modalities`, `/classes/plans`, `/classes/billing` | Turmas, Calendário, Modalidades, Planos, Mensalidades | `classes` (Modelo 3). Nome em portugues e divida conhecida (ver `docs/technical/01`). |
+| `turmas` | `/classes`, `/classes/[id]`, `/classes/sessions/[sessionId]`, `/classes/calendar`, `/classes/modalities`, `/classes/plans`, `/classes/billing` | Turmas, Calendário, Modalidades, Planos, Cobranças | `classes` (Modelo 3). Nome em portugues e divida conhecida (ver `docs/technical/01`). |
 | `users` | `/users` | Usuários | Usuarios e perfis de acesso. |
 | `audit` | `/audit` | Auditoria | Log de auditoria. |
 | `settings` | `/settings` | Configurações | Organizacao, unidade, horario, regras de cobranca. |

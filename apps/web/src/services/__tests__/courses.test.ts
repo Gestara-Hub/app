@@ -498,7 +498,7 @@ describe("curso fechado: mensalidades não são afetadas", () => {
   });
 });
 
-describe("curso fechado: ações de Mensalidades", () => {
+describe("curso fechado: ações de Cobranças", () => {
   beforeEach(() => resetAcademy());
 
   it("pagar, desfazer, cancelar e reabrir com o rótulo da parcela do curso", async () => {

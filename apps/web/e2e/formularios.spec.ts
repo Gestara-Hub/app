@@ -141,7 +141,7 @@ async function openInactivateClient(page: Page, navigate = true) {
   return confirm;
 }
 
-/** Mensalidades > ⋮ > Cancelar cobrança. */
+/** Cobranças > ⋮ > Cancelar cobrança. */
 async function openCancelCharge(page: Page) {
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar cobrança" }).click();
