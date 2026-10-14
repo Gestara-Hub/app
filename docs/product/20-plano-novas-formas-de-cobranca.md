@@ -1,6 +1,6 @@
 # 20 — Plano: novas formas de cobrança (curso fechado, pacote de aulas, cobrança avulsa)
 
-> **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fase A (cobrança avulsa) entregue em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seção "Cobrança avulsa"); B, C e D pendentes. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
+> **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fase A (cobrança avulsa) e fase B (curso fechado) entregues em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seções "Cobrança avulsa" e "Curso fechado"); C e D pendentes. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
 > Base: regras atuais em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), motor em `packages/core/src/billing.ts`, contratos em `packages/contracts/src/billing.ts` e `class.ts`.
 
 ## 1. O que existe hoje
@@ -28,7 +28,7 @@ Aula particular 1 a 1 já funciona (turma com 1 vaga) e passa a poder ser paga p
 Princípio: **tudo continua sendo `Charge`.** Mensalidades, financeiro, pagamento online, lembretes de WhatsApp e relatórios já sabem lidar com cobrança; as formas novas só criam cobranças de outros tipos.
 
 - `ChargeKind` ganha `"extra"` (avulsa), `"course"` (parcela de curso) e `"package"` (compra de pacote). Parcelas reaproveitam `cycleIndex`/`cycleTotal` ("2 de 4"). `description` para o texto da avulsa.
-- **Turma** ganha a forma de cobrança: `billingMode: "membership" | "course" | "free"`, com `coursePriceCents` e `maxInstallments` no curso. A área do espaço sugere o padrão (gastronomia, artes e beleza: curso).
+- **Turma** ganha a forma de cobrança: `billingMode: "membership" | "course" | "free"`, com `coursePriceCents` e `courseMaxInstallments` no curso. A área do espaço sugere o padrão (gastronomia, artes e beleza: curso).
 - **Matrícula em curso** guarda a escolha do aluno (à vista ou N parcelas, 1º vencimento) e gera as parcelas na hora.
 - **Pacote**: `LessonPackage` (nome, quantidade de aulas, preço, validade em dias, modalidades em que vale), cadastrado como os planos; `StudentPackage` (compra do aluno: saldo, usadas, vence em, cobrança ligada).
 - Mensalidade continua no aluno; curso fica na matrícula; pacote fica no aluno. Um aluno pode ter os três ao mesmo tempo.
@@ -40,7 +40,7 @@ Cada fase fecha com testes de regra (`packages/core`), de service (Vitest) e de 
 | Fase | Entrega | Tamanho |
 |---|---|---|
 | **A. Cobrança avulsa** ✅ 14/10/2026 | "Nova cobrança" no aluno e em Mensalidades: descrição, valor, vencimento, 1 a 12 parcelas. Aparece em Mensalidades (filtro "Tipo"), no Financeiro e no pagamento online. O lembrete de WhatsApp ficou para a D. Base para B e C. | Pequeno |
-| **B. Curso fechado** | Forma de cobrança na turma; matrícula pergunta "à vista ou parcelado" e gera as parcelas; turma terminada encerra a matrícula ("Concluído"); cancelamento cancela só as parcelas futuras; vagas e lista de espera como hoje. Padrão por área. | Médio |
+| **B. Curso fechado** ✅ 14/10/2026 | Forma de cobrança na turma; matrícula pergunta "à vista ou parcelado" e gera as parcelas; turma terminada encerra a matrícula ("Concluído"); cancelamento cancela só as parcelas futuras; vagas e lista de espera como hoje. Padrão por área. | Médio |
 | **C. Pacote de aulas** | Cadastro de pacotes (em Planos); venda ao aluno gera a cobrança; a chamada gasta uma aula; saldo na ficha, na chamada e no aluno; validade; aviso de "última aula" e de vencimento; renovar. Aluno com pacote entra em qualquer aula das modalidades do pacote, como o avulso hoje, mas gastando crédito. | Médio a grande |
 | **D. Acabamento** | Modelos de WhatsApp novos ("parcela do curso", "pacote acabando"); "Para fazer hoje" com pacotes acabando; certificado de conclusão do curso (PDF simples no navegador); relatórios por curso e por pacote; repasse de professor incluindo curso e pacote (decisão 5). | Médio |
 
@@ -81,3 +81,23 @@ Decisões tomadas na implementação:
 - **Motivos sugeridos ao cancelar** uma avulsa trocam "Plano errado" por "Lançada por engano".
 - Depois de lançar em Mensalidades, a tela abre o mês da primeira parcela quando ele for outro.
 - A tela continua com o nome "Mensalidades" (renomear para "Cobranças", seção 6, segue em avaliação).
+
+## 8. Fase B entregue (14/10/2026)
+
+O que foi feito: `ClassBillingMode` e `ClassGroup.billingMode`/`coursePriceCents`/`courseMaxInstallments`, `ChargeKind` `"course"` com `Charge.enrollmentId`, `Enrollment.course` (`EnrollmentCourse`), `CreateEnrollment.course`, read-models `ClassGroupView.isEnded` e `EnrollmentView.isCompleted`/`courseInstallments`; no core, `classBillingMode`, `hasEnded`, `isCourseEnded`, `isFutureOpenInstallment` e o rótulo do curso em `describeCharge`; `turmasService.enroll`/`promoteFromWaitlist` com o pagamento do curso e `cancelEnrollment` com a decisão 1; "Cobrança" no formulário da turma (Mensalidade, Curso com valor fechado, Sem cobrança), bloco "Pagamento do curso" na matrícula e na promoção da lista de espera, resumo do curso no detalhe da turma, selos "Curso", "Encerrado" e "Concluído", filtro "Cursos" em Mensalidades, categoria de sistema "Cursos" (`courses`) e migração v34. Regras completas no doc 15, seção "Curso fechado".
+
+Decisões tomadas na implementação:
+
+- **"Concluído" é derivado na leitura** (`EnrollmentView.isCompleted`: curso com `endDate` antes de hoje e matrícula ativa), não um status gravado. Assim mudar a data de fim do curso corrige sozinho, sem migração nem rotina que "feche" matrículas. A turma ganhou `isEnded` (qualquer turma com fim no passado), que mostra "Encerrado".
+- **Curso concluído não perde parcelas:** cancelar a matrícula depois do fim não cancela nada (o curso foi dado). A decisão 1 vale só para quem sai no meio.
+- **"Futura" é vencimento depois de hoje:** a parcela que vence hoje continua em aberto, como as vencidas.
+- **Curso terminado não recebe matrícula** (o serviço recusa e a tela esconde "Matricular alunos").
+- **Fim no mesmo dia do início vale** (oficina de um dia); o plano pedia fim depois do início. Fim antes do início é recusado em qualquer turma.
+- **Turma "Sem cobrança" não tem avulso pago** (o formulário esconde o avulso). A aula experimental continua.
+- **Curso e sem cobrança limpam o plano legado da turma** (`planId`) ao salvar, e a geração automática ignora o `planId` dessas turmas mesmo em dado antigo: só mensalidade usa o plano da turma.
+- **`Termina em` só aparece no curso.** Turma de mensalidade com fim antigo (sem campo na tela) mantém a data; turma que deixa de ser curso perde o fim do curso.
+- **A matrícula em curso sempre guarda `installmentGroupId` e `cycleIndex`/`cycleTotal`**, inclusive à vista (1 de 1), para achar as parcelas da matrícula; o rótulo só diz "parcela" quando há mais de uma.
+- **Promover da lista de espera agora entra na Auditoria** como matrícula (antes não entrava), porque no curso gera cobrança; a turma de mensalidade registra "matriculou {aluno} na turma {turma}".
+- **Cancelar uma matrícula já cancelada é recusado** ("Esta matrícula já foi cancelada."), para um clique duplo não registrar duas vezes.
+- **Parcelas padrão na matrícula: à vista**, valor cheio do curso e 1º vencimento hoje; o dono escolhe as parcelas.
+- Mensalidades segue com o nome "Mensalidades" (renomear para "Cobranças" segue em avaliação).

@@ -1,6 +1,8 @@
 import { addDays, addMonths, format, parseISO } from "date-fns";
 import type {
   ChargeKind,
+  ChargeStatus,
+  ClassBillingMode,
   DateISO,
   PlanPeriod,
   StudentBillingStrategy,
@@ -356,16 +358,52 @@ export function splitInstallments(
 /**
  * Como a cobranca aparece em auditoria e mensagens, depois de "da"/"a":
  * "mensalidade de Ana", "aula avulsa de Ana", "cobrança avulsa "Kimono" de Ana"
- * e, parcelada, "parcela 2 de 3 da cobrança avulsa "Kimono" de Ana".
+ * e, parcelada, "parcela 2 de 3 da cobrança avulsa "Kimono" de Ana". Curso:
+ * "curso "Confeitaria" de Ana" e "parcela 2 de 4 do curso "Confeitaria" de Ana".
  */
 export function describeCharge(
   charge: { kind: ChargeKind; description?: string; cycleIndex?: number; cycleTotal?: number },
   studentName: string,
 ): string {
   if (charge.kind === "dropin") return `aula avulsa de ${studentName}`;
-  if (charge.kind !== "extra") return `mensalidade de ${studentName}`;
-  const extra = `cobrança avulsa "${charge.description ?? ""}" de ${studentName}`;
+  if (charge.kind !== "extra" && charge.kind !== "course") return `mensalidade de ${studentName}`;
+  const isCourse = charge.kind === "course";
+  const what = isCourse
+    ? `curso "${charge.description ?? ""}" de ${studentName}`
+    : `cobrança avulsa "${charge.description ?? ""}" de ${studentName}`;
   return (charge.cycleTotal ?? 1) > 1
-    ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} da ${extra}`
-    : extra;
+    ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} ${isCourse ? "do" : "da"} ${what}`
+    : what;
+}
+
+// --- Curso fechado (doc 20, fase B) ------------------------------------------
+
+/** Forma de cobranca da turma; ausente = mensalidade (comportamento de antes). */
+export function classBillingMode(group: { billingMode?: ClassBillingMode }): ClassBillingMode {
+  return group.billingMode ?? "membership";
+}
+
+/** Turma ja terminou: tem data de fim e ela ficou antes de hoje. */
+export function hasEnded(group: { endDate?: DateISO }, today: DateISO): boolean {
+  return Boolean(group.endDate && group.endDate < today);
+}
+
+/** Curso terminado: a matricula ativa nele aparece como "Concluído". */
+export function isCourseEnded(
+  group: { billingMode?: ClassBillingMode; endDate?: DateISO },
+  today: DateISO,
+): boolean {
+  return classBillingMode(group) === "course" && hasEnded(group, today);
+}
+
+/**
+ * Parcelas do curso que saem quando o aluno cancela a matricula (decisao 1 do
+ * doc 20): so as em aberto que vencem DEPOIS de hoje. Pagas ficam; as que
+ * vencem hoje ou ja venceram continuam como divida.
+ */
+export function isFutureOpenInstallment(
+  charge: { status: ChargeStatus; dueDate: DateISO },
+  today: DateISO,
+): boolean {
+  return (charge.status === "pending" || charge.status === "overdue") && charge.dueDate > today;
 }

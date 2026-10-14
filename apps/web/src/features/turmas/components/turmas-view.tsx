@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
+import { classBillingMode } from "@gestarahub/core/billing";
 import type { ClassGroupView, ClassMeetingSlot, RecordStatus } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import {
@@ -57,6 +58,30 @@ export function slotsSummary(slots?: ClassMeetingSlot[]): string {
   return (slots ?? [])
     .map((s) => `${WEEKDAY_SHORT[s.weekday]} ${s.start}`)
     .join(" · ");
+}
+
+/** Selo de turma ou curso que ja terminou (data de fim no passado). */
+export function EndedBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
+      Encerrado
+    </span>
+  );
+}
+
+/** Selos de cobranca/fim da turma: "Curso" e "Encerrado". */
+function ClassTags({ turma }: { turma: ClassGroupView }) {
+  const isCourse = classBillingMode(turma) === "course";
+  return (
+    <>
+      {isCourse ? (
+        <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+          Curso
+        </span>
+      ) : null}
+      {turma.isEnded ? <EndedBadge /> : null}
+    </>
+  );
 }
 
 function TurmaRow({
@@ -125,6 +150,7 @@ function TurmaRow({
             {turma.modalityName}
           </span>
         ) : null}
+        <ClassTags turma={turma} />
         <span
           className={cn(
             "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
@@ -227,6 +253,7 @@ function TurmaCard({
                   {turma.modalityName}
                 </span>
               ) : null}
+              <ClassTags turma={turma} />
               <RecordStatusBadge status={turma.status} />
             </div>
           </div>
@@ -381,7 +408,8 @@ export function TurmasView({
     setStatus(DEFAULT_STATUS);
   };
 
-  const turmaList = turmas ?? [];
+  // Encerradas (fim no passado) vao para o fim da lista, sem sumir.
+  const turmaList = [...(turmas ?? [])].sort((a, b) => Number(a.isEnded) - Number(b.isEnded));
 
   const handleDeactivate = async () => {
     if (!deactivatingTurma) return;

@@ -229,6 +229,7 @@ const CHARGE_CATEGORY_KEY: Record<ChargeKind, FinancialSystemCategoryKey> = {
   membership: "memberships",
   dropin: "dropins",
   extra: "extras",
+  course: "courses",
 };
 
 function chargeCategoryId(kind: ChargeKind): Id {
@@ -324,6 +325,7 @@ const CHARGE_ROW_TITLE: Record<ChargeKind, string> = {
   membership: "Mensalidades",
   dropin: "Aulas avulsas",
   extra: "Cobranças avulsas",
+  course: "Cursos",
 };
 
 /** Linha agregada das cobrancas de um kind na competencia (D7). */
@@ -676,7 +678,7 @@ export const financeService = {
       const rows: FinanceEntryView[] = [];
 
       const charges = store.charges.filter((c) => chargeCompetence(c) === competence);
-      for (const kind of ["membership", "dropin", "extra"] as const) {
+      for (const kind of ["membership", "dropin", "extra", "course"] as const) {
         const row = chargeAggregateRow(kind, competence, charges.filter((c) => c.kind === kind));
         if (row) rows.push(row);
       }

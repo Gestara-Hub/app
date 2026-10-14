@@ -15,6 +15,8 @@ import type {
   CreateEnrollment,
   DateISO,
   Enrollment,
+  EnrollmentCourseChoice,
+  EnrollmentCourseInstallments,
   EnrollmentView,
   Id,
   ReservationKind,
@@ -35,9 +37,18 @@ import {
   weekdayOf,
 } from "@gestarahub/core/scheduling";
 import { isPastSlot } from "@gestarahub/core/date";
-import { formatCents } from "@gestarahub/core/format";
+import {
+  classBillingMode,
+  hasEnded,
+  isCourseEnded,
+  isFutureOpenInstallment,
+  MAX_INSTALLMENTS,
+  splitInstallments,
+} from "@gestarahub/core/billing";
+import { formatCents, plural } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
+import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import {
   apiError,
   newId,
@@ -131,6 +142,38 @@ function toGroupView(g: ClassGroup): ClassGroupView {
     enrolledCount,
     availableSpots: g.capacity - enrolledCount,
     vagasRestantes: g.capacity - enrolledCount,
+    isEnded: hasEnded(g, todayISO()),
+  };
+}
+
+/** "2026-11-30" -> "30/11/2026". */
+function brDate(iso: DateISO): string {
+  return iso.split("-").reverse().join("/");
+}
+
+/** Parcelas do curso da matricula por situacao (pagas, futuras, vencendo ou vencidas). */
+function courseInstallmentsOf(enrollmentId: Id): EnrollmentCourseInstallments {
+  const today = todayISO();
+  const counts = { paid: 0, future: 0, due: 0 };
+  for (const c of store.charges) {
+    if (c.kind !== "course" || c.enrollmentId !== enrollmentId) continue;
+    if (c.status === "paid") counts.paid += 1;
+    else if (isFutureOpenInstallment(c, today)) counts.future += 1;
+    else if (c.status === "pending" || c.status === "overdue") counts.due += 1;
+  }
+  return counts;
+}
+
+function toEnrollmentView(e: Enrollment): EnrollmentView {
+  const g = store.classGroups.find((x) => x.id === e.classGroupId);
+  return {
+    ...e,
+    studentName: studentName(e.studentId),
+    studentStatus: store.clients.find((c) => c.id === e.studentId)?.status ?? "inactive",
+    ...frequencyOf(e.classGroupId, e.studentId),
+    // Derivado na leitura: o curso acabou e o aluno seguiu ate o fim.
+    isCompleted: e.status === "active" && Boolean(g && isCourseEnded(g, todayISO())),
+    courseInstallments: e.course ? courseInstallmentsOf(e.id) : undefined,
   };
 }
 
@@ -298,6 +341,145 @@ function validateMeetingSlotsBusinessHours(slots?: ClassMeetingSlot[]): void {
   }
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidDate(value: unknown): value is DateISO {
+  return typeof value === "string" && DATE_RE.test(value) && !Number.isNaN(parseISO(value).getTime());
+}
+
+/**
+ * Forma de cobranca da turma. Curso: valor > 0, de 1 a 12 parcelas e data de
+ * fim obrigatoria. Fim no mesmo dia do inicio vale (oficina de um dia).
+ */
+function billingFieldErrors(payload: Partial<CreateClassGroup>): ApiErrorField[] {
+  const fields: ApiErrorField[] = [];
+  const isCourse = classBillingMode(payload) === "course";
+  if (isCourse) {
+    const price = payload.coursePriceCents;
+    if (!Number.isInteger(price) || (price ?? 0) <= 0) {
+      fields.push({ field: "coursePriceCents", message: "Informe o valor do curso." });
+    }
+    const max = payload.courseMaxInstallments;
+    if (!Number.isInteger(max) || (max ?? 0) < 1 || (max ?? 0) > MAX_INSTALLMENTS) {
+      fields.push({ field: "courseMaxInstallments", message: `Escolha de 1 a ${MAX_INSTALLMENTS} parcelas.` });
+    }
+  }
+  if (payload.endDate !== undefined && payload.endDate !== "" && !isValidDate(payload.endDate)) {
+    fields.push({ field: "endDate", message: "Informe uma data válida." });
+  } else if (isCourse && !payload.endDate) {
+    fields.push({ field: "endDate", message: "Informe quando o curso termina." });
+  } else if (payload.endDate && payload.startDate && payload.endDate < payload.startDate) {
+    fields.push({
+      field: "endDate",
+      message: isCourse ? "O curso não pode terminar antes de começar." : "A turma não pode terminar antes de começar.",
+    });
+  }
+  return fields;
+}
+
+/**
+ * Campos de cobranca coerentes com a forma: valor e parcelas so no curso; o
+ * plano legado da turma so na mensalidade (curso e sem cobranca nunca geram
+ * mensalidade pela turma).
+ */
+function normalizeBilling<T extends Partial<CreateClassGroup>>(payload: T): T {
+  const mode = classBillingMode(payload);
+  return {
+    ...payload,
+    endDate: payload.endDate || undefined,
+    coursePriceCents: mode === "course" ? payload.coursePriceCents : undefined,
+    courseMaxInstallments: mode === "course" ? payload.courseMaxInstallments : undefined,
+    planId: mode === "membership" ? payload.planId : undefined,
+  };
+}
+
+/**
+ * Valida o pagamento do curso escolhido na matricula. Turma que nao e curso
+ * ignora; curso sem escolha, terminado, valor zero, parcelas fora de 1..maximo
+ * da turma ou vencimento invalido e recusado.
+ */
+function resolveCourseChoice(g: ClassGroup, choice?: EnrollmentCourseChoice): EnrollmentCourseChoice | undefined {
+  if (classBillingMode(g) !== "course") return undefined;
+  if (isCourseEnded(g, todayISO())) {
+    throw apiError("VALIDATION", `Este curso já terminou (${brDate(g.endDate ?? "")}).`, { httpStatus: 422 });
+  }
+  if (!choice) {
+    throw validationError([{ field: "course", message: "Informe o pagamento do curso." }]);
+  }
+  const fields: ApiErrorField[] = [];
+  const max = g.courseMaxInstallments ?? 1;
+  if (!Number.isInteger(choice.priceCents) || choice.priceCents <= 0) {
+    fields.push({ field: "course.priceCents", message: "Informe o valor do curso." });
+  }
+  if (!Number.isInteger(choice.installments) || choice.installments < 1 || choice.installments > max) {
+    fields.push({
+      field: "course.installments",
+      message: max === 1 ? "Este curso é só à vista." : `Escolha de 1 a ${max} parcelas.`,
+    });
+  } else if (Number.isInteger(choice.priceCents) && choice.priceCents > 0 && choice.priceCents < choice.installments) {
+    // Parcela de R$ 0 nao e cobranca.
+    fields.push({ field: "course.installments", message: "Cada parcela precisa de pelo menos R$ 0,01." });
+  }
+  if (!isValidDate(choice.firstDueDate)) {
+    fields.push({ field: "course.firstDueDate", message: "Informe o 1º vencimento." });
+  }
+  if (fields.length > 0) throw validationError(fields);
+  return { priceCents: choice.priceCents, installments: choice.installments, firstDueDate: choice.firstDueDate };
+}
+
+/**
+ * Matricula ativa + parcelas do curso (se for curso), com auditoria. Unica
+ * escrita de matricula: matricular e promover da lista de espera passam aqui.
+ */
+function createEnrollment(g: ClassGroup, studentId: Id, course?: EnrollmentCourseChoice): Enrollment {
+  const ts = nowIso();
+  const enrollment: Enrollment = {
+    id: newId(),
+    classGroupId: g.id,
+    studentId,
+    status: "active",
+    enrolledAt: ts,
+  };
+  const name = studentName(studentId);
+  if (course) {
+    const installmentGroupId = newId();
+    enrollment.course = { ...course, installmentGroupId };
+    const parts = splitInstallments(course.priceCents, course.installments, course.firstDueDate);
+    store.charges.push(
+      ...parts.map(
+        (part): Charge => ({
+          id: newId(),
+          organizationId: store.organization.id,
+          unitId: g.unitId,
+          studentId,
+          kind: "course",
+          classGroupId: g.id,
+          enrollmentId: enrollment.id,
+          description: g.name,
+          installmentGroupId,
+          competence: part.dueDate.slice(0, 7),
+          dueDate: part.dueDate,
+          amountCents: part.amountCents,
+          status: "pending",
+          cycleIndex: part.index,
+          cycleTotal: part.total,
+          createdAt: ts,
+          updatedAt: ts,
+        }),
+      ),
+    );
+  }
+  store.enrollments.push(enrollment);
+  auditLogService.record({
+    action: "created",
+    target: { type: "enrollment", id: enrollment.id, label: `${name} em ${g.name}` },
+    predicate: course
+      ? `matriculou ${name} no curso ${g.name} (${formatCents(course.priceCents)}${course.installments > 1 ? `, em ${course.installments} parcelas` : ""})`
+      : `matriculou ${name} na turma ${g.name}`,
+  });
+  return enrollment;
+}
+
 function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
@@ -315,6 +497,7 @@ function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id):
   if (payload.capacity === undefined || payload.capacity < 1) {
     fields.push({ field: "capacity", message: "A capacidade deve ser ao menos 1." });
   }
+  fields.push(...billingFieldErrors(payload));
   if (fields.length > 0) throw validationError(fields);
 
   // Valida se os encontros estão dentro do expediente da unidade.
@@ -489,8 +672,9 @@ export const turmasService = {
     });
   },
 
-  create(payload: CreateClassGroup): Promise<ClassGroupView> {
+  create(input: CreateClassGroup): Promise<ClassGroupView> {
     return simulateWrite(() => {
+      const payload = normalizeBilling(input);
       validateGroup(payload, undefined);
       const ts = nowIso();
       const g: ClassGroup = {
@@ -515,10 +699,11 @@ export const turmasService = {
     return simulateWrite(() => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
-      validateGroup({ ...store.classGroups[idx], ...payload }, id);
+      // Mudar a forma ou o valor nao mexe nas parcelas das matriculas ja feitas.
+      const next = normalizeBilling({ ...store.classGroups[idx], ...payload });
+      validateGroup(next, id);
       store.classGroups[idx] = {
-        ...store.classGroups[idx],
-        ...payload,
+        ...next,
         updatedAt: nowIso(),
       };
       auditLogService.record({
@@ -597,21 +782,15 @@ export const turmasService = {
       );
       return clone(
         rows
-          .map((e) => ({
-            ...e,
-            studentName: studentName(e.studentId),
-            studentStatus:
-              store.clients.find((c) => c.id === e.studentId)?.status ??
-              "inactive",
-            ...frequencyOf(classGroupId, e.studentId),
-          }))
+          .map(toEnrollmentView)
           .sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR")),
       );
     });
   },
 
   // Capacidade e regra MOLE: com a turma lotada, lanca CLASS_FULL; o form pede
-  // confirmacao e reenvia com `allowOverCapacity`.
+  // confirmacao e reenvia com `allowOverCapacity`. Curso exige `payload.course`
+  // e gera as parcelas na hora (doc 20, fase B).
   enroll(
     payload: CreateEnrollment,
     opts: { allowOverCapacity?: boolean } = {},
@@ -635,32 +814,14 @@ export const turmasService = {
         ]);
       }
       validateStudentScheduleConflict(payload.studentId, g.id);
+      const course = resolveCourseChoice(g, payload.course);
       if (!opts.allowOverCapacity && activeEnrollments(g.id).length >= g.capacity) {
         throw apiError("CLASS_FULL", `Turma lotada (${g.capacity} vagas).`, {
           httpStatus: 409,
         });
       }
-      const enrollment: Enrollment = {
-        id: newId(),
-        classGroupId: g.id,
-        studentId: payload.studentId,
-        status: "active",
-        enrolledAt: nowIso(),
-      };
-      store.enrollments.push(enrollment);
-      auditLogService.record({
-        action: "created",
-        target: { type: "enrollment", id: enrollment.id, label: `${student.name} em ${g.name}` },
-        predicate: `matriculou ${student.name} na turma ${g.name}`,
-      });
-      return clone({
-        ...enrollment,
-        studentName: student.name,
-        studentStatus: student.status,
-        presentCount: 0,
-        absentCount: 0,
-        attendanceRate: null,
-      });
+      const enrollment = createEnrollment(g, student.id, course);
+      return clone(toEnrollmentView(enrollment));
     });
   },
 
@@ -668,14 +829,36 @@ export const turmasService = {
     return simulateWrite(() => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e) throw notFoundError("Matrícula não encontrada.");
+      if (e.status === "canceled") {
+        throw apiError("VALIDATION", "Esta matrícula já foi cancelada.", { httpStatus: 409 });
+      }
       e.status = "canceled";
       e.canceledAt = nowIso();
       e.cancellationReason = reason?.trim() || undefined;
-      const turma = store.classGroups.find((g) => g.id === e.classGroupId)?.name ?? "";
+      const g = store.classGroups.find((x) => x.id === e.classGroupId);
+      const turma = g?.name ?? "";
+      // Curso (decisao 1 do doc 20): pagas ficam, as futuras saem e as que ja
+      // venceram seguem como divida. Curso ja concluido nao cancela nada (foi dado).
+      let canceledInstallments = 0;
+      if (e.course && !(g && isCourseEnded(g, todayISO()))) {
+        const today = todayISO();
+        const ts = nowIso();
+        for (const c of store.charges) {
+          if (c.kind !== "course" || c.enrollmentId !== e.id || !isFutureOpenInstallment(c, today)) continue;
+          c.status = "canceled";
+          c.canceledBy = "system";
+          c.cancelReason = "Matrícula cancelada";
+          c.updatedAt = ts;
+          cancelOnlinePaymentsForCharge(c.id);
+          canceledInstallments += 1;
+        }
+      }
       auditLogService.record({
         action: "cancelled",
         target: { type: "enrollment", id, label: `${studentName(e.studentId)} em ${turma}` },
-        predicate: `cancelou a matrícula de ${studentName(e.studentId)} na turma ${turma}`,
+        predicate: e.course
+          ? `cancelou a matrícula de ${studentName(e.studentId)} no curso ${turma}${canceledInstallments > 0 ? ` e ${plural(canceledInstallments, "parcela futura", "parcelas futuras")}` : ""}`
+          : `cancelou a matrícula de ${studentName(e.studentId)} na turma ${turma}`,
       });
     });
   },
@@ -952,8 +1135,8 @@ export const turmasService = {
   },
 
   // Promove o aluno da espera para matricula (decisao manual; permite exceder a
-  // capacidade, pois e uma acao consciente).
-  promoteFromWaitlist(id: Id): Promise<EnrollmentView> {
+  // capacidade, pois e uma acao consciente). Curso exige o pagamento escolhido.
+  promoteFromWaitlist(id: Id, course?: EnrollmentCourseChoice): Promise<EnrollmentView> {
     return simulateWrite(() => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
@@ -979,24 +1162,11 @@ export const turmasService = {
         });
       }
       validateStudentScheduleConflict(w.studentId, g.id);
+      const choice = resolveCourseChoice(g, course);
       w.status = "promoted";
       renumberWaitlist(g.id);
-      const enrollment: Enrollment = {
-        id: newId(),
-        classGroupId: w.classGroupId,
-        studentId: w.studentId,
-        status: "active",
-        enrolledAt: nowIso(),
-      };
-      store.enrollments.push(enrollment);
-      return clone({
-        ...enrollment,
-        studentName: student.name,
-        studentStatus: student.status,
-        presentCount: 0,
-        absentCount: 0,
-        attendanceRate: null,
-      });
+      const enrollment = createEnrollment(g, student.id, choice);
+      return clone(toEnrollmentView(enrollment));
     });
   },
 

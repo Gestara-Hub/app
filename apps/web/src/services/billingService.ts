@@ -15,6 +15,7 @@ import type {
 } from "@gestarahub/contracts";
 import {
   chargesDueIn,
+  classBillingMode,
   describeCharge,
   MAX_INSTALLMENTS,
   resolveMembershipTerms,
@@ -220,7 +221,7 @@ function activeStudentsInPlan(planId: Id): number {
   for (const e of store.enrollments) {
     if (e.status !== "active") continue;
     const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    if (turma?.planId !== planId) continue;
+    if (!turma || turma.planId !== planId || classBillingMode(turma) !== "membership") continue;
     const student = store.clients.find((c) => c.id === e.studentId);
     if (student && student.status === "active" && !student.planId) ids.add(student.id);
   }
@@ -441,8 +442,10 @@ function generateMembershipChargesFor(competence: string): number {
     // Bolsista integral sem plano nao herda o plano da turma.
     if (!student || student.planId || isPlanlessScholar(student) || student.status !== "active") continue;
     const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    const plan = turma?.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
-    if (!turma || !plan) continue;
+    // Curso e turma sem cobranca nunca geram mensalidade pelo plano da turma.
+    if (!turma || classBillingMode(turma) !== "membership") continue;
+    const plan = turma.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
+    if (!plan) continue;
 
     for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
       if (hasMembershipCharge(student.id, plan.id, planned)) continue;

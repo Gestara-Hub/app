@@ -25,6 +25,13 @@ export interface ClassMeetingSlot {
   end: TimeISO;
 }
 
+/**
+ * Como a turma cobra (doc 20, fase B): mensalidade do plano do aluno (padrao,
+ * ausente = "membership"), curso com valor fechado (a matricula gera as
+ * parcelas) ou sem cobranca.
+ */
+export type ClassBillingMode = "membership" | "course" | "free";
+
 /** Turma — grupo recorrente conduzido por um instrutor. */
 export interface ClassGroup {
   id: Id;
@@ -41,7 +48,13 @@ export interface ClassGroup {
   sessionPriceCents?: number; // preco da aula avulsa
   meetingSlots: ClassMeetingSlot[];
   startDate: DateISO;
-  endDate?: DateISO; // sem fim = turma continua
+  endDate?: DateISO; // sem fim = turma continua (curso exige)
+  /** Forma de cobranca; ausente = "membership". */
+  billingMode?: ClassBillingMode;
+  /** Curso: valor cheio do curso (> 0). So com `billingMode: "course"`. */
+  coursePriceCents?: number;
+  /** Curso: maximo de parcelas que o aluno pode escolher (1 a 12). */
+  courseMaxInstallments?: number;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
@@ -66,12 +79,27 @@ export interface ClassGroupView extends ClassGroup {
   planName?: string;
   enrolledCount: number; // matriculas ativas
   availableSpots: number; // capacity - enrolledCount
+  /** Ja terminou: `endDate` antes de hoje (derivado na leitura). */
+  isEnded: boolean;
   /** @deprecated use availableSpots */
   vagasRestantes?: number;
 }
 
 /** Matricula — vinculo Aluno <-> Turma (turma fixa). */
 export type EnrollmentStatus = "active" | "paused" | "canceled";
+
+/** Pagamento do curso escolhido na matricula (valor ajustavel, parcelas, 1o vencimento). */
+export interface EnrollmentCourseChoice {
+  priceCents: number;
+  /** 1 (a vista) ate `ClassGroup.courseMaxInstallments`. */
+  installments: number;
+  firstDueDate: DateISO;
+}
+
+/** Matricula em curso: a escolha do aluno + o grupo das parcelas geradas. */
+export interface EnrollmentCourse extends EnrollmentCourseChoice {
+  installmentGroupId: Id;
+}
 
 export interface Enrollment {
   id: Id;
@@ -81,9 +109,23 @@ export interface Enrollment {
   enrolledAt: DateTimeISO;
   canceledAt?: DateTimeISO;
   cancellationReason?: string;
+  /** So em turma de curso: o que o aluno escolheu pagar. */
+  course?: EnrollmentCourse;
 }
 
-export type CreateEnrollment = Pick<Enrollment, "classGroupId" | "studentId">;
+/** `course` e obrigatorio quando a turma e um curso (ignorado nas demais). */
+export type CreateEnrollment = Pick<Enrollment, "classGroupId" | "studentId"> & {
+  course?: EnrollmentCourseChoice;
+};
+
+/** Parcelas do curso da matricula por situacao (cancelar matricula mostra as futuras). */
+export interface EnrollmentCourseInstallments {
+  paid: number;
+  /** Em aberto com vencimento depois de hoje: saem se a matricula for cancelada. */
+  future: number;
+  /** Em aberto vencendo hoje ou ja vencidas: continuam como divida. */
+  due: number;
+}
 
 export interface EnrollmentView extends Enrollment {
   studentName: string;
@@ -93,6 +135,10 @@ export interface EnrollmentView extends Enrollment {
   presentCount: number;
   absentCount: number;
   attendanceRate: number | null;
+  /** Curso terminado (`endDate` antes de hoje) com a matricula ativa: "Concluído". */
+  isCompleted: boolean;
+  /** So matricula em curso. */
+  courseInstallments?: EnrollmentCourseInstallments;
 }
 
 /** Sessao — ocorrencia datada de uma turma (uma aula). */

@@ -79,6 +79,7 @@ const DEFAULT_FINANCIAL_CATEGORIES: {
   { key: "memberships", type: "income", name: "Mensalidades", systemKey: "memberships" },
   { key: "dropins", type: "income", name: "Aulas avulsas", systemKey: "dropins" },
   { key: "extras", type: "income", name: "Cobranças avulsas", systemKey: "extras" },
+  { key: "courses", type: "income", name: "Cursos", systemKey: "courses" },
   { key: "products", type: "income", name: "Venda de produtos" },
   { key: "events", type: "income", name: "Eventos e seminários" },
   { key: "graduation", type: "income", name: "Taxa de graduação" },

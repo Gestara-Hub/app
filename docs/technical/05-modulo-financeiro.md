@@ -155,7 +155,7 @@ export interface FinancialEntryFilter { competence?: string; type?: FinancialEnt
 
 ### 4.3 Categorias padrão (seed ao criar a organização / ao ativar o módulo)
 
-- **Receitas:** Mensalidades *(sistema, só leitura: representa `Charge` membership)*, Aulas avulsas *(sistema: `Charge` dropin)*, Cobranças avulsas *(sistema: `Charge` extra, desde 14/10/2026)*, Venda de produtos, Eventos e seminários, Taxa de graduação, Outras receitas.
+- **Receitas:** Mensalidades *(sistema, só leitura: representa `Charge` membership)*, Aulas avulsas *(sistema: `Charge` dropin)*, Cobranças avulsas *(sistema: `Charge` extra, desde 14/10/2026)*, Cursos *(sistema: `Charge` course, desde 14/10/2026)*, Venda de produtos, Eventos e seminários, Taxa de graduação, Outras receitas.
 - **Despesas:** Professores *(sistema: representa `TeacherPayout`)*, Aluguel, Contas (luz, água, internet), Material e equipamentos, Marketing, Impostos e taxas, Outras despesas.
 
 As categorias de sistema aparecem nos relatórios e no resumo, mas não podem ser escolhidas num lançamento manual.
@@ -450,7 +450,7 @@ Registrados durante a fundação (27/09/2026):
 
 - **Tier no server:** o tier vive no store do navegador (localStorage) e o server só enxerga o seed. O client espelha o tier num cookie (`gestarahub_tier`, valor `<organizationId>:<tier>`) pela server action `syncSubscriptionTier`, chamada pelo `SessionProvider` quando o tier da organização difere do que o server usou; depois faz `router.refresh()`. As pages pagas leem com `sessionHasFeature(user, feature)` (`features/auth/get-subscription-tier.ts`). Na fase de backend o cookie some e o tier vem do banco.
 - **Ícone do menu:** `WalletCards` (a carteira simples já é das Mensalidades).
-- **Contrato, campos extras:** `FinancialCategory.systemKey` (`memberships` / `dropins` / `extras` / `teachers`) identifica as categorias de sistema; `FinancialEntry.recurrenceCompetence` guarda a competência materializada (idempotência da recorrência); `CreateFinancialEntry.repeatMonthly` marca "Repetir todo mês"; `OnlinePayment.organizationId` opcional (escopo do tenant). `AuditEntityType` ganhou também `teacher_pay_rule` e `online_payment`.
+- **Contrato, campos extras:** `FinancialCategory.systemKey` (`memberships` / `dropins` / `extras` / `courses` / `teachers`) identifica as categorias de sistema; `FinancialEntry.recurrenceCompetence` guarda a competência materializada (idempotência da recorrência); `CreateFinancialEntry.repeatMonthly` marca "Repetir todo mês"; `OnlinePayment.organizationId` opcional (escopo do tenant). `AuditEntityType` ganhou também `teacher_pay_rule` e `online_payment`.
 - **Read-models:** `FinanceSummary`, `FinanceMonthPoint`, `FinanceCategoryTotal`, `FinanceEntryView`, `FinanceUpcomingItem`, `TeacherPayoutView`, `TeacherPaySessionFact`, `TeacherPayoutAdjustment`, `SaveTeacherPayRule`.
 - **Atrasado no Resumo:** soma o que vence **na competência** e está em aberto com vencimento antes de hoje (não acumula meses anteriores).
 - **Regras puras extras** em `@gestarahub/core/finance`: `localDateOf`, `addCompetence`, `competenceRange`, `lastCompetences`, `lastDayOfCompetence`, `dateInCompetence`, `teacherPayoutDueDate`, `entryDisplayStatus`, `summarizeMonthlySeries`, `summarizeByCategory`, `recurrenceDueDate`, `isRuleEffective`, `countedSessions`, `countedStudents`, `membershipBaseCents`, `payoutTotalCents`, `describeTeacherPayRule`. O nome `isOverdue` da seção 8 ficou `isEntryOverdue`.

@@ -74,7 +74,7 @@ const shortDate = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/"
 const PAYMENT_MODE_OPTIONS: SegmentedChoiceOption[] = [
   { value: "membership", label: "Paga mensalidade", description: "Plano e desconto opcional" },
   { value: "scholarship", label: "Bolsista", description: "Integral ou parcial" },
-  { value: "none", label: "Não paga mensalidade", description: "Avulso ou experimental" },
+  { value: "none", label: "Não paga mensalidade", description: "Curso, avulso ou experimental" },
 ];
 
 const SCHOLARSHIP_BY_OPTIONS: SegmentedChoiceOption[] = [
@@ -851,7 +851,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
 
               {paymentMode === "none" ? (
                 <p className="text-xs text-muted-foreground">
-                  Sem plano e sem cobrança. Use para aula avulsa ou experimental.
+                  Sem plano e sem mensalidade. Use para curso, aula avulsa ou experimental.
                 </p>
               ) : null}
 

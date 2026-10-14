@@ -295,15 +295,24 @@ function referenceLabel(c: ChargeView): string | null {
   return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
 }
 
-/** "parcela 2 de 3" da cobranca avulsa parcelada. */
+/** Avulsa e curso: cobrancas sem plano, que podem vir em parcelas. */
+const isInstallmentKind = (c: Pick<ChargeView, "kind">) => c.kind === "extra" || c.kind === "course";
+
+/** "parcela 2 de 3" da cobranca avulsa ou do curso parcelado. */
 function installmentLabel(c: ChargeView): string | null {
-  return c.kind === "extra" && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
+  return isInstallmentKind(c) && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
+}
+
+/** O que esta sendo cobrado: a descricao da avulsa ou "Curso {turma}". */
+function chargeSubject(c: ChargeView): string {
+  if (c.kind === "course") return `Curso ${c.description ?? c.className ?? ""}`.trim();
+  return c.description ?? "Cobrança avulsa";
 }
 
 function getCycleTitle(c: ChargeView): string {
-  if (c.kind === "extra") {
+  if (isInstallmentKind(c)) {
     const installment = installmentLabel(c);
-    return installment ? `${c.description ?? "Cobrança avulsa"}, ${installment}` : c.description ?? "Cobrança avulsa";
+    return installment ? `${chargeSubject(c)}, ${installment}` : chargeSubject(c);
   }
   if (c.isProrated) {
     return c.proratedDays ? `Proporcional (${c.proratedDays} dias)` : "Proporcional";
@@ -318,7 +327,7 @@ function getCycleTitle(c: ChargeView): string {
 
 /** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
 const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
-/** Avulsa nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
+/** Avulsa e curso nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
 const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
 
 /** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
@@ -332,6 +341,7 @@ const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
   membership: "Mensalidades",
   dropin: "Aulas avulsas",
   extra: "Cobranças avulsas",
+  course: "Cursos",
 };
 
 /** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
@@ -366,14 +376,14 @@ function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean 
 }
 
 function isChargeKind(value: string | null): value is ChargeKind {
-  return value === "membership" || value === "dropin" || value === "extra";
+  return value === "membership" || value === "dropin" || value === "extra" || value === "course";
 }
 
 const currentCompetence = () => format(new Date(), "yyyy-MM");
 
 /**
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
- * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra`. Padroes
+ * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra|course`. Padroes
  * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
  */
 function useBillingFilters() {
@@ -958,7 +968,9 @@ export function BillingView() {
                           ? "Nenhuma aula avulsa neste mês."
                           : kindFilter === "extra"
                             ? "Nenhuma cobrança avulsa neste mês."
-                            : "Nenhuma mensalidade neste mês."
+                            : kindFilter === "course"
+                              ? "Nenhuma parcela de curso neste mês."
+                              : "Nenhuma mensalidade neste mês."
                         : "Nenhuma cobrança com esta situação no mês."}
                   </p>
                   <Button variant="outline" size="sm" onClick={clearListFilters}>
@@ -1205,14 +1217,15 @@ export function BillingView() {
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                          {c.kind === "extra" ? <span>{c.description}</span> : null}
+                          {isInstallmentKind(c) ? <span>{chargeSubject(c)}</span> : null}
                           {installmentLabel(c) ? (
                             <>
                               <span>·</span>
                               <span>{installmentLabel(c)}</span>
                             </>
                           ) : null}
-                          {c.className ? <span>{c.className}</span> : null}
+                          {/* Curso ja diz a turma no "Curso {turma}". */}
+                          {c.className && c.kind !== "course" ? <span>{c.className}</span> : null}
                           {c.className && c.planName ? <span>·</span> : null}
                           {c.planName ? <span>{c.planName}</span> : null}
                           {c.planPeriod && c.planPeriod !== "monthly" ? (
@@ -1343,7 +1356,7 @@ export function BillingView() {
             className="text-base md:text-sm"
           />
           <div className="flex flex-wrap gap-1">
-            {(shownChargeToCancel?.kind === "extra"
+            {(shownChargeToCancel && isInstallmentKind(shownChargeToCancel)
               ? EXTRA_CANCEL_REASON_SUGGESTIONS
               : CANCEL_REASON_SUGGESTIONS
             ).map((reason) => (

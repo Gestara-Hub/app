@@ -120,7 +120,7 @@ Codigos em ingles; o rotulo PT vai na UI (`src/lib/labels.ts`).
 - RecordStatus: `active` | `inactive`
 - OperationalModel: `scheduling` | `classes` | `delivery`
 - PlanPeriod: `monthly` | `biweekly` | `weekly`
-- ChargeKind: `membership` | `dropin` | `extra` (cobrança avulsa); ChargeStatus: `pending` | `paid` | `overdue` | `canceled`
+- ChargeKind: `membership` | `dropin` | `extra` (cobrança avulsa) | `course` (parcela de curso fechado); ChargeStatus: `pending` | `paid` | `overdue` | `canceled`
 - Categoria de servico/modalidade e uma entidade (`Category`, `categoryId`), nao um enum.
 
 ## Direcao

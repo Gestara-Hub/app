@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 33;
+const CURRENT_VERSION = 34;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -502,5 +502,54 @@ describe("v33: categoria de sistema das cobranças avulsas", () => {
     const { store } = await hydrate(32, world);
     expect(store.financialCategories).toHaveLength(before);
     expect(store.financialCategories.filter((c) => c.systemKey === "extras")).toHaveLength(1);
+  });
+});
+
+describe("v34: categoria de sistema dos cursos", () => {
+  it("tenant com categorias ganha \"Cursos\" (uma vez); tenant sem categorias segue sem", async () => {
+    const world = oldWorld((t) => {
+      t.financialCategories = t.financialCategories.filter((c) => c.systemKey !== "courses");
+    });
+    const otherId = Object.keys(world.tenants).find((id) => id !== ACADEMY_ORG)!;
+    world.tenants[otherId].financialCategories = [];
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+
+    const { store, saved } = await hydrate(33, world);
+    const courses = store.financialCategories.filter((c) => c.systemKey === "courses");
+    expect(courses).toEqual([
+      expect.objectContaining({
+        id: `fcat-${ACADEMY_ORG}-courses`,
+        organizationId: ACADEMY_ORG,
+        name: "Cursos",
+        type: "income",
+        system: true,
+        status: "active",
+      }),
+    ]);
+    expect(store.financialCategories).toHaveLength(before + 1);
+    expect(saved()?.data.tenants[otherId].financialCategories).toEqual([]);
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+
+  it("não duplica quando a categoria já existe", async () => {
+    const world = oldWorld(() => {});
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+    const { store } = await hydrate(33, world);
+    expect(store.financialCategories).toHaveLength(before);
+    expect(store.financialCategories.filter((c) => c.systemKey === "courses")).toHaveLength(1);
+  });
+
+  it("vindo de antes da v33, ganha as duas categorias", async () => {
+    const world = oldWorld((t) => {
+      t.financialCategories = t.financialCategories.filter(
+        (c) => c.systemKey !== "courses" && c.systemKey !== "extras",
+      );
+    });
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+    const { store } = await hydrate(32, world);
+    expect(store.financialCategories).toHaveLength(before + 2);
+    expect(store.financialCategories.map((c) => c.systemKey).filter(Boolean)).toEqual(
+      expect.arrayContaining(["extras", "courses"]),
+    );
   });
 });

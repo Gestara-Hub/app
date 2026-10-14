@@ -5,11 +5,10 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import type { ChargeView, Client } from "@gestarahub/contracts";
-import { MAX_INSTALLMENTS, splitInstallments } from "@gestarahub/core/billing";
+import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { getFieldErrors } from "@gestarahub/core/api-error";
-import { formatCents } from "@gestarahub/core/format";
 import {
   ComboboxField,
   DateField,
@@ -31,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useClients } from "@/features/clients";
 import { useBusinessSegment } from "@/features/settings";
 import { useCreateExtraCharge } from "../hooks/use-billing";
+import { installmentsSummary } from "../installments-summary";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DESCRIPTION_MAX = 80;
@@ -55,35 +55,6 @@ const INSTALLMENT_OPTIONS = Array.from({ length: MAX_INSTALLMENTS }, (_, i) => (
   value: String(i + 1),
   label: i === 0 ? "À vista" : `${i + 1}x`,
 }));
-
-const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
-const fullDate = (iso: string) => format(parseISO(iso), "dd/MM/yyyy");
-
-/** "a, b e c". */
-function joinDates(dates: string[]): string {
-  return dates.length <= 1 ? dates.join("") : `${dates.slice(0, -1).join(", ")} e ${dates.at(-1)}`;
-}
-
-/**
- * Conta ao vivo das parcelas, pelo mesmo calculo do servico:
- * "3x de R$ 33,34 (a primeira) e R$ 33,33: 10/10, 10/11 e 10/12."
- */
-export function installmentsSummary(totalCents: number, installments: number, firstDueDate: string): string | null {
-  if (installments < 2 || !Number.isInteger(totalCents) || totalCents < installments) return null;
-  if (!DATE_RE.test(firstDueDate) || Number.isNaN(parseISO(firstDueDate).getTime())) return null;
-  const parts = splitInstallments(totalCents, installments, firstDueDate);
-  const first = parts[0].amountCents;
-  const rest = parts[1].amountCents;
-  const amounts =
-    first === rest
-      ? `${installments}x de ${formatCents(rest)}`
-      : `${installments}x de ${formatCents(first)} (a primeira) e ${formatCents(rest)}`;
-  const dates =
-    parts.length <= 4
-      ? joinDates(parts.map((p) => shortDate(p.dueDate)))
-      : `de ${fullDate(parts[0].dueDate)} a ${fullDate(parts.at(-1)!.dueDate)}`;
-  return `${amounts}: ${dates}.`;
-}
 
 function ExtraChargeForm({
   student,

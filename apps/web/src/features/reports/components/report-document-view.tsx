@@ -466,7 +466,11 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
               </p>
             </div>
 
-            {/* DRE Summary Table */}
+            {report.data.grossRevenueCents === 0 && report.data.operatingExpensesCents === 0 ? (
+              <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                Sem recebimentos nem despesas pagas neste mês.
+              </p>
+            ) : (
             <div className="rounded-lg border border-border print:border-zinc-300 divide-y divide-border print:divide-zinc-200">
               <div className="flex items-center justify-between p-3.5 bg-muted/30 print:bg-zinc-100 font-semibold text-sm">
                 <span>(+) RECEITA BRUTA OPERACIONAL</span>
@@ -475,10 +479,12 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                 </span>
               </div>
 
-              <div className="pl-6 pr-3.5 py-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>(-) Deduções de Receita e Taxas de Gateway</span>
-                <span>-{formatCents(report.data.deductionsCents)}</span>
-              </div>
+              {report.data.deductionsCents > 0 ? (
+                <div className="pl-6 pr-3.5 py-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>(-) Taxas de pagamento</span>
+                  <span>-{formatCents(report.data.deductionsCents)}</span>
+                </div>
+              ) : null}
 
               <div className="flex items-center justify-between p-3.5 bg-emerald-50/30 print:bg-transparent font-semibold text-sm">
                 <span>(=) RECEITA LÍQUIDA OPERACIONAL</span>
@@ -516,6 +522,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 

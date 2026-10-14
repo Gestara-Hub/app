@@ -346,3 +346,19 @@ describe("vocabularyForTrack: palavras seguem a trilha da modalidade", () => {
     expect(sharedVocabularyFor([{ name: "Yoga" }, track("muay_thai")], pilates).level).toBe("Faixa");
   });
 });
+
+describe("forma de cobrança sugerida na nova turma (curso fechado)", () => {
+  it("gastronomia, artes e beleza sugerem curso; as demais, mensalidade", () => {
+    const courseAreas = new Set(["gastronomy", "arts_crafts", "beauty_courses"]);
+    for (const preset of getAllSegmentPresets()) {
+      expect(preset.defaultBillingMode, preset.id).toBe(courseAreas.has(preset.id) ? "course" : "membership");
+    }
+  });
+
+  it("área personalizada (qualquer forma de avançar) sugere mensalidade", () => {
+    for (const progression of ["belts", "levels", "modules", "none"] as const) {
+      expect(getSegmentPreset("custom", progression).defaultBillingMode).toBe("membership");
+    }
+    expect(getSegmentPreset(undefined).defaultBillingMode).toBe("membership");
+  });
+});

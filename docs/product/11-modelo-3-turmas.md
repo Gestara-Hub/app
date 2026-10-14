@@ -64,7 +64,10 @@ interface ClassGroup {
   sessionPriceCents?: number;    // valor da aula avulsa
   meetingSlots: { weekday: Weekday; start: TimeISO; end: TimeISO }[];
   startDate: DateISO;
-  endDate?: DateISO;             // no contrato, ainda nao exposto no formulario
+  endDate?: DateISO;             // fim da turma; no formulario so no curso ("Termina em*")
+  billingMode?: "membership" | "course" | "free"; // ausente = "membership" (14/10/2026)
+  coursePriceCents?: number;     // curso: valor cheio (> 0)
+  courseMaxInstallments?: number; // curso: "Parcelas até" (1 a 12)
   status: RecordStatus;          // active | inactive
 }
 
@@ -77,6 +80,9 @@ interface Enrollment {
   enrolledAt: DateTimeISO;
   canceledAt?: DateTimeISO;
   cancellationReason?: string;
+  course?: {                     // so matricula em curso (14/10/2026)
+    priceCents: number; installments: number; firstDueDate: DateISO; installmentGroupId: Id;
+  };
 }
 
 // Aula — NAO e armazenada: gerada na leitura a partir de meetingSlots.
@@ -327,3 +333,21 @@ O antigo modal único "Evolução e graduação" virou **dois modais**, porque g
   - Turma e chamada: menu ⋮ com os dois; o selo da faixa abre Graduação. Na chamada, o ícone ao lado do aluno abre Registros de aula já com a aula escolhida.
 - **Autor do registro:** quem está logado (carimbado pelo service, nunca enviado pela tela).
 - Código: `StudentGraduationDialog`, `StudentRecordsDialog`, `ClassRecordsDialog`; service `clientsService.addClassRecord`, `addClassRecords`, `updateStrengths`, `addGoal`, `setGoalCompleted`, `removeGoal`; contrato `StudentGoal`, `CreateStudentClassRecord`, `CreateClassRecordsBatch`.
+
+---
+
+## Formas de cobrança da turma (14/10/2026)
+
+Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md); regras completas em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seção "Curso fechado".
+
+| Forma (`billingMode`) | Tela | Quem paga o quê |
+| --- | --- | --- |
+| `membership` (padrão; ausente = este) | "Mensalidade" | Cada aluno paga pelo próprio plano, como antes. Única forma que ainda usa o `planId` legado da turma. |
+| `course` | "Curso com valor fechado" | `Valor do curso*`, `Parcelas até` (à vista a 12x) e `Termina em*`. A matrícula pergunta valor (editável), parcelas e 1º vencimento e gera as parcelas (`Charge` `course`). |
+| `free` | "Sem cobrança" | A turma não gera cobrança nem aceita avulso pago (experimental continua). |
+
+- A área do espaço sugere a forma na nova turma: gastronomia, artes e artesanato e beleza e cursos livres sugerem curso; as demais, mensalidade.
+- **Detalhe da turma:** resumo "Curso · R$ 800,00 em até 4x · termina 30/11" (ou "Sem cobrança"); matriculados de curso terminado com o selo **"Concluído"** (derivado: curso com fim no passado e matrícula ativa); curso terminado não mostra "Matricular alunos".
+- **Lista de turmas:** selos **"Curso"** e **"Encerrado"** (qualquer turma com fim no passado). As encerradas continuam visíveis no filtro padrão (ativas) e vão para o fim da lista.
+- **Cancelar matrícula em curso** muda a regra antiga ("a mensalidade não muda"): as parcelas pagas ficam, as futuras são canceladas e as vencidas continuam. Na mensalidade, nada muda.
+- **Lista de espera de curso:** "Promover" abre "Matricular da lista de espera" com o pagamento do curso. Promover passa a entrar na Auditoria como matrícula (vale para toda turma).

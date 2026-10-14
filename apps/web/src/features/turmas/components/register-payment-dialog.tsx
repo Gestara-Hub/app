@@ -51,10 +51,12 @@ export function RegisterPaymentDialog({
                 ? "Aula avulsa"
                 : charge.kind === "extra"
                   ? "Cobrança avulsa"
-                  : "Mensalidade"}
+                  : charge.kind === "course"
+                    ? "Curso"
+                    : "Mensalidade"}
             </dt>
             <dd className="text-foreground">
-              {charge.kind === "extra"
+              {charge.kind === "extra" || charge.kind === "course"
                 ? `${charge.description ?? ""}${(charge.cycleTotal ?? 1) > 1 ? ` (parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal})` : ""} · `
                 : ""}
               vence {shortDate(charge.dueDate)}

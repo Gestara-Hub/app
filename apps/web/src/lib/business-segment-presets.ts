@@ -1,4 +1,5 @@
 import type {
+  ClassBillingMode,
   ClassesBusinessSegment,
   CustomSegmentProgression,
   ModalityProgressionTrack,
@@ -68,6 +69,11 @@ export interface BusinessSegmentPreset {
   trackTemplates: Exclude<ProgressionTrackTemplateKey, "custom">[];
   /** Padroes do formulario de nova turma. */
   classDefaults: { durationMinutes: number; capacity: number };
+  /**
+   * Forma de cobranca sugerida na nova turma (doc 20, fase B): curso com valor
+   * fechado em gastronomia, artes e beleza; mensalidade nas demais.
+   */
+  defaultBillingMode: ClassBillingMode;
   vocabulary: SegmentVocabulary;
 }
 
@@ -144,6 +150,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "by_modality_name",
     trackTemplates: ["bjj_adult", "judo_karate", "muay_thai", "karate", "taekwondo", "capoeira", "kickboxing"],
     classDefaults: { durationMinutes: 60, capacity: 20 },
+    defaultBillingMode: "membership",
     vocabulary: BELT_VOCABULARY,
   },
   pilates_yoga: {
@@ -154,6 +161,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: null,
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 50, capacity: 6 },
+    defaultBillingMode: "membership",
     vocabulary: LEVEL_VOCABULARY,
   },
   functional_training: {
@@ -164,6 +172,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: null,
     trackTemplates: ["general_levels", "functional_categories", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
+    defaultBillingMode: "membership",
     vocabulary: LEVEL_VOCABULARY,
   },
   dance: {
@@ -174,6 +183,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "general_levels",
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
+    defaultBillingMode: "membership",
     vocabulary: LEVEL_VOCABULARY,
   },
   music: {
@@ -184,6 +194,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "modules",
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 6 },
+    defaultBillingMode: "membership",
     vocabulary: MODULE_VOCABULARY,
   },
   languages: {
@@ -194,6 +205,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "general_levels",
     trackTemplates: ["language_cefr", "general_levels", "modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
+    defaultBillingMode: "membership",
     vocabulary: LEVEL_VOCABULARY,
   },
   swimming_sports: {
@@ -204,6 +216,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "swim_stages",
     trackTemplates: ["swim_stages", "general_levels", "blank"],
     classDefaults: { durationMinutes: 45, capacity: 8 },
+    defaultBillingMode: "membership",
     vocabulary: STAGE_VOCABULARY,
   },
   gastronomy: {
@@ -214,6 +227,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "modules",
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
+    defaultBillingMode: "course",
     vocabulary: MODULE_VOCABULARY,
   },
   arts_crafts: {
@@ -224,6 +238,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "modules",
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 10 },
+    defaultBillingMode: "course",
     vocabulary: MODULE_VOCABULARY,
   },
   beauty_courses: {
@@ -234,6 +249,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "modules",
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
+    defaultBillingMode: "course",
     vocabulary: MODULE_VOCABULARY,
   },
   custom: {
@@ -244,6 +260,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: null,
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
+    defaultBillingMode: "membership",
     vocabulary: LEVEL_VOCABULARY,
   },
 };

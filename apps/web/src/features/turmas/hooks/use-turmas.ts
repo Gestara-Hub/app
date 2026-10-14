@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { turmasService } from "@/services/turmasService";
@@ -13,11 +14,25 @@ import type {
   CreateClassGroup,
   CreateEnrollment,
   DateISO,
+  EnrollmentCourseChoice,
   Id,
   ReservationKind,
   SubstituteInstructorPayload,
   UpdateClassGroup,
 } from "@gestarahub/contracts";
+
+/**
+ * Matricula em curso gera ou cancela parcelas: alem das turmas, atualiza
+ * Mensalidades, Financeiro, pagamento de professores e Auditoria.
+ */
+function invalidateEnrollmentMoney(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+  qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+  qc.invalidateQueries({ queryKey: queryKeys.finance.all });
+  qc.invalidateQueries({ queryKey: queryKeys.teacherPay.all });
+  qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
+  qc.invalidateQueries({ queryKey: queryKeys.audit.all });
+}
 
 // --- Turmas ---------------------------------------------------------------
 export function useClassGroups(filter?: ClassGroupFilter) {
@@ -87,7 +102,7 @@ export function useEnroll() {
       payload: CreateEnrollment;
       allowOverCapacity?: boolean;
     }) => turmasService.enroll(payload, { allowOverCapacity }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+    onSuccess: () => invalidateEnrollmentMoney(qc),
   });
 }
 
@@ -96,7 +111,7 @@ export function useCancelEnrollment() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: Id; reason?: string }) =>
       turmasService.cancelEnrollment(id, reason),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+    onSuccess: () => invalidateEnrollmentMoney(qc),
   });
 }
 
@@ -200,8 +215,9 @@ export function useAddToWaitlist() {
 export function usePromoteWaitlist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: Id) => turmasService.promoteFromWaitlist(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+    mutationFn: ({ id, course }: { id: Id; course?: EnrollmentCourseChoice }) =>
+      turmasService.promoteFromWaitlist(id, course),
+    onSuccess: () => invalidateEnrollmentMoney(qc),
   });
 }
 

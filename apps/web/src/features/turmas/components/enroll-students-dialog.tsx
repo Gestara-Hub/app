@@ -18,9 +18,17 @@ import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
 import { formatPhone, plural } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { ClassGroupView, Id } from "@gestarahub/contracts";
+import { classBillingMode } from "@gestarahub/core/billing";
+import type { ClassGroupView, EnrollmentCourseChoice, Id } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
 import { useAddToWaitlist, useEnroll } from "../hooks/use-turmas";
+import {
+  applyCourseErrors,
+  coursePaymentDefaults,
+  CoursePaymentFields,
+  readCourseChoice,
+  useCoursePaymentForm,
+} from "./course-payment-fields";
 
 /** Teto de linhas renderizadas: com base grande, a busca e que filtra. */
 const MAX_ROWS = 50;
@@ -51,6 +59,9 @@ export function EnrollStudentsDialog({
   const { data: clients } = useClients({ status: "active" });
   const enrollMut = useEnroll();
   const waitMut = useAddToWaitlist();
+  // Curso: o pagamento escolhido vale para cada aluno selecionado.
+  const isCourse = classBillingMode(turma) === "course";
+  const courseForm = useCoursePaymentForm(turma);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [pending, setPending] = useState(false);
@@ -158,6 +169,7 @@ export function EnrollStudentsDialog({
   const reset = () => {
     setSearch("");
     setSelected(new Set());
+    courseForm.reset(coursePaymentDefaults(turma));
   };
 
   const close = () => {
@@ -168,13 +180,19 @@ export function EnrollStudentsDialog({
   // Sequencial (nao Promise.all): cada matricula reavalia a capacidade no
   // "servidor", e o resumo precisa contar quantas de fato entraram.
   const submitEnroll = async () => {
+    let course: EnrollmentCourseChoice | undefined;
+    if (isCourse) {
+      const choice = await readCourseChoice(courseForm);
+      if (!choice) return;
+      course = choice;
+    }
     setPending(true);
     let ok = 0;
     let lastError: unknown = null;
     for (const student of selectedList) {
       try {
         await enrollMut.mutateAsync({
-          payload: { classGroupId: turma.id, studentId: student.id },
+          payload: { classGroupId: turma.id, studentId: student.id, course },
           allowOverCapacity: true,
         });
         ok += 1;
@@ -189,7 +207,8 @@ export function EnrollStudentsDialog({
       );
       close();
     }
-    if (lastError) {
+    // Erro do pagamento do curso volta para o campo (nenhum entrou).
+    if (lastError && !(ok === 0 && applyCourseErrors(courseForm, lastError))) {
       toast.error(getErrorMessage(lastError, "Não foi possível matricular."));
     }
   };
@@ -424,6 +443,15 @@ export function EnrollStudentsDialog({
             </button>
           </div>
         </div>
+
+        {isCourse ? (
+          <CoursePaymentFields
+            form={courseForm}
+            turma={turma}
+            disabled={pending}
+            appliesToMany={selected.size > 1}
+          />
+        ) : null}
 
         <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
           <Link href="/clients">

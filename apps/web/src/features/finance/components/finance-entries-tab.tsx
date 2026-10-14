@@ -123,7 +123,7 @@ function chargeCountsLabel(counts: NonNullable<FinanceEntryView["chargeCounts"]>
 /** Kind da linha agregada ("charges:<kind>:<competence>"). */
 function chargeKindOf(row: FinanceEntryView): ChargeKind {
   const kind = row.id.split(":")[1];
-  return kind === "dropin" || kind === "extra" ? kind : "membership";
+  return kind === "dropin" || kind === "extra" || kind === "course" ? kind : "membership";
 }
 
 function EntriesSkeleton() {

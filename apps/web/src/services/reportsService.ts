@@ -293,11 +293,12 @@ export const reportsService = {
               ((ch.competence && ch.competence === competence) ||
                 (ch.paidAt && ch.paidAt.startsWith(competence))),
           );
-          // Cada tipo de cobranca vira uma linha propria (mensalidade, aula avulsa, cobranca avulsa).
+          // Cada tipo de cobranca vira uma linha propria (mensalidade, aula avulsa, cobranca avulsa, curso).
           const CHARGE_INCOME_LABEL: Record<ChargeKind, string> = {
             membership: "Mensalidades de Alunos",
             dropin: "Aulas Avulsas",
             extra: "Cobranças Avulsas",
+            course: "Cursos",
           };
           const chargeRevenue = new Map<string, number>();
           paidCharges.forEach((c) => {
@@ -344,26 +345,13 @@ export const reportsService = {
             expenseMap.set(catName, (expenseMap.get(catName) || 0) + e.amountCents);
           });
 
-          // Se a academia ainda não tiver lançamentos cadastrados, usamos os valores base para o DRE não zerar
-          let grossRevenueCents = Array.from(incomeMap.values()).reduce((a, b) => a + b, 0);
-          let operatingExpensesCents = Array.from(expenseMap.values()).reduce((a, b) => a + b, 0);
+          // So dados reais: mes sem lancamento pago sai zerado (a tela mostra o vazio).
+          const grossRevenueCents = Array.from(incomeMap.values()).reduce((a, b) => a + b, 0);
+          const operatingExpensesCents = Array.from(expenseMap.values()).reduce((a, b) => a + b, 0);
 
-          if (grossRevenueCents === 0 && operatingExpensesCents === 0) {
-            grossRevenueCents = 1860000;
-            operatingExpensesCents = 845000;
-            incomeMap.set("Mensalidades de Alunos", 1520000);
-            incomeMap.set("Aulas Avulsas (Drop-in)", 140000);
-            incomeMap.set("Venda de Produtos", 120000);
-            incomeMap.set("Taxa de Matrícula", 80000);
-
-            expenseMap.set("Repasse de Professores", 420000);
-            expenseMap.set("Aluguel & Condomínio", 250000);
-            expenseMap.set("Contas (Luz, Água, Internet)", 75000);
-            expenseMap.set("Marketing & Anúncios", 60000);
-            expenseMap.set("Material de Limpeza", 40000);
-          }
-
-          const deductionsCents = Math.round(grossRevenueCents * 0.02); // 2% taxa de gateway/split
+          // Taxas do provedor de pagamento ainda nao sao registradas; quando forem,
+          // entram aqui. Ate la, sem deducao estimada.
+          const deductionsCents = 0;
           const netRevenueCents = grossRevenueCents - deductionsCents;
           const operationalResultCents = netRevenueCents - operatingExpensesCents;
           const operatingMarginPercent =

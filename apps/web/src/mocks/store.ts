@@ -152,7 +152,9 @@ const STORAGE_KEY = "gestarahub:db";
 //      `languages` (escolhido pelos nomes das modalidades). Migracao suave.
 // v33: cobranca avulsa (`ChargeKind` "extra"): tenants com categorias
 //      financeiras ganham a categoria de sistema "Cobranças avulsas". Migracao suave.
-const SEED_VERSION = 33;
+// v34: curso fechado (`ChargeKind` "course"): tenants com categorias
+//      financeiras ganham a categoria de sistema "Cursos". Migracao suave.
+const SEED_VERSION = 34;
 
 /** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
 const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
@@ -382,6 +384,16 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
       if (categories.some((c) => c.systemKey === "extras")) continue;
       const extras = defaultSystemFinancialCategory(tenant.organization.id, "extras");
       if (extras) categories.push(extras);
+    }
+  }
+  if (fromVersion < 34) {
+    // Mesmo criterio da v33: so quem ja tem as categorias padrao.
+    for (const tenant of Object.values(data.tenants)) {
+      const categories = tenant.financialCategories ?? [];
+      if (categories.length === 0) continue;
+      if (categories.some((c) => c.systemKey === "courses")) continue;
+      const courses = defaultSystemFinancialCategory(tenant.organization.id, "courses");
+      if (courses) categories.push(courses);
     }
   }
   return data;

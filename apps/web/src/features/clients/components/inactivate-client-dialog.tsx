@@ -59,6 +59,10 @@ export function InactivateClientDialog({
   const openExtras = (charges ?? []).filter(
     (c) => c.studentId === shown?.id && c.kind === "extra" && isOpen(c),
   );
+  // Parcelas de curso em aberto tambem continuam (o curso foi comprado).
+  const openCourseInstallments = (charges ?? []).filter(
+    (c) => c.studentId === shown?.id && c.kind === "course" && isOpen(c),
+  );
   const openTotal = openCharges.reduce((sum, c) => sum + c.amountCents, 0);
 
   async function handleConfirm() {
@@ -115,6 +119,13 @@ export function InactivateClientDialog({
           {openExtras.length === 1
             ? "A cobrança avulsa em aberto continua para receber."
             : `As ${openExtras.length} cobranças avulsas em aberto continuam para receber.`}
+        </p>
+      ) : null}
+      {openCourseInstallments.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {openCourseInstallments.length === 1
+            ? "A parcela de curso em aberto continua para receber."
+            : `As ${openCourseInstallments.length} parcelas de curso em aberto continuam para receber.`}
         </p>
       ) : null}
       {openCharges.length > 0 ? (

@@ -20,6 +20,11 @@ export const turmaFormSchema = z.object({
     .int("A capacidade deve ser um número inteiro.")
     .min(1, "A capacidade deve ser ao menos 1."),
   startDate: z.string().min(1, "Informe a data de início."),
+  // Forma de cobranca (doc 20, fase B). Curso: valor, parcelas ate e fim.
+  billingMode: z.enum(["membership", "course", "free"]),
+  coursePriceCents: z.number().int().min(0).nullish(),
+  courseMaxInstallments: z.string(),
+  endDate: z.string().optional(),
   meetingSlots: z
     .array(
       z.object({
@@ -34,9 +39,22 @@ export const turmaFormSchema = z.object({
     }),
 })
   // Aula avulsa sem valor nao gera cobranca: com avulso ligado, o valor e obrigatorio.
-  .refine((data) => !data.allowDropin || (data.sessionPriceCents ?? 0) > 0, {
+  .refine((data) => data.billingMode === "free" || !data.allowDropin || (data.sessionPriceCents ?? 0) > 0, {
     path: ["sessionPriceCents"],
     message: "Informe o valor da aula avulsa.",
+  })
+  .refine((data) => data.billingMode !== "course" || (data.coursePriceCents ?? 0) > 0, {
+    path: ["coursePriceCents"],
+    message: "Informe o valor do curso.",
+  })
+  .refine((data) => data.billingMode !== "course" || Boolean(data.endDate), {
+    path: ["endDate"],
+    message: "Informe quando o curso termina.",
+  })
+  // Fim no mesmo dia do inicio vale (oficina de um dia).
+  .refine((data) => data.billingMode !== "course" || !data.endDate || !data.startDate || data.endDate >= data.startDate, {
+    path: ["endDate"],
+    message: "O curso não pode terminar antes de começar.",
   });
 
 export type TurmaFormValues = z.infer<typeof turmaFormSchema>;

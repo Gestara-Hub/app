@@ -49,12 +49,15 @@ import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { todayISO } from "@gestarahub/core/date";
-import { formatPhone, plural, pluralWord } from "@gestarahub/core/format";
+import { formatCents, formatPhone, plural, pluralWord } from "@gestarahub/core/format";
+import { classBillingMode } from "@gestarahub/core/billing";
 import {
   isApiError,
+  type ClassGroupView,
   type Client,
   type EnrollmentView,
   type Id,
+  type WaitlistEntryView,
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
@@ -67,12 +70,54 @@ import {
   useRemoveFromWaitlist,
   useWaitlist,
 } from "../hooks/use-turmas";
-import { slotsSummary } from "./turmas-view";
+import { EndedBadge, slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
+import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 type Tab = "enrolled" | "waitlist";
+
+const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
+
+/** "Curso · R$ 800,00 em até 4x · termina 30/11" (ou "Sem cobrança"); mensalidade nao mostra nada. */
+export function classBillingSummary(turma: ClassGroupView): string | null {
+  const mode = classBillingMode(turma);
+  if (mode === "free") return "Sem cobrança";
+  if (mode !== "course") return null;
+  const max = turma.courseMaxInstallments ?? 1;
+  return [
+    "Curso",
+    `${formatCents(turma.coursePriceCents ?? 0)}${max > 1 ? ` em até ${max}x` : " à vista"}`,
+    turma.endDate ? `${turma.isEnded ? "terminou" : "termina"} ${ddmm(turma.endDate)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Texto do cancelamento da matricula: no curso, explica o que acontece com as parcelas (decisao 1). */
+function cancelEnrollmentText(e: EnrollmentView): string {
+  if (!e.course) {
+    return `${e.studentName} sai da turma e deixa de aparecer na lista de chamada. A mensalidade do aluno não muda.`;
+  }
+  if (e.isCompleted) {
+    return `${e.studentName} sai da turma. O curso já terminou: as parcelas continuam como estão.`;
+  }
+  const future = e.courseInstallments?.future ?? 0;
+  const due = e.courseInstallments?.due ?? 0;
+  return [
+    `${e.studentName} sai do curso.`,
+    "As parcelas pagas ficam.",
+    future === 0
+      ? "Não há parcelas futuras para cancelar."
+      : future === 1
+        ? "A parcela futura será cancelada."
+        : `As ${future} parcelas futuras serão canceladas.`,
+    due > 0 ? (due === 1 ? "A parcela vencida continua para receber." : `As ${due} parcelas vencidas continuam para receber.`) : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 function isApiNotFound(error: unknown): boolean {
   return isApiError(error) && error.code === "NOT_FOUND";
@@ -196,6 +241,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [promoteCourseEntry, setPromoteCourseEntry] = useState<WaitlistEntryView | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
 
   const handleEnrollOpenChange = (open: boolean) => {
@@ -291,7 +337,7 @@ export function TurmaDetailView({ id }: { id: string }) {
   const cancelOne = async (enrollment: EnrollmentView) => {
     const ok = await confirmAction({
       title: "Cancelar matrícula?",
-      description: `${enrollment.studentName} sai da turma e deixa de aparecer na lista de chamada. A mensalidade do aluno não muda.`,
+      description: cancelEnrollmentText(enrollment),
       confirmLabel: "Cancelar matrícula",
       variant: "destructive",
     });
@@ -348,6 +394,12 @@ export function TurmaDetailView({ id }: { id: string }) {
     }
   };
 
+  const isCourse = classBillingMode(turma) === "course";
+  // Curso terminado nao recebe matricula nova (o servico tambem recusa).
+  const canEnroll = canManage && !(isCourse && turma.isEnded);
+  const billingSummary = classBillingSummary(turma);
+  const selectedHasCourse = selectedRows.some((e) => e.course && !e.isCompleted);
+
   const meta = [
     turma.modalityName,
     `Instrutor: ${turma.instructorName}`,
@@ -374,7 +426,7 @@ export function TurmaDetailView({ id }: { id: string }) {
             Editar
           </Button>
         ) : null}
-        {canManage ? (
+        {canEnroll ? (
           <Button size="sm" onClick={() => setEnrollOpen(true)}>
             <UserPlus className="size-4" />
             Matricular alunos
@@ -382,9 +434,23 @@ export function TurmaDetailView({ id }: { id: string }) {
         ) : null}
       </PageHeader>
 
+      {billingSummary ? (
+        <p className="-mt-2 mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" data-testid="class-billing-summary">
+          <span>{billingSummary}</span>
+          {isCourse && turma.isEnded ? <EndedBadge /> : null}
+        </p>
+      ) : null}
+
       <CapacityBar enrolled={turma.enrolledCount} capacity={turma.capacity} />
 
       <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      <PromoteToCourseDialog
+        turma={turma}
+        entry={promoteCourseEntry}
+        onOpenChange={(open) => {
+          if (!open) setPromoteCourseEntry(null);
+        }}
+      />
       <EnrollStudentsDialog
         open={enrollOpen}
         onOpenChange={handleEnrollOpenChange}
@@ -420,8 +486,8 @@ export function TurmaDetailView({ id }: { id: string }) {
                 icon={<GraduationCap className="size-8" />}
                 title="Nenhum aluno matriculado ainda."
                 description="Matricule os alunos desta turma para acompanhar frequência e mensalidades."
-                actionLabel={canManage ? "Matricular alunos" : undefined}
-                onAction={canManage ? () => setEnrollOpen(true) : undefined}
+                actionLabel={canEnroll ? "Matricular alunos" : undefined}
+                onAction={canEnroll ? () => setEnrollOpen(true) : undefined}
               />
             </div>
           ) : (
@@ -548,6 +614,11 @@ export function TurmaDetailView({ id }: { id: string }) {
                               <p className="truncate text-sm font-medium">
                                 {e.studentName}
                               </p>
+                              {e.isCompleted ? (
+                                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium leading-none text-emerald-700 dark:text-emerald-400">
+                                  Concluído
+                                </span>
+                              ) : null}
                               <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />
                               <LevelChangeBadge
                                 level={currentLvl}
@@ -626,13 +697,18 @@ export function TurmaDetailView({ id }: { id: string }) {
                         disabled={promoteMut.isPending}
                         onClick={async () => {
                           if (promoteMut.isPending) return;
+                          // Curso: o dialogo pede o pagamento antes de matricular.
+                          if (isCourse) {
+                            setPromoteCourseEntry(w);
+                            return;
+                          }
                           const ok = await confirmAction({
                             title: "Promover da lista de espera?",
                             description: `${w.studentName} será matriculado na turma, mesmo que ela esteja lotada.`,
                             confirmLabel: "Matricular",
                           });
                           if (!ok) return;
-                          promoteMut.mutate(w.id, {
+                          promoteMut.mutate({ id: w.id }, {
                             onSuccess: () =>
                               toast.success("Aluno promovido para matrícula."),
                             onError: (err) =>
@@ -706,6 +782,9 @@ export function TurmaDetailView({ id }: { id: string }) {
             <AlertDialogDescription>
               Os alunos saem da turma e deixam de contar nas vagas. O histórico
               de presença é mantido.
+              {selectedHasCourse
+                ? " No curso, as parcelas pagas ficam e as futuras são canceladas."
+                : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

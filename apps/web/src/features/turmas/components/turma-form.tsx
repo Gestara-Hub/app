@@ -18,7 +18,10 @@ import {
   InputCurrency,
   InputNumber,
   InputText,
+  SegmentedChoiceField,
+  SelectField,
   SwitchField,
+  type SegmentedChoiceOption,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +30,7 @@ import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { plural } from "@gestarahub/core/format";
+import { classBillingMode, MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import {
   addMinutesToTime,
   checkSlotWithinBusinessHours,
@@ -58,6 +62,17 @@ const WEEKDAYS = [
   { value: 5, short: "Sex" },
   { value: 6, short: "Sáb" },
 ];
+
+const BILLING_MODE_OPTIONS: SegmentedChoiceOption[] = [
+  { value: "membership", label: "Mensalidade", description: "Pelo plano do aluno" },
+  { value: "course", label: "Curso com valor fechado", description: "Parcelas na matrícula" },
+  { value: "free", label: "Sem cobrança", description: "Turma gratuita" },
+];
+
+const MAX_INSTALLMENT_OPTIONS = Array.from({ length: MAX_INSTALLMENTS }, (_, i) => ({
+  value: String(i + 1),
+  label: i === 0 ? "À vista" : `${i + 1}x`,
+}));
 
 const WEEKDAY_NAMES_PT = [
   "domingos",
@@ -612,7 +627,7 @@ export function TurmaForm({
   const isEdit = Boolean(turma);
   const pending = createMut.isPending || updateMut.isPending;
   const { data: unit } = useUnit();
-  const { classDefaults } = useBusinessSegment();
+  const { classDefaults, defaultBillingMode } = useBusinessSegment();
   const { data: categories } = useCategories({ status: "active" });
   const { data: professionals } = useProfessionals({ status: "active" });
   // Turmas ativas: o editor de horarios avisa conflito do instrutor ao vivo.
@@ -646,6 +661,10 @@ export function TurmaForm({
           sessionPriceCents: turma.sessionPriceCents ?? 0,
           capacity: turma.capacity,
           startDate: turma.startDate,
+          billingMode: classBillingMode(turma),
+          coursePriceCents: turma.coursePriceCents ?? 0,
+          courseMaxInstallments: String(turma.courseMaxInstallments ?? 1),
+          endDate: turma.endDate ?? "",
           meetingSlots: turma.meetingSlots,
         }
       : {
@@ -657,6 +676,11 @@ export function TurmaForm({
           sessionPriceCents: 0,
           capacity: classDefaults.capacity,
           startDate: openStartDate,
+          // A area sugere a forma (gastronomia, artes e beleza: curso).
+          billingMode: defaultBillingMode,
+          coursePriceCents: 0,
+          courseMaxInstallments: "1",
+          endDate: "",
           meetingSlots: isInitialDayOpen
             ? [
                 {
@@ -763,6 +787,15 @@ export function TurmaForm({
     control: form.control,
     name: "allowDropin",
   });
+  const billingMode = useWatch({ control: form.control, name: "billingMode" });
+  // A area chega depois do 1o render (organizacao carregando): a forma
+  // sugerida acompanha enquanto o usuario nao escolheu outra.
+  useEffect(() => {
+    if (isEdit || form.getFieldState("billingMode").isDirty) return;
+    if (form.getValues("billingMode") === defaultBillingMode) return;
+    form.resetField("billingMode", { defaultValue: defaultBillingMode });
+  }, [defaultBillingMode, isEdit, form]);
+  const isCourse = billingMode === "course";
 
   const modalityId = useWatch({
     control: form.control,
@@ -824,13 +857,27 @@ export function TurmaForm({
       }
     }
 
+    const mode = values.billingMode;
+    // Turma sem cobranca nao aceita avulso pago.
+    const dropin = mode !== "free" && values.allowDropin;
     const payload: CreateClassGroup = {
       name: values.name,
       modalityId: values.modalityId,
-      planId: values.planId || undefined,
+      planId: mode === "membership" ? values.planId || undefined : undefined,
       instructorId: values.instructorId,
-      allowDropin: values.allowDropin,
-      sessionPriceCents: values.allowDropin ? (values.sessionPriceCents || undefined) : undefined,
+      allowDropin: dropin,
+      sessionPriceCents: dropin ? (values.sessionPriceCents || undefined) : undefined,
+      billingMode: mode,
+      coursePriceCents: mode === "course" ? values.coursePriceCents || undefined : undefined,
+      courseMaxInstallments: mode === "course" ? Number(values.courseMaxInstallments) : undefined,
+      // Fim so aparece no curso; turma que deixa de ser curso perde o fim dele,
+      // e a mensalidade com fim antigo (sem campo na tela) o mantem.
+      endDate:
+        mode === "course"
+          ? values.endDate || undefined
+          : turma && classBillingMode(turma) !== "course"
+            ? turma.endDate
+            : undefined,
       capacity: values.capacity,
       meetingSlots: values.meetingSlots.map((s) => ({
         weekday: s.weekday as Weekday,
@@ -935,23 +982,69 @@ export function TurmaForm({
           />
         </div>
 
-        <div className={cn("space-y-3", allowDropin && "rounded-lg border p-3.5 bg-muted/15")}>
-          <SwitchField<TurmaFormValues>
-            name="allowDropin"
-            label="Permitir alunos avulsos nesta turma"
-            hint="Permite inscrever alunos em aula avulsa (paga) nesta turma. A aula experimental é sempre permitida."
-            disabled={pending}
-          />
-
-          {allowDropin ? (
-            <InputCurrency<TurmaFormValues>
-              name="sessionPriceCents"
-              label="Valor da aula avulsa / diária"
-              required
+        <FieldShell
+          label="Cobrança"
+          hint={
+            billingMode === "membership"
+              ? "Cada aluno paga pelo próprio plano."
+              : billingMode === "free"
+                ? "A turma não gera cobrança."
+                : undefined
+          }
+        >
+          <div className="space-y-3">
+            <SegmentedChoiceField<TurmaFormValues>
+              name="billingMode"
+              ariaLabel="Cobrança"
+              options={BILLING_MODE_OPTIONS}
               disabled={pending}
             />
-          ) : null}
-        </div>
+            {isCourse ? (
+              <div className="grid grid-cols-1 gap-4 rounded-lg border bg-muted/15 p-3.5 sm:grid-cols-2">
+                <InputCurrency<TurmaFormValues>
+                  name="coursePriceCents"
+                  label="Valor do curso"
+                  required
+                  disabled={pending}
+                />
+                <SelectField<TurmaFormValues>
+                  name="courseMaxInstallments"
+                  label="Parcelas até"
+                  options={MAX_INSTALLMENT_OPTIONS}
+                  clearable={false}
+                  disabled={pending}
+                />
+                <DateField<TurmaFormValues>
+                  name="endDate"
+                  label="Termina em"
+                  hint="Curso tem data para acabar."
+                  required
+                  disabled={pending}
+                />
+              </div>
+            ) : null}
+          </div>
+        </FieldShell>
+
+        {billingMode === "free" ? null : (
+          <div className={cn("space-y-3", allowDropin && "rounded-lg border p-3.5 bg-muted/15")}>
+            <SwitchField<TurmaFormValues>
+              name="allowDropin"
+              label="Permitir alunos avulsos nesta turma"
+              hint="Permite inscrever alunos em aula avulsa (paga) nesta turma. A aula experimental é sempre permitida."
+              disabled={pending}
+            />
+
+            {allowDropin ? (
+              <InputCurrency<TurmaFormValues>
+                name="sessionPriceCents"
+                label="Valor da aula avulsa / diária"
+                required
+                disabled={pending}
+              />
+            ) : null}
+          </div>
+        )}
 
         <Controller
           control={form.control}
