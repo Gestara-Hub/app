@@ -1,6 +1,6 @@
 "use client";
 
-import type { Client } from "@gestarahub/contracts";
+import type { Client, ModalityProgressionTrack } from "@gestarahub/contracts";
 import { ageAt, isAgedOutOfLevel, resolveModalityTrack } from "@/lib/progression-tracks";
 import { useCategories } from "@/features/categories";
 import { useClients } from "@/features/clients";
@@ -12,6 +12,8 @@ export interface LevelChangePending {
   modalityId: string;
   modalityName: string;
   levelName: string;
+  /** Trilha da modalidade: define as palavras do item (Graduar ou Avançar). */
+  track: ModalityProgressionTrack;
 }
 
 /**
@@ -43,6 +45,7 @@ export function useLevelChangePending(today: string): LevelChangePending[] {
           modalityId: prog.modalityId,
           modalityName: category.name,
           levelName: level.name,
+          track,
         });
       }
     }

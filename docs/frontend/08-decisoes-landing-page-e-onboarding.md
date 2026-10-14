@@ -177,7 +177,7 @@ Onde aparece:
 - **Setup**: trilha das modalidades criadas no passo 3.
 - **Modalidade**: título da trilha e trilha sugerida ao ligar o switch.
 - **Nova turma**: vagas, duração do horário e atalho de duração da área.
-- **Telas de aluno, turma, aula e relatórios**: "Faixa" ou "Nível/Módulo/Fase", "Graduar" ou "Avançar". "Aluno" não muda.
+- **Telas de aluno, turma, aula e relatórios**: "Faixa" ou "Nível/Módulo/Fase", "Graduar" ou "Avançar", conforme a **trilha da modalidade** (ver "Palavras pela trilha da modalidade" abaixo). "Aluno" não muda.
 - **Comunicação**: Lutas fala em treino e tatame; as demais, em aulas. Ao trocar de área, só os modelos ainda no texto padrão mudam; os editados ficam como estão.
 - **Configurações**: campo "Área do espaço" em Identificação do Negócio. Na "Outra área", aparecem "O que você ensina?" e "Como seus alunos avançam?" (as mesmas 4 opções do setup). Trocar muda só padrões e palavras daí em diante; modalidades, trilhas e turmas existentes não mudam.
 
@@ -191,6 +191,15 @@ O visual vem da **trilha** (`ModalityProgressionTrack.style`), não da área, po
 - Modelos: Jiu-Jitsu, Judô, Muay Thai, Karatê, Taekwondo, Capoeira, Kickboxing (faixa); Níveis (Iniciante, Intermediário, Avançado), Módulos, Idiomas A1 a C2, Fases da natação, Categorias (Iniciante, Scaled, RX) e Do zero (nível).
 - Textos do editor seguem o estilo: "Quando troca de faixa ou grau" ou "Quando avança de nível/módulo/fase", "Adicionar fase" etc.
 - Sugestões rápidas de nome de modalidade seguem a área (Lutas mantém a lista de lutas; "Outra área" não mostra sugestões).
+
+#### Palavras pela trilha da modalidade (14/10/2026)
+
+As palavras da evolução seguem a **trilha de cada modalidade**, não a área: Pilates (níveis) numa academia de lutas fala em "Nível atual" e "Avançar"; Muay Thai (faixas) num estúdio de pilates fala em "Faixa atual" e "Graduar".
+- Regra (`vocabularyForTrack` em `business-segment-presets.ts`): estilo faixa → Faixa/Graduação/Graduar; modelo `swim_stages` → Fase; `modules` → Módulo; demais trilhas de níveis (níveis gerais, idiomas, categorias, do zero, personalizada) → Nível + Avançar. Sem trilha, trilha desligada ou sem etapas → palavras da área. Devolve sempre o mesmo objeto por tipo (referência estável).
+- Hook `useModalityVocabulary(modalidade ou trilha)` (barrel de `features/settings`) em toda tela com **uma** modalidade em contexto: modal de Graduação (modalidade aberta, incluindo Graduar e Ponto de partida), chamada da aula e lista da turma (modalidade da turma), editor da modalidade (trilha em edição), lista de chamada nos relatórios (modalidade da turma).
+- Listas que misturam modalidades usam `sharedVocabularyFor`: a palavra delas quando todas as que têm trilha falam igual, senão a da área. Vale para o título "trocar de faixa/nível pela idade" do painel e para o item "Graduação/Níveis" do menu do aluno na lista de Alunos. O botão de cada aluno no painel segue a modalidade dele.
+- Ficam com a palavra da **área**: textos sem modalidade (aluno sem trilha em "Definir faixa/nível", relação geral de alunos, aviso de revisão das modalidades, título do formulário de nova modalidade, navegação, configurações e modelos de mensagem do WhatsApp). A área segue como padrão da trilha de uma nova modalidade.
+- Graus e etapas seguem o estilo da trilha ("Graus" na faixa, "Etapas" no nível).
 
 #### Faixa etária por nível (12/10/2026)
 

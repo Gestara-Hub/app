@@ -152,7 +152,7 @@ type OperationalModel = "scheduling" | "classes" | "delivery";
 
 type PlanPeriod = "monthly" | "biweekly" | "weekly";
 
-type ChargeKind = "membership" | "dropin";
+type ChargeKind = "membership" | "dropin" | "extra"; // extra = cobranca avulsa (doc 20, fase A)
 
 // Area do negocio no Modelo 3 (Organization.classSegment). Ausente = martial_arts.
 type ClassesBusinessSegment =
@@ -176,6 +176,7 @@ type CustomSegmentProgression = "belts" | "levels" | "modules" | "none";
 
 - A area e uma chave fechada (`Organization.classSegment`), nunca texto. `Organization.segment` (texto) e so rotulo de exibicao; na "Outra área" (`custom`), o nome digitado fica em `Organization.customSegmentName` e a forma de avanço em `Organization.customSegmentProgression` (o preset efetivo vem de `getSegmentPreset(classSegment, customSegmentProgression)`).
 - A area so define padroes e vocabulario, nunca liga ou desliga recursos. O perfil de cada area fica em `apps/web/src/lib/business-segment-presets.ts`: trilha padrao das modalidades, duracao e vagas de nova turma, palavras das telas (faixa, nivel, modulo ou fase) e o tom dos modelos de mensagem. Detalhe em `docs/frontend/08-decisoes-landing-page-e-onboarding.md`, secao 4.5.
+- Com uma modalidade em contexto, as palavras seguem a trilha dela (`vocabularyForTrack` / `useModalityVocabulary`), nao a area; a area fica como padrao de modalidade nova e para textos sem modalidade (14/10/2026).
 
 ## Testes
 

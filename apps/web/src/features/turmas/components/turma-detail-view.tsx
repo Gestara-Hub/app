@@ -44,7 +44,7 @@ import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
-import { useSegmentVocabulary } from "@/features/settings";
+import { useModalityVocabulary } from "@/features/settings";
 import { normalizeText } from "@/lib/text";
 import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -172,7 +172,6 @@ function TabButton({
 }
 
 export function TurmaDetailView({ id }: { id: string }) {
-  const vocabulary = useSegmentVocabulary();
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
   const { data: enrollments } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
@@ -227,6 +226,8 @@ export function TurmaDetailView({ id }: { id: string }) {
     );
     return track.enabled && track.levels.length > 0 ? track : null;
   }, [turma, categories]);
+  // Palavras da modalidade da turma (Faixa ou Nivel), nao da area.
+  const vocabulary = useModalityVocabulary(modalityTrack);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;

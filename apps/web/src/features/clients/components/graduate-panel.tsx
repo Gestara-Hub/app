@@ -241,7 +241,8 @@ export function GraduatePanel({
   onConfirm: (result: GraduateResult) => void;
 }) {
   const isBelt = trackStyle === "belt";
-  const levelWord = isBelt ? "faixa" : vocabulary.level === "Faixa" ? "nível" : vocabulary.level.toLowerCase();
+  // `vocabulary` ja e o da trilha (faixa no estilo faixa, nivel/modulo/fase nas demais).
+  const levelWord = vocabulary.level.toLowerCase();
   const usesAges = trackUsesAges(track);
   const [date, setDate] = useState(todayISO());
   const age = ageAt(birthDate, date || todayISO());
@@ -315,7 +316,7 @@ export function GraduatePanel({
             selected={choice === "level"}
             onSelect={() => setChoice("level")}
             trackStyle={trackStyle}
-            title={isBelt ? "Trocar de faixa" : `Avançar de ${levelWord}`}
+            title={isBelt ? `Trocar de ${levelWord}` : `Avançar de ${levelWord}`}
             level={nextLevel}
             sub={0}
             tag={!canGetDegree || suggestedChoice === "level" ? "Sugerido" : undefined}
@@ -341,7 +342,7 @@ export function GraduatePanel({
         <div className="grid gap-3 rounded-xl border border-border/60 bg-background p-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label htmlFor="graduate-other-level" className="text-sm font-medium text-foreground">
-              {isBelt ? "Faixa" : vocabulary.level}
+              {vocabulary.level}
             </label>
             <LevelSelect
               id="graduate-other-level"

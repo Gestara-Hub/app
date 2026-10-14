@@ -4,7 +4,12 @@ import type {
   ModalityProgressionTrack,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
-import { PROGRESSION_TEMPLATES, inferDefaultTrackForModalityName } from "./progression-tracks";
+import {
+  PROGRESSION_TEMPLATES,
+  inferDefaultTrackForModalityName,
+  resolveModalityTrack,
+  resolveTrackStyle,
+} from "./progression-tracks";
 
 /**
  * Palavras que mudam conforme a area. Lutas fala em faixa e graduacao; as
@@ -120,9 +125,14 @@ const GRADUATION = {
   date: "Data da graduação",
 };
 
-const BELT_VOCABULARY = vocabulary("Faixa", "Faixas", "f", GRADUATION);
-const LEVEL_VOCABULARY = vocabulary("Nível", "Níveis", "m", ADVANCE);
-const MODULE_VOCABULARY = vocabulary("Módulo", "Módulos", "m", ADVANCE);
+/**
+ * Vocabularios prontos, um objeto por tipo de trilha: referencia estavel (o
+ * mesmo objeto sempre), para dependencias do React nao mudarem a cada render.
+ */
+export const BELT_VOCABULARY = vocabulary("Faixa", "Faixas", "f", GRADUATION);
+export const LEVEL_VOCABULARY = vocabulary("Nível", "Níveis", "m", ADVANCE);
+export const MODULE_VOCABULARY = vocabulary("Módulo", "Módulos", "m", ADVANCE);
+export const STAGE_VOCABULARY = vocabulary("Fase", "Fases", "f", ADVANCE);
 
 /** Ordem das chaves = ordem no setup, na landing page e em Configuracoes. */
 export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSegmentPreset> = {
@@ -194,7 +204,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     progressionTemplate: "swim_stages",
     trackTemplates: ["swim_stages", "general_levels", "blank"],
     classDefaults: { durationMinutes: 45, capacity: 8 },
-    vocabulary: vocabulary("Fase", "Fases", "f", ADVANCE),
+    vocabulary: STAGE_VOCABULARY,
   },
   gastronomy: {
     id: "gastronomy",
@@ -348,4 +358,62 @@ export function segmentDefaultTrack(
       enabled: false,
     }
   );
+}
+
+/**
+ * Palavras da trilha de UMA modalidade: o estilo faixa fala em faixa e
+ * graduacao; fases (natacao), modulos e as demais trilhas de niveis falam em
+ * avancar. Sem trilha (ou desligada, ou sem etapas) vale `fallback`, que e o
+ * vocabulario da area. Devolve sempre o mesmo objeto para a mesma entrada.
+ */
+export function vocabularyForTrack(
+  track: ModalityProgressionTrack | undefined,
+  fallback: SegmentVocabulary,
+): SegmentVocabulary {
+  if (!track || !track.enabled || track.levels.length === 0) return fallback;
+  if (resolveTrackStyle(track) === "belt") return BELT_VOCABULARY;
+  if (track.templateKey === "swim_stages") return STAGE_VOCABULARY;
+  if (track.templateKey === "modules") return MODULE_VOCABULARY;
+  return LEVEL_VOCABULARY;
+}
+
+/** Modalidade (ou a trilha dela) de onde sai o vocabulario. */
+export type ModalityVocabularySource =
+  | { name?: string; progressionTrack?: ModalityProgressionTrack }
+  | ModalityProgressionTrack;
+
+function isTrack(source: ModalityVocabularySource): source is ModalityProgressionTrack {
+  return Array.isArray((source as ModalityProgressionTrack).levels);
+}
+
+/**
+ * `vocabularyForTrack` a partir da modalidade (trilha salva ou inferida pelo
+ * nome) ou da propria trilha. Sem modalidade = `fallback`.
+ */
+export function vocabularyForModality(
+  source: ModalityVocabularySource | null | undefined,
+  fallback: SegmentVocabulary,
+): SegmentVocabulary {
+  if (!source) return fallback;
+  return vocabularyForTrack(isTrack(source) ? source : resolveModalityTrack(source), fallback);
+}
+
+/**
+ * Vocabulario de uma lista de modalidades (titulo de bloco, menu do aluno):
+ * o delas quando todas as que tem trilha falam igual, senao `fallback` (a area).
+ * Modalidade sem trilha ligada nao conta.
+ */
+export function sharedVocabularyFor(
+  sources: readonly (ModalityVocabularySource | null | undefined)[],
+  fallback: SegmentVocabulary,
+): SegmentVocabulary {
+  let shared: SegmentVocabulary | undefined;
+  for (const source of sources) {
+    const track = !source ? undefined : isTrack(source) ? source : resolveModalityTrack(source);
+    if (!track || !track.enabled || track.levels.length === 0) continue;
+    const current = vocabularyForTrack(track, fallback);
+    if (shared && shared !== current) return fallback;
+    shared = current;
+  }
+  return shared ?? fallback;
 }

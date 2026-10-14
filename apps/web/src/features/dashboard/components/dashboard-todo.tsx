@@ -10,6 +10,7 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { cn } from "@/lib/utils";
 import { StudentGraduationDialog } from "@/features/clients";
 import { useMessageLogs, useWhatsAppSend } from "@/features/communication";
@@ -159,7 +160,7 @@ export function DashboardTodo({
   overdueCount: number;
   overdueCents: number;
 }) {
-  const vocabulary = useSegmentVocabulary();
+  const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
   const { data: streaks = [] } = useAbsenceStreaks();
   const { data: absenceLogs = [] } = useMessageLogs({ trigger: "absence_alert" });
@@ -171,7 +172,12 @@ export function DashboardTodo({
   const birthdaysToday = birthdays.filter((b) => b.isToday);
   const lastAbsenceMessage = lastMessageDay(absenceLogs);
   const lastGreeting = lastMessageDay(greetingLogs);
-  const levelWord = vocabulary.level.toLowerCase();
+  // Titulo do bloco: a palavra das modalidades listadas quando todas falam
+  // igual, senao a da area. O botao de cada aluno segue a modalidade dele.
+  const levelWord = sharedVocabularyFor(
+    levelPending.map((p) => p.track),
+    areaVocabulary,
+  ).level.toLowerCase();
   const count =
     (overdueCount > 0 ? 1 : 0) +
     (streaks.length > 0 ? 1 : 0) +
@@ -288,7 +294,7 @@ export function DashboardTodo({
                       className="h-7 shrink-0 text-xs"
                       onClick={() => setGraduating({ client: p.client, modalityId: p.modalityId })}
                     >
-                      {vocabulary.promoteVerb}
+                      {vocabularyForTrack(p.track, areaVocabulary).promoteVerb}
                     </Button>
                   </StudentLine>
                 ))}

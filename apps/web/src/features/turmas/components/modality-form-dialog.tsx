@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Category } from "@gestarahub/contracts";
-import { useSegmentVocabulary } from "@/features/settings";
+import { useModalityVocabulary } from "@/features/settings";
 import { ModalityForm } from "./modality-form";
 
 interface ModalityFormDialogProps {
@@ -23,7 +23,8 @@ export function ModalityFormDialog({
   modality,
 }: ModalityFormDialogProps) {
   const isEdit = Boolean(modality);
-  const vocabulary = useSegmentVocabulary();
+  // Editar: palavras da trilha da modalidade; nova: as da area.
+  const vocabulary = useModalityVocabulary(modality);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

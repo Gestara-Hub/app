@@ -52,7 +52,7 @@ import type {
   ProgressionLevelStep,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
-import { segmentDefaultTrack } from "@/lib/business-segment-presets";
+import { segmentDefaultTrack, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCreateCategory, useUpdateCategory } from "@/features/categories";
 import { useBusinessSegment } from "@/features/settings";
@@ -123,7 +123,6 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
   const updateMut = useUpdateCategory();
   const pending = createMut.isPending || updateMut.isPending;
   const segment = useBusinessSegment();
-  const { vocabulary } = segment;
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
 
   const [showLevelsEditor, setShowLevelsEditor] = useState(false);
@@ -174,8 +173,10 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
   // Estilo vem da trilha (faixa nas lutas, nivel nas demais), nao da area.
   const trackStyle = resolveTrackStyle(track);
   const isBelt = trackStyle === "belt";
-  // "Faixa" so no estilo faixa; numa trilha de niveis de uma academia de luta
-  // (ex.: Yoga) a palavra vira "Nível".
+  // Palavras da trilha em edicao (desligada ou vazia = as da area).
+  const vocabulary = vocabularyForTrack(track, segment.vocabulary);
+  // "Faixa" so no estilo faixa: trilha ainda vazia cai na area, e numa academia
+  // de luta com trilha de niveis (ex.: Yoga) a palavra vira "Nível".
   const levelWord = isBelt ? "Faixa" : vocabulary.level === "Faixa" ? "Nível" : vocabulary.level;
   const levelPluralWord = isBelt
     ? "Faixas"

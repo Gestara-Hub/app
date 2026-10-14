@@ -63,7 +63,8 @@ export function StartingPointPanel({
   onSave: (result: StartingPointResult) => void;
 }) {
   const isBelt = trackStyle === "belt";
-  const levelLabel = isBelt ? "Faixa" : vocabulary.level === "Faixa" ? "Nível" : vocabulary.level;
+  // `vocabulary` ja e o da trilha (faixa no estilo faixa, nivel/modulo/fase nas demais).
+  const levelLabel = vocabulary.level;
   const levelLower = levelLabel.toLowerCase();
   const usesAges = trackUsesAges(track);
 

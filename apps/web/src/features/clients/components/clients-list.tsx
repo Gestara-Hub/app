@@ -11,6 +11,7 @@ import {
   Phone,
   Power,
   PowerOff,
+  Receipt,
   RotateCw,
   Users,
   Wallet,
@@ -40,6 +41,7 @@ import {
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { sharedVocabularyFor } from "@/lib/business-segment-presets";
 import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
@@ -85,6 +87,18 @@ function getEffectivePriceCents(client: Client, plan: Plan): number {
     }
   }
   return price;
+}
+
+/**
+ * Palavras das modalidades do aluno (menu "Graduação"/"Níveis"): as delas
+ * quando todas falam igual; aluno em modalidades mistas fica com as da area.
+ */
+function useClientVocabulary(client: Client, categoryById: Map<string, Category>) {
+  const area = useSegmentVocabulary();
+  return sharedVocabularyFor(
+    Object.keys(client.progressions ?? {}).map((id) => categoryById.get(id)),
+    area,
+  );
 }
 
 function ClientProgressionBadges({
@@ -274,6 +288,8 @@ interface ClientsListProps {
   onEdit: (client: Client) => void;
   onOpenGraduation?: (client: Client) => void;
   onOpenRecords?: (client: Client) => void;
+  /** Nova cobranca avulsa (so com permissao de cobranca). */
+  onNewCharge?: (client: Client) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
 }
@@ -287,6 +303,7 @@ function ClientRow({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onNewCharge,
   onInactivate,
   onReactivate,
 }: {
@@ -298,10 +315,11 @@ function ClientRow({
   onEdit: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
+  onNewCharge?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
-  const vocabulary = useSegmentVocabulary();
+  const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -323,6 +341,16 @@ function ClientRow({
                 label: vocabulary.levelsTitle,
                 icon: <GraduationCap className="size-4" />,
                 onSelect: () => onOpenGraduation(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onNewCharge && isActive
+          ? [
+              {
+                key: "new-charge",
+                label: "Nova cobrança",
+                icon: <Receipt className="size-4" />,
+                onSelect: () => onNewCharge(client),
               },
             ]
           : []),
@@ -443,6 +471,7 @@ function ClientCard({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onNewCharge,
   onInactivate,
   onReactivate,
 }: {
@@ -454,10 +483,11 @@ function ClientCard({
   onEdit: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
+  onNewCharge?: (c: Client) => void;
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
-  const vocabulary = useSegmentVocabulary();
+  const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -479,6 +509,16 @@ function ClientCard({
                 label: vocabulary.levelsTitle,
                 icon: <GraduationCap className="size-4" />,
                 onSelect: () => onOpenGraduation(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onNewCharge && isActive
+          ? [
+              {
+                key: "new-charge",
+                label: "Nova cobrança",
+                icon: <Receipt className="size-4" />,
+                onSelect: () => onNewCharge(client),
               },
             ]
           : []),
@@ -681,6 +721,7 @@ export function ClientsList({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onNewCharge,
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
@@ -781,6 +822,7 @@ export function ClientsList({
         onEdit={onEdit}
         onOpenGraduation={onOpenGraduation}
         onOpenRecords={onOpenRecords}
+        onNewCharge={onNewCharge}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
       />
@@ -852,6 +894,7 @@ export function ClientsList({
               onEdit={onEdit}
               onOpenGraduation={onOpenGraduation}
               onOpenRecords={onOpenRecords}
+              onNewCharge={onNewCharge}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
             />

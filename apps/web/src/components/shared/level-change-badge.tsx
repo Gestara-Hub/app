@@ -7,7 +7,7 @@ import { ageAt, isAgedOutOfLevel, levelAgeLabel } from "@/lib/progression-tracks
 
 /**
  * "Trocar faixa": o aluno passou da idade do nivel atual (ex.: fez 16 anos na
- * Verde, que vai ate 15). `levelWord` vem do vocabulario da area.
+ * Verde, que vai ate 15). `levelWord` vem do vocabulario da modalidade.
  */
 export function LevelChangeBadge({
   level,

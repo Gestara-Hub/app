@@ -37,7 +37,7 @@ import {
   trackUsesAges,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
-import { useSegmentVocabulary } from "@/features/settings";
+import { useModalityVocabulary } from "@/features/settings";
 import { usePromoteStudent, useSaveModalityProgression } from "../hooks/use-clients";
 import { GraduatePanel, type GraduateResult } from "./graduate-panel";
 import { ModalityPicker, levelOf, monthsSince, useStudentModalities } from "./progression-ui";
@@ -323,7 +323,6 @@ function GraduationContent({
   client: Client;
   initialModalityId?: string;
 }) {
-  const vocabulary = useSegmentVocabulary();
   const { isPending, items, active, select } = useStudentModalities(client.id, initialModalityId);
   const saveMut = useSaveModalityProgression();
   const promoteMut = usePromoteStudent();
@@ -331,6 +330,8 @@ function GraduationContent({
 
   const track = active ? resolveModalityTrack(active.modality) : null;
   const style = resolveTrackStyle(track ?? undefined);
+  // Palavras da modalidade aberta (Faixa/Graduar ou Nivel/Avancar), nao da area.
+  const vocabulary = useModalityVocabulary(track);
   const progression = active?.progression;
   const age = ageAt(client.birthDate, todayISO());
   const currentLevel = track ? levelOf(track, progression, age) : undefined;

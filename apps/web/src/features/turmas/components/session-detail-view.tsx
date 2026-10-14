@@ -51,7 +51,7 @@ import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { Combobox } from "@/components/shared/combobox";
 import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
-import { useSegmentVocabulary } from "@/features/settings";
+import { useModalityVocabulary } from "@/features/settings";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import {
@@ -118,7 +118,6 @@ const STATUSES: {
 ];
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
-  const vocabulary = useSegmentVocabulary();
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
@@ -177,6 +176,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       ? { track, modalityId: cat?.id ?? turma?.modalityId ?? "" }
       : null;
   }, [turma, categories, session?.modalityName]);
+  // Palavras da modalidade da aula (Faixa ou Nivel), nao da area.
+  const vocabulary = useModalityVocabulary(modalityTrack?.track);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;

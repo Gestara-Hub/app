@@ -7,9 +7,12 @@ import {
   segmentDefaultTrack,
   segmentProgressionSummary,
   segmentTrackForModality,
+  sharedVocabularyFor,
+  vocabularyForModality,
+  vocabularyForTrack,
 } from "@/lib/business-segment-presets";
 import { PROGRESSION_TEMPLATES } from "@/lib/progression-tracks";
-import type { ClassesBusinessSegment } from "@gestarahub/contracts";
+import type { ClassesBusinessSegment, ModalityProgressionTrack } from "@gestarahub/contracts";
 
 const presets = CLASSES_SEGMENT_PRESETS;
 
@@ -255,5 +258,91 @@ describe("segmentProgressionSummary", () => {
   it("Outra área segue a escolha", () => {
     expect(segmentProgressionSummary(getSegmentPreset("custom", "belts"))).toBe("faixas e graus");
     expect(segmentProgressionSummary(getSegmentPreset("custom", "none"))).toBeNull();
+  });
+});
+
+describe("vocabularyForTrack: palavras seguem a trilha da modalidade", () => {
+  const martial = presets.martial_arts.vocabulary;
+  const pilates = presets.pilates_yoga.vocabulary;
+  const track = (key: keyof typeof PROGRESSION_TEMPLATES): ModalityProgressionTrack =>
+    structuredClone(PROGRESSION_TEMPLATES[key].track);
+
+  it("modelo de faixa fala em faixa e graduacao, mesmo numa area de niveis", () => {
+    const v = vocabularyForTrack(track("muay_thai"), pilates);
+    expect(v.level).toBe("Faixa");
+    expect(v.currentLevel).toBe("Faixa atual");
+    expect(v.promoteVerb).toBe("Graduar");
+    expect(v.levelsTitle).toBe("Graduação");
+    expect(v).toBe(martial);
+  });
+
+  it("trilha personalizada com estilo faixa tambem fala em faixa", () => {
+    const custom: ModalityProgressionTrack = {
+      enabled: true,
+      style: "belt",
+      templateKey: "custom",
+      criteriaType: "attendance",
+      levels: [{ id: "a", name: "Corda Crua", maxSubLevels: 0 }],
+    };
+    expect(vocabularyForTrack(custom, pilates).level).toBe("Faixa");
+    // Sem estilo salvo: os nomes decidem (Faixa Branca = faixa).
+    const legacy = { ...custom, style: undefined, levels: [{ id: "b", name: "Faixa Branca", maxSubLevels: 0 }] };
+    expect(vocabularyForTrack(legacy, pilates).promoteVerb).toBe("Graduar");
+  });
+
+  it("fases da natacao: feminino e avancar", () => {
+    const v = vocabularyForTrack(track("swim_stages"), martial);
+    expect(v.level).toBe("Fase");
+    expect(v.newLevel).toBe("Nova fase");
+    expect(v.promoteVerb).toBe("Avançar");
+    expect(v).toBe(presets.swimming_sports.vocabulary);
+  });
+
+  it("modulos", () => {
+    const v = vocabularyForTrack(track("modules"), martial);
+    expect(v.level).toBe("Módulo");
+    expect(v.newLevel).toBe("Novo módulo");
+    expect(v.promoteVerb).toBe("Avançar");
+  });
+
+  it("niveis gerais, idiomas e demais trilhas de niveis falam em nivel", () => {
+    for (const key of ["general_levels", "language_cefr", "functional_categories"] as const) {
+      const v = vocabularyForTrack(track(key), martial);
+      expect(v.level).toBe("Nível");
+      expect(v.currentLevel).toBe("Nível atual");
+      expect(v.promoteVerb).toBe("Avançar");
+      expect(v.levelsTitle).toBe("Níveis");
+    }
+  });
+
+  it("sem trilha, desligada ou sem etapas = palavras da area", () => {
+    expect(vocabularyForTrack(undefined, martial)).toBe(martial);
+    expect(vocabularyForTrack({ ...track("general_levels"), enabled: false }, martial)).toBe(martial);
+    expect(vocabularyForTrack({ ...track("bjj_adult"), levels: [] }, pilates)).toBe(pilates);
+  });
+
+  it("referencia estavel para a mesma entrada", () => {
+    expect(vocabularyForTrack(track("general_levels"), martial)).toBe(
+      vocabularyForTrack(track("general_levels"), martial),
+    );
+    expect(vocabularyForTrack(track("bjj_adult"), pilates)).toBe(vocabularyForTrack(track("judo_karate"), pilates));
+  });
+
+  it("pela modalidade: trilha salva, inferida pelo nome ou nenhuma", () => {
+    expect(vocabularyForModality({ name: "Pilates", progressionTrack: track("general_levels") }, martial).level).toBe(
+      "Nível",
+    );
+    expect(vocabularyForModality({ name: "Jiu-Jitsu" }, pilates).level).toBe("Faixa");
+    expect(vocabularyForModality({ name: "Yoga" }, martial)).toBe(martial);
+    expect(vocabularyForModality(undefined, pilates)).toBe(pilates);
+    expect(vocabularyForModality(track("modules"), martial).level).toBe("Módulo");
+  });
+
+  it("lista: a palavra comum quando todas falam igual, senao a area", () => {
+    expect(sharedVocabularyFor([track("general_levels"), track("language_cefr")], martial).level).toBe("Nível");
+    expect(sharedVocabularyFor([track("general_levels"), track("bjj_adult")], pilates)).toBe(pilates);
+    expect(sharedVocabularyFor([], pilates)).toBe(pilates);
+    // Modalidade sem trilha nao conta.
+    expect(sharedVocabularyFor([{ name: "Yoga" }, track("muay_thai")], pilates).level).toBe("Faixa");
   });
 });

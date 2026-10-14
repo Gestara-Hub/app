@@ -14,7 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useSegmentVocabulary } from "@/features/settings";
+import { useCategories } from "@/features/categories";
+import { useModalityVocabulary, useSegmentVocabulary } from "@/features/settings";
 
 interface ReportDocumentViewProps {
   report: GeneratedReportData;
@@ -22,8 +23,17 @@ interface ReportDocumentViewProps {
 }
 
 export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) {
-  const vocabulary = useSegmentVocabulary();
   const { header } = report.data;
+  // Lista de chamada e de uma turma: a coluna segue a modalidade dela (Faixa
+  // ou Nivel). A relacao de alunos mistura modalidades: fica a palavra da area.
+  const vocabulary = useSegmentVocabulary();
+  const { data: categories } = useCategories();
+  const sheetModalityName = report.type === "attendance_sheet" ? report.data.modalityName : undefined;
+  const sheetVocabulary = useModalityVocabulary(
+    sheetModalityName === undefined
+      ? undefined
+      : ((categories ?? []).find((c) => c.name === sheetModalityName) ?? { name: sheetModalityName }),
+  );
 
   const handlePrint = () => {
     window.print();
@@ -37,7 +47,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
         csvContent += `Turma;${report.data.className}\n`;
         csvContent += `Modalidade;${report.data.modalityName}\n`;
         csvContent += `Data;${report.data.sessionDate}\n\n`;
-        csvContent += `Aluno;${vocabulary.level};Presença;Check-in\n`;
+        csvContent += `Aluno;${sheetVocabulary.level};Presença;Check-in\n`;
         report.data.rows.forEach((r) => {
           csvContent += `"${r.studentName}";"${r.belt || ""}";"${r.status === "present" ? "Presente" : "Ausente"}";"${r.checkInTime || ""}"\n`;
         });
@@ -200,7 +210,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                   <tr>
                     <th className="py-2.5 px-3 w-10 text-center">#</th>
                     <th className="py-2.5 px-3">Nome do Aluno</th>
-                    <th className="py-2.5 px-3">{vocabulary.level}</th>
+                    <th className="py-2.5 px-3">{sheetVocabulary.level}</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                     <th className="py-2.5 px-3 text-center">Check-in</th>
                     <th className="py-2.5 px-3 w-40 text-center">Rubrica / Assinatura</th>

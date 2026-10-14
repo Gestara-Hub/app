@@ -7,7 +7,9 @@ import {
 } from "@tanstack/react-query";
 import {
   getSegmentPreset,
+  vocabularyForModality,
   type BusinessSegmentPreset,
+  type ModalityVocabularySource,
   type SegmentVocabulary,
 } from "@/lib/business-segment-presets";
 import { queryKeys } from "@/lib/queryKeys";
@@ -37,6 +39,18 @@ export function useBusinessSegment(): BusinessSegmentPreset {
 /** Atalho para as palavras da area ("Faixa" ou "Nível", "Graduar" ou "Avançar"). */
 export function useSegmentVocabulary(): SegmentVocabulary {
   return useBusinessSegment().vocabulary;
+}
+
+/**
+ * Palavras da trilha de UMA modalidade (Faixa/Graduar no estilo faixa;
+ * Nivel, Modulo ou Fase + Avancar nas demais). Sem modalidade, ou trilha
+ * desligada, cai nas palavras da area. Use sempre que houver uma modalidade
+ * em contexto; textos sem modalidade seguem `useSegmentVocabulary`.
+ */
+export function useModalityVocabulary(
+  modality?: ModalityVocabularySource | null,
+): SegmentVocabulary {
+  return vocabularyForModality(modality, useSegmentVocabulary());
 }
 
 export function useUnit() {
