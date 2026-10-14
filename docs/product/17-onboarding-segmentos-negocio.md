@@ -4,6 +4,8 @@
 > **Data:** 26/09/2026
 >
 > **O que mudou (11/10/2026):** a área é um valor único (`Organization.classSegment`), não uma lista (`businessSegments`); as chaves foram renomeadas (`pilates_yoga`, `music_languages`, `dance`, `functional_training`, `swimming_sports`). Seleção múltipla e `getMergedSegmentPreset` não foram adotados.
+>
+> **O que mudou (14/10/2026):** 10 áreas + "Outra área": `martial_arts`, `pilates_yoga`, `functional_training`, `dance`, `music`, `languages`, `swimming_sports`, `gastronomy`, `arts_crafts`, `beauty_courses` e `custom`. `music_languages` foi dividida em `music` e `languages` (migração v32). A "Outra área" grava `customSegmentProgression` (faixas, níveis, módulos ou sem etapas). Detalhes no doc 08, seções 4.3 e 4.5.
 
 ---
 

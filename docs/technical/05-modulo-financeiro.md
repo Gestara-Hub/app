@@ -413,7 +413,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 
 ## 11. Critérios de aceite
 
-1. Com o plano Grátis, "Financeiro" aparece com cadeado e a rota mostra o upsell; com Pro, abre. As mutations recusam sem o recurso.
+1. O Financeiro básico (lançamentos, recorrências, pagamento dos professores) funciona no plano Grátis. Só o pagamento online e o Pix Automático pedem o Pro, e as mutations deles recusam sem o recurso.
 2. Atendente e Professor não veem o Financeiro; Proprietário e Gerente veem e operam. Só o Proprietário troca o plano.
 3. O Resumo de um mês bate com a soma de: cobranças pagas no mês + entradas manuais pagas − despesas pagas − pagamentos de professores pagos.
 4. Uma despesa mensal recorrente aparece no mês atual e no seguinte sem duplicar, mesmo lendo a tela várias vezes.
@@ -427,8 +427,8 @@ Registrar com nível de detalhe igual ao das cobranças:
 ## 12. Testes
 
 - **core (`node --test`):** `computeTeacherPayout` para cada tipo de parte e combinações, `attributeMembershipsToTeachers` (divisão igual, arredondamento), `summarizeCashFlow`.
-- **services (Vitest):** idempotência da recorrência; bloqueio sem plano (`FEATURE_NOT_IN_PLAN`); fechamento congelando o valor; substituto contando a aula; cobrança online e Pix Automático marcando a cobrança paga; pagar manual cancelando o online em aberto.
-- **e2e (Playwright):** upsell no Grátis e troca para Pro; lançar despesa recorrente e ver no Resumo; configurar professor e fechar e pagar o mês; cobrar online e simular pagamento a partir de Mensalidades.
+- **services (Vitest):** idempotência da recorrência; Financeiro básico liberado no Grátis e pagamento online recusado sem o Pro (`FEATURE_NOT_IN_PLAN`); fechamento congelando o valor; substituto contando a aula; cobrança online e Pix Automático marcando a cobrança paga; pagar manual cancelando o online em aberto; cobrança já paga não aceita novo pagamento; fechar o mês sem mandar ajustes usa os ajustes salvos. Arquivos: `apps/web/src/services/__tests__/finance.test.ts`, `teacher-pay.test.ts`, `online-payments.test.ts`.
+- **e2e (Playwright):** upsell do pagamento online no Grátis e troca para Pro; lançar despesa recorrente e ver no Resumo; configurar professor e fechar e pagar o mês; cobrar online e simular pagamento a partir de Mensalidades.
 
 ## 13. Decisões para validar
 

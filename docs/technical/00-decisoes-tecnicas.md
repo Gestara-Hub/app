@@ -14,6 +14,7 @@ Decisoes registradas em documentos proprios (ADRs). Onde contradizem este docume
 - [`02-motor-de-cobranca.md`](02-motor-de-cobranca.md) — motor de cobranca unico em `packages/core/src/billing.ts`.
 - [`03-multi-tenant-e-escopo.md`](03-multi-tenant-e-escopo.md) — mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor, sessao.
 - [`04-estrategia-de-testes.md`](04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
+- [`08-backend-supabase.md`](08-backend-supabase.md) — backend no Supabase (banco, login, Edge Functions com Hono, Cron, Storage), menor custo por fase; frontend segue na Vercel por enquanto.
 - [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md) — regras de produto das mensalidades.
 - [`../frontend/06-decisoes-de-interface.md`](../frontend/06-decisoes-de-interface.md) — confirmacoes, tema com sidebar escura, agenda feita a mao, mobile.
 
@@ -157,17 +158,23 @@ type ChargeKind = "membership" | "dropin";
 type ClassesBusinessSegment =
   | "martial_arts"
   | "pilates_yoga"
-  | "music_languages"
-  | "dance"
   | "functional_training"
+  | "dance"
+  | "music"
+  | "languages"
   | "swimming_sports"
+  | "gastronomy"
+  | "arts_crafts"
+  | "beauty_courses"
   | "custom";
+// So na area custom (Organization.customSegmentProgression). Ausente = none.
+type CustomSegmentProgression = "belts" | "levels" | "modules" | "none";
 // Categoria de servico/modalidade e a entidade Category (categoryId), nao um enum.
 ```
 
 ### Area do negocio (segmento) no Modelo 3
 
-- A area e uma chave fechada (`Organization.classSegment`), nunca texto. `Organization.segment` (texto) e so rotulo de exibicao; no Personalizado, o nome digitado fica em `Organization.customSegmentName`.
+- A area e uma chave fechada (`Organization.classSegment`), nunca texto. `Organization.segment` (texto) e so rotulo de exibicao; na "Outra área" (`custom`), o nome digitado fica em `Organization.customSegmentName` e a forma de avanço em `Organization.customSegmentProgression` (o preset efetivo vem de `getSegmentPreset(classSegment, customSegmentProgression)`).
 - A area so define padroes e vocabulario, nunca liga ou desliga recursos. O perfil de cada area fica em `apps/web/src/lib/business-segment-presets.ts`: trilha padrao das modalidades, duracao e vagas de nova turma, palavras das telas (faixa, nivel, modulo ou fase) e o tom dos modelos de mensagem. Detalhe em `docs/frontend/08-decisoes-landing-page-e-onboarding.md`, secao 4.5.
 
 ## Testes
@@ -185,9 +192,11 @@ O detalhamento desta camada (estrutura de services, store, seed, simulacao de la
 
 ## Backend (fase 3)
 
-- O backend sera **NestJS**, construido do zero na fase 3 num `apps/api` dedicado (monorepo), sem reaproveitar nada do projeto antigo (`gestarahub-api`).
-- A camada de servico mockada do frontend ja imita o contrato da futura API NestJS: na fase 3, troca-se apenas a implementacao dos services (de store em memoria para `fetch` ao NestJS), mantendo assinaturas e tipos. Os contratos (`packages/contracts`) e a logica pura (`packages/core`, incluindo o motor de cobranca) ja estao em `packages/` para serem compartilhados com `apps/api`.
+- **Decidido em 14/10/2026: backend no Supabase**, ver [`08-backend-supabase.md`](08-backend-supabase.md). Banco Postgres com RLS, Supabase Auth, regras de negocio em Edge Functions (serverless) com Hono, tarefas no Supabase Cron e comprovantes no Supabase Storage. Substitui o NestJS e a direcao "funcoes da Vercel" registrados abaixo. Vao existir apps em React Native para aluno e professor.
+- A camada de servico mockada do frontend ja imita o contrato da API: na fase 3, troca-se apenas a implementacao dos services (de store em memoria para Supabase e Edge Functions), mantendo assinaturas e tipos. Os contratos (`packages/contracts`) e a logica pura (`packages/core`, incluindo o motor de cobranca) ja estao em `packages/` para serem compartilhados com `apps/api`.
 - Ate la, nenhum endpoint real e usado; a persistencia e mockada (localStorage no cliente) e a autenticacao tambem (cookie de sessao mockado).
+- **WhatsApp (13/10/2026):** sempre com o numero do proprio espaco; envio assistido (`wa.me`) no plano gratuito e API oficial da Meta no Pro, que funciona por avisos (webhooks). A sessao por QR code simulada hoje no mock foi descartada e nao deve ser implementada. Nada na comunicacao exige servidor sempre ligado. Ver `docs/product/13-modelo-de-negocio.md`, secao 5.
+- **Hospedagem (13/10/2026, substituida pelo 08 em 14/10/2026): direcao Vercel.** O frontend ja roda no Vercel e o backend deve usar funcoes serverless do mesmo provedor. NestJS foi a escolha inicial e pesa em funcoes serverless (partida a frio); a escolha do framework (sugestao: Hono, que roda em qualquer lugar) sera fechada e registrada aqui no inicio da fase 3, junto com o banco (Postgres gerenciado com intermediario de conexoes), armazenamento de arquivos privado (comprovantes) e o agendador para as tarefas que hoje rodam na leitura (mensalidades, lancamentos recorrentes, parabens automatico). Ainda em aberto: app do aluno no celular e orcamento mensal.
 
 ## Referencias
 
@@ -209,4 +218,5 @@ Produto:
 ## Pendencias
 
 - Resolvidas: pnpm fixado e workspaces criados; lint so com ESLint; aliases configurados; agenda feita a mao; docs de frontend 01–06 completos.
-- Abertas: backend NestJS (fase 3), escolha de banco, paginacao, multiunidade (Fase 5), armazenamento de arquivos (comprovantes de pagamento; ver `05-modulo-financeiro.md`, secao 10).
+- Resolvidas em 14/10/2026: banco, login, framework, armazenamento de arquivos e tarefas agendadas do backend (Supabase, ver `08-backend-supabase.md`).
+- Abertas: hospedagem definitiva do frontend web (Vercel Pro ou Cloudflare, antes do primeiro cliente real), integracao real do WhatsApp (`07-integracao-whatsapp.md`), provedor de pagamentos (`docs/product/19-levantamento-pagamentos.md`), paginacao, multiunidade (Fase 5).

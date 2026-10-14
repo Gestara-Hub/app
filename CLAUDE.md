@@ -12,7 +12,7 @@ GestaraHub is a modern multi-tenant management platform for service businesses, 
 ### 1.1. Contexto Estratégico & Decisões Recentes (LP & Setup Inicial)
 Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/frontend/08-decisoes-landing-page-e-onboarding.md)** para o histórico completo. Principais diretrizes ativas:
 - **Posicionamento**: Sistema 100% gratuito para quem ensina, com suporte nativo duplo: **aulas em grupo (turmas) OU aulas particulares individuais (1 a 1 / VIP)**.
-- **Segmentos**: Lutas, Pilates, Música, Idiomas, Dança, Boxes/Funcional, Natação e Personalizado.
+- **Áreas** (10 + "Outra área"): Lutas, Pilates e yoga, Funcional e crossfit, Dança, Música, Idiomas e reforço, Natação e esportes, Gastronomia, Artes e artesanato, Beleza e cursos livres. Fonte única: `lib/business-segment-presets.ts` (+ ícones em `lib/business-segment-icons.ts`).
 - **Controle de Progresso**: Trilha configurável (faixas, níveis, módulos ou fases), não restrita a artes marciais.
 - **Design & Copy (Crítico para o Usuário)**:
   - Zero poluição visual: layouts minimalistas, sem mockups carregados nem números falsos de marketing.
@@ -22,14 +22,14 @@ Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/front
   - Labels de formulário limpas (ex.: `Nome*` colado com tipografia inline, sem gap de flexbox).
 - **Landing Page (`features/landing`)**:
   - Antes vs. Depois com 3 dores reais (sem blocos redundantes de passos ou métricas).
-  - 6 cards minimalistas de modalidades (`LandingSegments`).
+  - 11 cards de áreas (`LandingSegments`): ícone, nome e exemplos, vindos dos presets.
   - 4 Pilares da gestão (`LandingFeatures`).
   - Efeito scroll fluido contínuo com `ScrollReveal` (`once: false`, aceleração GPU) + barra de progresso no topo.
 - **Setup Inicial (`/setup` & `BusinessSetupWizard`)**:
-  - Wizard em 3 passos com stepper espaçado (`1 Espaço → 2 Segmento → 3 Modalidades`).
-  - Passo 1: `Nome*` + `Unidade ou filial (opcional)`.
-  - Passo 2: 6 cards sem cortes de texto + card customizado com borda tracejada.
-  - Passo 3: Pílulas interativas unificadas com check `✓`, contador dinâmico e placeholder contextual para novas aulas.
+  - Wizard em 3 passos (`1 Espaço → 2 Área → 3 Modalidades`), com orientação embutida e sem tour.
+  - Passo 1: `Nome*` + dica, prévia ao vivo e "Tenho mais de um endereço" (unidade opcional).
+  - Passo 2: 10 cards compactos + "Outra área" (nome, chips, "Como seus alunos avançam?") e linha de confirmação.
+  - Passo 3: Pílulas interativas unificadas com check `✓` e contador dinâmico.
 
 ---
 

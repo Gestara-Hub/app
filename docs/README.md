@@ -22,6 +22,8 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 6. [product/15-regras-de-cobranca.md](product/15-regras-de-cobranca.md) — Regras de cobrança das mensalidades (antecipado/pós-pago, proporcional/mês cheio, vencimento). Substitui as regras de mensalidade do doc 11.
 7. [product/17-pitch-gestarahub.md](product/17-pitch-gestarahub.md) — Pitch de negócio (problema, solução, exemplos, modelo de receita e visão de marketplace de parceiros). Base para a apresentação.
 8. [product/18-pesquisa-dores-e-caminhos.md](product/18-pesquisa-dores-e-caminhos.md) — Pesquisa (com fontes) das dores de academias, salões e docerias e dos caminhos de expansão além do marketplace (pagamentos, WhatsApp, canal próprio de captação, crédito, app do aluno).
+9. [product/19-levantamento-pagamentos.md](product/19-levantamento-pagamentos.md) — Levantamento dos três fluxos de dinheiro (assinatura do GestaraHub, mensagens do WhatsApp, mensalidade online com split) e dos provedores a validar.
+10. [product/20-plano-novas-formas-de-cobranca.md](product/20-plano-novas-formas-de-cobranca.md) — Proposta: cobrança avulsa, curso fechado e pacote de aulas (fases A a D e decisões pendentes).
 7. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Histórico)* Plano original do wizard de 1º acesso e presets por segmento. A versão implementada está em `frontend/08`, seções 4.3 e 4.5.
 
 ---
@@ -35,6 +37,9 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/03-multi-tenant-e-escopo.md](technical/03-multi-tenant-e-escopo.md) — Mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor e sessão.
 - [technical/04-estrategia-de-testes.md](technical/04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
 - [technical/05-modulo-financeiro.md](technical/05-modulo-financeiro.md) — *(Em implementação)* Módulo Financeiro da academia: entradas e saídas, pagamento de professores, pagamento online simulado e plano GestaraHub (grátis/pro).
+- [technical/06-passagem-backend.md](technical/06-passagem-backend.md) — **Início da fase 3:** o que o mock faz e o servidor precisa assumir (tarefas agendadas, carimbos, arquivos, consultas), e ordem de construção das fatias.
+- [technical/07-integracao-whatsapp.md](technical/07-integracao-whatsapp.md) — Checklist da integração real com a API oficial do WhatsApp (conexão de cada espaço, modelos aprovados, avisos da Meta, consentimento, limites).
+- [technical/08-backend-supabase.md](technical/08-backend-supabase.md) — **Decisão do backend:** Supabase (banco, login, Edge Functions com Hono, Cron, Storage), custo por fase e o que validar na primeira fatia.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
