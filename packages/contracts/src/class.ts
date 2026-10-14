@@ -139,6 +139,21 @@ export interface ClassSessionView extends ClassSession {
   substitutionReason?: string;
 }
 
+/**
+ * Aluno com faltas seguidas nas turmas em que esta matriculado (painel:
+ * "Sentimos sua falta"). Presenca ou falta justificada encerram a sequencia.
+ */
+export interface AbsenceStreakView {
+  studentId: Id;
+  studentName: string;
+  phone?: string;
+  /** Faltas seguidas mais recentes. */
+  streak: number;
+  /** Data da primeira falta da sequencia. */
+  since: DateISO;
+  classGroupNames: string[];
+}
+
 /** Presenca — por (Sessao x Aluno). */
 export type AttendanceStatus = "present" | "absent" | "justified";
 

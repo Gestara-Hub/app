@@ -16,7 +16,16 @@ function clone<T>(value: T): T {
 }
 
 export type UpdateOrganization = Partial<
-  Pick<Organization, "name" | "segment" | "model" | "classSegment" | "customSegmentName" | "settings">
+  Pick<
+    Organization,
+    | "name"
+    | "segment"
+    | "model"
+    | "classSegment"
+    | "customSegmentName"
+    | "customSegmentProgression"
+    | "settings"
+  >
 >;
 export type UpdateUnit = Partial<{
   name: string;

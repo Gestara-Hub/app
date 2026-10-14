@@ -91,6 +91,8 @@ export const queryKeys = {
     waitlist: (classGroupId: Id) => ["classes", "waitlist", classGroupId] as const,
     attendanceSummary: (date: DateISO) =>
       ["classes", "attendanceSummary", date] as const,
+    absenceStreaks: ["classes", "absenceStreaks"] as const,
+    enrolledModalities: ["classes", "enrolledModalities"] as const,
   },
   billing: {
     all: ["billing"] as const,

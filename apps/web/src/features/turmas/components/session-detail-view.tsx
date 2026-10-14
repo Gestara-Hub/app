@@ -49,7 +49,7 @@ import {
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { Combobox } from "@/components/shared/combobox";
-import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useSegmentVocabulary } from "@/features/settings";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -519,10 +519,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   ? student.progressions?.[modalityTrack.modalityId]
                   : undefined;
               const currentLvl = modalityTrack
-                ? (modalityTrack.track.levels.find(
-                    (l) =>
-                      l.id === prog?.levelId || l.name === prog?.levelName,
-                  ) ?? modalityTrack.track.levels[0])
+                ? (currentLevelOf(modalityTrack.track, prog, ageAt(student?.birthDate, session.date)) ?? null)
                 : null;
               const currentSub = prog?.subLevel ?? 0;
               // "Para a próxima aula" do registro anterior vira o lembrete de hoje.

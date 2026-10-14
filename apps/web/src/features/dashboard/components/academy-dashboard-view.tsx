@@ -5,7 +5,6 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowUpRight,
   CalendarCheck,
@@ -25,7 +24,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ScrollCueArea } from "@/components/shared/scroll-cue-area";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
-import { formatCents, plural, pluralWord } from "@gestarahub/core/format";
+import { formatCents, plural } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
 import {
   useAttendanceSummary,
@@ -36,7 +35,7 @@ import {
 import { Onboarding } from "@/features/onboarding";
 import { useCurrentUser } from "@/features/auth";
 import { BirthdaysCard } from "./birthdays-card";
-import { LevelChangeAlert } from "./level-change-alert";
+import { DashboardTodo } from "./dashboard-todo";
 
 function Kpi({
   icon,
@@ -245,43 +244,6 @@ function DashboardKpis({ d }: { d: DashboardData }) {
         }
         hint={d.revenueHint}
       />
-    </div>
-  );
-}
-
-function OverdueAlert({ d }: { d: DashboardData }) {
-  if (d.overdueCharges.length === 0) return null;
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 sm:px-4 sm:py-3 text-destructive">
-      <div className="flex items-center gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
-          <AlertCircle className="size-4" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">
-            Atenção:{" "}
-            <span className="text-destructive font-bold">
-              {d.overdueCharges.length}{" "}
-              {pluralWord(d.overdueCharges.length, "mensalidade", "mensalidades")} em atraso
-            </span>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Total de <strong className="text-foreground">{formatCents(d.overdueRevenue)}</strong>{" "}
-            aguardando regularização nesta competência.
-          </p>
-        </div>
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 gap-1.5 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 shrink-0 self-end sm:self-auto"
-        asChild
-      >
-        <Link href="/classes/billing">
-          Ver cobranças
-          <ArrowUpRight className="size-3.5" />
-        </Link>
-      </Button>
     </div>
   );
 }
@@ -544,8 +506,14 @@ function AcademyDashboardBody() {
   return (
     <div className="space-y-4">
       <DashboardKpis d={d} />
-      <OverdueAlert d={d} />
-      {d.isClient ? <LevelChangeAlert today={d.todayDate} /> : null}
+      {/* Pendencias do dia no topo, sem precisar rolar (some quando nao ha nada) */}
+      {d.isClient ? (
+        <DashboardTodo
+          today={d.todayDate}
+          overdueCount={d.overdueCharges.length}
+          overdueCents={d.overdueRevenue}
+        />
+      ) : null}
       <DashboardMainGrid d={d} />
     </div>
   );

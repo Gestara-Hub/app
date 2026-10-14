@@ -218,7 +218,8 @@ export function EnrollStudentsDialog({
       );
       close();
     }
-    if (lastError && ok === 0) {
+    // Como na matricula: quem nao entrou tambem avisa quando outros entraram.
+    if (lastError) {
       toast.error(
         getErrorMessage(lastError, "Não foi possível adicionar à lista."),
       );

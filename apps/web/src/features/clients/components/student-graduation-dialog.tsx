@@ -211,7 +211,7 @@ function Journey({
   onGraduate: () => void;
 }) {
   const progression = item.progression;
-  const currentLevel = levelOf(track, progression);
+  const currentLevel = levelOf(track, progression, age);
   if (!currentLevel) return null;
   const subLevel = progression?.subLevel ?? 0;
   const history: StudentPromotionHistoryEntry[] = progression?.promotionHistory ?? [];
@@ -332,9 +332,9 @@ function GraduationContent({
   const track = active ? resolveModalityTrack(active.modality) : null;
   const style = resolveTrackStyle(track ?? undefined);
   const progression = active?.progression;
-  const currentLevel = track ? levelOf(track, progression) : undefined;
-  const subLevel = progression?.subLevel ?? 0;
   const age = ageAt(client.birthDate, todayISO());
+  const currentLevel = track ? levelOf(track, progression, age) : undefined;
+  const subLevel = progression?.subLevel ?? 0;
   const agedOut = Boolean(track && trackUsesAges(track) && isAgedOutOfLevel(currentLevel, age));
   const next =
     track && currentLevel ? computeNextPromotionStep(track, currentLevel.id, subLevel, age) : null;
@@ -475,6 +475,7 @@ function GraduationContent({
             <TooltipProvider delayDuration={200}>
               <ModalityPicker
                 items={items}
+                age={age}
                 activeId={active.modality.id}
                 onSelect={(id) => {
                   select(id);

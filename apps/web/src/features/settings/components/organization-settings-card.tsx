@@ -33,14 +33,22 @@ import {
 } from "@/components/form";
 import {
   CLASSES_SEGMENT_PRESETS,
+  CUSTOM_PROGRESSION_OPTIONS,
   DEFAULT_CLASS_SEGMENT,
+  DEFAULT_CUSTOM_PROGRESSION,
 } from "@/lib/business-segment-presets";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Address, ClassesBusinessSegment, Organization, Unit } from "@gestarahub/contracts";
+import type {
+  Address,
+  ClassesBusinessSegment,
+  CustomSegmentProgression,
+  Organization,
+  Unit,
+} from "@gestarahub/contracts";
 import {
   useOrganization,
   useUnit,
@@ -88,6 +96,9 @@ const schema = z.object({
     Object.keys(CLASSES_SEGMENT_PRESETS) as [ClassesBusinessSegment, ...ClassesBusinessSegment[]],
   ),
   customSegmentName: z.string().trim().optional(),
+  customSegmentProgression: z.enum(
+    CUSTOM_PROGRESSION_OPTIONS.map((o) => o.value) as [CustomSegmentProgression, ...CustomSegmentProgression[]],
+  ),
 }).superRefine((values, ctx) => {
   if (values.classSegment === "custom" && !values.customSegmentName) {
     ctx.addIssue({
@@ -101,7 +112,12 @@ type OrgUnitValues = z.infer<typeof schema>;
 
 const CLASS_SEGMENT_OPTIONS: SelectOption[] = Object.values(CLASSES_SEGMENT_PRESETS).map((p) => ({
   value: p.id,
-  label: p.id === "custom" ? "Personalizado" : p.label,
+  label: p.label,
+}));
+
+const CUSTOM_PROGRESSION_SELECT_OPTIONS: SelectOption[] = CUSTOM_PROGRESSION_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
 }));
 
 const BILLING_TIMING_OPTIONS: SegmentedChoiceOption[] = [
@@ -203,6 +219,7 @@ function OrgUnitForm({
       address: parseUnitAddress(unit.address),
       classSegment: organization.classSegment ?? DEFAULT_CLASS_SEGMENT,
       customSegmentName: organization.customSegmentName ?? "",
+      customSegmentProgression: organization.customSegmentProgression ?? DEFAULT_CUSTOM_PROGRESSION,
     },
   });
 
@@ -301,7 +318,8 @@ function OrgUnitForm({
       errors.unitName ||
       errors.phone ||
       errors.classSegment ||
-      errors.customSegmentName
+      errors.customSegmentName ||
+      errors.customSegmentProgression
     ) {
       toOpen.push("business");
     }
@@ -320,7 +338,9 @@ function OrgUnitForm({
   const onSubmit = form.handleSubmit(async (values) => {
     // Grava so o que mudou, para cada salvamento virar um unico evento na auditoria.
     const dirty = form.formState.dirtyFields;
-    const segmentDirty = Boolean(dirty.classSegment || dirty.customSegmentName);
+    const segmentDirty = Boolean(
+      dirty.classSegment || dirty.customSegmentName || dirty.customSegmentProgression,
+    );
     const orgDirty = Boolean(
       segmentDirty ||
         dirty.organizationName ||
@@ -341,6 +361,7 @@ function OrgUnitForm({
             ? {
                 classSegment: values.classSegment,
                 customSegmentName: isCustom ? customName : undefined,
+                customSegmentProgression: isCustom ? values.customSegmentProgression : undefined,
                 segment: isCustom ? customName : CLASSES_SEGMENT_PRESETS[values.classSegment].label,
               }
             : {}),
@@ -445,13 +466,23 @@ function OrgUnitForm({
                     disabled={pending}
                   />
                   {classSegment === "custom" ? (
-                    <InputText<OrgUnitValues>
-                      name="customSegmentName"
-                      label="Nome da área"
-                      placeholder="Informe o nome da área"
-                      required
-                      disabled={pending}
-                    />
+                    <>
+                      <InputText<OrgUnitValues>
+                        name="customSegmentName"
+                        label="O que você ensina?"
+                        placeholder="Nome da sua área ou atividade"
+                        required
+                        disabled={pending}
+                      />
+                      <SelectField<OrgUnitValues>
+                        name="customSegmentProgression"
+                        label="Como seus alunos avançam?"
+                        hint="Muda a trilha sugerida e as palavras das telas."
+                        options={CUSTOM_PROGRESSION_SELECT_OPTIONS}
+                        clearable={false}
+                        disabled={pending}
+                      />
+                    </>
                   ) : null}
                 </div>
               ) : null}

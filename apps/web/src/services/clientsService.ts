@@ -23,7 +23,7 @@ import type {
 import { chargesDueIn } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
 import { getCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import {
@@ -164,7 +164,8 @@ function progressionOf(client: Client, modalityId: Id, date: DateISO): StudentMo
     };
   }
   const modality = store.categories.find((c) => c.id === modalityId);
-  const firstLevel = resolveModalityTrack(modality).levels[0] ?? {
+  // Comeca no 1o nivel da idade, como o "Comecou aqui" do ponto de partida.
+  const firstLevel = firstLevelForAge(resolveModalityTrack(modality), client.birthDate, date) ?? {
     id: "lvl-default",
     name: "Iniciante",
     color: "white" as const,
@@ -260,7 +261,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // NOTA: mensagens a confirmar com o doc 10 quando o modulo Clientes for feito.
 function validateClient(
   payload: Partial<CreateClient>,
-  { partial }: { partial: boolean },
+  { partial, current }: { partial: boolean; current?: Client },
 ): void {
   const fields: ApiErrorField[] = [];
   const has = (key: keyof CreateClient) =>
@@ -287,9 +288,11 @@ function validateClient(
       fields.push({ field: `guardians.${i}.name`, message: "Informe o nome do responsável." });
     }
   });
-  // So a bolsa integral dispensa plano; a parcial cobra uma parte dele.
-  const d = payload.discount;
-  if (d?.scholarship && !payload.planId && !(d.type === "percentage" && d.value >= 100)) {
+  // So a bolsa integral dispensa plano; a parcial cobra uma parte dele. Na
+  // edicao, o que nao veio no payload vale o que ja esta gravado.
+  const d = has("discount") ? payload.discount : current?.discount;
+  const planId = has("planId") ? payload.planId : current?.planId;
+  if (d?.scholarship && !planId && !(d.type === "percentage" && d.value >= 100)) {
     fields.push({ field: "planId", message: "Bolsa parcial precisa de um plano." });
   }
 
@@ -370,8 +373,8 @@ export const clientsService = {
     return simulateWrite(() => {
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      validateClient(payload, { partial: true });
       const current = store.clients[idx];
+      validateClient(payload, { partial: true, current });
       const ts = nowIso();
       const updated: Client = {
         ...current,

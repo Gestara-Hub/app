@@ -172,7 +172,7 @@ export function LandingSignupSection() {
             <div className="pt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                100% Gratuito para sempre
+                Plano grátis, sem limite de alunos
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />

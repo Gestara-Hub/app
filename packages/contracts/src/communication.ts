@@ -1,27 +1,42 @@
 import type { DateTimeISO, Id } from "./common";
 
-export type WhatsAppConnectionStatus =
-  | "disconnected"
-  | "connecting"
-  | "qr_ready"
-  | "connected";
+/**
+ * WhatsApp sempre com o numero do proprio espaco (docs/product/13, secao 5).
+ * - `assisted` (gratis): o botao abre o WhatsApp do aparelho com a mensagem
+ *   pronta (`wa.me`); a pessoa so toca em enviar.
+ * - `official` (Pro, recurso `messaging`): o numero do espaco conectado a API
+ *   oficial da Meta; o sistema envia sozinho.
+ */
+export type WhatsAppSendMode = "assisted" | "official";
 
-export interface WhatsAppSession {
+/** Conexao do numero do espaco com a API oficial da Meta. */
+export type WhatsAppOfficialStatus = "not_connected" | "pending" | "connected";
+
+export interface WhatsAppConnection {
   organizationId: Id;
-  status: WhatsAppConnectionStatus;
+  officialStatus: WhatsAppOfficialStatus;
+  /** Numero do espaco (so digitos, com DDI). */
   phoneNumber?: string;
-  profileName?: string;
+  /** Nome exibido no WhatsApp (aprovado pela Meta). */
+  displayName?: string;
   connectedAt?: DateTimeISO;
-  batteryLevel?: number;
-  qrCodePayload?: string;
+  /** Janela em que o envio automatico pode sair. */
   allowedSendHours: {
     start: string;
     end: string;
   };
+  /** Franquia mensal do envio automatico (custo por mensagem da Meta). */
   monthlyQuota: {
     used: number;
     included: number;
   };
+}
+
+/** Leitura da conexao com o modo em uso (Pro e conectado = oficial). */
+export interface WhatsAppConnectionView extends WhatsAppConnection {
+  mode: WhatsAppSendMode;
+  /** O plano tem envio automatico (recurso `messaging`). */
+  canUseOfficial: boolean;
 }
 
 export type MessageTrigger =
@@ -51,7 +66,8 @@ export interface MessageTemplate {
   updatedAt: DateTimeISO;
 }
 
-export type MessageLogStatus = "queued" | "sent" | "delivered" | "read" | "failed";
+/** `opened`: envio assistido, o WhatsApp foi aberto com o texto (o envio em si nao e confirmado). */
+export type MessageLogStatus = "opened" | "queued" | "sent" | "delivered" | "read" | "failed";
 
 export interface MessageLog {
   id: Id;
@@ -62,16 +78,23 @@ export interface MessageLog {
   category: MessageCategory;
   content: string;
   status: MessageLogStatus;
+  /** Aluno e cobranca ligados a mensagem (para medir o que foi recuperado). */
+  clientId?: Id;
+  chargeId?: Id;
   sentAt: DateTimeISO;
   readAt?: DateTimeISO;
   errorReason?: string;
 }
 
 export interface CommunicationMetrics {
-  sentThisMonth: number;
+  mode: WhatsAppSendMode;
+  /** Mensagens do mes: abertas no WhatsApp (assistido) ou enviadas (oficial). */
+  messagesThisMonth: number;
   monthlyQuota: number;
-  deliveryRate: number;
-  readRate: number;
+  /** So no oficial; `null` sem envios no mes. */
+  deliveryRate: number | null;
+  readRate: number | null;
+  /** Mensalidades pagas no mes depois de um lembrete pelo WhatsApp. */
   recoveredAmountCents: number;
   activeAutomationsCount: number;
 }
@@ -81,6 +104,8 @@ export interface SendMessagePayload {
   recipientPhone: string;
   content: string;
   trigger?: MessageTrigger;
+  clientId?: Id;
+  chargeId?: Id;
 }
 
 export interface UpdateTemplatePayload {
@@ -91,7 +116,7 @@ export interface UpdateTemplatePayload {
   content?: string;
 }
 
-export interface UpdateSessionSettingsPayload {
+export interface UpdateConnectionSettingsPayload {
   allowedSendHours?: {
     start: string;
     end: string;

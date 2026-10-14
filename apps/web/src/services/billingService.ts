@@ -83,6 +83,7 @@ function toChargeView(c: Charge): ChargeView {
     cycleIndex: c.cycleIndex ?? 1,
     cycleTotal: c.cycleTotal ?? 1,
     studentName: studentName(c.studentId),
+    studentPhone: store.clients.find((s) => s.id === c.studentId)?.phone || undefined,
     // Bolsista integral sem plano: rotulo proprio, sempre mensal.
     planName: planOf(c.planId)?.name ?? (!c.planId && c.scholarshipPercent ? "Bolsa integral" : undefined),
     planPeriod: planOf(c.planId)?.period ?? (!c.planId && c.scholarshipPercent ? "monthly" : undefined),
@@ -568,6 +569,10 @@ export const billingService = {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
+      // Pagar de novo trocaria a forma e a data, e apagaria o recebimento online.
+      if (c.status === "paid") {
+        throw apiError("VALIDATION", "Esta cobrança já está paga.", { httpStatus: 409 });
+      }
       c.status = "paid";
       c.paidAt = nowIso();
       c.method = method;

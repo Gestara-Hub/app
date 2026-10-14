@@ -16,6 +16,7 @@ import type {
 } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { relativeDateLabel, todayISO } from "@gestarahub/core/date";
+import { ageAt } from "@/lib/progression-tracks";
 import { DialogFormFooter, InputNumber, InputText } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -451,6 +452,7 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
           <>
             <ModalityPicker
               items={items}
+              age={ageAt(client.birthDate, todayISO())}
               activeId={modalityId}
               onSelect={(id) => {
                 select(id);

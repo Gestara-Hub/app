@@ -1,13 +1,15 @@
 export { CommunicationView } from "./components/communication-view";
 export {
   useCommunicationMetrics,
-  useConnectWhatsApp,
-  useDisconnectWhatsApp,
+  useConnectOfficialWhatsApp,
+  useDisconnectOfficialWhatsApp,
   useMessageLogs,
   useMessageTemplates,
   useRetryMessage,
-  useSendMessage,
-  useUpdateSessionSettings,
+  useUpdateConnectionSettings,
   useUpdateTemplate,
-  useWhatsAppSession,
+  useWhatsAppConnection,
+  useWhatsAppSend,
+  type WhatsAppSendInput,
 } from "./hooks/use-communication";
+export { billingReminderTrigger } from "./message-meta";

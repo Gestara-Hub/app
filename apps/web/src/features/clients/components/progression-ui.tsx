@@ -10,7 +10,7 @@ import type {
   StudentModalityProgression,
 } from "@gestarahub/contracts";
 import { BeltBadge } from "@/components/shared/belt-badge";
-import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useStudentProgressionOverview } from "../hooks/use-clients";
 
@@ -52,11 +52,9 @@ export function monthsSince(iso?: string): number {
 export function levelOf(
   track: ModalityProgressionTrack,
   progression?: StudentModalityProgression,
+  age: number | null = null,
 ): ProgressionLevelStep | undefined {
-  return (
-    track.levels.find((l) => l.id === progression?.levelId || l.name === progression?.levelName) ??
-    track.levels[0]
-  );
+  return currentLevelOf(track, progression, age);
 }
 
 /**
@@ -95,8 +93,10 @@ export function ModalityPicker({
   items,
   activeId,
   onSelect,
+  age = null,
 }: {
   items: StudentModalityOverviewItem[];
+  age?: number | null;
   activeId?: string;
   onSelect: (modalityId: string) => void;
 }) {
@@ -106,7 +106,7 @@ export function ModalityPicker({
       {items.map((item) => {
         const track = resolveModalityTrack(item.modality);
         const style = resolveTrackStyle(track);
-        const level = levelOf(track, item.progression);
+        const level = levelOf(track, item.progression, age);
         const selected = item.modality.id === activeId;
         return (
           <button

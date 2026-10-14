@@ -12,7 +12,7 @@ const FAQS = [
   {
     question: "O GestaraHub é realmente gratuito? Tem limite de alunos ou turmas?",
     answer:
-      "Sim! Toda a gestão operacional — cadastro ilimitado de alunos, criação de turmas e horários particulares, grade semanal, chamada digital, esteira de evolução e controle de mensalidades — é 100% gratuita para sempre. Seu espaço pode crescer sem pagar nada e sem pegadinhas.",
+      "Sim. O plano grátis cobre a gestão do dia a dia: alunos e turmas sem limite, horários particulares, grade semanal, chamada pelo celular, evolução dos alunos, mensalidades e financeiro básico. Recursos de automação, como cobrança online e lembretes automáticos pelo WhatsApp, ficam no plano Pro, que é opcional.",
   },
   {
     question: "Funciona para aulas individuais (particulares) ou só turmas em grupo?",
@@ -32,7 +32,7 @@ const FAQS = [
   {
     question: "Como funciona o controle de evolução e trilhas de progresso?",
     answer:
-      "Você configura a trilha de evolução de acordo com a sua modalidade — seja por faixas e graus em lutas, níveis técnicos no pilates, módulos na dança e idiomas ou fases esportivas. O sistema contabiliza as aulas de cada aluno e avisa automaticamente quando ele cumpre os critérios para avançar.",
+      "Você configura a trilha de evolução de acordo com a sua modalidade — seja por faixas e graus em lutas, níveis na dança e nos idiomas, módulos em cursos como música e confeitaria ou fases na natação. O sistema contabiliza as aulas de cada aluno e avisa automaticamente quando ele cumpre os critérios para avançar.",
   },
   {
     question: "Como funciona o cálculo de comissão e repasse de professores?",

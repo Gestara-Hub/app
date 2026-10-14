@@ -31,7 +31,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { cn } from "@/lib/utils";
+import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
 import { useOrganization } from "@/features/settings";
+import { whatsappNumber } from "@/lib/whatsapp";
 import {
   useCreateOnlinePayment,
   useOnlineCheckout,
@@ -60,13 +62,6 @@ const METHOD_OPTIONS: {
     icon: Link2,
   },
 ];
-
-/** "11999998888" -> "5511999998888" (wa.me pede DDI). */
-function whatsappNumber(phone?: string): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  return digits.length <= 11 ? `55${digits}` : digits;
-}
 
 function whatsappMessage(input: {
   studentName: string;
@@ -116,6 +111,7 @@ export function OnlineChargeDialog({
   const createMut = useCreateOnlinePayment();
   const paidMut = useSimulateOnlinePaid();
   const { data: org } = useOrganization();
+  const whatsapp = useWhatsAppSend();
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Forcar a escolha de novo metodo mesmo com um codigo valido em aberto.
   const [choosing, setChoosing] = useState(false);
@@ -184,11 +180,13 @@ export function OnlineChargeDialog({
       charge,
       payment,
     });
-    window.open(
-      `https://wa.me/${phone}?text=${encodeURIComponent(text)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    // Mesmo envio dos outros botoes: abre o WhatsApp (ou envia pelo oficial) e registra.
+    whatsapp.send({
+      trigger: charge.kind === "membership" ? billingReminderTrigger(charge, format(new Date(), "yyyy-MM-dd")) : "manual_broadcast",
+      recipient: { name: checkout.data?.studentName || charge.studentName, phone: phone, clientId: charge.studentId },
+      content: text,
+      chargeId: charge.id,
+    });
   };
 
   return (

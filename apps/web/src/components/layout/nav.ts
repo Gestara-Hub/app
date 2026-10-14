@@ -142,7 +142,7 @@ export const MAIN_NAV: NavItem[] = [
     icon: MessageSquareText,
     permission: "communication:view",
     section: "daily_operations",
-    feature: "messaging",
+    // Sem `feature`: o envio assistido e gratis; o oficial (Pro) fica dentro da tela.
   },
 
   // Bloco 2: Financeiro

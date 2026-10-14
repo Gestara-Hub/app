@@ -93,6 +93,8 @@ export interface ChargeFilter {
 
 export interface ChargeView extends Charge {
   studentName: string;
+  /** Telefone do aluno (lembrete pelo WhatsApp). */
+  studentPhone?: string;
   planName?: string;
   planPeriod?: PlanPeriod;
   className?: string;

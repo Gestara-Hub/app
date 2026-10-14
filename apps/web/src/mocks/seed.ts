@@ -5,12 +5,11 @@ import type {
   FinancialEntryType,
   FinancialSystemCategoryKey,
   Id,
-  MessageLog,
   MessageTemplate,
   Organization,
   Unit,
   User,
-  WhatsAppSession,
+  WhatsAppConnection,
 } from "@gestarahub/contracts";
 import type { MockStore, MockWorld } from "./store";
 
@@ -62,9 +61,9 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     teacherPayouts: [],
     onlinePayments: [],
     recurringAuthorizations: [],
-    communicationSession: defaultWhatsAppSession(organization.id),
+    whatsAppConnection: defaultWhatsAppConnection(organization.id),
     messageTemplates: defaultMessageTemplates(organization.id),
-    messageLogs: defaultMessageLogs(organization.id),
+    messageLogs: [],
   };
 }
 
@@ -200,22 +199,16 @@ function seedAcademia(): MockStore {
   };
 }
 
-export function defaultWhatsAppSession(organizationId: Id): WhatsAppSession {
+/**
+ * WhatsApp do espaco: comeca no envio assistido (gratis). A conexao oficial
+ * (Pro) e feita pelo espaco, com o proprio numero.
+ */
+export function defaultWhatsAppConnection(organizationId: Id): WhatsAppConnection {
   return {
     organizationId,
-    status: "connected",
-    phoneNumber: "5511987654321",
-    profileName: "GestaraHub Gateway",
-    connectedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-    batteryLevel: 94,
-    allowedSendHours: {
-      start: "08:00",
-      end: "20:00",
-    },
-    monthlyQuota: {
-      used: 342,
-      included: 1000,
-    },
+    officialStatus: "not_connected",
+    allowedSendHours: { start: "08:00", end: "20:00" },
+    monthlyQuota: { used: 0, included: 1000 },
   };
 }
 
@@ -323,10 +316,10 @@ export function defaultMessageTemplates(
       trigger: "absence_alert",
       category: "retention",
       title: "Sentimos sua Falta (Anti-Evasão)",
-      description: "Disparado após 14 dias sem frequência registrada",
+      description: "Para alunos com 3 faltas seguidas",
       enabled: true,
       sendHour: "14:00",
-      daysOffset: 14,
+      daysOffset: 3,
       content:
         `Oi, {aluno}! Tudo bem? Sentimos muito a sua falta ${tone.absenceLine} Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪`,
       availableVariables: ["{aluno}", "{empresa}"],
@@ -346,103 +339,6 @@ export function defaultMessageTemplates(
         "Parabéns pelo seu dia, {aluno}! 🎂 Toda a equipe da {empresa} deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
       availableVariables: ["{aluno}", "{empresa}"],
       ...ts,
-    },
-  ];
-}
-
-export function defaultMessageLogs(organizationId: Id): MessageLog[] {
-  const now = Date.now();
-  const h = (hoursAgo: number) => new Date(now - hoursAgo * 3600 * 1000).toISOString();
-
-  return [
-    {
-      id: `msg-${organizationId}-1`,
-      organizationId,
-      recipientName: "Bruno Costa",
-      recipientPhone: "5511991234567",
-      trigger: "billing_before_due",
-      category: "billing",
-      content:
-        "Olá, Bruno Costa! Passando para lembrar que sua mensalidade de R$ 180,00 na Academia X vence em 10/10/2026. Pague com facilidade pelo Pix Copia e Cola: https://pay.gestarahub.com/c/x1a2b3",
-      status: "read",
-      sentAt: h(2),
-      readAt: h(1.5),
-    },
-    {
-      id: `msg-${organizationId}-2`,
-      organizationId,
-      recipientName: "Camila Fernandes",
-      recipientPhone: "5511982345678",
-      trigger: "billing_due_date",
-      category: "billing",
-      content:
-        "Olá, Camila Fernandes! Sua mensalidade da Academia X no valor de R$ 220,00 vence hoje (03/10/2026). Garanta sua vaga ativa acessando o link seguro de pagamento: https://pay.gestarahub.com/c/c2f4g6",
-      status: "delivered",
-      sentAt: h(5),
-    },
-    {
-      id: `msg-${organizationId}-3`,
-      organizationId,
-      recipientName: "Rodrigo Silveira",
-      recipientPhone: "5511973456789",
-      trigger: "billing_after_due",
-      category: "billing",
-      content:
-        "Oi, Rodrigo Silveira! Notamos que a mensalidade de R$ 180,00 da Academia X que venceu em 30/09/2026 ainda está em aberto. Para regularizar sem complicações, basta acessar: https://pay.gestarahub.com/c/r9s8t7",
-      status: "read",
-      sentAt: h(26),
-      readAt: h(25),
-    },
-    {
-      id: `msg-${organizationId}-4`,
-      organizationId,
-      recipientName: "Juliana Mendes",
-      recipientPhone: "5511964567890",
-      trigger: "welcome_student",
-      category: "retention",
-      content:
-        "Seja muito bem-vindo(a) à Academia X, Juliana Mendes! 🎉 Sua matrícula foi confirmada com sucesso. Acesse o nosso aplicativo do aluno pelo link https://app.gestarahub.com/login",
-      status: "read",
-      sentAt: h(48),
-      readAt: h(47.5),
-    },
-    {
-      id: `msg-${organizationId}-5`,
-      organizationId,
-      recipientName: "Felipe Santos",
-      recipientPhone: "5511955678901",
-      trigger: "absence_alert",
-      category: "retention",
-      content:
-        "Oi, Felipe Santos! Tudo bem? Sentimos muito a sua falta nos últimos treinos da Academia X. Seu lugar no tatame está guardado! Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪",
-      status: "delivered",
-      sentAt: h(72),
-    },
-    {
-      id: `msg-${organizationId}-6`,
-      organizationId,
-      recipientName: "Marcos Oliveira",
-      recipientPhone: "5511946789012",
-      trigger: "birthday_greeting",
-      category: "retention",
-      content:
-        "Parabéns pelo seu dia, Marcos Oliveira! 🎂 Toda a equipe da Academia X deseja muita saúde, conquistas e evolução. É uma honra ter você na nossa família! Aproveite seu dia especial.",
-      status: "read",
-      sentAt: h(96),
-      readAt: h(95),
-    },
-    {
-      id: `msg-${organizationId}-7`,
-      organizationId,
-      recipientName: "Thiago Lima",
-      recipientPhone: "5511900000000",
-      trigger: "billing_after_due",
-      category: "billing",
-      content:
-        "Oi, Thiago Lima! Notamos que a mensalidade de R$ 180,00 da Academia X que venceu em 25/09/2026 ainda está em aberto.",
-      status: "failed",
-      sentAt: h(120),
-      errorReason: "Número de WhatsApp inexistente ou não registrado.",
     },
   ];
 }

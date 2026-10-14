@@ -49,7 +49,7 @@ import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 
 /**
- * Pagamento dos professores (Financeiro, plano pago). Regra por professor,
+ * Pagamento dos professores (Financeiro basico, gratis). Regra por professor,
  * previa do mes calculada na leitura (motor puro em @gestarahub/core/finance),
  * fechamento que congela as linhas e pagamento que entra no caixa como saida da
  * categoria de sistema "Professores" (o financeService le `teacherPayouts`
@@ -718,7 +718,7 @@ export const teacherPayService = {
   closePayout(
     professionalId: Id,
     competence: string,
-    adjustments: TeacherPayoutAdjustment[] = [],
+    adjustments?: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
     return simulateWrite(() => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
@@ -741,7 +741,10 @@ export const teacherPayService = {
         factsFor(professionalId, buildFacts(competence)),
         competence,
       );
-      const adjustmentLinesList = normalizeAdjustments(adjustments);
+      // Sem ajustes na chamada, valem os ja salvos no mes em aberto.
+      const adjustmentLinesList = adjustments
+        ? normalizeAdjustments(adjustments)
+        : adjustmentLines(existing);
       const lines = [...computed, ...adjustmentLinesList];
       const rawTotal = lines.reduce((sum, l) => sum + l.amountCents, 0);
       if (rawTotal < 0) {

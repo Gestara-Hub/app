@@ -2,6 +2,7 @@ import type {
   ApiErrorField,
   AttendanceStatus,
   AttendanceSummary,
+  AbsenceStreakView,
   Charge,
   ClassGroup,
   ClassGroupFilter,
@@ -769,6 +770,73 @@ export const turmasService = {
         justified,
         total: present + absent + justified,
       };
+    });
+  },
+
+  /** Pares aluno x modalidade das matriculas ativas (uma linha por par). */
+  listEnrolledModalities(): Promise<{ studentId: Id; modalityId: Id }[]> {
+    return simulateRead(() => {
+      const modalityByGroup = new Map(store.classGroups.map((g) => [g.id, g.modalityId]));
+      const seen = new Set<string>();
+      const pairs: { studentId: Id; modalityId: Id }[] = [];
+      for (const e of store.enrollments) {
+        if (e.status !== "active") continue;
+        const modalityId = modalityByGroup.get(e.classGroupId);
+        if (!modalityId || seen.has(`${e.studentId}~${modalityId}`)) continue;
+        seen.add(`${e.studentId}~${modalityId}`);
+        pairs.push({ studentId: e.studentId, modalityId });
+      }
+      return pairs;
+    });
+  },
+
+  /**
+   * Alunos ativos com pelo menos `minStreak` faltas seguidas nas turmas em que
+   * estao matriculados (so aulas com chamada feita). Presenca ou falta
+   * justificada encerram a sequencia. Mais faltas primeiro.
+   */
+  listAbsenceStreaks(minStreak = 3): Promise<AbsenceStreakView[]> {
+    return simulateRead(() => {
+      const groupsByStudent = new Map<Id, Set<Id>>();
+      for (const e of store.enrollments) {
+        if (e.status !== "active") continue;
+        const set = groupsByStudent.get(e.studentId) ?? new Set<Id>();
+        set.add(e.classGroupId);
+        groupsByStudent.set(e.studentId, set);
+      }
+      const result: AbsenceStreakView[] = [];
+      for (const [studentId, groupIds] of groupsByStudent) {
+        const client = store.clients.find((c) => c.id === studentId && c.status === "active");
+        if (!client) continue;
+        const marks = store.attendances
+          .filter((a) => a.studentId === studentId)
+          .map((a) => ({ status: a.status, session: parseSessionId(a.sessionId) }))
+          .filter((m): m is { status: AttendanceStatus; session: NonNullable<ReturnType<typeof parseSessionId>> } =>
+            Boolean(m.session && groupIds.has(m.session.classGroupId)),
+          )
+          .sort((a, b) => `${b.session.date}${b.session.start}`.localeCompare(`${a.session.date}${a.session.start}`));
+        let streak = 0;
+        let since = "";
+        const groups = new Set<Id>();
+        for (const m of marks) {
+          if (m.status !== "absent") break;
+          streak += 1;
+          since = m.session.date;
+          groups.add(m.session.classGroupId);
+        }
+        if (streak < minStreak) continue;
+        result.push({
+          studentId,
+          studentName: client.name,
+          ...(client.phone ? { phone: client.phone } : {}),
+          streak,
+          since,
+          classGroupNames: [...groups]
+            .map((id) => store.classGroups.find((g) => g.id === id)?.name)
+            .filter((n): n is string => Boolean(n)),
+        });
+      }
+      return result.sort((a, b) => b.streak - a.streak || a.studentName.localeCompare(b.studentName, "pt-BR"));
     });
   },
 

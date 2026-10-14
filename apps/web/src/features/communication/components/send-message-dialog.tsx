@@ -1,156 +1,106 @@
 "use client";
 
-import { useState } from "react";
+import { FormProvider, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { formatPhone } from "@gestarahub/core/format";
-import { Send } from "lucide-react";
+import { ComboboxField, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { useSendMessage, useWhatsAppSession } from "../hooks/use-communication";
+import { whatsappNumber } from "@/lib/whatsapp";
+import { useMessageRecipients, useWhatsAppSend } from "../hooks/use-communication";
 
-interface SendMessageDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  defaultRecipientName?: string;
-  defaultRecipientPhone?: string;
-  defaultContent?: string;
-}
+const schema = z.object({
+  clientId: z.string({ error: "Selecione o aluno." }).min(1, "Selecione o aluno."),
+  content: z.string().trim().min(1, "Escreva a mensagem.").max(1000, "Use no máximo 1000 caracteres."),
+});
+type FormValues = z.infer<typeof schema>;
 
-export function SendMessageDialog({
-  open,
-  onOpenChange,
-  defaultRecipientName = "",
-  defaultRecipientPhone = "",
-  defaultContent = "",
-}: SendMessageDialogProps) {
-  const { data: session } = useWhatsAppSession();
-  const sendMutation = useSendMessage();
+function SendMessageForm({ onDone }: { onDone: () => void }) {
+  const { data: clients = [] } = useMessageRecipients();
+  const whatsapp = useWhatsAppSend();
+  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { clientId: "", content: "" } });
+  const clientId = useWatch({ control: form.control, name: "clientId" });
+  const recipient = clients.find((c) => c.id === clientId);
+  const noPhone = Boolean(recipient && !whatsappNumber(recipient.phone));
 
-  const [name, setName] = useState(defaultRecipientName);
-  const [phone, setPhone] = useState(defaultRecipientPhone);
-  const [content, setContent] = useState(defaultContent);
+  const options = clients.map((c) => ({
+    value: c.id,
+    label: c.phone ? `${c.name} · ${formatPhone(c.phone)}` : `${c.name} · sem telefone`,
+  }));
 
-  const isConnected = session?.status === "connected";
-
-  const handleSend = async () => {
-    if (!name.trim()) {
-      toast.error("Informe o nome do destinatário.");
+  const onSubmit = form.handleSubmit((values) => {
+    const client = clients.find((c) => c.id === values.clientId);
+    if (!client) return;
+    if (!whatsappNumber(client.phone)) {
+      form.setError("clientId", { message: "Este aluno não tem WhatsApp com DDD no cadastro." });
       return;
     }
-
-    if (!phone.replace(/\D/g, "")) {
-      toast.error("Informe o número de WhatsApp com DDD.");
-      return;
-    }
-
-    if (!content.trim()) {
-      toast.error("Digite o texto da mensagem antes de enviar.");
-      return;
-    }
-
-    try {
-      await sendMutation.mutateAsync({
-        recipientName: name.trim(),
-        recipientPhone: phone.replace(/\D/g, ""),
-        content: content.trim(),
-        trigger: "manual_broadcast",
-      });
-
-      toast.success(`Disparo realizado com sucesso para ${name}.`);
-
-      setName("");
-      setPhone("");
-      setContent("");
-      onOpenChange(false);
-    } catch {
-      toast.error("Falha no envio. Verifique a conexão do WhatsApp e tente novamente.");
-    }
-  };
+    whatsapp.send({
+      trigger: "manual_broadcast",
+      recipient: { name: client.name, phone: client.phone, clientId: client.id },
+      content: values.content,
+    });
+    onDone();
+  });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Send className="size-4 text-primary" />
-            <DialogTitle>Enviar Mensagem Direta</DialogTitle>
-          </div>
-          <DialogDescription>
-            Envie uma mensagem instantânea via WhatsApp oficial conectado.
-          </DialogDescription>
-        </DialogHeader>
-
-        {!isConnected ? (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-50/50 p-4 text-sm text-amber-800 dark:bg-amber-950/20 dark:text-amber-200">
-            <p className="font-medium">WhatsApp Desconectado</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Conecte sua instância na aba &quot;Conexão WhatsApp&quot; antes de realizar envios.
-            </p>
-          </div>
-        ) : null}
-
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="recipient-name">Nome do Aluno / Cliente</Label>
-              <Input
-                id="recipient-name"
-                placeholder="Ex: Carlos Eduardo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="recipient-phone">WhatsApp (com DDD)</Label>
-              <Input
-                id="recipient-phone"
-                placeholder="(11) 98765-4321"
-                value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="message-text">Conteúdo da Mensagem</Label>
-            <Textarea
-              id="message-text"
-              rows={4}
-              placeholder="Olá! Passando para te avisar que..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+    <FormProvider {...form}>
+      <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          <ComboboxField<FormValues>
+            name="clientId"
+            label="Aluno"
+            placeholder="Selecione o aluno"
+            searchPlaceholder="Buscar aluno..."
+            emptyMessage="Nenhum aluno encontrado."
+            options={options}
+            required
+            hint={noPhone ? "Este aluno não tem WhatsApp com DDD no cadastro." : undefined}
+          />
+          <TextArea<FormValues>
+            name="content"
+            label="Mensagem"
+            placeholder="Escreva a mensagem para o aluno"
+            rows={5}
+            required
+          />
+        </DialogBody>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+          <Button type="button" variant="outline" onClick={onDone}>
             Cancelar
           </Button>
-          <Button
-            type="button"
-            onClick={handleSend}
-            disabled={!isConnected || sendMutation.isPending}
-            className="gap-2"
-          >
-            <Send className="size-4" />
-            {sendMutation.isPending ? "Enviando..." : "Disparar Mensagem"}
+          <Button type="submit" disabled={noPhone || whatsapp.isSending}>
+            {whatsapp.mode === "official" ? (whatsapp.isSending ? "Enviando..." : "Enviar") : "Abrir no WhatsApp"}
           </Button>
-        </DialogFooter>
+        </div>
+      </form>
+    </FormProvider>
+  );
+}
+
+/** Mensagem avulsa para um aluno, pelo WhatsApp do proprio espaco. */
+export function SendMessageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const whatsapp = useWhatsAppSend();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
+          <DialogTitle>Nova mensagem</DialogTitle>
+          <DialogDescription>
+            {whatsapp.mode === "official"
+              ? "Sai pelo WhatsApp oficial do espaço."
+              : "Abre o WhatsApp deste aparelho com a mensagem pronta."}
+          </DialogDescription>
+        </DialogHeader>
+        {open ? <SendMessageForm onDone={() => onOpenChange(false)} /> : null}
       </DialogContent>
     </Dialog>
   );

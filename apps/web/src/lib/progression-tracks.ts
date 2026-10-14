@@ -448,19 +448,12 @@ export function inferTipColorFromLevelName(
   return null;
 }
 
+/** Palavra inteira: "Dança 1" ou "Standard" nao sao faixa por conter "dan". */
+const MARTIAL_ARTS_LEVEL_RE =
+  /(?<!\p{L})(faixas?|kruang|prajied|cordas?|cordel|ponta|dan|kyu|graus?)(?!\p{L})/iu;
+
 export function isMartialArtsLevelName(levelName: string): boolean {
-  const lower = levelName.toLowerCase();
-  return (
-    lower.includes("faixa") ||
-    lower.includes("kruang") ||
-    lower.includes("prajied") ||
-    lower.includes("corda") ||
-    lower.includes("cordel") ||
-    lower.includes("ponta ") ||
-    lower.includes("dan") ||
-    lower.includes("kyu") ||
-    lower.includes("grau")
-  );
+  return MARTIAL_ARTS_LEVEL_RE.test(levelName);
 }
 
 /** Modelo de luta pelo nome da modalidade (Jiu-Jitsu, Judô, Muay Thai...). */
@@ -553,6 +546,36 @@ export function levelAgeLabel(level: Pick<ProgressionLevelStep, "minAge" | "maxA
 /** A trilha usa idade em algum nivel? (liga o filtro e o editor de idades) */
 export function trackUsesAges(track?: ModalityProgressionTrack): boolean {
   return Boolean(track?.levels.some((l) => l.minAge !== undefined || l.maxAge !== undefined));
+}
+
+/**
+ * Nivel atual do aluno na trilha: o salvo no progresso ou, sem progresso, o 1o
+ * permitido para a idade (o mesmo em que o service o colocaria).
+ */
+export function currentLevelOf(
+  track: ModalityProgressionTrack,
+  progression: { levelId?: string; levelName?: string } | undefined,
+  age: number | null,
+): ProgressionLevelStep | undefined {
+  const saved = progression
+    ? track.levels.find((l) => l.id === progression.levelId || l.name === progression.levelName)
+    : undefined;
+  if (saved) return saved;
+  if (!progression && trackUsesAges(track)) {
+    return track.levels.find((l) => isLevelAllowedForAge(l, age)) ?? track.levels[0];
+  }
+  return track.levels[0];
+}
+
+/** Nivel de quem comeca agora: o 1o permitido para a idade (adulto pula as faixas infantis). */
+export function firstLevelForAge(
+  track: ModalityProgressionTrack,
+  birthDate: string | undefined,
+  onDate: string,
+): ProgressionLevelStep | undefined {
+  if (!trackUsesAges(track)) return track.levels[0];
+  const age = ageAt(birthDate, onDate);
+  return track.levels.find((l) => isLevelAllowedForAge(l, age)) ?? track.levels[0];
 }
 
 /**

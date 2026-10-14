@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Info,
   Lock,
+  MessageCircle,
   QrCode,
   RotateCcw,
   RotateCw,
@@ -53,6 +54,7 @@ import type {
 } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
+import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
 import { CompetencePicker } from "@/features/finance";
 import {
   useCancelCharge,
@@ -453,6 +455,8 @@ export function BillingView() {
   const hasFeature = useHasFeature();
   const hasOnlineFeature = hasFeature("online_payments");
   const { data: org } = useOrganization();
+  // Lembrete pelo WhatsApp do proprio espaco (assistido no gratis, oficial no Pro).
+  const whatsapp = useWhatsAppSend();
   const onlineEnabled = Boolean(org?.settings?.onlinePayments?.enabled);
   const onlineBlockedReason = !hasOnlineFeature
     ? "Plano Pro"
@@ -623,6 +627,26 @@ export function BillingView() {
             icon: <CheckCircle2 className="size-4" />,
             onSelect: () => setChargeToPay(c),
           },
+          ...(c.kind === "membership"
+            ? [
+                {
+                  key: "whatsapp",
+                  label: "Lembrar no WhatsApp",
+                  icon: <MessageCircle className="size-4" />,
+                  disabled: !whatsapp.ready,
+                  onSelect: () =>
+                    whatsapp.send({
+                      trigger: billingReminderTrigger(c, format(new Date(), "yyyy-MM-dd")),
+                      recipient: { name: c.studentName, phone: c.studentPhone, clientId: c.studentId },
+                      values: {
+                        valor: formatCents(c.amountCents),
+                        vencimento: format(parseISO(c.dueDate), "dd/MM"),
+                      },
+                      chargeId: c.id,
+                    }),
+                },
+              ]
+            : []),
           {
             key: "online",
             label: onlineBlockedReason ? `Cobrar online (${onlineBlockedReason})` : "Cobrar online",
@@ -899,12 +923,18 @@ export function BillingView() {
                     Tentar novamente
                   </Button>
                 </div>
-              ) : !isLoading && groups.length === 0 && list.length > 0 ? (
+              ) : !isLoading && groups.length === 0 && (list.length > 0 || kindFilter !== "all") ? (
+                // O tipo filtra na consulta: lista vazia com tipo escolhido
+                // ainda e "filtro sem resultado", nao mes sem cobranca.
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <p className="text-sm text-muted-foreground">
                     {query !== ""
                       ? `Nenhuma cobrança de “${search.trim()}” com estes filtros no mês.`
-                      : "Nenhuma cobrança com esta situação no mês."}
+                      : list.length === 0
+                        ? kindFilter === "dropin"
+                          ? "Nenhuma aula avulsa neste mês."
+                          : "Nenhuma mensalidade neste mês."
+                        : "Nenhuma cobrança com esta situação no mês."}
                   </p>
                   <Button variant="outline" size="sm" onClick={clearListFilters}>
                     Limpar filtros

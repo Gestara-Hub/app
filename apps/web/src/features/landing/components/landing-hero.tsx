@@ -18,7 +18,7 @@ export function LandingHero() {
           {/* Pill announcement badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shadow-2xs backdrop-blur-sm">
             <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Grátis para sempre • Sem cartão de crédito</span>
+            <span>Plano grátis • Sem cartão de crédito</span>
           </div>
 
           {/* Headline limpa e objetiva */}
@@ -33,7 +33,8 @@ export function LandingHero() {
                   "escolas de música.",
                   "escolas de idiomas.",
                   "escolas de dança.",
-                  "boxes e funcional.",
+                  "escolas de confeitaria.",
+                  "cursos livres.",
                 ]}
               />
             </span>

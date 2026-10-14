@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowUpRight, Cake } from "lucide-react";
+import { ArrowUpRight, Cake, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@gestarahub/core/format";
 import { useClients } from "@/features/clients";
+import { useMessageLogs, useWhatsAppSend } from "@/features/communication";
 
 /**
  * Aniversariantes do mes de `today` (alunos ativos) mais os proximos dias que
@@ -29,7 +30,7 @@ export function useMonthBirthdays(today: string) {
   const nextMonths = upcomingBirthdaysNextMonths(clients ?? [], today);
   const rank = (b: { daysUntil: number }) => (b.daysUntil >= 0 ? b.daysUntil : 1000 - b.daysUntil);
   const ordered = [...month, ...nextMonths].sort((a, b) => rank(a) - rank(b));
-  return { birthdays: ordered, todayCount: month.filter((b) => b.isToday).length, isPending };
+  return { birthdays: ordered, isPending };
 }
 
 /** "Amanhã" ou "Em 3 dias" para aniversarios proximos. */
@@ -48,7 +49,13 @@ export function BirthdaysList({
   today: string;
   scrollClassName?: string;
 }) {
-  const { birthdays, todayCount, isPending } = useMonthBirthdays(today);
+  const { birthdays, isPending } = useMonthBirthdays(today);
+  // Parabens pelo WhatsApp do proprio espaco; verde quando ja foi mandado hoje.
+  const whatsapp = useWhatsAppSend();
+  const { data: greetings } = useMessageLogs({ trigger: "birthday_greeting" });
+  const greetedToday = new Set(
+    (greetings ?? []).filter((l) => format(parseISO(l.sentAt), "yyyy-MM-dd") === today).map((l) => l.clientId),
+  );
 
   if (isPending) {
     return (
@@ -68,14 +75,8 @@ export function BirthdaysList({
     );
   }
   return (
+    // Sem aviso de "hoje tem aniversariante": o bloco "Para fazer hoje" ja avisa.
     <div className="space-y-3">
-      {todayCount > 0 ? (
-        <p className="rounded-lg border border-pink-500/25 bg-pink-500/[0.07] px-3 py-2 text-xs text-pink-700 dark:text-pink-300">
-          {todayCount === 1
-            ? "Hoje tem aniversariante. Mande os parabéns!"
-            : `Hoje são ${todayCount} aniversariantes. Mande os parabéns!`}
-        </p>
-      ) : null}
       <ScrollCueArea className={scrollClassName} cueLabel="Mais aniversariantes">
         <ul className="space-y-2.5">
           {birthdays.map(({ item, day, isToday, isPast, ageTurning, daysUntil }) => (
@@ -92,9 +93,28 @@ export function BirthdaysList({
                 </p>
               </div>
               {isToday ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 text-[11px] font-medium text-pink-700 dark:text-pink-300">
-                  <Cake className="size-3" aria-hidden />
-                  Hoje
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 text-[11px] font-medium text-pink-700 dark:text-pink-300">
+                    <Cake className="size-3" aria-hidden />
+                    Hoje
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={!whatsapp.ready}
+                    title={greetedToday.has(item.id) ? "Parabéns já mandado hoje" : "Mandar parabéns no WhatsApp"}
+                    aria-label={`Mandar parabéns para ${item.name} no WhatsApp`}
+                    className={cn(greetedToday.has(item.id) && "text-emerald-600 dark:text-emerald-400")}
+                    onClick={() =>
+                      whatsapp.send({
+                        trigger: "birthday_greeting",
+                        recipient: { name: item.name, phone: item.phone, clientId: item.id },
+                      })
+                    }
+                  >
+                    <MessageCircle className="size-4" />
+                  </Button>
                 </span>
               ) : daysUntil > 0 && daysUntil <= UPCOMING_BIRTHDAY_DAYS ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">

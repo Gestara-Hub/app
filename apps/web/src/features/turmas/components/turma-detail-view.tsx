@@ -42,7 +42,7 @@ import {
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
-import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { useSegmentVocabulary } from "@/features/settings";
 import { normalizeText } from "@/lib/text";
@@ -495,11 +495,7 @@ export function TurmaDetailView({ id }: { id: string }) {
                         ? student.progressions?.[turma.modalityId]
                         : undefined;
                     const currentLvl = modalityTrack
-                      ? (modalityTrack.levels.find(
-                          (l) =>
-                            l.id === prog?.levelId ||
-                            l.name === prog?.levelName,
-                        ) ?? modalityTrack.levels[0])
+                      ? (currentLevelOf(modalityTrack, prog, ageAt(student?.birthDate, todayISO())) ?? null)
                       : null;
                     const currentSub = prog?.subLevel ?? 0;
 

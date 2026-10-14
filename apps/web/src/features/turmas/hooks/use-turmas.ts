@@ -133,6 +133,21 @@ export function useMarkAttendance() {
   });
 }
 
+/** Alunos com 3 faltas seguidas (atualiza com a chamada: `classes.all`). */
+export function useAbsenceStreaks() {
+  return useQuery({
+    queryKey: queryKeys.classes.absenceStreaks,
+    queryFn: () => turmasService.listAbsenceStreaks(3),
+  });
+}
+
+export function useEnrolledModalities() {
+  return useQuery({
+    queryKey: queryKeys.classes.enrolledModalities,
+    queryFn: () => turmasService.listEnrolledModalities(),
+  });
+}
+
 export function useAttendanceSummary(date: DateISO) {
   return useQuery({
     queryKey: queryKeys.classes.attendanceSummary(date),

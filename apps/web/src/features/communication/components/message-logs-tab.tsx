@@ -1,28 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { format, parseISO } from "date-fns";
+import { Eye, MessageCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import type { MessageLog, MessageLogStatus } from "@gestarahub/contracts";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDateTime, formatPhone } from "@gestarahub/core/format";
+import { relativeDateLabel } from "@gestarahub/core/date";
 import {
-  AlertTriangle,
-  Check,
-  CheckCheck,
-  Clock,
-  Eye,
-  RefreshCw,
-  Search,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+  ListContainer,
+  ListEmptyState,
+  ListRow,
+  ListSummaryBar,
+  SearchInput,
+} from "@/components/shared/list";
+import {
+  ListItemActionsMenu,
+  ListItemContextMenu,
+  type ListItemAction,
+} from "@/components/shared/list-item-actions-menu";
+import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -30,271 +36,205 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { useMessageLogs, useRetryMessage } from "../hooks/use-communication";
+import { cn } from "@/lib/utils";
+import { useMessageLogs, useRetryMessage, useWhatsAppConnection } from "../hooks/use-communication";
+import { STATUS_META, TRIGGER_META } from "../message-meta";
+import { MessageBubble } from "./message-bubble";
+
+type KindFilter = "all" | "billing" | "retention" | "manual";
+
+const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
+  { value: "all", label: "Todos os status" },
+  { value: "opened", label: "Aberto no WhatsApp" },
+  { value: "delivered", label: "Entregue" },
+  { value: "read", label: "Lida" },
+  { value: "failed", label: "Falhou" },
+];
+
+const KIND_FILTERS: { value: KindFilter; label: string }[] = [
+  { value: "all", label: "Todos os tipos" },
+  { value: "billing", label: "Cobrança" },
+  { value: "retention", label: "Relacionamento" },
+  { value: "manual", label: "Avulsa" },
+];
+
+function StatusBadge({ status }: { status: MessageLogStatus }) {
+  return (
+    <span className={cn("inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium", STATUS_META[status].className)}>
+      {STATUS_META[status].label}
+    </span>
+  );
+}
+
+function phoneLabel(phone: string): string {
+  return formatPhone(phone.replace(/^55(?=\d{10,11}$)/, ""));
+}
 
 export function MessageLogsTab() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [triggerFilter, setTriggerFilter] = useState("all");
-  const [selectedLog, setSelectedLog] = useState<MessageLog | null>(null);
+  const [status, setStatus] = useState<"all" | MessageLogStatus>("all");
+  const [kind, setKind] = useState<KindFilter>("all");
+  const [selected, setSelected] = useState<MessageLog | null>(null);
+  const { data: logs = [], isPending } = useMessageLogs({ search: search.trim() || undefined, status });
+  const { data: connection } = useWhatsAppConnection();
+  const retryMut = useRetryMessage();
+  const official = connection?.mode === "official";
 
-  const { data: logs = [], isLoading } = useMessageLogs();
-  const retryMutation = useRetryMessage();
+  const rows = logs.filter((log) => {
+    if (kind === "manual") return log.trigger === "manual_broadcast";
+    if (kind === "billing") return log.category === "billing";
+    if (kind === "retention") return log.category === "retention";
+    return true;
+  });
+  const hasSearch = search.trim().length > 0;
+  const hasFilters = status !== "all" || kind !== "all";
+  const clearFilters = () => {
+    setStatus("all");
+    setKind("all");
+  };
 
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      if (statusFilter !== "all" && log.status !== statusFilter) return false;
-      if (triggerFilter !== "all") {
-        if (triggerFilter === "billing" && log.category !== "billing") return false;
-        if (triggerFilter === "retention" && log.category !== "retention") return false;
-        if (triggerFilter === "manual" && log.trigger !== "manual_broadcast") return false;
-      }
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        const matchesName = log.recipientName.toLowerCase().includes(q);
-        const matchesPhone = log.recipientPhone.includes(q);
-        const matchesContent = log.content.toLowerCase().includes(q);
-        if (!matchesName && !matchesPhone && !matchesContent) return false;
-      }
-      return true;
+  function retry(log: MessageLog) {
+    retryMut.mutate(log.id, {
+      onSuccess: () => toast.success(`Mensagem reenviada para ${log.recipientName}.`),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reenviar a mensagem.")),
     });
-  }, [logs, search, statusFilter, triggerFilter]);
+  }
 
-  const handleRetry = async (log: MessageLog) => {
-    try {
-      await retryMutation.mutateAsync(log.id);
-      toast.success(`Disparo reenviado com sucesso para ${log.recipientName}.`);
-    } catch {
-      toast.error("Não foi possível reenviar o disparo.");
-    }
-  };
-
-  const renderStatusBadge = (status: MessageLogStatus) => {
-    switch (status) {
-      case "read":
-        return (
-          <Badge variant="outline" className="border-sky-500/30 bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300 gap-1 text-[11px]">
-            <CheckCheck className="size-3 text-sky-600" />
-            Lida
-          </Badge>
-        );
-      case "delivered":
-        return (
-          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 gap-1 text-[11px]">
-            <CheckCheck className="size-3 text-emerald-600" />
-            Entregue
-          </Badge>
-        );
-      case "sent":
-        return (
-          <Badge variant="outline" className="border-zinc-300 bg-zinc-50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 gap-1 text-[11px]">
-            <Check className="size-3 text-zinc-500" />
-            Enviada
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="outline" className="border-rose-500/30 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300 gap-1 text-[11px]">
-            <AlertTriangle className="size-3 text-rose-600" />
-            Falha
-          </Badge>
-        );
-      case "queued":
-      default:
-        return (
-          <Badge variant="outline" className="border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 gap-1 text-[11px]">
-            <Clock className="size-3 text-amber-600" />
-            Na fila
-          </Badge>
-        );
-    }
-  };
-
-  const renderTriggerLabel = (trigger: string) => {
-    switch (trigger) {
-      case "billing_before_due":
-        return "Lembrete 3d antes";
-      case "billing_due_date":
-        return "Vencimento Hoje";
-      case "billing_after_due":
-        return "Cobrança 3d após";
-      case "billing_critical":
-        return "Atraso Crítico 10d";
-      case "welcome_student":
-        return "Boas-Vindas";
-      case "absence_alert":
-        return "Anti-Evasão";
-      case "birthday_greeting":
-        return "Aniversário";
-      case "manual_broadcast":
-        return "Disparo Manual";
-      default:
-        return trigger;
-    }
-  };
+  function actionsFor(log: MessageLog): ListItemAction[] {
+    return [
+      { key: "view", label: "Ver mensagem", icon: <Eye className="size-4" />, onSelect: () => setSelected(log) },
+      ...(official && log.status === "failed"
+        ? [{ key: "retry", label: "Reenviar", icon: <RefreshCw className="size-4" />, onSelect: () => retry(log) }]
+        : []),
+    ];
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Filtros e Busca */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por aluno, telefone ou texto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 text-xs h-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-9 text-xs">
-              <SelectValue placeholder="Status" />
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar por aluno, telefone ou texto..."
+          className="sm:max-w-sm"
+        />
+        <div className="flex gap-2">
+          <Select value={status} onValueChange={(v) => setStatus(v as "all" | MessageLogStatus)}>
+            <SelectTrigger className="w-full sm:w-48" aria-label="Status">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos status</SelectItem>
-              <SelectItem value="read">Lida</SelectItem>
-              <SelectItem value="delivered">Entregue</SelectItem>
-              <SelectItem value="failed">Falha</SelectItem>
+              {STATUS_FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-
-          <Select value={triggerFilter} onValueChange={setTriggerFilter}>
-            <SelectTrigger className="w-[140px] h-9 text-xs">
-              <SelectValue placeholder="Categoria" />
+          <Select value={kind} onValueChange={(v) => setKind(v as KindFilter)}>
+            <SelectTrigger className="w-full sm:w-44" aria-label="Tipo">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas categorias</SelectItem>
-              <SelectItem value="billing">Cobrança</SelectItem>
-              <SelectItem value="retention">Retenção</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
+              {KIND_FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  {f.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Lista de Registros */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-              Carregando histórico de envios...
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-              Nenhum disparo encontrado para os filtros selecionados.
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {filteredLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="mt-0.5">{renderStatusBadge(log.status)}</div>
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm text-foreground">
-                          {log.recipientName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatPhone(log.recipientPhone)}
-                        </span>
-                        <Badge variant="secondary" className="text-[10px] font-normal">
-                          {renderTriggerLabel(log.trigger)}
-                        </Badge>
-                      </div>
+      <ListSummaryBar
+        count={rows.length}
+        singularLabel="mensagem"
+        pluralLabel="mensagens"
+        isLoading={isPending}
+        hasFilters={hasFilters}
+        onClearFilters={clearFilters}
+      />
 
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {log.content}
-                      </p>
-
-                      {log.errorReason ? (
-                        <p className="text-[11px] text-rose-600 font-medium">
-                          Motivo: {log.errorReason}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                      {formatDateTime(log.sentAt)}
-                    </span>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setSelectedLog(log)}
-                      title="Ver mensagem completa"
-                    >
-                      <Eye className="size-4" />
-                      <span className="sr-only">Ver</span>
-                    </Button>
-
-                    {log.status === "failed" ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1 text-xs text-rose-600 hover:text-rose-700"
-                        onClick={() => handleRetry(log)}
-                        disabled={retryMutation.isPending}
-                      >
-                        <RefreshCw className="size-3" />
-                        Reenviar
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal de Detalhe da Mensagem */}
-      <Dialog
-        open={Boolean(selectedLog)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedLog(null);
-        }}
+      <ListContainer
+        emptyState={
+          !isPending && rows.length === 0 ? (
+            <ListEmptyState
+              hasSearch={hasSearch}
+              hasFilters={hasFilters}
+              onClearSearch={() => setSearch("")}
+              onClearFilters={clearFilters}
+              emptyGuide={
+                <ModuleEmptyGuide
+                  icon={<MessageCircle className="size-8" />}
+                  title="Nenhuma mensagem ainda"
+                  description="As mensagens abertas no WhatsApp ou enviadas pelo sistema aparecem aqui."
+                />
+              }
+            />
+          ) : undefined
+        }
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-base">Detalhes do Disparo</DialogTitle>
-              {selectedLog ? renderStatusBadge(selectedLog.status) : null}
-            </div>
-            <DialogDescription className="text-xs">
-              Para {selectedLog?.recipientName} ({selectedLog ? formatPhone(selectedLog.recipientPhone) : ""})
+        {rows.map((log) => {
+          const actions = actionsFor(log);
+          return (
+            <ListItemContextMenu key={log.id} actions={actions}>
+              <ListRow
+                aria-label={`Mensagem para ${log.recipientName}`}
+                onClick={() => setSelected(log)}
+                actions={
+                  <ListItemActionsMenu
+                    actions={actions}
+                    title="Ações da mensagem"
+                    ariaLabel={`Ações da mensagem para ${log.recipientName}`}
+                    variant="ghost"
+                  />
+                }
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{log.recipientName}</span>
+                    <StatusBadge status={log.status} />
+                  </div>
+                  <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                    <span>{TRIGGER_META[log.trigger]?.label ?? "Mensagem"}</span>
+                    <span>·</span>
+                    <span>{phoneLabel(log.recipientPhone)}</span>
+                    <span>·</span>
+                    <span title={formatDateTime(log.sentAt)}>{relativeDateLabel(format(parseISO(log.sentAt), "yyyy-MM-dd"))}</span>
+                  </p>
+                </div>
+              </ListRow>
+            </ListItemContextMenu>
+          );
+        })}
+      </ListContainer>
+
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => (!open ? setSelected(null) : undefined)}>
+        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
+            <DialogTitle>{selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}</DialogTitle>
+            <DialogDescription>
+              {selected ? `${selected.recipientName} · ${phoneLabel(selected.recipientPhone)}` : ""}
             </DialogDescription>
           </DialogHeader>
-
-          {selectedLog ? (
-            <div className="space-y-4 py-2">
-              <div className="rounded-xl border bg-emerald-50/50 p-4 dark:bg-emerald-950/20">
-                <div className="rounded-xl rounded-tl-none border border-emerald-100 bg-white p-3 shadow-2xs dark:border-emerald-900 dark:bg-zinc-900 text-xs">
-                  <p className="whitespace-pre-wrap leading-relaxed text-zinc-900 dark:text-zinc-100">
-                    {selectedLog.content}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-400 border-t pt-1.5 border-zinc-100 dark:border-zinc-800">
-                    <span>{renderTriggerLabel(selectedLog.trigger)}</span>
-                    <span>{formatDateTime(selectedLog.sentAt)}</span>
-                  </div>
-                </div>
+          {selected ? (
+            <DialogBody className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <StatusBadge status={selected.status} />
+                <span>{formatDateTime(selected.sentAt)}</span>
               </div>
-
-              {selectedLog.errorReason ? (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
-                  <p className="font-semibold">Erro no Envio:</p>
-                  <p className="mt-0.5">{selectedLog.errorReason}</p>
-                </div>
+              <MessageBubble text={selected.content} />
+              {selected.status === "opened" ? (
+                <p className="text-xs text-muted-foreground">
+                  O WhatsApp foi aberto com esta mensagem. O envio é feito por quem estava no aparelho.
+                </p>
               ) : null}
-            </div>
+              {selected.errorReason ? (
+                <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  {selected.errorReason}
+                </p>
+              ) : null}
+            </DialogBody>
           ) : null}
         </DialogContent>
       </Dialog>

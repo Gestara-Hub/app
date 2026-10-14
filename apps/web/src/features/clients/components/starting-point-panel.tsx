@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { DialogBody } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SegmentVocabulary } from "@/lib/business-segment-presets";
-import { ageAt, isLevelAllowedForAge, levelAgeLabel, trackUsesAges } from "@/lib/progression-tracks";
+import { ageAt, firstLevelForAge, isLevelAllowedForAge, levelAgeLabel, trackUsesAges } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { DegreePicker, LevelSelect } from "./graduate-panel";
 
@@ -92,7 +92,7 @@ export function StartingPointPanel({
   const target = track.targetAttendances ?? 30;
 
   // "Comecou aqui": primeiro nivel da idade, sem graus, sem aulas anteriores.
-  const firstForAge = track.levels.find((l) => !usesAges || isLevelAllowedForAge(l, ageAt(birthDate, todayISO()))) ?? track.levels[0];
+  const firstForAge = firstLevelForAge(track, birthDate, todayISO());
 
   function save() {
     if (origin === "started_here") {

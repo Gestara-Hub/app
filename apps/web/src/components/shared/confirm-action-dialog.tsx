@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,9 +40,25 @@ export function ConfirmActionDialog({
   onConfirm,
   children,
 }: ConfirmActionDialogProps) {
+  // Trava contra duplo clique: o `isPending` da mutacao so desabilita o botao
+  // no render seguinte, e o segundo clique chegaria antes (acao em dobro).
+  const lockRef = useRef(false);
+  useEffect(() => {
+    if (open) lockRef.current = false;
+  }, [open]);
+
   const handleConfirm = async (event: React.MouseEvent) => {
     event.preventDefault();
-    await onConfirm();
+    if (lockRef.current || isPending) return;
+    lockRef.current = true;
+    try {
+      await onConfirm();
+    } finally {
+      // Ate la o `isPending` ja assumiu; com erro e o dialogo aberto, libera.
+      window.setTimeout(() => {
+        lockRef.current = false;
+      }, 400);
+    }
   };
 
   return (

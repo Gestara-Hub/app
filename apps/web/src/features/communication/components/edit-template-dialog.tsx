@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import type { MessageTemplate } from "@gestarahub/contracts";
-import { Check, Clock, MessageSquare, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -17,200 +17,169 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { fillMessage } from "@/lib/whatsapp";
+import { useHasFeature } from "@/features/auth";
+import { useOrganization } from "@/features/settings";
 import { useUpdateTemplate } from "../hooks/use-communication";
+import { TRIGGER_META, automationTiming, sampleValues } from "../message-meta";
+import { MessageBubble } from "./message-bubble";
 
-interface EditTemplateDialogProps {
-  template: MessageTemplate | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+/** Nome amigavel de cada variavel (o texto usa a forma {chave}). */
+const VARIABLE_LABELS: Record<string, string> = {
+  "{aluno}": "Nome do aluno",
+  "{empresa}": "Nome do espaço",
+  "{valor}": "Valor",
+  "{vencimento}": "Vencimento",
+  "{link_pagamento}": "Link de pagamento",
+  "{link_app}": "Link do app",
+};
 
 function EditTemplateForm({
   template,
+  official,
   onClose,
 }: {
   template: MessageTemplate;
+  official: boolean;
   onClose: () => void;
 }) {
-  const updateMutation = useUpdateTemplate();
-
+  const updateMut = useUpdateTemplate();
+  const { data: organization } = useOrganization();
+  const hasFeature = useHasFeature();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [content, setContent] = useState(template.content);
   const [enabled, setEnabled] = useState(template.enabled);
   const [sendHour, setSendHour] = useState(template.sendHour);
-  const [content, setContent] = useState(template.content);
-  const daysOffset = template.daysOffset;
 
-  const insertVariable = (variable: string) => {
-    setContent((prev) => `${prev} ${variable} `);
-  };
+  // Insere a variavel onde esta o cursor (ou no fim).
+  function insertVariable(variable: string) {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? content.length;
+    const end = el?.selectionEnd ?? content.length;
+    const next = `${content.slice(0, start)}${variable}${content.slice(end)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + variable.length, start + variable.length);
+    });
+  }
 
-  const handleSave = async () => {
+  async function save() {
     if (!content.trim()) {
-      toast.error("O conteúdo da mensagem não pode ficar vazio.");
+      toast.error("Escreva o texto da mensagem.");
       return;
     }
-
     try {
-      await updateMutation.mutateAsync({
+      await updateMut.mutateAsync({
         id: template.id,
-        enabled,
-        sendHour,
-        daysOffset,
-        content: content.trim(),
+        content,
+        ...(official ? { enabled, sendHour } : {}),
       });
-
-      toast.success(`As configurações de "${template.title}" foram salvas.`);
+      toast.success("Mensagem salva.");
       onClose();
-    } catch {
-      toast.error("Não foi possível atualizar a regra. Tente novamente.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível salvar a mensagem."));
     }
-  };
+  }
+
+  const preview = fillMessage(content, sampleValues(organization?.name, hasFeature("online_payments")));
 
   return (
     <>
-      <DialogHeader>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            {template.category === "billing" ? "Cobrança" : "Relacionamento"}
-          </Badge>
-          <DialogTitle className="text-lg">{template.title}</DialogTitle>
-        </div>
-        <DialogDescription>{template.description}</DialogDescription>
-      </DialogHeader>
-
-      <div className="space-y-6 py-2">
-        {/* Status e Horário */}
-        <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Switch
-              id="template-enabled"
-              checked={enabled}
-              onCheckedChange={setEnabled}
-            />
-            <Label htmlFor="template-enabled" className="cursor-pointer font-medium">
-              {enabled ? "Disparo Automático Ativo" : "Disparo Pausado"}
-            </Label>
+      <DialogBody className="space-y-4">
+        {official ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Switch checked={enabled} onCheckedChange={setEnabled} />
+              Envio automático
+            </label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="template-hour" className="text-sm">
+                Horário
+              </Label>
+              <Input
+                id="template-hour"
+                type="time"
+                value={sendHour}
+                onChange={(e) => setSendHour(e.target.value)}
+                className="h-8 w-28 text-base md:text-sm"
+              />
+            </div>
+            <p className="basis-full text-xs text-muted-foreground">{automationTiming(template)}.</p>
           </div>
+        ) : null}
 
-          <div className="flex items-center gap-2">
-            <Clock className="size-4 text-muted-foreground" />
-            <Label htmlFor="send-hour" className="text-xs text-muted-foreground whitespace-nowrap">
-              Horário de Envio:
-            </Label>
-            <Input
-              id="send-hour"
-              type="time"
-              value={sendHour}
-              onChange={(e) => setSendHour(e.target.value)}
-              className="h-8 w-24 text-xs"
-            />
-          </div>
-        </div>
-
-        {/* Variáveis Dinâmicas */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
-              Variáveis Dinâmicas Disponíveis
-            </Label>
-            <span className="text-[11px] text-muted-foreground">
-              Clique para inserir no texto
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="space-y-1.5">
+          <Label htmlFor="template-content" className="text-sm">
+            Texto<span className="ml-0.5 text-destructive">*</span>
+          </Label>
+          <Textarea
+            id="template-content"
+            ref={textareaRef}
+            rows={5}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="text-base leading-relaxed md:text-sm"
+          />
+          <div className="flex flex-wrap gap-1">
             {template.availableVariables.map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => insertVariable(v)}
-                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-mono text-primary transition-colors hover:bg-primary/10"
+                className="rounded-md border border-dashed px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
               >
-                <Sparkles className="size-3" />
-                {v}
+                + {VARIABLE_LABELS[v] ?? v}
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Editor de Texto */}
-        <div className="space-y-2">
-          <Label htmlFor="template-content" className="font-medium">
-            Texto da Mensagem no WhatsApp
-          </Label>
-          <Textarea
-            id="template-content"
-            rows={5}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Digite o texto da mensagem..."
-            className="font-sans leading-relaxed resize-y"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Emojis e quebras de linha são suportados e enviados com fidelidade pelo WhatsApp.
+          <p className="text-xs text-muted-foreground">
+            Frase com informação que o sistema não tem (como o link de pagamento sem cobrança online) sai da mensagem.
           </p>
         </div>
 
-        {/* Prévia do Balão de WhatsApp */}
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1.5">
-            <MessageSquare className="size-3.5" />
-            Prévia Visual do Aluno
-          </Label>
-          <div className="rounded-xl border bg-emerald-50/50 p-4 dark:bg-emerald-950/20">
-            <div className="max-w-md rounded-2xl rounded-tl-none bg-white p-3.5 text-sm shadow-xs border border-emerald-100/80 dark:border-emerald-900/50 dark:bg-zinc-900">
-              <p className="whitespace-pre-wrap leading-relaxed text-zinc-900 dark:text-zinc-100">
-                {content
-                  .replace("{aluno}", "Gabriel Silva")
-                  .replace("{valor}", "R$ 180,00")
-                  .replace("{vencimento}", "10/10/2026")
-                  .replace("{empresa}", "Gestara Academy")
-                  .replace("{link_pagamento}", "https://pay.gestarahub.com/c/demo")
-                  .replace("{link_app}", "https://app.gestarahub.com/login")}
-              </p>
-              <div className="mt-1.5 flex items-center justify-end gap-1 text-[10px] text-zinc-400">
-                <span>{sendHour}</span>
-                <div className="flex text-emerald-500">
-                  <Check className="size-3" />
-                  <Check className="-ml-1.5 size-3" />
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-foreground">Como o aluno recebe</p>
+          <MessageBubble text={preview} />
         </div>
-      </div>
-
-      <DialogFooter className="gap-2 sm:gap-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-        >
+      </DialogBody>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+        <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
           Cancelar
         </Button>
-        <Button
-          type="button"
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-        >
-          {updateMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+        <Button type="button" onClick={() => void save()} disabled={updateMut.isPending}>
+          {updateMut.isPending ? "Salvando..." : "Salvar"}
         </Button>
-      </DialogFooter>
+      </div>
     </>
   );
 }
 
 export function EditTemplateDialog({
   template,
+  official,
   open,
   onOpenChange,
-}: EditTemplateDialogProps) {
+}: {
+  template: MessageTemplate | null;
+  official: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
+          <DialogTitle>{template ? TRIGGER_META[template.trigger].label : "Mensagem"}</DialogTitle>
+          <DialogDescription>
+            {template ? (official ? automationTiming(template) : TRIGGER_META[template.trigger].where) : ""}
+          </DialogDescription>
+        </DialogHeader>
         {template ? (
           <EditTemplateForm
             key={template.id}
             template={template}
+            official={official}
             onClose={() => onOpenChange(false)}
           />
         ) : null}

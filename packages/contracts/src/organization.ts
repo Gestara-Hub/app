@@ -16,16 +16,28 @@ export type OrganizationMidMonthStrategy = "prorated" | "full_cycle";
 /**
  * Area do negocio no Modelo 3 (turmas). So define padroes (trilha, duracao,
  * vagas) e vocabulario; nunca liga ou desliga recursos. `custom` usa
- * `Organization.customSegmentName` como rotulo.
+ * `Organization.customSegmentName` como rotulo e
+ * `Organization.customSegmentProgression` para a trilha e as palavras.
+ * `music_languages` (antiga "Musica & Idiomas") virou `music` ou `languages` (v32).
  */
 export type ClassesBusinessSegment =
   | "martial_arts"
   | "pilates_yoga"
-  | "music_languages"
-  | "dance"
   | "functional_training"
+  | "dance"
+  | "music"
+  | "languages"
   | "swimming_sports"
+  | "gastronomy"
+  | "arts_crafts"
+  | "beauty_courses"
   | "custom";
+
+/**
+ * Como os alunos avancam numa area `custom`: por faixas (trilha de faixas,
+ * "Graduar"), niveis, modulos ou sem etapas (`none`, o padrao).
+ */
+export type CustomSegmentProgression = "belts" | "levels" | "modules" | "none";
 
 export interface OrganizationSettings {
   defaultDueDay?: number; // dia padrão de vencimento de mensalidades (ex: 10)
@@ -50,6 +62,8 @@ export interface Organization {
   classSegment?: ClassesBusinessSegment;
   /** Nome digitado quando `classSegment` e `custom`. */
   customSegmentName?: string;
+  /** Como os alunos avancam quando `classSegment` e `custom`. Ausente = `none`. */
+  customSegmentProgression?: CustomSegmentProgression;
   settings?: OrganizationSettings;
   /** Plano GestaraHub (assinatura). Ausente = free. */
   subscription?: Subscription;

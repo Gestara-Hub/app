@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { financialEntryStatusLabel, paymentMethodLabel } from "@/lib/labels";
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
 import {
@@ -180,6 +181,8 @@ export function FinanceEntriesTab({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceEntryView | null>(null);
   const [paying, setPaying] = useState<FinanceEntryView | null>(null);
+  // Chave pelo ultimo lancamento: remonta ao abrir outro, nao ao fechar (deixa a saida animar).
+  const lastPayingId = useRetainedValue(paying)?.id;
   const [categoryType, setCategoryType] = useState<FinancialEntryType>("expense");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
@@ -667,7 +670,7 @@ export function FinanceEntriesTab({
         competence={competence}
       />
       <FinancePaymentDialog
-        key={paying?.id ?? "none"}
+        key={lastPayingId ?? "none"}
         row={paying}
         isPending={paidMut.isPending}
         onOpenChange={(open) => {

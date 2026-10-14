@@ -62,11 +62,13 @@ export function slotsSummary(slots?: ClassMeetingSlot[]): string {
 function TurmaRow({
   turma,
   canManage,
+  onEdit,
   onDeactivate,
   onReactivate,
 }: {
   turma: ClassGroupView;
   canManage: boolean;
+  onEdit: (turma: ClassGroupView) => void;
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
@@ -80,7 +82,8 @@ function TurmaRow({
           key: "edit",
           label: "Editar",
           icon: <Pencil className="size-4" />,
-          onSelect: () => router.push(`/classes/${turma.id}`),
+          // Edita aqui mesmo (sem abrir o detalhe da turma).
+          onSelect: () => onEdit(turma),
         },
         isActive
           ? {
@@ -159,11 +162,13 @@ function TurmaRow({
 function TurmaCard({
   turma,
   canManage,
+  onEdit,
   onDeactivate,
   onReactivate,
 }: {
   turma: ClassGroupView;
   canManage: boolean;
+  onEdit: (turma: ClassGroupView) => void;
   onDeactivate: (turma: ClassGroupView) => void;
   onReactivate: (turma: ClassGroupView) => void;
 }) {
@@ -177,7 +182,8 @@ function TurmaCard({
           key: "edit",
           label: "Editar",
           icon: <Pencil className="size-4" />,
-          onSelect: () => router.push(`/classes/${turma.id}`),
+          // Edita aqui mesmo (sem abrir o detalhe da turma).
+          onSelect: () => onEdit(turma),
         },
         isActive
           ? {
@@ -356,6 +362,9 @@ export function TurmasView({
   const [createdTurmaForEnroll, setCreatedTurmaForEnroll] = useState<ClassGroupView | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [deactivatingTurma, setDeactivatingTurma] = useState<ClassGroupView | null>(null);
+  const [editingTurma, setEditingTurma] = useState<ClassGroupView | null>(null);
+  // Mantem a turma durante a animacao de saida (o titulo nao vira "Nova turma").
+  const shownEditingTurma = useRetainedValue(editingTurma);
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
   const shownDeactivatingTurma = useRetainedValue(deactivatingTurma);
 
@@ -447,6 +456,14 @@ export function TurmasView({
         }}
       />
 
+      <TurmaFormDialog
+        open={editingTurma !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingTurma(null);
+        }}
+        turma={shownEditingTurma ?? undefined}
+      />
+
       <SetupCompleteDialog
         groupName={createdTurmaForEnroll?.name}
         open={createdTurmaForEnroll !== null && celebrate}
@@ -528,6 +545,7 @@ export function TurmasView({
                 key={t.id}
                 turma={t}
                 canManage={canManage}
+                onEdit={setEditingTurma}
                 onDeactivate={setDeactivatingTurma}
                 onReactivate={handleReactivate}
               />
@@ -558,6 +576,7 @@ export function TurmasView({
                 key={t.id}
                 turma={t}
                 canManage={canManage}
+                onEdit={setEditingTurma}
                 onDeactivate={setDeactivatingTurma}
                 onReactivate={handleReactivate}
               />

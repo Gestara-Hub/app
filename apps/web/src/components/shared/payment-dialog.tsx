@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -86,9 +87,12 @@ export function PaymentDialog({
             </DialogBody>
 
             <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border/40 bg-background p-6 pt-4 sm:flex sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-                Voltar
-              </Button>
+              {/* DialogClose (e nao onOpenChange direto): passa pelo "Descartar alterações?". */}
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={isPending}>
+                  Voltar
+                </Button>
+              </DialogClose>
               <Button type="submit" disabled={isPending || !method}>
                 {isPending ? "Registrando..." : confirmLabel}
               </Button>

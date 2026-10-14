@@ -1,5 +1,6 @@
 import type {
   ClassesBusinessSegment,
+  CustomSegmentProgression,
   ModalityProgressionTrack,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
@@ -48,9 +49,9 @@ export interface SegmentVocabulary {
 
 export interface BusinessSegmentPreset {
   id: ClassesBusinessSegment;
+  /** Nome curto da area ("Lutas", "Pilates e yoga"). */
   label: string;
-  badge: string;
-  description: string;
+  /** Uma linha de exemplos, sem reticencias ("Jiu-jitsu, judô, muay thai"). */
   examples: string;
   defaultModalities: string[];
   /**
@@ -110,109 +111,213 @@ const ADVANCE = {
   date: "Data do avanço",
 };
 
+const GRADUATION = {
+  noun: "Graduação",
+  verb: "Graduar",
+  ready: "Prontos para graduar",
+  badge: "Apto para graduar",
+  promotedOn: "Graduado em",
+  date: "Data da graduação",
+};
+
+const BELT_VOCABULARY = vocabulary("Faixa", "Faixas", "f", GRADUATION);
+const LEVEL_VOCABULARY = vocabulary("Nível", "Níveis", "m", ADVANCE);
+const MODULE_VOCABULARY = vocabulary("Módulo", "Módulos", "m", ADVANCE);
+
+/** Ordem das chaves = ordem no setup, na landing page e em Configuracoes. */
 export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSegmentPreset> = {
   martial_arts: {
     id: "martial_arts",
-    label: "Lutas & Artes Marciais",
-    badge: "Tatame & Faixas",
-    description: "Chamada no tatame e esteira de faixas.",
-    examples: "Jiu-Jitsu • Muay Thai • Judô • Boxe",
+    label: "Lutas",
+    examples: "Jiu-jitsu, judô, muay thai",
     defaultModalities: ["Jiu-Jitsu", "Muay Thai", "Boxe", "Judô", "No-Gi / Submission"],
     progressionTemplate: "by_modality_name",
     trackTemplates: ["bjj_adult", "judo_karate", "muay_thai", "karate", "taekwondo", "capoeira", "kickboxing"],
     classDefaults: { durationMinutes: 60, capacity: 20 },
-    vocabulary: vocabulary("Faixa", "Faixas", "f", {
-      noun: "Graduação",
-      verb: "Graduar",
-      ready: "Prontos para graduar",
-      badge: "Apto para graduar",
-      promotedOn: "Graduado em",
-      date: "Data da graduação",
-    }),
+    vocabulary: BELT_VOCABULARY,
   },
   pilates_yoga: {
     id: "pilates_yoga",
-    label: "Pilates & Yoga",
-    badge: "Grupo ou 1 a 1",
-    description: "Turmas pequenas e aulas particulares.",
-    examples: "Reformer • Solo • Studio VIP",
+    label: "Pilates e yoga",
+    examples: "Solo, aparelho, meditação",
     defaultModalities: ["Pilates Reformer", "Pilates Solo", "Yoga", "Studio VIP"],
     progressionTemplate: null,
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 50, capacity: 6 },
-    vocabulary: vocabulary("Nível", "Níveis", "m", ADVANCE),
-  },
-  music_languages: {
-    id: "music_languages",
-    label: "Música & Idiomas",
-    badge: "Grupo ou VIP",
-    description: "Aulas particulares ou turmas por módulos.",
-    examples: "Inglês • Espanhol • Violão • Piano",
-    defaultModalities: ["Inglês", "Espanhol", "Violão", "Piano & Teclado", "Canto"],
-    progressionTemplate: "modules",
-    trackTemplates: ["modules", "language_cefr", "blank"],
-    classDefaults: { durationMinutes: 60, capacity: 8 },
-    vocabulary: vocabulary("Módulo", "Módulos", "m", ADVANCE),
-  },
-  dance: {
-    id: "dance",
-    label: "Dança & Movimento",
-    badge: "Níveis & Turmas",
-    description: "Turmas por nível e aulas particulares.",
-    examples: "Ballet • Salão • Ritmos • Jazz",
-    defaultModalities: ["Ballet Clássico", "Dança de Salão", "Ritmos", "Jazz"],
-    progressionTemplate: "general_levels",
-    trackTemplates: ["general_levels", "blank"],
-    classDefaults: { durationMinutes: 60, capacity: 15 },
-    vocabulary: vocabulary("Nível", "Níveis", "m", ADVANCE),
+    vocabulary: LEVEL_VOCABULARY,
   },
   functional_training: {
     id: "functional_training",
-    label: "Boxes & Funcional",
-    badge: "Lotação & Fila",
-    description: "Bloqueio ao lotar e fila de espera automática.",
-    examples: "CrossFit • Funcional • HIIT • Calistenia",
+    label: "Funcional e crossfit",
+    examples: "Funcional, HIIT, calistenia",
     defaultModalities: ["CrossFit", "Treino Funcional", "HIIT & Cardio", "Calistenia"],
     progressionTemplate: null,
     trackTemplates: ["general_levels", "functional_categories", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
-    vocabulary: vocabulary("Nível", "Níveis", "m", ADVANCE),
+    vocabulary: LEVEL_VOCABULARY,
+  },
+  dance: {
+    id: "dance",
+    label: "Dança",
+    examples: "Balé, salão, ritmos",
+    defaultModalities: ["Ballet Clássico", "Dança de Salão", "Ritmos", "Jazz"],
+    progressionTemplate: "general_levels",
+    trackTemplates: ["general_levels", "blank"],
+    classDefaults: { durationMinutes: 60, capacity: 15 },
+    vocabulary: LEVEL_VOCABULARY,
+  },
+  music: {
+    id: "music",
+    label: "Música",
+    examples: "Violão, piano, canto",
+    defaultModalities: ["Violão", "Piano e teclado", "Canto", "Bateria"],
+    progressionTemplate: "modules",
+    trackTemplates: ["modules", "blank"],
+    classDefaults: { durationMinutes: 60, capacity: 6 },
+    vocabulary: MODULE_VOCABULARY,
+  },
+  languages: {
+    id: "languages",
+    label: "Idiomas e reforço",
+    examples: "Inglês, reforço, cursinho",
+    defaultModalities: ["Inglês", "Espanhol", "Reforço escolar"],
+    progressionTemplate: "general_levels",
+    trackTemplates: ["language_cefr", "general_levels", "modules", "blank"],
+    classDefaults: { durationMinutes: 60, capacity: 10 },
+    vocabulary: LEVEL_VOCABULARY,
   },
   swimming_sports: {
     id: "swimming_sports",
-    label: "Natação & Esportes",
-    badge: "Fases & Presença",
-    description: "Turmas por fase e controle de presença.",
-    examples: "Natação • Hidroginástica • Beach Tennis",
+    label: "Natação e esportes",
+    examples: "Natação, futebol, tênis",
     defaultModalities: ["Natação Infantil", "Natação Adulto", "Hidroginástica", "Beach Tennis"],
     progressionTemplate: "swim_stages",
     trackTemplates: ["swim_stages", "general_levels", "blank"],
     classDefaults: { durationMinutes: 45, capacity: 8 },
     vocabulary: vocabulary("Fase", "Fases", "f", ADVANCE),
   },
+  gastronomy: {
+    id: "gastronomy",
+    label: "Gastronomia",
+    examples: "Confeitaria, pães, culinária",
+    defaultModalities: ["Confeitaria", "Panificação", "Culinária", "Chocolateria"],
+    progressionTemplate: "modules",
+    trackTemplates: ["modules", "blank"],
+    classDefaults: { durationMinutes: 120, capacity: 12 },
+    vocabulary: MODULE_VOCABULARY,
+  },
+  arts_crafts: {
+    id: "arts_crafts",
+    label: "Artes e artesanato",
+    examples: "Cerâmica, pintura, costura",
+    defaultModalities: ["Cerâmica", "Desenho e pintura", "Costura", "Crochê e tricô"],
+    progressionTemplate: "modules",
+    trackTemplates: ["modules", "blank"],
+    classDefaults: { durationMinutes: 120, capacity: 10 },
+    vocabulary: MODULE_VOCABULARY,
+  },
+  beauty_courses: {
+    id: "beauty_courses",
+    label: "Beleza e cursos livres",
+    examples: "Maquiagem, unhas, oratória",
+    defaultModalities: ["Maquiagem", "Design de sobrancelha", "Manicure", "Oratória"],
+    progressionTemplate: "modules",
+    trackTemplates: ["modules", "blank"],
+    classDefaults: { durationMinutes: 120, capacity: 12 },
+    vocabulary: MODULE_VOCABULARY,
+  },
   custom: {
     id: "custom",
-    label: "Outra modalidade?",
-    badge: "Personalizado",
-    description: "Regras flexíveis para o seu jeito de ensinar.",
-    examples: "Natação • Tênis • Cursos Livres",
+    label: "Outra área",
+    examples: "Teatro, xadrez, autoescola",
     defaultModalities: [],
     progressionTemplate: null,
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
-    vocabulary: vocabulary("Nível", "Níveis", "m", ADVANCE),
+    vocabulary: LEVEL_VOCABULARY,
   },
 };
 
 /** Tenants antigos (sem area salva) seguem como lutas: e o comportamento de antes. */
 export const DEFAULT_CLASS_SEGMENT: ClassesBusinessSegment = "martial_arts";
 
+/** Opcoes de "Como seus alunos avançam?" da area `custom` (setup e Configuracoes). */
+export const CUSTOM_PROGRESSION_OPTIONS: { value: CustomSegmentProgression; label: string }[] = [
+  { value: "belts", label: "Faixas" },
+  { value: "levels", label: "Níveis" },
+  { value: "modules", label: "Módulos" },
+  { value: "none", label: "Não avançam" },
+];
+
+export const DEFAULT_CUSTOM_PROGRESSION: CustomSegmentProgression = "none";
+
+/**
+ * Area `custom` ajustada pela escolha do dono. Pre-calculadas para o hook
+ * devolver sempre o mesmo objeto (referencia estavel entre renders).
+ */
+const CUSTOM_PRESETS: Record<CustomSegmentProgression, BusinessSegmentPreset> = {
+  belts: {
+    ...CLASSES_SEGMENT_PRESETS.custom,
+    progressionTemplate: "judo_karate",
+    trackTemplates: ["judo_karate", "karate", "capoeira", "general_levels", "blank"],
+    vocabulary: BELT_VOCABULARY,
+  },
+  levels: {
+    ...CLASSES_SEGMENT_PRESETS.custom,
+    progressionTemplate: "general_levels",
+    trackTemplates: ["general_levels", "blank"],
+    vocabulary: LEVEL_VOCABULARY,
+  },
+  modules: {
+    ...CLASSES_SEGMENT_PRESETS.custom,
+    progressionTemplate: "modules",
+    trackTemplates: ["modules", "blank"],
+    vocabulary: MODULE_VOCABULARY,
+  },
+  none: CLASSES_SEGMENT_PRESETS.custom,
+};
+
 export function getAllSegmentPresets(): BusinessSegmentPreset[] {
   return Object.values(CLASSES_SEGMENT_PRESETS);
 }
 
-export function getSegmentPreset(id: ClassesBusinessSegment | undefined): BusinessSegmentPreset {
-  return CLASSES_SEGMENT_PRESETS[id ?? DEFAULT_CLASS_SEGMENT] ?? CLASSES_SEGMENT_PRESETS.custom;
+/**
+ * Preset efetivo da area. Para `custom` (ou area desconhecida), a trilha e as
+ * palavras seguem `customProgression` (ausente = sem etapas).
+ */
+export function getSegmentPreset(
+  id: ClassesBusinessSegment | undefined,
+  customProgression?: CustomSegmentProgression,
+): BusinessSegmentPreset {
+  const preset = CLASSES_SEGMENT_PRESETS[id ?? DEFAULT_CLASS_SEGMENT];
+  if (preset && preset.id !== "custom") return preset;
+  return CUSTOM_PRESETS[customProgression ?? DEFAULT_CUSTOM_PROGRESSION] ?? CLASSES_SEGMENT_PRESETS.custom;
+}
+
+const PROGRESSION_SUMMARY: Partial<Record<NonNullable<BusinessSegmentPreset["progressionTemplate"]>, string>> = {
+  by_modality_name: "faixas e graus",
+  bjj_adult: "faixas e graus",
+  judo_karate: "faixas e graus",
+  muay_thai: "faixas e graus",
+  karate: "faixas e graus",
+  taekwondo: "faixas e graus",
+  capoeira: "faixas e graus",
+  kickboxing: "faixas e graus",
+  general_levels: "níveis",
+  language_cefr: "níveis",
+  functional_categories: "níveis",
+  modules: "módulos",
+  swim_stages: "fases",
+};
+
+/**
+ * Como os alunos avancam na area, para frases de meio de texto ("faixas e
+ * graus", "níveis", "módulos", "fases"). `null` quando a area nao tem trilha.
+ */
+export function segmentProgressionSummary(preset: BusinessSegmentPreset): string | null {
+  const template = preset.progressionTemplate;
+  if (template === null) return null;
+  return PROGRESSION_SUMMARY[template] ?? "níveis";
 }
 
 /** Trilha de uma modalidade criada no setup, conforme a area escolhida. */

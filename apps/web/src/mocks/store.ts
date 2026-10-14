@@ -33,15 +33,14 @@ import type {
   Unit,
   User,
   WaitlistEntry,
-  WhatsAppSession,
+  WhatsAppConnection,
 } from "@gestarahub/contracts";
 import { mockConfig } from "./config";
 import {
   createInitialWorld,
   defaultFinancialCategories,
-  defaultMessageLogs,
   defaultMessageTemplates,
-  defaultWhatsAppSession,
+  defaultWhatsAppConnection,
 } from "./seed";
 
 /**
@@ -94,8 +93,8 @@ export interface MockStore {
   teacherPayouts: TeacherPayout[];
   onlinePayments: OnlinePayment[];
   recurringAuthorizations: RecurringAuthorization[];
-  // Comunicacao e gateway WhatsApp (recurso pago "messaging")
-  communicationSession?: WhatsAppSession;
+  // Comunicacao: WhatsApp do proprio espaco (assistido gratis; oficial no Pro)
+  whatsAppConnection?: WhatsAppConnection;
   messageTemplates: MessageTemplate[];
   messageLogs: MessageLog[];
   // Deprecated backward compatibility properties
@@ -143,7 +142,17 @@ const STORAGE_KEY = "gestarahub:db";
 //      "Substituída" (`replaced`), fora do total de canceladas. Migracao suave.
 // v29: "pontos a melhorar" (`focusAreas`) do progresso viram metas sem
 //      quantidade (`goals`). Migracao suave.
-const SEED_VERSION = 29;
+// v30: WhatsApp com o numero do proprio espaco: a sessao simulada por QR code
+//      (`communicationSession`) vira `whatsAppConnection` (assistido; conexao
+//      oficial desligada), saem as mensagens ficticias do seed antigo e o
+//      "Sentimos sua falta" passa a ser por 3 faltas seguidas. Migracao suave.
+// v31: modelos de mensagem criados antes da area ganham o texto da propria area.
+// v32: "Música & Idiomas" (`music_languages`) se divide em `music` e
+//      `languages` (escolhido pelos nomes das modalidades). Migracao suave.
+const SEED_VERSION = 32;
+
+/** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
+const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
 
 interface PersistedBlob {
   v: number;
@@ -191,19 +200,18 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
   if (fromVersion < 23) {
     for (const tenant of Object.values(data.tenants)) {
       const t = tenant as Partial<MockStore> & MockStore;
-      if (!t.communicationSession) {
-        t.communicationSession = defaultWhatsAppSession(t.organization.id);
+      if (!t.whatsAppConnection) {
+        t.whatsAppConnection = defaultWhatsAppConnection(t.organization.id);
       }
       if (!t.messageTemplates || t.messageTemplates.length === 0) {
         t.messageTemplates = defaultMessageTemplates(t.organization.id);
       }
-      if (!t.messageLogs || t.messageLogs.length === 0) {
-        t.messageLogs = defaultMessageLogs(t.organization.id);
-      }
+      if (!t.messageLogs) t.messageLogs = [];
     }
   }
   if (fromVersion < 25) {
-    const renamed: Record<string, ClassesBusinessSegment> = {
+    // `music_languages` nao existe mais: a v32 logo abaixo escolhe music ou languages.
+    const renamed: Record<string, string> = {
       martial_arts: "martial_arts",
       fitness_wellness: "pilates_yoga",
       education_courses: "music_languages",
@@ -219,7 +227,9 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
         | undefined;
       if (!legacy) continue;
       const first = legacy.businessSegments?.[0];
-      if (!org.classSegment && first && renamed[first]) org.classSegment = renamed[first];
+      if (!org.classSegment && first && renamed[first]) {
+        org.classSegment = renamed[first] as ClassesBusinessSegment;
+      }
       if (!org.customSegmentName && legacy.customSegmentName) {
         org.customSegmentName = legacy.customSegmentName;
       }
@@ -304,6 +314,59 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
           }
           delete legacy.focusAreas;
         }
+      }
+    }
+  }
+  if (fromVersion < 30) {
+    for (const tenant of Object.values(data.tenants)) {
+      const orgId = tenant.organization.id;
+      const legacy = tenant as MockStore & {
+        communicationSession?: { allowedSendHours?: WhatsAppConnection["allowedSendHours"]; monthlyQuota?: { included?: number } };
+      };
+      const base = defaultWhatsAppConnection(orgId);
+      tenant.whatsAppConnection = {
+        ...base,
+        allowedSendHours: legacy.communicationSession?.allowedSendHours ?? base.allowedSendHours,
+        monthlyQuota: { used: 0, included: legacy.communicationSession?.monthlyQuota?.included ?? base.monthlyQuota.included },
+      };
+      delete legacy.communicationSession;
+      const fakeIds = new Set(Array.from({ length: 20 }, (_, i) => `msg-${orgId}-${i + 1}`));
+      tenant.messageLogs = (tenant.messageLogs ?? []).filter((log) => !fakeIds.has(log.id));
+      for (const template of tenant.messageTemplates ?? []) {
+        if (template.trigger === "absence_alert" && template.daysOffset === 14) {
+          template.daysOffset = 3;
+          template.description = "Para alunos com 3 faltas seguidas";
+        }
+      }
+    }
+  }
+  if (fromVersion < 31) {
+    // Modelos criados antes da area (v23) nasceram com o texto de lutas
+    // ("tatame", "treinos"). Quem nao e de lutas e nao editou o texto recebe
+    // o padrao da propria area.
+    for (const tenant of Object.values(data.tenants)) {
+      const segment = tenant.organization.classSegment;
+      if (!segment || segment === "martial_arts") continue;
+      const orgId = tenant.organization.id;
+      const martial = new Map(defaultMessageTemplates(orgId).map((t) => [t.trigger, t.content]));
+      const own = new Map(defaultMessageTemplates(orgId, segment).map((t) => [t.trigger, t.content]));
+      for (const template of tenant.messageTemplates ?? []) {
+        const next = own.get(template.trigger);
+        if (next && template.content === martial.get(template.trigger)) template.content = next;
+      }
+    }
+  }
+  if (fromVersion < 32) {
+    for (const tenant of Object.values(data.tenants)) {
+      const org = tenant.organization;
+      if ((org.classSegment as string | undefined) !== "music_languages") continue;
+      const teachesLanguages = (tenant.categories ?? []).some((c) =>
+        LANGUAGE_MODALITY_PATTERN.test(c.name),
+      );
+      org.classSegment = teachesLanguages ? "languages" : "music";
+      // Rotulo antigo gravado pelo setup acompanha a nova area.
+      if (org.segment === "Música & Idiomas") {
+        org.segment = teachesLanguages ? "Idiomas e reforço" : "Música";
       }
     }
   }

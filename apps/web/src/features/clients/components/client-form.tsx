@@ -44,12 +44,14 @@ import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
+import { useWhatsAppSend } from "@/features/communication";
 import { useCharges, usePlans } from "@/features/turmas";
 import { useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { clientFormSchema, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
+import { whatsappNumber } from "@/lib/whatsapp";
 import { resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
 const MEMBERSHIP_STATUS_OPTIONS = [
@@ -179,6 +181,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
   const createMut = useCreateClient();
+  // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
+  const whatsapp = useWhatsAppSend();
   const updateMut = useUpdateClient();
   const pending = createMut.isPending || updateMut.isPending;
 
@@ -706,11 +710,25 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             : "Cliente atualizado com sucesso.",
         );
       } else {
-        await createMut.mutateAsync({ ...payload, status: "active" });
+        const created = await createMut.mutateAsync({ ...payload, status: "active" });
+        const canWelcome = isClasses && whatsapp.ready && Boolean(whatsappNumber(created.phone));
         toast.success(
           isClasses
             ? "Aluno criado com sucesso."
             : "Cliente criado com sucesso.",
+          canWelcome
+            ? {
+                duration: 10_000,
+                action: {
+                  label: "Enviar boas-vindas",
+                  onClick: () =>
+                    whatsapp.send({
+                      trigger: "welcome_student",
+                      recipient: { name: created.name, phone: created.phone, clientId: created.id },
+                    }),
+                },
+              }
+            : undefined,
         );
       }
       onSuccess();

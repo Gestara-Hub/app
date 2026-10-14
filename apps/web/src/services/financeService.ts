@@ -63,7 +63,7 @@ import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
 
 /**
- * Financeiro do negocio (plano pago). Le as cobrancas dos alunos (Charge) e os
+ * Financeiro do negocio (basico, gratis). Le as cobrancas dos alunos (Charge) e os
  * pagamentos de professores (TeacherPayout) como fontes de caixa, sem duplicar;
  * `FinancialEntry` cobre so os lancamentos manuais. Recorrencias materializam
  * de forma idempotente em toda leitura, ate o mes seguinte ao atual.

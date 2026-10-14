@@ -753,7 +753,16 @@ function AdjustmentForm({
           disabled={disabled}
         />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" disabled={disabled} onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={() => {
+              form.reset();
+              setOpen(false);
+            }}
+          >
             Cancelar
           </Button>
           <Button type="submit" size="sm" disabled={disabled || form.formState.isSubmitting}>
