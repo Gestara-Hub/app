@@ -360,20 +360,24 @@ export function splitInstallments(
  * "mensalidade de Ana", "aula avulsa de Ana", "cobrança avulsa "Kimono" de Ana"
  * e, parcelada, "parcela 2 de 3 da cobrança avulsa "Kimono" de Ana". Curso:
  * "curso "Confeitaria" de Ana" e "parcela 2 de 4 do curso "Confeitaria" de Ana".
+ * Pacote: "compra do pacote "10 aulas" de Ana" (o texto vem depois de "da"/"a",
+ * por isso o substantivo feminino) e "parcela 2 de 3 do pacote "10 aulas" de Ana".
  */
 export function describeCharge(
   charge: { kind: ChargeKind; description?: string; cycleIndex?: number; cycleTotal?: number },
   studentName: string,
 ): string {
   if (charge.kind === "dropin") return `aula avulsa de ${studentName}`;
-  if (charge.kind !== "extra" && charge.kind !== "course") return `mensalidade de ${studentName}`;
-  const isCourse = charge.kind === "course";
-  const what = isCourse
-    ? `curso "${charge.description ?? ""}" de ${studentName}`
-    : `cobrança avulsa "${charge.description ?? ""}" de ${studentName}`;
-  return (charge.cycleTotal ?? 1) > 1
-    ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} ${isCourse ? "do" : "da"} ${what}`
-    : what;
+  if (charge.kind === "membership") return `mensalidade de ${studentName}`;
+  const noun = charge.kind === "course" ? "curso" : charge.kind === "package" ? "pacote" : "cobrança avulsa";
+  const what = `${noun} "${charge.description ?? ""}" de ${studentName}`;
+  const of = charge.kind === "extra" ? "da" : "do";
+  if ((charge.cycleTotal ?? 1) > 1) return `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} ${of} ${what}`;
+  // A vista: a auditoria escreve "registrou o pagamento da ...", entao o rotulo
+  // e feminino ("compra do pacote", "matricula no curso").
+  if (charge.kind === "package") return `compra do ${what}`;
+  if (charge.kind === "course") return `matrícula no ${what}`;
+  return what;
 }
 
 // --- Curso fechado (doc 20, fase B) ------------------------------------------

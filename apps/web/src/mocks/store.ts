@@ -14,6 +14,7 @@ import type {
   FinancialEntry,
   FinancialRecurrence,
   Id,
+  LessonPackage,
   MessageLog,
   MessageTemplate,
   OnlinePayment,
@@ -27,6 +28,7 @@ import type {
   RecurringAuthorization,
   Role,
   Service,
+  StudentPackage,
   TeacherPayout,
   TeacherPayRule,
   TimeBlock,
@@ -81,6 +83,9 @@ export interface MockStore {
   // Financeiro do M3 (planos + cobrancas).
   plans: Plan[];
   charges: Charge[];
+  // Pacotes de aulas (doc 20, fase C): catalogo e compras dos alunos.
+  lessonPackages: LessonPackage[];
+  studentPackages: StudentPackage[];
   // M3 Fatia 3: lista de espera e reservas (drop-in).
   waitlist: WaitlistEntry[];
   reservations: ClassReservation[];
@@ -154,7 +159,13 @@ const STORAGE_KEY = "gestarahub:db";
 //      financeiras ganham a categoria de sistema "Cobranças avulsas". Migracao suave.
 // v34: curso fechado (`ChargeKind` "course"): tenants com categorias
 //      financeiras ganham a categoria de sistema "Cursos". Migracao suave.
-const SEED_VERSION = 34;
+// v35: pacote de aulas (`ChargeKind` "package"): colecoes `lessonPackages` e
+//      `studentPackages` e, nos tenants com categorias financeiras, a categoria
+//      de sistema "Pacotes de aulas". Migracao suave.
+// v36: modelos de WhatsApp "Lembrete de cobrança" (`charge_reminder`) e
+//      "Pacote acabando" (`package_ending`), com o texto da area do espaco,
+//      para quem ainda nao tem. Migracao suave.
+const SEED_VERSION = 36;
 
 /** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
 const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
@@ -394,6 +405,33 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
       if (categories.some((c) => c.systemKey === "courses")) continue;
       const courses = defaultSystemFinancialCategory(tenant.organization.id, "courses");
       if (courses) categories.push(courses);
+    }
+  }
+  if (fromVersion < 35) {
+    for (const tenant of Object.values(data.tenants)) {
+      const t = tenant as Partial<MockStore> & MockStore;
+      t.lessonPackages = t.lessonPackages ?? [];
+      t.studentPackages = t.studentPackages ?? [];
+      // Mesmo criterio da v33: so quem ja tem as categorias padrao.
+      const categories = t.financialCategories ?? [];
+      if (categories.length === 0) continue;
+      if (categories.some((c) => c.systemKey === "packages")) continue;
+      const packages = defaultSystemFinancialCategory(t.organization.id, "packages");
+      if (packages) categories.push(packages);
+    }
+  }
+  if (fromVersion < 36) {
+    // So quem ja tem modelos: lista vazia e recriada inteira na leitura.
+    const added: MessageTemplate["trigger"][] = ["charge_reminder", "package_ending"];
+    for (const tenant of Object.values(data.tenants)) {
+      const templates = tenant.messageTemplates ?? [];
+      if (templates.length === 0) continue;
+      const defaults = defaultMessageTemplates(tenant.organization.id, tenant.organization.classSegment);
+      for (const trigger of added) {
+        if (templates.some((t) => t.trigger === trigger)) continue;
+        const template = defaults.find((t) => t.trigger === trigger);
+        if (template) templates.push(template);
+      }
     }
   }
   return data;

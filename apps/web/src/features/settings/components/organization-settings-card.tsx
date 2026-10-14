@@ -544,7 +544,7 @@ function OrgUnitForm({
               </AccordionTrigger>
               <AccordionContent className="pb-5 border-t border-border/40 mt-1">
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Valem só para mensalidades. Cursos e cobranças avulsas usam o valor e o vencimento definidos na hora.
+                  Valem só para mensalidades. Cursos, pacotes e cobranças avulsas usam o valor e o vencimento definidos na hora.
                 </p>
                 {isBillingUnconfirmed ? (
                   <div className="mt-3 mb-2 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground">

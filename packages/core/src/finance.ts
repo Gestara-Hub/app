@@ -1,4 +1,5 @@
 import type {
+  ClassBillingMode,
   DateISO,
   FinanceCategoryTotal,
   FinanceMonthPoint,
@@ -10,6 +11,7 @@ import type {
   Id,
   TeacherPayComponent,
   TeacherPayoutLine,
+  TeacherPayPercentSource,
   TeacherPayRule,
   TeacherPaySessionFact,
 } from "@gestarahub/contracts";
@@ -282,6 +284,11 @@ export function recurrenceDueDate(
 export interface TeacherPayClassGroup {
   id: Id;
   instructorId: Id;
+  /**
+   * Forma de cobranca (ausente = mensalidade). So turma de mensalidade recebe
+   * parte da mensalidade: curso e pacote ja pagam pelas proprias fontes.
+   */
+  billingMode?: ClassBillingMode;
 }
 
 /** Matricula considerada no calculo (o service ja filtrou as ativas). */
@@ -316,10 +323,36 @@ export interface MembershipAttribution {
   remainderCents: number;
 }
 
+/** Parcela de curso paga (`ChargeKind` "course") com competencia no mes. */
+export interface TeacherPayCourseInstallment {
+  chargeId: Id;
+  studentId: Id;
+  /** Turma do curso (o titular dela recebe). */
+  classGroupId: Id;
+  amountCents: number;
+}
+
+/**
+ * Aula de pacote usada no mes, ja com o valor (preco / aulas do pacote de
+ * origem) e so de pacote pago por inteiro. `instructorId` = quem deu a aula
+ * (o substituto, quando houve troca).
+ */
+export interface TeacherPayPackageLesson {
+  sessionId: Id;
+  studentId: Id;
+  classGroupId: Id;
+  date: DateISO;
+  instructorId: Id;
+  valueCents: number;
+}
+
 /**
  * Atribui cada mensalidade paga aos titulares das turmas do aluno (D4): divide
  * igualmente entre os titulares distintos, arredondando para baixo; a sobra
- * fica com a academia. Aluno sem turma conhecida nao gera parte.
+ * fica com a academia. Turma de curso, pacote ou sem cobranca ja paga pelas
+ * proprias fontes, entao so recebe parte da mensalidade se o aluno nao tiver
+ * nenhuma turma de mensalidade (como era antes). Aluno sem turma conhecida usa
+ * a turma da cobranca; sem ela, nao gera parte.
  */
 export function attributeMembershipsToTeachers(input: {
   memberships: readonly TeacherPayMembership[];
@@ -327,6 +360,9 @@ export function attributeMembershipsToTeachers(input: {
   classGroups: readonly TeacherPayClassGroup[];
 }): MembershipAttribution[] {
   const instructorOf = new Map(input.classGroups.map((g) => [g.id, g.instructorId]));
+  const isMembershipClass = new Set(
+    input.classGroups.filter((g) => (g.billingMode ?? "membership") === "membership").map((g) => g.id),
+  );
   const groupsByStudent = new Map<Id, Set<Id>>();
   for (const e of input.enrollments) {
     if (!instructorOf.has(e.classGroupId)) continue;
@@ -336,7 +372,9 @@ export function attributeMembershipsToTeachers(input: {
   }
 
   return input.memberships.map((m) => {
-    let groups = [...(groupsByStudent.get(m.studentId) ?? [])];
+    const all = [...(groupsByStudent.get(m.studentId) ?? [])];
+    const membershipOnly = all.filter((g) => isMembershipClass.has(g));
+    let groups = membershipOnly.length > 0 ? membershipOnly : all;
     if (groups.length === 0 && m.classGroupId && instructorOf.has(m.classGroupId)) {
       groups = [m.classGroupId];
     }
@@ -375,7 +413,10 @@ export function attributeMembershipsToTeachers(input: {
  * - `paidMemberships`: mensalidades pagas com `periodStart` na competencia
  *   (sem aulas avulsas, D5);
  * - `membershipEnrollments`: matriculas usadas para atribuir as mensalidades
- *   (padrao: `activeEnrollments`).
+ *   (padrao: `activeEnrollments`);
+ * - `paidCourseInstallments`: parcelas de curso pagas com competencia no mes;
+ * - `packageLessons`: aulas de pacote usadas no mes, de pacote pago por inteiro.
+ * Cobranca avulsa ("extra") e aula avulsa nunca entram no %.
  */
 export interface TeacherPayFacts {
   professionalId: Id;
@@ -384,6 +425,8 @@ export interface TeacherPayFacts {
   activeEnrollments: readonly TeacherPayEnrollment[];
   paidMemberships: readonly TeacherPayMembership[];
   membershipEnrollments?: readonly TeacherPayEnrollment[];
+  paidCourseInstallments?: readonly TeacherPayCourseInstallment[];
+  packageLessons?: readonly TeacherPayPackageLesson[];
 }
 
 function allows(component: TeacherPayComponent, classGroupId: Id): boolean {
@@ -427,7 +470,7 @@ export function countedStudents(
   return [...students];
 }
 
-/** Base do % (mensalidades pagas atribuidas ao professor, com a restricao). */
+/** Base do % vinda das mensalidades pagas atribuidas ao professor (com a restricao). */
 export function membershipBaseCents(
   component: TeacherPayComponent,
   facts: TeacherPayFacts,
@@ -445,6 +488,79 @@ export function membershipBaseCents(
     }
   }
   return base;
+}
+
+/**
+ * Base do % vinda dos cursos: parcelas pagas das turmas de curso em que o
+ * professor e titular (com a restricao). Sem divisao: o curso tem um titular.
+ */
+export function courseBaseCents(
+  component: TeacherPayComponent,
+  facts: TeacherPayFacts,
+): number {
+  const instructorOf = new Map(facts.classGroups.map((g) => [g.id, g.instructorId]));
+  return (facts.paidCourseInstallments ?? [])
+    .filter(
+      (c) => instructorOf.get(c.classGroupId) === facts.professionalId && allows(component, c.classGroupId),
+    )
+    .reduce((sum, c) => sum + c.amountCents, 0);
+}
+
+/**
+ * Aulas de pacote que contam para o professor: as que ele deu (substituto
+ * conta para o substituto), com a restricao de turmas.
+ */
+export function countedPackageLessons(
+  component: TeacherPayComponent,
+  facts: TeacherPayFacts,
+): TeacherPayPackageLesson[] {
+  return (facts.packageLessons ?? []).filter(
+    (l) => l.instructorId === facts.professionalId && allows(component, l.classGroupId),
+  );
+}
+
+const PERCENT_SOURCE_WORD: Record<TeacherPayPercentSource, string> = {
+  memberships: "mensalidades",
+  courses: "cursos",
+  packages: "pacotes",
+};
+
+/**
+ * Linhas do "% do que os alunos pagaram" (decisao 7 do doc 20): uma por fonte
+ * com valor (mensalidades, cursos, pacotes), cada uma arredondada para baixo.
+ * Sem nenhuma fonte, uma linha zerada.
+ */
+export function percentPayoutLines(
+  component: TeacherPayComponent,
+  facts: TeacherPayFacts,
+): TeacherPayoutLine[] {
+  const percent = Math.min(100, Math.max(0, component.percent ?? 0));
+  const lessons = countedPackageLessons(component, facts);
+  const parts: { source: TeacherPayPercentSource; baseCents: number; quantity?: number }[] = [
+    { source: "memberships", baseCents: membershipBaseCents(component, facts) },
+    { source: "courses", baseCents: courseBaseCents(component, facts) },
+    {
+      source: "packages",
+      baseCents: lessons.reduce((sum, l) => sum + l.valueCents, 0),
+      quantity: lessons.length,
+    },
+  ];
+  const withValue = parts.filter((p) => p.baseCents > 0);
+  if (withValue.length === 0) {
+    return [
+      { kind: "percent_of_memberships", label: `${formatPercent(percent)} de ${brl(0)}`, baseCents: 0, amountCents: 0 },
+    ];
+  }
+  return withValue.map((p) => ({
+    kind: "percent_of_memberships" as const,
+    source: p.source,
+    label:
+      `${formatPercent(percent)} de ${brl(p.baseCents)} em ${PERCENT_SOURCE_WORD[p.source]}` +
+      (p.quantity !== undefined ? ` (${countLabel(p.quantity, "aula", "aulas")})` : ""),
+    ...(p.quantity !== undefined ? { quantity: p.quantity } : {}),
+    baseCents: p.baseCents,
+    amountCents: Math.floor((p.baseCents * percent) / 100),
+  }));
 }
 
 function formatPercent(percent: number): string {
@@ -490,17 +606,9 @@ export function computeTeacherPayout(
         });
         break;
       }
-      case "percent_of_memberships": {
-        const percent = Math.min(100, Math.max(0, component.percent ?? 0));
-        const baseCents = membershipBaseCents(component, facts);
-        lines.push({
-          kind: "percent_of_memberships",
-          label: `${formatPercent(percent)} de ${brl(baseCents)}`,
-          baseCents,
-          amountCents: Math.floor((baseCents * percent) / 100),
-        });
+      case "percent_of_memberships":
+        lines.push(...percentPayoutLines(component, facts));
         break;
-      }
     }
   }
   return lines;
@@ -511,7 +619,7 @@ export function payoutTotalCents(lines: readonly TeacherPayoutLine[]): number {
   return Math.max(0, lines.reduce((sum, l) => sum + l.amountCents, 0));
 }
 
-/** Resumo legivel da regra: "Fixo R$ 800,00 + 30% das mensalidades". */
+/** Resumo legivel da regra: "Fixo R$ 800,00 + 30% do que os alunos pagaram". */
 export function describeTeacherPayRule(
   rule: Pick<TeacherPayRule, "components">,
 ): string {
@@ -526,7 +634,7 @@ export function describeTeacherPayRule(
         case "per_student":
           return `${brl(c.amountCents ?? 0)} por aluno${scoped}`;
         case "percent_of_memberships":
-          return `${formatPercent(c.percent ?? 0)} das mensalidades${scoped}`;
+          return `${formatPercent(c.percent ?? 0)} do que os alunos pagaram${scoped}`;
       }
     })
     .join(" + ");

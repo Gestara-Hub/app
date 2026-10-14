@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 34;
+const CURRENT_VERSION = 36;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -551,5 +551,111 @@ describe("v34: categoria de sistema dos cursos", () => {
     expect(store.financialCategories.map((c) => c.systemKey).filter(Boolean)).toEqual(
       expect.arrayContaining(["extras", "courses"]),
     );
+  });
+});
+
+describe("v35: pacote de aulas", () => {
+  it("cria as coleções de pacotes e a categoria \"Pacotes de aulas\" (uma vez)", async () => {
+    const world = oldWorld((t) => {
+      t.financialCategories = t.financialCategories.filter((c) => c.systemKey !== "packages");
+      const legacy = t as Partial<MockStore>;
+      delete legacy.lessonPackages;
+      delete legacy.studentPackages;
+    });
+    const otherId = Object.keys(world.tenants).find((id) => id !== ACADEMY_ORG)!;
+    world.tenants[otherId].financialCategories = [];
+    const before = world.tenants[ACADEMY_ORG].financialCategories.length;
+
+    const { store, saved } = await hydrate(34, world);
+    expect(store.lessonPackages).toEqual([]);
+    expect(store.studentPackages).toEqual([]);
+    expect(store.financialCategories.filter((c) => c.systemKey === "packages")).toEqual([
+      expect.objectContaining({
+        id: `fcat-${ACADEMY_ORG}-packages`,
+        name: "Pacotes de aulas",
+        type: "income",
+        system: true,
+      }),
+    ]);
+    expect(store.financialCategories).toHaveLength(before + 1);
+    expect(saved()?.data.tenants[otherId].financialCategories).toEqual([]);
+    expect(saved()?.data.tenants[otherId].studentPackages).toEqual([]);
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+
+  it("não duplica a categoria nem apaga pacotes já salvos", async () => {
+    const world = oldWorld((t) => {
+      t.lessonPackages = [
+        {
+          id: "pkg-1",
+          organizationId: ACADEMY_ORG,
+          name: "10 aulas",
+          lessons: 10,
+          priceCents: 50000,
+          modalityIds: [],
+          absenceConsumes: true,
+          status: "active",
+          createdAt: "2026-09-01T12:00:00.000Z",
+          updatedAt: "2026-09-01T12:00:00.000Z",
+        },
+      ];
+    });
+    const { store } = await hydrate(34, world);
+    expect(store.lessonPackages.map((p) => p.id)).toEqual(["pkg-1"]);
+    expect(store.financialCategories.filter((c) => c.systemKey === "packages")).toHaveLength(1);
+  });
+});
+
+describe("v36: modelos de WhatsApp do lembrete de cobrança e do pacote acabando", () => {
+  const OLD_TRIGGERS = new Set<MessageTemplate["trigger"]>(["charge_reminder", "package_ending"]);
+  const withoutNew = (t: MockStore) => {
+    t.messageTemplates = t.messageTemplates.filter((x) => !OLD_TRIGGERS.has(x.trigger));
+  };
+  const find = (t: MockStore, trigger: MessageTemplate["trigger"]) =>
+    t.messageTemplates.filter((x) => x.trigger === trigger);
+
+  it("adiciona os dois modelos uma vez, com o texto da área do espaço", async () => {
+    const world = oldWorld((t) => {
+      t.organization.classSegment = "gastronomy";
+      t.messageTemplates = defaultMessageTemplates(t.organization.id, "gastronomy");
+      withoutNew(t);
+      const welcome = t.messageTemplates.find((x) => x.trigger === "welcome_student")!;
+      welcome.content = "Texto meu";
+    });
+    const before = world.tenants[ACADEMY_ORG].messageTemplates.length;
+    const { store, saved } = await hydrate(35, world);
+    const own = defaultMessageTemplates(ACADEMY_ORG, "gastronomy");
+    expect(store.messageTemplates).toHaveLength(before + 2);
+    expect(find(store, "charge_reminder")).toEqual([own.find((x) => x.trigger === "charge_reminder")]);
+    expect(find(store, "package_ending")).toEqual([own.find((x) => x.trigger === "package_ending")]);
+    expect(find(store, "package_ending")[0].content).not.toMatch(/tatame|trein/);
+    expect(find(store, "welcome_student")[0].content).toBe("Texto meu");
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+
+  it("espaço de lutas recebe o texto de treino", async () => {
+    const { store } = await hydrate(
+      35,
+      oldWorld((t) => {
+        t.organization.classSegment = "martial_arts";
+        withoutNew(t);
+      }),
+    );
+    expect(find(store, "package_ending")[0].content).toContain("seguir treinando");
+    expect(find(store, "charge_reminder")[0].content).toContain("Bons treinos!");
+  });
+
+  it("não duplica quem já tem e não mexe em quem está sem modelos", async () => {
+    const world = oldWorld((t) => {
+      const reminder = t.messageTemplates.find((x) => x.trigger === "charge_reminder")!;
+      reminder.content = "Já editado";
+    });
+    const otherId = Object.keys(world.tenants).find((id) => id !== ACADEMY_ORG)!;
+    world.tenants[otherId].messageTemplates = [];
+    const { store, saved } = await hydrate(35, world);
+    expect(find(store, "charge_reminder")).toHaveLength(1);
+    expect(find(store, "charge_reminder")[0].content).toBe("Já editado");
+    expect(find(store, "package_ending")).toHaveLength(1);
+    expect(saved()?.data.tenants[otherId].messageTemplates).toEqual([]);
   });
 });

@@ -9,7 +9,9 @@
     "./format": "./src/format.ts",
     "./api-error": "./src/api-error.ts",
     "./billing": "./src/billing.ts",
-    "./finance": "./src/finance.ts"
+    "./finance": "./src/finance.ts",
+    "./packages": "./src/packages.ts",
+    "./certificate": "./src/certificate.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

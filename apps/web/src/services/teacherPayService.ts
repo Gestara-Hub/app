@@ -27,10 +27,13 @@ import {
   localDateOf,
   payoutTotalCents,
   teacherPayoutDueDate,
+  type TeacherPayCourseInstallment,
   type TeacherPayEnrollment,
   type TeacherPayFacts,
   type TeacherPayMembership,
+  type TeacherPayPackageLesson,
 } from "@gestarahub/core/finance";
+import { valuePackageLessons } from "@gestarahub/core/packages";
 import { isPastSlot } from "@gestarahub/core/date";
 import { weekdayOf } from "@gestarahub/core/scheduling";
 import { formatCents, pluralWord } from "@gestarahub/core/format";
@@ -243,20 +246,73 @@ function enrollmentsDuring(competence: string): TeacherPayEnrollment[] {
     .map((e) => ({ studentId: e.studentId, classGroupId: e.classGroupId }));
 }
 
+/** Competencia da cobranca para o %: inicio do periodo ou, sem ele, a competencia gravada. */
+function chargeCompetence(c: { periodStart?: string; competence?: string }): string | undefined {
+  const start = c.periodStart ?? c.competence;
+  return start ? competenceOf(start.length === 7 ? `${start}-01` : start) : undefined;
+}
+
 /** Mensalidades pagas com o inicio do periodo na competencia (sem avulsas, D5). */
 function paidMembershipsIn(competence: string): TeacherPayMembership[] {
   return store.charges
-    .filter((c) => {
-      if (c.kind !== "membership" || c.status !== "paid") return false;
-      const start = c.periodStart ?? c.competence;
-      return start ? competenceOf(start.length === 7 ? `${start}-01` : start) === competence : false;
-    })
+    .filter((c) => c.kind === "membership" && c.status === "paid" && chargeCompetence(c) === competence)
     .map((c) => ({
       chargeId: c.id,
       studentId: c.studentId,
       amountCents: c.amountCents,
       classGroupId: c.classGroupId,
     }));
+}
+
+/**
+ * Parcelas de curso pagas com competencia no mes (mesma regra da mensalidade),
+ * com a turma do curso (da cobranca ou da matricula).
+ */
+function paidCourseInstallmentsIn(competence: string): TeacherPayCourseInstallment[] {
+  const out: TeacherPayCourseInstallment[] = [];
+  for (const c of store.charges) {
+    if (c.kind !== "course" || c.status !== "paid" || chargeCompetence(c) !== competence) continue;
+    const classGroupId =
+      c.classGroupId ?? store.enrollments.find((e) => e.id === c.enrollmentId)?.classGroupId;
+    if (!classGroupId) continue;
+    out.push({ chargeId: c.id, studentId: c.studentId, classGroupId, amountCents: c.amountCents });
+  }
+  return out;
+}
+
+/**
+ * Aulas de pacote usadas no mes (data da aula), so de pacote pago por inteiro
+ * na hora do calculo, com o valor de cada aula (preco / aulas do pacote de
+ * origem, inclusive das trazidas) e quem deu a aula (o substituto, se houve).
+ */
+function packageLessonsIn(competence: string): TeacherPayPackageLesson[] {
+  const chargesById = new Map(store.charges.map((c) => [c.id, c]));
+  const groupsById = new Map(store.classGroups.map((g) => [g.id, g]));
+  const overrideBySession = new Map((store.sessionOverrides ?? []).map((o) => [o.sessionId, o]));
+  const valued = valuePackageLessons(
+    (store.studentPackages ?? []).map((p) => ({
+      ...p,
+      charges: p.chargeIds.flatMap((id) => {
+        const charge = chargesById.get(id);
+        return charge ? [{ status: charge.status, amountCents: charge.amountCents }] : [];
+      }),
+    })),
+  );
+  const out: TeacherPayPackageLesson[] = [];
+  for (const l of valued) {
+    if (!l.paid || competenceOf(l.date) !== competence) continue;
+    const group = groupsById.get(l.classGroupId);
+    if (!group) continue;
+    out.push({
+      sessionId: l.sessionId,
+      studentId: l.studentId,
+      classGroupId: l.classGroupId,
+      date: l.date,
+      instructorId: overrideBySession.get(l.sessionId)?.instructorId ?? group.instructorId,
+      valueCents: l.valueCents,
+    });
+  }
+  return out;
 }
 
 interface CompetenceFacts {
@@ -267,7 +323,8 @@ interface CompetenceFacts {
 /**
  * Fatos compartilhados por todos os professores na competencia:
  * alunos ativos no ULTIMO dia (D3); mensalidades atribuidas pelas turmas ativas
- * no ultimo dia ou, se o aluno saiu no meio do mes, pelas turmas em que esteve.
+ * no ultimo dia ou, se o aluno saiu no meio do mes, pelas turmas em que esteve;
+ * parcelas de curso pagas e aulas de pacote dadas (decisao 7 do doc 20).
  */
 function buildFacts(competence: string): CompetenceFacts {
   const sessions = sessionsIn(competence);
@@ -280,11 +337,17 @@ function buildFacts(competence: string): CompetenceFacts {
   return {
     sessions,
     base: {
-      classGroups: store.classGroups.map((g) => ({ id: g.id, instructorId: g.instructorId })),
+      classGroups: store.classGroups.map((g) => ({
+        id: g.id,
+        instructorId: g.instructorId,
+        billingMode: g.billingMode,
+      })),
       sessionsDone: sessions.map((s) => s.fact),
       activeEnrollments,
       paidMemberships: paidMembershipsIn(competence),
       membershipEnrollments,
+      paidCourseInstallments: paidCourseInstallmentsIn(competence),
+      packageLessons: packageLessonsIn(competence),
     },
   };
 }

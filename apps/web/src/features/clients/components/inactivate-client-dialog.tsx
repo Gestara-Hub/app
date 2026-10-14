@@ -63,6 +63,10 @@ export function InactivateClientDialog({
   const openCourseInstallments = (charges ?? []).filter(
     (c) => c.studentId === shown?.id && c.kind === "course" && isOpen(c),
   );
+  // Parcelas de pacote em aberto tambem continuam (o pacote foi comprado).
+  const openPackageInstallments = (charges ?? []).filter(
+    (c) => c.studentId === shown?.id && c.kind === "package" && isOpen(c),
+  );
   const openTotal = openCharges.reduce((sum, c) => sum + c.amountCents, 0);
 
   async function handleConfirm() {
@@ -126,6 +130,13 @@ export function InactivateClientDialog({
           {openCourseInstallments.length === 1
             ? "A parcela de curso em aberto continua para receber."
             : `As ${openCourseInstallments.length} parcelas de curso em aberto continuam para receber.`}
+        </p>
+      ) : null}
+      {openPackageInstallments.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {openPackageInstallments.length === 1
+            ? "A cobrança de pacote em aberto continua para receber."
+            : `As ${openPackageInstallments.length} cobranças de pacote em aberto continuam para receber.`}
         </p>
       ) : null}
       {openCharges.length > 0 ? (

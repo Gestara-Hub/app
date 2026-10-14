@@ -43,7 +43,8 @@ Contrato pronto para a integração (`packages/contracts/src/communication.ts`):
 
 ### 3.3 Modelos de mensagem (maior impacto no produto)
 Mensagem que o espaço inicia (lembrete, parabéns, boas-vindas, falta) só sai com **texto aprovado pela Meta**.
-- [ ] Para cada tipo (`billing_before_due`, `billing_due_date`, `billing_after_due`, `billing_critical`, `welcome_student`, `absence_alert`, `birthday_greeting`), criar o modelo na conta do espaço em **pt_BR**, convertendo as variáveis (`{aluno}` → `{{1}}`...).
+- [ ] Para cada tipo (`billing_before_due`, `billing_due_date`, `billing_after_due`, `billing_critical`, `charge_reminder`, `welcome_student`, `absence_alert`, `package_ending`, `birthday_greeting`), criar o modelo na conta do espaço em **pt_BR**, convertendo as variáveis (`{aluno}` → `{{1}}`...).
+- [ ] Modelos da fase D do doc 20 (14/10/2026): `charge_reminder` ("Lembrete de cobrança": avulsa, parcela de curso e compra de pacote; variáveis `{aluno}`, `{referencia}`, `{valor}`, `{empresa}`, `{vencimento}`, `{link_pagamento}`; categoria provável "utilidade") e `package_ending` ("Pacote acabando": `{aluno}`, `{pacote}`, `{empresa}`, `{restante}`; tende a "marketing", porque convida a comprar de novo). `{referencia}` e `{restante}` são frases montadas pelo sistema ("parcela 2 de 4 do curso Confeitaria", "vence em 3 dias e resta 1 aula"); no oficial, conferir se a Meta aceita variável com frase ou se o modelo precisa de variáveis menores.
 - [ ] **Editar o texto no oficial** passa a ser enviar para aprovação. A tela ganha o estado do modelo: "Em análise", "Aprovado", "Recusado" (com o motivo). Enquanto não aprovado, o envio automático daquele tipo não sai. No assistido, o texto continua livre.
 - [ ] Contrato: `MessageTemplate` ganha o estado na Meta e o motivo de recusa.
 - [ ] A **categoria** é definida pela Meta e muda o preço: lembrete de cobrança tende a ser "utilidade" (barata); parabéns e "Sentimos sua falta" tendem a ser "marketing" (mais cara).
@@ -53,7 +54,7 @@ Mensagem que o espaço inicia (lembrete, parabéns, boas-vindas, falta) só sai 
 - [ ] Envio pela API (parceiro ou Meta), guardando o identificador externo da mensagem no `MessageLog`.
 - [ ] Respeitar `allowedSendHours` e a franquia mensal (ver doc 19, seção 3).
 - [ ] Resposta livre ao aluno só dentro de **24 horas** depois da última mensagem dele; fora disso, só modelo aprovado.
-- [ ] Tarefas agendadas (Supabase Cron, ver [08](08-backend-supabase.md)): lembretes de cobrança (antes, no dia, depois e crítico) e parabéns, sem duplicar.
+- [ ] Tarefas agendadas (Supabase Cron, ver [08](08-backend-supabase.md)): lembretes de cobrança (antes, no dia, depois e crítico da mensalidade; o `charge_reminder` das outras cobranças, 3 dias antes por padrão), pacote acabando (última aula e 7 dias antes de vencer) e parabéns, sem duplicar.
 
 ### 3.5 Avisos da Meta (webhooks)
 - [ ] Rota no backend para receber: **enviada, entregue, lida, falhou** e **mensagens recebidas**.

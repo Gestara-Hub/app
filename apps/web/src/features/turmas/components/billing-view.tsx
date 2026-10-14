@@ -55,7 +55,7 @@ import type {
 } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
-import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
+import { chargeReminder, useWhatsAppSend } from "@/features/communication";
 import { CompetencePicker } from "@/features/finance";
 import {
   useCancelCharge,
@@ -295,17 +295,19 @@ function referenceLabel(c: ChargeView): string | null {
   return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
 }
 
-/** Avulsa e curso: cobrancas sem plano, que podem vir em parcelas. */
-const isInstallmentKind = (c: Pick<ChargeView, "kind">) => c.kind === "extra" || c.kind === "course";
+/** Avulsa, curso e pacote: cobrancas sem plano, que podem vir em parcelas. */
+const isInstallmentKind = (c: Pick<ChargeView, "kind">) =>
+  c.kind === "extra" || c.kind === "course" || c.kind === "package";
 
-/** "parcela 2 de 3" da cobranca avulsa ou do curso parcelado. */
+/** "parcela 2 de 3" da cobranca avulsa, do curso ou do pacote parcelado. */
 function installmentLabel(c: ChargeView): string | null {
   return isInstallmentKind(c) && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
 }
 
-/** O que esta sendo cobrado: a descricao da avulsa ou "Curso {turma}". */
+/** O que esta sendo cobrado: a descricao da avulsa, "Curso {turma}" ou "Pacote {nome}". */
 function chargeSubject(c: ChargeView): string {
   if (c.kind === "course") return `Curso ${c.description ?? c.className ?? ""}`.trim();
+  if (c.kind === "package") return `Pacote ${c.description ?? ""}`.trim();
   return c.description ?? "Cobrança avulsa";
 }
 
@@ -327,7 +329,7 @@ function getCycleTitle(c: ChargeView): string {
 
 /** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
 const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
-/** Avulsa e curso nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
+/** Avulsa, curso e pacote nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
 const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
 
 /** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
@@ -342,6 +344,7 @@ const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
   dropin: "Aulas avulsas",
   extra: "Cobranças avulsas",
   course: "Cursos",
+  package: "Pacotes",
 };
 
 /** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
@@ -376,14 +379,20 @@ function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean 
 }
 
 function isChargeKind(value: string | null): value is ChargeKind {
-  return value === "membership" || value === "dropin" || value === "extra" || value === "course";
+  return (
+    value === "membership" ||
+    value === "dropin" ||
+    value === "extra" ||
+    value === "course" ||
+    value === "package"
+  );
 }
 
 const currentCompetence = () => format(new Date(), "yyyy-MM");
 
 /**
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
- * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra|course`. Padroes
+ * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra|course|package`. Padroes
  * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
  */
 function useBillingFilters() {
@@ -654,23 +663,24 @@ export function BillingView() {
             icon: <CheckCircle2 className="size-4" />,
             onSelect: () => setChargeToPay(c),
           },
-          ...(c.kind === "membership"
+          // Mensalidade: lembrete pela situacao; avulsa, curso e pacote: "Lembrete de cobrança".
+          ...(c.kind !== "dropin"
             ? [
                 {
                   key: "whatsapp",
                   label: "Lembrar no WhatsApp",
                   icon: <MessageCircle className="size-4" />,
                   disabled: !whatsapp.ready,
-                  onSelect: () =>
+                  onSelect: () => {
+                    const reminder = chargeReminder(c, format(new Date(), "yyyy-MM-dd"));
+                    if (!reminder) return;
                     whatsapp.send({
-                      trigger: billingReminderTrigger(c, format(new Date(), "yyyy-MM-dd")),
+                      trigger: reminder.trigger,
                       recipient: { name: c.studentName, phone: c.studentPhone, clientId: c.studentId },
-                      values: {
-                        valor: formatCents(c.amountCents),
-                        vencimento: format(parseISO(c.dueDate), "dd/MM"),
-                      },
+                      values: reminder.values,
                       chargeId: c.id,
-                    }),
+                    });
+                  },
                 },
               ]
             : []),
@@ -970,7 +980,9 @@ export function BillingView() {
                             ? "Nenhuma cobrança avulsa neste mês."
                             : kindFilter === "course"
                               ? "Nenhuma parcela de curso neste mês."
-                              : "Nenhuma mensalidade neste mês."
+                              : kindFilter === "package"
+                                ? "Nenhum pacote neste mês."
+                                : "Nenhuma mensalidade neste mês."
                         : "Nenhuma cobrança com esta situação no mês."}
                   </p>
                   <Button variant="outline" size="sm" onClick={clearListFilters}>

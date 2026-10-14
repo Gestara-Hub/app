@@ -23,7 +23,7 @@ export type FinancialEntryDisplayStatus = FinancialEntryStatus | "overdue";
  * Chave das categorias de sistema (representam fontes automaticas). Nao podem
  * ser apagadas, renomeadas nem escolhidas num lancamento manual.
  */
-export type FinancialSystemCategoryKey = "memberships" | "dropins" | "extras" | "courses" | "teachers";
+export type FinancialSystemCategoryKey = "memberships" | "dropins" | "extras" | "courses" | "packages" | "teachers";
 
 export interface FinancialCategory {
   id: Id;
@@ -132,7 +132,7 @@ export type TeacherPayComponentKind =
 export interface TeacherPayComponent {
   kind: TeacherPayComponentKind;
   amountCents?: number; // fixed_monthly, per_session, per_student
-  percent?: number; // percent_of_memberships (0 < p <= 100)
+  percent?: number; // percent_of_memberships, "% do que os alunos pagaram" (0 < p <= 100)
   /** Restringe a parte a algumas turmas. Ausente = todas as turmas dele. */
   classGroupIds?: Id[];
 }
@@ -158,11 +158,20 @@ export type TeacherPayoutStatus = "open" | "closed" | "paid" | "canceled";
 
 export type TeacherPayoutLineKind = TeacherPayComponentKind | "adjustment";
 
+/**
+ * De onde vem a base do % (`percent_of_memberships`, "% do que os alunos
+ * pagaram", decisao 7 do doc 20): mensalidades, parcelas de curso ou aulas de
+ * pacote dadas.
+ */
+export type TeacherPayPercentSource = "memberships" | "courses" | "packages";
+
 export interface TeacherPayoutLine {
   kind: TeacherPayoutLineKind;
-  label: string; // "16 aulas × R$ 60,00", "Bônus seminário"
-  quantity?: number; // aulas, alunos
-  baseCents?: number; // base do % (mensalidades pagas)
+  label: string; // "16 aulas × R$ 60,00", "40% de R$ 300,00 em mensalidades", "Bônus seminário"
+  quantity?: number; // aulas, alunos, aulas de pacote
+  baseCents?: number; // base do % (o que os alunos pagaram, nesta fonte)
+  /** Fonte da base do % (uma linha por fonte). Ausente em linhas antigas e na linha zerada. */
+  source?: TeacherPayPercentSource;
   amountCents: number; // negativo so em adjustment (desconto/vale)
 }
 
@@ -206,7 +215,7 @@ export interface TeacherPayoutView {
   professionalName: string;
   professionalStatus: RecordStatus;
   rule?: TeacherPayRule;
-  /** Resumo da regra ("Fixo R$ 800,00 + 30% das mensalidades"). */
+  /** Resumo da regra ("Fixo R$ 800,00 + 30% do que os alunos pagaram"). */
   ruleSummary?: string;
   competence: string;
   /** Registro persistido (closed/paid); ausente = previa aberta. */

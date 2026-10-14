@@ -20,8 +20,8 @@ export const turmaFormSchema = z.object({
     .int("A capacidade deve ser um número inteiro.")
     .min(1, "A capacidade deve ser ao menos 1."),
   startDate: z.string().min(1, "Informe a data de início."),
-  // Forma de cobranca (doc 20, fase B). Curso: valor, parcelas ate e fim.
-  billingMode: z.enum(["membership", "course", "free"]),
+  // Forma de cobranca (doc 20, fases B e C). Curso: valor, parcelas ate e fim.
+  billingMode: z.enum(["membership", "course", "package", "free"]),
   coursePriceCents: z.number().int().min(0).nullish(),
   courseMaxInstallments: z.string(),
   endDate: z.string().optional(),

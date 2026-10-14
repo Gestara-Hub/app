@@ -49,7 +49,7 @@ const KIND_HINT: Record<Values["components"][number]["kind"], string> = {
   fixed_monthly: "Valor fixo todo mês.",
   per_session: "Valor por aula dada no mês (substituto recebe a aula).",
   per_student: "Valor por aluno ativo nas turmas dele no último dia do mês.",
-  percent_of_memberships: "Porcentagem das mensalidades pagas dos alunos das turmas dele.",
+  percent_of_memberships: "Mensalidades e cursos das turmas dele e aulas de pacote dadas. Avulsas não entram.",
 };
 
 interface TeacherPayRuleDialogProps {

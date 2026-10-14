@@ -9,10 +9,12 @@ import type {
   FinancialCategoryFilter,
   FinancialEntryFilter,
   Id,
+  LessonPackageFilter,
   PlanFilter,
   ProfessionalFilter,
   RoleFilter,
   ServiceFilter,
+  StudentPackageFilter,
   TimeBlockFilter,
   UserFilter,
   UserProfile,
@@ -93,11 +95,18 @@ export const queryKeys = {
       ["classes", "attendanceSummary", date] as const,
     absenceStreaks: ["classes", "absenceStreaks"] as const,
     enrolledModalities: ["classes", "enrolledModalities"] as const,
+    certificate: (enrollmentId: Id) => ["classes", "certificate", enrollmentId] as const,
   },
   billing: {
     all: ["billing"] as const,
     plans: (filter?: PlanFilter) => ["billing", "plans", filter] as const,
     charges: (filter?: ChargeFilter) => ["billing", "charges", filter] as const,
+  },
+  // Pacotes de aulas: catalogo e saldo dos alunos (a chamada muda o saldo).
+  packages: {
+    all: ["packages"] as const,
+    catalog: (filter?: LessonPackageFilter) => ["packages", "catalog", filter] as const,
+    students: (filter?: StudentPackageFilter) => ["packages", "students", filter] as const,
   },
   // Financeiro do negocio (plano pago). Marcar uma cobranca como paga
   // (Cobrancas) invalida `finance.all`; presenca/matricula/substituicao

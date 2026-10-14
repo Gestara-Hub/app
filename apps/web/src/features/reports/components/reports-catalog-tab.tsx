@@ -7,9 +7,11 @@ import {
   Calendar,
   ClipboardCheck,
   FileSpreadsheet,
+  GraduationCap,
   Lock,
   Search,
   Sparkles,
+  Ticket,
   TrendingUp,
   Users,
   Wallet,
@@ -60,6 +62,10 @@ export function ReportsCatalogTab({
         return <Wallet className="size-5 text-emerald-500" />;
       case "Cake":
         return <Cake className="size-5 text-amber-500" />;
+      case "GraduationCap":
+        return <GraduationCap className="size-5 text-teal-500" />;
+      case "Ticket":
+        return <Ticket className="size-5 text-orange-500" />;
       case "FileSpreadsheet":
         return <FileSpreadsheet className="size-5 text-purple-500" />;
       case "TrendingUp":

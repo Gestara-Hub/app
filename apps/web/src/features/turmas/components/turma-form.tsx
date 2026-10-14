@@ -66,6 +66,7 @@ const WEEKDAYS = [
 const BILLING_MODE_OPTIONS: SegmentedChoiceOption[] = [
   { value: "membership", label: "Mensalidade", description: "Pelo plano do aluno" },
   { value: "course", label: "Curso com valor fechado", description: "Parcelas na matrícula" },
+  { value: "package", label: "Pacote de aulas", description: "Usa o pacote do aluno" },
   { value: "free", label: "Sem cobrança", description: "Turma gratuita" },
 ];
 
@@ -989,7 +990,9 @@ export function TurmaForm({
               ? "Cada aluno paga pelo próprio plano."
               : billingMode === "free"
                 ? "A turma não gera cobrança."
-                : undefined
+                : billingMode === "package"
+                  ? "Cada aula dada usa uma aula do pacote do aluno."
+                  : undefined
           }
         >
           <div className="space-y-3">

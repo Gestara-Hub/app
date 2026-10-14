@@ -6,9 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { Client } from "@gestarahub/contracts";
+import type { Client, StudentPackageView } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
-import { NewExtraChargeDialog } from "@/features/turmas";
+import { NewExtraChargeDialog, SellPackageDialog, useCancelStudentPackage } from "@/features/turmas";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
@@ -29,6 +29,9 @@ export function ClientsView() {
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
   // Cobranca avulsa com o aluno fixo.
   const [chargeClient, setChargeClient] = useState<Client | null>(null);
+  // Venda de pacote de aulas com o aluno fixo.
+  const [packageClient, setPackageClient] = useState<Client | null>(null);
+  const cancelPackageMut = useCancelStudentPackage();
 
   const updateMut = useUpdateClient();
   const can = useCan();
@@ -67,6 +70,26 @@ export function ClientsView() {
     }
   }
 
+  // Desfaz a venda de um pacote sem aula usada (mexe no dinheiro: confirma).
+  async function cancelPackage(pkg: StudentPackageView) {
+    if (
+      !(await confirmAction({
+        title: "Cancelar pacote?",
+        description: `O pacote ${pkg.name} de ${pkg.studentName} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
+        confirmLabel: "Cancelar pacote",
+        cancelLabel: "Voltar",
+      }))
+    ) {
+      return;
+    }
+    try {
+      await cancelPackageMut.mutateAsync(pkg.id);
+      toast.success("Pacote cancelado.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível cancelar o pacote."));
+    }
+  }
+
   return (
     <>
       {confirmDialog}
@@ -93,6 +116,8 @@ export function ClientsView() {
         onOpenGraduation={isClasses ? setGraduationClient : undefined}
         onOpenRecords={isClasses ? setRecordsClient : undefined}
         onNewCharge={canCharge ? setChargeClient : undefined}
+        onSellPackage={canCharge ? setPackageClient : undefined}
+        onCancelPackage={canCharge ? (pkg) => void cancelPackage(pkg) : undefined}
         onInactivate={setInactivating}
         onReactivate={reactivate}
       />
@@ -120,6 +145,13 @@ export function ClientsView() {
               if (!open) setChargeClient(null);
             }}
             student={chargeClient}
+          />
+          <SellPackageDialog
+            open={Boolean(packageClient)}
+            onOpenChange={(open) => {
+              if (!open) setPackageClient(null);
+            }}
+            student={packageClient}
           />
           <StudentRecordsDialog
             client={recordsClient}

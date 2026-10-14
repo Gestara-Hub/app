@@ -623,7 +623,7 @@ describe("curso fechado: financeiro e professores", () => {
     expect(report.data.incomeCategories).toEqual([{ name: "Cursos", amountCents: 80000, percent: 100 }]);
   });
 
-  it("o % das mensalidades do professor ignora as parcelas de curso pagas (decisão 6)", async () => {
+  it("o % do professor separa a mensalidade e a parcela de curso paga (decisão 7)", async () => {
     const teacher = await createInstructor("Chef");
     const g = await courseClass({ instructorId: teacher.id, modalityId: teacher.modalityIds?.[0] });
     const plan = await createPlan("monthly", 20000);
@@ -639,7 +639,11 @@ describe("curso fechado: financeiro e professores", () => {
       startCompetence: "2026-09",
     });
     const payout = (await teacherPayService.listPayouts("2026-09")).find((p) => p.professionalId === teacher.id);
-    // So a mensalidade de R$ 200 entra; o curso de R$ 800 fica de fora.
-    expect(payout?.lines).toMatchObject([{ kind: "percent_of_memberships", baseCents: 20000, amountCents: 8000 }]);
+    // Mensalidade de R$ 200 (o aluno so tem a turma do curso) e curso de R$ 800
+    // em linhas separadas.
+    expect(payout?.lines).toMatchObject([
+      { kind: "percent_of_memberships", source: "memberships", baseCents: 20000, amountCents: 8000 },
+      { kind: "percent_of_memberships", source: "courses", baseCents: 80000, amountCents: 32000 },
+    ]);
   });
 });

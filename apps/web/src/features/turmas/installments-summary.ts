@@ -33,3 +33,13 @@ export function installmentsSummary(totalCents: number, installments: number, fi
       : `de ${fullDate(parts[0].dueDate)} a ${fullDate(parts.at(-1)!.dueDate)}`;
   return `${amounts}: ${dates}.`;
 }
+
+/**
+ * Conta do pagamento (curso e pacote): a vista "À vista: R$ 800,00, vence
+ * 15/10." ou a conta das parcelas. Dados incompletos: `null`.
+ */
+export function paymentSummary(totalCents: number, installments: number, firstDueDate: string): string | null {
+  if (installments > 1) return installmentsSummary(totalCents, installments, firstDueDate);
+  if (!totalCents || !DATE_RE.test(firstDueDate) || Number.isNaN(parseISO(firstDueDate).getTime())) return null;
+  return `À vista: ${formatCents(totalCents)}, vence ${shortDate(firstDueDate)}.`;
+}

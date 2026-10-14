@@ -32,6 +32,9 @@ const VARIABLE_LABELS: Record<string, string> = {
   "{vencimento}": "Vencimento",
   "{link_pagamento}": "Link de pagamento",
   "{link_app}": "Link do app",
+  "{referencia}": "O que é cobrado",
+  "{pacote}": "Nome do pacote",
+  "{restante}": "Aulas e validade",
 };
 
 function EditTemplateForm({

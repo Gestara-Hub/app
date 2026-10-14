@@ -15,6 +15,11 @@ export const TRIGGER_META: Record<MessageTrigger, { label: string; where: string
   welcome_student: { label: "Boas-vindas", where: "Ao cadastrar um aluno" },
   absence_alert: { label: "Sentimos sua falta", where: "Dashboard: Para fazer hoje, alunos com 3 faltas seguidas" },
   birthday_greeting: { label: "Aniversário", where: "Dashboard: Para fazer hoje e aniversariantes do mês" },
+  charge_reminder: {
+    label: "Lembrete de cobrança",
+    where: "Cobranças: menu da avulsa, do curso ou do pacote",
+  },
+  package_ending: { label: "Pacote acabando", where: "Dashboard: Para fazer hoje, pacotes acabando" },
   manual_broadcast: { label: "Mensagem avulsa", where: "Botão Nova mensagem" },
 };
 
@@ -30,12 +35,29 @@ export const STATUS_META: Record<MessageLogStatus, { label: string; className: s
   failed: { label: "Falhou", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
+/** Ordem dos modelos na tela: mensalidade, depois as outras cobrancas. */
+export const TRIGGER_ORDER: MessageTrigger[] = [
+  "billing_before_due",
+  "billing_due_date",
+  "billing_after_due",
+  "billing_critical",
+  "charge_reminder",
+  "welcome_student",
+  "absence_alert",
+  "package_ending",
+  "birthday_greeting",
+  "manual_broadcast",
+];
+
 /** Quando o envio automatico sai (so no WhatsApp oficial). */
 export function automationTiming(template: MessageTemplate): string {
   const { trigger, daysOffset } = template;
   if (trigger === "welcome_student") return "Na hora do cadastro";
   if (trigger === "birthday_greeting") return "No dia do aniversário";
   if (trigger === "absence_alert") return `Depois de ${daysOffset} faltas seguidas`;
+  if (trigger === "package_ending") {
+    return `Na última aula e ${daysOffset} ${daysOffset === 1 ? "dia" : "dias"} antes de vencer`;
+  }
   if (daysOffset < 0) return `${Math.abs(daysOffset)} ${Math.abs(daysOffset) === 1 ? "dia" : "dias"} antes do vencimento`;
   if (daysOffset === 0) return "No dia do vencimento";
   return `${daysOffset} ${daysOffset === 1 ? "dia" : "dias"} depois do vencimento`;
@@ -49,6 +71,9 @@ export function sampleValues(orgName?: string, withPaymentLink = false): Record<
     valor: "R$ 150,00",
     vencimento: "10/11",
     link_pagamento: withPaymentLink ? "https://pagar.gestarahub.com/c/abc123" : undefined,
+    referencia: "parcela 2 de 4 do curso Confeitaria",
+    pacote: "10 aulas",
+    restante: "resta 1 aula",
   };
 }
 

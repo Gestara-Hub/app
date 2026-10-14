@@ -6,7 +6,7 @@
 
 A academia define **uma regra padrão de cobrança** em Configurações → Regras da mensalidade, aplicada a cada **nova matrícula em plano**. O aluno guarda a própria regra (pode ser personalizada no cadastro) e ela não muda quando a academia muda a regra depois.
 
-**Só mensalidade (14/10/2026):** as regras valem apenas para mensalidades (plano do aluno). Cursos, cobranças avulsas e aulas avulsas usam o valor e o vencimento definidos na hora. O cartão em Configurações se chama **"Regras da mensalidade"** e diz isso numa linha: "Valem só para mensalidades. Cursos e cobranças avulsas usam o valor e o vencimento definidos na hora." Na área de curso, o passo "Definir regras da mensalidade" só aparece nos primeiros passos se houver turma ativa cobrando mensalidade (doc frontend 08, "Primeiros passos pela forma de cobrança").
+**Só mensalidade (14/10/2026):** as regras valem apenas para mensalidades (plano do aluno). Cursos, pacotes de aulas, cobranças avulsas e aulas avulsas usam o valor e o vencimento definidos na hora. O cartão em Configurações se chama **"Regras da mensalidade"** e diz isso numa linha: "Valem só para mensalidades. Cursos, pacotes e cobranças avulsas usam o valor e o vencimento definidos na hora." Na área de curso, o passo "Definir regras da mensalidade" só aparece nos primeiros passos se houver turma ativa cobrando mensalidade (doc frontend 08, "Primeiros passos pela forma de cobrança").
 
 A regra tem três partes:
 
@@ -83,7 +83,7 @@ Estas regras já estão implementadas.
 - **Bolsa parcial**: mensalidade normal com o valor reduzido e selo **"Bolsa 50%"**.
 - Cada mensalidade com bolsa guarda `scholarshipPercent` e `listAmountCents` (valor sem bolsa). O Resumo do Financeiro mostra **"Bolsas concedidas"** (valor do plano - cobrado, com nº de alunos), informativo, fora do caixa.
 - Mudar desconto ou bolsa do aluno conta como troca de regra: as mensalidades em aberto (inclusive isentas) de períodos que ainda não começaram são canceladas pelo sistema e a geração recria pelo valor novo.
-- Pagamento de professor: "por aluno" conta o bolsista (o professor dá a aula); "% das mensalidades" usa só o pago, então o isento entra com zero.
+- Pagamento de professor: "por aluno" conta o bolsista (o professor dá a aula); "% do que os alunos pagaram" usa só o pago, então o isento entra com zero.
 - Bolsista integral sem plano não herda o plano da turma (a regra de retrocompatibilidade "aluno sem plano em turma com plano" o ignora). Trocar a bolsa ou sair dela cancela as isentas futuras e recria pela regra nova.
 - Migração do mock (v26): desconto de 100% vira bolsa integral e mensalidades de R$ 0 em aberto viram "Isento".
 
@@ -113,10 +113,10 @@ Fase A do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Ações:** as mesmas das mensalidades: marcar pago (com a forma), desfazer, cancelar com motivo (sugestões: Lançada por engano, Cobrança duplicada, Aluno desistiu), reabrir e cobrar online (Pro, mesmas travas). Atraso é derivado na leitura. Reabrir não checa período de mensalidade.
 - **Mensalidades não enxergam a avulsa:** não ocupa período (`membershipPeriodTaken`), não impede a geração automática e não é cancelada na troca de plano, regra, desconto ou bolsa.
 - **Inativar o aluno mantém as avulsas em aberto, inclusive as parcelas futuras** (a compra foi feita, a dívida continua). Vale também quando o dono escolhe "Cancelar a cobrança" das mensalidades em aberto: essa escolha é só das mensalidades. O diálogo de inativação avisa: "A cobrança avulsa em aberto continua para receber." Para não cobrar, cancele as parcelas em Mensalidades.
-- **WhatsApp:** a avulsa **não tem** "Lembrar no WhatsApp" até a fase D (os modelos falam de "mensalidade"). O envio do Pix ou link pelo "Cobrar online" funciona, com o texto da avulsa.
+- **WhatsApp:** "Lembrar no WhatsApp" com o modelo "Lembrete de cobrança" desde a fase D (seção "Lembretes de WhatsApp das outras cobranças"). O envio do Pix ou link pelo "Cobrar online" funciona, com o texto da avulsa.
 - **Tela:** filtro "Tipo" com "Cobranças avulsas" (`?kind=extra`). Linha: nome do aluno; abaixo, a descrição, "parcela 2 de 3" quando parcelada e o vencimento. Entra nos cartões do mês como as aulas avulsas. A busca também acha pela descrição.
 - **Financeiro:** categoria de sistema **"Cobranças avulsas"** (`systemKey: "extras"`), linha agregada própria em Lançamentos e soma no Resumo como as demais cobranças. Migração do mock v33 cria a categoria nos espaços que já tinham as categorias padrão.
-- **Pagamento do professor:** "% das mensalidades" continua só com mensalidades pagas; a avulsa não entra (decisão 7 do doc 20 vale para curso e pacote).
+- **Pagamento do professor:** a avulsa não entra no "% do que os alunos pagaram" (só mensalidade, curso e pacote; doc 05, seção 5.3).
 - **Auditoria:** uma entrada por lançamento, `lançou a cobrança avulsa "Kimono" para Ana (R$ 300,00, em 3 parcelas)`; as ações seguintes citam `parcela 2 de 3 da cobrança avulsa "Kimono" de Ana`.
 - Testes: `packages/core/test/installments.test.ts`, `apps/web/src/services/__tests__/extra-charges.test.ts` (e a v33 em `migrations.test.ts`), `apps/web/e2e/cobranca-avulsa.spec.ts`.
 
@@ -135,9 +135,9 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Mudar a turma não mexe nas matrículas feitas:** editar o valor, as parcelas ou trocar a forma de cobrança vale só para as próximas matrículas.
 - **Mensalidades não enxergam o curso:** a parcela não ocupa período (`membershipPeriodTaken`), não é cancelada na troca de plano, regra, desconto ou bolsa, e curso ou turma sem cobrança **nunca** geram mensalidade pelo plano da turma (nem com `planId` legado). Aluno só em cursos não precisa de plano; aluno com plano próprio continua pagando a mensalidade dele.
 - **Inativar o aluno mantém as parcelas do curso em aberto** (como a avulsa: o curso foi comprado). O diálogo avisa.
-- **Ações em Mensalidades:** as mesmas da avulsa (marcar pago, desfazer, cancelar com motivo, reabrir a cancelada à mão, cobrar online no Pro). **Pix Automático** continua só na mensalidade; **sem lembrete de WhatsApp** até a fase D. Filtro "Tipo" com **"Cursos"** (`?kind=course`); a linha mostra "Curso {turma} · parcela 2 de 4 · vence 15/11".
+- **Ações em Mensalidades:** as mesmas da avulsa (marcar pago, desfazer, cancelar com motivo, reabrir a cancelada à mão, cobrar online no Pro). **Pix Automático** continua só na mensalidade; "Lembrar no WhatsApp" usa o "Lembrete de cobrança" (fase D). Filtro "Tipo" com **"Cursos"** (`?kind=course`); a linha mostra "Curso {turma} · parcela 2 de 4 · vence 15/11".
 - **Financeiro:** categoria de sistema **"Cursos"** (`systemKey: "courses"`), linha agregada própria em Lançamentos e linha "Cursos" no resultado do mês. Migração do mock v34 cria a categoria nos espaços que já tinham as categorias padrão.
-- **Pagamento do professor:** "% das mensalidades" continua só com mensalidades pagas; o curso entra na fase D (decisão 7 do doc 20).
+- **Pagamento do professor:** o "% do que os alunos pagaram" conta as parcelas de curso pagas (competência do vencimento), inteiras para o titular da turma do curso; a turma de curso não recebe parte da mensalidade do aluno que também tem turma de mensalidade (doc 05, seção 5.3).
 - **Auditoria:** `matriculou Ana no curso Confeitaria (R$ 800,00, em 4 parcelas)` (também na promoção da lista de espera para curso); `cancelou a matrícula de Ana no curso Confeitaria e 2 parcelas futuras`; as ações citam `parcela 2 de 4 do curso "Confeitaria" de Ana`.
 - Testes: `packages/core/test/courses.test.ts`, `apps/web/src/services/__tests__/courses.test.ts` (e a v34 em `migrations.test.ts`), `apps/web/e2e/curso-fechado.spec.ts`.
 
@@ -148,3 +148,43 @@ A tela `/classes/billing` (antes "Mensalidades") passou a se chamar **"Cobrança
 
 "Mensalidades" continua onde nomeia o **tipo** de cobrança: opção do filtro "Tipo", categoria de sistema do Financeiro, card "Mensalidades recebidas" do Dashboard, planos, regras da mensalidade, "Paga mensalidade" no cadastro do aluno, relatórios e textos da landing. As menções a "Mensalidades" como tela nas seções acima são históricas e valem para "Cobranças".
 
+
+## Pacote de aulas (14/10/2026)
+
+Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md). Comprar N aulas por um valor e gastar uma por aula: 10 aulas de beach tennis, 8 de pilates, aulas particulares.
+
+- **Cadastro** em **Planos → aba "Pacotes de aulas"** (`?tab=packages`; o botão do topo vira "+ Novo pacote"). Campos: `Nome*`, `Quantidade de aulas*` (1 a 200), `Valor*` (> 0), `Validade` (Sem validade, 30, 60, 90 ou 180 dias, 1 ano; o serviço aceita de 1 a 730 dias), `Modalidades` (nenhuma escolhida = todas) e "Falta sem justificativa gasta a aula" (ligado por padrão). Lista com busca, filtro de situação, Editar e Inativar/Reativar. Editar ou inativar vale para as próximas vendas; o que já foi vendido fica como estava (o pacote do aluno copia nome, aulas, validade, modalidades e a regra da falta). Contrato: `LessonPackage`.
+- **Venda:** "Vender pacote" no menu do aluno ativo em Alunos (permissão `billing:manage`, a mesma da cobrança avulsa). `Pacote*`, `Valor*` (o do pacote, editável: é o único desconto, decisão 8), `Parcelas` (à vista a 12x), `1º vencimento*` (padrão hoje) e a conta ao vivo, como no curso. Gera o `StudentPackage` (comprado hoje; vence na compra + a validade: comprado em 01/10 com 30 dias vale até 31/10) e as cobranças `kind: "package"` em aberto, com `description` = nome do pacote, `studentPackageId` e, parcelada, `installmentGroupId` e `cycleIndex`/`cycleTotal` (mesmo cálculo da avulsa: `splitInstallments`). Só aluno ativo e pacote ativo.
+- **O que gasta uma aula (decisão 4):** presença gasta; falta sem justificativa gasta se o pacote mandar; falta justificada nunca. Uma aula gasta por aluno e aula (`StudentPackage.usages`), refeita a cada chamada: trocar a marcação muda o motivo ou devolve a aula; desmarcar devolve. Gasta quem está matriculado numa turma "Pacote de aulas" ou entrou na aula pelo pacote (vínculo "package", doc 11); avulso e experimental não.
+- **Qual pacote paga a aula:** ativo, válido **na data da aula** e com saldo, que cubra a modalidade da turma; entre vários, o que vence primeiro (sem validade por último). A chamada atrasada de uma aula de quando o pacote ainda valia gasta normalmente. Sem pacote com saldo, nada é gasto e a chamada mostra **"Sem pacote"**.
+- **Validade (decisão 5):** vencido, o saldo é perdido (não paga mais aula nem passa para outro pacote). Avisos: **"Última aula"** quando resta uma e **"Vence em N dias"** a partir de 7 dias (ou "Vence hoje"); vencido mostra **"Vencido"**.
+- **Renovação (decisão 6):** vender um pacote a quem tem outro ativo, válido e com saldo em modalidade em comum (pacote de todas as modalidades conta como comum) leva o saldo para o novo (`carriedOverLessons`, somado em `lessonsTotal`), com a validade do novo; o antigo fica **"Renovado"** (`status: "renewed"`). O diálogo avisa: "O saldo de 3 aulas do pacote atual passa para este." Pacotes de modalidades diferentes continuam os dois valendo.
+- **Cancelar a venda:** "Cancelar pacote" no menu do aluno (com confirmação), só enquanto nenhuma aula foi usada ("O pacote já tem aulas usadas."). Cancela as cobranças em aberto (pelo sistema, motivo "Pacote cancelado", e o Pix ou link delas); as pagas ficam. Se o pacote trouxe saldo de outro, o anterior volta a valer.
+- **Saldo na tela:** selo na lista de Alunos ("Pacote 7 de 10" + aviso); quem só tem pacote não mostra "Sem mensalidade". Pacote acabado ou vencido aparece por até 30 dias. Na chamada, "7 de 10", "Última aula" ou "Sem pacote".
+- **Ações em Cobranças:** as mesmas da avulsa e do curso (marcar pago, desfazer, cancelar com motivo, reabrir a cancelada à mão, cobrar online no Pro, decisão 9). **Pix Automático** continua só na mensalidade; "Lembrar no WhatsApp" usa o "Lembrete de cobrança" (fase D). Filtro "Tipo" com **"Pacotes"** (`?kind=package`); a linha mostra "Pacote 10 aulas · parcela 2 de 3 · vence 15/11". Cancelar a cobrança não cancela o pacote (o saldo continua; para desfazer a venda, use "Cancelar pacote").
+- **Mensalidades não enxergam o pacote:** a cobrança não ocupa período e não é cancelada na troca de plano, regra, desconto ou bolsa; turma "Pacote de aulas" nunca gera mensalidade (nem com `planId` legado). **Inativar o aluno** mantém as cobranças do pacote em aberto e o saldo (o diálogo avisa).
+- **Financeiro:** categoria de sistema **"Pacotes de aulas"** (`systemKey: "packages"`), linha agregada própria em Lançamentos e linha "Pacotes de aulas" no resultado do mês. Migração do mock v35 cria as coleções `lessonPackages` e `studentPackages` e a categoria nos espaços que já tinham as categorias padrão.
+- **Pagamento do professor:** o "% do que os alunos pagaram" conta cada aula usada no mês pelo valor da aula (preço ÷ aulas compradas), para quem deu a aula (substituto inclusive), só de pacote pago por inteiro; aula trazida na renovação vale o preço da aula do pacote de onde veio (doc 05, seção 5.3).
+- **Auditoria:** `criou o pacote 10 aulas (10 aulas, R$ 500,00)`; `vendeu o pacote 10 aulas para Ana (R$ 450,00, em 3 parcelas)` (com renovação: `, com 3 aulas trazidas do pacote anterior`); `cancelou o pacote 10 aulas de Ana e 1 cobrança em aberto`; as ações citam `compra do pacote "10 aulas" de Ana` ou `parcela 2 de 3 do pacote "10 aulas" de Ana`; entrar na aula pelo pacote, `inscreveu Ana na aula de 21/09/2026 da turma Pilates (usa 1 aula do pacote)`. O gasto de aula na chamada não entra (a chamada não é auditada).
+- Regras puras em `packages/core/src/packages.ts` (`packageExpiresAt`, `usageReasonFor`, `coversModality`, `packageState`, `pickPackageFor`, `carryOverSources`); serviço `apps/web/src/services/packagesService.ts`. Testes: `packages/core/test/packages.test.ts`, `apps/web/src/services/__tests__/packages.test.ts` (e a v35 em `migrations.test.ts`).
+
+
+## Lembretes de WhatsApp das outras cobranças (14/10/2026)
+
+Fase D do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md). Mesma regra do WhatsApp com o número do próprio espaço ([13](13-modelo-de-negocio.md), seção 5): assistido no grátis, oficial no Pro conectado.
+
+- **"Lembrar no WhatsApp"** aparece no menu de toda cobrança em aberto (pendente ou atrasada) em Cobranças, menos a aula avulsa. A mensalidade continua com o lembrete da situação (antes, no dia, atraso, crítico). Avulsa, curso e pacote usam o modelo novo **"Lembrete de cobrança"** (`charge_reminder`): "Olá, {aluno}! Lembrete da {referencia} de {valor} na {empresa}, com vencimento em {vencimento}. Pague pelo link: {link_pagamento}." + o fecho da área ("Bons treinos! 🥋" em lutas, "Boas aulas!" nas demais).
+- **`{referencia}`** diz o que é cobrado: "cobrança Kimono", "parcela 2 de 3 da cobrança Kimono", "matrícula no curso Confeitaria" (curso à vista), "parcela 2 de 4 do curso Confeitaria", "compra do pacote 10 aulas", "parcela 1 de 2 do pacote 10 aulas" (`chargeReference`, `apps/web/src/features/communication/message-values.ts`).
+- O lembrete fica ligado à cobrança (`MessageLog.chargeId`) e entra no "Recebido depois de lembrete" de Comunicação, como o da mensalidade.
+- **"Pacote acabando"** (`package_ending`): "Oi, {aluno}! Sobre seu pacote {pacote} na {empresa}: {restante}. Quer renovar e seguir com as aulas?" (lutas: "seguir treinando"). `{restante}`: "resta 1 aula", "restam 3 aulas", "vence em 5 dias e restam 2 aulas", "vence hoje e resta 1 aula", "venceu em 12/10" (`packageRemainingText`). Sai do bloco "Para fazer hoje" do Dashboard.
+- Os dois modelos ficam em Comunicação > Mensagens (texto editável por todos; envio automático e horário só no Pro) e no Histórico. Migração do mock v36 adiciona os dois aos espaços que já tinham modelos, com o texto da área.
+
+
+## Certificado de conclusão do curso (14/10/2026)
+
+Fase D. **Recurso do Plano Pro** (`certificates`, Pro e Scale).
+
+- No detalhe da turma, a matrícula **"Concluído"** (curso terminado, matrícula ativa) ganha **"Certificado"** no menu da linha, para quem vê a turma (`classes:view`). No Grátis o item aparece com cadeado ("Certificado (Plano Pro)") e abre a tela "Disponível no Plano Pro".
+- A página `/classes/{turma}/certificate/{matrícula}` mostra o certificado (A4 deitado) com o nome do espaço, "Certificado de conclusão", "Certificamos que {aluno} concluiu o curso {curso}, de {início} a {fim}, com {N} aulas e frequência de X%.", cidade da unidade e data por extenso, e as linhas de assinatura do instrutor e do espaço. "Imprimir ou salvar em PDF" usa a impressão do navegador.
+- **Aulas** = encontros da turma entre o início e o fim. **Frequência** = presenças ÷ (presenças + faltas) das chamadas feitas, como no selo da lista; sem chamada, a frase sai sem frequência. Curso de um dia: "em 05/10/2026".
+- O serviço recusa no Grátis (`FEATURE_NOT_IN_PLAN`), curso não terminado ("O certificado sai quando o curso termina.") e matrícula cancelada. Dados (`buildCourseCertificate`) e texto do modelo (`defaultCertificateText`) ficam separados em `packages/core/src/certificate.ts`, para um gerador de modelos no futuro.

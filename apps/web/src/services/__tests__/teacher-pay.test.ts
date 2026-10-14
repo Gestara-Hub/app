@@ -100,7 +100,13 @@ describe("cálculo do pagamento dos professores", () => {
 
     // Ana: 10.000 (metade) + 20.000 = 30.000 de base; Beto: 10.000.
     expect((await payoutOf(a.id, "2026-09"))?.lines).toEqual([
-      { kind: "percent_of_memberships", label: "40% de R$ 300,00", baseCents: 30000, amountCents: 12000 },
+      {
+        kind: "percent_of_memberships",
+        source: "memberships",
+        label: "40% de R$ 300,00 em mensalidades",
+        baseCents: 30000,
+        amountCents: 12000,
+      },
     ]);
     expect((await payoutOf(b.id, "2026-09"))?.lines).toMatchObject([{ baseCents: 10000, amountCents: 4000 }]);
   });
@@ -383,10 +389,10 @@ describe("regra de pagamento", () => {
     });
     expect(store.teacherPayRules).toHaveLength(1);
     expect(store.teacherPayRules[0]).toMatchObject({ paymentDay: 10, status: "active" });
-    expect(lastAudit()).toBe("Ana Ribeiro atualizou a regra de pagamento de Ana (Fixo R$ 800,00 + 30% das mensalidades)");
+    expect(lastAudit()).toBe("Ana Ribeiro atualizou a regra de pagamento de Ana (Fixo R$ 800,00 + 30% do que os alunos pagaram)");
     expect(plain(JSON.stringify(store.auditLog.at(-1)?.changes))).toBe(
       JSON.stringify([
-        { field: "components", label: "Regra", before: "R$ 60,00 por aula", after: "Fixo R$ 800,00 + 30% das mensalidades" },
+        { field: "components", label: "Regra", before: "R$ 60,00 por aula", after: "Fixo R$ 800,00 + 30% do que os alunos pagaram" },
       ]),
     );
     expect((await payoutOf(a.id, "2026-09"))?.dueDate).toBe("2026-10-10");

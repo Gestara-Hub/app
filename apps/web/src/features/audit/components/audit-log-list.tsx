@@ -43,6 +43,7 @@ const ENTITY_TYPES_BY_MODEL: Record<OperationalModel, AuditEntityType[]> = {
     "class_group",
     "enrollment",
     "plan",
+    "lesson_package",
     "charge",
     "professional",
     "user",

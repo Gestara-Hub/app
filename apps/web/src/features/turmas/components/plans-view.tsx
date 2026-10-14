@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Layers,
+  Ticket,
   Pencil,
   Plus,
   Power,
@@ -50,6 +52,7 @@ import {
   useReactivatePlan,
 } from "../hooks/use-billing";
 import { PlanForm } from "./plan-form";
+import { LessonPackagesTab } from "./lesson-packages-tab";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 const PERIOD_META: Record<
@@ -345,7 +348,17 @@ function PlanSkeletonCards({ showAction }: { showAction: boolean }) {
 
 const DEFAULT_STATUS: "all" | RecordStatus = "active";
 
-export function PlansView() {
+/**
+ * Aba "Planos de mensalidade". O "+ Novo plano" fica no topo da tela
+ * (`creating`), como manda o padrao de telas.
+ */
+function MembershipPlansTab({
+  creating,
+  onCreatingChange,
+}: {
+  creating: boolean;
+  onCreatingChange: (open: boolean) => void;
+}) {
   const [search, setSearch] = useState("");
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
@@ -390,9 +403,17 @@ export function PlansView() {
     setStatus(DEFAULT_STATUS);
   };
 
-  const openNew = () => {
-    setEditing(null);
-    setDialogOpen(true);
+  // "+ Novo plano" do topo abre sem o plano da ultima edicao.
+  const [wasCreating, setWasCreating] = useState(creating);
+  if (creating !== wasCreating) {
+    setWasCreating(creating);
+    if (creating) setEditing(null);
+  }
+  const formPlan = creating ? null : editing;
+  const formOpen = dialogOpen || creating;
+  const setFormOpen = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) onCreatingChange(false);
   };
   const openEdit = (p: Plan) => {
     setEditing(p);
@@ -470,18 +491,6 @@ export function PlansView() {
   return (
     <>
       {confirmDialog}
-      <PageHeader
-        title="Planos"
-        description="Planos usados pelas turmas."
-      >
-        {canManage ? (
-          <Button onClick={openNew} data-onboarding-cta="plans">
-            <Plus className="size-4" />
-            Novo plano
-          </Button>
-        ) : null}
-      </PageHeader>
-
       <div className="space-y-4">
         {/* Barra de Filtros */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -546,24 +555,24 @@ export function PlansView() {
       </div>
 
       {/* Dialog Criar / Editar Plano */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent
           className="max-h-[90vh] overflow-y-auto sm:max-w-md"
           onInteractOutside={(event) => event.preventDefault()}
         >
           <DialogHeader className="pr-12">
-            <DialogTitle>{editing ? "Editar plano" : "Novo plano"}</DialogTitle>
+            <DialogTitle>{formPlan ? "Editar plano" : "Novo plano"}</DialogTitle>
             <DialogDescription>
-              {editing
+              {formPlan
                 ? "Altere o nome, a periodicidade ou o valor."
                 : "Será usado para cobrar as mensalidades nas turmas."}
             </DialogDescription>
           </DialogHeader>
           <PlanForm
-            key={editing?.id ?? "novo"}
-            plan={editing ?? undefined}
+            key={formPlan?.id ?? "novo"}
+            plan={formPlan ?? undefined}
             formId="plan-form"
-            onSuccess={() => setDialogOpen(false)}
+            onSuccess={() => setFormOpen(false)}
           />
         </DialogContent>
       </Dialog>
@@ -590,3 +599,94 @@ export function PlansView() {
   );
 }
 
+type PlansTab = "plans" | "packages";
+
+const PLANS_TABS: { value: PlansTab; label: string; icon: typeof Layers }[] = [
+  { value: "plans", label: "Planos de mensalidade", icon: Layers },
+  { value: "packages", label: "Pacotes de aulas", icon: Ticket },
+];
+
+/** Aba na URL (`?tab=packages`); o padrao (planos) fica fora dela. */
+function usePlansTab(): [PlansTab, (tab: PlansTab) => void] {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab: PlansTab = searchParams.get("tab") === "packages" ? "packages" : "plans";
+  const setTab = (next: PlansTab) => {
+    const params = new URLSearchParams(window.location.search);
+    if (next === "plans") params.delete("tab");
+    else params.set("tab", next);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+  return [tab, setTab];
+}
+
+/**
+ * Tela Planos: planos de mensalidade e pacotes de aulas (doc 20, fase C). O
+ * botao principal do topo acompanha a aba ("+ Novo plano" / "+ Novo pacote").
+ */
+export function PlansView() {
+  const [tab, setTab] = usePlansTab();
+  const can = useCan();
+  const canManage = can("billing:manage");
+  const [creatingPlan, setCreatingPlan] = useState(false);
+  const [creatingPackage, setCreatingPackage] = useState(false);
+
+  return (
+    <>
+      <PageHeader title="Planos" description="Mensalidades e pacotes de aulas.">
+        {canManage ? (
+          tab === "plans" ? (
+            <Button onClick={() => setCreatingPlan(true)} data-onboarding-cta="plans">
+              <Plus className="size-4" />
+              Novo plano
+            </Button>
+          ) : (
+            <Button onClick={() => setCreatingPackage(true)}>
+              <Plus className="size-4" />
+              Novo pacote
+            </Button>
+          )
+        ) : null}
+      </PageHeader>
+
+      <div
+        role="tablist"
+        aria-label="Seções de planos"
+        className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
+      >
+        {PLANS_TABS.map((t) => {
+          const active = t.value === tab;
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              id={`plans-tab-${t.value}`}
+              aria-selected={active}
+              aria-controls={`plans-panel-${t.value}`}
+              onClick={() => setTab(t.value)}
+              className={cn(
+                "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+                active ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="tabpanel" id={`plans-panel-${tab}`} aria-labelledby={`plans-tab-${tab}`}>
+        {tab === "plans" ? (
+          <MembershipPlansTab creating={creatingPlan} onCreatingChange={setCreatingPlan} />
+        ) : (
+          <LessonPackagesTab creating={creatingPackage} onCreatingChange={setCreatingPackage} />
+        )}
+      </div>
+    </>
+  );
+}

@@ -6,6 +6,8 @@ export type ReportType =
   | "students_roster"
   | "monthly_birthdays"
   | "billing_statement"
+  | "course_summary"
+  | "package_summary"
   | "financial_income_statement"
   | "churn_retention"
   | "revenue_forecast"
@@ -103,6 +105,60 @@ export interface BillingStatementReportData {
   rows: BillingStatementRow[];
 }
 
+// 3b. Cursos (doc 20, fase D): um curso por linha, valores do curso inteiro
+export interface CourseReportRow {
+  classGroupId: Id;
+  className: string;
+  teacherName: string;
+  startDate: DateISO;
+  endDate?: DateISO;
+  /** Matriculas que valem (ativas ou pausadas), inclusive as concluidas. */
+  enrolled: number;
+  /** Matriculas ativas de curso ja terminado. */
+  completed: number;
+  canceled: number;
+  /** Parcelas que valem (pagas + em aberto). */
+  contractedCents: number;
+  receivedCents: number;
+  /** Pendentes e atrasadas. */
+  openCents: number;
+}
+
+export interface CourseReportData {
+  header: ReportHeaderInfo;
+  totalContractedCents: number;
+  totalReceivedCents: number;
+  totalOpenCents: number;
+  /** Parcelas de curso pagas no mes do relatorio. */
+  receivedInPeriodCents: number;
+  rows: CourseReportRow[];
+}
+
+// 3c. Pacotes de aulas (doc 20, fase D): um pacote do catalogo por linha
+export interface PackageReportRow {
+  packageId: Id;
+  packageName: string;
+  /** Vendas no mes (sem as canceladas). */
+  sold: number;
+  /** Aulas compradas nessas vendas (sem as trazidas de outro pacote). */
+  lessonsSold: number;
+  /** Aulas gastas no mes (presenca ou falta que gasta). */
+  lessonsUsed: number;
+  /** Aulas que ainda podem ser usadas hoje. */
+  lessonsRemaining: number;
+  /** Cobrancas do pacote pagas no mes. */
+  receivedCents: number;
+}
+
+export interface PackageReportData {
+  header: ReportHeaderInfo;
+  totalSold: number;
+  totalLessonsUsed: number;
+  totalLessonsRemaining: number;
+  totalReceivedCents: number;
+  rows: PackageReportRow[];
+}
+
 // 4. Aniversariantes do Mês
 export interface BirthdayRow {
   id: Id;
@@ -161,6 +217,8 @@ export type GeneratedReportData =
   | { type: "attendance_sheet"; data: AttendanceReportData }
   | { type: "students_roster"; data: StudentRosterReportData }
   | { type: "billing_statement"; data: BillingStatementReportData }
+  | { type: "course_summary"; data: CourseReportData }
+  | { type: "package_summary"; data: PackageReportData }
   | { type: "monthly_birthdays"; data: BirthdayReportData }
   | { type: "financial_income_statement"; data: DREStatementReportData }
   | { type: "churn_retention"; data: ChurnReportData };

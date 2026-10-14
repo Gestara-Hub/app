@@ -26,11 +26,12 @@ export interface ClassMeetingSlot {
 }
 
 /**
- * Como a turma cobra (doc 20, fase B): mensalidade do plano do aluno (padrao,
- * ausente = "membership"), curso com valor fechado (a matricula gera as
- * parcelas) ou sem cobranca.
+ * Como a turma cobra (doc 20, fases B e C): mensalidade do plano do aluno
+ * (padrao, ausente = "membership"), curso com valor fechado (a matricula gera
+ * as parcelas), pacote de aulas (cada aula dada gasta uma aula do pacote do
+ * aluno) ou sem cobranca.
  */
-export type ClassBillingMode = "membership" | "course" | "free";
+export type ClassBillingMode = "membership" | "course" | "package" | "free";
 
 /** Turma — grupo recorrente conduzido por um instrutor. */
 export interface ClassGroup {
@@ -141,6 +142,31 @@ export interface EnrollmentView extends Enrollment {
   courseInstallments?: EnrollmentCourseInstallments;
 }
 
+/**
+ * Certificado de conclusao do curso (doc 20, fase D; recurso pago
+ * `certificates`). So dados: o texto e o desenho ficam no modelo da tela, para
+ * um futuro gerador de certificados escolher outro modelo sem mudar a API.
+ */
+export interface CourseCertificate {
+  enrollmentId: Id;
+  classGroupId: Id;
+  organizationName: string;
+  studentName: string;
+  courseName: string;
+  modalityName?: string;
+  startDate: DateISO;
+  endDate: DateISO;
+  /** Aulas do curso (encontros entre o inicio e o fim). */
+  lessonsCount: number;
+  /** Frequencia em % (presencas / presencas + faltas); null sem chamada. */
+  attendancePercent: number | null;
+  instructorName: string;
+  /** Cidade da unidade, quando cadastrada. */
+  city?: string;
+  /** Dia da emissao. */
+  issuedOn: DateISO;
+}
+
 /** Sessao — ocorrencia datada de uma turma (uma aula). */
 export type ClassSessionStatus = "scheduled" | "done" | "canceled";
 
@@ -218,8 +244,11 @@ export interface AttendanceSummary {
   total: number;
 }
 
-/** Tipo de vinculo do aluno na sessao: matriculado fixo, avulso ou experimental. */
-export type SessionRosterKind = "enrolled" | "dropin" | "trial";
+/**
+ * Tipo de vinculo do aluno na sessao: matriculado fixo, avulso, experimental
+ * ou com pacote (entra na aula gastando uma aula do pacote, sem cobranca).
+ */
+export type SessionRosterKind = "enrolled" | "dropin" | "trial" | "package";
 
 /** Linha do roster de uma sessao: aluno + vinculo + presenca (se ja marcada). */
 export interface SessionRosterEntry {
@@ -227,6 +256,24 @@ export interface SessionRosterEntry {
   studentName: string;
   kind?: SessionRosterKind;
   attendance?: AttendanceStatus;
+  /**
+   * So de quem paga com pacote nesta aula (turma "package" ou vinculo
+   * "package"): saldo do pacote que cobre a aula (o que ja gastou esta aula,
+   * ou o proximo a ser usado).
+   */
+  packageRemaining?: number;
+  packageTotal?: number;
+  /** Esta e a ultima aula do pacote. */
+  packageLastLesson?: boolean;
+  /** Paga com pacote, mas nao tem pacote valido com saldo para esta aula. */
+  noPackage?: boolean;
+}
+
+/** Aluno fora da aula com pacote valido para ela (pode entrar como "package"). */
+export interface SessionPackageCandidate {
+  studentId: Id;
+  studentName: string;
+  remaining: number;
 }
 
 /** Detalhe da sessao com o roster (matriculados e avulsos) para marcar presenca. */
@@ -238,6 +285,8 @@ export interface ClassSessionDetail extends ClassSessionView {
   allowDropin: boolean;
   sessionPriceCents?: number;
   roster: SessionRosterEntry[];
+  /** Alunos ativos fora da aula com pacote valido para a modalidade e a data. */
+  packageCandidates: SessionPackageCandidate[];
 }
 
 // --- Fatia 3: lista de espera e drop-in (reserva) ---------------------------
@@ -258,9 +307,9 @@ export interface WaitlistEntryView extends WaitlistEntry {
   studentName: string;
 }
 
-/** Reservation of a drop-in or trial class: Student x Session. */
+/** Reservation of a drop-in, trial or package class: Student x Session. */
 export type ReservationStatus = "reserved" | "canceled";
-export type ReservationKind = "dropin" | "trial";
+export type ReservationKind = "dropin" | "trial" | "package";
 
 export interface ClassReservation {
   id: Id;

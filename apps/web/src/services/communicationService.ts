@@ -63,7 +63,7 @@ function ensureLogs(): MessageLog[] {
 }
 
 function categoryOf(trigger?: string): MessageCategory {
-  if (trigger?.startsWith("billing")) return "billing";
+  if (trigger?.startsWith("billing") || trigger === "charge_reminder") return "billing";
   if (trigger === "manual_broadcast" || !trigger) return "administrative";
   return "retention";
 }

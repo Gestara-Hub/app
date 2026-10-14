@@ -261,6 +261,30 @@ Lista de quais acoes confirmam em [`../frontend/06-decisoes-de-interface.md`](..
 
 Sem confirmacao (um clique): marcar presenca (Presente / Faltou / Justificada) e restaurar o instrutor titular.
 
+### Cobrança avulsa, curso, pacote e certificado (doc 20, fases A a D)
+
+Regras em [`15-regras-de-cobranca.md`](15-regras-de-cobranca.md). Botões dos formulários seguem "Adicionar" / "Salvar" / "Salvando...".
+
+| Situação | Mensagem |
+| --- | --- |
+| Nova cobrança: campos | "Descreva a cobrança.", "Informe o valor.", "Informe o vencimento.", "Escolha de 1 a 12 parcelas.", "Cada parcela precisa de pelo menos R$ 0,01." |
+| Cobrança ou pacote para aluno inativo | "Aluno inativo. Reative o cadastro para lançar a cobrança." / "... para vender o pacote." |
+| Cobrança lançada | "Cobrança lançada." ou "3 parcelas lançadas." |
+| Turma de curso: campos | "Informe o valor do curso.", "Informe quando o curso termina.", "O curso não pode terminar antes de começar." |
+| Matrícula em curso | "Informe o pagamento do curso.", "Este curso é só à vista." / "Escolha de 1 a N parcelas.", "Informe o 1º vencimento." |
+| Curso terminado | "Este curso já terminou (20/09/2026)." (a tela esconde "Matricular alunos") |
+| Cancelar matrícula já cancelada | "Esta matrícula já foi cancelada." |
+| Pacote: cadastro | "Informe o nome do pacote.", "Informe de 1 a 200 aulas.", "Informe um valor maior que zero.", "A validade vai de 1 a 730 dias." |
+| Pacote: venda | "Selecione o pacote.", "Pacote inativo. Reative-o em Planos para vender.", sem pacotes "Nenhum pacote ativo. Cadastre em Planos."; sucesso "Pacote vendido." |
+| Cancelar pacote | "O pacote já tem aulas usadas.", "Este pacote já foi cancelado.", "O saldo deste pacote já passou para o pacote novo."; sucesso "Pacote cancelado." |
+| Certificado | Grátis: tela "Disponível no Plano Pro" com "Certificado de conclusão no Plano Pro."; curso não terminado: "O certificado sai quando o curso termina." |
+
+Estados e selos: "Curso", "Encerrado" (turma com fim no passado), "Concluído" (matrícula em curso terminado), "Pacote 7 de 10" com "Última aula", "Vence em N dias", "Vence hoje" ou "Vencido", "Renovado", "Sem pacote" na chamada. Empty state de Planos > Pacotes de aulas: "Nenhum pacote cadastrado ainda."
+
+Confirmações: "Cancelar pacote?" ("O pacote {nome} de {aluno} é cancelado. As cobranças em aberto dele também; as pagas ficam."); cancelar matrícula em curso explica as parcelas ("As parcelas pagas ficam. As 2 parcelas futuras serão canceladas."); inativar aluno avisa "A cobrança avulsa em aberto continua para receber." (e o mesmo para curso e pacote).
+
+WhatsApp (fase D): "Lembrar no WhatsApp" em toda cobrança em aberto menos a aula avulsa; modelos novos **"Lembrete de cobrança"** e **"Pacote acabando"** em Comunicação > Mensagens e no Histórico. No Dashboard, "Para fazer hoje" ganha **"N pacotes acabando"** (Ver → "Avisar" no WhatsApp, que vira "Avisado hoje", e "Vender pacote").
+
 ## Empty states com call-to-action (Modelo 1)
 
 Estados vazios "sem dados" orientam a proxima acao; "por busca/filtro" oferecem limpar, nao cadastrar.

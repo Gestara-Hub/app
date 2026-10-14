@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
-import { TRIGGER_META, automationTiming, sampleValues } from "../message-meta";
+import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues } from "../message-meta";
 import { EditTemplateDialog } from "./edit-template-dialog";
 import { MessageBubble } from "./message-bubble";
 
@@ -79,13 +79,13 @@ const GROUPS = [
     category: "billing" as const,
     title: "Cobrança",
     icon: Wallet,
-    hint: "Lembretes de mensalidade antes, no dia e depois do vencimento.",
+    hint: "Lembretes de mensalidade e das outras cobranças.",
   },
   {
     category: "retention" as const,
     title: "Relacionamento",
     icon: HeartHandshake,
-    hint: "Boas-vindas, aniversário e alunos que pararam de vir.",
+    hint: "Boas-vindas, faltas, pacote acabando e aniversário.",
   },
 ];
 
@@ -115,7 +115,9 @@ export function MessageTemplatesTab() {
   return (
     <div className="space-y-8">
       {GROUPS.map((group) => {
-        const items = (templates ?? []).filter((t) => t.category === group.category);
+        const items = (templates ?? [])
+          .filter((t) => t.category === group.category)
+          .sort((a, b) => TRIGGER_ORDER.indexOf(a.trigger) - TRIGGER_ORDER.indexOf(b.trigger));
         if (items.length === 0) return null;
         return (
           <section key={group.category} className="space-y-3">

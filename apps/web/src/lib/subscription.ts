@@ -11,8 +11,8 @@ import type {
  */
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   free: [],
-  pro: ["online_payments", "messaging", "reports_advanced"],
-  scale: ["online_payments", "messaging", "reports_advanced", "bi"],
+  pro: ["online_payments", "messaging", "reports_advanced", "certificates"],
+  scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
 };
 
 export const SUBSCRIPTION_TIERS: readonly SubscriptionTier[] = ["free", "pro", "scale"];

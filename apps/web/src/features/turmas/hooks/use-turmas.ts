@@ -92,6 +92,16 @@ export function useEnrollments(classGroupId: Id) {
   });
 }
 
+/** Certificado de conclusao do curso (Plano Pro; sem o recurso, FEATURE_NOT_IN_PLAN). */
+export function useCourseCertificate(enrollmentId: Id) {
+  return useQuery({
+    queryKey: queryKeys.classes.certificate(enrollmentId),
+    queryFn: () => turmasService.getCourseCertificate(enrollmentId),
+    enabled: Boolean(enrollmentId),
+    retry: false,
+  });
+}
+
 export function useEnroll() {
   const qc = useQueryClient();
   return useMutation({
@@ -143,8 +153,23 @@ export function useMarkAttendance() {
       studentId: Id;
       status: AttendanceStatus;
     }) => turmasService.markAttendance(input),
-    // Presença muda frequência -> invalida turmas e sessões.
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.classes.all }),
+    // Presença muda frequência e o saldo do pacote -> invalida turmas, sessões e pacotes.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+    },
+  });
+}
+
+/** Desmarca a presença (devolve a aula do pacote, se gastou). */
+export function useClearAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { sessionId: Id; studentId: Id }) => turmasService.clearAttendance(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+    },
   });
 }
 
@@ -243,6 +268,7 @@ export function useReserveSession() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
     },
   });
 }
@@ -255,6 +281,7 @@ export function useCancelReservation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.billing.all });
+      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
     },
   });
 }

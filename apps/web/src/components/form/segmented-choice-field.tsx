@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, type CSSProperties, type KeyboardEvent } from "react";
 import {
   Controller,
   useFormContext,
@@ -23,8 +23,9 @@ interface SegmentedChoiceFieldProps<T extends FieldValues> {
 }
 
 /**
- * Escolha unica entre poucas opcoes (2 a 3) exibidas lado a lado, no estilo
- * "segmented control". Semantica de radiogroup: setas navegam e selecionam.
+ * Escolha unica entre poucas opcoes (2 a 4) exibidas lado a lado, no estilo
+ * "segmented control". Com 4 opcoes, o celular mostra 2 por linha. Semantica
+ * de radiogroup: setas navegam e selecionam.
  */
 export function SegmentedChoiceField<T extends FieldValues>({
   name,
@@ -59,13 +60,21 @@ export function SegmentedChoiceField<T extends FieldValues>({
           buttonsRef.current[next]?.focus();
         };
 
+        const wraps = options.length > 3;
         return (
           <div
             role="radiogroup"
             aria-label={ariaLabel}
             onKeyDown={handleKeyDown}
-            className="grid gap-1 rounded-lg border border-border/60 bg-muted/40 p-1"
-            style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+            className={cn(
+              "grid gap-1 rounded-lg border border-border/60 bg-muted/40 p-1",
+              wraps && "grid-cols-2 sm:[grid-template-columns:repeat(var(--segment-count),minmax(0,1fr))]",
+            )}
+            style={
+              wraps
+                ? ({ "--segment-count": options.length } as CSSProperties)
+                : { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }
+            }
           >
             {options.map((option, index) => {
               const selected = index === selectedIndex;

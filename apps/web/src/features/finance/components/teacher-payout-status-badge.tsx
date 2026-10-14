@@ -1,4 +1,4 @@
-import type { TeacherPayoutLine, TeacherPayoutStatus } from "@gestarahub/contracts";
+import type { TeacherPayoutLine, TeacherPayoutStatus, TeacherPayPercentSource } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
 import { teacherPayComponentLabel, teacherPayoutStatusLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -39,13 +39,20 @@ export function payoutLineTitle(line: TeacherPayoutLine): string {
     case "per_student":
       return plural(line.quantity ?? 0, "aluno ativo", "alunos ativos");
     case "percent_of_memberships":
-      return line.label; // "40% de R$ 3.000,00"
+      return line.label; // "40% de R$ 3.000,00 em mensalidades"
     case "fixed_monthly":
       return teacherPayComponentLabel("fixed_monthly");
     case "adjustment":
       return line.label;
   }
 }
+
+/** Fonte do "% do que os alunos pagaram" (decisao 7 do doc 20). */
+const PERCENT_SOURCE_DETAIL: Record<TeacherPayPercentSource, string> = {
+  memberships: "Mensalidades pagas dos alunos das turmas dele",
+  courses: "Parcelas pagas dos cursos dele",
+  packages: "Aulas de pacote pago que ele deu, pelo valor da aula",
+};
 
 /** Subtitulo da linha (a conta ou o tipo). */
 export function payoutLineDetail(line: TeacherPayoutLine): string | undefined {
@@ -54,7 +61,7 @@ export function payoutLineDetail(line: TeacherPayoutLine): string | undefined {
     case "per_student":
       return line.label; // "16 aulas × R$ 60,00"
     case "percent_of_memberships":
-      return "Mensalidades pagas atribuídas às turmas dele";
+      return line.source ? PERCENT_SOURCE_DETAIL[line.source] : "Do que os alunos pagaram. Avulsas não entram";
     case "adjustment":
       return line.amountCents >= 0 ? "Ajuste (acréscimo)" : "Ajuste (desconto)";
     default:

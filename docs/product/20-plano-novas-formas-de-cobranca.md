@@ -1,6 +1,6 @@
 # 20 — Plano: novas formas de cobrança (curso fechado, pacote de aulas, cobrança avulsa)
 
-> **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fase A (cobrança avulsa) e fase B (curso fechado) entregues em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seções "Cobrança avulsa" e "Curso fechado"); C e D pendentes. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
+> **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fases A (cobrança avulsa), B (curso fechado) e C (pacote de aulas) entregues em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seções "Cobrança avulsa", "Curso fechado" e "Pacote de aulas"); D pendente. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
 > Base: regras atuais em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), motor em `packages/core/src/billing.ts`, contratos em `packages/contracts/src/billing.ts` e `class.ts`.
 
 ## 1. O que existe hoje
@@ -41,7 +41,7 @@ Cada fase fecha com testes de regra (`packages/core`), de service (Vitest) e de 
 |---|---|---|
 | **A. Cobrança avulsa** ✅ 14/10/2026 | "Nova cobrança" no aluno e em Mensalidades: descrição, valor, vencimento, 1 a 12 parcelas. Aparece em Mensalidades (filtro "Tipo"), no Financeiro e no pagamento online. O lembrete de WhatsApp ficou para a D. Base para B e C. | Pequeno |
 | **B. Curso fechado** ✅ 14/10/2026 | Forma de cobrança na turma; matrícula pergunta "à vista ou parcelado" e gera as parcelas; turma terminada encerra a matrícula ("Concluído"); cancelamento cancela só as parcelas futuras; vagas e lista de espera como hoje. Padrão por área. | Médio |
-| **C. Pacote de aulas** | Cadastro de pacotes (em Planos); venda ao aluno gera a cobrança; a chamada gasta uma aula; saldo na ficha, na chamada e no aluno; validade; aviso de "última aula" e de vencimento; renovar. Aluno com pacote entra em qualquer aula das modalidades do pacote, como o avulso hoje, mas gastando crédito. | Médio a grande |
+| **C. Pacote de aulas** ✅ 14/10/2026 | Cadastro de pacotes (em Planos); venda ao aluno gera a cobrança; a chamada gasta uma aula; saldo na ficha, na chamada e no aluno; validade; aviso de "última aula" e de vencimento; renovar. Aluno com pacote entra em qualquer aula das modalidades do pacote, como o avulso hoje, mas gastando crédito. | Médio a grande |
 | **D. Acabamento** | Modelos de WhatsApp novos ("parcela do curso", "pacote acabando"); "Para fazer hoje" com pacotes acabando; certificado de conclusão do curso (PDF simples no navegador); relatórios por curso e por pacote; repasse de professor incluindo curso e pacote (decisão 5). | Médio |
 
 **Ordem e backend:** fazer A, B e C ainda no mock, antes da fatia 4 do backend (Cobrança, [06-passagem-backend.md](../technical/06-passagem-backend.md)), porque mudam os contratos, que são a especificação da API. As fatias 1 a 3 do backend (login, alunos, turmas) podem começar em paralelo. D pode vir depois.
@@ -101,3 +101,52 @@ Decisões tomadas na implementação:
 - **Cancelar uma matrícula já cancelada é recusado** ("Esta matrícula já foi cancelada."), para um clique duplo não registrar duas vezes.
 - **Parcelas padrão na matrícula: à vista**, valor cheio do curso e 1º vencimento hoje; o dono escolhe as parcelas.
 - Mensalidades segue com o nome "Mensalidades" (renomear para "Cobranças" segue em avaliação).
+
+## 9. Fase C entregue (14/10/2026)
+
+O que foi feito: contratos `LessonPackage` e `StudentPackage` (+ `StudentPackageView` com `remaining`, `isExpired`, `isUsedUp`, `isLastLesson`, `expiresSoon`, `daysToExpire`), `SellPackage`, `ChargeKind` `"package"` com `Charge.studentPackageId`, `ClassBillingMode` `"package"`, vínculo `"package"` na aula (`ReservationKind` e `SessionRosterKind`), saldo no roster (`packageRemaining`, `packageTotal`, `packageLastLesson`, `noPackage`) e `ClassSessionDetail.packageCandidates`; no core, `packages.ts` (`packageExpiresAt`, `usageReasonFor`, `coversModality`, `modalitiesOverlap`, `packageState`, `isUsableOn`, `pickPackageFor`, `carryOverSources`) e o rótulo do pacote em `describeCharge`; `packagesService` (catálogo, venda com renovação, cancelamento da venda e o gasto na chamada), `turmasService.markAttendance` acertando o pacote e `clearAttendance` novo; aba "Pacotes de aulas" em Planos, "Vender pacote" e "Cancelar pacote" no menu do aluno, selo do pacote na lista de Alunos, "Pacote de aulas" no formulário da turma, saldo e inscrição pelo pacote na chamada, filtro "Pacotes" em Cobranças, categoria de sistema "Pacotes de aulas" (`packages`) e migração v35. Regras completas no doc 15, seção "Pacote de aulas".
+
+Decisões tomadas na implementação:
+
+- **Pacote vale até a compra + a validade** (comprado em 01/10 com 30 dias vale até 31/10, inclusive). Vencido = data da aula depois desse dia.
+- **A data que conta é a da aula**, não a de hoje: a chamada atrasada de uma aula de quando o pacote valia gasta normalmente; aula depois do vencimento não usa o pacote. Não há trava pela data da compra (aula dada antes da venda, marcada depois, gasta o pacote).
+- **Entre vários pacotes válidos, paga o que vence primeiro** (sem validade por último; empate, o mais antigo). Se esse pacote não gasta na falta, a falta não gasta nada (não procura outro pacote que gaste).
+- **Renovação leva o saldo de todos os ativos válidos com modalidade em comum** (pacote de todas as modalidades conta como comum). Vencido ou usado até o fim não renova (fica como está). Desmarcar uma aula gasta de um pacote já renovado devolve a aula **no pacote novo** (o saldo já tinha ido para lá). Cancelar a venda do pacote novo devolve o anterior ao uso.
+- **Cancelar a venda só sem aula usada** (como pedido) e **as cobranças pagas ficam**: o dinheiro recebido continua no Financeiro; para devolver, desfaz-se o pagamento em Cobranças. O cancelamento é do sistema ("Pacote cancelado"), não reabre.
+- **Cancelar uma cobrança do pacote não mexe no saldo** (a cobrança e o pacote são coisas separadas, como na avulsa); para desfazer a venda, "Cancelar pacote".
+- **Valor da venda > 0** (como o curso): cortesia não é pacote; para dar aula grátis, use a experimental.
+- **Rótulo da cobrança à vista:** `compra do pacote "10 aulas" de Ana`, e não `pacote "10 aulas" de Ana` como no plano, porque as auditorias escrevem "registrou o pagamento da …" e "cancelou a …" (feminino). Parcelada: `parcela 2 de 3 do pacote "10 aulas" de Ana`. O curso à vista tem o mesmo problema ("da curso") e ficou como estava.
+- **Turma de pacote aceita avulso pago e experimental**; eles não gastam o pacote. O aluno com pacote entra em qualquer turma da modalidade pelo vínculo "package", mesmo em turma sem avulso, e, como o avulso, sem checar lotação.
+- **Desmarcar presença** (tocar de novo no botão marcado) entrou nesta fase para a chamada poder devolver a aula; vale para todas as turmas.
+- **"Cobrança" da turma com 4 opções:** no celular elas ficam 2 por linha (`SegmentedChoiceField` passou a aceitar 4).
+- **Pacote acabado ou vencido aparece na lista de Alunos por até 30 dias**, para lembrar de renovar; depois some.
+- **Auditoria do gasto de aula:** não há (a chamada não é auditada); a venda, o cancelamento e a inscrição na aula pelo pacote são.
+
+## 10. Fase D entregue (14/10/2026)
+
+**Comunicação**
+- Modelos novos: **"Lembrete de cobrança"** (`charge_reminder`, categoria cobrança, 3 dias antes, ligado) para cobrança avulsa, parcela de curso e compra de pacote; **"Pacote acabando"** (`package_ending`, categoria retenção, 7 dias antes, 10:00, ligado). Migração v36 cria os dois por espaço, com o tom da área.
+- `{referencia}` é sempre feminino, porque o texto diz "Lembrete da ...": "cobrança Kimono", "parcela 2 de 3 da cobrança Kimono", "matrícula no curso Confeitaria", "parcela 2 de 4 do curso Confeitaria", "compra do pacote 10 aulas".
+- `{restante}`: "resta 1 aula", "restam 3 aulas", "vence em 5 dias e restam 2 aulas", "vence hoje e resta 1 aula", "venceu em 12/10". O texto do "Pacote acabando" fala "Sobre seu pacote..." para não dizer "está acabando: venceu".
+- "Lembrar no WhatsApp" aparece em toda cobrança em aberto, menos aula avulsa.
+
+**Para fazer hoje: pacotes acabando**
+- Entram pacotes ativos de aluno ativo: última aula, vencendo em até 7 dias ou vencidos há até 7 dias. Sai quem já tem pacote mais novo em modalidade em comum.
+- Ordem: vencidos, depois quem vence antes, depois última aula. "Avisado" vale qualquer "Pacote acabando" enviado desde a compra. "Vender pacote" só com `billing:manage`.
+- **Em aberto:** pacote usado até o fim (0 aulas, ainda válido) não entra. Avaliar incluir, porque é a hora de renovar.
+
+**Certificado (Plano Pro)**
+- Recurso `certificates` no Pro e no Scale; no Grátis, "Certificado (Plano Pro)" com cadeado e o aviso do plano. Rota própria, pronta para imprimir em A4 deitado.
+- Aulas = encontros da turma entre início e fim; frequência = presenças ÷ (presenças + faltas), sem frequência quando não houve chamada. Assinaturas do instrutor titular e do responsável. Dados separados do texto do modelo (base para o gerador do [doc 21](21-ideias-certificados-e-notas.md)).
+
+**Repasse do professor: "% do que os alunos pagaram"**
+- Uma linha por origem ("30% de R$ 200,00 em mensalidades", "em cursos", "em pacotes (2 aulas)"); cada linha arredonda para baixo e o centavo que sobra fica com o espaço (como na D4). Meses fechados antes da mudança mantêm a linha antiga; reabrir recalcula. A chave salva continua `percent_of_memberships`.
+- **Curso:** parcela paga conta no mês do vencimento e vai inteira para o professor titular da turma do curso (substituição não muda).
+- **Pacote:** cada aula usada no mês (presença ou falta que gasta) vai para quem deu a aula, inclusive o substituto, valendo preço ÷ aulas do pacote (para baixo). Só contam pacotes **totalmente pagos** no momento do cálculo; o mês ainda aberto passa a contar quando o pacote é quitado.
+- Aula que passou para outro pacote na renovação mantém o valor do pacote de origem (`carriedFrom`) e só conta se a origem estiver paga; aulas herdadas são usadas antes das novas.
+- **Mensalidade:** só é dividida entre os professores das turmas de mensalidade do aluno (curso, pacote e sem cobrança não entram), para o professor do curso não receber duas vezes. Aluno que só está em curso ou pacote continua com a divisão de antes.
+- Cobranças avulsas e aulas avulsas não entram.
+
+**Relatórios novos (grátis, operacionais)**
+- **Cursos:** por turma de curso no mês: matriculados, concluídos, cancelados, contratado, recebido e em aberto (totais do curso); cartões com "Recebido no mês".
+- **Pacotes de aulas:** por pacote: vendidos e aulas vendidas no mês, aulas usadas no mês, saldo de aulas hoje, recebido no mês. Os dois exportam CSV e mostram vazio sem dados.

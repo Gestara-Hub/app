@@ -3,7 +3,16 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
-import { AlertCircle, ArrowUpCircle, ArrowUpRight, Cake, ChevronDown, HeartHandshake, MessageCircle } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpCircle,
+  ArrowUpRight,
+  Cake,
+  ChevronDown,
+  HeartHandshake,
+  MessageCircle,
+  Ticket,
+} from "lucide-react";
 import type { Client } from "@gestarahub/contracts";
 import { relativeDateLabel } from "@gestarahub/core/date";
 import { formatCents, plural } from "@gestarahub/core/format";
@@ -12,10 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { cn } from "@/lib/utils";
-import { StudentGraduationDialog } from "@/features/clients";
-import { useMessageLogs, useWhatsAppSend } from "@/features/communication";
+import { useCan } from "@/features/auth";
+import { StudentGraduationDialog, useClients } from "@/features/clients";
+import { packageRemainingText, useMessageLogs, useWhatsAppSend } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
-import { useAbsenceStreaks } from "@/features/turmas";
+import { SellPackageDialog, useAbsenceStreaks, useStudentPackages } from "@/features/turmas";
+import { selectEndingPackages } from "../package-ending";
 import { useMonthBirthdays } from "./birthdays-card";
 import { useLevelChangePending } from "./use-level-change-pending";
 
@@ -148,8 +159,8 @@ function WhatsAppButton({
 /**
  * "Para fazer hoje": as pendencias do Dashboard num bloco so, no topo (sem
  * precisar rolar). Uma linha por pendencia, so as que tem algo: mensalidades
- * em atraso, alunos com 3 faltas seguidas, aniversariantes do dia e troca de
- * faixa pela idade. As listas abrem na propria linha, com a acao.
+ * em atraso, pacotes acabando, alunos com 3 faltas seguidas, aniversariantes
+ * do dia e troca de faixa pela idade. As listas abrem na propria linha, com a acao.
  */
 export function DashboardTodo({
   today,
@@ -168,10 +179,20 @@ export function DashboardTodo({
   const { birthdays } = useMonthBirthdays(today);
   const levelPending = useLevelChangePending(today);
   const [graduating, setGraduating] = useState<{ client: Client; modalityId: string } | null>(null);
+  const can = useCan();
+  const canSellPackage = can("billing:manage");
+  const { data: studentPackages = [] } = useStudentPackages();
+  const { data: activeClients = [] } = useClients({ status: "active" });
+  const { data: packageLogs = [] } = useMessageLogs({ trigger: "package_ending" });
+  const [selling, setSelling] = useState<{ id: string; name: string } | null>(null);
 
   const birthdaysToday = birthdays.filter((b) => b.isToday);
   const lastAbsenceMessage = lastMessageDay(absenceLogs);
   const lastGreeting = lastMessageDay(greetingLogs);
+  const lastPackageMessage = lastMessageDay(packageLogs);
+  // So aluno ativo (o telefone vem do cadastro).
+  const clientById = new Map(activeClients.map((c) => [c.id, c]));
+  const packagesEnding = selectEndingPackages(studentPackages, today).filter((p) => clientById.has(p.pkg.studentId));
   // Titulo do bloco: a palavra das modalidades listadas quando todas falam
   // igual, senao a da area. O botao de cada aluno segue a modalidade dele.
   const levelWord = sharedVocabularyFor(
@@ -180,6 +201,7 @@ export function DashboardTodo({
   ).level.toLowerCase();
   const count =
     (overdueCount > 0 ? 1 : 0) +
+    (packagesEnding.length > 0 ? 1 : 0) +
     (streaks.length > 0 ? 1 : 0) +
     (birthdaysToday.length > 0 ? 1 : 0) +
     (levelPending.length > 0 ? 1 : 0);
@@ -202,6 +224,55 @@ export function DashboardTodo({
                 action="Cobrar"
                 href="/classes/billing?status=overdue"
               />
+            ) : null}
+
+            {packagesEnding.length > 0 ? (
+              <TodoRow
+                icon={<Ticket className="size-4" />}
+                tone="bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                title={plural(packagesEnding.length, "pacote acabando", "pacotes acabando")}
+                detail={namesLine(packagesEnding.map((p) => p.pkg.studentName))}
+                action="Ver"
+              >
+                {packagesEnding.map(({ pkg }) => {
+                  const client = clientById.get(pkg.studentId);
+                  const messagedOn = lastPackageMessage.get(pkg.studentId);
+                  const messaged = Boolean(messagedOn && messagedOn >= pkg.purchasedAt);
+                  const remaining = packageRemainingText(pkg, today);
+                  return (
+                    <StudentLine
+                      key={pkg.id}
+                      name={pkg.studentName}
+                      detail={`${pkg.name} · ${remaining}`}
+                      done={messaged && messagedOn ? `Avisado ${relativeDateLabel(messagedOn)}` : undefined}
+                    >
+                      <WhatsAppButton
+                        label={`Avisar ${pkg.studentName} no WhatsApp`}
+                        done={messaged}
+                        disabled={!whatsapp.ready}
+                        onClick={() =>
+                          whatsapp.send({
+                            trigger: "package_ending",
+                            recipient: { name: pkg.studentName, phone: client?.phone, clientId: pkg.studentId },
+                            values: { pacote: pkg.name, restante: remaining },
+                          })
+                        }
+                      />
+                      {canSellPackage ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 shrink-0 text-xs"
+                          onClick={() => setSelling({ id: pkg.studentId, name: pkg.studentName })}
+                        >
+                          Vender pacote
+                        </Button>
+                      ) : null}
+                    </StudentLine>
+                  );
+                })}
+              </TodoRow>
             ) : null}
 
             {streaks.length > 0 ? (
@@ -311,6 +382,13 @@ export function DashboardTodo({
           if (!open) setGraduating(null);
         }}
         initialModalityId={graduating?.modalityId}
+      />
+      <SellPackageDialog
+        open={selling !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelling(null);
+        }}
+        student={selling}
       />
     </>
   );

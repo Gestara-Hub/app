@@ -133,7 +133,8 @@ describe("computeTeacherPayout: cada tipo de parte", () => {
     const lines = computeTeacherPayout(rule([{ kind: "percent_of_memberships", percent: 40 }]), f, COMP);
     assert.equal(lines[0].baseCents, 20000);
     assert.equal(lines[0].amountCents, 8000);
-    assert.equal(plain(lines[0].label), "40% de R$ 200,00");
+    assert.equal(plain(lines[0].label), "40% de R$ 200,00 em mensalidades");
+    assert.equal(lines[0].source, "memberships");
   });
 
   it("% das mensalidades arredonda para baixo", () => {
@@ -315,7 +316,7 @@ describe("payoutTotalCents, isRuleEffective, describeTeacherPayRule e vencimento
         { kind: "percent_of_memberships", percent: 30 },
       ],
     });
-    assert.equal(plain(text), "Fixo R$ 800,00 + 30% das mensalidades");
+    assert.equal(plain(text), "Fixo R$ 800,00 + 30% do que os alunos pagaram");
   });
 
   it("describeTeacherPayRule marca as turmas selecionadas e usa vírgula decimal", () => {
@@ -326,7 +327,7 @@ describe("payoutTotalCents, isRuleEffective, describeTeacherPayRule e vencimento
         { kind: "percent_of_memberships", percent: 12.5 },
       ],
     });
-    assert.equal(plain(text), "R$ 60,00 por aula (turmas selecionadas) + R$ 20,00 por aluno + 12,5% das mensalidades");
+    assert.equal(plain(text), "R$ 60,00 por aula (turmas selecionadas) + R$ 20,00 por aluno + 12,5% do que os alunos pagaram");
   });
 
   it("teacherPayoutDueDate vence no dia da regra do mês seguinte (padrão dia 5)", () => {

@@ -77,7 +77,9 @@ function whatsappMessage(input: {
         ? `${(input.charge.cycleTotal ?? 1) > 1 ? `a parcela ${input.charge.cycleIndex ?? 1} de ${input.charge.cycleTotal} de` : "a cobrança"} "${input.charge.description ?? ""}"`
         : input.charge.kind === "course"
           ? `${(input.charge.cycleTotal ?? 1) > 1 ? `a parcela ${input.charge.cycleIndex ?? 1} de ${input.charge.cycleTotal} do` : "o pagamento do"} curso "${input.charge.description ?? ""}"`
-          : "a mensalidade";
+          : input.charge.kind === "package"
+            ? `${(input.charge.cycleTotal ?? 1) > 1 ? `a parcela ${input.charge.cycleIndex ?? 1} de ${input.charge.cycleTotal} do` : "o pagamento do"} pacote "${input.charge.description ?? ""}"`
+            : "a mensalidade";
   const from = input.orgName ? ` da ${input.orgName}` : "";
   const header = `Olá, ${firstName}! Segue ${what}${from} no valor de ${formatCents(input.payment.amountCents)}, com vencimento em ${shortDate(input.charge.dueDate)}.`;
   const body =

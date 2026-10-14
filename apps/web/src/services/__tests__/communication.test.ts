@@ -4,6 +4,9 @@ import { store } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
 import { clientsService } from "@/services/clientsService";
 import { communicationService } from "@/services/communicationService";
+import { defaultMessageTemplates } from "@/mocks/seed";
+import { fillMessage } from "@/lib/whatsapp";
+import { chargeReminder, packageRemainingText } from "@/features/communication/message-values";
 import { ACADEMY_ORG, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 const TODAY = "2026-09-22";
 
@@ -141,7 +144,55 @@ describe("modelos de mensagem", () => {
 
   it("modelos sumidos sao recriados com o texto padrao", async () => {
     store.messageTemplates = [];
-    expect(await communicationService.listTemplates()).toHaveLength(7);
+    expect(await communicationService.listTemplates()).toHaveLength(9);
+  });
+
+  it("tem o lembrete de cobrança (avulsa, curso e pacote) e o pacote acabando", async () => {
+    const list = await communicationService.listTemplates();
+    expect(list.find((t) => t.trigger === "charge_reminder")).toMatchObject({
+      id: tmpl("charge-reminder"),
+      category: "billing",
+      title: "Lembrete de cobrança",
+      availableVariables: expect.arrayContaining(["{referencia}", "{valor}", "{vencimento}", "{link_pagamento}"]),
+    });
+    expect(list.find((t) => t.trigger === "package_ending")).toMatchObject({
+      id: tmpl("package-ending"),
+      category: "retention",
+      title: "Pacote acabando",
+      availableVariables: expect.arrayContaining(["{pacote}", "{restante}"]),
+    });
+  });
+
+  it("textos padrao dos modelos novos saem completos (sem o link quando nao ha cobranca online)", () => {
+    const templates = defaultMessageTemplates(ACADEMY_ORG, "gastronomy");
+    const reminder = templates.find((t) => t.trigger === "charge_reminder")!;
+    const values = chargeReminder(
+      { kind: "package", status: "pending", amountCents: 15000, dueDate: "2026-10-20", description: "10 aulas" },
+      TODAY,
+    )!.values;
+    expect(fillMessage(reminder.content, { aluno: "Ana", empresa: "Ateliê", ...values }).replace(/\u00a0/g, " ")).toBe(
+      "Olá, Ana! Lembrete da compra do pacote 10 aulas de R$ 150,00 na Ateliê, com vencimento em 20/10. Boas aulas!",
+    );
+    const ending = templates.find((t) => t.trigger === "package_ending")!;
+    const restante = packageRemainingText({ lessonsTotal: 10, lessonsUsed: 9, status: "active" }, TODAY);
+    expect(fillMessage(ending.content, { aluno: "Ana", empresa: "Ateliê", pacote: "10 aulas", restante })).toBe(
+      "Oi, Ana! Sobre seu pacote 10 aulas na Ateliê: resta 1 aula. Quer renovar e seguir com as aulas?",
+    );
+  });
+
+  it("os modelos novos tem texto livre no gratis e automacao so no Pro", async () => {
+    const updated = await communicationService.updateTemplate({
+      id: tmpl("charge-reminder"),
+      content: "Oi, {aluno}! Falta a {referencia}.",
+    });
+    expect(updated.content).toBe("Oi, {aluno}! Falta a {referencia}.");
+    await expect(
+      communicationService.updateTemplate({ id: tmpl("package-ending"), enabled: false }),
+    ).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
+    setTier("pro");
+    expect(await communicationService.updateTemplate({ id: tmpl("package-ending"), enabled: false })).toMatchObject({
+      enabled: false,
+    });
   });
 
   it("texto e livre no gratis (o assistido usa o mesmo texto)", async () => {
@@ -226,6 +277,19 @@ describe("envio assistido", () => {
     expect(manual).toMatchObject({ trigger: "manual_broadcast", category: "administrative" });
     const welcome = await communicationService.registerAssistedMessage(message({ trigger: "welcome_student" }));
     expect(welcome.category).toBe("retention");
+  });
+
+  it("lembrete de cobranca e de cobranca; pacote acabando e de relacionamento", async () => {
+    const reminder = await communicationService.registerAssistedMessage(
+      message({ trigger: "charge_reminder", clientId: "cli-1", chargeId: "chg-9" }),
+    );
+    expect(reminder).toMatchObject({ trigger: "charge_reminder", category: "billing", chargeId: "chg-9", status: "opened" });
+    const ending = await communicationService.registerAssistedMessage(
+      message({ trigger: "package_ending", clientId: "cli-1" }),
+    );
+    expect(ending).toMatchObject({ trigger: "package_ending", category: "retention", status: "opened" });
+    const logs = await communicationService.listLogs({ trigger: "package_ending" });
+    expect(logs.map((l) => l.id)).toEqual([ending.id]);
   });
 
   it("nao guarda aluno nem cobranca quando nao vieram", async () => {
@@ -478,10 +542,10 @@ describe("numeros do mes", () => {
 
   it("automacoes ativas = modelos ligados", async () => {
     // Padrao: so o atraso critico vem desligado.
-    expect((await communicationService.getMetrics()).activeAutomationsCount).toBe(6);
+    expect((await communicationService.getMetrics()).activeAutomationsCount).toBe(8);
     setTier("pro");
     await communicationService.updateTemplate({ id: tmpl("welcome"), enabled: false });
-    expect((await communicationService.getMetrics()).activeAutomationsCount).toBe(5);
+    expect((await communicationService.getMetrics()).activeAutomationsCount).toBe(7);
   });
 
   it("oficial conta so as enviadas e calcula entrega e leitura", async () => {

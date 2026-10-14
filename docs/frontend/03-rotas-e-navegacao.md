@@ -42,10 +42,11 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/appointments` | — | `scheduling` | `schedule:view` | Redireciona para `/schedule` (links antigos). |
 | `/classes` | Turmas | `classes` | `classes:view` | Lista de turmas. |
 | `/classes/[id]` | Detalhe da turma | `classes` | `classes:view` | Matriculas, lista de espera. |
+| `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Impressão pelo navegador. |
 | `/classes/sessions/[sessionId]` | Aula | `classes` | `classes:view` | Chamada, reservas, instrutor substituto. |
 | `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas. |
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
-| `/classes/plans` | Planos | `classes` | `billing:view` | Planos de mensalidade. |
+| `/classes/plans` | Planos | `classes` | `billing:view` | Abas "Planos de mensalidade" e "Pacotes de aulas" (`?tab=packages`). |
 | `/classes/billing` | Cobranças | `classes` | `billing:view` | Cobrancas por competencia: mensalidades, aulas avulsas, cobrancas avulsas e parcelas de curso (antes "Mensalidades", renomeada em 14/10/2026). |
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |

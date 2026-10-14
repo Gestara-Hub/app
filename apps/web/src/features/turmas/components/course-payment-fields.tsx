@@ -3,12 +3,11 @@
 import { FormProvider, useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import type { ClassGroup, EnrollmentCourseChoice } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
-import { formatCents } from "@gestarahub/core/format";
 import { DateField, InputCurrency, SelectField } from "@/components/form";
-import { installmentsSummary } from "../installments-summary";
+import { paymentSummary } from "../installments-summary";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -67,13 +66,6 @@ export function applyCourseErrors(form: UseFormReturn<CoursePaymentValues>, erro
   return fields.length > 0;
 }
 
-/** "À vista: R$ 800,00, vence 15/10." ou "4x de R$ 200,00: 15/10, 15/11, 15/12 e 15/01." */
-function courseSummary(priceCents: number, installments: number, firstDueDate: string): string | null {
-  if (installments > 1) return installmentsSummary(priceCents, installments, firstDueDate);
-  if (!priceCents || !DATE_RE.test(firstDueDate) || Number.isNaN(parseISO(firstDueDate).getTime())) return null;
-  return `À vista: ${formatCents(priceCents)}, vence ${format(parseISO(firstDueDate), "dd/MM")}.`;
-}
-
 /**
  * Bloco "Pagamento do curso" da matricula (e da promocao da lista de espera):
  * valor (cheio por padrao, editavel), parcelas de 1 ate o maximo da turma e
@@ -100,7 +92,7 @@ export function CoursePaymentFields({
     control: form.control,
     name: ["priceCents", "installments", "firstDueDate"],
   });
-  const summary = courseSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
+  const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
 
   return (
     <FormProvider {...form}>

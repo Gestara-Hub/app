@@ -7,7 +7,8 @@ import type { ChargePaidVia } from "./finance";
  * postpaid, prorated or full cycle), computed by @gestarahub/core/billing.
  * Paused/canceled memberships generate no charge; drop-in = drop-in charge;
  * extra = one-off charge (fee, material, event), optionally in installments;
- * course = installment of a closed-price course, created by the enrollment.
+ * course = installment of a closed-price course, created by the enrollment;
+ * package = installment of a lesson package sold to the student.
  */
 
 /** Plan periodicity: monthly, biweekly, or weekly (recurring memberships). */
@@ -37,9 +38,10 @@ export interface PlanFilter {
 /**
  * Student charge: recurring membership, single drop-in session or extra
  * (one-off charge such as enrollment fee, material, uniform, exam or event)
- * or course (installment of a closed-price course, created at enrollment).
+ * or course (installment of a closed-price course, created at enrollment)
+ * or package (installment of a lesson package sold to the student).
  */
-export type ChargeKind = "membership" | "dropin" | "extra" | "course";
+export type ChargeKind = "membership" | "dropin" | "extra" | "course" | "package";
 /** `waived` = isento (bolsa integral): R$ 0, nunca pendente nem em atraso. */
 export type ChargeStatus = "pending" | "paid" | "overdue" | "canceled" | "waived";
 export type PaymentMethod = "cash" | "pix" | "card" | "other";
@@ -81,13 +83,15 @@ export interface Charge {
   scholarshipPercent?: number;
   /** Valor sem desconto/bolsa (base para "bolsas concedidas"). So com bolsa. */
   listAmountCents?: number;
-  /** Extra charge: what is being charged ("Taxa de matrícula", "Kimono"). Course: the class name. */
+  /** Extra charge: what is being charged ("Taxa de matrícula", "Kimono"). Course: the class name. Package: the package name. */
   description?: string;
-  /** Extra or course in installments: shared by every installment of the same purchase. */
+  /** Extra, course or package in installments: shared by every installment of the same purchase. */
   installmentGroupId?: Id;
   /** Course installment: the enrollment that created it. */
   enrollmentId?: Id;
-  /** Position in the competence (membership) or installment number (extra/course, "2 de 3"). */
+  /** Package installment: the student package that created it. */
+  studentPackageId?: Id;
+  /** Position in the competence (membership) or installment number (extra/course/package, "2 de 3"). */
   cycleIndex?: number;
   cycleTotal?: number;
   isProrated?: boolean;

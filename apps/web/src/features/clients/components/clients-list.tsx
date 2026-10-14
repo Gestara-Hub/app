@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   Award,
+  Ban,
   GraduationCap,
   Mail,
   MessageSquarePlus,
@@ -13,6 +14,7 @@ import {
   PowerOff,
   Receipt,
   RotateCw,
+  Ticket,
   Users,
   Wallet,
 } from "lucide-react";
@@ -52,11 +54,17 @@ import type {
   Plan,
   PlanPeriod,
   RecordStatus,
+  StudentPackageView,
 } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
 import { useSegmentVocabulary } from "@/features/settings";
 import { useCategories } from "@/features/categories";
-import { usePlans } from "@/features/turmas";
+import {
+  StudentPackageBadge,
+  displayPackage,
+  usePlans,
+  useStudentPackages,
+} from "@/features/turmas";
 import { useClients } from "../hooks/use-clients";
 
 const PERIOD_SHORT: Record<PlanPeriod, string> = {
@@ -282,6 +290,36 @@ function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
   );
 }
 
+/**
+ * Cobranca do aluno na lista: plano/bolsa e o pacote de aulas. Quem so tem
+ * pacote nao mostra "Sem mensalidade".
+ */
+function ClientBillingBadges({
+  client,
+  plan,
+  packages,
+}: {
+  client: Client;
+  plan?: Plan;
+  packages: StudentPackageView[];
+}) {
+  const pkg = displayPackage(packages);
+  const hasMembership = Boolean(activeScholarship(client) || (client.planId && plan));
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      {hasMembership || !pkg ? <ClientPlanBadge client={client} plan={plan} /> : null}
+      {pkg ? <StudentPackageBadge pkg={pkg} /> : null}
+    </span>
+  );
+}
+
+const NO_PACKAGES: StudentPackageView[] = [];
+
+/** Pacote que ainda pode ser cancelado (em uso, sem aula usada): o mais recente. */
+function cancelablePackage(packages: StudentPackageView[]): StudentPackageView | undefined {
+  return packages.find((p) => p.status === "active" && p.lessonsUsed === 0);
+}
+
 interface ClientsListProps {
   canManage: boolean;
   onCreate: () => void;
@@ -290,6 +328,9 @@ interface ClientsListProps {
   onOpenRecords?: (client: Client) => void;
   /** Nova cobranca avulsa (so com permissao de cobranca). */
   onNewCharge?: (client: Client) => void;
+  /** Venda e cancelamento de pacote de aulas (mesma permissao). */
+  onSellPackage?: (client: Client) => void;
+  onCancelPackage?: (pkg: StudentPackageView) => void;
   onInactivate: (client: Client) => void;
   onReactivate: (client: Client) => void;
 }
@@ -304,6 +345,9 @@ function ClientRow({
   onOpenGraduation,
   onOpenRecords,
   onNewCharge,
+  onSellPackage,
+  onCancelPackage,
+  packages,
   onInactivate,
   onReactivate,
 }: {
@@ -316,11 +360,15 @@ function ClientRow({
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
+  onSellPackage?: (c: Client) => void;
+  onCancelPackage?: (pkg: StudentPackageView) => void;
+  packages: StudentPackageView[];
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
+  const cancelable = cancelablePackage(packages);
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -351,6 +399,27 @@ function ClientRow({
                 label: "Nova cobrança",
                 icon: <Receipt className="size-4" />,
                 onSelect: () => onNewCharge(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onSellPackage && isActive
+          ? [
+              {
+                key: "sell-package",
+                label: "Vender pacote",
+                icon: <Ticket className="size-4" />,
+                onSelect: () => onSellPackage(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onCancelPackage && cancelable
+          ? [
+              {
+                key: "cancel-package",
+                label: "Cancelar pacote",
+                icon: <Ban className="size-4" />,
+                destructive: true,
+                onSelect: () => onCancelPackage(cancelable),
               },
             ]
           : []),
@@ -443,7 +512,7 @@ function ClientRow({
 
             {isClasses ? (
               <div className="mt-2 sm:hidden">
-                <ClientPlanBadge client={client} plan={plan} />
+                <ClientBillingBadges client={client} plan={plan} packages={packages} />
               </div>
             ) : null}
           </div>
@@ -451,7 +520,7 @@ function ClientRow({
 
         {isClasses ? (
           <div className="hidden sm:flex items-center shrink-0">
-            <ClientPlanBadge client={client} plan={plan} />
+            <ClientBillingBadges client={client} plan={plan} packages={packages} />
           </div>
         ) : null}
       </div>
@@ -472,6 +541,9 @@ function ClientCard({
   onOpenGraduation,
   onOpenRecords,
   onNewCharge,
+  onSellPackage,
+  onCancelPackage,
+  packages,
   onInactivate,
   onReactivate,
 }: {
@@ -484,11 +556,15 @@ function ClientCard({
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
+  onSellPackage?: (c: Client) => void;
+  onCancelPackage?: (pkg: StudentPackageView) => void;
+  packages: StudentPackageView[];
   onInactivate: (c: Client) => void;
   onReactivate: (c: Client) => void;
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
+  const cancelable = cancelablePackage(packages);
 
   const actions: ListItemAction[] = canManage
     ? [
@@ -519,6 +595,27 @@ function ClientCard({
                 label: "Nova cobrança",
                 icon: <Receipt className="size-4" />,
                 onSelect: () => onNewCharge(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onSellPackage && isActive
+          ? [
+              {
+                key: "sell-package",
+                label: "Vender pacote",
+                icon: <Ticket className="size-4" />,
+                onSelect: () => onSellPackage(client),
+              },
+            ]
+          : []),
+        ...(isClasses && onCancelPackage && cancelable
+          ? [
+              {
+                key: "cancel-package",
+                label: "Cancelar pacote",
+                icon: <Ban className="size-4" />,
+                destructive: true,
+                onSelect: () => onCancelPackage(cancelable),
               },
             ]
           : []),
@@ -611,7 +708,7 @@ function ClientCard({
 
         {isClasses ? (
           <div>
-            <ClientPlanBadge client={client} plan={plan} />
+            <ClientBillingBadges client={client} plan={plan} packages={packages} />
           </div>
         ) : null}
       </div>
@@ -722,6 +819,8 @@ export function ClientsList({
   onOpenGraduation,
   onOpenRecords,
   onNewCharge,
+  onSellPackage,
+  onCancelPackage,
   onInactivate,
   onReactivate,
 }: ClientsListProps) {
@@ -739,7 +838,15 @@ export function ClientsList({
   const { data, isPending, isError, refetch } = useClients(filter);
   const { data: plans } = usePlans();
   const { data: categories } = useCategories();
+  const { data: studentPackages } = useStudentPackages(undefined, isClasses);
   const clients = data ?? [];
+  const packagesByStudent = useMemo(() => {
+    const map = new Map<string, StudentPackageView[]>();
+    for (const p of studentPackages ?? []) {
+      map.set(p.studentId, [...(map.get(p.studentId) ?? []), p]);
+    }
+    return map;
+  }, [studentPackages]);
 
   const planById = useMemo(
     () => new Map((plans ?? []).map((p) => [p.id, p])),
@@ -823,6 +930,9 @@ export function ClientsList({
         onOpenGraduation={onOpenGraduation}
         onOpenRecords={onOpenRecords}
         onNewCharge={onNewCharge}
+        onSellPackage={onSellPackage}
+        onCancelPackage={onCancelPackage}
+        packages={packagesByStudent.get(client.id) ?? NO_PACKAGES}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
       />
@@ -895,6 +1005,9 @@ export function ClientsList({
               onOpenGraduation={onOpenGraduation}
               onOpenRecords={onOpenRecords}
               onNewCharge={onNewCharge}
+              onSellPackage={onSellPackage}
+              onCancelPackage={onCancelPackage}
+              packages={packagesByStudent.get(client.id) ?? NO_PACKAGES}
               onInactivate={onInactivate}
               onReactivate={onReactivate}
             />

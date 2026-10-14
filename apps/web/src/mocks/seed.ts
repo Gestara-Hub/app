@@ -52,6 +52,8 @@ function emptyStore(organization: Organization, unit: Unit, users: User[]): Mock
     attendances: [],
     plans: [],
     charges: [],
+    lessonPackages: [],
+    studentPackages: [],
     waitlist: [],
     reservations: [],
     financialCategories: [],
@@ -80,6 +82,7 @@ const DEFAULT_FINANCIAL_CATEGORIES: {
   { key: "dropins", type: "income", name: "Aulas avulsas", systemKey: "dropins" },
   { key: "extras", type: "income", name: "Cobranças avulsas", systemKey: "extras" },
   { key: "courses", type: "income", name: "Cursos", systemKey: "courses" },
+  { key: "packages", type: "income", name: "Pacotes de aulas", systemKey: "packages" },
   { key: "products", type: "income", name: "Venda de produtos" },
   { key: "events", type: "income", name: "Eventos e seminários" },
   { key: "graduation", type: "income", name: "Taxa de graduação" },
@@ -234,12 +237,14 @@ function messageTone(segment: ClassesBusinessSegment | undefined) {
       closing: " Bons treinos! 🥋",
       welcomeTail: "acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
       absenceLine: "nos últimos treinos da {empresa}. Seu lugar no tatame está guardado!",
+      renewQuestion: "Quer renovar e seguir treinando?",
     };
   }
   return {
     closing: " Boas aulas!",
     welcomeTail: "acompanhar suas aulas, horários e evolução. Até a primeira aula!",
     absenceLine: "nas últimas aulas da {empresa}. Seu lugar na turma está guardado!",
+    renewQuestion: "Quer renovar e seguir com as aulas?",
   };
 }
 
@@ -311,6 +316,23 @@ export function defaultMessageTemplates(
       ...ts,
     },
     {
+      // Avulsa, parcela de curso e compra de pacote (doc 20, fase D). A
+      // mensalidade segue com os quatro lembretes acima.
+      id: `tmpl-${organizationId}-charge-reminder`,
+      organizationId,
+      trigger: "charge_reminder",
+      category: "billing",
+      title: "Lembrete de cobrança",
+      description: "Cobrança avulsa, parcela de curso ou compra de pacote",
+      enabled: true,
+      sendHour: "09:00",
+      daysOffset: -3,
+      content:
+        `Olá, {aluno}! Lembrete da {referencia} de {valor} na {empresa}, com vencimento em {vencimento}. Pague pelo link: {link_pagamento}.${tone.closing}`,
+      availableVariables: ["{aluno}", "{referencia}", "{valor}", "{vencimento}", "{link_pagamento}", "{empresa}"],
+      ...ts,
+    },
+    {
       id: `tmpl-${organizationId}-welcome`,
       organizationId,
       trigger: "welcome_student",
@@ -338,6 +360,20 @@ export function defaultMessageTemplates(
       content:
         `Oi, {aluno}! Tudo bem? Sentimos muito a sua falta ${tone.absenceLine} Queremos te ver por aqui esta semana. Como podemos te ajudar a retomar sua rotina? 💪`,
       availableVariables: ["{aluno}", "{empresa}"],
+      ...ts,
+    },
+    {
+      id: `tmpl-${organizationId}-package-ending`,
+      organizationId,
+      trigger: "package_ending",
+      category: "retention",
+      title: "Pacote acabando",
+      description: "Na última aula, 7 dias antes de vencer ou logo depois",
+      enabled: true,
+      sendHour: "10:00",
+      daysOffset: 7,
+      content: `Oi, {aluno}! Sobre seu pacote {pacote} na {empresa}: {restante}. ${tone.renewQuestion}`,
+      availableVariables: ["{aluno}", "{pacote}", "{restante}", "{empresa}"],
       ...ts,
     },
     {

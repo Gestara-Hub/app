@@ -12,6 +12,7 @@ export type PaidFeature =
   | "online_payments" // cobranca online no app/web (Pix, link, Pix Automatico com baixa automatica)
   | "messaging" // Comunicacao automatizada (gateway WhatsApp, lembretes inteligentes)
   | "reports_advanced" // Relatorios gerenciais avancados (DRE, churn, projecao)
+  | "certificates" // Certificado de conclusao do curso (doc 20, fase D)
   | "bi"; // Inteligencia e analytics preditivos (nivel Scale)
 
 export interface Subscription {

@@ -40,6 +40,7 @@ export type PaidFeature =
   | "online_payments"   // cobrança online (Pix, link, Pix Automático)
   | "messaging"         // Comunicação automatizada (WhatsApp)
   | "reports_advanced"  // Relatórios gerenciais avançados (DRE, churn)
+  | "certificates"      // Certificado de conclusão de curso (14/10/2026)
   | "bi";               // Inteligência analítica preditiva
 ```
 
@@ -52,8 +53,8 @@ Em `apps/web/src/lib/subscription.ts`, espelhando `lib/permissions.ts`:
 ```ts
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   free: [],
-  pro: ["online_payments", "messaging", "reports_advanced"],
-  scale: ["online_payments", "messaging", "reports_advanced", "bi"],
+  pro: ["online_payments", "messaging", "reports_advanced", "certificates"],
+  scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
 };
 ```
 
@@ -155,7 +156,7 @@ export interface FinancialEntryFilter { competence?: string; type?: FinancialEnt
 
 ### 4.3 Categorias padrão (seed ao criar a organização / ao ativar o módulo)
 
-- **Receitas:** Mensalidades *(sistema, só leitura: representa `Charge` membership)*, Aulas avulsas *(sistema: `Charge` dropin)*, Cobranças avulsas *(sistema: `Charge` extra, desde 14/10/2026)*, Cursos *(sistema: `Charge` course, desde 14/10/2026)*, Venda de produtos, Eventos e seminários, Taxa de graduação, Outras receitas.
+- **Receitas:** Mensalidades *(sistema, só leitura: representa `Charge` membership)*, Aulas avulsas *(sistema: `Charge` dropin)*, Cobranças avulsas *(sistema: `Charge` extra, desde 14/10/2026)*, Cursos *(sistema: `Charge` course, desde 14/10/2026)*, Pacotes de aulas *(sistema: `Charge` package, desde 14/10/2026)*, Venda de produtos, Eventos e seminários, Taxa de graduação, Outras receitas.
 - **Despesas:** Professores *(sistema: representa `TeacherPayout`)*, Aluguel, Contas (luz, água, internet), Material e equipamentos, Marketing, Impostos e taxas, Outras despesas.
 
 As categorias de sistema aparecem nos relatórios e no resumo, mas não podem ser escolhidas num lançamento manual.
@@ -187,9 +188,9 @@ Um professor tem uma **regra de pagamento** composta de uma ou mais **partes**, 
 | `fixed_monthly` | valor fixo | R$ 1.500 por mês |
 | `per_session` | aulas **dadas** × valor por aula | 16 aulas × R$ 60 |
 | `per_student` | alunos ativos nas turmas dele × valor | 25 alunos × R$ 20 |
-| `percent_of_memberships` | % das **mensalidades pagas** atribuídas às turmas dele | 40% de R$ 3.000 |
+| `percent_of_memberships` | % **do que os alunos pagaram** (decisão 7 do doc 20): mensalidades pagas atribuídas às turmas dele, parcelas pagas dos cursos dele e aulas de pacote que ele deu | 40% de R$ 3.000 |
 
-Combinações cobrem os casos comuns (ex.: fixo de R$ 800 + 30% das mensalidades). Ajustes pontuais (bônus, desconto, vale) entram como **ajuste** no fechamento do mês (5.4).
+Combinações cobrem os casos comuns (ex.: fixo de R$ 800 + 30% do que os alunos pagaram). A chave `percent_of_memberships` ficou por compatibilidade; na tela o tipo se chama "% do que os alunos pagaram". Ajustes pontuais (bônus, desconto, vale) entram como **ajuste** no fechamento do mês (5.4).
 
 ### 5.2 Contrato
 
@@ -199,7 +200,7 @@ export type TeacherPayComponentKind = "fixed_monthly" | "per_session" | "per_stu
 export interface TeacherPayComponent {
   kind: TeacherPayComponentKind;
   amountCents?: number;   // fixed_monthly, per_session, per_student
-  percent?: number;       // percent_of_memberships (0 < p <= 100)
+  percent?: number;       // percent_of_memberships, "% do que os alunos pagaram" (0 < p <= 100)
   /** Restringe a parte a algumas turmas (ex.: % só da turma kids). Ausente = todas as turmas dele. */
   classGroupIds?: Id[];
 }
@@ -218,11 +219,14 @@ export interface TeacherPayRule {
 
 export type TeacherPayoutStatus = "open" | "closed" | "paid" | "canceled";
 
+export type TeacherPayPercentSource = "memberships" | "courses" | "packages";
+
 export interface TeacherPayoutLine {
   kind: TeacherPayComponentKind | "adjustment";
-  label: string;            // "16 aulas × R$ 60,00", "Bônus seminário"
-  quantity?: number;        // aulas, alunos
-  baseCents?: number;       // base do % (mensalidades pagas)
+  label: string;            // "16 aulas × R$ 60,00", "30% de R$ 400,00 em cursos", "Bônus seminário"
+  quantity?: number;        // aulas, alunos, aulas de pacote
+  baseCents?: number;       // base do % (o que os alunos pagaram, nesta fonte)
+  source?: TeacherPayPercentSource; // fonte da base do % (uma linha por fonte)
   amountCents: number;      // pode ser negativo só em adjustment (desconto/vale)
 }
 
@@ -250,9 +254,11 @@ export interface TeacherPayout {
 
 - **Aulas dadas (`per_session`):** sessões da competência com `status = "done"` (fim já passado), cujo **instrutor efetivo** é o professor. A substituição conta para o **substituto**: o titular não recebe aquela aula. Aula cancelada não conta.
 - **Alunos ativos (`per_student`):** alunos com matrícula ativa em alguma turma do professor (como titular) **no último dia da competência**. Um aluno em duas turmas do mesmo professor conta **uma vez**. **[DECIDIR]** contar pela média do mês ou pelo último dia (proposta: último dia, mais simples de explicar).
-- **Mensalidades atribuídas (`percent_of_memberships`):** mensalidades (`Charge` membership) **pagas** cujo `periodStart` cai na competência, de alunos matriculados em turmas do professor.
-  - Se o aluno está em turmas de **mais de um professor**, a mensalidade é **dividida igualmente** entre os titulares das turmas dele. **[DECIDIR]** dividir igual ou por quantidade de aulas.
-  - Aulas avulsas não entram, a menos que se decida o contrário.
+- **% do que os alunos pagaram (`percent_of_memberships`, decisão 7 do doc 20):** a base soma três fontes, cada uma numa linha do cálculo ("30% de R$ 200,00 em mensalidades", "30% de R$ 400,00 em cursos", "30% de R$ 100,00 em pacotes (2 aulas)"). Fonte sem valor não aparece; sem nenhuma, fica uma linha "30% de R$ 0,00". Cada linha arredonda para baixo (a sobra fica com a academia, como no D4).
+  - **Mensalidades:** mensalidades (`Charge` membership) **pagas** cujo `periodStart` cai na competência, de alunos matriculados em turmas do professor. Se o aluno está em turmas de **mais de um professor**, a mensalidade é **dividida igualmente** entre os titulares das turmas dele (D4). Só turmas de **mensalidade** entram nessa divisão: turma de curso, de pacote ou sem cobrança não recebe parte da mensalidade, a não ser que o aluno não tenha nenhuma turma de mensalidade (aí vale como antes, por todas as turmas dele).
+  - **Cursos:** parcelas de curso (`Charge` course) **pagas** com a competência no mês (a mesma regra da mensalidade: `periodStart` ou, sem ele, a competência da parcela, que é o mês do vencimento). A parcela vai **inteira** para o titular da turma do curso (`classGroupId` da cobrança ou da matrícula); substituição não muda nada.
+  - **Pacotes:** cada aula **usada** de um pacote no mês (`StudentPackage.usages`, presença ou falta que gasta, pela data da aula) vale **preço ÷ aulas compradas** do pacote (para baixo) e vai para **quem deu a aula** (o substituto, quando houve troca). Só contam aulas de pacote **pago por inteiro** na hora do cálculo (todas as cobranças que valem pagas; cancelada não conta no preço). Pacote em aberto ou pago em parte não entra; quando for quitado, a prévia do mês (se ainda aberto) passa a contar. **Aulas trazidas** na renovação guardam o valor do pacote que as vendeu (`StudentPackage.carriedFrom`) e só contam se esse pacote estiver pago.
+  - Cobrança avulsa (`extra`) e aula avulsa (`dropin`) não entram (D5).
 - `classGroupIds` restringe qualquer parte às turmas listadas.
 - Valores em centavos, arredondando para baixo na divisão; a sobra fica com a academia.
 
@@ -359,7 +365,7 @@ Rota nova `/finance` (menu **"Financeiro"**, ícone de carteira, depois de "Mens
 - Menu da linha: Marcar pago, Desfazer pagamento, Editar, Cancelar (todas as ações com dinheiro confirmam).
 
 ### 7.3 Professores (`?tab=professores`)
-- Lista dos professores com a regra resumida ("Fixo R$ 800 + 30% das mensalidades") e o **valor do mês** (prévia, fechado ou pago).
+- Lista dos professores com a regra resumida ("Fixo R$ 800 + 30% do que os alunos pagaram") e o **valor do mês** (prévia, fechado ou pago).
 - **Configurar pagamento** (por professor): editor de partes (adicionar parte → tipo → valor ou %, turmas opcionais), dia de pagamento, vigência.
 - **Detalhe do mês** (por professor): as etapas (Prévia → Fechado → Pago) com o próximo passo, as linhas do cálculo com quantidades ("16 aulas dadas", "25 alunos ativos", "40% de R$ 3.000"), a lista das aulas contadas (incluindo substituições), as aulas ainda previstas no mês, ajustes, e uma ação principal por etapa (Fechar mês ou Pagar; Reabrir e Desfazer pagamento em "Mais ações"). Fechar o mês corrente avisa que o que acontecer até o último dia fica de fora.
 
@@ -418,7 +424,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 3. O Resumo de um mês bate com a soma de: cobranças pagas no mês + entradas manuais pagas − despesas pagas − pagamentos de professores pagos.
 4. Uma despesa mensal recorrente aparece no mês atual e no seguinte sem duplicar, mesmo lendo a tela várias vezes.
 5. Professor "R$ 60 por aula": com 16 aulas dadas no mês e 1 aula dada por um substituto, recebe 15; o substituto recebe 1.
-6. Professor "40% das mensalidades": aluno em turmas de dois professores tem a mensalidade dividida igualmente.
+6. Professor "40% do que os alunos pagaram": aluno em turmas de mensalidade de dois professores tem a mensalidade dividida igualmente; a parcela de curso paga vai para o titular do curso; a aula de pacote pago vai para quem deu a aula.
 7. Mês fechado não muda quando uma presença é corrigida depois; reabrir recalcula.
 8. Cobrança online paga (simulada) marca a mensalidade paga com "Pago online" e entra no Resumo.
 9. Aluno com Pix Automático ativo tem a mensalidade vencida paga sozinha; acima do limite, fica pendente com aviso.
@@ -426,8 +432,8 @@ Registrar com nível de detalhe igual ao das cobranças:
 
 ## 12. Testes
 
-- **core (`node --test`):** `computeTeacherPayout` para cada tipo de parte e combinações, `attributeMembershipsToTeachers` (divisão igual, arredondamento), `summarizeCashFlow`.
-- **services (Vitest):** idempotência da recorrência; Financeiro básico liberado no Grátis e pagamento online recusado sem o Pro (`FEATURE_NOT_IN_PLAN`); fechamento congelando o valor; substituto contando a aula; cobrança online e Pix Automático marcando a cobrança paga; pagar manual cancelando o online em aberto; cobrança já paga não aceita novo pagamento; fechar o mês sem mandar ajustes usa os ajustes salvos. Arquivos: `apps/web/src/services/__tests__/finance.test.ts`, `teacher-pay.test.ts`, `online-payments.test.ts`.
+- **core (`node --test`):** `computeTeacherPayout` para cada tipo de parte e combinações, `attributeMembershipsToTeachers` (divisão igual, arredondamento), `summarizeCashFlow`; fontes do % e valor da aula do pacote em `packages/core/test/teacher-pay-sources.test.ts`.
+- **services (Vitest):** idempotência da recorrência; Financeiro básico liberado no Grátis e pagamento online recusado sem o Pro (`FEATURE_NOT_IN_PLAN`); fechamento congelando o valor; substituto contando a aula; cobrança online e Pix Automático marcando a cobrança paga; pagar manual cancelando o online em aberto; cobrança já paga não aceita novo pagamento; fechar o mês sem mandar ajustes usa os ajustes salvos. Arquivos: `apps/web/src/services/__tests__/finance.test.ts`, `teacher-pay.test.ts`, `teacher-pay-sources.test.ts` (prévia e fechamento com mensalidade, curso e pacote), `online-payments.test.ts`.
 - **e2e (Playwright):** upsell do pagamento online no Grátis e troca para Pro; lançar despesa recorrente e ver no Resumo; configurar professor e fechar e pagar o mês; cobrar online e simular pagamento a partir de Mensalidades.
 
 ## 13. Decisões para validar
@@ -438,7 +444,7 @@ Registrar com nível de detalhe igual ao das cobranças:
 | D2 | Excluir lançamento | Só cancelar; excluir apenas se nunca foi pago |
 | D3 | Alunos ativos (`per_student`) | Contar no último dia do mês |
 | D4 | Aluno em turmas de professores diferentes (`percent_of_memberships`) | Dividir a mensalidade igualmente entre os titulares |
-| D5 | Aulas avulsas no % do professor | Não entram |
+| D5 | Aulas avulsas no % do professor | Não entram (nem a cobrança avulsa); curso e pacote entram desde a fase D do doc 20 (seção 5.3) |
 | D6 | Vencimento do pagamento do professor | Dia configurado na regra, no mês seguinte; padrão dia 5 |
 | D7 | Cobranças dos alunos na aba Lançamentos | Agregadas por mês, com link para Mensalidades |
 | D8 | Desfazer pagamento feito online | Não permitido (seria estorno) |
@@ -450,7 +456,7 @@ Registrados durante a fundação (27/09/2026):
 
 - **Tier no server:** o tier vive no store do navegador (localStorage) e o server só enxerga o seed. O client espelha o tier num cookie (`gestarahub_tier`, valor `<organizationId>:<tier>`) pela server action `syncSubscriptionTier`, chamada pelo `SessionProvider` quando o tier da organização difere do que o server usou; depois faz `router.refresh()`. As pages pagas leem com `sessionHasFeature(user, feature)` (`features/auth/get-subscription-tier.ts`). Na fase de backend o cookie some e o tier vem do banco.
 - **Ícone do menu:** `WalletCards` (a carteira simples já é das Mensalidades).
-- **Contrato, campos extras:** `FinancialCategory.systemKey` (`memberships` / `dropins` / `extras` / `courses` / `teachers`) identifica as categorias de sistema; `FinancialEntry.recurrenceCompetence` guarda a competência materializada (idempotência da recorrência); `CreateFinancialEntry.repeatMonthly` marca "Repetir todo mês"; `OnlinePayment.organizationId` opcional (escopo do tenant). `AuditEntityType` ganhou também `teacher_pay_rule` e `online_payment`.
+- **Contrato, campos extras:** `FinancialCategory.systemKey` (`memberships` / `dropins` / `extras` / `courses` / `packages` / `teachers`) identifica as categorias de sistema; `FinancialEntry.recurrenceCompetence` guarda a competência materializada (idempotência da recorrência); `CreateFinancialEntry.repeatMonthly` marca "Repetir todo mês"; `OnlinePayment.organizationId` opcional (escopo do tenant). `AuditEntityType` ganhou também `teacher_pay_rule` e `online_payment`.
 - **Read-models:** `FinanceSummary`, `FinanceMonthPoint`, `FinanceCategoryTotal`, `FinanceEntryView`, `FinanceUpcomingItem`, `TeacherPayoutView`, `TeacherPaySessionFact`, `TeacherPayoutAdjustment`, `SaveTeacherPayRule`.
 - **Atrasado no Resumo:** soma o que vence **na competência** e está em aberto com vencimento antes de hoje (não acumula meses anteriores).
 - **Regras puras extras** em `@gestarahub/core/finance`: `localDateOf`, `addCompetence`, `competenceRange`, `lastCompetences`, `lastDayOfCompetence`, `dateInCompetence`, `teacherPayoutDueDate`, `entryDisplayStatus`, `summarizeMonthlySeries`, `summarizeByCategory`, `recurrenceDueDate`, `isRuleEffective`, `countedSessions`, `countedStudents`, `membershipBaseCents`, `payoutTotalCents`, `describeTeacherPayRule`. O nome `isOverdue` da seção 8 ficou `isEntryOverdue`.
@@ -487,3 +493,13 @@ Registrados na implementação das telas (27/09/2026):
 - A regra que monta as aulas do mês (id, substituição, status "done") está duplicada entre `turmasService` e `teacherPayService.sessionsDoneIn`. Próximo passo: `turmasService` exportar um helper (ex.: `deriveSessionsBetween(from, to)`) e o cálculo dos professores reusar.
 - Turma inativada não guarda a data de inativação; o cálculo conta as aulas até `updatedAt` (aproximação). Resolver com `ClassGroup.inactivatedAt`.
 - Não existe cancelamento de aula individual no produto, então a regra "aula cancelada não conta" ainda não tem o que filtrar.
+
+Registrados na fase D do doc 20 (14/10/2026), base do % com cursos e pacotes:
+
+- **Uma linha por fonte** (`TeacherPayoutLine.source`): o dono vê de onde vem cada parte do %. Meses fechados antes disso guardam a linha antiga ("40% de R$ 300,00", sem `source`) e continuam como estão; reabrir recalcula no formato novo.
+- **Pacote pago por inteiro na hora do cálculo**, e não "pago até o fim do mês": o professor recebe pelo que o espaço já recebeu. A prévia recalcula; o mês fechado não muda.
+- **Ordem de uso do saldo:** as aulas trazidas são usadas primeiro, na ordem em que vieram, e depois as compradas; dentro do pacote, as aulas usadas ocupam o saldo pela data da aula. Isso decide o valor de cada aula quando o pacote mistura origens. Regras puras em `@gestarahub/core/packages` (`lessonOrigins`, `leftoverLots`, `valuePackageLessons`, `packageUnitValueCents`, `isPackageFullyPaid`).
+- **Origem guardada, não deduzida:** a venda com renovação grava `carriedFrom` (o pacote que vendeu as aulas, mesmo depois de várias renovações), e a aula devolvida a um pacote já renovado leva a origem da posição liberada para o pacote novo. Dado antigo sem `carriedFrom` vale como trazido do `renewedFromId` (sem migração).
+- **Mensalidade fora das turmas de curso e de pacote:** evita pagar duas vezes o professor do curso (parte da mensalidade + parcelas). Aluno só em turma de curso ou de pacote continua atribuindo a mensalidade como antes.
+- **Relatórios "Cursos" e "Pacotes de aulas"** (Relatórios, operacionais, plano Grátis como o extrato de cobranças): o de cursos lista os cursos com aula ou parcela no mês, com matriculados (ativos e pausados, inclusive concluídos), concluídos, cancelados e os valores do curso inteiro (contratado = pagas + em aberto; recebido; em aberto), mais o recebido no mês; o de pacotes lista cada pacote do catálogo com vendas e aulas compradas no mês (sem as trazidas), aulas usadas no mês, saldo de hoje e recebido no mês. Sem dados, a lista fica vazia.
+

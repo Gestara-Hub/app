@@ -60,6 +60,7 @@ import {
   type ClassSessionDetail,
   type Client,
   type ReservationKind,
+  type SessionRosterEntry,
 } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
@@ -72,6 +73,7 @@ import {
 } from "@/features/clients";
 import {
   useCancelReservation,
+  useClearAttendance,
   useClassGroup,
   useClassSession,
   useMarkAttendance,
@@ -81,6 +83,34 @@ import {
 import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
 import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+
+/**
+ * Saldo do pacote de quem paga a aula com pacote: "7 de 10", "Última aula" ou
+ * "Sem pacote" (ambar: nao ha pacote valido com saldo para esta aula).
+ */
+function PackageBalanceBadge({ entry }: { entry: SessionRosterEntry }) {
+  if (entry.noPackage) {
+    return (
+      <span className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+        Sem pacote
+      </span>
+    );
+  }
+  if (entry.packageTotal === undefined) return null;
+  return (
+    <span
+      title="Aulas restantes no pacote"
+      className={cn(
+        "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+        entry.packageLastLesson
+          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      {entry.packageLastLesson ? "Última aula" : `${entry.packageRemaining} de ${entry.packageTotal}`}
+    </span>
+  );
+}
 
 /**
  * Botoes de presenca so com icone e cor (mesmas cores do resumo: verde
@@ -123,16 +153,20 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const { data: categories } = useCategories();
   const { data: clients } = useClients({ status: "active" });
   const markMut = useMarkAttendance();
+  const clearMut = useClearAttendance();
   const reserveMut = useReserveSession();
   const cancelReservationMut = useCancelReservation();
   const restoreMut = useRestorePrimaryInstructor();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
 
-  // Avulso/experimental sai da aula (cobranca avulsa em aberto e cancelada).
-  async function removeFromSession(studentId: string, studentName: string) {
+  // Avulso/experimental sai da aula (cobranca avulsa em aberto e cancelada);
+  // quem entrou pelo pacote recebe a aula de volta.
+  async function removeFromSession(studentId: string, studentName: string, byPackage: boolean) {
     const ok = await confirmAction({
       title: "Remover da aula?",
-      description: `${studentName} sai desta aula. Se houver cobrança avulsa em aberto, ela é cancelada.`,
+      description: byPackage
+        ? `${studentName} sai desta aula. Se a aula já foi gasta do pacote, ela volta.`
+        : `${studentName} sai desta aula. Se houver cobrança avulsa em aberto, ela é cancelada.`,
       confirmLabel: "Remover",
       variant: "destructive",
     });
@@ -292,7 +326,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           toast.success(
             input.kind === "trial"
               ? "Aluno inscrito como experimental."
-              : reservation.chargeId
+              : input.kind === "package"
+                ? "Aluno inscrito pelo pacote."
+                : reservation.chargeId
                 ? "Aluno avulso adicionado com cobrança gerada."
                 : "Aluno avulso adicionado.",
           );
@@ -514,6 +550,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
             {session.roster.map((r) => {
               const isEnrolled = r.kind === "enrolled" || !r.kind;
               const isTrial = r.kind === "trial";
+              const isPackage = r.kind === "package";
               const student = clientById.get(r.studentId);
               const prog =
                 modalityTrack && student
@@ -554,7 +591,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         icon: <X className="size-4" />,
                         destructive: true,
                         disabled: cancelReservationMut.isPending,
-                        onSelect: () => void removeFromSession(r.studentId, r.studentName),
+                        onSelect: () => void removeFromSession(r.studentId, r.studentName, isPackage),
                       },
                     ]
                   : []),
@@ -575,11 +612,16 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             <span className="inline-flex items-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 text-[10px] font-medium">
                               Experimental
                             </span>
+                          ) : isPackage ? (
+                            <span className="inline-flex items-center rounded-md bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-medium">
+                              Pacote
+                            </span>
                           ) : (
                             <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
                               Avulso
                             </span>
                           )}
+                          <PackageBalanceBadge entry={r} />
                           <BirthdayBadge
                             birthDate={student?.birthDate}
                             date={session.date}
@@ -652,22 +694,20 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                                 type="button"
                                 aria-pressed={on}
                                 aria-label={`${s.label}: ${r.studentName}`}
-                                disabled={!canMark || markMut.isPending || bulkPending}
-                                onClick={() =>
+                                disabled={!canMark || markMut.isPending || clearMut.isPending || bulkPending}
+                                onClick={() => {
+                                  const onError = (err: unknown) =>
+                                    toast.error(getErrorMessage(err, "Não foi possível marcar a presença."));
+                                  // Tocar no marcado desmarca (devolve a aula do pacote, se gastou).
+                                  if (on) {
+                                    clearMut.mutate({ sessionId, studentId: r.studentId }, { onError });
+                                    return;
+                                  }
                                   markMut.mutate(
-                                    {
-                                      sessionId,
-                                      studentId: r.studentId,
-                                      status: s.value,
-                                    },
-                                    {
-                                      onError: (err) =>
-                                        toast.error(
-                                          getErrorMessage(err, "Não foi possível marcar a presença."),
-                                        ),
-                                    },
-                                  )
-                                }
+                                    { sessionId, studentId: r.studentId, status: s.value },
+                                    { onError },
+                                  );
+                                }}
                                 className={cn(
                                   "inline-flex size-9 items-center justify-center rounded-md border transition-colors disabled:opacity-50 sm:size-8",
                                   on ? s.active : cn("border-input bg-background", s.idle),
@@ -676,7 +716,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                                 <Icon className="size-4" strokeWidth={on ? 2.75 : 2.25} aria-hidden />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent sideOffset={4}>{s.label}</TooltipContent>
+                            <TooltipContent sideOffset={4}>{on ? "Desmarcar" : s.label}</TooltipContent>
                           </Tooltip>
                         );
                       })}
@@ -744,6 +784,36 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   );
 }
 
+/** Opcao do tipo de inscricao na aula (avulsa, pacote ou experimental). */
+function KindOption({
+  selected,
+  onSelect,
+  title,
+  description,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
+        selected
+          ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
+          : "border-border/60 hover:bg-muted/50 text-muted-foreground",
+      )}
+    >
+      <span className="text-sm font-medium">{title}</span>
+      <span className="text-xs text-muted-foreground mt-0.5">{description}</span>
+    </button>
+  );
+}
+
 function AddStudentSessionDialog({
   open,
   onOpenChange,
@@ -764,10 +834,36 @@ function AddStudentSessionDialog({
   isPending: boolean;
 }) {
   const [studentId, setStudentId] = useState("");
-  const [chosenKind, setKind] = useState<ReservationKind>("dropin");
-  // Turma sem avulso: so experimental.
-  const kind: ReservationKind = session.allowDropin ? chosenKind : "trial";
+  const candidates = session.packageCandidates;
+  const hasPackages = candidates.length > 0;
+  const [chosenKind, setKind] = useState<ReservationKind>(
+    session.allowDropin ? "dropin" : hasPackages ? "package" : "trial",
+  );
+  // Turma sem avulso nao oferece avulsa; sem aluno com pacote, nao oferece pacote.
+  const kind: ReservationKind =
+    (chosenKind === "dropin" && !session.allowDropin) || (chosenKind === "package" && !hasPackages)
+      ? "trial"
+      : chosenKind;
   const defaultPrice = session.sessionPriceCents ?? 0;
+  const isCandidate = (id: string) => candidates.some((c) => c.studentId === id);
+  const options =
+    kind === "package"
+      ? candidates.map((c) => ({
+          value: c.studentId,
+          label: `${c.studentName} · ${c.remaining === 1 ? "1 aula" : `${c.remaining} aulas`} no pacote`,
+        }))
+      : availableClients.map((c) => ({ value: c.id, label: c.name }));
+  const kindCount = 1 + (session.allowDropin ? 1 : 0) + (hasPackages ? 1 : 0);
+
+  // Aluno com pacote para esta aula entra pelo pacote (sem cobranca avulsa).
+  const chooseStudent = (id: string) => {
+    setStudentId(id);
+    if (id && isCandidate(id) && kind === "dropin") setKind("package");
+  };
+  const chooseKind = (next: ReservationKind) => {
+    setKind(next);
+    if (next === "package" && studentId && !isCandidate(studentId)) setStudentId("");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -778,7 +874,7 @@ function AddStudentSessionDialog({
     onAdd({
       studentId,
       kind,
-      amountCents: kind === "trial" ? 0 : defaultPrice,
+      amountCents: kind === "dropin" ? defaultPrice : 0,
     });
   };
 
@@ -793,9 +889,16 @@ function AddStudentSessionDialog({
         <DialogHeader className="pr-14">
           <DialogTitle>Adicionar aluno nesta aula</DialogTitle>
           <DialogDescription>
-            {session.allowDropin
-              ? "Inscreva um aluno como aula avulsa ou experimental para o dia "
-              : "Esta turma não aceita aula avulsa. Inscreva um aluno como experimental para o dia "}
+            {session.allowDropin ? "" : "Esta turma não aceita aula avulsa. "}
+            {`Inscreva um aluno ${
+              session.allowDropin && hasPackages
+                ? "como aula avulsa, pelo pacote ou experimental"
+                : session.allowDropin
+                  ? "como aula avulsa ou experimental"
+                  : hasPackages
+                    ? "pelo pacote ou como experimental"
+                    : "como experimental"
+            } para o dia `}
             {format(parseISO(session.date), "dd/MM/yyyy")}.
           </DialogDescription>
         </DialogHeader>
@@ -805,8 +908,8 @@ function AddStudentSessionDialog({
             <label className="text-sm font-medium">Aluno *</label>
             <Combobox
               value={studentId}
-              onChange={setStudentId}
-              options={availableClients.map((c) => ({ value: c.id, label: c.name }))}
+              onChange={chooseStudent}
+              options={options}
               placeholder="Selecione o aluno"
               searchPlaceholder="Buscar aluno..."
               emptyMessage="Nenhum aluno encontrado."
@@ -816,42 +919,34 @@ function AddStudentSessionDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Tipo de inscrição *</label>
-            <div className={cn("grid gap-3", session.allowDropin ? "grid-cols-2" : "grid-cols-1")}>
+            <div
+              className={cn(
+                "grid gap-3",
+                kindCount === 3 ? "grid-cols-1 sm:grid-cols-3" : kindCount === 2 ? "grid-cols-2" : "grid-cols-1",
+              )}
+            >
               {session.allowDropin ? (
-                <button
-                  type="button"
-                  aria-pressed={kind === "dropin"}
-                  onClick={() => setKind("dropin")}
-                  className={cn(
-                    "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
-                    kind === "dropin"
-                      ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
-                      : "border-border/60 hover:bg-muted/50 text-muted-foreground",
-                  )}
-                >
-                  <span className="text-sm font-medium">Aula avulsa</span>
-                  <span className="text-xs text-muted-foreground mt-0.5">
-                    {defaultPrice > 0 ? "Gera cobrança avulsa" : "Sem valor configurado"}
-                  </span>
-                </button>
+                <KindOption
+                  selected={kind === "dropin"}
+                  onSelect={() => chooseKind("dropin")}
+                  title="Aula avulsa"
+                  description={defaultPrice > 0 ? "Gera cobrança avulsa" : "Sem valor configurado"}
+                />
               ) : null}
-
-              <button
-                type="button"
-                aria-pressed={kind === "trial"}
-                onClick={() => setKind("trial")}
-                className={cn(
-                  "flex flex-col items-start p-3 rounded-lg border text-left transition-all",
-                  kind === "trial"
-                    ? "border-primary bg-primary/5 text-foreground ring-1 ring-primary"
-                    : "border-border/60 hover:bg-muted/50 text-muted-foreground",
-                )}
-              >
-                <span className="text-sm font-medium">Experimental</span>
-                <span className="text-xs text-muted-foreground mt-0.5">
-                  Cortesia (R$ 0,00)
-                </span>
-              </button>
+              {hasPackages ? (
+                <KindOption
+                  selected={kind === "package"}
+                  onSelect={() => chooseKind("package")}
+                  title="Pacote"
+                  description="Usa 1 aula do pacote"
+                />
+              ) : null}
+              <KindOption
+                selected={kind === "trial"}
+                onSelect={() => chooseKind("trial")}
+                title="Experimental"
+                description="Cortesia (R$ 0,00)"
+              />
             </div>
           </div>
 

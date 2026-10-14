@@ -245,7 +245,7 @@ function DetailContent({
               {upcomingCount > 0
                 ? `${plural(upcomingCount, "aula prevista", "aulas previstas")} até ${lastDayLabel} ${upcomingCount === 1 ? "fica" : "ficam"} de fora`
                 : `O que acontecer até ${lastDayLabel} fica de fora`}
-              , assim como matrículas e mensalidades pagas até lá.
+              , assim como matrículas e pagamentos dos alunos até lá.
             </span>
           </span>
           {frozen}

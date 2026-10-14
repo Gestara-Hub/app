@@ -14,7 +14,7 @@ const HOOKS: Record<FinancialEntryType, ReturnType<typeof makeFinancialCategoryM
 };
 
 const SYSTEM_NOTE: Record<FinancialEntryType, string> = {
-  income: "Mensalidades, Aulas avulsas, Cobranças avulsas e Cursos são automáticas (vêm das cobranças dos alunos) e não aparecem aqui.",
+  income: "Mensalidades, Aulas avulsas, Cobranças avulsas, Cursos e Pacotes de aulas são automáticas (vêm das cobranças dos alunos) e não aparecem aqui.",
   expense: "Professores é automática (vem do pagamento dos professores) e não aparece aqui.",
 };
 

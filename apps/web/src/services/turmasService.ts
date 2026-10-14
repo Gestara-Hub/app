@@ -11,6 +11,7 @@ import type {
   ClassReservation,
   ClassSessionDetail,
   ClassSessionView,
+  CourseCertificate,
   CreateClassGroup,
   CreateEnrollment,
   DateISO,
@@ -46,9 +47,17 @@ import {
   splitInstallments,
 } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
+import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
+import { assertFeature } from "./subscriptionService";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import {
+  hasUsablePackage,
+  packageCandidatesFor,
+  packageRosterInfo,
+  syncPackageUsage,
+} from "./packagesService";
 import {
   apiError,
   newId,
@@ -544,9 +553,41 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
       )?.status,
     }));
 
-  return [...enrolledEntries, ...reservedEntries].sort((a, b) =>
-    a.studentName.localeCompare(b.studentName, "pt-BR"),
+  // 3. Quem paga a aula com pacote (turma de pacote ou vinculo "package"): saldo.
+  const entries = [...enrolledEntries, ...reservedEntries].map((entry) =>
+    paysWithPackage(g, entry.kind)
+      ? { ...entry, ...packageRosterInfo(entry.studentId, id, g.modalityId, date) }
+      : entry,
   );
+  return entries.sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
+}
+
+/**
+ * Paga esta aula com pacote: matriculado em turma de pacote ou inscrito na aula
+ * pelo pacote. Avulso e experimental nunca (o avulso tem a cobranca dele).
+ */
+function paysWithPackage(g: ClassGroup, kind: SessionRosterKind | undefined): boolean {
+  if (kind === "package") return true;
+  return kind === "enrolled" && classBillingMode(g) === "package";
+}
+
+/**
+ * Acerta o pacote do aluno com a chamada desta aula (gasta, troca o motivo ou
+ * devolve). `status` ausente = presenca desmarcada.
+ */
+function syncAttendanceUsage(sessionId: Id, studentId: Id, status?: AttendanceStatus) {
+  const p = parseSessionId(sessionId);
+  const g = p ? store.classGroups.find((x) => x.id === p.classGroupId) : undefined;
+  if (!p || !g) return "none" as const;
+  const kind = buildRoster(g, sessionId, p.date).find((r) => r.studentId === studentId)?.kind;
+  return syncPackageUsage({
+    studentId,
+    sessionId,
+    classGroupId: g.id,
+    modalityId: g.modalityId,
+    date: p.date,
+    status: paysWithPackage(g, kind) ? status : undefined,
+  });
 }
 
 /** Aula do calendario com a ocupacao da data (matriculados vigentes + avulsos/experimentais). */
@@ -578,6 +619,11 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
     allowDropin,
     sessionPriceCents: g.sessionPriceCents,
     roster,
+    packageCandidates: packageCandidatesFor(
+      g.modalityId,
+      p.date,
+      new Set(roster.map((r) => r.studentId)),
+    ),
   };
 }
 
@@ -788,6 +834,41 @@ export const turmasService = {
     });
   },
 
+  /**
+   * Certificado de conclusao (doc 20, fase D; recurso pago `certificates`).
+   * So para matricula ativa em curso ja terminado ("Concluído").
+   */
+  getCourseCertificate(enrollmentId: Id): Promise<CourseCertificate> {
+    return simulateRead(() => {
+      assertFeature("certificates");
+      const e = store.enrollments.find((x) => x.id === enrollmentId);
+      if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
+      const g = store.classGroups.find((x) => x.id === e.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+      if (!isCourseEnded(g, todayISO()) || !g.endDate) {
+        throw apiError("VALIDATION", "O certificado sai quando o curso termina.", { httpStatus: 422 });
+      }
+      const address = store.unit.address;
+      const { presentCount, absentCount } = frequencyOf(g.id, e.studentId);
+      return buildCourseCertificate({
+        enrollmentId: e.id,
+        classGroupId: g.id,
+        organizationName: store.organization.name,
+        studentName: studentName(e.studentId),
+        courseName: g.name,
+        modalityName: modalityName(g.modalityId),
+        startDate: g.startDate,
+        endDate: g.endDate,
+        meetingWeekdays: g.meetingSlots.map((slot) => slot.weekday),
+        presentCount,
+        absentCount,
+        instructorName: instructorName(g.instructorId),
+        city: typeof address === "object" ? address?.city : undefined,
+        issuedOn: todayISO(),
+      });
+    });
+  },
+
   // Capacidade e regra MOLE: com a turma lotada, lanca CLASS_FULL; o form pede
   // confirmacao e reenvia com `allowOverCapacity`. Curso exige `payload.course`
   // e gera as parcelas na hora (doc 20, fase B).
@@ -931,6 +1012,18 @@ export const turmasService = {
           markedAt: nowIso(),
         });
       }
+      // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
+      syncAttendanceUsage(input.sessionId, input.studentId, input.status);
+    });
+  },
+
+  /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
+  clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
+    return simulateWrite(() => {
+      store.attendances = store.attendances.filter(
+        (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
+      );
+      syncAttendanceUsage(input.sessionId, input.studentId);
     });
   },
 
@@ -1219,6 +1312,14 @@ export const turmasService = {
       }
       const p = parseSessionId(input.sessionId);
       const sessionDate = p?.date ?? todayISO();
+      // Pacote: entra em qualquer aula das modalidades dele, sem cobranca.
+      if (kind === "package" && !hasUsablePackage(input.studentId, g.modalityId, sessionDate)) {
+        throw apiError(
+          "VALIDATION",
+          `${studentName(input.studentId)} não tem pacote com aulas para esta modalidade.`,
+          { httpStatus: 422 },
+        );
+      }
       const ts = nowIso();
 
       let chargeId: Id | undefined;
@@ -1259,7 +1360,7 @@ export const turmasService = {
       auditLogService.record({
         action: "created",
         target: { type: "enrollment", id: reservation.id, label: `${studentName(input.studentId)} em ${g.name}` },
-        predicate: `inscreveu ${studentName(input.studentId)} na aula de ${sessionDate.split("-").reverse().join("/")} da turma ${g.name}${chargeId ? ` (cobrança avulsa de ${formatCents(price)})` : ""}`,
+        predicate: `inscreveu ${studentName(input.studentId)} na aula de ${sessionDate.split("-").reverse().join("/")} da turma ${g.name}${chargeId ? ` (cobrança avulsa de ${formatCents(price)})` : kind === "package" ? " (usa 1 aula do pacote)" : ""}`,
       });
 
       return clone({
@@ -1278,10 +1379,14 @@ export const turmasService = {
           x.status === "reserved",
       );
       if (!r) throw notFoundError("Reserva não encontrada.");
+      // Quem entrou pelo pacote devolve a aula, se ja tinha gastado.
+      const returned = r.kind === "package" && syncAttendanceUsage(input.sessionId, input.studentId) === "reverted";
       r.status = "canceled";
       // Cancela a cobranca avulsa vinculada (por chargeId ou busca), se ainda nao paga.
       const targetChargeId = r.chargeId || r.cobrancaId;
-      const charge = targetChargeId
+      const charge = r.kind === "package"
+        ? undefined
+        : targetChargeId
         ? store.charges.find((c) => c.id === targetChargeId && c.status !== "paid")
         : store.charges.find(
             (c) =>
@@ -1299,7 +1404,7 @@ export const turmasService = {
       auditLogService.record({
         action: "cancelled",
         target: { type: "enrollment", id: r.id, label: studentName(input.studentId) },
-        predicate: `removeu ${studentName(input.studentId)} da aula${charge ? " e cancelou a cobrança avulsa" : ""}`,
+        predicate: `removeu ${studentName(input.studentId)} da aula${charge ? " e cancelou a cobrança avulsa" : returned ? " e devolveu a aula do pacote" : ""}`,
       });
     });
   },

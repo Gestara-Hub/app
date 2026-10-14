@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
+  Award,
   ChevronLeft,
   GraduationCap,
+  Lock,
   MessageSquarePlus,
   Pencil,
   Search,
@@ -59,7 +61,7 @@ import {
   type Id,
   type WaitlistEntryView,
 } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth";
+import { useCan, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { StudentGraduationDialog, StudentRecordsDialog, useClients } from "@/features/clients";
 import {
@@ -81,10 +83,14 @@ type Tab = "enrolled" | "waitlist";
 
 const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
 
-/** "Curso · R$ 800,00 em até 4x · termina 30/11" (ou "Sem cobrança"); mensalidade nao mostra nada. */
+/**
+ * "Curso · R$ 800,00 em até 4x · termina 30/11", "Pacote de aulas" ou "Sem
+ * cobrança"; mensalidade nao mostra nada.
+ */
 export function classBillingSummary(turma: ClassGroupView): string | null {
   const mode = classBillingMode(turma);
   if (mode === "free") return "Sem cobrança";
+  if (mode === "package") return "Pacote de aulas";
   if (mode !== "course") return null;
   const max = turma.courseMaxInstallments ?? 1;
   return [
@@ -237,6 +243,8 @@ export function TurmaDetailView({
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const can = useCan();
   const canManage = can("enrollment:manage");
+  // Certificado de conclusao: Plano Pro; no gratis o item abre o upsell.
+  const hasCertificates = useHasFeature()("certificates");
   const canEditTurma = can("classes:manage");
 
   const searchParams = useSearchParams();
@@ -589,8 +597,19 @@ export function TurmaDetailView({
                       : null;
                     const currentSub = prog?.subLevel ?? 0;
 
+                    const certificate: ListItemAction[] = e.isCompleted
+                      ? [
+                          {
+                            key: "certificate",
+                            label: hasCertificates ? "Certificado" : "Certificado (Plano Pro)",
+                            icon: hasCertificates ? <Award className="size-4" /> : <Lock className="size-4" />,
+                            onSelect: () => router.push(`/classes/${turma.id}/certificate/${e.id}`),
+                          },
+                        ]
+                      : [];
                     const actions: ListItemAction[] = canManage
                       ? [
+                          ...certificate,
                           ...(student
                             ? [
                                 {
@@ -615,7 +634,7 @@ export function TurmaDetailView({
                             destructive: true,
                           },
                         ]
-                      : [];
+                      : certificate;
                     return (
                       <ListItemCard key={e.id} disableHover>
                         <div className="flex items-center gap-3">
@@ -682,7 +701,7 @@ export function TurmaDetailView({
                             present={e.presentCount}
                             absent={e.absentCount}
                           />
-                          {canManage ? (
+                          {actions.length > 0 ? (
                             <ListItemActionsMenu
                               actions={actions}
                               title={`Ações de ${e.studentName}`}

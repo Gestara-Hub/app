@@ -47,6 +47,10 @@ export type MessageTrigger =
   | "welcome_student"
   | "absence_alert"
   | "birthday_greeting"
+  /** Cobranca avulsa, parcela de curso ou compra de pacote (doc 20, fase D). */
+  | "charge_reminder"
+  /** Pacote de aulas na ultima aula, perto de vencer ou vencido ha pouco. */
+  | "package_ending"
   | "manual_broadcast";
 
 export type MessageCategory = "billing" | "retention" | "administrative";

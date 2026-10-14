@@ -48,7 +48,7 @@ describe("rótulo da parcela do curso (auditoria)", () => {
   it("à vista e parcelado", () => {
     assert.equal(
       describeCharge({ kind: "course", description: "Confeitaria", cycleIndex: 1, cycleTotal: 1 }, "Ana"),
-      'curso "Confeitaria" de Ana',
+      'matrícula no curso "Confeitaria" de Ana',
     );
     assert.equal(
       describeCharge({ kind: "course", description: "Confeitaria", cycleIndex: 2, cycleTotal: 4 }, "Ana"),
@@ -56,3 +56,4 @@ describe("rótulo da parcela do curso (auditoria)", () => {
     );
   });
 });
+

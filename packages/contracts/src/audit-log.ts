@@ -38,6 +38,7 @@ export type AuditEntityType =
   | "user"
   | "settings"
   | "plan"
+  | "lesson_package"
   | "charge"
   | "class_group"
   | "enrollment"

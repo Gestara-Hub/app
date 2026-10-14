@@ -170,7 +170,7 @@ export function TeacherPayTab({ competence }: { competence: string }) {
                     title="Nenhum professor com pagamento neste mês"
                     description={
                       canManage
-                        ? "Use Configurar pagamento abaixo para definir como cada professor recebe (fixo, por aula, por aluno ou % das mensalidades)."
+                        ? "Use Configurar pagamento abaixo para definir como cada professor recebe (fixo, por aula, por aluno ou % do que os alunos pagaram)."
                         : "Ainda não há regra de pagamento vigente neste mês."
                     }
                   />

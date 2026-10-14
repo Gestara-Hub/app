@@ -12,6 +12,7 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
   1. **Automação e Comunicação (Pro):** Notificações e lembretes automáticos de cobrança via gateway de WhatsApp (redução da inadimplência sem esforço manual do dono).
   2. **Fintech e Pagamento Integrado (Taxa Transacional / Pro):** Cobrança online (Pix Copia e Cola, link, Pix Automático, cartão) com baixa automática no app e web.
   3. **Relatórios Gerenciais e BI (Pro / Scale):** DRE financeira, análises de retenção/churn e inteligência analítica preditiva.
+  4. **Certificado de conclusão de curso (Pro, 14/10/2026):** modelo pronto para imprimir ou salvar em PDF; depois, gerador de modelos próprios. Ideias de certificado e de notas dos alunos em [21-ideias-certificados-e-notas.md](21-ideias-certificados-e-notas.md).
 
 ---
 

@@ -91,6 +91,7 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   user: "Usuário",
   settings: "Configurações",
   plan: "Plano",
+  lesson_package: "Pacote de aulas",
   charge: "Mensalidade",
   class_group: "Turma",
   enrollment: "Matrícula",
@@ -147,6 +148,7 @@ const PAID_FEATURE_LABEL: Record<PaidFeature, string> = {
   online_payments: "Pagamento online",
   reports_advanced: "Relatórios avançados",
   messaging: "Comunicação automática",
+  certificates: "Certificado de conclusão",
   bi: "BI & Analytics",
 };
 
@@ -178,7 +180,7 @@ const TEACHER_PAY_COMPONENT_LABEL: Record<TeacherPayComponentKind, string> = {
   fixed_monthly: "Fixo mensal",
   per_session: "Por aula dada",
   per_student: "Por aluno ativo",
-  percent_of_memberships: "% das mensalidades",
+  percent_of_memberships: "% do que os alunos pagaram",
 };
 
 export function teacherPayComponentLabel(kind: TeacherPayComponentKind): string {

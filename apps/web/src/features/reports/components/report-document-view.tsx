@@ -67,6 +67,20 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
         });
         break;
       }
+      case "course_summary": {
+        csvContent += "Curso;Professor;Início;Fim;Matriculados;Concluídos;Cancelados;Contratado;Recebido;Em aberto\n";
+        report.data.rows.forEach((r) => {
+          csvContent += `"${r.className}";"${r.teacherName}";"${r.startDate}";"${r.endDate || ""}";"${r.enrolled}";"${r.completed}";"${r.canceled}";"${(r.contractedCents / 100).toFixed(2)}";"${(r.receivedCents / 100).toFixed(2)}";"${(r.openCents / 100).toFixed(2)}"\n`;
+        });
+        break;
+      }
+      case "package_summary": {
+        csvContent += "Pacote;Vendidos;Aulas vendidas;Aulas usadas;Saldo de aulas;Recebido\n";
+        report.data.rows.forEach((r) => {
+          csvContent += `"${r.packageName}";"${r.sold}";"${r.lessonsSold}";"${r.lessonsUsed}";"${r.lessonsRemaining}";"${(r.receivedCents / 100).toFixed(2)}"\n`;
+        });
+        break;
+      }
       case "monthly_birthdays": {
         csvContent += "Dia;Aluno;Telefone;Data Nascimento;Plano\n";
         report.data.rows.forEach((r) => {
@@ -393,6 +407,158 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                           {row.paidAt ? formatDate(row.paidAt) : "—"}
                         </td>
                         <td className="py-2 px-3 text-muted-foreground">{row.paymentMethod || "—"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {report.type === "course_summary" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-foreground print:text-black">Cursos</h2>
+              <p className="text-xs text-muted-foreground print:text-zinc-600">
+                Cursos com aulas ou parcelas no mês. Valores do curso inteiro.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4">
+              <div className="p-3 rounded-lg border bg-muted/20">
+                <span className="text-[11px] text-muted-foreground block">Contratado</span>
+                <span className="text-base font-bold text-foreground print:text-black">
+                  {formatCents(report.data.totalContractedCents)}
+                </span>
+              </div>
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+                <span className="text-[11px] block">Recebido</span>
+                <span className="text-base font-bold">{formatCents(report.data.totalReceivedCents)}</span>
+              </div>
+              <div className="p-3 rounded-lg border bg-amber-50/50 text-amber-800">
+                <span className="text-[11px] block">Em aberto</span>
+                <span className="text-base font-bold">{formatCents(report.data.totalOpenCents)}</span>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/20">
+                <span className="text-[11px] text-muted-foreground block">Recebido no mês</span>
+                <span className="text-base font-bold text-foreground print:text-black">
+                  {formatCents(report.data.receivedInPeriodCents)}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-border print:border-zinc-300">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/50 print:bg-zinc-100 text-muted-foreground print:text-zinc-700 uppercase font-semibold border-b border-border print:border-zinc-300">
+                  <tr>
+                    <th className="py-2.5 px-3">Curso</th>
+                    <th className="py-2.5 px-3 text-center">Matriculados</th>
+                    <th className="py-2.5 px-3 text-center">Concluídos</th>
+                    <th className="py-2.5 px-3 text-center">Cancelados</th>
+                    <th className="py-2.5 px-3 text-right">Contratado</th>
+                    <th className="py-2.5 px-3 text-right">Recebido</th>
+                    <th className="py-2.5 px-3 text-right">Em aberto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border print:divide-zinc-200">
+                  {report.data.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground text-xs">
+                        Nenhum curso com aulas ou parcelas neste mês.
+                      </td>
+                    </tr>
+                  ) : (
+                    report.data.rows.map((row) => (
+                      <tr key={row.classGroupId} className="hover:bg-muted/20">
+                        <td className="py-2 px-3">
+                          <span className="block font-medium text-foreground print:text-black">{row.className}</span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            {[
+                              row.teacherName,
+                              row.endDate
+                                ? `${formatDate(row.startDate)} a ${formatDate(row.endDate)}`
+                                : `Desde ${formatDate(row.startDate)}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-center">{row.enrolled}</td>
+                        <td className="py-2 px-3 text-center">{row.completed}</td>
+                        <td className="py-2 px-3 text-center">{row.canceled}</td>
+                        <td className="py-2 px-3 text-right font-medium">{formatCents(row.contractedCents)}</td>
+                        <td className="py-2 px-3 text-right text-emerald-700">{formatCents(row.receivedCents)}</td>
+                        <td className="py-2 px-3 text-right text-amber-700">{formatCents(row.openCents)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {report.type === "package_summary" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-foreground print:text-black">Pacotes de aulas</h2>
+              <p className="text-xs text-muted-foreground print:text-zinc-600">
+                Vendas, aulas usadas e recebido no mês. Saldo de hoje.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4">
+              <div className="p-3 rounded-lg border bg-muted/20">
+                <span className="text-[11px] text-muted-foreground block">Vendidos</span>
+                <span className="text-base font-bold text-foreground print:text-black">{report.data.totalSold}</span>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/20">
+                <span className="text-[11px] text-muted-foreground block">Aulas usadas</span>
+                <span className="text-base font-bold text-foreground print:text-black">
+                  {report.data.totalLessonsUsed}
+                </span>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/20">
+                <span className="text-[11px] text-muted-foreground block">Saldo de aulas</span>
+                <span className="text-base font-bold text-foreground print:text-black">
+                  {report.data.totalLessonsRemaining}
+                </span>
+              </div>
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+                <span className="text-[11px] block">Recebido</span>
+                <span className="text-base font-bold">{formatCents(report.data.totalReceivedCents)}</span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-border print:border-zinc-300">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/50 print:bg-zinc-100 text-muted-foreground print:text-zinc-700 uppercase font-semibold border-b border-border print:border-zinc-300">
+                  <tr>
+                    <th className="py-2.5 px-3">Pacote</th>
+                    <th className="py-2.5 px-3 text-center">Vendidos</th>
+                    <th className="py-2.5 px-3 text-center">Aulas vendidas</th>
+                    <th className="py-2.5 px-3 text-center">Aulas usadas</th>
+                    <th className="py-2.5 px-3 text-center">Saldo</th>
+                    <th className="py-2.5 px-3 text-right">Recebido</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border print:divide-zinc-200">
+                  {report.data.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-muted-foreground text-xs">
+                        Nenhum pacote vendido, usado ou pago neste mês.
+                      </td>
+                    </tr>
+                  ) : (
+                    report.data.rows.map((row) => (
+                      <tr key={row.packageId} className="hover:bg-muted/20">
+                        <td className="py-2 px-3 font-medium text-foreground print:text-black">{row.packageName}</td>
+                        <td className="py-2 px-3 text-center">{row.sold}</td>
+                        <td className="py-2 px-3 text-center">{row.lessonsSold}</td>
+                        <td className="py-2 px-3 text-center">{row.lessonsUsed}</td>
+                        <td className="py-2 px-3 text-center">{row.lessonsRemaining}</td>
+                        <td className="py-2 px-3 text-right text-emerald-700">{formatCents(row.receivedCents)}</td>
                       </tr>
                     ))
                   )}

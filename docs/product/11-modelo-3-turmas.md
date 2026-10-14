@@ -65,7 +65,7 @@ interface ClassGroup {
   meetingSlots: { weekday: Weekday; start: TimeISO; end: TimeISO }[];
   startDate: DateISO;
   endDate?: DateISO;             // fim da turma; no formulario so no curso ("Termina em*")
-  billingMode?: "membership" | "course" | "free"; // ausente = "membership" (14/10/2026)
+  billingMode?: "membership" | "course" | "package" | "free"; // ausente = "membership" (14/10/2026)
   coursePriceCents?: number;     // curso: valor cheio (> 0)
   courseMaxInstallments?: number; // curso: "Parcelas até" (1 a 12)
   status: RecordStatus;          // active | inactive
@@ -112,13 +112,13 @@ interface Attendance {
   markedAt: DateTimeISO;
 }
 
-// Participacao numa aula especifica (avulso ou experimental).
+// Participacao numa aula especifica (avulso, experimental ou pelo pacote).
 interface ClassReservation {
   id: Id;
   classGroupId: Id;
   sessionId: Id;
   studentId: Id;
-  kind?: "dropin" | "trial";     // ausente = dropin
+  kind?: "dropin" | "trial" | "package"; // ausente = dropin; package (14/10/2026) sem cobranca
   chargeId?: Id;                 // cobranca avulsa (so dropin com valor > 0)
   status: "reserved" | "canceled";
   reservedAt: DateTimeISO;
@@ -172,7 +172,7 @@ interface Charge {
 
 Campos do **aluno** (`Client`) que pertencem ao Modelo 3: `planId`, `planStartDate`, `billingStrategy` (`prorated | full_cycle`), `cyclePaymentTiming` (`prepaid | postpaid`), `dueDay`, `discount` (`{ type: "percentage" | "fixed"; value; reason? }`) e `membershipStatus` (`active | paused | canceled`).
 
-Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `enrolledCount`, `availableSpots`), `EnrollmentView` (nome, status do aluno e frequencia: `presentCount`, `absentCount`, `attendanceRate`), `ClassSessionView` (turma, modalidade, instrutor efetivo, titular, `isSubstitute`, `substitutionReason`), `ClassSessionDetail` (+ `capacity`, `availableSpots`, `allowDropin`, `sessionPriceCents` e `roster: SessionRosterEntry[]` com `kind: "enrolled" | "dropin" | "trial"` e `attendance`), `ChargeView` (`studentName`, `planName`, `planPeriod`, `className`).
+Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `enrolledCount`, `availableSpots`), `EnrollmentView` (nome, status do aluno e frequencia: `presentCount`, `absentCount`, `attendanceRate`), `ClassSessionView` (turma, modalidade, instrutor efetivo, titular, `isSubstitute`, `substitutionReason`), `ClassSessionDetail` (+ `capacity`, `availableSpots`, `allowDropin`, `sessionPriceCents` e `roster: SessionRosterEntry[]` com `kind: "enrolled" | "dropin" | "trial" | "package"`, `attendance` e, de quem paga com pacote, `packageRemaining`/`packageTotal`/`packageLastLesson`/`noPackage`; e `packageCandidates`, os alunos fora da aula com pacote válido para ela), `ChargeView` (`studentName`, `planName`, `planPeriod`, `className`).
 
 ## Regras de negocio
 
@@ -344,6 +344,7 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 | --- | --- | --- |
 | `membership` (padrão; ausente = este) | "Mensalidade" | Cada aluno paga pelo próprio plano, como antes. Única forma que ainda usa o `planId` legado da turma. |
 | `course` | "Curso com valor fechado" | `Valor do curso*`, `Parcelas até` (à vista a 12x) e `Termina em*`. A matrícula pergunta valor (editável), parcelas e 1º vencimento e gera as parcelas (`Charge` `course`). |
+| `package` (14/10/2026, fase C) | "Pacote de aulas" | Cada aula dada usa uma aula do pacote do aluno matriculado (presença gasta; falta conforme o pacote; justificada nunca). Sem plano nem valor na turma; nunca gera mensalidade. Avulso pago e experimental continuam. |
 | `free` | "Sem cobrança" | A turma não gera cobrança nem aceita avulso pago (experimental continua). |
 
 - A área do espaço sugere a forma na nova turma: gastronomia, artes e artesanato e beleza e cursos livres sugerem curso; as demais, mensalidade.
@@ -351,3 +352,12 @@ Fase B do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Lista de turmas:** selos **"Curso"** e **"Encerrado"** (qualquer turma com fim no passado). As encerradas continuam visíveis no filtro padrão (ativas) e vão para o fim da lista.
 - **Cancelar matrícula em curso** muda a regra antiga ("a mensalidade não muda"): as parcelas pagas ficam, as futuras são canceladas e as vencidas continuam. Na mensalidade, nada muda.
 - **Lista de espera de curso:** "Promover" abre "Matricular da lista de espera" com o pagamento do curso. Promover passa a entrar na Auditoria como matrícula (vale para toda turma).
+
+## Pacote de aulas na turma e na aula (14/10/2026)
+
+Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca.md); regras completas em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seção "Pacote de aulas".
+
+- **Turma "Pacote de aulas"** (`billingMode: "package"`): o formulário mostra a dica "Cada aula dada usa uma aula do pacote do aluno."; a lista de turmas mostra o selo **"Pacote"** e o detalhe, "Pacote de aulas". O matriculado gasta uma aula do pacote a cada chamada.
+- **Vínculo "package" na aula:** "Adicionar aluno nesta aula" oferece **"Pacote"** ("Usa 1 aula do pacote") quando há aluno ativo com pacote válido para a modalidade e a data; a lista mostra só esses alunos, com o saldo. Escolher um deles com "Aula avulsa" marcado troca para "Pacote". Vale em qualquer turma da modalidade, mesmo sem avulso (como o avulso, sem checar lotação), e não gera cobrança. O serviço recusa sem pacote válido: "Ana não tem pacote com aulas para esta modalidade.". Remover da aula devolve a aula, se já tinha gastado.
+- **Chamada:** selo do saldo em quem paga com pacote: "7 de 10" (restam 7 de 10), **"Última aula"** e **"Sem pacote"** (âmbar, sem pacote válido com saldo; a presença é marcada e nada é gasto). Avulso e experimental numa turma de pacote não gastam o pacote.
+- **Desmarcar presença:** tocar de novo no botão marcado desmarca (volta a "a marcar") e devolve a aula do pacote, se tinha gastado (`turmasService.clearAttendance`). Vale para qualquer turma.

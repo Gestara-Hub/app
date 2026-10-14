@@ -69,14 +69,14 @@ export function EndedBadge() {
   );
 }
 
-/** Selos de cobranca/fim da turma: "Curso" e "Encerrado". */
+/** Selos de cobranca/fim da turma: "Curso", "Pacote" e "Encerrado". */
 function ClassTags({ turma }: { turma: ClassGroupView }) {
-  const isCourse = classBillingMode(turma) === "course";
+  const mode = classBillingMode(turma);
   return (
     <>
-      {isCourse ? (
+      {mode === "course" || mode === "package" ? (
         <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
-          Curso
+          {mode === "course" ? "Curso" : "Pacote"}
         </span>
       ) : null}
       {turma.isEnded ? <EndedBadge /> : null}
