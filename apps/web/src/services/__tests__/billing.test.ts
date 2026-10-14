@@ -183,16 +183,20 @@ describe("correções da auditoria da academia (cobrança)", () => {
   const membershipsOf = (studentId: string) =>
     store.charges.filter((c) => c.studentId === studentId && c.kind === "membership");
 
-  it("mensalidade cancelada não impede gerar o mesmo período de novo", async () => {
+  // Regra de 12/10/2026 (doc 15): cancelada pelo usuario segura o periodo, para
+  // nao gerar de novo sozinha (o usuario reabre se quiser).
+  it("mensalidade cancelada pelo usuário continua ocupando o período", async () => {
     const plan = await createPlan("monthly", 15000);
     const s = await enrollStudent({ plan, startDate: "2026-09-20" });
     await generate("2026-10");
     const oct = membershipsOf(s.id).find((c) => c.competence === "2026-10")!;
-    await billingService.cancelCharge(oct.id);
+    await billingService.cancelCharge(oct.id, "Cobrança duplicada");
 
     const again = await billingService.generateCharges("2026-10");
-    expect(again.created).toBe(1);
-    expect(chargesOf(s.id)).toEqual(["2026-09-20 5500", "2026-10-10 15000"]);
+    expect(again.created).toBe(0);
+    const canceled = membershipsOf(s.id).find((c) => c.id === oct.id)!;
+    expect(canceled.status).toBe("canceled");
+    expect(canceled.cancelReason).toBe("Cobrança duplicada");
   });
 
   it("cobrança existente que sobrepõe o período bloqueia uma nova", async () => {

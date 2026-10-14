@@ -2,7 +2,7 @@ import { classGroup, enrollment, expect, loginAs, seedAcademy, skipWelcome, stud
 
 test("boas-vindas: título sem emoji", async ({ page }) => {
   await loginAs(page, "Ana Ribeiro");
-  await page.goto("/");
+  await page.goto("/dashboard");
   const welcome = page.getByRole("dialog", { name: "Bem-vindo ao GestaraHub" });
   await expect(welcome).toBeVisible();
   const title = await welcome.getByRole("heading").first().innerText();
@@ -11,9 +11,16 @@ test("boas-vindas: título sem emoji", async ({ page }) => {
 });
 
 test("dashboard: mês sem mensalidade avisa que nada foi gerado", async ({ page }) => {
-  await seedAcademy(page);
+  // Com aluno e turma (sem isso o Dashboard mostra os "Primeiros passos"), mas sem plano.
+  await seedAcademy(page, {
+    extra: (t) => {
+      t.clients = [student("c-a", "Aluno Sem Plano", { planId: undefined })];
+      t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
+      t.enrollments = [enrollment("e-1", "cg-1", "c-a")];
+    },
+  });
   await skipWelcome(page);
-  await page.goto("/");
+  await page.goto("/dashboard");
   await expect(page.getByText("Nenhuma mensalidade gerada no mês")).toBeVisible();
 });
 
@@ -30,7 +37,7 @@ test("dashboard: aula de hoje já encerrada conta como concluída", async ({ pag
     },
   });
   await skipWelcome(page);
-  await page.goto("/");
+  await page.goto("/dashboard");
   await expect(page.getByText("1 concluída · 1 agendada")).toBeVisible();
   await expect(page.getByText(/1\/2 alunos \(1 vaga\)/)).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, loginAs, seedAcademy, student, test } from "./fixtures";
+import { classGroup, completeOnboarding, enrollment, expect, loginAs, seedAcademy, student, test } from "./fixtures";
 
 const pathOf = (page: Page) => new URL(page.url()).pathname;
 
@@ -8,7 +8,8 @@ test.describe("guarda de rota", () => {
     await loginAs(page, "Marcelo Andrade");
     for (const route of ["/classes/billing", "/classes", "/classes/calendar"]) {
       await page.goto(route);
-      await expect.poll(() => pathOf(page), { message: route }).toBe("/");
+      // Rota de outro modelo volta para o Dashboard (o "/" e a pagina publica).
+      await expect.poll(() => pathOf(page), { message: route }).toBe("/dashboard");
     }
   });
 
@@ -16,22 +17,26 @@ test.describe("guarda de rota", () => {
     await loginAs(page, "Ana Ribeiro");
     for (const route of ["/schedule", "/services", "/appointments"]) {
       await page.goto(route);
-      await expect.poll(() => pathOf(page), { message: route }).toBe("/");
+      // Rota de outro modelo volta para o Dashboard (o "/" e a pagina publica).
+      await expect.poll(() => pathOf(page), { message: route }).toBe("/dashboard");
     }
   });
 
   test("login ignora destino externo em ?from", async ({ page }) => {
     await page.goto("/login?from=//evil.com");
+    await completeOnboarding(page);
     await page.getByRole("button", { name: /Ana Ribeiro/ }).click();
     await page.waitForURL((url) => !url.pathname.startsWith("/login"));
     expect(new URL(page.url()).host).toBe("localhost:3000");
-    expect(pathOf(page)).toBe("/");
+    // Destino invalido cai no padrao do login (Dashboard).
+    expect(pathOf(page)).toBe("/dashboard");
   });
 
   test("sem sessão vai ao login e volta com a query", async ({ page }) => {
     await page.goto("/classes/calendar?instructor=x");
     await expect.poll(() => pathOf(page)).toBe("/login");
     expect(new URL(page.url()).searchParams.get("from")).toBe("/classes/calendar?instructor=x");
+    await completeOnboarding(page);
     await page.getByRole("button", { name: /Ana Ribeiro/ }).click();
     await page.waitForURL((url) => url.pathname === "/classes/calendar");
     expect(new URL(page.url()).search).toBe("?instructor=x");

@@ -58,14 +58,17 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
   await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Remover Aluno Avulso da aula" }).click();
+  // Remover fica no menu ⋮ do aluno na chamada.
+  await page.getByRole("button", { name: "Ações de Aluno Avulso", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Remover da aula" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("Remover da aula?");
   await confirm.getByRole("button", { name: "Remover" }).click();
   await expect(page.getByText("Aluno removido da aula.")).toBeVisible();
 
   await page.goto("/classes/billing");
-  await page.getByRole("button", { name: "Aulas Avulsas" }).click();
+  await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
+  await page.getByRole("option", { name: "Aulas avulsas" }).click();
   const row = page.locator("div.group").filter({ hasText: "Aluno Avulso" });
   await expect(row).toContainText("Cancelado");
   // Cancelada pelo sistema (saida da aula): nao reabre, e o motivo fica no tooltip.
@@ -90,36 +93,37 @@ async function createClass(page: Page, name: string, moveToWednesday = false) {
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Nome da turma").fill(name);
   await dialog.getByRole("combobox", { name: /Modalidade/ }).click();
-  await page.getByRole("menuitem", { name: "Jiu-Jitsu" }).click();
-  await dialog.getByRole("combobox", { name: /Professor/ }).click();
-  await page.getByRole("menuitem", { name: "Carlos Silva" }).click();
+  await page.getByRole("option", { name: "Jiu-Jitsu" }).click();
+  // Professor unico da modalidade ja vem escolhido.
+  await expect(dialog.getByRole("combobox", { name: /Professor/ })).toContainText("Carlos Silva");
   if (moveToWednesday) {
     // Evita conflito com a 1a turma (mesmo professor, terca 19h).
     await dialog.getByRole("button", { name: "Qua", exact: true }).click();
     await dialog.getByRole("button", { name: "Ter", exact: true }).click();
   }
-  await dialog.getByRole("button", { name: "Criar turma" }).click();
+  await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
 }
 
-test("turma que conclui o cadastro básico abre a comemoração; as seguintes, o aviso simples", async ({ page }) => {
+test("turma que conclui a configuração inicial comemora; as seguintes mostram o aviso", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
   await createClass(page, "Jiu-Jitsu Noturno");
-  const party = page.getByRole("alertdialog", { name: /Sua academia está pronta/ });
-  await expect(party).toBeVisible();
+  const party = page.getByRole("alertdialog", { name: "Sua academia está pronta!" });
   await expect(party).toContainText("Jiu-Jitsu Noturno");
-  await party.getByRole("button", { name: "Fazer isso mais tarde" }).click();
+  await party.getByRole("button", { name: "Agora não" }).click();
   await expect(party).toBeHidden();
 
   await createClass(page, "Jiu-Jitsu Kids", true);
-  await expect(page.getByRole("alertdialog", { name: "Turma criada com sucesso!" })).toBeVisible();
+  await expect(page.getByText('Turma "Jiu-Jitsu Kids" criada com sucesso.')).toBeVisible();
   await expect(party).toHaveCount(0);
+  await page.getByRole("button", { name: "Matricular alunos" }).click();
+  await expect(page).toHaveURL(/\/classes\/[^/]+\?enroll=true$/);
 });
 
-test("primeira turma com cadastro incompleto (sem alunos) não comemora", async ({ page }) => {
+test("primeira turma com a configuração incompleta (sem alunos) não comemora", async ({ page }) => {
   await seedAcademy(page);
   await createClass(page, "Jiu-Jitsu Noturno");
-  await expect(page.getByRole("alertdialog", { name: "Turma criada com sucesso!" })).toBeVisible();
-  await expect(page.getByRole("alertdialog", { name: /Sua academia está pronta/ })).toHaveCount(0);
+  await expect(page.getByText('Turma "Jiu-Jitsu Noturno" criada com sucesso.')).toBeVisible();
+  await expect(page.getByRole("alertdialog", { name: "Sua academia está pronta!" })).toHaveCount(0);
 });
 
 const SESSION_PAST = "/classes/sessions/cg-1~2026-09-21~17%3A00";
@@ -254,7 +258,7 @@ test.describe("formulário de turma", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nome da turma").fill("Turma Nova");
     await dialog.getByRole("combobox", { name: /Modalidade/ }).click();
-    await page.getByRole("menuitem", { name: "Jiu-Jitsu" }).click();
+    await page.getByRole("option", { name: "Jiu-Jitsu" }).click();
     return dialog;
   }
 
@@ -262,7 +266,7 @@ test.describe("formulário de turma", () => {
     await seedAcademy(page);
     const dialog = await openNewClass(page);
     await dialog.getByRole("switch", { name: "Permitir alunos avulsos nesta turma" }).click();
-    await dialog.getByRole("button", { name: "Criar turma" }).click();
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(dialog.getByText("Informe o valor da aula avulsa.")).toBeVisible();
   });
 

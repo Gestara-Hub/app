@@ -39,7 +39,8 @@ export { expect };
  * (arvore refeita apos hidratacao, Fast Refresh do `pnpm dev`). Ruido de biblioteca.
  */
 const SCRIPT_TAG_WARNING = "Encountered a script tag while rendering React component";
-const DATE_TEXT = /\d{1,2} de [a-zç]+( de \d{4})?|\d{2}\/\d{2}|(segunda|terça|quarta|quinta|sexta)-feira|sábado|domingo|hoje|amanhã/i;
+const DATE_TEXT =
+  /\d{1,2} de [a-zç]+( de \d{4})?|\d{2}\/\d{2}|(segunda|terça|quarta|quinta|sexta)-feira|sábado|domingo|hoje|amanhã|(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)( de \d{4})?/i;
 
 /**
  * O relogio fixo vale so no navegador: o servidor do `pnpm dev` renderiza com a
@@ -57,11 +58,54 @@ function isClockHydrationMismatch(message: string): boolean {
   return diff.length > 0 && diff.every((l) => DATE_TEXT.test(l));
 }
 
-/** Entra pela tela de login com um dos usuarios de demonstracao. */
-export async function loginAs(page: Page, name: "Ana Ribeiro" | "Marcelo Andrade"): Promise<void> {
-  await page.goto("/login");
-  await page.getByRole("button", { name: new RegExp(name) }).click();
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+const DEMO_USERS = {
+  "Ana Ribeiro": { id: "usr-ac-ana", organizationId: "org-academia-x", email: "ana@academiax.com" },
+  "Marcelo Andrade": { id: "usr-marcelo", organizationId: "org-corte-nobre", email: "marcelo@cortenobre.com" },
+} as const;
+
+/**
+ * Entra como um usuario de demonstracao gravando o cookie de sessao (a tela de
+ * login hoje so lista a Ana) e marca a configuracao inicial como concluida em
+ * todos os espacos (senao o proprietario vai para /setup). Termina no Dashboard.
+ */
+export async function loginAs(page: Page, name: keyof typeof DEMO_USERS): Promise<void> {
+  await setSessionCookie(page, name);
+  await page.goto("/dashboard");
+  await completeOnboarding(page);
+  await page.goto("/dashboard");
+}
+
+/** So grava o cookie de sessao (sem concluir a configuracao inicial nem navegar). */
+export async function setSessionCookie(page: Page, name: keyof typeof DEMO_USERS): Promise<void> {
+  const claims = { ...DEMO_USERS[name], name, profile: "owner", status: "active", createdAt: TS, updatedAt: TS };
+  await page.context().addCookies([
+    {
+      name: "gestarahub_session",
+      value: Buffer.from(JSON.stringify(claims), "utf8").toString("base64"),
+      url: "http://localhost:3000",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
+
+/**
+ * Marca a configuracao inicial como concluida (e as modalidades revisadas) em
+ * todos os espacos do mundo do mock. Espera o app gravar o mundo e recarrega.
+ */
+export async function completeOnboarding(page: Page): Promise<void> {
+  await page.waitForFunction(() => localStorage.getItem("gestarahub:db") !== null);
+  const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
+  const world = JSON.parse(raw as string) as World;
+  for (const tenant of Object.values(world.data.tenants)) {
+    tenant.organization.settings = {
+      ...(tenant.organization.settings ?? {}),
+      onboardingCompleted: true,
+      modalitiesReviewed: true,
+    };
+  }
+  await page.evaluate((json) => localStorage.setItem("gestarahub:db", json), JSON.stringify(world));
+  await page.reload();
 }
 
 /**
@@ -94,6 +138,8 @@ export async function seedAcademy(
   await loginAs(page, "Ana Ribeiro");
   await editWorld(page, "org-academia-x", (t) => {
     t.organization.settings = {
+      onboardingCompleted: true,
+      modalitiesReviewed: true,
       defaultDueDay: 10,
       billingTiming: opts.timing ?? "prepaid",
       midMonthStrategy: opts.strategy ?? "prorated",

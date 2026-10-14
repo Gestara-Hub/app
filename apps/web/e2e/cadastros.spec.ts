@@ -3,6 +3,10 @@ import { expect, loginAs, seedAcademy, student, test } from "./fixtures";
 test("reativar aluno pede confirmação", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-x", "Aluno Inativo", { status: "inactive" })]) });
   await page.goto("/clients");
+  // A lista abre so com os ativos.
+  await expect(page.getByText("Aluno Inativo")).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Filtrar por status" }).click();
+  await page.getByRole("option", { name: "Inativos" }).click();
   await page.getByRole("button", { name: "Ações de Aluno Inativo", exact: true }).click();
   await page.getByRole("menuitem", { name: "Reativar" }).click();
   const confirm = page.getByRole("alertdialog");
@@ -17,7 +21,7 @@ test("plano não aceita valor zero", async ({ page }) => {
   await page.getByRole("button", { name: "Novo plano" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Nome").fill("Plano grátis");
-  await dialog.getByRole("button", { name: "Criar plano" }).click();
+  await dialog.getByRole("button", { name: "Adicionar" }).click();
   await expect(dialog.getByText("Informe um valor maior que zero.")).toBeVisible();
 });
 

@@ -1,9 +1,22 @@
+import type { Page } from "@playwright/test";
 import { editWorld, expect, loginAs, seedAcademy, student, test } from "./fixtures";
+
+/** Com a cobranca ja configurada, as Regras de Cobranca abrem pelo clique. */
+async function openBillingRules(page: Page) {
+  const trigger = page.getByRole("button", { name: /Regras de Cobrança/ });
+  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+}
 
 test("prévia das regras de cobrança mostra as 4 combinações", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings#billing-rules");
-  const preview = page.locator("[aria-live=polite]").filter({ hasText: "Na prática" });
+  await openBillingRules(page);
+  const preview = page.locator("[aria-live=polite]").filter({ hasText: "Simulação" });
+  // Linha da tabela da previa: vencimento, valor e periodo de aulas.
+  const expectRow = async (due: string, amount: string, reference: string) => {
+    const row = preview.locator("tr").filter({ hasText: due }).filter({ hasText: amount });
+    await expect(row.first()).toContainText(reference);
+  };
 
   const choose = async (timing: string, strategy: string) => {
     await page.getByRole("radio", { name: new RegExp(`^${timing}`) }).click();
@@ -11,25 +24,26 @@ test("prévia das regras de cobrança mostra as 4 combinações", async ({ page 
   };
 
   await choose("Antecipado", "Proporcional");
-  await expect(preview).toContainText("20/09R$ 55,0020 a 30/09 (11 dias)");
-  await expect(preview).toContainText("10/10R$ 150,00outubro");
+  await expectRow("20/09", "R$ 55,00", "20/09 a 30/09 (11 dias)");
+  await expectRow("10/10", "R$ 150,00", "outubro");
 
   await choose("Antecipado", "Mês cheio");
-  await expect(preview).toContainText("20/09R$ 150,0020/09 a 19/10");
+  await expectRow("20/09", "R$ 150,00", "20/09 a 19/10");
 
   await choose("Depois do uso", "Proporcional");
-  await expect(preview).toContainText("10/10R$ 55,0020 a 30/09 (11 dias)");
-  await expect(preview).toContainText("10/11R$ 150,00outubro");
+  await expectRow("10/10", "R$ 55,00", "20/09 a 30/09 (11 dias)");
+  await expectRow("10/11", "R$ 150,00", "outubro");
 
   await choose("Depois do uso", "Mês cheio");
-  await expect(preview).toContainText("20/10R$ 150,0020/09 a 19/10");
+  await expectRow("20/10", "R$ 150,00", "20/09 a 19/10");
 });
 
 test("dia de vencimento aceita só de 1 a 28", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings#billing-rules");
+  await openBillingRules(page);
   await page.locator("input[name=defaultDueDay]").fill("35");
-  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await page.getByRole("button", { name: "Salvar configurações" }).click();
   await expect(page.getByText("Use um dia de 1 a 28.")).toBeVisible();
 });
 
@@ -66,77 +80,70 @@ test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
   await expect(page.getByText("Horários de funcionamento salvos.")).toHaveCount(0);
 });
 
-test("salvar o horário no onboarding leva ao topo e destaca o Continuar", async ({ page }) => {
+test("configuração inicial: o Continuar leva ao passo e às Regras de Cobrança abertas", async ({ page }) => {
   await loginAs(page, "Ana Ribeiro");
   await editWorld(page, "org-academia-x", (t) => {
     t.unit.businessHours = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, closed: true, shifts: [] }));
+    delete t.organization.settings.billingTiming;
   });
-  await page.goto("/settings?tab=horarios");
-  const cont = page.getByRole("link", { name: "Continuar" });
-  await expect(cont).toBeVisible();
-  await expect(cont).not.toHaveClass(/animate-attention-loop/);
+  await page.goto("/clients");
+  const banner = page.getByRole("complementary", { name: "Progresso da configuração inicial" });
+  await expect(banner).toContainText("Definir horário de funcionamento");
+  const cont = banner.getByRole("link", { name: "Continuar" });
+  // Fora da tela do passo, o Continuar pulsa chamando para la.
+  await expect(cont).toHaveClass(/animate-attention-loop/);
+  await cont.click();
+  await expect(page).toHaveURL(/tab=horarios/);
+  // Na tela do passo, sem Continuar.
+  await expect(banner.getByRole("link", { name: "Continuar" })).toHaveCount(0);
 
   await page.getByRole("switch").nth(1).click(); // segunda-feira
   await page.getByRole("button", { name: "Salvar horários" }).click();
+  await expect(banner).toContainText("Definir regras de cobrança");
 
-  await expect(page.getByText("Definir regras de cobrança")).toBeVisible();
-  await expect(cont).toBeFocused();
-  await expect(cont).toHaveClass(/animate-attention-loop/);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  // Continua pulsando enquanto o usuario estiver na tela.
-  await page.waitForTimeout(3500);
-  await expect(cont).toHaveClass(/animate-attention-loop/);
-
-  // O Continuar leva as Regras de Cobranca ja abertas e com foco.
-  await cont.click();
+  // O Continuar leva as Regras de Cobranca ja abertas; o cartao pulsa ate o clique.
+  await banner.getByRole("link", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/tab=geral#billing-rules$/);
-  const billing = page.getByRole("button", { name: /Regras de Cobrança/ });
-  await expect(billing).toHaveAttribute("aria-expanded", "true");
-  await expect(billing).toBeFocused();
-  await expect(page.getByRole("radio", { name: /^Antecipado/ })).toBeVisible();
-  // O cartao pulsa ate o usuario clicar nele.
+  await expect(page.getByRole("button", { name: /Regras de Cobrança/ })).toHaveAttribute("aria-expanded", "true");
   const billingCard = page.locator("#billing-rules");
   await expect(billingCard).toHaveClass(/animate-attention-ring/);
   await page.getByRole("radio", { name: /^Depois do uso/ }).click();
   await expect(billingCard).not.toHaveClass(/animate-attention-ring/);
-  await expect(cont).not.toHaveClass(/animate-attention-loop/);
 });
 
-test("no dashboard o Continuar do checklist pulsa", async ({ page }) => {
+test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard", async ({ page }) => {
   await loginAs(page, "Ana Ribeiro");
-  await page.goto("/");
+  await page.goto("/dashboard");
   const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
-  await welcome.getByRole("button", { name: "Configurar meu negócio" }).click();
+  await welcome.getByRole("button", { name: /Ir para os primeiros passos/ }).click();
   await expect(welcome).toBeHidden();
-  const cont = page.getByRole("link", { name: "Continuar" });
-  await expect(cont).toHaveClass(/animate-attention-loop/);
-
-  // Continua pulsando em outras visitas (boas-vindas ja respondidas).
-  await page.reload();
-  await expect(cont).toHaveClass(/animate-attention-loop/);
+  await expect(page.getByRole("heading", { name: "Primeiros passos da sua unidade" })).toBeVisible();
 });
 
 test("hash repetido na URL ainda abre as Regras de Cobrança", async ({ page }) => {
   await seedAcademy(page);
+  // O link abre o cartao sozinho enquanto a cobranca nao foi configurada.
+  await editWorld(page, "org-academia-x", (t) => delete t.organization.settings.billingTiming);
   await page.goto("/settings?tab=geral#billing-rules#billing-rules");
   await expect(page.getByRole("button", { name: /Regras de Cobrança/ })).toHaveAttribute("aria-expanded", "true");
 });
 
-test("fora da tela do próximo passo o Continuar pulsa; nela, fica parado", async ({ page }) => {
+test("fora da tela do próximo passo o Continuar pulsa; nela, some", async ({ page }) => {
   // Tudo pronto menos a turma: o proximo passo e "Criar a primeira turma" (/classes).
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-  const cont = page.getByRole("link", { name: "Continuar" });
+  const banner = page.getByRole("complementary", { name: "Progresso da configuração inicial" });
+  const cont = banner.getByRole("link", { name: "Continuar" });
 
-  for (const route of ["/classes/modalities", "/classes/calendar", "/classes/billing"]) {
+  for (const route of ["/classes/modalities", "/classes/billing"]) {
     await page.goto(route);
-    await expect(page.getByText(/Próximo passo · Passo 7 de 7/)).toBeVisible();
+    await expect(banner).toContainText("Criar a primeira turma");
     await expect(cont).toHaveClass(/animate-attention-loop/);
   }
 
   await cont.click();
   await expect(page).toHaveURL(/\/classes$/);
-  await expect(page.getByText(/Passo atual · Passo 7 de 7/)).toBeVisible();
-  await expect(cont).not.toHaveClass(/animate-attention-loop/);
+  await expect(banner).toContainText("Criar a primeira turma");
+  await expect(cont).toHaveCount(0);
 });
 
 test("+ Turno sugere depois do último turno e desabilita sem espaço", async ({ page }) => {
@@ -198,7 +205,7 @@ test("horários: indicador de não salvo, confirmação ao trocar de aba e salva
 
   await page.getByRole("tab", { name: /Geral/ }).click();
   const confirm = page.getByRole("alertdialog", { name: "Alterações não salvas" });
-  await expect(confirm).toContainText("Você alterou a aba Horários");
+  await expect(confirm).toContainText("Você tem alterações não salvas na aba Horários");
   await confirm.getByRole("button", { name: "Continuar editando" }).click();
   await expect(confirm).toBeHidden();
   await expect(page).toHaveURL(/tab=horarios/);
@@ -225,9 +232,10 @@ test("aba Dados: apagar os dados da demonstração pede confirmação", async ({
 
   await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
   await confirm.getByRole("button", { name: "Apagar tudo" }).click();
-  await expect(page.getByText("Dados da demonstração apagados.", { exact: false })).toBeVisible();
-  await page.goto("/clients");
-  await expect(page.getByText("Aluno A20")).toHaveCount(0);
+  // Apagar encerra a sessao e o mundo volta ao inicial (sem o aluno).
+  await page.waitForURL((url) => url.pathname === "/login");
+  const hasStudent = await page.evaluate(() => (localStorage.getItem("gestarahub:db") ?? "").includes("Aluno A20"));
+  expect(hasStudent).toBe(false);
 });
 
 test("horários: 'Aplicar também a' lista os 7 dias com o dia em edição travado", async ({ page }) => {

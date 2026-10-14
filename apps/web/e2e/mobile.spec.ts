@@ -1,10 +1,19 @@
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import type { Locator, Page } from "@playwright/test";
+import { classGroup, enrollment, expect, seedAcademy, setSessionCookie, student, test } from "./fixtures";
+
+/** Nenhum dos elementos passa da borda direita da tela (a raiz pode esconder o excesso). */
+async function expectInsideViewport(page: Page, items: Locator) {
+  const width = page.viewportSize()?.width ?? 0;
+  for (const box of await items.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(width);
+  }
+}
 
 test("mensalidades no celular: sem rolagem lateral e linha legível", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno Nome Comprido da Silva")]) });
+  // A mensalidade do mes atual nasce sozinha ao abrir a tela.
   await page.goto("/classes/billing");
-  await page.getByRole("button", { name: "Gerar cobranças" }).first().click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Gerar cobranças" }).click();
 
   const row = page.locator("div.group").filter({ hasText: "Aluno Nome Comprido da Silva" });
   await expect(row).toBeVisible();
@@ -48,4 +57,41 @@ test("calendário no celular abre em lista e mantém a grade escolhida", async (
   await expect(grid).toHaveAttribute("aria-selected", "true");
   await page.reload();
   await expect(grid).toHaveAttribute("aria-selected", "true");
+});
+
+test("configuração inicial em 375px: sem teclado automático, cards e opções cabem", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await setSessionCookie(page, "Ana Ribeiro");
+  await page.goto("/setup");
+
+  const name = page.getByLabel("Nome");
+  await expect(name).toBeVisible();
+  await expect(name).not.toBeFocused();
+  // 16px evita o zoom automatico do iOS ao tocar no campo.
+  expect(await name.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+  await name.fill("Ateliê da Lu");
+  await page.getByRole("button", { name: "Tenho mais de um endereço" }).click();
+  await expect(page.getByLabel("Unidade ou filial (opcional)")).not.toBeFocused();
+  await page.getByRole("button", { name: "Continuar" }).click();
+
+  await page.getByRole("radio", { name: /^Outra área/ }).click();
+  const custom = page.getByLabel("O que você ensina?");
+  await expect(custom).not.toBeFocused();
+  expect(await custom.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+  await expectInsideViewport(page, page.getByRole("radio"));
+  await expectInsideViewport(page, page.getByRole("button", { name: "Continuar" }));
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("landing page em 375px: os 11 cards de áreas cabem sem rolagem lateral", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  const section = page.locator("#modalidades");
+  await section.scrollIntoViewIfNeeded();
+  await expect(section.getByRole("heading", { level: 3 })).toHaveCount(11);
+  await expect(section.getByText("Sua área não está aqui?")).toBeVisible();
+  await expectInsideViewport(page, section.getByRole("heading", { level: 3 }));
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
 });

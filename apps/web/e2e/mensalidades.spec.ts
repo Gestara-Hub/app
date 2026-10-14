@@ -4,6 +4,19 @@ import { classGroup, editWorld, enrollment, expect, seedAcademy, student, test }
 /** A linha inteira (texto + valor + acoes) de um aluno na lista de Mensalidades. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
 
+/** Abre o menu ⋮ da mensalidade e escolhe a acao. */
+async function rowAction(page: Page, name: string, action: string) {
+  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
+  await page.getByRole("menuitem", { name: action }).click();
+}
+
+async function payWith(page: Page, method: string) {
+  const dialog = page.getByRole("dialog", { name: "Registrar pagamento" });
+  await expect(dialog.getByRole("button", { name: "Registrar pagamento" })).toBeDisabled();
+  await dialog.getByRole("radio", { name: method }).click();
+  await dialog.getByRole("button", { name: "Registrar pagamento" }).click();
+}
+
 test.describe("cadastro e geração de mensalidades", () => {
   test("depois do uso + proporcional: 1ª cobrança em 10/10 e nada em setembro", async ({ page }) => {
     await seedAcademy(page, { timing: "postpaid", strategy: "prorated" });
@@ -14,47 +27,41 @@ test.describe("cadastro e geração de mensalidades", () => {
     await dialog.getByLabel("Nome do aluno").fill("Aluno Pós");
     await dialog.getByLabel("Telefone (WhatsApp)").fill("11977776602");
     await dialog.getByRole("combobox", { name: "Plano de acesso" }).click();
-    await page.getByRole("menuitem", { name: /Mensal Jiu-Jitsu/ }).click();
+    await page.getByRole("option", { name: /Mensal Jiu-Jitsu/ }).click();
     await dialog.locator("input[name=planStartDate]").fill("2026-09-20");
 
     await expect(dialog.locator("input[name=firstChargeAmount]")).toHaveValue("55,00");
     await expect(dialog.locator("input[name=firstChargeDueDate]")).toHaveValue("2026-10-10");
     await expect(dialog.getByText("Referente a 20/09 a 30/09.")).toBeVisible();
-    await dialog.getByRole("button", { name: "Cadastrar aluno" }).click();
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Aluno criado com sucesso.")).toBeVisible();
 
+    // Setembro (mes atual): depois do uso, nada a cobrar ainda.
     await page.goto("/classes/billing");
-    await expect(page.getByText("Setembro de 2026")).toBeVisible();
-    await page.getByRole("button", { name: "Gerar cobranças" }).first().click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Gerar cobranças" }).click();
+    await expect(page.getByRole("button", { name: "Escolher mês (Setembro de 2026)" })).toBeVisible();
     await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
 
-    await page.getByRole("button", { name: "Próxima competência" }).click();
+    await page.getByRole("button", { name: "Próximo mês" }).click();
     const row = rowOf(page, "Aluno Pós");
     await expect(row).toContainText("R$ 55,00");
     await expect(row).toContainText("vence 10/10");
-    await expect(row).toContainText("referente a 20/09 a 30/09");
   });
 });
 
 test.describe("operações de cobrança", () => {
   test.beforeEach(async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20"), student("c-b", "Aluno B20")]) });
+    // As mensalidades do mes atual nascem sozinhas ao abrir a tela.
     await page.goto("/classes/billing");
-    await page.getByRole("button", { name: "Gerar cobranças" }).first().click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Gerar cobranças" }).click();
-    await expect(page.getByText("2 cobranças geradas.")).toBeVisible();
+    await expect(rowOf(page, "Aluno A20")).toBeVisible();
+    await expect(rowOf(page, "Aluno B20")).toBeVisible();
   });
 
   test("marcar pago exige a forma de pagamento e desfazer pede confirmação", async ({ page }) => {
     const row = rowOf(page, "Aluno A20");
     await expect(row).toContainText("Atrasado");
-    await row.getByRole("button", { name: "Marcar pago" }).click();
-
-    const dialog = page.getByRole("dialog", { name: "Registrar pagamento" });
-    await expect(dialog.getByRole("button", { name: "Registrar pagamento" })).toBeDisabled();
-    await dialog.getByRole("radio", { name: "Pix" }).click();
-    await dialog.getByRole("button", { name: "Registrar pagamento" }).click();
+    await rowAction(page, "Aluno A20", "Marcar pago");
+    await payWith(page, "Pix");
     await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();
     await expect(row).toContainText("pago via Pix");
 
@@ -66,23 +73,15 @@ test.describe("operações de cobrança", () => {
     await expect(page.getByText("pago via Pix")).toHaveCount(0);
   });
 
-  test("resetar a competência mantém as cobranças pagas", async ({ page }) => {
-    const row = rowOf(page, "Aluno A20");
-    await row.getByRole("button", { name: "Marcar pago" }).click();
-    const dialog = page.getByRole("dialog", { name: "Registrar pagamento" });
-    await dialog.getByRole("radio", { name: "Dinheiro" }).click();
-    await dialog.getByRole("button", { name: "Registrar pagamento" }).click();
+  test("a geração automática não duplica ao recarregar", async ({ page }) => {
+    await rowAction(page, "Aluno A20", "Marcar pago");
+    await payWith(page, "Dinheiro");
     await expect(page.getByText("pago via Dinheiro")).toBeVisible();
 
-    await page.getByRole("button", { name: /Resetar cobranças/ }).click();
-    const confirm = page.getByRole("alertdialog");
-    await expect(confirm).toContainText("Remove a 1 mensalidade em aberto ou cancelada");
-    await expect(confirm).toContainText("Mensalidades pagas e aulas avulsas são mantidas.");
-    await confirm.getByRole("button", { name: "Resetar cobranças" }).click();
-
-    await expect(page.getByText("1 mensalidade removida, 1 paga mantida.")).toBeVisible();
-    await expect(page.getByText("Aluno A20")).toBeVisible();
-    await expect(page.getByText("Aluno B20")).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByText("2 cobranças")).toBeVisible();
+    await expect(rowOf(page, "Aluno A20")).toHaveCount(1);
+    await expect(rowOf(page, "Aluno B20")).toHaveCount(1);
   });
 
   test("cobrança vencida aparece como atrasada nos cards", async ({ page }) => {
@@ -96,31 +95,18 @@ test("dados do mock ficam isolados por teste", async ({ page }) => {
   await editWorld(page, "org-academia-x", (t) => expect(t.charges).toEqual([]));
 });
 
-const generate = async (page: Page) => {
-  await page.getByRole("button", { name: "Gerar cobranças" }).first().click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Gerar cobranças" }).click();
-};
-
-test("gerar cobranças usa o plural real no aviso", async ({ page }) => {
+test("cinco alunos com plano geram cinco mensalidades sozinhas", async ({ page }) => {
   await seedAcademy(page, {
     extra: (t) => (t.clients = [1, 2, 3, 4, 5].map((n) => student(`c-${n}`, `Aluno ${n}`))),
   });
   await page.goto("/classes/billing");
-  await generate(page);
-  await expect(page.getByText("5 cobranças geradas.")).toBeVisible();
-  await generate(page);
-  await expect(page.getByText("Nenhuma cobrança nova (já geradas).")).toBeVisible();
+  await expect(page.getByText("5 cobranças")).toBeVisible();
 });
 
-test("resetar conta só as mensalidades removidas e mantém a aula avulsa", async ({ page }) => {
+test("filtro de tipo separa aulas avulsas das mensalidades", async ({ page }) => {
   await seedAcademy(page, {
     extra: (t) => {
-      t.clients = [
-        student("c-a", "Aluno A20"),
-        student("c-b", "Aluno B20"),
-        student("c-c", "Aluno C20"),
-        student("c-d", "Aluno Avulso", { planId: undefined }),
-      ];
+      t.clients = [student("c-a", "Aluno A20"), student("c-d", "Aluno Avulso", { planId: undefined })];
       t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
       t.enrollments = [enrollment("e-1", "cg-1", "c-a")];
     },
@@ -135,28 +121,11 @@ test("resetar conta só as mensalidades removidas e mantém a aula avulsa", asyn
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
   await page.goto("/classes/billing");
-  await generate(page);
-  await expect(page.getByText("3 cobranças geradas.")).toBeVisible();
-  const row = rowOf(page, "Aluno A20");
-  await row.getByRole("button", { name: "Marcar pago" }).click();
-  const pay = page.getByRole("dialog", { name: "Registrar pagamento" });
-  await pay.getByRole("radio", { name: "Pix" }).click();
-  await pay.getByRole("button", { name: "Registrar pagamento" }).click();
-  await expect(row).toContainText("pago via Pix");
-
-  // Com o filtro de avulsas, o modal ainda conta as mensalidades que saem.
-  await page.getByRole("button", { name: "Aulas Avulsas" }).click();
-  await page.getByRole("button", { name: /Resetar cobranças/ }).click();
-  const confirm = page.getByRole("alertdialog");
-  await expect(confirm).toContainText("Remove as 2 mensalidades em aberto ou canceladas");
-  await confirm.getByRole("button", { name: "Resetar cobranças" }).click();
-  await expect(page.getByText("2 mensalidades removidas, 1 paga mantida.")).toBeVisible();
-
-  await expect(rowOf(page, "Aluno Avulso")).toContainText("R$ 40,00");
-  await page.getByRole("button", { name: "Todas" }).click();
   await expect(rowOf(page, "Aluno A20")).toBeVisible();
-  await expect(page.getByText("Aluno B20")).toHaveCount(0);
-  await expect(page.getByText("Aluno C20")).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
+  await page.getByRole("option", { name: "Aulas avulsas" }).click();
+  await expect(rowOf(page, "Aluno Avulso")).toContainText("R$ 40,00");
+  await expect(page.getByText("Aluno A20")).toHaveCount(0);
 });
 
 test("plano com alunos ativos não muda de periodicidade", async ({ page }) => {
