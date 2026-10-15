@@ -442,7 +442,12 @@ function resolveCourseChoice(g: ClassGroup, choice?: EnrollmentCourseChoice): En
  * Matricula ativa + parcelas do curso (se for curso), com auditoria. Unica
  * escrita de matricula: matricular e promover da lista de espera passam aqui.
  */
-function createEnrollment(g: ClassGroup, studentId: Id, course?: EnrollmentCourseChoice): Enrollment {
+function createEnrollment(
+  g: ClassGroup,
+  studentId: Id,
+  course?: EnrollmentCourseChoice,
+  paysWithPackage?: boolean,
+): Enrollment {
   const ts = nowIso();
   const enrollment: Enrollment = {
     id: newId(),
@@ -450,6 +455,7 @@ function createEnrollment(g: ClassGroup, studentId: Id, course?: EnrollmentCours
     studentId,
     status: "active",
     enrolledAt: ts,
+    ...(paysWithPackage ? { paysWithPackage: true } : {}),
   };
   const name = studentName(studentId);
   if (course) {
@@ -486,9 +492,45 @@ function createEnrollment(g: ClassGroup, studentId: Id, course?: EnrollmentCours
     target: { type: "enrollment", id: enrollment.id, label: `${name} em ${g.name}` },
     predicate: course
       ? `matriculou ${name} no curso ${g.name} (${formatCents(course.priceCents)}${course.installments > 1 ? `, em ${course.installments} parcelas` : ""})`
-      : `matriculou ${name} na turma ${g.name}`,
+      : `matriculou ${name} na turma ${g.name}${paysWithPackage ? " (paga com pacote)" : ""}`,
   });
   return enrollment;
+}
+
+/**
+ * Pagar com pacote na turma de mensalidade (doc 20): so nela, e o aluno
+ * precisa ter pacote com aulas para a modalidade hoje. Nas demais formas a
+ * turma ja decide (pacote gasta sempre; curso e sem cobranca nunca).
+ */
+function resolvePaysWithPackage(g: ClassGroup, studentId: Id, paysWithPackage?: boolean): boolean {
+  if (!paysWithPackage || classBillingMode(g) !== "membership") return false;
+  if (!hasUsablePackage(studentId, g.modalityId, todayISO())) {
+    throw validationError([
+      {
+        field: "paysWithPackage",
+        message: `${studentName(studentId)} não tem pacote com aulas para esta modalidade.`,
+      },
+    ]);
+  }
+  return true;
+}
+
+/**
+ * Padrao sem escolha explicita (promover da lista de espera): na turma de
+ * mensalidade, quem nao tem plano e tem pacote valido paga com o pacote.
+ */
+function defaultPaysWithPackage(g: ClassGroup, student: Client): boolean {
+  return (
+    classBillingMode(g) === "membership" &&
+    !student.planId &&
+    hasUsablePackage(student.id, g.modalityId, todayISO())
+  );
+}
+
+/** Matricula do aluno na turma: a ativa ou, sem ela, a ultima (presenca antiga). */
+function enrollmentOf(classGroupId: Id, studentId: Id): Enrollment | undefined {
+  const rows = store.enrollments.filter((e) => e.classGroupId === classGroupId && e.studentId === studentId);
+  return rows.find((e) => e.status === "active") ?? rows[rows.length - 1];
 }
 
 function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {
@@ -555,9 +597,10 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
       )?.status,
     }));
 
-  // 3. Quem paga a aula com pacote (turma de pacote ou vinculo "package"): saldo.
+  // 3. Quem paga a aula com pacote (turma de pacote, matricula paga com pacote
+  // ou vinculo "package"): saldo.
   const entries = [...enrolledEntries, ...reservedEntries].map((entry) =>
-    paysWithPackage(g, entry.kind)
+    paysWithPackage(g, entry.kind, entry.studentId)
       ? { ...entry, ...packageRosterInfo(entry.studentId, id, g.modalityId, date) }
       : entry,
   );
@@ -565,12 +608,16 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
 }
 
 /**
- * Paga esta aula com pacote: matriculado em turma de pacote ou inscrito na aula
- * pelo pacote. Avulso e experimental nunca (o avulso tem a cobranca dele).
+ * Paga esta aula com pacote: matriculado em turma de pacote, matriculado em
+ * turma de mensalidade pagando com pacote ou inscrito na aula pelo pacote.
+ * Avulso e experimental nunca (o avulso tem a cobranca dele).
  */
-function paysWithPackage(g: ClassGroup, kind: SessionRosterKind | undefined): boolean {
+function paysWithPackage(g: ClassGroup, kind: SessionRosterKind | undefined, studentId: Id): boolean {
   if (kind === "package") return true;
-  return kind === "enrolled" && classBillingMode(g) === "package";
+  if (kind !== "enrolled") return false;
+  const mode = classBillingMode(g);
+  if (mode === "package") return true;
+  return mode === "membership" && Boolean(enrollmentOf(g.id, studentId)?.paysWithPackage);
 }
 
 /**
@@ -588,7 +635,7 @@ function syncAttendanceUsage(sessionId: Id, studentId: Id, status?: AttendanceSt
     classGroupId: g.id,
     modalityId: g.modalityId,
     date: p.date,
-    status: paysWithPackage(g, kind) ? status : undefined,
+    status: paysWithPackage(g, kind, studentId) ? status : undefined,
   });
 }
 
@@ -900,13 +947,48 @@ export const turmasService = {
       }
       validateStudentScheduleConflict(payload.studentId, g.id);
       const course = resolveCourseChoice(g, payload.course);
+      const withPackage = resolvePaysWithPackage(g, student.id, payload.paysWithPackage);
       if (!opts.allowOverCapacity && activeEnrollments(g.id).length >= g.capacity) {
         throw apiError("CLASS_FULL", `Turma lotada (${g.capacity} vagas).`, {
           httpStatus: 409,
         });
       }
-      const enrollment = createEnrollment(g, student.id, course);
+      const enrollment = createEnrollment(g, student.id, course, withPackage);
       return clone(toEnrollmentView(enrollment));
+    });
+  },
+
+  /**
+   * Troca como o aluno paga a turma de mensalidade: com pacote (cada presenca
+   * daqui em diante gasta uma aula) ou pela mensalidade. Aulas ja gastas ficam.
+   */
+  setEnrollmentPayment(id: Id, paysWithPackage: boolean): Promise<EnrollmentView> {
+    return simulateWrite(() => {
+      const e = store.enrollments.find((x) => x.id === id);
+      if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
+      const g = store.classGroups.find((x) => x.id === e.classGroupId);
+      if (!g) throw notFoundError("Turma não encontrada.");
+      if (classBillingMode(g) !== "membership") {
+        throw apiError("VALIDATION", "Só a turma de mensalidade permite escolher como o aluno paga.", {
+          httpStatus: 422,
+        });
+      }
+      if (Boolean(e.paysWithPackage) === paysWithPackage) return clone(toEnrollmentView(e));
+      if (paysWithPackage) {
+        resolvePaysWithPackage(g, e.studentId, true);
+        e.paysWithPackage = true;
+      } else {
+        delete e.paysWithPackage;
+      }
+      const name = studentName(e.studentId);
+      auditLogService.record({
+        action: "updated",
+        target: { type: "enrollment", id: e.id, label: `${name} em ${g.name}` },
+        predicate: paysWithPackage
+          ? `passou ${name} a pagar a turma ${g.name} com pacote`
+          : `passou ${name} a pagar a turma ${g.name} com mensalidade`,
+      });
+      return clone(toEnrollmentView(e));
     });
   },
 
@@ -1262,7 +1344,7 @@ export const turmasService = {
       const choice = resolveCourseChoice(g, course);
       w.status = "promoted";
       renumberWaitlist(g.id);
-      const enrollment = createEnrollment(g, student.id, choice);
+      const enrollment = createEnrollment(g, student.id, choice, defaultPaysWithPackage(g, student));
       return clone(toEnrollmentView(enrollment));
     });
   },

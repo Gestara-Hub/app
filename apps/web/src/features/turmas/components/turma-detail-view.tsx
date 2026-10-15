@@ -13,11 +13,13 @@ import {
   GraduationCap,
   Lock,
   MessageSquarePlus,
+  Package,
   Pencil,
   Search,
   UserCheck,
   UserPlus,
   UserX,
+  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -55,12 +57,14 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import { todayISO } from "@gestarahub/core/date";
 import { formatCents, formatPhone, plural, pluralWord } from "@gestarahub/core/format";
 import { classBillingMode } from "@gestarahub/core/billing";
+import { pickPackageFor } from "@gestarahub/core/packages";
 import {
   isApiError,
   type ClassGroupView,
   type Client,
   type EnrollmentView,
   type Id,
+  type StudentPackageView,
   type WaitlistEntryView,
 } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
@@ -73,8 +77,10 @@ import {
   useEnrollments,
   usePromoteWaitlist,
   useRemoveFromWaitlist,
+  useSetEnrollmentPayment,
   useWaitlist,
 } from "../hooks/use-turmas";
+import { useStudentPackages } from "../hooks/use-packages";
 import { EndedBadge, slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
@@ -241,6 +247,7 @@ export function TurmaDetailView({
   const { data: categories } = useCategories();
   const { data: waitlist } = useWaitlist(id);
   const cancelMut = useCancelEnrollment();
+  const paymentMut = useSetEnrollmentPayment();
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
@@ -304,6 +311,25 @@ export function TurmaDetailView({
   );
   const { data: assessmentsView } = useClassAssessments(id, hasAssessments);
 
+  // Turma de mensalidade: alunos com pacote da modalidade podem pagar com ele.
+  const isMembership = turma ? classBillingMode(turma) === "membership" : false;
+  const { data: activePackages } = useStudentPackages(
+    { status: "active" },
+    isMembership && canManage,
+  );
+  const packageStudentIds = useMemo(() => {
+    const byStudent = new Map<Id, StudentPackageView[]>();
+    for (const p of activePackages ?? []) {
+      byStudent.set(p.studentId, [...(byStudent.get(p.studentId) ?? []), p]);
+    }
+    const today = todayISO();
+    const ids = new Set<Id>();
+    for (const [studentId, owned] of byStudent) {
+      if (pickPackageFor(owned, { modalityId: turma?.modalityId, date: today })) ids.add(studentId);
+    }
+    return ids;
+  }, [activePackages, turma?.modalityId]);
+
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
   }
@@ -361,6 +387,27 @@ export function TurmaDetailView({
       }
       return next;
     });
+  };
+
+  const changePayment = async (enrollment: EnrollmentView, paysWithPackage: boolean) => {
+    const ok = await confirmAction({
+      title: paysWithPackage ? "Pagar com pacote?" : "Pagar com mensalidade?",
+      description: paysWithPackage
+        ? `Cada presença de ${enrollment.studentName} nesta turma passa a gastar uma aula do pacote. Aulas já dadas não mudam.`
+        : `As presenças de ${enrollment.studentName} nesta turma deixam de gastar o pacote. A cobrança segue o plano do aluno.`,
+      confirmLabel: paysWithPackage ? "Pagar com pacote" : "Pagar com mensalidade",
+      variant: "default",
+    });
+    if (!ok) return;
+    paymentMut.mutate(
+      { id: enrollment.id, paysWithPackage },
+      {
+        onSuccess: () =>
+          toast.success(paysWithPackage ? "Agora paga com pacote." : "Agora paga com mensalidade."),
+        onError: (err) =>
+          toast.error(getErrorMessage(err, "Não foi possível trocar a forma de pagamento.")),
+      },
+    );
   };
 
   const cancelOne = async (enrollment: EnrollmentView) => {
@@ -637,9 +684,33 @@ export function TurmaDetailView({
                             },
                           ]
                         : [];
+                    // So turma de mensalidade: voltar para a mensalidade sempre;
+                    // pagar com pacote so quem tem pacote valido da modalidade.
+                    const payment: ListItemAction[] = !isMembership
+                      ? []
+                      : e.paysWithPackage
+                        ? [
+                            {
+                              key: "pay-membership",
+                              label: "Pagar com mensalidade",
+                              icon: <Wallet className="size-4" />,
+                              onSelect: () => changePayment(e, false),
+                            },
+                          ]
+                        : packageStudentIds.has(e.studentId)
+                          ? [
+                              {
+                                key: "pay-package",
+                                label: "Pagar com pacote",
+                                icon: <Package className="size-4" />,
+                                onSelect: () => changePayment(e, true),
+                              },
+                            ]
+                          : [];
                     const actions: ListItemAction[] = canManage
                       ? [
                           ...certificate,
+                          ...payment,
                           ...(student
                             ? [
                                 {
@@ -694,6 +765,14 @@ export function TurmaDetailView({
                               ) : (
                                 <span className="truncate text-sm font-medium">{e.studentName}</span>
                               )}
+                              {isMembership && e.paysWithPackage ? (
+                                <span
+                                  title="Cada presença gasta uma aula do pacote"
+                                  className="inline-flex items-center rounded-full border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"
+                                >
+                                  Pacote
+                                </span>
+                              ) : null}
                               {e.isCompleted ? (
                                 <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium leading-none text-emerald-700 dark:text-emerald-400">
                                   Concluído

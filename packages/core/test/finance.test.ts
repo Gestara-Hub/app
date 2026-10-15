@@ -241,6 +241,18 @@ describe("attributeMembershipsToTeachers", () => {
     { id: "g4", instructorId: "t3" },
   ];
 
+  it("turma de mensalidade paga com pacote pelo aluno nao recebe parte da mensalidade", () => {
+    const [a] = attributeMembershipsToTeachers({
+      memberships: [membership("c1", "a1", 20000)],
+      enrollments: [enroll("a1", "g1"), { ...enroll("a1", "g3"), paysWithPackage: true }],
+      classGroups,
+    });
+    assert.deepEqual(
+      a.shares.map((s) => [s.professionalId, s.amountCents]),
+      [["t1", 20000]],
+    );
+  });
+
   it("divide igualmente entre os titulares distintos", () => {
     const [a] = attributeMembershipsToTeachers({
       memberships: [membership("c1", "a1", 20000)],

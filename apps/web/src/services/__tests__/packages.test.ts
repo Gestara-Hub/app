@@ -580,6 +580,101 @@ describe("pacote: aluno entra na aula pelo pacote", () => {
   });
 });
 
+describe("pacote: aluno de pacote em turma de mensalidade", () => {
+  const membershipClass = () => teacherClass({ billingMode: "membership" });
+
+  it("matrícula paga com pacote gasta na chamada e mostra o saldo", async () => {
+    const g = await membershipClass();
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const sold = await sell({ studentId: ana.id, packageId: pkg.id });
+    const e = await turmasService.enroll({ classGroupId: g.id, studentId: ana.id, paysWithPackage: true });
+    expect(e.paysWithPackage).toBe(true);
+    expect(lastAudit()).toBe("Ana Ribeiro matriculou Ana na turma Pilates manhã (paga com pacote)");
+
+    await turmasService.markAttendance({ sessionId: sessionOf(g), studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(1);
+    expect(await rosterEntry(sessionOf(g), ana.id)).toMatchObject({
+      kind: "enrolled",
+      packageRemaining: 9,
+      packageTotal: 10,
+    });
+  });
+
+  it("recusa sem pacote válido; nas outras formas de cobrança a escolha é ignorada", async () => {
+    const g = await membershipClass();
+    const ana = await createStudent("Ana");
+    await expect(
+      turmasService.enroll({ classGroupId: g.id, studentId: ana.id, paysWithPackage: true }),
+    ).rejects.toMatchObject({
+      fields: [{ field: "paysWithPackage", message: "Ana não tem pacote com aulas para esta modalidade." }],
+    });
+    expect(store.enrollments).toHaveLength(0);
+
+    const free = await teacherClass({ billingMode: "free" });
+    const e = await turmasService.enroll({ classGroupId: free.id, studentId: ana.id, paysWithPackage: true });
+    expect(e.paysWithPackage).toBeUndefined();
+  });
+
+  it("trocar como paga: com pacote e de volta para a mensalidade", async () => {
+    const g = await membershipClass();
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const sold = await sell({ studentId: ana.id, packageId: pkg.id });
+    const e = await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    await turmasService.markAttendance({ sessionId: sessionOf(g, "2026-09-14"), studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(0);
+
+    await turmasService.setEnrollmentPayment(e.id, true);
+    expect(lastAudit()).toBe("Ana Ribeiro passou Ana a pagar a turma Pilates manhã com pacote");
+    await turmasService.markAttendance({ sessionId: sessionOf(g), studentId: ana.id, status: "present" });
+    // A aula de 14/09 (antes da troca) continua sem gastar.
+    expect(stored(sold.id).lessonsUsed).toBe(1);
+
+    const back = await turmasService.setEnrollmentPayment(e.id, false);
+    expect(back.paysWithPackage).toBeUndefined();
+    expect(lastAudit()).toBe("Ana Ribeiro passou Ana a pagar a turma Pilates manhã com mensalidade");
+  });
+
+  it("trocar é recusado fora da turma de mensalidade e sem pacote", async () => {
+    const ana = await createStudent("Ana");
+    const g = await membershipClass();
+    const e = await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    await expect(turmasService.setEnrollmentPayment(e.id, true)).rejects.toMatchObject({
+      fields: [{ field: "paysWithPackage" }],
+    });
+
+    const pkgClass = await teacherClass();
+    const e2 = await turmasService.enroll({ classGroupId: pkgClass.id, studentId: ana.id });
+    await expect(turmasService.setEnrollmentPayment(e2.id, true)).rejects.toMatchObject({
+      message: "Só a turma de mensalidade permite escolher como o aluno paga.",
+    });
+  });
+
+  it("quem paga com pacote não gera mensalidade pelo plano legado da turma", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const g = await teacherClass({ billingMode: "membership", planId: plan.id });
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    await sell({ studentId: ana.id, packageId: pkg.id });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id, paysWithPackage: true });
+    await billingService.listCharges({ competence: "2026-09" });
+    expect(store.charges.filter((c) => c.studentId === ana.id).map((c) => c.kind)).toEqual(["package"]);
+  });
+
+  it("da lista de espera: sem plano e com pacote, entra pagando com pacote", async () => {
+    const g = await teacherClass({ billingMode: "membership", capacity: 1 });
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const beto = await createStudent("Beto");
+    await sell({ studentId: beto.id, packageId: pkg.id });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    const w = await turmasService.addToWaitlist({ classGroupId: g.id, studentId: beto.id });
+    const promoted = await turmasService.promoteFromWaitlist(w.id);
+    expect(promoted.paysWithPackage).toBe(true);
+  });
+});
+
 describe("pacote: turma de pacote", () => {
   it("não pede plano nem valor e nunca gera mensalidade (nem com plano legado)", async () => {
     const plan = await createPlan("monthly", 15000);

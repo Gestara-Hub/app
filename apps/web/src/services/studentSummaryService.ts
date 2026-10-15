@@ -172,7 +172,8 @@ function enrollmentsOf(
       modalityId: g.modalityId,
       modalityName: g.modalityId ? store.categories.find((c) => c.id === g.modalityId)?.name : undefined,
       instructorName: store.professionals.find((p) => p.id === g.instructorId)?.name ?? "",
-      billingMode: classBillingMode(g),
+      // Aluno de pacote em turma de mensalidade aparece como pacote.
+      billingMode: e.paysWithPackage && classBillingMode(g) === "membership" ? "package" : classBillingMode(g),
       state,
       enrolledAt: e.enrolledAt,
       canceledAt: e.canceledAt,

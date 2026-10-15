@@ -19,9 +19,12 @@ import { normalizeText } from "@/lib/text";
 import { formatPhone, plural } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { classBillingMode } from "@gestarahub/core/billing";
-import type { ClassGroupView, EnrollmentCourseChoice, Id } from "@gestarahub/contracts";
+import { todayISO } from "@gestarahub/core/date";
+import { pickPackageFor } from "@gestarahub/core/packages";
+import type { ClassGroupView, Client, EnrollmentCourseChoice, Id, StudentPackageView } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
 import { useAddToWaitlist, useEnroll } from "../hooks/use-turmas";
+import { useStudentPackages } from "../hooks/use-packages";
 import {
   applyCourseErrors,
   coursePaymentDefaults,
@@ -65,6 +68,25 @@ export function EnrollStudentsDialog({
   // Curso: o pagamento escolhido vale para cada aluno selecionado.
   const isCourse = classBillingMode(turma) === "course";
   const courseForm = useCoursePaymentForm(turma);
+  // Mensalidade: quem tem pacote da modalidade escolhe como paga esta turma.
+  const isMembership = classBillingMode(turma) === "membership";
+  const { data: activePackages } = useStudentPackages({ status: "active" }, open && isMembership);
+  const packageStudentIds = useMemo(() => {
+    const byStudent = new Map<Id, StudentPackageView[]>();
+    for (const p of activePackages ?? []) {
+      byStudent.set(p.studentId, [...(byStudent.get(p.studentId) ?? []), p]);
+    }
+    const today = todayISO();
+    const ids = new Set<Id>();
+    for (const [studentId, owned] of byStudent) {
+      if (pickPackageFor(owned, { modalityId: turma.modalityId, date: today })) ids.add(studentId);
+    }
+    return ids;
+  }, [activePackages, turma.modalityId]);
+  const [paymentChoice, setPaymentChoice] = useState<Map<Id, boolean>>(new Map());
+  // Padrao: com pacote e sem plano, paga com pacote; com plano, mensalidade.
+  const paysWithPackageOf = (c: Client) =>
+    packageStudentIds.has(c.id) && (paymentChoice.get(c.id) ?? !c.planId);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
   const [pending, setPending] = useState(false);
@@ -150,6 +172,16 @@ export function EnrollStudentsDialog({
     [clients, selected],
   );
 
+  const withPackage = isMembership ? selectedList.filter((c) => packageStudentIds.has(c.id)) : [];
+  // Sem plano, sem pacote e sem bolsa: a matricula nao gera cobranca (so avisa).
+  const withoutPayment = isMembership
+    ? selectedList.filter((c) => !packageStudentIds.has(c.id) && !c.planId && !c.discount?.scholarship)
+    : [];
+  // Tem pacote, mas escolheu Mensalidade sem ter plano: tambem nao gera cobranca.
+  const membershipWithoutPlan = withPackage.filter(
+    (c) => !paysWithPackageOf(c) && !c.planId && !c.discount?.scholarship,
+  );
+
   const remaining = Math.max(turma.availableSpots, 0);
   const isFull = remaining <= 0;
   const overCapacity = selected.size > remaining;
@@ -174,6 +206,7 @@ export function EnrollStudentsDialog({
   const reset = () => {
     setSearch("");
     setSelected(new Set());
+    setPaymentChoice(new Map());
     courseForm.reset(coursePaymentDefaults(turma));
   };
 
@@ -197,7 +230,12 @@ export function EnrollStudentsDialog({
     for (const student of selectedList) {
       try {
         await enrollMut.mutateAsync({
-          payload: { classGroupId: turma.id, studentId: student.id, course },
+          payload: {
+            classGroupId: turma.id,
+            studentId: student.id,
+            course,
+            paysWithPackage: isMembership ? paysWithPackageOf(student) : undefined,
+          },
           allowOverCapacity: true,
         });
         ok += 1;
@@ -458,6 +496,43 @@ export function EnrollStudentsDialog({
           />
         ) : null}
 
+        {withPackage.length > 0 ? (
+          <div className="space-y-2 rounded-md border p-3">
+            <p className="text-sm font-medium">Como paga esta turma</p>
+            {withPackage.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-sm">{c.name}</span>
+                <PaymentToggle
+                  name={c.name}
+                  withPackage={paysWithPackageOf(c)}
+                  disabled={pending}
+                  onChange={(next) =>
+                    setPaymentChoice((prev) => new Map(prev).set(c.id, next))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {withoutPayment.length > 0 ? (
+          <p className="text-xs text-amber-700 dark:text-amber-500">
+            {withoutPayment.length === 1
+              ? `${withoutPayment[0].name} não tem plano nem pacote.`
+              : `Sem plano nem pacote: ${withoutPayment.map((c) => c.name).join(", ")}.`}{" "}
+            A matrícula não gera cobrança.
+          </p>
+        ) : null}
+
+        {membershipWithoutPlan.length > 0 ? (
+          <p className="text-xs text-amber-700 dark:text-amber-500">
+            {membershipWithoutPlan.length === 1
+              ? `${membershipWithoutPlan[0].name} não tem plano.`
+              : `Sem plano: ${membershipWithoutPlan.map((c) => c.name).join(", ")}.`}{" "}
+            Com Mensalidade, não gera cobrança nem gasta o pacote.
+          </p>
+        ) : null}
+
         <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
           <Link href="/clients">
             <UserPlus className="size-4" />
@@ -507,5 +582,45 @@ export function EnrollStudentsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Mensalidade ou Pacote, por aluno (so quem tem pacote da modalidade). */
+function PaymentToggle({
+  name,
+  withPackage,
+  disabled,
+  onChange,
+}: {
+  name: string;
+  withPackage: boolean;
+  disabled?: boolean;
+  onChange: (withPackage: boolean) => void;
+}) {
+  const option = (label: string, value: boolean) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(value)}
+      aria-pressed={withPackage === value}
+      className={cn(
+        "inline-flex h-full items-center rounded-xs px-2.5 text-xs font-medium transition-colors",
+        withPackage === value
+          ? "bg-muted text-foreground shadow-2xs"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      role="group"
+      aria-label={`Como ${name} paga`}
+      className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background p-0.5 shadow-2xs"
+    >
+      {option("Mensalidade", false)}
+      {option("Pacote", true)}
+    </div>
   );
 }

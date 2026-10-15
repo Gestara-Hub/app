@@ -221,7 +221,7 @@ function activeStudentsInPlan(planId: Id): number {
   for (const e of store.enrollments) {
     if (e.status !== "active") continue;
     const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    if (!turma || turma.planId !== planId || classBillingMode(turma) !== "membership") continue;
+    if (!turma || turma.planId !== planId || classBillingMode(turma) !== "membership" || e.paysWithPackage) continue;
     const student = store.clients.find((c) => c.id === e.studentId);
     if (student && student.status === "active" && !student.planId) ids.add(student.id);
   }
@@ -442,8 +442,9 @@ function generateMembershipChargesFor(competence: string): number {
     // Bolsista integral sem plano nao herda o plano da turma.
     if (!student || student.planId || isPlanlessScholar(student) || student.status !== "active") continue;
     const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    // Curso e turma sem cobranca nunca geram mensalidade pelo plano da turma.
-    if (!turma || classBillingMode(turma) !== "membership") continue;
+    // Curso, turma sem cobranca e quem paga a turma com pacote nunca geram
+    // mensalidade pelo plano da turma.
+    if (!turma || classBillingMode(turma) !== "membership" || e.paysWithPackage) continue;
     const plan = turma.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
     if (!plan) continue;
 

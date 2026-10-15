@@ -229,7 +229,7 @@ function enrollmentsActiveOn(date: DateISO): TeacherPayEnrollment[] {
         (e.status === "active" ||
           (e.canceledAt !== undefined && localDateOf(e.canceledAt) > date)),
     )
-    .map((e) => ({ studentId: e.studentId, classGroupId: e.classGroupId }));
+    .map((e) => ({ studentId: e.studentId, classGroupId: e.classGroupId, paysWithPackage: e.paysWithPackage }));
 }
 
 /** Matriculas que valeram em algum dia da competencia. */
@@ -243,7 +243,7 @@ function enrollmentsDuring(competence: string): TeacherPayEnrollment[] {
         (e.status === "active" ||
           (e.canceledAt !== undefined && localDateOf(e.canceledAt) >= first)),
     )
-    .map((e) => ({ studentId: e.studentId, classGroupId: e.classGroupId }));
+    .map((e) => ({ studentId: e.studentId, classGroupId: e.classGroupId, paysWithPackage: e.paysWithPackage }));
 }
 
 /** Competencia da cobranca para o %: inicio do periodo ou, sem ele, a competencia gravada. */

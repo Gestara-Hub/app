@@ -295,6 +295,8 @@ export interface TeacherPayClassGroup {
 export interface TeacherPayEnrollment {
   studentId: Id;
   classGroupId: Id;
+  /** Aluno que paga esta turma de mensalidade com pacote (nao recebe parte da mensalidade). */
+  paysWithPackage?: boolean;
 }
 
 /** Mensalidade paga (membership) com `periodStart` na competencia. */
@@ -364,16 +366,21 @@ export function attributeMembershipsToTeachers(input: {
     input.classGroups.filter((g) => (g.billingMode ?? "membership") === "membership").map((g) => g.id),
   );
   const groupsByStudent = new Map<Id, Set<Id>>();
+  // Turma de mensalidade paga com pacote por este aluno: ja paga pelo pacote.
+  const paidWithPackage = new Set<string>();
   for (const e of input.enrollments) {
     if (!instructorOf.has(e.classGroupId)) continue;
     const set = groupsByStudent.get(e.studentId) ?? new Set<Id>();
     set.add(e.classGroupId);
     groupsByStudent.set(e.studentId, set);
+    if (e.paysWithPackage) paidWithPackage.add(`${e.studentId}|${e.classGroupId}`);
   }
 
   return input.memberships.map((m) => {
     const all = [...(groupsByStudent.get(m.studentId) ?? [])];
-    const membershipOnly = all.filter((g) => isMembershipClass.has(g));
+    const membershipOnly = all.filter(
+      (g) => isMembershipClass.has(g) && !paidWithPackage.has(`${m.studentId}|${g}`),
+    );
     let groups = membershipOnly.length > 0 ? membershipOnly : all;
     if (groups.length === 0 && m.classGroupId && instructorOf.has(m.classGroupId)) {
       groups = [m.classGroupId];

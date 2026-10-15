@@ -112,11 +112,21 @@ export interface Enrollment {
   cancellationReason?: string;
   /** So em turma de curso: o que o aluno escolheu pagar. */
   course?: EnrollmentCourse;
+  /**
+   * So em turma de mensalidade: este aluno paga as aulas com o pacote dele
+   * (cada presenca gasta uma aula, como na turma de pacote). Ausente = segue a
+   * turma. Permite alunos de mensalidade e de pacote na mesma turma.
+   */
+  paysWithPackage?: boolean;
 }
 
-/** `course` e obrigatorio quando a turma e um curso (ignorado nas demais). */
+/**
+ * `course` e obrigatorio quando a turma e um curso (ignorado nas demais).
+ * `paysWithPackage` so vale em turma de mensalidade.
+ */
 export type CreateEnrollment = Pick<Enrollment, "classGroupId" | "studentId"> & {
   course?: EnrollmentCourseChoice;
+  paysWithPackage?: boolean;
 };
 
 /** Parcelas do curso da matricula por situacao (cancelar matricula mostra as futuras). */

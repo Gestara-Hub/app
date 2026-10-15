@@ -150,3 +150,17 @@ Decisões tomadas na implementação:
 **Relatórios novos (grátis, operacionais)**
 - **Cursos:** por turma de curso no mês: matriculados, concluídos, cancelados, contratado, recebido e em aberto (totais do curso); cartões com "Recebido no mês".
 - **Pacotes de aulas:** por pacote: vendidos e aulas vendidas no mês, aulas usadas no mês, saldo de aulas hoje, recebido no mês. Os dois exportam CSV e mostram vazio sem dados.
+
+## 11. Mensalidade e pacote na mesma turma (15/10/2026)
+
+Problema: numa turma de mensalidade, o aluno de pacote matriculado não gastava o pacote, e, sem plano, fazia aula sem cobrança e sem aviso. Só funcionava inscrevendo aula por aula pelo vínculo "package".
+
+O que mudou: a forma da turma vira o padrão, e a **matrícula** pode pagar diferente.
+
+- **`Enrollment.paysWithPackage`** (só em turma de mensalidade): cada presença gasta uma aula do pacote, como na turma de pacote. Saldo e "Sem pacote" aparecem na chamada; a matrícula não gera mensalidade pelo plano legado da turma.
+- **Matricular alunos:** quem tem pacote válido da modalidade ganha a escolha "Como paga esta turma" (Mensalidade ou Pacote). Padrão: sem plano, Pacote; com plano, Mensalidade. Quem não tem plano, pacote nem bolsa recebe o aviso "não tem plano nem pacote. A matrícula não gera cobrança" (não bloqueia: pode ser cortesia).
+- **Trocar depois:** no menu do aluno na turma, "Pagar com pacote" (só com pacote válido) ou "Pagar com mensalidade", com confirmação e auditoria. Vale daqui em diante; aulas já gastas ou não gastas ficam como estão.
+- **Promover da lista de espera** usa o mesmo padrão (sem plano e com pacote, paga com pacote).
+- **Selo "Pacote"** na linha do aluno da turma; na ficha do aluno a matrícula aparece como pacote.
+- **% do professor:** a turma de mensalidade paga com pacote por aquele aluno não recebe parte da mensalidade dele; a aula entra na linha de pacotes, como na turma de pacote.
+- O servidor recusa pagar com pacote sem pacote válido para a modalidade hoje e fora da turma de mensalidade (curso, pacote e sem cobrança já decidem pela turma).

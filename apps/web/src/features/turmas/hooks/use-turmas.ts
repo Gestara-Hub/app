@@ -117,6 +117,16 @@ export function useEnroll() {
   });
 }
 
+/** Turma de mensalidade: o aluno passa a pagar com pacote ou volta para a mensalidade. */
+export function useSetEnrollmentPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, paysWithPackage }: { id: Id; paysWithPackage: boolean }) =>
+      turmasService.setEnrollmentPayment(id, paysWithPackage),
+    onSuccess: () => invalidateEnrollmentMoney(qc),
+  });
+}
+
 export function useCancelEnrollment() {
   const qc = useQueryClient();
   return useMutation({
