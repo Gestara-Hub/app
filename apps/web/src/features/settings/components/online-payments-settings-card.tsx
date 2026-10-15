@@ -205,7 +205,7 @@ function OnlinePaymentsForm({
             <SwitchField<Values>
               name="enabled"
               label="Cobrar online"
-              hint="Liga o Pix, o link de pagamento e o Pix Automático para esta academia."
+              hint="Liga o Pix, o link de pagamento e o Pix Automático para este espaço."
               disabled={disabled}
             />
 

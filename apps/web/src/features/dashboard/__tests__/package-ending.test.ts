@@ -30,15 +30,54 @@ describe("Para fazer hoje: pacotes acabando", () => {
     ).toEqual(["expired:expired", "soon:expiring", "last:last_lesson"]);
   });
 
-  it("fora da janela não entra: vence em 8 dias, venceu há 8 dias, saldo folgado, usado até o fim", () => {
+  it("fora da janela não entra: vence em 8 dias, venceu há 8 dias, saldo folgado", () => {
     expect(
       ids([
         pkg("far", { expiresAt: "2026-10-22" }),
         pkg("old", { expiresAt: "2026-10-06" }),
         pkg("plenty"),
-        pkg("usedUp", { lessonsUsed: 10 }),
       ]),
     ).toEqual([]);
+  });
+
+  it("usado até o fim e ainda válido entra como \"Aulas acabaram\"", () => {
+    expect(
+      ids([
+        pkg("noExpiry", { lessonsUsed: 10 }),
+        pkg("validLong", { lessonsUsed: 10, expiresAt: "2026-12-01" }),
+        // Sem aulas e vencendo em breve: o que importa e que as aulas acabaram.
+        pkg("validSoon", { lessonsUsed: 10, expiresAt: "2026-10-16" }),
+      ]),
+    ).toEqual(["validSoon:used_up", "validLong:used_up", "noExpiry:used_up"]);
+  });
+
+  it("usado até o fim e vencido segue a regra do vencido (até 7 dias)", () => {
+    expect(
+      ids([
+        pkg("recent", { lessonsUsed: 10, expiresAt: "2026-10-10" }),
+        pkg("long", { lessonsUsed: 10, expiresAt: "2026-10-01" }),
+      ]),
+    ).toEqual(["recent:expired"]);
+  });
+
+  it("usado até o fim sai com pacote novo nas mesmas modalidades", () => {
+    expect(
+      ids([
+        pkg("usedUp", { studentId: "ana", lessonsUsed: 10, modalityIds: ["pilates"] }),
+        pkg("bought", { studentId: "ana", purchasedAt: "2026-10-12", modalityIds: ["pilates"] }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("ordem: vencidos, sem aulas, vencendo, última aula", () => {
+    expect(
+      ids([
+        pkg("last", { lessonsUsed: 9 }),
+        pkg("soon", { expiresAt: "2026-10-20" }),
+        pkg("usedUp", { lessonsUsed: 10 }),
+        pkg("gone", { expiresAt: "2026-10-13" }),
+      ]),
+    ).toEqual(["gone:expired", "usedUp:used_up", "soon:expiring", "last:last_lesson"]);
   });
 
   it("última aula perto de vencer conta como vencendo", () => {

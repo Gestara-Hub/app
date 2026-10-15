@@ -161,6 +161,8 @@ export function EnrollStudentsDialog({
       else next.add(id);
       return next;
     });
+    // Volta para a busca so com teclado fisico: no toque abriria o teclado.
+    if (window.matchMedia("(pointer: coarse)").matches) return;
     requestAnimationFrame(() => {
       const input = searchInputRef.current;
       if (!input) return;
@@ -285,7 +287,6 @@ export function EnrollStudentsDialog({
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            autoFocus
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => {

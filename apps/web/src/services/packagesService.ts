@@ -15,7 +15,7 @@ import type {
   StudentPackageView,
   UpdateLessonPackage,
 } from "@gestarahub/contracts";
-import { describeCharge, MAX_INSTALLMENTS, splitInstallments } from "@gestarahub/core/billing";
+import { MAX_INSTALLMENTS, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import {
   carriedLots,
@@ -447,11 +447,8 @@ export const packagesService = {
       store.studentPackages.push(sold);
       auditLogService.record({
         action: "created",
-        target: {
-          type: "charge",
-          id: charges[0].id,
-          label: describeCharge({ kind: "package", description: catalog.name }, student.name),
-        },
+        // Mesmo alvo do cancelamento: o filtro "Pacote de aulas" mostra a venda.
+        target: { type: "lesson_package", id: sold.id, label: `${catalog.name} de ${student.name}` },
         predicate: `vendeu o pacote ${catalog.name} para ${student.name} (${formatCents(payload.priceCents)}${isSplit ? `, em ${parts.length} parcelas` : ""})${carry.lessons > 0 ? `, com ${plural(carry.lessons, "aula trazida", "aulas trazidas")} do pacote anterior` : ""}`,
       });
       return clone(toView(sold));

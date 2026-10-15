@@ -18,8 +18,13 @@ export function formatDuration(minutes: number): string {
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}min`;
 }
 
-/** ISO -> "27/06/2026". */
+/**
+ * ISO -> "27/06/2026". Data pura ("2026-06-27") sai como esta: `new Date()`
+ * a leria como meia-noite UTC e, no Brasil (UTC-3), mostraria o dia anterior.
+ */
 export function formatDate(iso: string): string {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (day) return `${day[3]}/${day[2]}/${day[1]}`;
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 

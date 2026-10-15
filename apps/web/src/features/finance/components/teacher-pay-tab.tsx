@@ -312,14 +312,15 @@ function TeacherPaySkeleton() {
       <div className="overflow-hidden rounded-xl border border-border/60">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between gap-4 border-b border-border/40 px-4 py-3.5 last:border-b-0 sm:px-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-full" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-3 w-52" />
+            {/* min-w-0/max-w-full: no celular o esqueleto encolhe em vez de sair da tela. */}
+            <div className="flex min-w-0 items-center gap-3">
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="min-w-0 space-y-1.5">
+                <Skeleton className="h-4 w-36 max-w-full" />
+                <Skeleton className="h-3 w-52 max-w-full" />
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className="shrink-0 space-y-1.5">
               <Skeleton className="ml-auto h-4 w-20" />
               <Skeleton className="ml-auto h-3 w-14" />
             </div>

@@ -27,7 +27,7 @@ Responde às dores da pesquisa: "não sei quanto lucrei", contas misturadas, men
 
 ### 3.1 Nome
 
-`Plan` já é o plano de mensalidade do aluno. O plano do GestaraHub se chama **assinatura** no código (`Subscription`) e **"Plano GestaraHub"** na tela (Configurações), para não confundir com "Planos" do menu.
+`Plan` já é o plano de mensalidade do aluno. O plano do GestaraHub se chama **assinatura** no código (`Subscription`) e **"Plano GestaraHub"** na tela (Configurações), para não confundir com "Planos e pacotes" do menu.
 
 ### 3.2 Contrato
 

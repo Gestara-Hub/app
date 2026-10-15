@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useModalityVocabulary, useSegmentVocabulary } from "@/features/settings";
 
@@ -34,6 +35,10 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
       ? undefined
       : ((categories ?? []).find((c) => c.name === sheetModalityName) ?? { name: sheetModalityName }),
   );
+
+  // Exportar (CSV e PDF/impressao) exige `reports:export`: o atendente so ve.
+  const can = useCan();
+  const canExport = can("reports:export");
 
   const handlePrint = () => {
     window.print();
@@ -96,7 +101,11 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
         csvContent += `Despesas Operacionais;${(report.data.operatingExpensesCents / 100).toFixed(2)}\n`;
         csvContent += `Resultado Operacional;${(report.data.operationalResultCents / 100).toFixed(2)}\n`;
         csvContent += `Margem Operacional;${report.data.operatingMarginPercent}%\n\n`;
-        csvContent += "Despesas Detalhadas;Valor;%\n";
+        csvContent += "Receitas Detalhadas;Valor;%\n";
+        report.data.incomeCategories.forEach((cat) => {
+          csvContent += `"${cat.name}";"${(cat.amountCents / 100).toFixed(2)}";"${cat.percent}%"\n`;
+        });
+        csvContent += "\nDespesas Detalhadas;Valor;%\n";
         report.data.expenseCategories.forEach((cat) => {
           csvContent += `"${cat.name}";"${(cat.amountCents / 100).toFixed(2)}";"${cat.percent}%"\n`;
         });
@@ -118,7 +127,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `relatorio-${report.type}-${header.periodLabel.replace(/\s+/g, "_")}.csv`);
+    link.setAttribute("download", `relatorio-${report.type}-${header.periodLabel.replace(/[\s/]+/g, "_")}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -141,6 +150,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
           Voltar aos Relatórios
         </Button>
 
+        {canExport ? (
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -161,6 +171,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
             Imprimir / Salvar em PDF
           </Button>
         </div>
+        ) : null}
       </div>
 
       {/* Printable Sheet Container */}
@@ -645,6 +656,18 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                 </span>
               </div>
 
+              {/* Uma linha por origem (mensalidades, cursos, pacotes, avulsas, receitas manuais) */}
+              {report.data.incomeCategories.length > 0 ? (
+                <div className="divide-y divide-border/60 pl-6 pr-3.5 text-xs text-muted-foreground">
+                  {report.data.incomeCategories.map((cat) => (
+                    <div key={cat.name} className="py-2 flex items-center justify-between">
+                      <span>{cat.name} ({cat.percent}%)</span>
+                      <span>{formatCents(cat.amountCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               {report.data.deductionsCents > 0 ? (
                 <div className="pl-6 pr-3.5 py-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>(-) Taxas de pagamento</span>
@@ -737,7 +760,7 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
               <table className="w-full text-xs text-left">
                 <thead className="bg-muted/50 print:bg-zinc-100 text-muted-foreground print:text-zinc-700 uppercase font-semibold border-b border-border print:border-zinc-300">
                   <tr>
-                    <th className="py-2.5 px-3">Modalidade</th>
+                    <th className="py-2.5 px-3">Turma</th>
                     <th className="py-2.5 px-3 text-center">Alunos Ativos</th>
                     <th className="py-2.5 px-3 text-center">Taxa de Churn</th>
                     <th className="py-2.5 px-3 text-center">Retenção</th>

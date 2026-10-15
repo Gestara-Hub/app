@@ -350,6 +350,55 @@ describe("pacote: cancelar a venda", () => {
   });
 });
 
+describe("pacote: vender de novo", () => {
+  it("vender com um pacote em uso funciona: renova e traz o saldo inteiro", async () => {
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const first = await sell({ studentId: ana.id, packageId: pkg.id });
+    const second = await sell({ studentId: ana.id, packageId: pkg.id });
+    expect(second).toMatchObject({ status: "active", lessonsTotal: 20, carriedOverLessons: 10, remaining: 20 });
+    expect(stored(first.id)).toMatchObject({ status: "renewed", renewedIntoId: second.id });
+    expect(packageCharges(ana.id)).toHaveLength(2);
+
+    // E uma terceira venda em seguida, sobre a renovação.
+    const third = await sell({ studentId: ana.id, packageId: pkg.id });
+    expect(third).toMatchObject({ lessonsTotal: 30, carriedOverLessons: 20, renewedFromId: second.id });
+    expect(owned(ana.id).map((p) => p.status).sort()).toEqual(["active", "renewed", "renewed"]);
+  });
+
+  it("depois de cancelar, vende outro pacote do zero", async () => {
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const first = await sell({ studentId: ana.id, packageId: pkg.id });
+    await packagesService.cancelStudentPackage(first.id);
+
+    const again = await sell({ studentId: ana.id, packageId: pkg.id, priceCents: 45000 });
+    expect(again).toMatchObject({ status: "active", lessonsTotal: 10, remaining: 10 });
+    expect(again.carriedOverLessons).toBeUndefined();
+    expect(again.renewedFromId).toBeUndefined();
+    expect(stored(first.id).status).toBe("canceled");
+    expect(packageCharges(ana.id).map((c) => [c.amountCents, c.status])).toEqual([
+      [50000, "canceled"],
+      [45000, "pending"],
+    ]);
+    const list = await packagesService.listStudentPackages({ studentId: ana.id });
+    expect(list.map((p) => p.status).sort()).toEqual(["active", "canceled"]);
+  });
+
+  it("cancelar a renovação e vender outro: o anterior volta e o saldo dele vem de novo", async () => {
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const first = await sell({ studentId: ana.id, packageId: pkg.id });
+    spend(first.id, 3);
+    const renewed = await sell({ studentId: ana.id, packageId: pkg.id });
+    await packagesService.cancelStudentPackage(renewed.id);
+
+    const again = await sell({ studentId: ana.id, packageId: pkg.id });
+    expect(again).toMatchObject({ lessonsTotal: 17, carriedOverLessons: 7, renewedFromId: first.id });
+    expect(stored(first.id)).toMatchObject({ status: "renewed", renewedIntoId: again.id });
+  });
+});
+
 describe("pacote: a chamada gasta aula (regra 4)", () => {
   it("presença gasta uma; falta conforme o pacote; justificada devolve; idempotente", async () => {
     const g = await teacherClass();

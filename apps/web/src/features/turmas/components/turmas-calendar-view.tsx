@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -70,9 +70,14 @@ function useCalendarFilters() {
   const searchParams = useSearchParams();
 
   const queryString = searchParams.toString();
+  // Ultima query pedida que o router ainda nao aplicou: cliques seguidos (duas
+  // semanas para frente, dois filtros) partem dela, senao um apaga o outro.
+  const pendingQuery = useRef<string | null>(null);
   useEffect(() => {
     rememberCalendarQuery(queryString);
+    if (pendingQuery.current === queryString) pendingQuery.current = null;
   }, [queryString]);
+  const currentParams = () => new URLSearchParams(pendingQuery.current ?? window.location.search);
 
   const weekParam = searchParams.get("week");
   const parsedWeek = weekParam ? parseISO(weekParam) : null;
@@ -87,12 +92,13 @@ function useCalendarFilters() {
   const update = (patch: Record<string, string | null>) => {
     // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
     // antes do re-render nao se apagam.
-    const params = new URLSearchParams(window.location.search);
+    const params = currentParams();
     for (const [key, value] of Object.entries(patch)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
     const query = params.toString();
+    pendingQuery.current = query;
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
@@ -100,6 +106,12 @@ function useCalendarFilters() {
   const setAnchor = (date: Date) => {
     const week = toISO(startOfWeek(date, { weekStartsOn: 1 }));
     update({ week: week === currentWeek ? null : week });
+  };
+  // Semana anterior/proxima a partir da ultima pedida (nao da renderizada).
+  const shiftWeek = (delta: number) => {
+    const pending = currentParams().get("week");
+    const parsed = pending ? parseISO(pending) : null;
+    setAnchor(addWeeks(parsed && isValid(parsed) ? parsed : new Date(), delta));
   };
   // Explicito: a escolha vale em qualquer largura de tela.
   const setView = (next: View) => update({ view: next });
@@ -114,6 +126,7 @@ function useCalendarFilters() {
     modality,
     instructor,
     setAnchor,
+    shiftWeek,
     setView,
     setModality,
     setInstructor,
@@ -128,6 +141,7 @@ export function TurmasCalendarView() {
     modality,
     instructor,
     setAnchor,
+    shiftWeek,
     setView,
     setModality,
     setInstructor,
@@ -186,7 +200,7 @@ export function TurmasCalendarView() {
             variant="outline"
             size="icon-sm"
             aria-label="Semana anterior"
-            onClick={() => setAnchor(addWeeks(anchor, -1))}
+            onClick={() => shiftWeek(-1)}
           >
             <ChevronLeft className="size-4" />
           </Button>
@@ -197,7 +211,7 @@ export function TurmasCalendarView() {
             variant="outline"
             size="icon-sm"
             aria-label="Próxima semana"
-            onClick={() => setAnchor(addWeeks(anchor, 1))}
+            onClick={() => shiftWeek(1)}
           >
             <ChevronRight className="size-4" />
           </Button>

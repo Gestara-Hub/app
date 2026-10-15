@@ -129,7 +129,7 @@ export function ReportsCatalogTab({
           className="h-7 text-xs"
           onClick={() => setCategoryFilter("operational")}
         >
-          Operacionais (Free)
+          Operacionais (Grátis)
         </Button>
         <Button
           variant={categoryFilter === "financial" ? "default" : "outline"}
@@ -188,7 +188,7 @@ export function ReportsCatalogTab({
                 <CardTitle className="text-base font-semibold mt-3">
                   {report.title}
                 </CardTitle>
-                <CardDescription className="text-xs line-clamp-2 leading-relaxed">
+                <CardDescription className="text-xs leading-relaxed">
                   {report.description}
                 </CardDescription>
               </CardHeader>

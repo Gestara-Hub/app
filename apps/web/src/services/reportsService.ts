@@ -28,6 +28,7 @@ import { ownLessons, packageState } from "@gestarahub/core/packages";
 import { format } from "date-fns";
 import { nowIso, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
+import { autoGenerateMembershipCharges } from "./billingService";
 import { assertFeature } from "./subscriptionService";
 
 const CATALOG: ReportMetadata[] = [
@@ -102,7 +103,7 @@ const CATALOG: ReportMetadata[] = [
 function buildHeader(periodLabel: string): ReportHeaderInfo {
   return {
     organizationName: store.organization.name,
-    organizationSegment: store.organization.segment || "Academia",
+    organizationSegment: store.organization.segment || "Espaço",
     unitName: store.unit.name,
     generatedAt: nowIso(),
     generatedBy: "Administração",
@@ -250,23 +251,28 @@ export const reportsService = {
             ? store.enrollments.filter((e) => e.classGroupId === classGroup.id && e.status === "active")
             : [];
 
+          // So os matriculados da turma (turma vazia = lista vazia).
           const enrolledStudentIds = new Set(enrollments.map((e) => e.studentId));
-          const targetClients =
-            enrolledStudentIds.size > 0
-              ? store.clients.filter((c) => enrolledStudentIds.has(c.id))
-              : store.clients;
+          const targetClients = store.clients.filter((c) => enrolledStudentIds.has(c.id));
+          // Aulas da turma no mes: o id da aula e "turma~AAAA-MM-DD~HH:mm".
+          const sessionPrefix = classGroup ? `${classGroup.id}~${competence}-` : null;
 
           const rows: AttendanceReportRow[] = targetClients.map((c) => {
-            const hasAttendance = store.attendances.some(
-              (a) => a.studentId === c.id && a.markedAt?.startsWith(competence),
-            );
+            const hasAttendance =
+              sessionPrefix !== null &&
+              store.attendances.some(
+                (a) => a.studentId === c.id && a.status === "present" && a.sessionId.startsWith(sessionPrefix),
+              );
 
             return {
               studentId: c.id,
               studentName: c.name,
-              belt: c.notes || "Geral",
+              // Nivel/faixa salvo na modalidade da turma (as observacoes do aluno
+              // nao sao faixa).
+              belt: (classGroup?.modalityId && c.progressions?.[classGroup.modalityId]?.levelName) || undefined,
               status: hasAttendance ? "present" : "absent",
-              checkInTime: hasAttendance ? "07:05" : undefined,
+              // Sem registro de horario de chegada no sistema.
+              checkInTime: undefined,
             };
           });
 
@@ -277,11 +283,13 @@ export const reportsService = {
 
           const data: AttendanceReportData = {
             header: buildHeader(periodLabel),
-            className: classGroup?.name || "Turma Geral",
-            modalityName: modality?.name || "Jiu-Jitsu",
-            teacherName: teacher?.name || "Prof. Titular",
-            sessionDate: `${competence}-10`,
-            sessionTime: "07:00 às 08:30",
+            // So dados reais: sem turma, sem nomes inventados.
+            className: classGroup?.name || "Nenhuma turma cadastrada",
+            modalityName: modality?.name || "—",
+            teacherName: teacher?.name || "—",
+            // Frequencia do mes inteiro (nao de uma aula so).
+            sessionDate: competence,
+            sessionTime: "",
             totalPresent,
             totalAbsent,
             occupancyRatePercent,
@@ -300,15 +308,15 @@ export const reportsService = {
             phone: c.phone || "Não informado",
             planName: (c.planId && plansById.get(c.planId)) || "Sem plano",
             dueDay: c.dueDay || 10,
+            // Aluno inativado continua com membershipStatus "active" no cadastro:
+            // o status do aluno manda.
             status:
-              c.membershipStatus === "active"
-                ? "active"
+              c.status !== "active"
+                ? "inactive"
                 : c.membershipStatus === "paused"
                 ? "paused"
-                : c.status === "active"
-                ? "active"
-                : "inactive",
-            belt: c.notes || undefined,
+                : "active",
+            belt: Object.values(c.progressions ?? {}).map((p) => p.levelName).join(", ") || undefined,
             enrolledAt: c.createdAt ? c.createdAt.slice(0, 10) : competence,
           }));
 
@@ -328,13 +336,18 @@ export const reportsService = {
         }
 
         case "billing_statement": {
+          // Mensalidades do mes nascem na leitura (como em Cobrancas e no Financeiro).
+          autoGenerateMembershipCharges(competence);
+          const today = format(new Date(), "yyyy-MM-dd");
           const clientsById = new Map(store.clients.map((c) => [c.id, c.name]));
 
-          // Filtra cobranças da competência selecionada
+          // Cobrancas da competencia, sem as canceladas nem as isentas (nao sao
+          // receita nem divida).
           const chargesForCompetence = store.charges.filter(
             (ch) =>
-              (ch.competence && ch.competence === competence) ||
-              (ch.dueDate && ch.dueDate.startsWith(competence)),
+              !VOID_STATUSES.has(ch.status) &&
+              ((ch.competence && ch.competence === competence) ||
+                (ch.dueDate && ch.dueDate.startsWith(competence))),
           );
 
           const rows: BillingStatementRow[] = chargesForCompetence.map((ch) => ({
@@ -342,7 +355,8 @@ export const reportsService = {
             studentName: clientsById.get(ch.studentId) || "Aluno",
             amountCents: ch.amountCents,
             dueDate: ch.dueDate,
-            status: ch.status === "paid" ? "paid" : ch.status === "overdue" ? "overdue" : "pending",
+            // Atraso e derivado: em aberto com vencimento passado esta atrasada.
+            status: ch.status === "paid" ? "paid" : ch.dueDate < today ? "overdue" : "pending",
             paidAt: ch.paidAt,
             paymentMethod: ch.method || undefined,
           }));
@@ -432,12 +446,14 @@ export const reportsService = {
 
           const categoriesById = new Map(store.financialCategories.map((c) => [c.id, c.name]));
 
-          // 1. Receitas de mensalidades pagas nesta competência
+          // 1. Cobrancas recebidas no mes (data local do pagamento, como o Resumo
+          // do Financeiro). "Competencia OU pagamento" contava duas vezes a
+          // cobranca de um mes paga no seguinte. Sem data de pagamento (dado
+          // antigo), vale a competencia.
           const paidCharges = store.charges.filter(
             (ch) =>
               ch.status === "paid" &&
-              ((ch.competence && ch.competence === competence) ||
-                (ch.paidAt && ch.paidAt.startsWith(competence))),
+              (ch.paidAt ? paidIn(ch, competence) : ch.competence === competence),
           );
           // Cada tipo de cobranca vira uma linha propria (mensalidade, aula avulsa, cobranca avulsa, curso, pacote).
           const CHARGE_INCOME_LABEL: Record<ChargeKind, string> = {
@@ -536,9 +552,10 @@ export const reportsService = {
         case "churn_retention": {
           assertFeature("reports_advanced");
 
-          const totalClients = store.clients.length;
+          // So dados reais (como os demais relatorios): espaco sem alunos sai
+          // zerado e a quebra por turma usa as matriculas de verdade.
           const activeStudentsEnd = store.clients.filter(
-            (c) => c.membershipStatus === "active" || c.status === "active",
+            (c) => c.status === "active" && c.membershipStatus !== "canceled",
           ).length;
 
           const cancellations = store.clients.filter(
@@ -549,12 +566,10 @@ export const reportsService = {
             c.createdAt ? c.createdAt.startsWith(competence) : false,
           ).length;
 
-          // Se tiver alunos reais cadastrados no store, calcula as taxas reais
-          const baseStart = Math.max(1, activeStudentsEnd - newEnrollments + cancellations);
-          const activeStudentsStart = totalClients > 0 ? baseStart : 118;
-          const finalActive = totalClients > 0 ? activeStudentsEnd : 128;
-          const finalNew = totalClients > 0 ? newEnrollments : 14;
-          const finalCancelled = totalClients > 0 ? cancellations : 4;
+          const activeStudentsStart = Math.max(0, activeStudentsEnd - newEnrollments + cancellations);
+          const finalActive = activeStudentsEnd;
+          const finalNew = newEnrollments;
+          const finalCancelled = cancellations;
           const netGrowth = finalNew - finalCancelled;
 
           const churnRatePercent =
@@ -563,21 +578,18 @@ export const reportsService = {
               : 0;
           const retentionRatePercent = Math.max(0, Math.min(100, 100 - churnRatePercent));
 
-          // Quebra por turmas/modalidades existentes
-          const modalitiesBreakdown =
-            store.classGroups.length > 0
-              ? store.classGroups.map((cg) => ({
-                  modalityName: cg.name,
-                  activeCount: store.enrollments.filter(
-                    (e) => e.classGroupId === cg.id && e.status === "active",
-                  ).length || 12,
-                  churnRatePercent: 2.8,
-                }))
-              : [
-                  { modalityName: "Jiu-Jitsu Adulto", activeCount: 76, churnRatePercent: 2.6 },
-                  { modalityName: "Jiu-Jitsu Kids", activeCount: 34, churnRatePercent: 2.9 },
-                  { modalityName: "No-Gi / Submission", activeCount: 18, churnRatePercent: 5.5 },
-                ];
+          // Quebra por turma: ativos e matriculas canceladas de cada uma.
+          const modalitiesBreakdown = store.classGroups.map((cg) => {
+            const enrollments = store.enrollments.filter((e) => e.classGroupId === cg.id);
+            const activeCount = enrollments.filter((e) => e.status === "active").length;
+            const canceledCount = enrollments.filter((e) => e.status === "canceled").length;
+            const base = activeCount + canceledCount;
+            return {
+              modalityName: cg.name,
+              activeCount,
+              churnRatePercent: base > 0 ? Math.round((canceledCount / base) * 1000) / 10 : 0,
+            };
+          });
 
           const data: ChurnReportData = {
             header: buildHeader(periodLabel),

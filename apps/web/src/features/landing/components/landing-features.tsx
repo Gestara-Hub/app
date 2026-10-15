@@ -15,7 +15,11 @@ const FEATURES = [
     title: "Gestão Financeira",
     description:
       "Mensalidades sob controle, visão clara de quem pagou e fechamento de repasse aos professores sem calculadora.",
-    points: ["Cobrança sem constrangimento", "Fechamento em 1 clique"],
+    points: [
+      "Mensalidade, curso fechado ou pacote de aulas",
+      "Cobrança sem constrangimento",
+      "Fechamento em 1 clique",
+    ],
     color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
   },
   {

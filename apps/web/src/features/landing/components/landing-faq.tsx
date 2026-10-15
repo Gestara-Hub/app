@@ -35,6 +35,11 @@ const FAQS = [
       "Você configura a trilha de evolução de acordo com a sua modalidade — seja por faixas e graus em lutas, níveis na dança e nos idiomas, módulos em cursos como música e confeitaria ou fases na natação. O sistema contabiliza as aulas de cada aluno e avisa automaticamente quando ele cumpre os critérios para avançar.",
   },
   {
+    question: "Dá para vender curso com valor fechado ou pacote de aulas?",
+    answer:
+      "Sim. O curso tem valor fechado e pode ser dividido em parcelas. O pacote tem um número de aulas, e a chamada desconta do saldo do aluno.",
+  },
+  {
     question: "Como funciona o cálculo de comissão e repasse de professores?",
     answer:
       "Você configura a regra de remuneração de cada instrutor (valor por aula ministrada, percentual por aluno ou valor fixo mensal). O sistema consolida as aulas dadas no mês e gera o fechamento financeiro pronto para quitação em 1 clique.",

@@ -4,15 +4,15 @@ import { modalitiesOverlap, packageState } from "@gestarahub/core/packages";
 
 /**
  * "Para fazer hoje": pacotes de aulas acabando (doc 20, fase D). Avisos da
- * regra 5 (ultima aula e 7 dias antes de vencer) e o vencido ha ate 7 dias,
- * para lembrar de renovar. Quem ja comprou outro pacote nas mesmas
- * modalidades sai da lista.
+ * regra 5 (ultima aula e 7 dias antes de vencer), o vencido ha ate 7 dias e o
+ * usado ate o fim ainda valido (doc 22, item 8), para lembrar de renovar.
+ * Quem ja comprou outro pacote nas mesmas modalidades sai da lista.
  */
 
 /** Vencido aparece por ate 7 dias depois do ultimo dia valido. */
 export const EXPIRED_RECENT_DAYS = 7;
 
-export type PackageEndingReason = "expired" | "expiring" | "last_lesson";
+export type PackageEndingReason = "expired" | "used_up" | "expiring" | "last_lesson";
 
 export interface PackageLike {
   id: Id;
@@ -49,17 +49,24 @@ function reasonOf(pkg: PackageLike, today: DateISO): PackageEndingReason | null 
     const ago = differenceInCalendarDays(parseISO(today), parseISO(pkg.expiresAt));
     return ago <= EXPIRED_RECENT_DAYS ? "expired" : null;
   }
+  if (state.isUsedUp) return "used_up";
   if (state.expiresSoon) return "expiring";
   if (state.isLastLesson) return "last_lesson";
   return null;
 }
 
-const REASON_RANK: Record<PackageEndingReason, number> = { expired: 0, expiring: 1, last_lesson: 2 };
+const REASON_RANK: Record<PackageEndingReason, number> = {
+  expired: 0,
+  used_up: 1,
+  expiring: 2,
+  last_lesson: 3,
+};
 
 /**
  * Pacotes ativos acabando hoje: na ultima aula, vencendo em ate 7 dias (com
- * saldo) ou vencidos ha ate 7 dias, sem pacote mais novo nas mesmas
- * modalidades. Ordem: vencidos, os que vencem primeiro, ultima aula.
+ * saldo), sem aulas (usado ate o fim, ainda valido) ou vencidos ha ate 7 dias,
+ * sem pacote mais novo nas mesmas modalidades. Ordem: vencidos, sem aulas, os
+ * que vencem primeiro, ultima aula.
  */
 export function selectEndingPackages<T extends PackageLike>(
   packages: readonly T[],
