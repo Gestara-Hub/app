@@ -32,6 +32,7 @@ function invalidateEnrollmentMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.teacherPay.all });
   qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
   qc.invalidateQueries({ queryKey: queryKeys.audit.all });
+  qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
 }
 
 // --- Turmas ---------------------------------------------------------------
@@ -157,6 +158,7 @@ export function useMarkAttendance() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+      qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
     },
   });
 }
@@ -169,6 +171,7 @@ export function useClearAttendance() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.classes.all });
       qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+      qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
     },
   });
 }

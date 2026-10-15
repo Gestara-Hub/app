@@ -1,4 +1,5 @@
 export { CommunicationView } from "./components/communication-view";
+export { StudentMessagesPanel } from "./components/student-messages-panel";
 export {
   useCommunicationMetrics,
   useConnectOfficialWhatsApp,

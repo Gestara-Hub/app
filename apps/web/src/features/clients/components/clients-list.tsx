@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Award,
   Ban,
+  ClipboardList,
   GraduationCap,
   Mail,
   MessageSquarePlus,
@@ -15,6 +18,7 @@ import {
   Receipt,
   RotateCw,
   Ticket,
+  UserRound,
   Users,
   Wallet,
 } from "lucide-react";
@@ -30,7 +34,6 @@ import {
   RecordStatusBadge,
   SearchInput,
   StatusFilterSelect,
-  ViewModeCoachmark,
   ViewModeSkeleton,
   ViewModeToggle,
   useViewMode,
@@ -61,6 +64,8 @@ import { useSegmentVocabulary } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import {
   StudentPackageBadge,
+  canSellPackageTo,
+  cancelablePackage,
   displayPackage,
   usePlans,
   useStudentPackages,
@@ -315,10 +320,6 @@ function ClientBillingBadges({
 
 const NO_PACKAGES: StudentPackageView[] = [];
 
-/** Pacote que ainda pode ser cancelado (em uso, sem aula usada): o mais recente. */
-function cancelablePackage(packages: StudentPackageView[]): StudentPackageView | undefined {
-  return packages.find((p) => p.status === "active" && p.lessonsUsed === 0);
-}
 
 interface ClientsListProps {
   canManage: boolean;
@@ -326,6 +327,8 @@ interface ClientsListProps {
   onEdit: (client: Client) => void;
   onOpenGraduation?: (client: Client) => void;
   onOpenRecords?: (client: Client) => void;
+  /** Boletim "Notas" (so quando alguma modalidade tem avaliacoes). */
+  onOpenGrades?: (client: Client) => void;
   /** Nova cobranca avulsa (so com permissao de cobranca). */
   onNewCharge?: (client: Client) => void;
   /** Venda e cancelamento de pacote de aulas (mesma permissao). */
@@ -344,6 +347,7 @@ function ClientRow({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onOpenGrades,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -359,6 +363,7 @@ function ClientRow({
   onEdit: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
+  onOpenGrades?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
@@ -369,9 +374,17 @@ function ClientRow({
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
   const cancelable = cancelablePackage(packages);
+  const router = useRouter();
+  const openProfile = () => router.push(`/clients/${client.id}`);
 
   const actions: ListItemAction[] = canManage
     ? [
+        {
+          key: "profile",
+          label: "Abrir ficha",
+          icon: <UserRound className="size-4" />,
+          onSelect: openProfile,
+        },
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -392,6 +405,16 @@ function ClientRow({
               },
             ]
           : []),
+        ...(isClasses && onOpenGrades
+          ? [
+              {
+                key: "grades",
+                label: "Notas",
+                icon: <ClipboardList className="size-4" />,
+                onSelect: () => onOpenGrades(client),
+              },
+            ]
+          : []),
         ...(isClasses && onNewCharge && isActive
           ? [
               {
@@ -402,7 +425,7 @@ function ClientRow({
               },
             ]
           : []),
-        ...(isClasses && onSellPackage && isActive
+        ...(isClasses && onSellPackage && canSellPackageTo(client)
           ? [
               {
                 key: "sell-package",
@@ -446,18 +469,9 @@ function ClientRow({
       ]
     : [];
 
-  const handleRowClick = () => {
-    if (isClasses && onOpenRecords) {
-      onOpenRecords(client);
-    } else {
-      onEdit(client);
-    }
-  };
-
   const content = (
     <ListRow
-      onClick={handleRowClick}
-      canClick={canManage}
+      onClick={openProfile}
       actions={
         canManage ? (
           <ListItemActionsMenu
@@ -475,9 +489,13 @@ function ClientRow({
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+              <Link
+                href={`/clients/${client.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors"
+              >
                 {client.name}
-              </p>
+              </Link>
               <RecordStatusBadge status={client.status} />
               <BirthdayBadge birthDate={client.birthDate} showUpcoming />
               {isClasses ? (
@@ -540,6 +558,7 @@ function ClientCard({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onOpenGrades,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -555,6 +574,7 @@ function ClientCard({
   onEdit: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
+  onOpenGrades?: (c: Client) => void;
   onNewCharge?: (c: Client) => void;
   onSellPackage?: (c: Client) => void;
   onCancelPackage?: (pkg: StudentPackageView) => void;
@@ -565,9 +585,17 @@ function ClientCard({
   const vocabulary = useClientVocabulary(client, categoryById);
   const isActive = client.status === "active";
   const cancelable = cancelablePackage(packages);
+  const router = useRouter();
+  const openProfile = () => router.push(`/clients/${client.id}`);
 
   const actions: ListItemAction[] = canManage
     ? [
+        {
+          key: "profile",
+          label: "Abrir ficha",
+          icon: <UserRound className="size-4" />,
+          onSelect: openProfile,
+        },
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -588,6 +616,16 @@ function ClientCard({
               },
             ]
           : []),
+        ...(isClasses && onOpenGrades
+          ? [
+              {
+                key: "grades",
+                label: "Notas",
+                icon: <ClipboardList className="size-4" />,
+                onSelect: () => onOpenGrades(client),
+              },
+            ]
+          : []),
         ...(isClasses && onNewCharge && isActive
           ? [
               {
@@ -598,7 +636,7 @@ function ClientCard({
               },
             ]
           : []),
-        ...(isClasses && onSellPackage && isActive
+        ...(isClasses && onSellPackage && canSellPackageTo(client)
           ? [
               {
                 key: "sell-package",
@@ -642,41 +680,32 @@ function ClientCard({
       ]
     : [];
 
-  const handleCardClick = () => {
-    if (!canManage) return;
-    if (isClasses && onOpenRecords) {
-      onOpenRecords(client);
-    } else {
-      onEdit(client);
-    }
-  };
-
   const card = (
     <div
-      role={canManage ? "button" : undefined}
-      tabIndex={canManage ? 0 : undefined}
-      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onClick={openProfile}
       onKeyDown={(e) => {
-        if (!canManage) return;
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          handleCardClick();
+          openProfile();
         }
       }}
-      className={cn(
-        "group flex h-full flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all",
-        canManage &&
-          "cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-      )}
+      className="group flex h-full cursor-pointer flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <InitialsAvatar name={client.name} />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              <Link
+                href={`/clients/${client.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="block truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors"
+              >
                 {client.name}
-              </p>
+              </Link>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <RecordStatusBadge status={client.status} />
                 <BirthdayBadge birthDate={client.birthDate} showUpcoming compact />
@@ -818,6 +847,7 @@ export function ClientsList({
   onEdit,
   onOpenGraduation,
   onOpenRecords,
+  onOpenGrades,
   onNewCharge,
   onSellPackage,
   onCancelPackage,
@@ -856,6 +886,10 @@ export function ClientsList({
     () => new Map((categories ?? []).map((c) => [c.id, c])),
     [categories],
   );
+  // "Notas" no menu so quando alguma modalidade ativa tem avaliacoes.
+  const gradesAction = (categories ?? []).some((c) => c.status === "active" && c.assessments?.enabled)
+    ? onOpenGrades
+    : undefined;
 
   const hasSearch = Boolean(filter.search);
   // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
@@ -929,6 +963,7 @@ export function ClientsList({
         onEdit={onEdit}
         onOpenGraduation={onOpenGraduation}
         onOpenRecords={onOpenRecords}
+        onOpenGrades={gradesAction}
         onNewCharge={onNewCharge}
         onSellPackage={onSellPackage}
         onCancelPackage={onCancelPackage}
@@ -953,12 +988,6 @@ export function ClientsList({
         <div className="flex items-center gap-2">
           <StatusFilterSelect value={status} onChange={setStatus} />
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
-          <ViewModeCoachmark
-            storageKey="clients"
-            itemCount={clients.length}
-            threshold={3}
-            onViewModeChange={setViewMode}
-          />
         </div>
       </div>
 
@@ -1004,6 +1033,7 @@ export function ClientsList({
               onEdit={onEdit}
               onOpenGraduation={onOpenGraduation}
               onOpenRecords={onOpenRecords}
+              onOpenGrades={gradesAction}
               onNewCharge={onNewCharge}
               onSellPackage={onSellPackage}
               onCancelPackage={onCancelPackage}

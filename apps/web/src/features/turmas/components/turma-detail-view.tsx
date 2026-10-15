@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Award,
   ChevronLeft,
+  ClipboardList,
   GraduationCap,
   Lock,
   MessageSquarePlus,
@@ -39,6 +40,7 @@ import { ListItemCard } from "@/components/shared/list-item-card";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import {
   ListItemActionsMenu,
+  ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
@@ -64,6 +66,7 @@ import {
 import { useCan, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { StudentGraduationDialog, StudentRecordsDialog, useClients } from "@/features/clients";
+import { ClassAssessmentsTab, StudentGradesDialog, useClassAssessments } from "@/features/grades";
 import {
   useCancelEnrollment,
   useClassGroup,
@@ -79,7 +82,7 @@ import { TurmaFormDialog } from "./turma-form-dialog";
 import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
-type Tab = "enrolled" | "waitlist";
+type Tab = "enrolled" | "waitlist" | "assessments";
 
 const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
 
@@ -242,6 +245,8 @@ export function TurmaDetailView({
   const removeWaitMut = useRemoveFromWaitlist();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const can = useCan();
+  // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
+  const canOpenProfile = can("clients:view");
   const canManage = can("enrollment:manage");
   // Certificado de conclusao: Plano Pro; no gratis o item abre o upsell.
   const hasCertificates = useHasFeature()("certificates");
@@ -255,6 +260,7 @@ export function TurmaDetailView({
   );
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
+  const [gradesClient, setGradesClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<Tab>("enrolled");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<Id>>(new Set());
@@ -292,6 +298,11 @@ export function TurmaDetailView({
   }, [turma, categories]);
   // Palavras da modalidade da turma (Faixa ou Nivel), nao da area.
   const vocabulary = useModalityVocabulary(modalityTrack);
+  // Notas: aba "Avaliações" e item "Notas" so quando a modalidade tem avaliacoes.
+  const hasAssessments = Boolean(
+    turma && (categories ?? []).find((c) => c.id === turma.modalityId)?.assessments?.enabled,
+  );
+  const { data: assessmentsView } = useClassAssessments(id, hasAssessments);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -445,7 +456,7 @@ export function TurmaDetailView({
           </Button>
         ) : null}
         {canEnroll ? (
-          <Button size="sm" onClick={() => setEnrollOpen(true)}>
+          <Button size="sm" onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
             <UserPlus className="size-4" />
             Matricular alunos
           </Button>
@@ -507,6 +518,14 @@ export function TurmaDetailView({
           label="Lista de espera"
           onClick={() => setTab("waitlist")}
         />
+        {hasAssessments ? (
+          <TabButton
+            active={tab === "assessments"}
+            count={(assessmentsView?.assessments ?? []).length}
+            label="Avaliações"
+            onClick={() => setTab("assessments")}
+          />
+        ) : null}
       </div>
 
       {tab === "enrolled" ? (
@@ -607,6 +626,17 @@ export function TurmaDetailView({
                           },
                         ]
                       : [];
+                    const grades: ListItemAction[] =
+                      hasAssessments && student
+                        ? [
+                            {
+                              key: "grades",
+                              label: "Notas",
+                              icon: <ClipboardList className="size-4" />,
+                              onSelect: () => setGradesClient(student),
+                            },
+                          ]
+                        : [];
                     const actions: ListItemAction[] = canManage
                       ? [
                           ...certificate,
@@ -626,6 +656,7 @@ export function TurmaDetailView({
                                 },
                               ]
                             : []),
+                          ...grades,
                           {
                             key: "cancel",
                             label: "Cancelar matrícula",
@@ -634,8 +665,8 @@ export function TurmaDetailView({
                             destructive: true,
                           },
                         ]
-                      : certificate;
-                    return (
+                      : [...certificate, ...grades];
+                    const card = (
                       <ListItemCard key={e.id} disableHover>
                         <div className="flex items-center gap-3">
                           {canManage ? (
@@ -653,9 +684,16 @@ export function TurmaDetailView({
                           <div className="min-w-0 flex-1">
                             {/* Linha 1: nome e o que pede atencao */}
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-sm font-medium">
-                                {e.studentName}
-                              </p>
+                              {canOpenProfile ? (
+                                <Link
+                                  href={`/clients/${e.studentId}`}
+                                  className="truncate text-sm font-medium hover:text-primary hover:underline"
+                                >
+                                  {e.studentName}
+                                </Link>
+                              ) : (
+                                <span className="truncate text-sm font-medium">{e.studentName}</span>
+                              )}
                               {e.isCompleted ? (
                                 <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium leading-none text-emerald-700 dark:text-emerald-400">
                                   Concluído
@@ -709,6 +747,12 @@ export function TurmaDetailView({
                           ) : null}
                         </div>
                       </ListItemCard>
+                    );
+                    if (actions.length === 0) return card;
+                    return (
+                      <ListItemContextMenu key={e.id} actions={actions}>
+                        {card}
+                      </ListItemContextMenu>
                     );
                   })}
                 </div>
@@ -793,6 +837,18 @@ export function TurmaDetailView({
         </section>
       ) : null}
 
+      {tab === "assessments" && hasAssessments ? (
+        <ClassAssessmentsTab turma={turma} track={modalityTrack} />
+      ) : null}
+
+      <StudentGradesDialog
+        client={gradesClient}
+        open={Boolean(gradesClient)}
+        onOpenChange={(open) => {
+          if (!open) setGradesClient(null);
+        }}
+        initialModalityId={turma.modalityId}
+      />
       <StudentGraduationDialog
         client={graduationClient}
         open={Boolean(graduationClient)}

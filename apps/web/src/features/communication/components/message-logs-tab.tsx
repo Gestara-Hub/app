@@ -58,7 +58,7 @@ const KIND_FILTERS: { value: KindFilter; label: string }[] = [
   { value: "manual", label: "Avulsa" },
 ];
 
-function StatusBadge({ status }: { status: MessageLogStatus }) {
+export function MessageStatusBadge({ status }: { status: MessageLogStatus }) {
   return (
     <span className={cn("inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium", STATUS_META[status].className)}>
       {STATUS_META[status].label}
@@ -66,7 +66,7 @@ function StatusBadge({ status }: { status: MessageLogStatus }) {
   );
 }
 
-function phoneLabel(phone: string): string {
+export function phoneLabel(phone: string): string {
   return formatPhone(phone.replace(/^55(?=\d{10,11}$)/, ""));
 }
 
@@ -193,7 +193,7 @@ export function MessageLogsTab() {
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{log.recipientName}</span>
-                    <StatusBadge status={log.status} />
+                    <MessageStatusBadge status={log.status} />
                   </div>
                   <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                     <span>{TRIGGER_META[log.trigger]?.label ?? "Mensagem"}</span>
@@ -209,35 +209,48 @@ export function MessageLogsTab() {
         })}
       </ListContainer>
 
-      <Dialog open={Boolean(selected)} onOpenChange={(open) => (!open ? setSelected(null) : undefined)}>
-        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-          <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-            <DialogTitle>{selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}</DialogTitle>
-            <DialogDescription>
-              {selected ? `${selected.recipientName} · ${phoneLabel(selected.recipientPhone)}` : ""}
-            </DialogDescription>
-          </DialogHeader>
-          {selected ? (
-            <DialogBody className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <StatusBadge status={selected.status} />
-                <span>{formatDateTime(selected.sentAt)}</span>
-              </div>
-              <MessageBubble text={selected.content} />
-              {selected.status === "opened" ? (
-                <p className="text-xs text-muted-foreground">
-                  O WhatsApp foi aberto com esta mensagem. O envio é feito por quem estava no aparelho.
-                </p>
-              ) : null}
-              {selected.errorReason ? (
-                <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                  {selected.errorReason}
-                </p>
-              ) : null}
-            </DialogBody>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <MessageDetailDialog message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
     </div>
+  );
+}
+
+/** Mensagem completa (texto, situacao e data). */
+export function MessageDetailDialog({
+  message: selected,
+  onOpenChange,
+}: {
+  message: MessageLog | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={Boolean(selected)} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
+          <DialogTitle>{selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}</DialogTitle>
+          <DialogDescription>
+            {selected ? `${selected.recipientName} · ${phoneLabel(selected.recipientPhone)}` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {selected ? (
+          <DialogBody className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <MessageStatusBadge status={selected.status} />
+              <span>{formatDateTime(selected.sentAt)}</span>
+            </div>
+            <MessageBubble text={selected.content} />
+            {selected.status === "opened" ? (
+              <p className="text-xs text-muted-foreground">
+                O WhatsApp foi aberto com esta mensagem. O envio é feito por quem estava no aparelho.
+              </p>
+            ) : null}
+            {selected.errorReason ? (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                {selected.errorReason}
+              </p>
+            ) : null}
+          </DialogBody>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

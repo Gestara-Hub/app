@@ -1,23 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format, parseISO } from "date-fns";
-import { toast } from "sonner";
-import {
-  AlertCircle,
-  Ban,
-  CheckCircle2,
-  ChevronDown,
-  Info,
-  Lock,
-  MessageCircle,
-  Plus,
-  QrCode,
-  RotateCcw,
-  RotateCw,
-  Wallet,
-} from "lucide-react";
+import { format } from "date-fns";
+import { AlertCircle, Ban, CheckCircle2, ChevronDown, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   InitialsAvatar,
@@ -26,12 +13,9 @@ import {
   ListSummaryBar,
   SearchInput,
 } from "@/components/shared/list";
-import { ListItemActionsMenu } from "@/components/shared/list-item-actions-menu";
-import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
-import { useRetainedValue } from "@/lib/use-retained-value";
+import { ListItemContextMenu } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -39,57 +23,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { paymentMethodLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
-import { getErrorMessage } from "@gestarahub/core/api-error";
-import type {
-  ChargeKind,
-  ChargeStatus,
-  ChargeView,
-  PaymentMethod,
-  PlanPeriod,
-} from "@gestarahub/contracts";
-import { useCan, useHasFeature } from "@/features/auth";
-import { useOrganization } from "@/features/settings";
-import { chargeReminder, useWhatsAppSend } from "@/features/communication";
+import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
+import { useCurrentUser } from "@/features/auth";
 import { CompetencePicker } from "@/features/finance";
-import {
-  useCancelCharge,
-  useCharges,
-  useMarkChargePaid,
-  useMarkChargePending,
-  useActiveRecurringAuthorizations,
-  useRevertCharge,
-} from "../hooks/use-billing";
-import { RegisterPaymentDialog } from "./register-payment-dialog";
-import { OnlineChargeDialog } from "./online-charge-dialog";
+import { markDiscoveryVisit } from "@/lib/discovery-flags";
+import { useCharges } from "../hooks/use-billing";
 import { NewExtraChargeDialog } from "./new-extra-charge-dialog";
-
-const STATUS_LABEL: Record<ChargeStatus, string> = {
-  pending: "Pendente",
-  paid: "Pago",
-  overdue: "Atrasado",
-  canceled: "Cancelado",
-  waived: "Isento",
-};
-
-const STATUS_CLASS: Record<ChargeStatus, string> = {
-  pending: "border-border/60 bg-muted/50 text-muted-foreground",
-  paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
-  canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
-  waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-};
-
-/** Substituida: cancelada pelo sistema porque outra cobranca tomou o lugar. */
-const isReplaced = (c: ChargeView) => c.status === "canceled" && Boolean(c.replaced);
-const REPLACED_CLASS = "border-border/60 bg-muted/40 text-muted-foreground";
-const statusLabelOf = (c: ChargeView) => (isReplaced(c) ? "Substituída" : STATUS_LABEL[c.status]);
-const statusClassOf = (c: ChargeView) => (isReplaced(c) ? REPLACED_CLASS : STATUS_CLASS[c.status]);
+import {
+  ChargeAmount,
+  ChargeDetails,
+  ChargeStatusBadge,
+  KIND_FILTER_LABEL,
+  PERIOD_UNIT,
+  PaidViaBadge,
+  RecurringLimitBadge,
+  STATUS_CLASS,
+  STATUS_FILTERS,
+  STATUS_LABEL,
+  ScholarshipBadge,
+  getCycleTitle,
+  isChargeKind,
+  isReplaced,
+  isStatusFilterValue,
+  matchesStatusFilter,
+  shortDate,
+  type StatusFilterValue,
+} from "./charge-parts";
+import { useChargeActions } from "./use-charge-actions";
 
 interface StudentBillingGroup {
   key: string;
@@ -185,97 +150,6 @@ function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
   );
 }
 
-const PERIOD_UNIT: Record<PlanPeriod, string> = {
-  monthly: "mês",
-  biweekly: "quinzena",
-  weekly: "semana",
-};
-
-const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
-
-/** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
-const SYSTEM_CANCELED_HINT =
-  "Cancelada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
-const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
-
-/** D8: pago online ou por Pix Automatico nao se desfaz (seria estorno). */
-const isPaidOnline = (c: ChargeView) =>
-  c.status === "paid" && (c.paidVia === "online" || c.paidVia === "recurring");
-const PAID_ONLINE_HINT =
-  "Pago online: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
-const PAID_RECURRING_HINT =
-  "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
-
-/** Selo de como a cobranca paga foi recebida (so online / Pix Automatico). */
-function PaidViaBadge({ charge }: { charge: ChargeView }) {
-  if (charge.status !== "paid") return null;
-  if (charge.paidVia !== "online" && charge.paidVia !== "recurring") return null;
-  return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary">
-      {charge.paidVia === "online" ? "Pago online" : "Pix Automático"}
-    </span>
-  );
-}
-
-/** Selo de bolsa: "Bolsista" (integral) ou "Bolsa 50%" (parcial). */
-function ScholarshipBadge({ charge }: { charge: ChargeView }) {
-  // Isento so existe por bolsa integral (dados antigos podem nao ter a %).
-  const percent = charge.scholarshipPercent ?? (charge.status === "waived" ? 100 : undefined);
-  if (percent === undefined || charge.status === "canceled") return null;
-  const full = percent >= 100;
-  return (
-    <span
-      title={
-        charge.listAmountCents !== undefined
-          ? `Valor do plano: ${formatCents(charge.listAmountCents)}`
-          : undefined
-      }
-      className="inline-flex shrink-0 items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] leading-none font-medium text-sky-700 dark:text-sky-300"
-    >
-      {full ? "Bolsista" : `Bolsa ${percent}%`}
-    </span>
-  );
-}
-
-/** Valor da cobranca; com bolsa, mostra antes o valor cheio riscado. */
-function ChargeAmount({ charge, className }: { charge: ChargeView; className: string }) {
-  const showList =
-    charge.status !== "canceled" &&
-    charge.listAmountCents !== undefined &&
-    charge.listAmountCents > charge.amountCents;
-  return (
-    <span className="inline-flex items-baseline gap-1.5">
-      {showList ? (
-        <span className="text-[11px] tabular-nums text-muted-foreground line-through">
-          {formatCents(charge.listAmountCents ?? 0)}
-        </span>
-      ) : null}
-      <span
-        className={cn(
-          className,
-          charge.status === "canceled" ? "text-muted-foreground/60 line-through" : "text-foreground",
-        )}
-      >
-        {formatCents(charge.amountCents)}
-      </span>
-    </span>
-  );
-}
-
-/** Aviso: aluno com Pix Automatico ativo, mas a cobranca passa do limite. */
-function RecurringLimitBadge({ limitCents }: { limitCents?: number }) {
-  if (limitCents === undefined) return null;
-  return (
-    <span
-      title={`O Pix Automático deste aluno tem limite de ${formatCents(limitCents)} por cobrança. Esta fica em aberto: cobre de outra forma ou aumente o limite no cadastro do aluno.`}
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] leading-none font-medium text-warning"
-    >
-      <AlertCircle className="size-3" aria-hidden />
-      Acima do limite do Pix Automático
-    </span>
-  );
-}
-
 /**
  * Status do grupo de parcelas do mes (semanal/quinzenal), no padrao das linhas
  * simples: atraso primeiro, depois pago, parcial ("2 de 4") e pendente.
@@ -290,104 +164,6 @@ function groupStatusOf(group: StudentBillingGroup): { status: ChargeStatus; labe
   return { status: "pending", label: STATUS_LABEL.pending };
 }
 
-/** Periodo de uso que a cobranca paga, quando conhecido ("01/10 a 31/10"). */
-function referenceLabel(c: ChargeView): string | null {
-  return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
-}
-
-/** Avulsa, curso e pacote: cobrancas sem plano, que podem vir em parcelas. */
-const isInstallmentKind = (c: Pick<ChargeView, "kind">) =>
-  c.kind === "extra" || c.kind === "course" || c.kind === "package";
-
-/** "parcela 2 de 3" da cobranca avulsa, do curso ou do pacote parcelado. */
-function installmentLabel(c: ChargeView): string | null {
-  return isInstallmentKind(c) && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
-}
-
-/** O que esta sendo cobrado: a descricao da avulsa, "Curso {turma}" ou "Pacote {nome}". */
-function chargeSubject(c: ChargeView): string {
-  if (c.kind === "course") return `Curso ${c.description ?? c.className ?? ""}`.trim();
-  if (c.kind === "package") return `Pacote ${c.description ?? ""}`.trim();
-  return c.description ?? "Cobrança avulsa";
-}
-
-function getCycleTitle(c: ChargeView): string {
-  if (isInstallmentKind(c)) {
-    const installment = installmentLabel(c);
-    return installment ? `${chargeSubject(c)}, ${installment}` : chargeSubject(c);
-  }
-  if (c.isProrated) {
-    return c.proratedDays ? `Proporcional (${c.proratedDays} dias)` : "Proporcional";
-  }
-  const ref = referenceLabel(c);
-  if (ref && c.planPeriod && c.planPeriod !== "monthly") return ref;
-  if ((c.cycleTotal ?? 1) > 1) {
-    return `Parcela ${c.cycleIndex ?? 1}/${c.cycleTotal}`;
-  }
-  return "Mensalidade";
-}
-
-/** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
-const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
-/** Avulsa, curso e pacote nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
-const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
-
-/** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
-function cancelReasonOf(c: ChargeView): string | undefined {
-  if (c.status !== "canceled") return undefined;
-  return c.cancelReason ?? (c.canceledBy === "system" ? c.notes : undefined);
-}
-
-const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
-  all: "Todos os tipos",
-  membership: "Mensalidades",
-  dropin: "Aulas avulsas",
-  extra: "Cobranças avulsas",
-  course: "Cursos",
-  package: "Pacotes",
-};
-
-/** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
-type StatusFilterValue = "all" | ChargeStatus | "replaced";
-
-const STATUS_FILTERS: { value: StatusFilterValue; label: string }[] = [
-  { value: "all", label: "Todos os status" },
-  { value: "pending", label: "Pendentes" },
-  { value: "overdue", label: "Atrasadas" },
-  { value: "paid", label: "Pagas" },
-  { value: "canceled", label: "Canceladas" },
-  { value: "waived", label: "Isentas" },
-  { value: "replaced", label: "Substituídas" },
-];
-
-function isStatusFilterValue(value: string | null): value is Exclude<StatusFilterValue, "all"> {
-  return (
-    value === "pending" ||
-    value === "overdue" ||
-    value === "paid" ||
-    value === "canceled" ||
-    value === "waived" ||
-    value === "replaced"
-  );
-}
-
-/** A cobranca entra no filtro? "Todos" esconde as substituidas (sao ruido). */
-function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean {
-  if (filter === "replaced") return isReplaced(c);
-  if (isReplaced(c)) return false;
-  return filter === "all" || c.status === filter;
-}
-
-function isChargeKind(value: string | null): value is ChargeKind {
-  return (
-    value === "membership" ||
-    value === "dropin" ||
-    value === "extra" ||
-    value === "course" ||
-    value === "package"
-  );
-}
-
 const currentCompetence = () => format(new Date(), "yyyy-MM");
 
 /**
@@ -399,6 +175,14 @@ function useBillingFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // Ultima URL pedida e ainda nao renderizada: o router.replace e assincrono,
+  // entao duas trocas rapidas (filtro e mes) partem dela, senao uma apaga a
+  // outra. Mesmo padrao do calendario de turmas.
+  const queryString = searchParams.toString();
+  const pendingQuery = useRef<string | null>(null);
+  useEffect(() => {
+    if (pendingQuery.current === queryString) pendingQuery.current = null;
+  }, [queryString]);
 
   const monthParam = searchParams.get("month");
   const competence =
@@ -409,14 +193,15 @@ function useBillingFilters() {
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
 
   const update = (patch: Record<string, string | null>) => {
-    // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
-    // antes do re-render nao se apagam.
-    const params = new URLSearchParams(window.location.search);
+    // Parte da ultima URL pedida (ou da atual): duas trocas seguidas antes do
+    // re-render nao se apagam.
+    const params = new URLSearchParams(pendingQuery.current ?? window.location.search);
     for (const [key, value] of Object.entries(patch)) {
       if (value === null) params.delete(key);
       else params.set(key, value);
     }
     const query = params.toString();
+    pendingQuery.current = query;
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
@@ -456,12 +241,13 @@ export function BillingView() {
     clearFilters,
   } =
     useBillingFilters();
-  const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
   const [newChargeOpen, setNewChargeOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
   const [search, setSearch] = useState("");
-  // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
-  const shownChargeToCancel = useRetainedValue(chargeToCancel);
+  // Abrir as parcelas de curso conclui "Ver as parcelas do curso" (Dashboard).
+  const user = useCurrentUser();
+  useEffect(() => {
+    if (kindFilter === "course") markDiscoveryVisit(user, "course_billing");
+  }, [kindFilter, user]);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (key: string) => {
@@ -477,36 +263,10 @@ export function BillingView() {
     competence,
     kind: kindFilter === "all" ? undefined : kindFilter,
   });
-  const paidMut = useMarkChargePaid();
-  const pendingMut = useMarkChargePending();
-  const cancelMut = useCancelCharge();
-  const revertMut = useRevertCharge();
-
-  const can = useCan();
-  const canManage = can("billing:manage");
-
-  // Cobrar online: billing:manage + recurso do plano + opcao ligada.
-  const hasFeature = useHasFeature();
-  const hasOnlineFeature = hasFeature("online_payments");
-  const { data: org } = useOrganization();
-  // Lembrete pelo WhatsApp do proprio espaco (assistido no gratis, oficial no Pro).
-  const whatsapp = useWhatsAppSend();
-  const onlineEnabled = Boolean(org?.settings?.onlinePayments?.enabled);
-  const onlineBlockedReason = !hasOnlineFeature
-    ? "Plano Pro"
-    : !onlineEnabled
-      ? "desligado nas Configurações"
-      : null;
-  const [chargeToCollect, setChargeToCollect] = useState<ChargeView | null>(null);
-
-  // Limite do Pix Automatico por aluno (so autorizacoes ativas).
-  const { data: activeRecurring } = useActiveRecurringAuthorizations(hasOnlineFeature);
-  const recurringLimit = new Map((activeRecurring ?? []).map((a) => [a.studentId, a.maxAmountCents]));
-  const overRecurringLimit = (c: ChargeView): number | undefined => {
-    if (c.kind !== "membership" || (c.status !== "pending" && c.status !== "overdue")) return undefined;
-    const limit = recurringLimit.get(c.studentId);
-    return limit !== undefined && c.amountCents > limit ? limit : undefined;
-  };
+  const chargeActions = useChargeActions();
+  const { canManage, overRecurringLimit } = chargeActions;
+  const withChargeContextMenu = chargeActions.withContextMenu;
+  const renderChargeActions = chargeActions.renderActions;
 
   const list = charges ?? [];
   // Status e busca filtram so a lista; os cartoes seguem mostrando o mes inteiro.
@@ -541,167 +301,6 @@ export function BillingView() {
   const canceledList = list.filter((c) => c.status === "canceled" && !isReplaced(c));
   const replacedCount = list.filter(isReplaced).length;
   const canceledCents = canceledList.reduce((s, c) => s + c.amountCents, 0);
-
-  const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
-  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
-
-  const pay = (c: ChargeView, method: PaymentMethod) =>
-    paidMut.mutate(
-      { id: c.id, method },
-      {
-        onSuccess: () => {
-          toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
-          setChargeToPay(null);
-        },
-        onError: (err) =>
-          toast.error(getErrorMessage(err, "Não foi possível registrar o pagamento.")),
-      },
-    );
-
-  const undoPayment = async (c: ChargeView) => {
-    const ok = await confirmAction({
-      title: "Desfazer pagamento?",
-      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a ficar em aberto${c.method ? ` e o registro via ${paymentMethodLabel(c.method)} é apagado` : ""}.`,
-      confirmLabel: "Desfazer pagamento",
-      variant: "destructive",
-    });
-    if (!ok) return;
-    pendingMut.mutate(c.id, {
-      onSuccess: () => toast.success("Pagamento desfeito."),
-      onError: (err) =>
-        toast.error(getErrorMessage(err, "Não foi possível desfazer o pagamento.")),
-    });
-  };
-
-  const revertCancel = async (c: ChargeView) => {
-    const ok = await confirmAction({
-      title: "Reabrir cobrança?",
-      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a compor o total a receber.`,
-      confirmLabel: "Reabrir cobrança",
-    });
-    if (!ok) return;
-    revertMut.mutate(c.id, {
-      onSuccess: () => toast.success("Cobrança reaberta."),
-      onError: (err) =>
-        toast.error(getErrorMessage(err, "Não foi possível reabrir a cobrança.")),
-    });
-  };
-
-  // Acoes da linha (compact = sub-parcela dentro do painel expandido).
-  const renderChargeActions = (c: ChargeView, compact: boolean) => {
-    if (!canManage) return null;
-    const btnSize = compact ? "xs" : "sm";
-    const iconCls = compact ? "size-3.5" : "size-4";
-
-    // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
-    if (c.status === "waived") return null;
-
-    // Substituida: outra cobranca ja cobre o periodo; nada a fazer nela.
-    if (isReplaced(c)) return null;
-
-    if (c.status === "canceled") {
-      return isSystemCanceled(c) ? (
-        <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
-          <Button variant="outline" size={btnSize} disabled>
-            <RotateCcw className={iconCls} />
-            Reverter
-          </Button>
-        </span>
-      ) : (
-        <Button
-          variant="outline"
-          size={btnSize}
-          disabled={revertMut.isPending}
-          onClick={() => revertCancel(c)}
-          title="Reverter cancelamento"
-        >
-          <RotateCcw className={iconCls} />
-          Reverter
-        </Button>
-      );
-    }
-
-    if (c.status === "paid") {
-      if (isPaidOnline(c)) {
-        const hint = c.paidVia === "recurring" ? PAID_RECURRING_HINT : PAID_ONLINE_HINT;
-        return (
-          <span
-            title={hint}
-            aria-label={hint}
-            role="img"
-            className={cn(
-              "inline-flex items-center justify-center text-muted-foreground",
-              compact ? "size-7" : "size-8",
-            )}
-          >
-            <Info className={iconCls} />
-          </span>
-        );
-      }
-      return (
-        <Button
-          variant="ghost"
-          size={compact ? "icon-xs" : "icon-sm"}
-          className={compact ? "size-7" : "size-8"}
-          title="Desfazer pagamento"
-          onClick={() => undoPayment(c)}
-        >
-          <RotateCcw className={iconCls} />
-        </Button>
-      );
-    }
-
-    return (
-      <ListItemActionsMenu
-        title="Mais opções"
-        ariaLabel={`Ações de ${c.studentName}`}
-        variant="ghost"
-        actions={[
-          {
-            key: "pay",
-            label: "Marcar pago",
-            icon: <CheckCircle2 className="size-4" />,
-            onSelect: () => setChargeToPay(c),
-          },
-          // Mensalidade: lembrete pela situacao; avulsa, curso e pacote: "Lembrete de cobrança".
-          ...(c.kind !== "dropin"
-            ? [
-                {
-                  key: "whatsapp",
-                  label: "Lembrar no WhatsApp",
-                  icon: <MessageCircle className="size-4" />,
-                  disabled: !whatsapp.ready,
-                  onSelect: () => {
-                    const reminder = chargeReminder(c, format(new Date(), "yyyy-MM-dd"));
-                    if (!reminder) return;
-                    whatsapp.send({
-                      trigger: reminder.trigger,
-                      recipient: { name: c.studentName, phone: c.studentPhone, clientId: c.studentId },
-                      values: reminder.values,
-                      chargeId: c.id,
-                    });
-                  },
-                },
-              ]
-            : []),
-          {
-            key: "online",
-            label: onlineBlockedReason ? `Cobrar online (${onlineBlockedReason})` : "Cobrar online",
-            icon: onlineBlockedReason ? <Lock className="size-4" /> : <QrCode className="size-4" />,
-            disabled: Boolean(onlineBlockedReason),
-            onSelect: () => setChargeToCollect(c),
-          },
-          {
-            key: "cancel",
-            label: "Cancelar cobrança",
-            icon: <Ban className="size-4" />,
-            destructive: true,
-            onSelect: () => setChargeToCancel(c),
-          },
-        ]}
-      />
-    );
-  };
 
   // Mensalidades nascem sozinhas no mes atual; meses futuros aparecem quando chegarem.
   const isFutureCompetence = competence > format(new Date(), "yyyy-MM");
@@ -1032,99 +631,114 @@ export function BillingView() {
                       key={group.key}
                       className="border-b border-border/60 transition-colors last:border-b-0"
                     >
-                      {/* Linha Consolidada do Aluno */}
-                      <div
-                        onClick={() => toggleExpand(group.key)}
-                        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap sm:px-5"
+                      {/* Linha Consolidada do Aluno (clique direito: abre ou fecha as parcelas) */}
+                      <ListItemContextMenu
+                        actions={[
+                          {
+                            key: "toggle",
+                            label: isExpanded ? "Ocultar parcelas" : "Ver parcelas",
+                            icon: <ChevronDown className="size-4" />,
+                            onSelect: () => toggleExpand(group.key),
+                          },
+                        ]}
                       >
-                        <div className="flex min-w-0 flex-1 basis-full items-center gap-3.5 sm:basis-0">
-                          <InitialsAvatar name={group.studentName} />
+                        <div
+                          onClick={() => toggleExpand(group.key)}
+                          className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap sm:px-5"
+                        >
+                          <div className="flex min-w-0 flex-1 basis-full items-center gap-3.5 sm:basis-0">
+                            <InitialsAvatar name={group.studentName} />
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {group.studentName}
-                              </p>
-                              {/* Status do mes, no mesmo padrao das linhas simples */}
-                              {(() => {
-                                const groupStatus = groupStatusOf(group);
-                                return (
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                                      STATUS_CLASS[groupStatus.status],
-                                    )}
-                                  >
-                                    {groupStatus.label}
-                                  </span>
-                                );
-                              })()}
-                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Link
+                                  href={`/clients/${group.studentId}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+                                >
+                                  {group.studentName}
+                                </Link>
+                                {/* Status do mes, no mesmo padrao das linhas simples */}
+                                {(() => {
+                                  const groupStatus = groupStatusOf(group);
+                                  return (
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
+                                        STATUS_CLASS[groupStatus.status],
+                                      )}
+                                    >
+                                      {groupStatus.label}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                              {group.className ? (
-                                <span>{group.className}</span>
-                              ) : null}
-                              {group.className && group.planName ? (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+                                {group.className ? (
+                                  <span>{group.className}</span>
+                                ) : null}
+                                {group.className && group.planName ? (
+                                  <span>·</span>
+                                ) : null}
+                                {group.planName ? (
+                                  <span>{group.planName}</span>
+                                ) : null}
                                 <span>·</span>
-                              ) : null}
-                              {group.planName ? (
-                                <span>{group.planName}</span>
-                              ) : null}
-                              <span>·</span>
-                              <span>
-                                {formatCents(group.unitPriceCents)}
-                                {group.periodLabel
-                                  ? `/${group.periodLabel}`
-                                  : ""}
-                              </span>
+                                <span>
+                                  {formatCents(group.unitPriceCents)}
+                                  {group.periodLabel
+                                    ? `/${group.periodLabel}`
+                                    : ""}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Totais do Aluno e Botão de Expandir */}
-                        <div className="ml-auto flex items-center gap-3">
-                          <div className="text-right">
-                            <span
-                              className={cn(
-                                "text-sm font-semibold tabular-nums",
-                                group.activeCount === 0
-                                  ? "text-muted-foreground/60 line-through"
-                                  : "text-foreground",
-                              )}
+                          {/* Totais do Aluno e Botão de Expandir */}
+                          <div className="ml-auto flex items-center gap-3">
+                            <div className="text-right">
+                              <span
+                                className={cn(
+                                  "text-sm font-semibold tabular-nums",
+                                  group.activeCount === 0
+                                    ? "text-muted-foreground/60 line-through"
+                                    : "text-foreground",
+                                )}
+                              >
+                                {formatCents(
+                                  group.activeCount === 0
+                                    ? group.canceledCents
+                                    : group.activeTotalCents,
+                                )}
+                              </span>
+                              <p className="text-[11px] text-muted-foreground">
+                                {plural(group.charges.length, "parcela", "parcelas")}
+                              </p>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs font-medium"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(group.key);
+                              }}
                             >
-                              {formatCents(
-                                group.activeCount === 0
-                                  ? group.canceledCents
-                                  : group.activeTotalCents,
-                              )}
-                            </span>
-                            <p className="text-[11px] text-muted-foreground">
-                              {plural(group.charges.length, "parcela", "parcelas")}
-                            </p>
+                              <span>
+                                {isExpanded ? "Ocultar" : "Ver parcelas"}
+                              </span>
+                              <ChevronDown
+                                className={cn(
+                                  "size-3.5 transition-transform duration-200",
+                                  isExpanded && "rotate-180",
+                                )}
+                              />
+                            </Button>
                           </div>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1 text-xs font-medium"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpand(group.key);
-                            }}
-                          >
-                            <span>
-                              {isExpanded ? "Ocultar" : "Ver parcelas"}
-                            </span>
-                            <ChevronDown
-                              className={cn(
-                                "size-3.5 transition-transform duration-200",
-                                isExpanded && "rotate-180",
-                              )}
-                            />
-                          </Button>
                         </div>
-                      </div>
+                      </ListItemContextMenu>
 
                       {/* Painel Expandido: Sub-parcelas das semanas/quinzenas */}
                       {isExpanded ? (
@@ -1134,7 +748,8 @@ export function BillingView() {
                           </p>
 
                           <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-card">
-                            {group.charges.map((c) => (
+                            {group.charges.map((c) => withChargeContextMenu(
+                              c,
                               <div
                                 key={c.id}
                                 className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2.5 sm:flex-nowrap sm:px-4"
@@ -1152,14 +767,7 @@ export function BillingView() {
                                       ? ` · ${paymentMethodLabel(c.method)}`
                                       : ""}
                                   </span>
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shrink-0",
-                                      statusClassOf(c),
-                                    )}
-                                  >
-                                    {statusLabelOf(c)}
-                                  </span>
+                                  <ChargeStatusBadge charge={c} size="sm" />
                                   <PaidViaBadge charge={c} />
                                   <ScholarshipBadge charge={c} />
                                   <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
@@ -1173,7 +781,7 @@ export function BillingView() {
 
                                   {renderChargeActions(c, true)}
                                 </div>
-                              </div>
+                              </div>,
                             ))}
                           </div>
                         </div>
@@ -1186,7 +794,8 @@ export function BillingView() {
                 const c = group.charges[0];
                 if (!c) return null;
 
-                return (
+                return withChargeContextMenu(
+                  c,
                   <ListRow
                     key={group.key}
                     // No celular, valor e ações descem para baixo do texto.
@@ -1204,79 +813,28 @@ export function BillingView() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-medium text-foreground">
+                          <Link
+                            href={`/clients/${c.studentId}`}
+                            className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+                          >
                             {c.studentName}
-                          </p>
+                          </Link>
                           {/* So a aula avulsa tem selo de tipo; mensalidade e o padrao da tela. */}
                           {c.kind === "dropin" ? (
                             <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                               Aula Avulsa
                             </span>
                           ) : null}
-                          {c.status === "waived" ? null : (
-                            <span
-                              className={cn(
-                                "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                                statusClassOf(c),
-                              )}
-                            >
-                              {statusLabelOf(c)}
-                            </span>
-                          )}
+                          {c.status === "waived" ? null : <ChargeStatusBadge charge={c} />}
                           <PaidViaBadge charge={c} />
                           <ScholarshipBadge charge={c} />
                           <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                          {isInstallmentKind(c) ? <span>{chargeSubject(c)}</span> : null}
-                          {installmentLabel(c) ? (
-                            <>
-                              <span>·</span>
-                              <span>{installmentLabel(c)}</span>
-                            </>
-                          ) : null}
-                          {/* Curso ja diz a turma no "Curso {turma}". */}
-                          {c.className && c.kind !== "course" ? <span>{c.className}</span> : null}
-                          {c.className && c.planName ? <span>·</span> : null}
-                          {c.planName ? <span>{c.planName}</span> : null}
-                          {c.planPeriod && c.planPeriod !== "monthly" ? (
-                            <>
-                              <span>·</span>
-                              <span>cobrança por {PERIOD_UNIT[c.planPeriod]}</span>
-                            </>
-                          ) : null}
-                          <span>·</span>
-                          <span>
-                            {c.kind === "dropin"
-                              ? `aula em ${shortDate(c.dueDate)}`
-                              : `vence ${shortDate(c.dueDate)}`}
-                          </span>
-                          {c.kind === "membership" && referenceLabel(c) ? (
-                            <>
-                              <span>·</span>
-                              <span>referente a {referenceLabel(c)}</span>
-                            </>
-                          ) : null}
-                          {cancelReasonOf(c) ? (
-                            <>
-                              <span>·</span>
-                              <span>{cancelReasonOf(c)}</span>
-                            </>
-                          ) : null}
-                          {c.status === "paid" && c.method ? (
-                            <>
-                              <span>·</span>
-                              <span>
-                                {c.paidVia === "online" ? "pago online via " : "pago via "}
-                                {paymentMethodLabel(c.method)}
-                              </span>
-                            </>
-                          ) : null}
-                        </div>
+                        <ChargeDetails charge={c} />
                       </div>
                     </div>
-                  </ListRow>
+                  </ListRow>,
                 );
               })
             )}
@@ -1284,7 +842,7 @@ export function BillingView() {
         </div>
       )}
 
-      {confirmDialog}
+      {chargeActions.dialogs}
       <NewExtraChargeDialog
         open={newChargeOpen}
         onOpenChange={setNewChargeOpen}
@@ -1294,97 +852,6 @@ export function BillingView() {
           if (first && first !== competence) setCompetence(first);
         }}
       />
-      <OnlineChargeDialog
-        charge={chargeToCollect}
-        onOpenChange={(open) => {
-          if (!open) setChargeToCollect(null);
-        }}
-      />
-      <RegisterPaymentDialog
-        charge={chargeToPay}
-        isPending={paidMut.isPending}
-        onOpenChange={(open) => {
-          if (!open) setChargeToPay(null);
-        }}
-        onConfirm={(method) => chargeToPay && pay(chargeToPay, method)}
-      />
-
-      {/* Confirmação de cancelamento da cobrança */}
-      <ConfirmActionDialog
-        open={chargeToCancel !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setChargeToCancel(null);
-            setCancelReason("");
-          }
-        }}
-        title="Cancelar cobrança"
-        description={
-          shownChargeToCancel ? (
-            <>
-              Deseja realmente cancelar a cobrança de{" "}
-              <strong className="text-foreground">
-                {shownChargeToCancel.studentName}
-              </strong>
-              {getCycleTitle(shownChargeToCancel) !== "Mensalidade" ? (
-                <> ({getCycleTitle(shownChargeToCancel)})</>
-              ) : null}{" "}
-              no valor de{" "}
-              <strong className="text-foreground">
-                {formatCents(shownChargeToCancel.amountCents)}
-              </strong>
-              ? Essa cobrança não comporá o total a receber, mas continuará no
-              histórico podendo ser revertida a qualquer momento.
-            </>
-          ) : null
-        }
-        confirmLabel="Cancelar cobrança"
-        cancelLabel="Voltar"
-        variant="destructive"
-        isPending={cancelMut.isPending}
-        onConfirm={async () => {
-          if (!chargeToCancel) return;
-          try {
-            await cancelMut.mutateAsync({ id: chargeToCancel.id, reason: cancelReason });
-            toast.success("Cobrança cancelada com sucesso.");
-            setChargeToCancel(null);
-            setCancelReason("");
-          } catch (err) {
-            toast.error(getErrorMessage(err, "Não foi possível cancelar a cobrança."));
-          }
-        }}
-      >
-        <div className="space-y-1.5">
-          <label htmlFor="cancel-reason" className="text-sm font-medium text-foreground">
-            Motivo (opcional)
-          </label>
-          <Input
-            id="cancel-reason"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Informe o motivo do cancelamento"
-            maxLength={120}
-            disabled={cancelMut.isPending}
-            className="text-base md:text-sm"
-          />
-          <div className="flex flex-wrap gap-1">
-            {(shownChargeToCancel && isInstallmentKind(shownChargeToCancel)
-              ? EXTRA_CANCEL_REASON_SUGGESTIONS
-              : CANCEL_REASON_SUGGESTIONS
-            ).map((reason) => (
-              <button
-                key={reason}
-                type="button"
-                disabled={cancelMut.isPending}
-                onClick={() => setCancelReason(reason)}
-                className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                + {reason}
-              </button>
-            ))}
-          </div>
-        </div>
-      </ConfirmActionDialog>
     </>
   );
 }

@@ -23,6 +23,7 @@ function invalidatePackageMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.onlinePayments.all });
   qc.invalidateQueries({ queryKey: queryKeys.audit.all });
   qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+  qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
 }
 
 // --- Catalogo (Planos > Pacotes de aulas) -----------------------------------

@@ -18,7 +18,11 @@ import { useOrganization } from "@/features/settings";
 
 function useInvalidateCommunication() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: queryKeys.communication.all });
+  return () => {
+    qc.invalidateQueries({ queryKey: queryKeys.communication.all });
+    // Ultimas mensagens na ficha do aluno.
+    qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+  };
 }
 
 export function useWhatsAppConnection() {
@@ -61,7 +65,7 @@ export function useUpdateTemplate() {
   });
 }
 
-export function useMessageLogs(filter?: { trigger?: string; status?: string; search?: string }) {
+export function useMessageLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }) {
   return useQuery({
     queryKey: queryKeys.communication.logs(filter),
     queryFn: () => communicationService.listLogs(filter),

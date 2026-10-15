@@ -35,7 +35,7 @@ const ORIGINS: {
   icon: typeof Sparkles;
 }[] = [
   { value: "started_here", title: "Começou aqui", desc: "Do início, sem histórico", icon: Sparkles },
-  { value: "transfer", title: "Veio de outra academia", desc: "Já chega com nível", icon: Building2 },
+  { value: "transfer", title: "Veio de outro lugar", desc: "Já chega com nível", icon: Building2 },
   { value: "before_system", title: "Treinava aqui antes do sistema", desc: "Só registrar o ponto atual", icon: History },
 ];
 
@@ -160,13 +160,13 @@ export function StartingPointPanel({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label htmlFor="origin-academy" className="text-sm font-medium text-foreground">
-                  Academia de origem
+                  Onde aprendia antes
                 </label>
                 <Input
                   id="origin-academy"
                   value={academy}
                   onChange={(e) => setAcademy(e.target.value)}
-                  placeholder="Informe a academia (opcional)"
+                  placeholder="Informe a escola ou academia (opcional)"
                   className="text-base md:text-sm"
                 />
               </div>

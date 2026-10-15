@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  ClipboardList,
   GraduationCap,
   MessageSquarePlus,
   NotebookPen,
@@ -44,6 +45,7 @@ import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list
 import { BeltBadge } from "@/components/shared/belt-badge";
 import {
   ListItemActionsMenu,
+  ListItemContextMenu,
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
@@ -71,6 +73,7 @@ import {
   nextClassReminder,
   useClients,
 } from "@/features/clients";
+import { StudentGradesDialog } from "@/features/grades";
 import {
   useCancelReservation,
   useClearAttendance,
@@ -182,16 +185,21 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   }
 
   const can = useCan();
+  // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
+  const canOpenProfile = can("clients:view");
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
   const canManage = can("classes:manage");
 
   const [addOpen, setAddOpen] = useState(false);
+  // Cada abertura comeca do zero (aluno e tipo da inscricao anterior nao ficam).
+  const [addKey, setAddKey] = useState(0);
   const [substituteOpen, setSubstituteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   // Dois modais por aluno (Graduação e Registros de aula) e o registro da turma inteira.
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
+  const [gradesClient, setGradesClient] = useState<Client | null>(null);
   const [classRecordsOpen, setClassRecordsOpen] = useState(false);
 
   const clientById = useMemo(
@@ -212,6 +220,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   }, [turma, categories, session?.modalityName]);
   // Palavras da modalidade da aula (Faixa ou Nivel), nao da area.
   const vocabulary = useModalityVocabulary(modalityTrack?.track);
+  // "Notas" so quando a modalidade da turma tem avaliacoes.
+  const hasAssessments = Boolean(
+    turma && (categories ?? []).find((c) => c.id === turma.modalityId)?.assessments?.enabled,
+  );
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -471,7 +483,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setAddOpen(true)}
+              onClick={() => {
+                setAddKey((k) => k + 1);
+                setAddOpen(true);
+              }}
               disabled={addDisabledReason !== null}
             >
               <UserPlus className="size-4" />
@@ -581,6 +596,16 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                         icon: <GraduationCap className="size-4" />,
                         onSelect: () => setGraduationClient(student),
                       },
+                      ...(hasAssessments
+                        ? [
+                            {
+                              key: "grades",
+                              label: "Notas",
+                              icon: <ClipboardList className="size-4" />,
+                              onSelect: () => setGradesClient(student),
+                            },
+                          ]
+                        : []),
                     ]
                   : []),
                 ...(!isEnrolled && canEnroll
@@ -597,7 +622,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   : []),
               ];
 
-              return (
+              const row = (
                 <ListRow key={r.studentId}>
                   <div className="flex flex-wrap items-center justify-between gap-3 w-full">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -605,9 +630,16 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                       <div className="min-w-0 space-y-1">
                         {/* Linha 1: nome e so o que pede atencao (matriculado e o padrao) */}
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium truncate text-foreground">
-                            {r.studentName}
-                          </span>
+                          {canOpenProfile ? (
+                            <Link
+                              href={`/clients/${r.studentId}`}
+                              className="text-sm font-medium truncate text-foreground hover:text-primary hover:underline"
+                            >
+                              {r.studentName}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium truncate text-foreground">{r.studentName}</span>
+                          )}
                           {isEnrolled ? null : isTrial ? (
                             <span className="inline-flex items-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 text-[10px] font-medium">
                               Experimental
@@ -736,6 +768,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                   </div>
                 </ListRow>
               );
+              if (rowActions.length === 0) return row;
+              return (
+                <ListItemContextMenu key={r.studentId} actions={rowActions}>
+                  {row}
+                </ListItemContextMenu>
+              );
             })}
           </ListContainer>
         </TooltipProvider>
@@ -748,6 +786,14 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           if (!open) setGraduationClient(null);
         }}
         initialModalityId={modalityTrack?.modalityId}
+      />
+      <StudentGradesDialog
+        client={gradesClient}
+        open={Boolean(gradesClient)}
+        onOpenChange={(open) => {
+          if (!open) setGradesClient(null);
+        }}
+        initialModalityId={turma?.modalityId}
       />
       <StudentRecordsDialog
         client={recordsClient}
@@ -766,6 +812,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
       {/* Diálogo para Adicionar Aluno Avulso / Experimental */}
       <AddStudentSessionDialog
+        key={addKey}
         open={addOpen}
         onOpenChange={setAddOpen}
         session={session}

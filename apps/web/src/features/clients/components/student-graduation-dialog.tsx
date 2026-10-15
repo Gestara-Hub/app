@@ -220,7 +220,7 @@ function Journey({
   const reached = new Set(history.map((h) => h.toLevelName));
   const origin = progression?.origin;
   const beforeLabel =
-    origin === "transfer" ? `Veio de ${progression?.originAcademy || "outra academia"}` : "Antes do sistema";
+    origin === "transfer" ? `Veio de ${progression?.originAcademy || "outro lugar"}` : "Antes do sistema";
   // Nivel em que comecou no sistema: nao aparece no historico (so as graduacoes).
   const oldest = [...history].sort((a, b) => a.date.localeCompare(b.date))[0];
   const startLevelName = origin === "transfer" || origin === "before_system" ? undefined : oldest?.fromLevelName;

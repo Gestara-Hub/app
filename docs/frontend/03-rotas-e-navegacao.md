@@ -35,14 +35,15 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 |-----|------|--------|------------------|-----------|
 | `/login` | Login | — | publica | Escolha de um usuario demo; grava a sessao. |
 | `/` | Dashboard | todos | `dashboard:view` | Dashboard, muda por modelo. |
-| `/clients` | Clientes / Alunos | todos | `clients:view` | Lista e cadastro. |
+| `/clients` | Clientes / Alunos | todos | `clients:view` | Lista e cadastro. Clicar no nome (ou "Abrir ficha" no menu) abre a ficha. |
+| `/clients/[id]` | Ficha do aluno / cliente | todos | `clients:view` | Resumo do aluno e abas `?tab=classes\|charges\|packages\|evolution\|messages\|data` (a primeira visível fica fora da URL). No modelo `classes`: Turmas e cursos, Cobranças e Pacotes (`billing:view`), Evolução, Mensagens (`communication:view`) e Dados; nos outros modelos, Dados e Mensagens. Id inexistente mostra "não encontrado" com volta para a lista (desde 14/10/2026). |
 | `/team` | Equipe | todos | `team:view` | Profissionais / instrutores e cargos. |
 | `/services` | Serviços | `scheduling` | `services:view` | Catalogo de servicos. |
 | `/schedule` | Agenda | `scheduling` | `schedule:view` | Abas Calendário (Dia/Semana/Mês, colunas por profissional) e Lista. |
 | `/appointments` | — | `scheduling` | `schedule:view` | Redireciona para `/schedule` (links antigos). |
 | `/classes` | Turmas | `classes` | `classes:view` | Lista de turmas. |
 | `/classes/[id]` | Detalhe da turma | `classes` | `classes:view` | Matriculas, lista de espera. |
-| `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Impressão pelo navegador. |
+| `/classes/[id]/certificate/[enrollmentId]` | Certificado de conclusão | `classes` | `classes:view` + Plano Pro (`certificates`) | Matrícula "Concluído"; sem o recurso, tela "Disponível no Plano Pro". Usa o modelo do espaco (Configurações → Certificado). Impressão pelo navegador (A4 deitado). |
 | `/classes/sessions/[sessionId]` | Aula | `classes` | `classes:view` | Chamada, reservas, instrutor substituto. |
 | `/classes/calendar` | Calendário | `classes` | `classes:view` | Grade semanal das aulas. |
 | `/classes/modalities` | Modalidades | `classes` | `classes:manage` | Categorias da academia. |
@@ -51,7 +52,7 @@ URLs e identificadores de codigo ficam em ingles (`/clients`, `/team`, `/schedul
 | `/finance` | Financeiro | `classes` | `finance:view` + recurso `finance` | Plano pago. Abas `?tab=resumo\|lancamentos\|professores`, mes em `?month=YYYY-MM`. Sem o recurso: item com cadeado e tela de upsell (`FeatureLocked`). |
 | `/users` | Usuários | todos | `users:view` | Usuarios e perfis. |
 | `/audit` | Auditoria | todos | `audit:view` | Log de auditoria. |
-| `/settings` | Configurações | todos | `settings:view` | Organizacao, unidade, horarios, regras da mensalidade, "Apagar dados da demonstração" (aba Dados). |
+| `/settings` | Configurações | todos | `settings:view` | Abas `?tab=geral\|horarios\|pagamento\|certificado\|plano\|dados`: organizacao, unidade, horarios, regras da mensalidade, pagamento online, modelo de certificado, Plano GestaraHub e "Apagar dados da demonstração". "Pagamento online" e "Certificado" so no modelo `classes`; "Certificado" (14/10/2026) e do Plano Pro (`certificates`), sem o recurso mostra o upsell. |
 
 Notas:
 

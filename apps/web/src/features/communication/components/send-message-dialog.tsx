@@ -23,10 +23,21 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-function SendMessageForm({ onDone }: { onDone: () => void }) {
-  const { data: clients = [] } = useMessageRecipients();
+/** Aluno fixo (ficha do aluno): o campo de aluno nao aparece. */
+export interface MessageRecipient {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: MessageRecipient }) {
+  const { data: activeClients = [] } = useMessageRecipients();
+  const clients: MessageRecipient[] = fixed ? [fixed] : activeClients;
   const whatsapp = useWhatsAppSend();
-  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { clientId: "", content: "" } });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { clientId: fixed?.id ?? "", content: "" },
+  });
   const clientId = useWatch({ control: form.control, name: "clientId" });
   const recipient = clients.find((c) => c.id === clientId);
   const noPhone = Boolean(recipient && !whatsappNumber(recipient.phone));
@@ -55,16 +66,22 @@ function SendMessageForm({ onDone }: { onDone: () => void }) {
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogBody className="space-y-4">
-          <ComboboxField<FormValues>
-            name="clientId"
-            label="Aluno"
-            placeholder="Selecione o aluno"
-            searchPlaceholder="Buscar aluno..."
-            emptyMessage="Nenhum aluno encontrado."
-            options={options}
-            required
-            hint={noPhone ? "Este aluno não tem WhatsApp com DDD no cadastro." : undefined}
-          />
+          {fixed ? (
+            noPhone ? (
+              <p className="text-sm text-destructive">Este aluno não tem WhatsApp com DDD no cadastro.</p>
+            ) : null
+          ) : (
+            <ComboboxField<FormValues>
+              name="clientId"
+              label="Aluno"
+              placeholder="Selecione o aluno"
+              searchPlaceholder="Buscar aluno..."
+              emptyMessage="Nenhum aluno encontrado."
+              options={options}
+              required
+              hint={noPhone ? "Este aluno não tem WhatsApp com DDD no cadastro." : undefined}
+            />
+          )}
           <TextArea<FormValues>
             name="content"
             label="Mensagem"
@@ -87,20 +104,29 @@ function SendMessageForm({ onDone }: { onDone: () => void }) {
 }
 
 /** Mensagem avulsa para um aluno, pelo WhatsApp do proprio espaco. */
-export function SendMessageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function SendMessageDialog({
+  open,
+  onOpenChange,
+  recipient,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Aluno fixo (ficha do aluno). */
+  recipient?: MessageRecipient;
+}) {
   const whatsapp = useWhatsAppSend();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>Nova mensagem</DialogTitle>
+          <DialogTitle>{recipient ? `Mensagem para ${recipient.name}` : "Nova mensagem"}</DialogTitle>
           <DialogDescription>
             {whatsapp.mode === "official"
               ? "Sai pelo WhatsApp oficial do espaço."
               : "Abre o WhatsApp deste aparelho com a mensagem pronta."}
           </DialogDescription>
         </DialogHeader>
-        {open ? <SendMessageForm onDone={() => onOpenChange(false)} /> : null}
+        {open ? <SendMessageForm onDone={() => onOpenChange(false)} fixed={recipient} /> : null}
       </DialogContent>
     </Dialog>
   );

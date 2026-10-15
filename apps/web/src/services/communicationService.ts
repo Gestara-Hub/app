@@ -242,10 +242,12 @@ export const communicationService = {
     });
   },
 
-  listLogs(filter?: { trigger?: string; status?: string; search?: string }): Promise<MessageLog[]> {
+  listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
     return simulateRead(() => {
       runBirthdayGreetings();
       let logs = [...ensureLogs()];
+      // Ficha do aluno: so as mensagens dele.
+      if (filter?.clientId) logs = logs.filter((l) => l.clientId === filter.clientId);
       if (filter?.trigger && filter.trigger !== "all") logs = logs.filter((l) => l.trigger === filter.trigger);
       if (filter?.status && filter.status !== "all") logs = logs.filter((l) => l.status === filter.status);
       if (filter?.search) {

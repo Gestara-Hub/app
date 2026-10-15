@@ -21,3 +21,4 @@ export * from "./subscription";
 export * from "./finance";
 export * from "./communication";
 export * from "./report";
+export * from "./student-summary";

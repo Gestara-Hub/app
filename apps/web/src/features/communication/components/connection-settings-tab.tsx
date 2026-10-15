@@ -5,7 +5,7 @@ import { format, parseISO } from "date-fns";
 import { CheckCircle2, MessageCircle, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import type { WhatsAppConnectionView } from "@gestarahub/contracts";
-import { getErrorMessage } from "@gestarahub/core/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { relativeDateLabel } from "@gestarahub/core/date";
 import { formatPhone } from "@gestarahub/core/format";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -100,7 +100,9 @@ function SendHoursForm({ connection, disabled }: { connection: WhatsAppConnectio
               { allowedSendHours: { start, end } },
               {
                 onSuccess: () => toast.success("Horário salvo."),
-                onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o horário.")),
+                // Sem campo destacado na tela: mostra a regra (nao "Verifique os campos").
+                onError: (err) =>
+                  toast.error(getFieldErrors(err)?.[0]?.message ?? getErrorMessage(err, "Não foi possível salvar o horário.")),
               },
             )
           }

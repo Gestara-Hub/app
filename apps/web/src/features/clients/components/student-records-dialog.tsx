@@ -358,7 +358,7 @@ function Composer({
   );
 }
 
-function RecordItem({ record }: { record: StudentEvaluationEntry }) {
+export function RecordItem({ record }: { record: StudentEvaluationEntry }) {
   const goalNotes = (record.goalProgress ?? []).map((g) =>
     g.amount ? `${g.title} +${g.amount}${g.completed ? " (feita)" : ""}` : `${g.title} feita`,
   );

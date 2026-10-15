@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { fillMessage } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
-import { useHasFeature } from "@/features/auth";
+import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
 import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues } from "../message-meta";
@@ -22,12 +22,15 @@ function TemplateCard({
   official,
   orgName,
   withPaymentLink,
+  canManage,
   onEdit,
 }: {
   template: MessageTemplate;
   official: boolean;
   orgName?: string;
   withPaymentLink: boolean;
+  /** `communication:manage`: editar o texto e ligar/desligar o automatico. */
+  canManage: boolean;
   onEdit: () => void;
 }) {
   const updateMut = useUpdateTemplate();
@@ -56,7 +59,7 @@ function TemplateCard({
             Automático
             <Switch
               checked={template.enabled}
-              disabled={updateMut.isPending}
+              disabled={!canManage || updateMut.isPending}
               onCheckedChange={toggle}
               aria-label={`Envio automático: ${meta.label}`}
             />
@@ -64,12 +67,14 @@ function TemplateCard({
         ) : null}
       </div>
       <MessageBubble text={preview} />
-      <div className="flex justify-end">
-        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={onEdit}>
-          <Pencil className="size-3" />
-          Editar texto
-        </Button>
-      </div>
+      {canManage ? (
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={onEdit}>
+            <Pencil className="size-3" />
+            Editar texto
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -98,6 +103,7 @@ export function MessageTemplatesTab() {
   const { data: connection } = useWhatsAppConnection();
   const { data: organization } = useOrganization();
   const hasFeature = useHasFeature();
+  const canManage = useCan()("communication:manage");
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
   const official = connection?.mode === "official";
   const withPaymentLink = hasFeature("online_payments");
@@ -136,6 +142,7 @@ export function MessageTemplatesTab() {
                   official={official}
                   orgName={organization?.name}
                   withPaymentLink={withPaymentLink}
+                  canManage={canManage}
                   onEdit={() => setEditing(template)}
                 />
               ))}

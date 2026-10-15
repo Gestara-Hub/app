@@ -33,6 +33,8 @@ function invalidateMoney(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: queryKeys.audit.all });
   // Parcelas de curso: contagem de pagas e futuras na lista de matriculados.
   qc.invalidateQueries({ queryKey: ["classes", "enrollments"] });
+  // Saldo em aberto e parcelas na ficha do aluno.
+  qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
 }
 
 // --- Planos (Plans) -------------------------------------------------------

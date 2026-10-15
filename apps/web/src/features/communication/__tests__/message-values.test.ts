@@ -87,6 +87,11 @@ describe("{restante} do pacote acabando", () => {
     expect(packageRemainingText(pkg({ expiresAt: "2026-11-30" }), TODAY)).toBe("resta 1 aula");
   });
 
+  it("usado até o fim e ainda válido: as aulas acabaram, sem a validade", () => {
+    expect(packageRemainingText(pkg({ lessonsUsed: 10, expiresAt: "2026-12-01" }), TODAY)).toBe("as aulas acabaram");
+    expect(packageRemainingText(pkg({ lessonsUsed: 10, expiresAt: "2026-10-16" }), TODAY)).toBe("as aulas acabaram");
+  });
+
   it("vencido mostra o dia", () => {
     expect(packageRemainingText(pkg({ lessonsUsed: 4, expiresAt: "2026-10-12" }), TODAY)).toBe("venceu em 12/10");
   });

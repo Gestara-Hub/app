@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { clientsService } from "@/services/clientsService";
+import { studentSummaryService } from "@/services/studentSummaryService";
 import type {
   ClientFilter,
   CreateClassRecordsBatch,
@@ -30,6 +31,15 @@ export function useClient(id: Id) {
   return useQuery({
     queryKey: queryKeys.clients.detail(id),
     queryFn: () => clientsService.getById(id),
+    enabled: Boolean(id),
+  });
+}
+
+/** Resumo do aluno (ficha do aluno): a mesma leitura que a API vai expor. */
+export function useStudentSummary(id: Id) {
+  return useQuery({
+    queryKey: queryKeys.clients.summary(id),
+    queryFn: () => studentSummaryService.getStudentSummary(id),
     enabled: Boolean(id),
   });
 }

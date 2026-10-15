@@ -1,0 +1,287 @@
+"use client";
+
+import { format, parseISO } from "date-fns";
+import { AlertCircle } from "lucide-react";
+import { paymentMethodLabel } from "@/lib/labels";
+import { cn } from "@/lib/utils";
+import { formatCents } from "@gestarahub/core/format";
+import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
+
+/**
+ * Pecas da linha de cobranca, as mesmas em Cobrancas e no extrato da ficha do
+ * aluno: rotulos e cores de situacao, selos, valor e os textos da linha.
+ */
+
+export const STATUS_LABEL: Record<ChargeStatus, string> = {
+  pending: "Pendente",
+  paid: "Pago",
+  overdue: "Atrasado",
+  canceled: "Cancelado",
+  waived: "Isento",
+};
+
+export const STATUS_CLASS: Record<ChargeStatus, string> = {
+  pending: "border-border/60 bg-muted/50 text-muted-foreground",
+  paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
+  canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
+  waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+};
+
+/** Substituida: cancelada pelo sistema porque outra cobranca tomou o lugar. */
+export const isReplaced = (c: ChargeView) => c.status === "canceled" && Boolean(c.replaced);
+export const REPLACED_CLASS = "border-border/60 bg-muted/40 text-muted-foreground";
+export const statusLabelOf = (c: ChargeView) => (isReplaced(c) ? "Substituída" : STATUS_LABEL[c.status]);
+export const statusClassOf = (c: ChargeView) => (isReplaced(c) ? REPLACED_CLASS : STATUS_CLASS[c.status]);
+
+export const PERIOD_UNIT: Record<PlanPeriod, string> = {
+  monthly: "mês",
+  biweekly: "quinzena",
+  weekly: "semana",
+};
+
+export const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
+
+/** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
+export const SYSTEM_CANCELED_HINT =
+  "Cancelada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
+export const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
+
+/** D8: pago online ou por Pix Automatico nao se desfaz (seria estorno). */
+export const isPaidOnline = (c: ChargeView) =>
+  c.status === "paid" && (c.paidVia === "online" || c.paidVia === "recurring");
+export const PAID_ONLINE_HINT =
+  "Pago online: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+export const PAID_RECURRING_HINT =
+  "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
+
+/** Selo de como a cobranca paga foi recebida (so online / Pix Automatico). */
+export function PaidViaBadge({ charge }: { charge: ChargeView }) {
+  if (charge.status !== "paid") return null;
+  if (charge.paidVia !== "online" && charge.paidVia !== "recurring") return null;
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary">
+      {charge.paidVia === "online" ? "Pago online" : "Pix Automático"}
+    </span>
+  );
+}
+
+/** Selo de bolsa: "Bolsista" (integral) ou "Bolsa 50%" (parcial). */
+export function ScholarshipBadge({ charge }: { charge: ChargeView }) {
+  // Isento so existe por bolsa integral (dados antigos podem nao ter a %).
+  const percent = charge.scholarshipPercent ?? (charge.status === "waived" ? 100 : undefined);
+  if (percent === undefined || charge.status === "canceled") return null;
+  const full = percent >= 100;
+  return (
+    <span
+      title={
+        charge.listAmountCents !== undefined
+          ? `Valor do plano: ${formatCents(charge.listAmountCents)}`
+          : undefined
+      }
+      className="inline-flex shrink-0 items-center rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-0.5 text-[10px] leading-none font-medium text-sky-700 dark:text-sky-300"
+    >
+      {full ? "Bolsista" : `Bolsa ${percent}%`}
+    </span>
+  );
+}
+
+/** Valor da cobranca; com bolsa, mostra antes o valor cheio riscado. */
+export function ChargeAmount({ charge, className }: { charge: ChargeView; className: string }) {
+  const showList =
+    charge.status !== "canceled" &&
+    charge.listAmountCents !== undefined &&
+    charge.listAmountCents > charge.amountCents;
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      {showList ? (
+        <span className="text-[11px] tabular-nums text-muted-foreground line-through">
+          {formatCents(charge.listAmountCents ?? 0)}
+        </span>
+      ) : null}
+      <span
+        className={cn(
+          className,
+          charge.status === "canceled" ? "text-muted-foreground/60 line-through" : "text-foreground",
+        )}
+      >
+        {formatCents(charge.amountCents)}
+      </span>
+    </span>
+  );
+}
+
+/** Aviso: aluno com Pix Automatico ativo, mas a cobranca passa do limite. */
+export function RecurringLimitBadge({ limitCents }: { limitCents?: number }) {
+  if (limitCents === undefined) return null;
+  return (
+    <span
+      title={`O Pix Automático deste aluno tem limite de ${formatCents(limitCents)} por cobrança. Esta fica em aberto: cobre de outra forma ou aumente o limite no cadastro do aluno.`}
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] leading-none font-medium text-warning"
+    >
+      <AlertCircle className="size-3" aria-hidden />
+      Acima do limite do Pix Automático
+    </span>
+  );
+}
+
+/** Periodo de uso que a cobranca paga, quando conhecido ("01/10 a 31/10"). */
+export function referenceLabel(c: ChargeView): string | null {
+  return c.periodStart && c.periodEnd ? `${shortDate(c.periodStart)} a ${shortDate(c.periodEnd)}` : null;
+}
+
+/** Avulsa, curso e pacote: cobrancas sem plano, que podem vir em parcelas. */
+export const isInstallmentKind = (c: Pick<ChargeView, "kind">) =>
+  c.kind === "extra" || c.kind === "course" || c.kind === "package";
+
+/** "parcela 2 de 3" da cobranca avulsa, do curso ou do pacote parcelado. */
+export function installmentLabel(c: ChargeView): string | null {
+  return isInstallmentKind(c) && (c.cycleTotal ?? 1) > 1 ? `parcela ${c.cycleIndex ?? 1} de ${c.cycleTotal}` : null;
+}
+
+/** O que esta sendo cobrado: a descricao da avulsa, "Curso {turma}" ou "Pacote {nome}". */
+export function chargeSubject(c: ChargeView): string {
+  if (c.kind === "course") return `Curso ${c.description ?? c.className ?? ""}`.trim();
+  if (c.kind === "package") return `Pacote ${c.description ?? ""}`.trim();
+  return c.description ?? "Cobrança avulsa";
+}
+
+export function getCycleTitle(c: ChargeView): string {
+  if (isInstallmentKind(c)) {
+    const installment = installmentLabel(c);
+    return installment ? `${chargeSubject(c)}, ${installment}` : chargeSubject(c);
+  }
+  if (c.isProrated) {
+    return c.proratedDays ? `Proporcional (${c.proratedDays} dias)` : "Proporcional";
+  }
+  const ref = referenceLabel(c);
+  if (ref && c.planPeriod && c.planPeriod !== "monthly") return ref;
+  if ((c.cycleTotal ?? 1) > 1) {
+    return `Parcela ${c.cycleIndex ?? 1}/${c.cycleTotal}`;
+  }
+  return "Mensalidade";
+}
+
+/** Sugestoes do motivo de cancelamento; o campo aceita qualquer texto. */
+export const CANCEL_REASON_SUGGESTIONS = ["Plano errado", "Cobrança duplicada", "Aluno desistiu"];
+/** Avulsa, curso e pacote nao tem plano: "Lançada por engano" no lugar de "Plano errado". */
+export const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobrança duplicada", "Aluno desistiu"];
+
+/** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
+export function cancelReasonOf(c: ChargeView): string | undefined {
+  if (c.status !== "canceled") return undefined;
+  return c.cancelReason ?? (c.canceledBy === "system" ? c.notes : undefined);
+}
+
+export const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
+  all: "Todos os tipos",
+  membership: "Mensalidades",
+  dropin: "Aulas avulsas",
+  extra: "Cobranças avulsas",
+  course: "Cursos",
+  package: "Pacotes",
+};
+
+/** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
+export type StatusFilterValue = "all" | ChargeStatus | "replaced";
+
+export const STATUS_FILTERS: { value: StatusFilterValue; label: string }[] = [
+  { value: "all", label: "Todos os status" },
+  { value: "pending", label: "Pendentes" },
+  { value: "overdue", label: "Atrasadas" },
+  { value: "paid", label: "Pagas" },
+  { value: "canceled", label: "Canceladas" },
+  { value: "waived", label: "Isentas" },
+  { value: "replaced", label: "Substituídas" },
+];
+
+export function isStatusFilterValue(value: string | null): value is Exclude<StatusFilterValue, "all"> {
+  return (
+    value === "pending" ||
+    value === "overdue" ||
+    value === "paid" ||
+    value === "canceled" ||
+    value === "waived" ||
+    value === "replaced"
+  );
+}
+
+/** A cobranca entra no filtro? "Todos" esconde as substituidas (sao ruido). */
+export function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean {
+  if (filter === "replaced") return isReplaced(c);
+  if (isReplaced(c)) return false;
+  return filter === "all" || c.status === filter;
+}
+
+export function isChargeKind(value: string | null): value is ChargeKind {
+  return (
+    value === "membership" ||
+    value === "dropin" ||
+    value === "extra" ||
+    value === "course" ||
+    value === "package"
+  );
+}
+
+/** Selo de situacao da cobranca (com "Substituída" para as trocadas). */
+export function ChargeStatusBadge({ charge, size = "md" }: { charge: ChargeView; size?: "sm" | "md" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-medium leading-none",
+        size === "sm" ? "text-[10px]" : "text-[11px]",
+        statusClassOf(charge),
+      )}
+    >
+      {statusLabelOf(charge)}
+    </span>
+  );
+}
+
+/**
+ * Linha de detalhes da cobranca (texto pequeno): o que e cobrado, turma, plano,
+ * vencimento, periodo, motivo do cancelamento e forma de pagamento. Sem
+ * `showSubject`, o titulo da linha ja diz o que e cobrado.
+ */
+export function ChargeDetails({ charge: c, showSubject = true }: { charge: ChargeView; showSubject?: boolean }) {
+  const parts: string[] = [];
+  if (showSubject && isInstallmentKind(c)) parts.push(chargeSubject(c));
+  const installment = installmentLabel(c);
+  if (installment) parts.push(installment);
+  // Curso ja diz a turma no "Curso {turma}".
+  if (c.className && c.kind !== "course") parts.push(c.className);
+  if (c.planName) parts.push(c.planName);
+  if (c.planPeriod && c.planPeriod !== "monthly") parts.push(`cobrança por ${PERIOD_UNIT[c.planPeriod]}`);
+  parts.push(c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `vence ${shortDate(c.dueDate)}`);
+  const ref = referenceLabel(c);
+  if (c.kind === "membership" && ref) parts.push(`referente a ${ref}`);
+  const reason = cancelReasonOf(c);
+  if (reason) parts.push(reason);
+  if (c.status === "paid" && c.method) {
+    parts.push(`${c.paidVia === "online" ? "pago online via " : "pago via "}${paymentMethodLabel(c.method)}`);
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+      {parts.map((part, i) => (
+        <span key={i} className="inline-flex items-center gap-x-2.5">
+          {i > 0 ? <span aria-hidden>·</span> : null}
+          <span>{part}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** "10/2026" da competencia `YYYY-MM`. */
+export const competenceLabel = (competence: string) => competence.split("-").reverse().join("/");
+
+/**
+ * Titulo da cobranca no extrato do aluno (o aluno ja esta na pagina): o que e
+ * cobrado. Mensalidade leva a competencia; parcelas, "2 de 3".
+ */
+export function statementTitle(c: ChargeView): string {
+  // A turma vem na linha de detalhes.
+  if (c.kind === "dropin") return "Aula avulsa";
+  if (isInstallmentKind(c)) return chargeSubject(c);
+  return `Mensalidade ${competenceLabel(c.competence ?? c.dueDate.slice(0, 7))}`;
+}

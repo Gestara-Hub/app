@@ -63,9 +63,11 @@ function packageFacts(pkg: LessonPackage): string {
 
 function SellPackageForm({
   student,
+  initialPackageId,
   onSuccess,
 }: {
   student: Pick<Client, "id" | "name">;
+  initialPackageId?: string;
   onSuccess: () => void;
 }) {
   const sellMut = useSellPackage();
@@ -93,9 +95,21 @@ function SellPackageForm({
     control: form.control,
     name: ["packageId", "priceCents", "installments", "firstDueDate"],
   });
-  const chosen = (catalog ?? []).find((p) => p.id === packageId);
   // Escolher o pacote preenche o valor dele (editavel: e o unico desconto).
   const pricedFor = useRef("");
+  // Renovar: ja abre com o mesmo pacote, se ele ainda esta ativo no catalogo.
+  // Vira o ponto de partida do formulario (fechar sem mexer nao pede descarte).
+  const preselected = useRef(false);
+  useEffect(() => {
+    if (preselected.current || !initialPackageId || !catalog) return;
+    preselected.current = true;
+    const pkg = catalog.find((p) => p.id === initialPackageId);
+    if (pkg) {
+      pricedFor.current = pkg.id;
+      form.reset({ ...form.getValues(), packageId: pkg.id, priceCents: pkg.priceCents });
+    }
+  }, [catalog, initialPackageId, form]);
+  const chosen = (catalog ?? []).find((p) => p.id === packageId);
   useEffect(() => {
     if (!chosen || pricedFor.current === chosen.id) return;
     pricedFor.current = chosen.id;
@@ -175,15 +189,18 @@ function SellPackageForm({
   );
 }
 
-/** Venda de um pacote de aulas ao aluno (menu do aluno em Alunos). */
+/** Venda de um pacote de aulas ao aluno (menu do aluno em Alunos e ficha do aluno). */
 export function SellPackageDialog({
   open,
   onOpenChange,
   student,
+  initialPackageId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   student: Pick<Client, "id" | "name"> | null;
+  /** Renovar: o pacote do catalogo ja escolhido. */
+  initialPackageId?: string;
 }) {
   // Retem o aluno durante a animacao de saida; `session` recomeca o formulario a cada abertura.
   const [shown, setShown] = useState({ open, student, session: 0 });
@@ -210,6 +227,7 @@ export function SellPackageDialog({
           <SellPackageForm
             key={`${shown.session}-${fixed.id}`}
             student={fixed}
+            initialPackageId={initialPackageId}
             onSuccess={() => onOpenChange(false)}
           />
         ) : null}

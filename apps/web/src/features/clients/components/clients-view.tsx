@@ -9,6 +9,7 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Client, StudentPackageView } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
 import { NewExtraChargeDialog, SellPackageDialog, useCancelStudentPackage } from "@/features/turmas";
+import { StudentGradesDialog } from "@/features/grades";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
@@ -27,6 +28,8 @@ export function ClientsView() {
   // Dois modais: Graduação (raro) e Registros de aula (toda aula).
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
+  // Boletim "Notas" (modalidades com avaliacoes).
+  const [gradesClient, setGradesClient] = useState<Client | null>(null);
   // Cobranca avulsa com o aluno fixo.
   const [chargeClient, setChargeClient] = useState<Client | null>(null);
   // Venda de pacote de aulas com o aluno fixo.
@@ -115,6 +118,7 @@ export function ClientsView() {
         onEdit={openEdit}
         onOpenGraduation={isClasses ? setGraduationClient : undefined}
         onOpenRecords={isClasses ? setRecordsClient : undefined}
+        onOpenGrades={isClasses ? setGradesClient : undefined}
         onNewCharge={canCharge ? setChargeClient : undefined}
         onSellPackage={canCharge ? setPackageClient : undefined}
         onCancelPackage={canCharge ? (pkg) => void cancelPackage(pkg) : undefined}
@@ -152,6 +156,13 @@ export function ClientsView() {
               if (!open) setPackageClient(null);
             }}
             student={packageClient}
+          />
+          <StudentGradesDialog
+            client={gradesClient}
+            open={Boolean(gradesClient)}
+            onOpenChange={(open) => {
+              if (!open) setGradesClient(null);
+            }}
           />
           <StudentRecordsDialog
             client={recordsClient}
