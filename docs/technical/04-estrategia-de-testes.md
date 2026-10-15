@@ -10,7 +10,7 @@ Três suítes, do mais barato ao mais caro, todas no repositório:
 | --- | --- | --- | --- | --- |
 | Motor de cobrança (lógica pura) | `packages/core/test` | `node --test` nativo (Node 24 roda TypeScript) | `pnpm test` | < 1 s |
 | Regras de negócio (services sobre o store mock) | `apps/web/src/services/__tests__` | Vitest 4.1.11, ambiente Node | `pnpm test` | < 1 s |
-| Fluxos no navegador | `apps/web/e2e` | Playwright 1.63, Chrome do sistema (`channel: "chrome"`), projetos desktop e mobile | `pnpm e2e` | ~25 s |
+| Fluxos no navegador | `apps/web/e2e` | Playwright 1.63, Chrome do sistema (`channel: "chrome"`), projetos desktop e mobile | `pnpm e2e` (ou `E2E_PORT=3100 npx playwright test` em `apps/web`, com servidor próprio na 3100) | ~17 min (381 testes, 14/10/2026) |
 
 Convenções:
 
@@ -32,4 +32,6 @@ O teste manual guiado de 22/09 levou horas, dependeu de clicar por coordenadas e
 
 - **Testing Library para componentes:** não adotado por ora; o valor está nas regras (services) e nos fluxos (e2e).
 - **Baixar navegadores do Playwright:** desnecessário; o Chrome instalado basta.
+- **Porta separada (14/10/2026):** com `E2E_PORT=3100`, o Playwright sobe o próprio `next dev -p 3100` com pasta de build `.next-e2e` (`NEXT_DIST_DIR`) e a 3000 fica livre para uso manual; `e2e/fixtures.ts` exporta `BASE_URL`. Sem a variável, reaproveita o `pnpm dev` da 3000.
+- **Escopo:** só o modelo de turmas (Modelo 3). Agenda e delivery não têm testes de navegador nesta fase.
 - **Vitest/Vite mais recentes:** fixados em Vitest 4.1.11 e Vite 7.3.6 porque o Vite 8 dependia de um `lightningcss` ainda não publicado. `esbuild: false` em `pnpm-workspace.yaml` (sem build nativo, como o resto do projeto).

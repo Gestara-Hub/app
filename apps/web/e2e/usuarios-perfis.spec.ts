@@ -1,0 +1,327 @@
+import type { Page } from "@playwright/test";
+import { classGroup, editWorld, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { loginAsUser, user } from "./ficha-notas-fixtures";
+import { waitWorld, type Tenant } from "./geral-fixtures";
+
+/**
+ * Usuarios e perfis (docs/product/06): CRUD de usuarios, o que cada perfil ve
+ * no menu e quais rotas sao barradas, escopo do Profissional na agenda,
+ * gerente x proprietario (so o dono troca o plano), SessionSync depois de
+ * "Apagar dados da demonstracao" e o proprio nome no topo. Hoje e 22/09/2026.
+ */
+
+const MANAGER = user("usr-mgr", "Gil Gerente", "manager");
+const ATTENDANT = user("usr-att", "Bia Recepção", "attendant");
+const PROF = user("usr-prof", "Carlos Silva", "professional", { professionalId: "pr-1" });
+const PROF_LINK = { id: "pr-1", name: "Carlos Silva" };
+const OWNER2 = user("usr-own2", "Otto Sócio", "owner");
+
+const pathOf = (page: Page) => new URL(page.url()).pathname;
+const sidebar = (page: Page) => page.locator("[data-sidebar=sidebar]").first();
+const navLinks = async (page: Page) =>
+  (await sidebar(page).getByRole("link").allInnerTexts()).map((t) => t.trim()).filter(Boolean);
+
+async function seedTeam(page: Page, extra?: (t: Tenant) => void) {
+  await seedAcademy(page, {
+    extra: (t) => {
+      t.users = [...t.users, MANAGER, ATTENDANT, PROF];
+      t.clients = [student("c-a", "Aluno A20")];
+      t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
+      t.enrollments = [enrollment("e-1", "cg-1", "c-a")];
+      extra?.(t);
+    },
+  });
+}
+
+test.describe("cadastro de usuários (proprietário)", () => {
+  test("validações, e-mail repetido e novo atendente", async ({ page }) => {
+    await seedTeam(page);
+    await page.goto("/users");
+    await page.getByRole("button", { name: "Novo usuário" }).click();
+    const dialog = page.getByRole("dialog", { name: "Novo usuário" });
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialog.getByText("Informe o nome.")).toBeVisible();
+    await expect(dialog.getByText("Informe o e-mail.")).toBeVisible();
+    await expect(dialog.getByText("Selecione o perfil de acesso.")).toBeVisible();
+
+    await dialog.getByLabel("Nome").fill("Duda Recepção");
+    await dialog.getByLabel("E-mail").fill("duda@");
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialog.getByText("Informe um e-mail válido.")).toBeVisible();
+
+    await dialog.getByLabel("E-mail").fill("ana@academiax.com");
+    await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
+    // Dono gerencia todos os perfis.
+    for (const p of ["Proprietário", "Gerente", "Atendente", "Profissional"]) {
+      await expect(page.getByRole("menuitem", { name: p })).toBeVisible();
+    }
+    await page.getByRole("menuitem", { name: "Atendente" }).click();
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialog.getByText("Já existe um usuário com este e-mail.")).toBeVisible();
+
+    await dialog.getByLabel("E-mail").fill("duda@academiax.com");
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(page.getByText("Usuário criado com sucesso.")).toBeVisible();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByText("5 usuários cadastrados")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^DR Duda Recepção Atendente Ativo/ })).toBeVisible();
+  });
+
+  test("perfil Profissional exige vínculo e o nome vem da equipe", async ({ page }) => {
+    await seedTeam(page, (t) => {
+      t.users = t.users.filter((u: Tenant) => u.id !== "usr-prof");
+    });
+    await page.goto("/users");
+    await page.getByRole("button", { name: "Novo usuário" }).click();
+    const dialog = page.getByRole("dialog", { name: "Novo usuário" });
+    await dialog.getByLabel("E-mail").fill("carlos@academiax.com");
+    await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
+    await page.getByRole("menuitem", { name: "Profissional" }).click();
+    await expect(dialog.getByText("Obrigatório no perfil Profissional: define a agenda que ele vê.")).toBeVisible();
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(dialog.getByText("Vincule o usuário a um profissional da equipe.")).toBeVisible();
+
+    await dialog.getByRole("combobox", { name: "Profissional da equipe" }).click();
+    await page.getByRole("option", { name: /Carlos Silva/ }).click();
+    await expect(dialog.getByLabel("Nome")).toHaveValue("Carlos Silva");
+    await expect(dialog).toContainText("Vinculado ao profissional Carlos Silva");
+    await dialog.getByRole("button", { name: "Adicionar" }).click();
+    await expect(page.getByText("Usuário criado com sucesso.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^CS Carlos Silva Profissional Equipe/ })).toBeVisible();
+  });
+
+  test("editar perfil, inativar e reativar com confirmação", async ({ page }) => {
+    await seedTeam(page);
+    await page.goto("/users");
+    await page.getByRole("button", { name: "Ações de Bia Recepção", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Editar" }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar usuário" });
+    await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
+    await page.getByRole("menuitem", { name: "Gerente" }).click();
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Usuário atualizado com sucesso.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção Gerente/ })).toBeVisible();
+
+    await page.getByRole("button", { name: "Ações de Bia Recepção", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Inativar" }).click();
+    const confirm = page.getByRole("alertdialog");
+    await confirm.getByRole("button", { name: "Inativar" }).click();
+    await expect(page.getByText("Usuário inativado.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção Gerente Inativo/ })).toBeVisible();
+
+    await page.getByRole("combobox", { name: "Filtrar por status" }).click();
+    await page.getByRole("option", { name: "Inativos" }).click();
+    await expect(page.getByText("1 usuário cadastrado")).toBeVisible();
+    await page.getByRole("button", { name: "Ações de Bia Recepção", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Reativar" }).click();
+    await page.getByRole("alertdialog", { name: "Reativar usuário?" }).getByRole("button", { name: "Reativar" }).click();
+    await expect(page.getByText("Usuário reativado.")).toBeVisible();
+  });
+
+  test("busca por nome ou e-mail", async ({ page }) => {
+    await seedTeam(page);
+    await page.goto("/users");
+    await page.getByLabel("Buscar usuário").fill("usr-mgr@");
+    await expect(page.getByText("1 usuário cadastrado")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^GG Gil Gerente/ })).toBeVisible();
+    await page.getByLabel("Buscar usuário").fill("bia");
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção/ })).toBeVisible();
+  });
+
+  test("não rebaixa o último proprietário ativo, mas rebaixa um segundo dono", async ({ page }) => {
+    await seedTeam(page, (t) => t.users.push(OWNER2));
+    await page.goto("/users");
+    await page.getByRole("button", { name: "Ações de Otto Sócio", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Editar" }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar usuário" });
+    await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
+    await page.getByRole("menuitem", { name: "Gerente" }).click();
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Usuário atualizado com sucesso.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^OS Otto Sócio Gerente/ })).toBeVisible();
+  });
+
+  test("renomear a si mesmo atualiza o topo sem entrar de novo", async ({ page }) => {
+    await seedTeam(page);
+    await page.goto("/users");
+    const topbar = page.locator("header");
+    await expect(topbar.getByRole("button", { name: /Ana Ribeiro$/ })).toBeVisible();
+    await page.getByRole("button", { name: "Ações de Ana Ribeiro", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Editar" }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar usuário" });
+    await dialog.getByLabel("Nome").fill("Ana Ribeiro Lima");
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Usuário atualizado com sucesso.")).toBeVisible();
+    await expect(topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ })).toBeVisible();
+    // O cookie foi regravado: depois de recarregar continua o nome novo.
+    await page.reload();
+    await expect(topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ })).toBeVisible();
+    await topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ }).click();
+    await expect(page.getByRole("menu")).toContainText("Proprietário");
+  });
+});
+
+test.describe("menu e rotas por perfil (academia)", () => {
+  const ALL_CLASSES = [
+    "Dashboard",
+    "Calendário",
+    "Turmas",
+    "Alunos",
+    "Comunicação",
+    "Cobranças",
+    "Financeiro",
+    "Relatórios",
+    "Modalidades",
+    "Planos e pacotes",
+    "Equipe",
+  ];
+
+  test("proprietário vê tudo", async ({ page }) => {
+    await seedTeam(page);
+    await expect.poll(() => navLinks(page)).toEqual([...ALL_CLASSES, "Usuários", "Auditoria", "Configurações"]);
+  });
+
+  test("gerente: tudo menos Configurações", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, MANAGER);
+    await page.goto("/dashboard");
+    await expect.poll(() => navLinks(page)).toEqual([...ALL_CLASSES, "Usuários", "Auditoria"]);
+    await page.goto("/settings");
+    await expect.poll(() => pathOf(page)).toBe("/dashboard");
+  });
+
+  test("atendente: sem Dashboard, Financeiro, Modalidades, Usuários, Auditoria nem Configurações", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, ATTENDANT);
+    await page.goto("/classes");
+    await expect
+      .poll(() => navLinks(page))
+      .toEqual(["Calendário", "Turmas", "Alunos", "Comunicação", "Cobranças", "Relatórios", "Planos e pacotes", "Equipe"]);
+    // Sem Dashboard, a primeira tela do perfil e o Calendario.
+    for (const route of ["/dashboard", "/finance", "/classes/modalities", "/users", "/audit", "/settings"]) {
+      await page.goto(route);
+      await expect.poll(() => pathOf(page), { message: route }).toBe("/classes/calendar");
+    }
+    // Ve turmas e cobrancas, sem criar.
+    await page.goto("/classes");
+    await expect(page.getByRole("button", { name: "Nova turma" })).toHaveCount(0);
+    await page.goto("/classes/plans");
+    await expect(page.getByRole("button", { name: "Novo plano" })).toHaveCount(0);
+  });
+
+  test("profissional: só Calendário e Turmas", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, PROF, PROF_LINK);
+    await page.goto("/classes/calendar");
+    await expect.poll(() => navLinks(page)).toEqual(["Calendário", "Turmas"]);
+    for (const route of ["/dashboard", "/clients", "/classes/billing", "/classes/plans", "/team", "/reports", "/communication", "/users"]) {
+      await page.goto(route);
+      await expect.poll(() => pathOf(page), { message: route }).toBe("/classes/calendar");
+    }
+    // Pode marcar presenca na propria turma.
+    await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
+    const present = page.getByRole("button", { name: "Presente: Aluno A20" });
+    await present.click();
+    await expect(present).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("gerente x proprietário", () => {
+  test("gerente só gerencia atendente e profissional", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, MANAGER);
+    await page.goto("/users");
+    await expect(page.getByRole("button", { name: /^BR Bia Recepção/ })).toBeVisible();
+    // Sem menu para dono e gerente.
+    await expect(page.getByRole("button", { name: "Ações de Ana Ribeiro", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Ações de Gil Gerente", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Ações de Bia Recepção", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Novo usuário" }).click();
+    const dialog = page.getByRole("dialog", { name: "Novo usuário" });
+    await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
+    await expect(page.getByRole("menuitem", { name: "Atendente" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Profissional" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Proprietário" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "Gerente" })).toHaveCount(0);
+  });
+
+  test("só o proprietário troca o plano: gerente vê o aviso", async ({ page }) => {
+    await seedTeam(page);
+    await page.goto("/finance?tab=configuracoes");
+    const owner = page.getByRole("main");
+    await expect(owner.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);
+
+    await loginAsUser(page, MANAGER);
+    await page.goto("/finance?tab=configuracoes");
+    await expect(page.getByText("Fale com o proprietário da conta para ativar o Plano Pro.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveCount(0);
+  });
+});
+
+/** Espera o app parar de gravar o banco simulado (senao a gravacao dele desfaz a edicao do teste). */
+async function waitStoreIdle(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const a = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
+        await page.waitForTimeout(400);
+        const b = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
+        return a !== null && a === b;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+}
+
+test.describe("sessão", () => {
+  test("usuário removido do mundo sai da sessão", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, MANAGER);
+    await page.goto("/dashboard");
+    await expect(page.locator("header").getByRole("button", { name: /Gil Gerente/ })).toBeVisible();
+    await waitStoreIdle(page);
+    await editWorld(page, "org-academia-x", (t) => {
+      t.users = t.users.filter((u: Tenant) => u.id !== "usr-mgr");
+    });
+    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
+  });
+
+  test("usuário inativado sai da sessão", async ({ page }) => {
+    await seedTeam(page);
+    await loginAsUser(page, ATTENDANT);
+    await page.goto("/classes");
+    await waitStoreIdle(page);
+    await editWorld(page, "org-academia-x", (t) => {
+      t.users.find((u: Tenant) => u.id === "usr-att").status = "inactive";
+    });
+    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
+  });
+
+  test("apagar dados da demonstração sai e derruba a sessão de quem foi apagado", async ({ page }) => {
+    test.slow();
+    await seedTeam(page);
+    await page.goto("/settings?tab=dados");
+    await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Apagar dados da demonstração?" });
+    await confirm.getByRole("button", { name: "Apagar tudo" }).click();
+    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
+    await waitWorld(page, "org-academia-x", (t) => t.users.length === 1 && t.clients.length === 0);
+
+    // O gerente que existia antes do reset nao entra com o cookie antigo.
+    await loginAsUser(page, MANAGER);
+    await page.goto("/dashboard");
+    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
+  });
+
+  test("trocar de usuário pelo menu do topo", async ({ page }) => {
+    await seedTeam(page);
+    await page.locator("header").getByRole("button", { name: /Ana Ribeiro/ }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toContainText("Trocar usuário / organização (demo)");
+    await menu.getByRole("menuitem", { name: /Bia Recepção/ }).click();
+    await expect(page.locator("header").getByRole("button", { name: /Bia Recepção/ })).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => navLinks(page)).not.toContain("Dashboard");
+  });
+});
+

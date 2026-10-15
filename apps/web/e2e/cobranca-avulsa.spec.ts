@@ -112,7 +112,8 @@ test("Cobranças: marcar a avulsa como paga com Pix e cancelar outra com motivo"
   await page.getByRole("button", { name: "Ações de Aluno K1", exact: true }).click();
   await expect(page.getByRole("menuitem", { name: "Marcar pago" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /Cobrar online/ })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Lembrar no WhatsApp" })).toHaveCount(0);
+  // Desde a fase D, avulsa, curso e pacote tambem tem lembrete de WhatsApp.
+  await expect(page.getByRole("menuitem", { name: "Lembrar no WhatsApp" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Marcar pago" }).click();
 
   const pay = page.getByRole("dialog", { name: "Registrar pagamento" });

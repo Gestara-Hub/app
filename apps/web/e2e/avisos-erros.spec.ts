@@ -120,7 +120,7 @@ test("auditoria mostra no topo a ação feita em outra tela, sem recarregar", as
   // Marca a pagina: se houver recarga, a marca some.
   await page.evaluate(() => ((window as unknown as { __semRecarga: boolean }).__semRecarga = true));
 
-  await sidebarLink(page, "Planos").click();
+  await sidebarLink(page, "Planos e pacotes").click();
   await expect(page).toHaveURL(/\/classes\/plans$/);
   await page.getByRole("button", { name: "Ações de Mensal Jiu-Jitsu", exact: true }).click();
   await page.getByRole("menuitem", { name: "Inativar" }).click();

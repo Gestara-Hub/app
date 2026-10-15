@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, completeOnboarding, enrollment, expect, loginAs, seedAcademy, student, test } from "./fixtures";
+import { BASE_URL, classGroup, completeOnboarding, enrollment, expect, loginAs, seedAcademy, student, test } from "./fixtures";
 
 const pathOf = (page: Page) => new URL(page.url()).pathname;
 
@@ -27,7 +27,7 @@ test.describe("guarda de rota", () => {
     await completeOnboarding(page);
     await page.getByRole("button", { name: /Ana Ribeiro/ }).click();
     await page.waitForURL((url) => !url.pathname.startsWith("/login"));
-    expect(new URL(page.url()).host).toBe("localhost:3000");
+    expect(new URL(page.url()).host).toBe(new URL(BASE_URL).host);
     // Destino invalido cai no padrao do login (Dashboard).
     expect(pathOf(page)).toBe("/dashboard");
   });
