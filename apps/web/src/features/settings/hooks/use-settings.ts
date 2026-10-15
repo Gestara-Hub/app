@@ -29,11 +29,16 @@ export function useOrganization() {
 /**
  * Perfil da area do tenant (padroes de turma e vocabulario). Enquanto a
  * organizacao carrega, usa o padrao (lutas), igual a tenants sem area salva.
- * Na area `custom`, a trilha e as palavras seguem `customSegmentProgression`.
+ * Na area `custom`, a trilha e as palavras seguem `customSegmentProgression`
+ * e a forma de cobranca padrao segue `customSegmentBilling`.
  */
 export function useBusinessSegment(): BusinessSegmentPreset {
   const { data: organization } = useOrganization();
-  return getSegmentPreset(organization?.classSegment, organization?.customSegmentProgression);
+  return getSegmentPreset(
+    organization?.classSegment,
+    organization?.customSegmentProgression,
+    organization?.customSegmentBilling,
+  );
 }
 
 /** Atalho para as palavras da area ("Faixa" ou "Nível", "Graduar" ou "Avançar"). */

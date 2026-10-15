@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SectionSpotlight } from "@/components/shared/section-spotlight";
+import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
 import { cn } from "@/lib/utils";
 import { isStepSatisfied, type OnboardingStep } from "../onboarding-steps";
 
@@ -37,39 +39,34 @@ const GROUPS_DEFAULT = [
   },
 ] as const;
 
-// Fases do setup para turmas e aulas coletivas (Escola de Idiomas, Cursos, Academia, etc.)
-const GROUPS_CLASSES = [
-  {
-    id: "config",
-    label: "Fase 1: Configuração",
-    description: "Horário de funcionamento, regras da mensalidade, modalidades e planos.",
-    stepIds: ["hours", "billing", "modalities", "plans"],
-  },
-  {
-    id: "people",
-    label: "Fase 2: Pessoas",
-    description: "Professores, instrutores e alunos.",
-    stepIds: ["team", "clients"],
-  },
-  {
-    id: "ops",
-    label: "Fase 3: Turmas & Matrículas",
-    description: "Criação de turmas e matrículas de alunos.",
-    stepIds: ["classes"],
-  },
-] as const;
+// Itens da fase 1 das turmas, na ordem dos passos (so os que existem entram no texto).
+const CONFIG_PARTS: [string, string][] = [
+  ["hours", "Horário de funcionamento"],
+  ["billing", "regras da mensalidade"],
+  ["modalities", "modalidades"],
+  ["plans", "planos"],
+  ["packages", "pacotes"],
+];
 
-// Area de curso fechado: sem mensalidade, a menos que alguma turma cobre mensalidade
-// (ai "billing" e "plans" voltam e a fase 1 cita os dois).
-function courseGroups(hasMembershipSteps: boolean) {
+function joinParts(parts: string[]): string {
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} e ${parts[parts.length - 1]}` : parts[0] ?? "";
+}
+
+// Fases do setup para turmas e aulas. A fase 1 cita so o que a area usa
+// (mensalidade e planos, pacotes); area de curso fecha com curso e matricula.
+function classesGroups(steps: OnboardingStep[], isCourseArea: boolean) {
+  const present = new Set(steps.map((s) => s.id));
+  // Area de mensalidade: o passo dos planos aceita pacote tambem ("Criar planos ou pacotes").
+  const plansOrPackages = /pacotes/.test(steps.find((s) => s.id === "plans")?.label ?? "");
+  const configParts = CONFIG_PARTS.filter(([id]) => present.has(id)).map(([id, part]) =>
+    id === "plans" && plansOrPackages ? "planos ou pacotes" : part,
+  );
   return [
     {
       id: "config",
       label: "Fase 1: Configuração",
-      description: hasMembershipSteps
-        ? "Horário de funcionamento, regras da mensalidade, modalidades e planos."
-        : "Horário de funcionamento e modalidades.",
-      stepIds: ["hours", "billing", "modalities", "plans"],
+      description: `${joinParts(configParts)}.`,
+      stepIds: CONFIG_PARTS.map(([id]) => id),
     },
     {
       id: "people",
@@ -77,12 +74,19 @@ function courseGroups(hasMembershipSteps: boolean) {
       description: "Professores, instrutores e alunos.",
       stepIds: ["team", "clients"],
     },
-    {
-      id: "ops",
-      label: "Fase 3: Cursos & Matrículas",
-      description: "Criação do curso e matrícula dos alunos.",
-      stepIds: ["classes", "enroll"],
-    },
+    isCourseArea
+      ? {
+          id: "ops",
+          label: "Fase 3: Cursos & Matrículas",
+          description: "Criação do curso e matrícula dos alunos.",
+          stepIds: ["classes", "enroll"],
+        }
+      : {
+          id: "ops",
+          label: "Fase 3: Turmas & Matrículas",
+          description: "Criação de turmas e matrículas de alunos.",
+          stepIds: ["classes"],
+        },
   ];
 }
 
@@ -100,6 +104,8 @@ export function OnboardingChecklist({
   isClasses = false,
   isCourseArea = false,
   highlightNextStep = false,
+  spotlightNextStep = false,
+  onSpotlightDone,
   onStartTour,
 }: {
   steps: OnboardingStep[];
@@ -109,14 +115,18 @@ export function OnboardingChecklist({
   /** Area de curso fechado (fase 3 de cursos, mensalidade so se alguma turma cobrar). */
   isCourseArea?: boolean;
   highlightNextStep?: boolean;
+  /**
+   * Logo depois de fechar as boas-vindas (uma vez): destaca o cartao do passo
+   * atual com o resto da tela escuro ("Comece por aqui."). Enquanto aberto, o
+   * "Continuar" nao pulsa.
+   */
+  spotlightNextStep?: boolean;
+  onSpotlightDone?: () => void;
   onStartTour: () => void;
 }) {
-  const groups = !isClasses
-    ? GROUPS_DEFAULT
-    : isCourseArea
-      ? courseGroups(steps.some((s) => s.id === "billing"))
-      : GROUPS_CLASSES;
+  const groups = !isClasses ? GROUPS_DEFAULT : classesGroups(steps, isCourseArea);
   const activeStepRef = useRef<HTMLElement | null>(null);
+  const spotlightRefs = useMemo(() => [activeStepRef], []);
   const [expandedCompletedGroups, setExpandedCompletedGroups] = useState<
     Record<string, boolean>
   >({});
@@ -132,6 +142,7 @@ export function OnboardingChecklist({
     classes: isCourseArea ? "curso" : "turmas",
     enroll: "matrículas",
     plans: "planos",
+    packages: "pacotes",
     clients: isClasses ? "alunos" : "clientes",
     appointment: "agendamento",
   };
@@ -148,6 +159,12 @@ export function OnboardingChecklist({
 
   // Próximo passo ativo = primeiro não concluído e sem pré-requisito pendente
   const nextStep = steps.find((s) => !s.done && missingOf(s).length === 0);
+  // "Continuar" do passo atual pulsa sem parar ate ser clicado.
+  const spotlightOn = spotlightNextStep && highlightNextStep && Boolean(nextStep);
+  const nextStepAttention = useAttentionUntilInteraction(
+    highlightNextStep && Boolean(nextStep) && !spotlightOn,
+    nextStep?.id ?? null,
+  );
 
   // Garante que o passo atual (com o botão pulsante) fique visível em telas pequenas
   useEffect(() => {
@@ -170,6 +187,12 @@ export function OnboardingChecklist({
       data-tour="onboarding-checklist"
       className="mb-8 w-full space-y-6"
     >
+      <SectionSpotlight
+        active={spotlightOn}
+        targetRefs={spotlightRefs}
+        onDismiss={() => onSpotlightDone?.()}
+        hint="Comece por aqui."
+      />
       {/* Cabeçalho do Setup Guide com Progresso e Estimativa */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -365,7 +388,8 @@ export function OnboardingChecklist({
                               size="sm"
                               className={cn(
                                 "gap-1.5 font-semibold text-xs shadow-xs",
-                                highlightNextStep && "motion-safe:animate-attention-loop",
+                                nextStepAttention.attention &&
+                                  "motion-safe:animate-attention-loop-infinite",
                               )}
                               asChild
                             >
@@ -390,6 +414,7 @@ export function OnboardingChecklist({
                           if (active) activeStepRef.current = node;
                         }}
                         href={step.href}
+                        onClick={active ? nextStepAttention.stop : undefined}
                         className={cardClasses}
                       >
                         {cardContent}

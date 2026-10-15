@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, Compass, ListChecks } from "lucide-react";
+import type { ClassBillingMode } from "@gestarahub/contracts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +18,35 @@ export interface OnboardingWelcomeDialogProps {
   onStartTour: () => void;
   onStartSetup: () => void;
   isClasses?: boolean;
-  /** Area de curso fechado: textos sem mensalidade. */
-  isCourseArea?: boolean;
+  /** Forma de cobranca da area: so a de mensalidade cita mensalidade. */
+  areaBillingMode?: ClassBillingMode;
 }
+
+/** Textos dos dois cards por forma de cobranca da area (turmas). */
+const CLASSES_COPY: Record<ClassBillingMode, { tour: string; setup: string }> = {
+  membership: {
+    tour: "Conheça os atalhos essenciais: turmas, planos e pacotes, alunos e configurações.",
+    setup: "Siga o checklist no seu ritmo para definir horários de funcionamento, planos ou pacotes e turmas.",
+  },
+  course: {
+    tour: "Conheça os atalhos essenciais: cursos, alunos, cobranças e configurações.",
+    setup: "Siga o checklist no seu ritmo para definir horários de funcionamento, cursos e matrículas.",
+  },
+  package: {
+    tour: "Conheça os atalhos essenciais: turmas, pacotes de aulas, alunos e configurações.",
+    setup: "Siga o checklist no seu ritmo para definir horários de funcionamento, pacotes e turmas.",
+  },
+  free: {
+    tour: "Conheça os atalhos essenciais: turmas, alunos, chamada e configurações.",
+    setup: "Siga o checklist no seu ritmo para definir horários de funcionamento, modalidades e turmas.",
+  },
+};
+
+/** Modelo de agendamento (barbearia, clinica): sem turmas nem mensalidade. */
+const SCHEDULING_COPY = {
+  tour: "Conheça os atalhos essenciais: agenda, serviços, clientes e configurações.",
+  setup: "Siga o checklist no seu ritmo para definir horários de funcionamento, serviços e equipe.",
+};
 
 /**
  * Boas-vindas do primeiro acesso (estilo Action Cards):
@@ -33,8 +60,9 @@ export function OnboardingWelcomeDialog({
   onStartTour,
   onStartSetup,
   isClasses = true,
-  isCourseArea = false,
+  areaBillingMode = "membership",
 }: OnboardingWelcomeDialogProps) {
+  const copy = isClasses ? CLASSES_COPY[areaBillingMode] : SCHEDULING_COPY;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -93,9 +121,7 @@ export function OnboardingWelcomeDialog({
                   </span>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-snug">
-                  {isCourseArea
-                    ? "Conheça os atalhos essenciais: cursos, alunos, cobranças e configurações."
-                    : "Conheça os atalhos essenciais: turmas, planos de mensalidade, alunos e configurações."}
+                  {copy.tour}
                 </p>
               </div>
             </div>
@@ -127,9 +153,7 @@ export function OnboardingWelcomeDialog({
                   </h3>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-snug">
-                  {isCourseArea
-                    ? "Siga o checklist no seu ritmo para definir horários de funcionamento, cursos e matrículas."
-                    : "Siga o checklist no seu ritmo para definir horários de funcionamento, regras da mensalidade e turmas."}
+                  {copy.setup}
                 </p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import type { ClassGroupView } from "@gestarahub/contracts";
+import type { ClassBillingMode, ClassGroupView } from "@gestarahub/contracts";
 import { classBillingMode } from "@gestarahub/core/billing";
 
 export interface OnboardingStep {
@@ -31,30 +31,49 @@ export interface ClassesOnboardingInput {
   modalitiesCount: number;
   /** Modalidades criadas no setup que o dono ainda nao conferiu. */
   modalitiesNeedReview: boolean;
+  /** Planos de mensalidade ativos. */
   plansCount: number;
+  /** Pacotes de aulas ativos do catalogo (Planos e pacotes > Pacotes de aulas). */
+  lessonPackagesCount: number;
   professionalsCount: number;
   clientsCount: number;
   classGroups: Pick<ClassGroupView, "id" | "status" | "billingMode" | "enrolledCount">[];
-  /** Area que cobra por curso fechado (`defaultBillingMode === "course"`). */
-  isCourseArea: boolean;
+  /**
+   * Forma de cobranca padrao da area (`defaultBillingMode` do preset; na
+   * "Outra área", a resposta de "Como você cobra?").
+   */
+  areaBillingMode: ClassBillingMode;
 }
 
 /**
  * Passos do modelo de turmas. Mensalidade (regras + planos) so aparece onde
- * ela existe: areas de mensalidade, ou area de curso com turma ativa cobrando
+ * ela existe: areas de mensalidade, ou outra area com turma ativa cobrando
  * mensalidade. Area de curso troca a primeira turma pelo primeiro curso e
- * ganha o passo de matricular alunos no curso.
+ * ganha o passo de matricular alunos no curso. Area de pacote ganha o passo
+ * de criar um pacote de aulas. Area sem cobranca fica so com o essencial.
+ * Na area de mensalidade, o espaco escolhe planos OU pacotes: um dos dois
+ * conclui "Criar planos ou pacotes", e so pacote (sem plano) dispensa as
+ * regras da mensalidade.
  */
 export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): OnboardingStep[] {
-  const { isCourseArea, classGroups, modalitiesNeedReview } = input;
+  const { areaBillingMode, classGroups, modalitiesNeedReview } = input;
+  const isCourseArea = areaBillingMode === "course";
+  const isPackageArea = areaBillingMode === "package";
+  const isMembershipArea = areaBillingMode === "membership";
+  const hasPlans = input.plansCount > 0;
+  const hasPackages = input.lessonPackagesCount > 0;
   const hasModalities = input.modalitiesCount > 0;
   const hasMembershipClass = classGroups.some(
     (group) => group.status === "active" && classBillingMode(group) === "membership",
   );
-  const showMembershipSteps = !isCourseArea || hasMembershipClass;
+  const showMembershipSteps = areaBillingMode === "membership" || hasMembershipClass;
   const courses = classGroups.filter((group) => classBillingMode(group) === "course");
+  // Area de curso que comecou por outra forma (pacote, mensalidade): a 1a
+  // matricula em qualquer turma conclui o passo, e o atalho leva a ela.
+  const hasCourse = courses.length > 0;
+  const activeGroups = classGroups.filter((group) => group.status === "active");
   const enrollTarget =
-    courses.find((group) => group.status === "active") ?? courses[0] ?? null;
+    courses.find((group) => group.status === "active") ?? activeGroups[0] ?? classGroups[0] ?? null;
 
   const steps: (OnboardingStep | null)[] = [
     {
@@ -72,7 +91,8 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
           description: "Configure o regime padrão (pré/pós-pago) e vencimentos.",
           href: "/settings?tab=geral#billing-rules",
           cta: "Configurar",
-          done: input.billingSet,
+          // Regras so valem para a mensalidade: so pacote, sem plano, dispensa.
+          done: input.billingSet || (isMembershipArea && hasPackages && !hasPlans),
         }
       : null,
     {
@@ -89,12 +109,30 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
     showMembershipSteps
       ? {
           id: "plans",
-          label: "Criar planos de mensalidade",
-          description: "Defina os planos para cobrança dos alunos.",
+          ...(isMembershipArea
+            ? {
+                label: "Criar planos ou pacotes",
+                description: "Mensalidade, pacote de aulas ou os dois.",
+                done: hasPlans || hasPackages,
+              }
+            : {
+                label: "Criar planos de mensalidade",
+                description: "Defina os planos para cobrança dos alunos.",
+                done: hasPlans,
+              }),
           href: "/classes/plans",
           cta: "Criar",
-          done: input.plansCount > 0,
           requires: ["modalities"],
+        }
+      : null,
+    isPackageArea
+      ? {
+          id: "packages",
+          label: "Criar um pacote de aulas",
+          description: "Defina quantas aulas, o valor e a validade.",
+          href: "/classes/plans?tab=packages",
+          cta: "Criar",
+          done: hasPackages,
         }
       : null,
     {
@@ -129,11 +167,13 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
     isCourseArea
       ? {
           id: "enroll",
-          label: "Matricular alunos no curso",
-          description: "Matricule os alunos e gere as parcelas do curso.",
+          label: hasCourse || classGroups.length === 0 ? "Matricular alunos no curso" : "Matricular alunos na turma",
+          description: hasCourse || classGroups.length === 0
+            ? "Matricule os alunos e gere as parcelas do curso."
+            : "Matricule os primeiros alunos na turma.",
           href: enrollTarget ? `/classes/${enrollTarget.id}?enroll=true` : "/classes",
           cta: "Matricular",
-          done: courses.some((group) => group.enrolledCount > 0),
+          done: classGroups.some((group) => group.enrolledCount > 0),
           requires: ["classes"],
         }
       : null,

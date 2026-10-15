@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
+import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/features/auth";
+import { useMarkModalitiesReviewed } from "@/features/settings";
 import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 import type { OnboardingStep } from "../onboarding-steps";
 
@@ -107,6 +112,7 @@ export function OnboardingTopBanner() {
     ctaRef.current?.focus({ preventScroll: true });
   }, [nudgeCount]);
 
+
   const isDashboard = pathname === "/" || pathname === "/dashboard";
 
   const nextStepIndex = nextStep
@@ -120,6 +126,30 @@ export function OnboardingTopBanner() {
           ? pathname === "/settings" && (tab === "geral" || !tab)
           : isStepPage(nextStep, pathname)),
   );
+
+  // Primeira etapa concluida (so ela): destaca este aviso (resto da tela
+  // escuro) mostrando onde continuar. Dali em diante o pulso do "Continuar"
+  // basta. Enquanto o destaque esta aberto o "Continuar" nao pulsa; fecha num
+  // clique fora, com Esc, ao trocar de tela ou ao continuar.
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const bannerRefs = useMemo(() => [bannerRef], []);
+  const [spotlightNudge, setSpotlightNudge] = useState(0);
+  // Vale para a tela e o proximo passo do momento da conclusao: trocar de tela
+  // ou de passo encerra (Horarios e Regras ficam na mesma pagina, em abas).
+  const [spotlightFor, setSpotlightFor] = useState<{ path: string; stepId: string } | null>(null);
+  if (nudgeCount > 0 && spotlightNudge !== nudgeCount) {
+    setSpotlightNudge(nudgeCount);
+    if (doneCount === 1 && nextStep) setSpotlightFor({ path: pathname, stepId: nextStep.id });
+  }
+  const spotlightOn =
+    spotlightFor !== null &&
+    spotlightFor.path === pathname &&
+    spotlightFor.stepId === nextStep?.id &&
+    !isOnNextStepPage;
+  if (spotlightFor !== null && (spotlightFor.path !== pathname || spotlightFor.stepId !== nextStep?.id || isOnNextStepPage)) {
+    setSpotlightFor(null);
+  }
+  const closeSpotlight = () => setSpotlightFor(null);
   const activeStepOnPage =
     user.profile === "owner" &&
     !isDashboard &&
@@ -142,6 +172,34 @@ export function OnboardingTopBanner() {
     };
   }, [activeStepOnPage]);
 
+  // CTA principal da tela do passo (`data-onboarding-cta`): pulsa sem parar ate
+  // ser clicado (globals.css). Modalidades fica de fora: pulsa so 2 ciclos.
+  const stepCtaAttention = useAttentionUntilInteraction(
+    Boolean(activeStepOnPage) && activeStepOnPage !== "modalities",
+    activeStepOnPage,
+  );
+  const stepCtaId = stepCtaAttention.attention ? activeStepOnPage : null;
+  useEffect(() => {
+    if (!stepCtaId) return;
+    const root = document.documentElement;
+    root.dataset.onboardingCtaAttention = stepCtaId;
+    const selector = `[data-onboarding-cta~="${stepCtaId}"]`;
+    // O clique para o pulso SO do botao clicado (ex.: "Novo plano" nao para o
+    // "Novo pacote" da outra aba, que ainda nao foi clicado). pointerdown cobre
+    // menus que abrem no toque (ex.: "Novo" da agenda); click cobre o teclado.
+    const handleInteraction = (event: Event) => {
+      const cta = event.target instanceof Element ? event.target.closest(selector) : null;
+      cta?.setAttribute("data-onboarding-cta-done", "");
+    };
+    document.addEventListener("pointerdown", handleInteraction, true);
+    document.addEventListener("click", handleInteraction, true);
+    return () => {
+      delete root.dataset.onboardingCtaAttention;
+      document.removeEventListener("pointerdown", handleInteraction, true);
+      document.removeEventListener("click", handleInteraction, true);
+    };
+  }, [stepCtaId]);
+
   useEffect(() => {
     if (!isReady || typeof window === "undefined") return;
     try {
@@ -153,6 +211,44 @@ export function OnboardingTopBanner() {
       // ignore storage errors
     }
   }, [isReady, isComplete, user.organizationId]);
+
+  // Fora da tela do passo, o "Continuar" pulsa sem parar chamando para la (ate
+  // ser clicado); nela, fica quieto.
+  const continueAttention = useAttentionUntilInteraction(
+    isReady && Boolean(nextStep) && !isOnNextStepPage && !spotlightOn,
+    nextStep?.id ?? null,
+  );
+
+  // Na tela de Modalidades com a revisao pendente, a acao do passo fica aqui
+  // (antes ficava so no aviso amarelo da tela e o usuario nao achava o
+  // "Continuar"): "Esta tudo certo" pulsa ate o clique.
+  const reviewOnPage =
+    isOnNextStepPage && nextStep?.id === "modalities" && Boolean(nextStep.needsReview);
+  const markReviewed = useMarkModalitiesReviewed();
+  const reviewAttention = useAttentionUntilInteraction(reviewOnPage, "modalities-review");
+  // Confirmar a revisao conclui o passo e segue para o proximo, como o
+  // "Continuar" (o passo seguinte so e conhecido depois que os passos recarregam).
+  const router = useRouter();
+  const advanceFromRef = useRef<string | null>(null);
+  // Reavalia ao confirmar, caso os passos ja tenham recarregado antes.
+  const [advanceTick, setAdvanceTick] = useState(0);
+  useEffect(() => {
+    const from = advanceFromRef.current;
+    if (!from || !nextStep || nextStep.id === from) return;
+    advanceFromRef.current = null;
+    router.push(nextStep.href);
+  }, [nextStep, router, advanceTick]);
+  async function confirmReview() {
+    reviewAttention.stop();
+    try {
+      await markReviewed.mutateAsync();
+      toast.success("Modalidades revisadas.");
+      advanceFromRef.current = "modalities";
+      setAdvanceTick((n) => n + 1);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível concluir a revisão."));
+    }
+  }
 
   if (!isHydrated) return null;
 
@@ -175,8 +271,6 @@ export function OnboardingTopBanner() {
     );
   }
 
-  // Fora da tela do passo, o "Continuar" pulsa chamando para la; nela, fica quieto.
-  const pulse = Boolean(nextStep) && !isOnNextStepPage;
   const pct = Math.round((doneCount / total) * 100);
 
   return (
@@ -184,7 +278,14 @@ export function OnboardingTopBanner() {
       aria-label="Progresso da configuração inicial"
       className={ASIDE_CLASS}
     >
+      <SectionSpotlight
+        active={spotlightOn && Boolean(nextStep) && !isOnNextStepPage}
+        targetRefs={bannerRefs}
+        onDismiss={closeSpotlight}
+        hint="Etapa concluída! Siga para a próxima."
+      />
       <div
+        ref={bannerRef}
         className={cn(
           "rounded-xl border shadow-xs transition-colors",
           !nextStep
@@ -203,7 +304,7 @@ export function OnboardingTopBanner() {
                     Configuração inicial · {nextStepIndex + 1} de {total}
                   </span>
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1">
+                <p className="mt-0.5 text-sm font-semibold text-foreground">
                   {nextStep.label}
                 </p>
               </div>
@@ -213,7 +314,7 @@ export function OnboardingTopBanner() {
                   <Check className="size-3.5 stroke-[2.5]" />
                   <span>Configuração concluída · 100%</span>
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-foreground sm:line-clamp-1">
+                <p className="mt-0.5 text-sm font-semibold text-foreground">
                   Todas as etapas foram concluídas!
                 </p>
               </div>
@@ -223,7 +324,30 @@ export function OnboardingTopBanner() {
           {/* Lado direito: Continuar (apenas quando fora da tela do passo) */}
           <div className="flex shrink-0 items-center gap-2">
             {nextStep ? (
-              isOnNextStepPage ? (
+              reviewOnPage ? (
+                <>
+                  <span className="hidden text-xs text-muted-foreground md:inline">
+                    Confira as modalidades e confirme.
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={cn(
+                      CTA_CLASS,
+                      reviewAttention.attention && "motion-safe:animate-attention-loop-infinite",
+                    )}
+                    disabled={markReviewed.isPending}
+                    onClick={confirmReview}
+                  >
+                    {markReviewed.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Check className="size-4" />
+                    )}
+                    Está tudo certo
+                  </Button>
+                </>
+              ) : isOnNextStepPage ? (
                 <span className="hidden text-xs text-muted-foreground sm:inline">
                   {nextStep.description}
                 </span>
@@ -234,10 +358,18 @@ export function OnboardingTopBanner() {
                   size="sm"
                   className={cn(
                     CTA_CLASS,
-                    pulse && "motion-safe:animate-attention-loop",
+                    continueAttention.attention &&
+                      "motion-safe:animate-attention-loop-infinite",
                   )}
                 >
-                  <Link ref={ctaRef} href={nextStep.href}>
+                  <Link
+                    ref={ctaRef}
+                    href={nextStep.href}
+                    onClick={() => {
+                      continueAttention.stop();
+                      closeSpotlight();
+                    }}
+                  >
                     Continuar
                     <ArrowRight className="size-4" />
                   </Link>

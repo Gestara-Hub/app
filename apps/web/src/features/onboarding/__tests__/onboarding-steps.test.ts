@@ -21,10 +21,11 @@ function input(extra: Partial<ClassesOnboardingInput> = {}): ClassesOnboardingIn
     modalitiesCount: 0,
     modalitiesNeedReview: false,
     plansCount: 0,
+    lessonPackagesCount: 0,
     professionalsCount: 0,
     clientsCount: 0,
     classGroups: [],
-    isCourseArea: false,
+    areaBillingMode: "membership",
     ...extra,
   };
 }
@@ -52,7 +53,7 @@ describe("área de curso (defaultBillingMode course)", () => {
   });
 
   it("esconde regras e planos da mensalidade e mostra os passos do curso", () => {
-    const steps = buildClassesOnboardingSteps(input({ isCourseArea: true }));
+    const steps = buildClassesOnboardingSteps(input({ areaBillingMode: "course" }));
     expect(steps.map((s) => s.id)).toEqual(["hours", "modalities", "team", "clients", "classes", "enroll"]);
     expect(steps.find((s) => s.id === "classes")?.label).toBe("Criar o primeiro curso");
     expect(steps.find((s) => s.id === "enroll")?.label).toBe("Matricular alunos no curso");
@@ -60,11 +61,11 @@ describe("área de curso (defaultBillingMode course)", () => {
   });
 
   it("turma ativa cobrando mensalidade traz os dois passos de volta", () => {
-    expect(ids(input({ isCourseArea: true, classGroups: [group("t1", { billingMode: "membership" })] }))).toEqual([
+    expect(ids(input({ areaBillingMode: "course", classGroups: [group("t1", { billingMode: "membership" })] }))).toEqual([
       "hours", "billing", "modalities", "plans", "team", "clients", "classes", "enroll",
     ]);
     // Turma antiga sem billingMode cobra mensalidade.
-    expect(ids(input({ isCourseArea: true, classGroups: [group("t1")] }))).toContain("plans");
+    expect(ids(input({ areaBillingMode: "course", classGroups: [group("t1")] }))).toContain("plans");
   });
 
   it("turma de mensalidade inativa, curso ou sem cobrança não trazem os passos", () => {
@@ -73,25 +74,33 @@ describe("área de curso (defaultBillingMode course)", () => {
       group("c1", { billingMode: "course" }),
       group("f1", { billingMode: "free" }),
     ];
-    const steps = ids(input({ isCourseArea: true, classGroups: groups }));
+    const steps = ids(input({ areaBillingMode: "course", classGroups: groups }));
     expect(steps).not.toContain("billing");
     expect(steps).not.toContain("plans");
   });
 
-  it("matricular só conclui com aluno ativo em um curso", () => {
-    const base = input({ ...READY_UNTIL_CLASSES, isCourseArea: true });
+  it("matricular conclui com aluno matriculado em qualquer turma", () => {
+    const base = input({ ...READY_UNTIL_CLASSES, areaBillingMode: "course" });
     expect(stepOf({ ...base, classGroups: [group("c1", { billingMode: "course" })] }, "enroll")?.done).toBe(false);
-    // Matricula em turma de mensalidade nao conta.
-    expect(
-      stepOf({ ...base, classGroups: [group("c1", { billingMode: "course" }), group("t1", { enrolledCount: 4 })] }, "enroll")?.done,
-    ).toBe(false);
     expect(
       stepOf({ ...base, classGroups: [group("c1", { billingMode: "course", enrolledCount: 1 })] }, "enroll")?.done,
     ).toBe(true);
+    // Area de curso que comecou por uma turma de pacote: a matricula nela conta.
+    const pkg = stepOf({ ...base, classGroups: [group("p1", { billingMode: "package", enrolledCount: 1 })] }, "enroll");
+    expect(pkg?.done).toBe(true);
+    expect(pkg?.label).toBe("Matricular alunos na turma");
+  });
+
+  it("sem curso, matricular leva à turma ativa e fala em turma", () => {
+    const base = input({ areaBillingMode: "course" });
+    const step = stepOf({ ...base, classGroups: [group("p1", { billingMode: "package" })] }, "enroll");
+    expect(step?.href).toBe("/classes/p1?enroll=true");
+    expect(step?.label).toBe("Matricular alunos na turma");
+    expect(step?.done).toBe(false);
   });
 
   it("matricular leva ao curso ativo com a matrícula aberta", () => {
-    const base = input({ isCourseArea: true });
+    const base = input({ areaBillingMode: "course" });
     expect(stepOf(base, "enroll")?.href).toBe("/classes");
     const groups = [
       group("old", { billingMode: "course", status: "inactive" }),
@@ -101,7 +110,7 @@ describe("área de curso (defaultBillingMode course)", () => {
   });
 
   it("progresso: criar o curso deixa a matrícula como próximo passo; matricular conclui", () => {
-    const base = input({ ...READY_UNTIL_CLASSES, isCourseArea: true });
+    const base = input({ ...READY_UNTIL_CLASSES, areaBillingMode: "course" });
 
     const beforeCourse = summarizeOnboardingSteps(buildClassesOnboardingSteps(base));
     expect(beforeCourse.total).toBe(6);
@@ -130,6 +139,39 @@ describe("área de mensalidade (sem mudança)", () => {
     expect(steps.find((s) => s.id === "billing")?.label).toBe("Definir regras da mensalidade");
     expect(steps.find((s) => s.id === "billing")?.href).toBe("/settings?tab=geral#billing-rules");
     expect(steps.find((s) => s.id === "classes")?.label).toBe("Criar a primeira turma");
+    expect(steps.find((s) => s.id === "plans")).toMatchObject({
+      label: "Criar planos ou pacotes",
+      href: "/classes/plans",
+      done: false,
+    });
+  });
+
+  it("planos ou pacotes: um plano ativo ou um pacote ativo conclui", () => {
+    expect(stepOf(input({ plansCount: 1 }), "plans")?.done).toBe(true);
+    expect(stepOf(input({ lessonPackagesCount: 1 }), "plans")?.done).toBe(true);
+    expect(stepOf(input(), "plans")?.done).toBe(false);
+  });
+
+  it("regras da mensalidade: só pacote, sem plano, dispensa; com plano, continuam pedidas", () => {
+    expect(stepOf(input({ lessonPackagesCount: 1 }), "billing")?.done).toBe(true);
+    expect(stepOf(input({ lessonPackagesCount: 1, plansCount: 1 }), "billing")?.done).toBe(false);
+    expect(stepOf(input({ plansCount: 1 }), "billing")?.done).toBe(false);
+    expect(stepOf(input({ billingSet: true }), "billing")?.done).toBe(true);
+  });
+
+  it("só com pacotes, a configuração fecha sem regras da mensalidade", () => {
+    const summary = summarizeOnboardingSteps(
+      buildClassesOnboardingSteps(
+        input({
+          ...READY_UNTIL_CLASSES,
+          billingSet: false,
+          plansCount: 0,
+          lessonPackagesCount: 2,
+          classGroups: [group("p1", { billingMode: "package" })],
+        }),
+      ),
+    );
+    expect(summary.isComplete).toBe(true);
   });
 
   it("curso numa área de mensalidade não muda os passos", () => {
@@ -165,6 +207,80 @@ describe("área de mensalidade (sem mudança)", () => {
     // Horario feito, modalidades nao: planos (requer modalidades) fica bloqueado.
     const steps = buildClassesOnboardingSteps(input({ hoursSet: true, billingSet: true }));
     expect(summarizeOnboardingSteps(steps).nextStep?.id).toBe("modalities");
+  });
+});
+
+describe("área de pacote (defaultBillingMode package)", () => {
+  it("troca mensalidade e planos pelo pacote de aulas", () => {
+    const steps = buildClassesOnboardingSteps(input({ areaBillingMode: "package" }));
+    expect(steps.map((s) => s.id)).toEqual(["hours", "modalities", "packages", "team", "clients", "classes"]);
+    const packages = steps.find((s) => s.id === "packages");
+    expect(packages).toMatchObject({
+      label: "Criar um pacote de aulas",
+      href: "/classes/plans?tab=packages",
+      done: false,
+    });
+    expect(steps.find((s) => s.id === "classes")?.label).toBe("Criar a primeira turma");
+  });
+
+  it("o pacote conclui quando existe um no catálogo", () => {
+    expect(stepOf(input({ areaBillingMode: "package", lessonPackagesCount: 1 }), "packages")?.done).toBe(true);
+  });
+
+  it("turma ativa de mensalidade traz regras e planos de volta", () => {
+    expect(ids(input({ areaBillingMode: "package", classGroups: [group("t1", { billingMode: "membership" })] }))).toEqual([
+      "hours", "billing", "modalities", "plans", "packages", "team", "clients", "classes",
+    ]);
+    // Fora da area de mensalidade, o passo e so de planos e o pacote nao dispensa as regras.
+    const withMembership = input({
+      areaBillingMode: "package",
+      lessonPackagesCount: 1,
+      classGroups: [group("t1", { billingMode: "membership" })],
+    });
+    expect(stepOf(withMembership, "plans")).toMatchObject({ label: "Criar planos de mensalidade", done: false });
+    expect(stepOf(withMembership, "billing")?.done).toBe(false);
+    expect(ids(input({ areaBillingMode: "package", classGroups: [group("p1", { billingMode: "package" })] }))).not.toContain("plans");
+  });
+
+  it("progresso fecha com pacote e turma criados", () => {
+    const summary = summarizeOnboardingSteps(
+      buildClassesOnboardingSteps(
+        input({
+          ...READY_UNTIL_CLASSES,
+          areaBillingMode: "package",
+          lessonPackagesCount: 1,
+          classGroups: [group("p1", { billingMode: "package" })],
+        }),
+      ),
+    );
+    expect(summary.total).toBe(6);
+    expect(summary.isComplete).toBe(true);
+  });
+});
+
+describe("área sem cobrança (defaultBillingMode free)", () => {
+  it("fica só com o essencial: sem mensalidade, planos, pacote ou matrícula", () => {
+    expect(ids(input({ areaBillingMode: "free" }))).toEqual(["hours", "modalities", "team", "clients", "classes"]);
+  });
+
+  it("turma ativa de mensalidade traz regras e planos de volta", () => {
+    expect(ids(input({ areaBillingMode: "free", classGroups: [group("t1", { billingMode: "membership" })] }))).toContain("billing");
+  });
+});
+
+describe("outra área segue \"Como você cobra?\"", () => {
+  const stepsFor = (billing?: "membership" | "course" | "package" | "free") =>
+    ids(input({ areaBillingMode: getSegmentPreset("custom", "levels", billing).defaultBillingMode }));
+
+  it("sem resposta (tenant antigo) segue como mensalidade", () => {
+    expect(stepsFor(undefined)).toEqual(["hours", "billing", "modalities", "plans", "team", "clients", "classes"]);
+  });
+
+  it("curso, pacote e sem cobrança mudam os passos", () => {
+    expect(stepsFor("course")).toEqual(["hours", "modalities", "team", "clients", "classes", "enroll"]);
+    expect(stepsFor("package")).toContain("packages");
+    expect(stepsFor("package")).not.toContain("plans");
+    expect(stepsFor("free")).toEqual(["hours", "modalities", "team", "clients", "classes"]);
   });
 });
 

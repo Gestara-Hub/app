@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, Plus, X } from "lucide-react";
+import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
+import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -343,11 +345,13 @@ function BusinessHoursEditor({
   );
   useReportDirty(dirty, onDirtyChange);
   const [dayErrors, setDayErrors] = useState<Partial<Record<Weekday, string>>>({});
-  // Horario ainda nao definido (1o passo do onboarding): a lista pulsa ate o
-  // usuario clicar nela.
-  const [highlight, setHighlight] = useState(
-    () => !unit.businessHours.some((day) => !day.closed),
-  );
+  // Horario ainda nao definido (1o passo do onboarding): a lista fica em
+  // destaque, com o resto da tela escuro, ate salvar, clicar fora ou Esc.
+  const hoursUnset = !unit.businessHours.some((day) => !day.closed);
+  const hoursAttention = useAttentionUntilInteraction(hoursUnset);
+  // Destaque cobre a lista e o rodape com "Salvar horarios".
+  const hoursCardRef = useRef<HTMLDivElement>(null);
+  const hoursSpotlightRefs = useMemo(() => [hoursCardRef], []);
   const [editing, setEditing] = useState<{ weekday: Weekday; showErrors: boolean } | null>(
     null,
   );
@@ -452,14 +456,14 @@ function BusinessHoursEditor({
   const editingDay = editing ? days.find((d) => d.weekday === editing.weekday) : undefined;
 
   return (
-    <div className="space-y-4">
-      <div
-        onPointerDownCapture={() => setHighlight(false)}
-        className={cn(
-          "divide-y rounded-lg border bg-card transition-colors",
-          highlight && "border-primary/60 motion-safe:animate-attention-ring",
-        )}
-      >
+    <div ref={hoursCardRef} className="space-y-4">
+      <SectionSpotlight
+        active={hoursAttention.attention}
+        targetRefs={hoursSpotlightRefs}
+        onDismiss={hoursAttention.stop}
+        hint="Ligue os dias em que o espaço abre e salve."
+      />
+      <div className="divide-y rounded-lg border bg-card transition-colors">
         {days.map((day) => {
           const label = WEEKDAYS[day.weekday].label;
           const dayError = dayErrors[day.weekday];

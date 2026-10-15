@@ -371,8 +371,12 @@ const DEFAULT_STATUS: "all" | RecordStatus = "active";
 export function TurmasView({
   createCompletesSetup = false,
 }: {
-  /** Criar uma turma agora conclui o cadastro basico: comemora em vez do aviso simples. */
-  createCompletesSetup?: boolean;
+  /**
+   * Criar uma turma agora conclui o cadastro basico: comemora em vez do aviso
+   * simples. Funcao = decide pela turma criada (ex.: mensalidade numa area sem
+   * mensalidade abre os passos de regras e planos, entao nao comemora).
+   */
+  createCompletesSetup?: boolean | ((created: ClassGroupView) => boolean);
 } = {}) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -470,7 +474,9 @@ export function TurmasView({
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(created) => {
-          if (createCompletesSetup) {
+          const completes =
+            typeof createCompletesSetup === "function" ? createCompletesSetup(created) : createCompletesSetup;
+          if (completes) {
             setCelebrate(true);
             setCreatedTurmaForEnroll(created);
           } else {

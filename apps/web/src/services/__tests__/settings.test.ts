@@ -110,14 +110,17 @@ describe("area do espaco e textos das mensagens", () => {
     expect(contentOf("absence")).not.toContain("tatame");
   });
 
-  it("Outra área grava o nome e como os alunos avancam", async () => {
+  it("Outra área grava o nome, como os alunos avancam e como cobra", async () => {
     const org = await settingsService.updateOrganization({
       classSegment: "custom",
       customSegmentName: "Teatro",
       customSegmentProgression: "levels",
+      customSegmentBilling: "package",
     });
     expect(org.customSegmentName).toBe("Teatro");
     expect(org.customSegmentProgression).toBe("levels");
+    expect(org.customSegmentBilling).toBe("package");
+    expect((await settingsService.getOrganization()).customSegmentBilling).toBe("package");
     expect(contentOf("welcome")).not.toContain("tatame");
   });
 

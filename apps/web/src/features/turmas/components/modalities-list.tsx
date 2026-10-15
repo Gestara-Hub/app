@@ -328,7 +328,7 @@ export function ModalitiesList({
             onChange={setStatus}
             gender="female"
           />
-          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} tipKey="modalities" itemCount={modalities.length} />
         </div>
       </div>
 

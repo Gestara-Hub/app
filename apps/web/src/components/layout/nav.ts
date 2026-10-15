@@ -180,7 +180,7 @@ export const MAIN_NAV: NavItem[] = [
     models: ["classes"],
   },
   {
-    label: "Planos",
+    label: "Planos e pacotes",
     href: "/classes/plans",
     icon: Layers,
     permission: "billing:view",

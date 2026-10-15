@@ -7,6 +7,7 @@ import type { LessonPackage, RecordStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   ListContainer,
   ListEmptyState,
@@ -15,6 +16,9 @@ import {
   RecordStatusBadge,
   SearchInput,
   StatusFilterSelect,
+  ViewModeSkeleton,
+  ViewModeToggle,
+  useViewMode,
 } from "@/components/shared/list";
 import {
   ListItemActionsMenu,
@@ -112,6 +116,103 @@ function PackageRow({
   return <ListItemContextMenu actions={actions}>{content}</ListItemContextMenu>;
 }
 
+/** Versao em cartao do pacote (visao "Cartões"), com as mesmas acoes da linha. */
+function PackageCard({
+  pkg,
+  modalities,
+  canManage,
+  onEdit,
+  onToggleStatus,
+}: {
+  pkg: LessonPackage;
+  modalities: string;
+  canManage: boolean;
+  onEdit: (pkg: LessonPackage) => void;
+  onToggleStatus: (pkg: LessonPackage) => void;
+}) {
+  const isActive = pkg.status === "active";
+  const actions: ListItemAction[] = canManage
+    ? [
+        { key: "edit", label: "Editar", icon: <Pencil className="size-4" />, onSelect: () => onEdit(pkg) },
+        isActive
+          ? {
+              key: "inactivate",
+              label: "Inativar",
+              icon: <PowerOff className="size-4" />,
+              onSelect: () => onToggleStatus(pkg),
+              destructive: true,
+            }
+          : {
+              key: "reactivate",
+              label: "Reativar",
+              icon: <Power className="size-4" />,
+              onSelect: () => onToggleStatus(pkg),
+            },
+      ]
+    : [];
+
+  const card = (
+    <div
+      role={canManage ? "button" : undefined}
+      tabIndex={canManage ? 0 : undefined}
+      onClick={() => canManage && onEdit(pkg)}
+      onKeyDown={(e) => {
+        if (!canManage) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(pkg);
+        }
+      }}
+      className={cn(
+        "group flex h-full flex-col justify-between rounded-xl border bg-card p-4 shadow-2xs transition-all",
+        canManage &&
+          "cursor-pointer hover:border-primary/40 hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 space-y-1.5">
+          <RecordStatusBadge status={pkg.status} />
+          <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">{pkg.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {validityLabel(pkg.validityDays)} · {modalities}
+            {pkg.absenceConsumes ? "" : " · Falta não gasta"}
+          </p>
+        </div>
+        {canManage ? (
+          <div className="-mr-2 -mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <ListItemActionsMenu actions={actions} title={`Ações de ${pkg.name}`} variant="ghost" />
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-border/50 pt-3">
+        <span className="text-xs text-muted-foreground">{plural(pkg.lessons, "aula", "aulas")}</span>
+        <span className="text-base font-bold tabular-nums text-foreground">{formatCents(pkg.priceCents)}</span>
+      </div>
+    </div>
+  );
+
+  if (!canManage) return card;
+  return <ListItemContextMenu actions={actions}>{card}</ListItemContextMenu>;
+}
+
+function SkeletonCards() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="space-y-3 rounded-xl border bg-card p-4 shadow-2xs">
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-4 w-40 max-w-full" />
+          <Skeleton className="h-3 w-48 max-w-full" />
+          <div className="flex justify-between border-t border-border/50 pt-3">
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SkeletonRows() {
   return Array.from({ length: 4 }).map((_, i) => (
     <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
@@ -137,6 +238,7 @@ export function LessonPackagesTab({
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
+  const [viewMode, setViewMode] = useViewMode("packages", "list");
   const { data, isPending } = useLessonPackages({
     search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
@@ -209,8 +311,8 @@ export function LessonPackagesTab({
         emptyGuide={
           <ModuleEmptyGuide
             icon={<Ticket className="size-8" />}
-            title="Nenhum pacote cadastrado ainda."
-            description="Venda aulas juntas, usadas na chamada."
+            title="Nenhum pacote de aulas ainda."
+            description="Para quem compra um número de aulas. Dá para usar junto com mensalidades."
           />
         }
       />
@@ -240,7 +342,10 @@ export function LessonPackagesTab({
             onClear={clearSearch}
             aria-label="Buscar pacote"
           />
-          <StatusFilterSelect value={status} onChange={setStatus} gender="male" />
+          <div className="flex items-center gap-2">
+            <StatusFilterSelect value={status} onChange={setStatus} gender="male" />
+            <ViewModeToggle value={viewMode} onChange={setViewMode} />
+          </div>
         </div>
 
         <ListSummaryBar
@@ -252,7 +357,33 @@ export function LessonPackagesTab({
           onClearFilters={clearAll}
         />
 
-        <ListContainer emptyState={emptyState}>{items}</ListContainer>
+        {isPending ? (
+          <ViewModeSkeleton
+            storageKey="packages"
+            mode={viewMode}
+            list={
+              <ListContainer>
+                <SkeletonRows />
+              </ListContainer>
+            }
+            grid={<SkeletonCards />}
+          />
+        ) : packages.length > 0 && viewMode === "grid" ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {packages.map((pkg) => (
+              <PackageCard
+                key={pkg.id}
+                pkg={pkg}
+                modalities={modalitiesOf(pkg)}
+                canManage={canManage}
+                onEdit={setEditing}
+                onToggleStatus={(p) => void toggleStatus(p)}
+              />
+            ))}
+          </div>
+        ) : (
+          <ListContainer emptyState={emptyState}>{items}</ListContainer>
+        )}
       </div>
 
       <PackageFormDialog open={formOpen} onOpenChange={setFormOpen} pkg={editing} />

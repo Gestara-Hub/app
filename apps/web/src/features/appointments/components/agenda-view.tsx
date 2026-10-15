@@ -93,7 +93,7 @@ export function AgendaView() {
         {showNew ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button>
+              <Button data-onboarding-cta="appointment">
                 <Plus className="size-4" />
                 Novo
                 <ChevronDown className="size-4 opacity-70" />

@@ -7,6 +7,7 @@ import {
   type FieldValues,
   type Path,
 } from "react-hook-form";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SegmentedChoiceOption {
@@ -20,6 +21,12 @@ interface SegmentedChoiceFieldProps<T extends FieldValues> {
   options: SegmentedChoiceOption[];
   ariaLabel: string;
   disabled?: boolean;
+  /**
+   * `segmented` (padrao): faixa unica, no estilo "segmented control".
+   * `cards`: cartoes de opcao em 2 colunas em qualquer largura (grade 2x2 com
+   * 4 opcoes), para escolhas com titulo e dica que nao cabem lado a lado.
+   */
+  variant?: "segmented" | "cards";
 }
 
 /**
@@ -32,6 +39,7 @@ export function SegmentedChoiceField<T extends FieldValues>({
   options,
   ariaLabel,
   disabled,
+  variant = "segmented",
 }: SegmentedChoiceFieldProps<T>) {
   const { control } = useFormContext<T>();
   const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
@@ -60,7 +68,68 @@ export function SegmentedChoiceField<T extends FieldValues>({
           buttonsRef.current[next]?.focus();
         };
 
+        const isCards = variant === "cards";
         const wraps = options.length > 3;
+        if (isCards) {
+          return (
+            <div
+              role="radiogroup"
+              aria-label={ariaLabel}
+              onKeyDown={handleKeyDown}
+              className="grid grid-cols-2 gap-2"
+            >
+              {options.map((option, index) => {
+                const selected = index === selectedIndex;
+                return (
+                  <button
+                    key={option.value}
+                    ref={(el) => {
+                      buttonsRef.current[index] = el;
+                      if (index === 0) field.ref(el);
+                    }}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
+                    disabled={disabled}
+                    onClick={() => field.onChange(option.value)}
+                    className={cn(
+                      "relative flex min-h-16 flex-col justify-start rounded-lg border px-3 py-2.5 pr-8 text-left transition-colors cursor-pointer select-none",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "disabled:cursor-not-allowed disabled:opacity-60",
+                      selected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border/70 bg-background hover:border-border hover:bg-muted/40",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute right-2.5 top-2.5 flex size-4 items-center justify-center rounded-full border",
+                        selected ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                      )}
+                    >
+                      {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+                    </span>
+                    <span
+                      className={cn(
+                        "block text-sm font-medium leading-tight",
+                        selected ? "text-foreground" : "text-foreground/90",
+                      )}
+                    >
+                      {option.label}
+                    </span>
+                    {option.description ? (
+                      <span className="mt-1 block text-xs text-muted-foreground leading-snug">
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        }
         return (
           <div
             role="radiogroup"

@@ -24,7 +24,7 @@ Toda aba ou tela de listagem deve conter:
 1. **Barra de busca e filtros**:
    - `SearchInput` (`@/components/shared/list`) com placeholder direto (`"Buscar aluno por nome, telefone ou e-mail..."`, `"Buscar professor..."`, `"Buscar por descrição ou observação..."`).
    - Filtros de escopo (`StatusFilterSelect`, `Select` de categoria/modalidade, `SegmentedChoiceField` para 2–3 opções curtas).
-   - `ViewModeToggle` (`@/components/shared/list`) quando a entidade suporta alternância **Lista / Cards**.
+   - `ViewModeToggle` (`@/components/shared/list`) quando a entidade suporta alternância **Lista / Cartões** (nunca "Cards" na tela).
 2. **`ListSummaryBar` logo abaixo dos filtros**:
    - Sempre renderizar `<ListSummaryBar>` entre a barra de filtros e a `<ListContainer>` (ou grid de cards).
    - Passar obrigatoriamente `isLoading={isPending}` para exibir o skeleton com a mesma altura do contador (`"8 alunos cadastrados"`, `"3 professores ativos"`) e evitar *layout shift* vertical quando a query resolve.

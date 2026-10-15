@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   useFieldArray,
   useForm,
@@ -18,6 +19,7 @@ import {
   Percent,
   Plus,
   SlidersHorizontal,
+  Ticket,
   Trash2,
   Users,
   Wallet,
@@ -41,18 +43,36 @@ import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import { formatCents } from "@gestarahub/core/format";
-import type { Address, Client, CreateClient, OrganizationSettings, PlanPeriod } from "@gestarahub/contracts";
-import { useModel } from "@/features/auth";
+import { formatCents, plural } from "@gestarahub/core/format";
+import type {
+  Address,
+  ClassBillingMode,
+  Client,
+  CreateClient,
+  LessonPackage,
+  OrganizationSettings,
+  PlanPeriod,
+} from "@gestarahub/contracts";
+import { useCan, useModel } from "@/features/auth";
 import { useWhatsAppSend } from "@/features/communication";
-import { useCharges, usePlans } from "@/features/turmas";
+import {
+  SellPackageDialog,
+  StudentPackageBadge,
+  displayPackage,
+  paymentSummary,
+  useCharges,
+  useLessonPackages,
+  usePlans,
+  useSellPackage,
+  useStudentPackages,
+} from "@/features/turmas";
 import { useBusinessSegment, useOrganization } from "@/features/settings";
 import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
-import { clientFormSchema, defaultPaymentMode, type ClientFormValues } from "../client-schema";
+import { clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
-import { resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
+import { MAX_INSTALLMENTS, resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
 const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "active", label: "Ativa (treinando normalmente)" },
@@ -73,9 +93,25 @@ const shortDate = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/"
 
 const PAYMENT_MODE_OPTIONS: SegmentedChoiceOption[] = [
   { value: "membership", label: "Paga mensalidade", description: "Plano e desconto opcional" },
+  { value: "package", label: "Pacote de aulas", description: "Compra um número de aulas" },
   { value: "scholarship", label: "Bolsista", description: "Integral ou parcial" },
-  { value: "none", label: "Não paga mensalidade", description: "Curso, pacote ou avulso" },
+  { value: "none", label: "Não paga mensalidade", description: "Curso, avulso ou experimental" },
 ];
+
+const PACKAGE_INSTALLMENT_OPTIONS = Array.from({ length: MAX_INSTALLMENTS }, (_, i) => ({
+  value: String(i + 1),
+  label: i === 0 ? "À vista" : `${i + 1}x`,
+}));
+
+/** "10 aulas · vale 30 dias" (ou "sem validade"), como em "Vender pacote". */
+function packageFacts(pkg: LessonPackage): string {
+  const validity = !pkg.validityDays
+    ? "sem validade"
+    : pkg.validityDays === 365
+      ? "vale 1 ano"
+      : `vale ${pkg.validityDays} dias`;
+  return `${plural(pkg.lessons, "aula", "aulas")} · ${validity}`;
+}
 
 const SCHOLARSHIP_BY_OPTIONS: SegmentedChoiceOption[] = [
   { value: "percent", label: "% de bolsa", description: "Desconto em % do plano" },
@@ -102,12 +138,13 @@ function toDefaults(
   client?: Client,
   orgSettings?: OrganizationSettings,
   isClasses = true,
-  isCourseArea = false,
+  areaBillingMode: ClassBillingMode = "membership",
+  canSellPackage = false,
 ): ClientFormValues {
   const addr = client?.address;
   const isScholar = Boolean(client?.discount?.scholarship);
   const hasDiscount = Boolean(!isScholar && client?.discount && client.discount.value > 0);
-  const paymentMode = defaultPaymentMode({ client, isClasses, isCourseArea });
+  const paymentMode = defaultPaymentMode({ client, isClasses, areaBillingMode });
   const initialStartDate = client?.planStartDate || todayDateISO;
   const initialStrategy = client?.billingStrategy || orgSettings?.midMonthStrategy || "prorated";
   const initialTiming = client?.cyclePaymentTiming || orgSettings?.billingTiming || "prepaid";
@@ -147,6 +184,12 @@ function toDefaults(
     discountValue: client?.discount?.value ?? 0,
     discountReason: client?.discount?.reason ?? "",
     paymentMode,
+    // Aluno novo com "Pacote de aulas": o cadastro ja vende o pacote.
+    sellsPackage: !client && canSellPackage,
+    packageId: "",
+    packagePriceCents: 0,
+    packageInstallments: "1",
+    packageFirstDueDate: todayDateISO,
     scholarshipKind:
       isScholar && !(client?.discount?.type === "percentage" && client.discount.value >= 100)
         ? "partial"
@@ -173,13 +216,18 @@ interface ClientFormProps {
 export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
-  // Area de curso fechado: aluno novo comeca em "Não paga mensalidade".
-  const isCourseArea = useBusinessSegment().defaultBillingMode === "course";
+  // Fora da area de mensalidade (curso, pacote, sem cobranca): aluno novo
+  // comeca em "Não paga mensalidade".
+  const areaBillingMode = useBusinessSegment().defaultBillingMode;
   const createMut = useCreateClient();
   // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
   const whatsapp = useWhatsAppSend();
   const updateMut = useUpdateClient();
-  const pending = createMut.isPending || updateMut.isPending;
+  const sellPackageMut = useSellPackage();
+  const pending = createMut.isPending || updateMut.isPending || sellPackageMut.isPending;
+  // Vender pacote pede a mesma permissao da cobranca avulsa.
+  const can = useCan();
+  const canSellPackage = isClasses && can("billing:manage");
 
   const orgQuery = useOrganization();
   const orgSettings = orgQuery.data?.settings;
@@ -206,7 +254,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     resolver: zodResolver(clientFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(client, orgSettings, isClasses, isCourseArea),
+    defaultValues: toDefaults(client, orgSettings, isClasses, areaBillingMode, canSellPackage),
   });
 
   const isDirty = form.formState.isDirty;
@@ -249,6 +297,14 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   const scholarshipPayCents = useWatch({ control: form.control, name: "scholarshipPayCents" });
   const isScholarship = paymentMode === "scholarship";
   const isFullScholarship = isScholarship && scholarshipKind !== "partial";
+  // So mensalidade e bolsa usam plano; pacote e "Não paga" ficam sem ele.
+  const usesPlan = paymentMode === "membership" || isScholarship;
+  const isPackageMode = paymentMode === "package";
+  const sellsPackage = useWatch({ control: form.control, name: "sellsPackage" });
+  const [packageId, packagePriceCents, packageInstallments, packageFirstDueDate] = useWatch({
+    control: form.control,
+    name: ["packageId", "packagePriceCents", "packageInstallments", "packageFirstDueDate"],
+  });
   const addressValues = useWatch({
     control: form.control,
     name: "address",
@@ -283,12 +339,49 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         form.setValue("dueDay", orgSettings.defaultDueDay);
       }
       // A area vem da mesma organizacao: corrige o padrao se ainda nao mexeram.
-      const mode = defaultPaymentMode({ isClasses, isCourseArea });
+      const mode = defaultPaymentMode({ isClasses, areaBillingMode });
       if (mode && !form.getFieldState("paymentMode").isDirty && form.getValues("paymentMode") !== mode) {
         form.resetField("paymentMode", { defaultValue: mode });
       }
     }
-  }, [orgSettings, client, form, isClasses, isCourseArea]);
+  }, [orgSettings, client, form, isClasses, areaBillingMode]);
+
+  // Pacote de aulas: catalogo para a venda no cadastro e o pacote atual na edicao.
+  const { data: packageCatalog, isPending: packageCatalogPending } = useLessonPackages({ status: "active" });
+  const packageOptions = useMemo(
+    () => (packageCatalog ?? []).map((p) => ({ value: p.id, label: p.name })),
+    [packageCatalog],
+  );
+  const chosenPackage = (packageCatalog ?? []).find((p) => p.id === packageId);
+  // Escolher o pacote preenche o valor dele (editavel: e o unico desconto).
+  const pricedForRef = useRef("");
+  useEffect(() => {
+    if (!chosenPackage || pricedForRef.current === chosenPackage.id) return;
+    pricedForRef.current = chosenPackage.id;
+    form.setValue("packagePriceCents", chosenPackage.priceCents, { shouldDirty: true });
+  }, [chosenPackage, form]);
+  const packageSaleSummary = paymentSummary(
+    packagePriceCents ?? 0,
+    Number(packageInstallments || 1),
+    packageFirstDueDate ?? "",
+  );
+
+  const { data: ownedPackages } = useStudentPackages(
+    client ? { studentId: client.id } : undefined,
+    Boolean(client) && isClasses,
+  );
+  const currentPackage = useMemo(() => displayPackage(ownedPackages ?? []), [ownedPackages]);
+  const [sellPackageOpen, setSellPackageOpen] = useState(false);
+  // Aluno salvo sem plano e com pacote em uso abre em "Pacote de aulas".
+  const packageModeCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!client || !ownedPackages || packageModeCheckedRef.current) return;
+    packageModeCheckedRef.current = true;
+    const mode = defaultPaymentMode({ client, isClasses, areaBillingMode, hasActivePackage: Boolean(currentPackage) });
+    if (mode && !form.getFieldState("paymentMode").isDirty && form.getValues("paymentMode") !== mode) {
+      form.resetField("paymentMode", { defaultValue: mode });
+    }
+  }, [client, ownedPackages, currentPackage, form, isClasses, areaBillingMode]);
 
   const [planOpen, setPlanOpen] = useState(() => !client);
   const [addressOpen, setAddressOpen] = useState(
@@ -351,9 +444,11 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       ? "Plano"
       : "Plano de acesso";
   // Inicio: com plano, ou na bolsa integral (sem plano, e o inicio das isentas).
-  const showStartDate = paymentMode !== "none" && (Boolean(selectedPlanId) || isFullScholarship);
+  const showStartDate = usesPlan && (Boolean(selectedPlanId) || isFullScholarship);
 
-  const planBadge = selectedPlan
+  const planBadge = !usesPlan
+    ? undefined
+    : selectedPlan
     ? `${selectedPlan.name.replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "").trim()} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
     : selectedPlanId
       ? "Plano selecionado"
@@ -369,6 +464,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
 
   const discountBadge = useMemo(() => {
     if (paymentMode === "none") return "Sem mensalidade";
+    if (isPackageMode) return chosenPackage?.name ?? currentPackage?.name ?? "Pacote de aulas";
     if (isFullScholarship) return "Bolsista integral";
     if (!effectiveDiscount || !selectedPlanId) return null;
     if (isScholarship) {
@@ -388,6 +484,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     paymentMode,
     scholarshipBy,
     scholarshipPayCents,
+    isPackageMode,
+    chosenPackage,
+    currentPackage,
   ]);
 
   // Conta ao vivo da bolsa parcial: "Plano R$ 180,00 → paga R$ 90,00 (bolsa de 50%)".
@@ -435,11 +534,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   }, [selectedPlan, basePriceCents, planStartDate, billingStrategy, cyclePaymentTiming, defaultDueDay, orgSettings]);
 
   // A 1a cobranca aparece no cadastro e quando o aluno troca de plano.
-  const showFirstCharge = Boolean(selectedPlanId && (!isEdit || selectedPlanId !== client?.planId));
+  const showFirstCharge = Boolean(usesPlan && selectedPlanId && (!isEdit || selectedPlanId !== client?.planId));
 
   // Troca de plano com periodo ja pago: o plano novo comeca no periodo seguinte
   // (o servico tambem nunca cobra os mesmos dias duas vezes).
-  const isPlanSwitch = Boolean(isEdit && client?.planId && selectedPlanId && selectedPlanId !== client.planId);
+  const isPlanSwitch = Boolean(
+    usesPlan && isEdit && client?.planId && selectedPlanId && selectedPlanId !== client.planId,
+  );
   const { data: studentCharges } = useCharges(
     isPlanSwitch && client ? { studentId: client.id, kind: "membership" } : undefined,
   );
@@ -571,7 +672,11 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       errors.discountValue ||
       errors.discountReason ||
       errors.scholarshipPercent ||
-      errors.scholarshipPayCents
+      errors.scholarshipPayCents ||
+      errors.packageId ||
+      errors.packagePriceCents ||
+      errors.packageInstallments ||
+      errors.packageFirstDueDate
     ) {
       setPlanOpen(true);
     }
@@ -605,8 +710,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     const mode = values.paymentMode ?? "membership";
     const isScholar = mode === "scholarship";
     const isFull = isScholar && values.scholarshipKind !== "partial";
-    // "Não paga mensalidade" nao leva plano; a bolsa integral pode ir sem plano.
-    const planId = mode === "none" ? undefined : values.planId || undefined;
+    // "Não paga mensalidade" e "Pacote de aulas" nao levam plano; a bolsa
+    // integral pode ir sem plano.
+    const planId = mode === "none" || mode === "package" ? undefined : values.planId || undefined;
     const plan = plans?.find((p) => p.id === planId);
 
     if (isScholar && !isFull && values.scholarshipBy === "amount" && plan) {
@@ -711,11 +817,32 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         );
       } else {
         const created = await createMut.mutateAsync({ ...payload, status: "active" });
+        // "Pacote de aulas": vende o pacote ao aluno recem-criado (sem plano).
+        // Se a venda falhar, o aluno fica salvo e o pacote sai depois pelo menu.
+        let packageSold = false;
+        if (isPackageSale(values) && values.packageId) {
+          try {
+            await sellPackageMut.mutateAsync({
+              studentId: created.id,
+              packageId: values.packageId,
+              priceCents: Math.round(values.packagePriceCents ?? 0),
+              installments: Number(values.packageInstallments || 1),
+              firstDueDate: values.packageFirstDueDate || todayDateISO,
+            });
+            packageSold = true;
+          } catch (error) {
+            toast.error(
+              `Aluno criado, mas o pacote não foi vendido. ${getErrorMessage(error, "Venda pelo menu do aluno.")}`,
+            );
+          }
+        }
         const canWelcome = isClasses && whatsapp.ready && Boolean(whatsappNumber(created.phone));
         toast.success(
-          isClasses
-            ? "Aluno criado com sucesso."
-            : "Cliente criado com sucesso.",
+          packageSold
+            ? "Aluno criado e pacote vendido."
+            : isClasses
+              ? "Aluno criado com sucesso."
+              : "Cliente criado com sucesso.",
           canWelcome
             ? {
                 duration: 10_000,
@@ -846,13 +973,103 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                 name="paymentMode"
                 ariaLabel="Como o aluno paga"
                 options={PAYMENT_MODE_OPTIONS}
+                variant="cards"
                 disabled={pending}
               />
 
               {paymentMode === "none" ? (
                 <p className="text-xs text-muted-foreground">
-                  Sem plano e sem mensalidade. Use para curso, pacote de aulas, aula avulsa ou experimental.
+                  Sem plano e sem mensalidade. Use para curso, aula avulsa ou experimental.
                 </p>
+              ) : null}
+
+              {isPackageMode && isEdit ? (
+                <div
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-muted/20 p-3"
+                  data-testid="client-package-balance"
+                >
+                  {currentPackage ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{currentPackage.name}</span>
+                      <StudentPackageBadge pkg={currentPackage} />
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Nenhum pacote em uso.</p>
+                  )}
+                  {canSellPackage && client?.status === "active" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSellPackageOpen(true)}
+                      disabled={pending}
+                    >
+                      <Ticket className="size-3.5" />
+                      Vender pacote
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {isPackageMode && !isEdit && !sellsPackage ? (
+                <p className="text-xs text-muted-foreground">
+                  Sem plano. Quem cuida das cobranças vende o pacote.
+                </p>
+              ) : null}
+
+              {isPackageMode && !isEdit && sellsPackage ? (
+                <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-3">
+                  <div className="space-y-1.5">
+                    <ComboboxField<ClientFormValues>
+                      name="packageId"
+                      label="Pacote"
+                      placeholder={packageCatalogPending ? "Carregando..." : "Selecione o pacote"}
+                      searchPlaceholder="Buscar pacote..."
+                      emptyMessage="Nenhum pacote ativo."
+                      hint={chosenPackage ? packageFacts(chosenPackage) : undefined}
+                      options={packageOptions}
+                      required
+                      disabled={pending}
+                    />
+                    {!packageCatalogPending && packageOptions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum pacote ativo.{" "}
+                        <Link
+                          href="/classes/plans?tab=packages"
+                          className="font-medium text-primary hover:underline"
+                        >
+                          Criar pacote
+                        </Link>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <InputCurrency<ClientFormValues>
+                      name="packagePriceCents"
+                      label="Valor"
+                      required
+                      disabled={pending}
+                    />
+                    <SelectField<ClientFormValues>
+                      name="packageInstallments"
+                      label="Parcelas"
+                      options={PACKAGE_INSTALLMENT_OPTIONS}
+                      clearable={false}
+                      disabled={pending}
+                    />
+                    <DateField<ClientFormValues>
+                      name="packageFirstDueDate"
+                      label="1º vencimento"
+                      required
+                      disabled={pending}
+                    />
+                  </div>
+                  {packageSaleSummary ? (
+                    <p className="text-xs text-muted-foreground" data-testid="client-package-summary">
+                      {packageSaleSummary}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
 
               {isScholarship ? (
@@ -864,7 +1081,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                 />
               ) : null}
 
-              {paymentMode !== "none" ? (
+              {usesPlan ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
                   <div className={showStartDate ? "sm:col-span-3" : "sm:col-span-5"}>
                     <ComboboxField<ClientFormValues>
@@ -915,7 +1132,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                       Cobrança da 1ª mensalidade
                     </span>
                     <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
-                      {usesOrgRule ? "Regra da academia" : "Regra deste aluno"}:{" "}
+                      {usesOrgRule ? "Regra do espaço" : "Regra deste aluno"}:{" "}
                       {TIMING_LABEL[billingCalculation.terms.timing]} •{" "}
                       {STRATEGY_LABEL[billingCalculation.terms.strategy]}
                     </span>
@@ -988,7 +1205,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                 </div>
               ) : null}
 
-              {selectedPlanId || isFullScholarship ? (
+              {usesPlan && (selectedPlanId || isFullScholarship) ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <InputNumber<ClientFormValues>
                     name="dueDay"
@@ -1001,7 +1218,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     hint={
                       billingStrategy === "full_cycle"
                         ? "No mês cheio, é o dia de início do ciclo. Dia inexistente cai no último dia do mês."
-                        : `Dia do mês das próximas mensalidades (padrão da academia: ${defaultDueDay}).`
+                        : `Dia do mês das próximas mensalidades (padrão do espaço: ${defaultDueDay}).`
                     }
                   />
 
@@ -1163,7 +1380,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
               ) : null}
 
               {/* Pix Automatico: so para o plano ja salvo do aluno */}
-              {isEdit && client?.planId && selectedPlanId === client.planId ? (
+              {usesPlan && isEdit && client?.planId && selectedPlanId === client.planId ? (
                 <RecurringAuthorizationSection
                   studentId={client.id}
                   studentName={client.name}
@@ -1317,6 +1534,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           </Button>
         </DialogFooter>
       </form>
+      {/* Fora do <form>: o envio do formulario da venda nao sobe para o do aluno. */}
+      {isEdit && canSellPackage ? (
+        <SellPackageDialog
+          open={sellPackageOpen}
+          onOpenChange={setSellPackageOpen}
+          student={client ?? null}
+          initialPackageId={currentPackage?.packageId}
+        />
+      ) : null}
     </FormProvider>
   );
 }

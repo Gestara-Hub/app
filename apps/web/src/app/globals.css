@@ -60,11 +60,15 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-attention-loop: attention 1.8s ease-in-out 2;
   --animate-attention-ring: attention-ring 1.8s ease-out 2;
+  /* Pulso continuo ate o usuario interagir (useAttentionUntilInteraction). */
+  --animate-attention-loop-infinite: attention 1.8s ease-in-out infinite;
+  --animate-attention-ring-infinite: attention-ring 1.8s ease-out infinite;
   --animate-confetti: confetti 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 /* Chama a atencao para um CTA (ex.: "Continuar" do onboarding): cresce, treme e
-   solta um anel por 2 ciclos (3,6s) e depois para. */
+   solta um anel. `attention-loop` roda 2 ciclos (3,6s) e para; a variante
+   `-infinite` repete ate o usuario interagir. */
 @keyframes attention {
   0% {
     transform: scale(1) rotate(0);
@@ -105,15 +109,22 @@
 }
 
 /* No fluxo guiado (onboarding), o CTA principal da tela do passo atual pulsa
-   por 2 ciclos (3,6s) ao entrar na etapa e depois para. */
+   sem parar ate ser clicado (o banner marca `data-onboarding-cta-attention` no
+   <html> e o remove no clique). Modalidades e a excecao: ja vem da configuracao
+   inicial, entao o "Nova modalidade" pulsa so 2 ciclos (3,6s) ao entrar. */
 @media (prefers-reduced-motion: no-preference) {
-  html[data-onboarding-step="modalities"] [data-onboarding-cta="modalities"],
-  html[data-onboarding-step="plans"] [data-onboarding-cta="plans"],
-  html[data-onboarding-step="team"] [data-onboarding-cta="team"],
-  html[data-onboarding-step="clients"] [data-onboarding-cta="clients"],
-  html[data-onboarding-step="classes"] [data-onboarding-cta="classes"],
-  html[data-onboarding-step="services"] [data-onboarding-cta="services"] {
+  html[data-onboarding-step="modalities"] [data-onboarding-cta~="modalities"] {
     animation: attention 1.8s ease-in-out 2;
+  }
+  html[data-onboarding-cta-attention="plans"] [data-onboarding-cta~="plans"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="packages"] [data-onboarding-cta~="packages"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="team"] [data-onboarding-cta~="team"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="clients"] [data-onboarding-cta~="clients"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="classes"] [data-onboarding-cta~="classes"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="enroll"] [data-onboarding-cta~="enroll"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="services"] [data-onboarding-cta~="services"]:not([data-onboarding-cta-done]),
+  html[data-onboarding-cta-attention="appointment"] [data-onboarding-cta~="appointment"]:not([data-onboarding-cta-done]) {
+    animation: attention 1.8s ease-in-out infinite;
   }
 }
 
@@ -941,7 +952,8 @@ html[data-vm-turmas="grid"] [data-vm-skeleton="turmas:list"],
 html[data-vm-clients="grid"] [data-vm-skeleton="clients:list"],
 html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:list"],
 html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:list"],
-html[data-vm-plans="grid"] [data-vm-skeleton="plans:list"] {
+html[data-vm-plans="grid"] [data-vm-skeleton="plans:list"],
+html[data-vm-packages="grid"] [data-vm-skeleton="packages:list"] {
   display: none !important;
 }
 
@@ -949,7 +961,8 @@ html[data-vm-turmas="grid"] [data-vm-skeleton="turmas:grid"],
 html[data-vm-clients="grid"] [data-vm-skeleton="clients:grid"],
 html[data-vm-professionals="grid"] [data-vm-skeleton="professionals:grid"],
 html[data-vm-modalities="grid"] [data-vm-skeleton="modalities:grid"],
-html[data-vm-plans="grid"] [data-vm-skeleton="plans:grid"] {
+html[data-vm-plans="grid"] [data-vm-skeleton="plans:grid"],
+html[data-vm-packages="grid"] [data-vm-skeleton="packages:grid"] {
   display: block !important;
 }
 
@@ -957,7 +970,8 @@ html[data-vm-turmas="list"] [data-vm-skeleton="turmas:grid"],
 html[data-vm-clients="list"] [data-vm-skeleton="clients:grid"],
 html[data-vm-professionals="list"] [data-vm-skeleton="professionals:grid"],
 html[data-vm-modalities="list"] [data-vm-skeleton="modalities:grid"],
-html[data-vm-plans="list"] [data-vm-skeleton="plans:grid"] {
+html[data-vm-plans="list"] [data-vm-skeleton="plans:grid"],
+html[data-vm-packages="list"] [data-vm-skeleton="packages:grid"] {
   display: none !important;
 }
 
@@ -965,7 +979,8 @@ html[data-vm-turmas="list"] [data-vm-skeleton="turmas:list"],
 html[data-vm-clients="list"] [data-vm-skeleton="clients:list"],
 html[data-vm-professionals="list"] [data-vm-skeleton="professionals:list"],
 html[data-vm-modalities="list"] [data-vm-skeleton="modalities:list"],
-html[data-vm-plans="list"] [data-vm-skeleton="plans:list"] {
+html[data-vm-plans="list"] [data-vm-skeleton="plans:list"],
+html[data-vm-packages="list"] [data-vm-skeleton="packages:list"] {
   display: block !important;
 }
 

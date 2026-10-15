@@ -1,3 +1,4 @@
+import type { ClassBillingMode } from "./class";
 import type { Address, Id, RecordStatus, TimeISO, Weekday } from "./common";
 import type { OnlinePaymentSettings } from "./finance";
 import type { Subscription } from "./subscription";
@@ -17,7 +18,8 @@ export type OrganizationMidMonthStrategy = "prorated" | "full_cycle";
  * Area do negocio no Modelo 3 (turmas). So define padroes (trilha, duracao,
  * vagas) e vocabulario; nunca liga ou desliga recursos. `custom` usa
  * `Organization.customSegmentName` como rotulo e
- * `Organization.customSegmentProgression` para a trilha e as palavras.
+ * `Organization.customSegmentProgression` para a trilha e as palavras e
+ * `Organization.customSegmentBilling` para a forma de cobranca padrao.
  * `music_languages` (antiga "Musica & Idiomas") virou `music` ou `languages` (v32).
  */
 export type ClassesBusinessSegment =
@@ -64,6 +66,11 @@ export interface Organization {
   customSegmentName?: string;
   /** Como os alunos avancam quando `classSegment` e `custom`. Ausente = `none`. */
   customSegmentProgression?: CustomSegmentProgression;
+  /**
+   * Como o espaco cobra quando `classSegment` e `custom` ("Como você cobra?"):
+   * vira a forma de cobranca padrao da area. Ausente = `membership`.
+   */
+  customSegmentBilling?: ClassBillingMode;
   settings?: OrganizationSettings;
   /** Plano GestaraHub (assinatura). Ausente = free. */
   subscription?: Subscription;

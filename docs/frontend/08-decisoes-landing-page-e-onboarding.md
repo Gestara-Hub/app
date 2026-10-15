@@ -79,7 +79,7 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 
 ### 3.4. Recursos & 4 Pilares (`landing-features.tsx`)
 - 4 pilares limpos em 4 cards:
-  1. **Gestão Financeira**: Mensalidades, controle de pagamentos e repasse de professores sem calculadora.
+  1. **Gestão Financeira**: Mensalidades, controle de pagamentos e repasse de professores sem calculadora. Primeiro ponto (14/10/2026): *"Mensalidade, curso fechado ou pacote de aulas"*.
   2. **Turmas & Aulas Particulares**: Grade coletiva ou VIP, chamada em 3 segundos e limite de vagas.
   3. **Controle de Progresso**: Trilha configurável (faixas, níveis ou fases) com avanço por presença/tempo.
   4. **Comunicação & Vagas**: Reposições na grade, aula experimental e avisos sem bagunça no WhatsApp.
@@ -92,6 +92,7 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 
 ### 3.6. Dúvidas Frequentes (`landing-faq.tsx`)
 - Perguntas e respostas objetivas reforçando gratuidade permanente sem cartão de crédito, suporte a aulas 1 a 1 particulares e turmas em grupo, música/idiomas, chamada no celular, trilhas de evolução e repasses a professores.
+- 14/10/2026: *"Dá para vender curso com valor fechado ou pacote de aulas?"*, com resposta de 2 frases (curso em parcelas; pacote com saldo de aulas descontado na chamada), antes da pergunta do repasse.
 
 ### 3.7. Fluidez no Scroll & Animações
 - Componente nativo [`ScrollReveal`](file:///Users/mhmj/workspace/gestarahub/apps/web/src/features/landing/components/scroll-reveal.tsx):
@@ -129,6 +130,7 @@ Localização: `apps/web/src/features/onboarding/components/business-setup-wizar
 - **"Outra área"**: card tracejado em 2 colunas, *"Escolha se não achou a sua"*. No celular ocupa a largura toda; a partir de `sm` fecha a última linha (10 áreas em 3 colunas deixariam um card sozinho).
 - **Confirmação ao escolher** (faixa verde, `role="status"`): *"Seus alunos avançam por {faixas e graus | níveis | módulos | fases}. Dá para trocar depois."*; área sem trilha: *"Sem etapas de evolução por enquanto. Dá para ligar depois."* Texto vem de `segmentProgressionSummary(preset)`.
 - **Outra área** abre: `O que você ensina?*` (placeholder *"Nome da sua área ou atividade"*), chips que preenchem o campo (*Teatro, Xadrez, Fotografia, Autoescola*) e **"Como seus alunos avançam?"** com 4 opções: *Faixas, Níveis, Módulos, Não avançam* (padrão *Não avançam*), com a dica *"Na dúvida, escolha “Não avançam”. Dá para mudar depois."*. `Continuar` só libera com o nome. Grava `customSegmentName` e `customSegmentProgression`.
+- **"Como você cobra?"** (14/10/2026, abaixo de "Como seus alunos avançam?"): 4 opções em grade 2 x 2, *Mensalidade, Curso com valor fechado, Pacote de aulas, Não cobro* (padrão *Mensalidade*), com a dica *"É só o padrão: cada turma pode cobrar diferente."*. Grava `Organization.customSegmentBilling` (`ClassBillingMode`). Opções em `CUSTOM_BILLING_OPTIONS` (`business-segment-presets.ts`).
 
 #### Por que orientação embutida e não tour (14/10/2026)
 - O setup tem 3 telas curtas; um tour (balões apontando campos) cobriria justamente o que a pessoa precisa ler e teria de ser fechado antes de usar.
@@ -147,7 +149,7 @@ Localização: `apps/web/src/features/onboarding/components/business-setup-wizar
   - Título do bloco: *"Aulas de {área}"*; na Outra área, usa o nome digitado.
   - Ao adicionar, a nova aula entra direto como uma pílula ativa com ícone de exclusão `x`.
 - **Finalização**: Salva dados da organização (incluindo `classSegment`) e unidade, pré-cria as modalidades marcadas com a trilha padrão da área e redireciona para `/dashboard`.
-- **Revisão das modalidades do setup** (11/10/2026): quando o setup cria modalidades, grava `settings.modalitiesReviewed = false`. O passo "Cadastrar modalidades" do passo a passo fica em **"Falta revisar"** (selo âmbar, botão "Revisar"): não conta como concluído, mas já libera os passos que dependem dele. A tela de Modalidades mostra um aviso explicando a trilha de evolução, com "Está tudo certo". Clicar no aviso ou salvar uma modalidade (nome ou trilha) fecha a revisão. Sem modalidades no setup, nada muda. O setup não cria modalidade que não foi marcada (nem o nome da "Outra área", nem "Turma Geral").
+- **Revisão das modalidades do setup** (11/10/2026): quando o setup cria modalidades, grava `settings.modalitiesReviewed = false`. O passo "Cadastrar modalidades" do passo a passo fica em **"Falta revisar"** (selo âmbar, botão "Revisar"): não conta como concluído, mas já libera os passos que dependem dele. A tela de Modalidades mostra um aviso explicando a trilha de evolução, com "Está tudo certo". Clicar no aviso ou salvar uma modalidade (nome ou trilha) fecha a revisão. Sem modalidades no setup, nada muda. O setup não cria modalidade que não foi marcada (nem o nome da "Outra área", nem "Turma Geral"). **Onde confirmar (15/10/2026):** o aviso amarelo sozinho travava quem não percebia o botão (o aviso de primeiros passos do topo não tinha ação nessa tela). Agora, para o dono, o "Está tudo certo" fica no aviso de primeiros passos do topo, pulsando até o clique, com "Confira as modalidades e confirme."; o aviso amarelo fica só com a explicação e a linha "Quando estiver tudo certo, confirme em “Está tudo certo” no aviso acima.". Outros perfis (que não veem o aviso de primeiros passos) continuam com o botão no aviso amarelo.
 
 ### 4.5. O que a área (segmento) muda no sistema
 
@@ -171,7 +173,7 @@ Decisão de 11/10/2026: a área é um **pacote de padrões e vocabulário**. Nã
 | Outra área: Não avançam | Sem trilha | 60 min, 10 vagas | Nível | Avançar |
 
 - **Divisão de "Música & Idiomas" (14/10/2026, migração v32)**: quem tinha `music_languages` vira `languages` se alguma modalidade tem nome de idioma ou reforço (inglês, espanhol, francês, alemão, italiano, japonês, libras, reforço, português, redação); senão vira `music`. O rótulo antigo "Música & Idiomas" acompanha.
-- **Outra área**: o preset efetivo sai de `getSegmentPreset(classSegment, customSegmentProgression)`; os hooks `useBusinessSegment`/`useSegmentVocabulary` já usam a escolha.
+- **Outra área**: o preset efetivo sai de `getSegmentPreset(classSegment, customSegmentProgression, customSegmentBilling)`; os hooks `useBusinessSegment`/`useSegmentVocabulary` já usam a escolha. A trilha e as palavras seguem a primeira; a forma de cobrança padrão (`defaultBillingMode`) segue a segunda (ausente = mensalidade). Os presets são pré-calculados (trilha x cobrança) para devolver sempre o mesmo objeto.
 
 Onde aparece:
 - **Setup**: trilha das modalidades criadas no passo 3.
@@ -179,23 +181,31 @@ Onde aparece:
 - **Nova turma**: vagas, duração do horário e atalho de duração da área.
 - **Telas de aluno, turma, aula e relatórios**: "Faixa" ou "Nível/Módulo/Fase", "Graduar" ou "Avançar", conforme a **trilha da modalidade** (ver "Palavras pela trilha da modalidade" abaixo). "Aluno" não muda.
 - **Comunicação**: Lutas fala em treino e tatame; as demais, em aulas. Ao trocar de área, só os modelos ainda no texto padrão mudam; os editados ficam como estão.
-- **Configurações**: campo "Área do espaço" em Identificação do Negócio. Na "Outra área", aparecem "O que você ensina?" e "Como seus alunos avançam?" (as mesmas 4 opções do setup). Trocar muda só padrões e palavras daí em diante; modalidades, trilhas e turmas existentes não mudam.
+- **Configurações**: campo "Área do espaço" em Identificação do Negócio. Na "Outra área", aparecem "O que você ensina?" e "Como seus alunos avançam?" (as mesmas 4 opções do setup). "Como você cobra?" entra no mesmo bloco (pendente em 14/10/2026: usa `CUSTOM_BILLING_OPTIONS` e grava `customSegmentBilling`). Trocar muda só padrões e palavras daí em diante; modalidades, trilhas e turmas existentes não mudam.
 - **Primeiros passos e cadastro do aluno**: seguem a forma de cobrança da área (ver abaixo).
 
 #### Primeiros passos pela forma de cobrança (14/10/2026)
 
-As regras da mensalidade e os planos só fazem sentido onde há mensalidade. Áreas que cobram por curso fechado (`defaultBillingMode === "course"`: Gastronomia, Artes e artesanato, Beleza e cursos livres) começam sem eles. "Outra área" segue como mensalidade (não há sinal confiável de curso).
-- **Área de mensalidade (sem mudança)**: Definir horário de funcionamento → Definir regras da mensalidade → Cadastrar modalidades → Criar planos de mensalidade → Cadastrar professores e instrutores → Cadastrar alunos → Criar a primeira turma.
+As regras da mensalidade e os planos só fazem sentido onde há mensalidade. Áreas que cobram por curso fechado (`defaultBillingMode === "course"`: Gastronomia, Artes e artesanato, Beleza e cursos livres) começam sem eles. "Outra área" segue a resposta de "Como você cobra?" (sem resposta, mensalidade): pode ser de mensalidade, curso, pacote ou sem cobrança.
+- **Área de mensalidade**: Definir horário de funcionamento → Definir regras da mensalidade → Cadastrar modalidades → **Criar planos ou pacotes** → Cadastrar professores e instrutores → Cadastrar alunos → Criar a primeira turma (15/10/2026: antes "Criar planos de mensalidade").
+  - "Criar planos ou pacotes" conclui com um plano ativo **ou** um pacote de aulas ativo; leva a `/classes/plans`.
+  - "Definir regras da mensalidade" conclui com as regras salvas **ou** quando o espaço só tem pacotes (pacote ativo e nenhum plano ativo): as regras só valem para a mensalidade. Criado um plano, o passo volta a pedir as regras.
+  - Fase 1 do checklist: "Horário de funcionamento, regras da mensalidade, modalidades e planos ou pacotes."; boas-vindas: *"turmas, planos e pacotes, alunos e configurações"* e *"horários de funcionamento, planos ou pacotes e turmas"*.
+  - **Explicação em "Planos e pacotes" (revisto em 15/10/2026):** sem card próprio no topo, que repetia as abas e o estado vazio. As abas já são a escolha, e o estado vazio de cada uma explica quando usar: **"Nenhum plano de mensalidade ainda."** / "Para quem paga todo mês. Dá para usar junto com pacotes." e **"Nenhum pacote de aulas ainda."** / "Para quem compra um número de aulas. Dá para usar junto com mensalidades." O botão do topo segue a aba ("+ Novo plano" / "+ Novo pacote"). **Tour das abas (15/10/2026):** no primeiro acesso com o passo "Criar planos ou pacotes" pendente, um tour de 2 passos aponta "Planos de mensalidade" ("Para quem paga um valor todo mês. As mensalidades são geradas sozinhas, pelas regras da mensalidade.") e "Pacotes de aulas" ("Para quem compra um número de aulas. Cada presença na chamada usa uma aula. Dá para usar os dois."). Mostrado uma vez (`gestarahub_tour_plans_tabs` no navegador); ligado na rota (`app/(app)/classes/plans/plans-screen.tsx`) com o `ProductTour` (sem o passo do menu no celular).
 - **Área de curso**: Definir horário de funcionamento → Cadastrar modalidades → Cadastrar professores e instrutores → Cadastrar alunos → **Criar o primeiro curso** → **Matricular alunos no curso**. A fase 3 do checklist vira "Cursos & Matrículas".
   - "Criar o primeiro curso" conclui com qualquer turma criada; "Matricular alunos no curso" (requer o curso) conclui quando algum curso (`billingMode: "course"`) tem matrícula ativa, e o "Continuar" abre a matrícula do curso ativo (`/classes/{id}?enroll=true`).
   - "Cadastrar alunos" continua: cadastrar e matricular são ações diferentes.
   - **Se houver turma ativa cobrando mensalidade** (ou turma antiga sem `billingMode`), "Definir regras da mensalidade" e "Criar planos de mensalidade" voltam ao checklist.
   - Criar o curso com só a matrícula faltando mostra só o aviso "Turma criada" com a ação "Matricular alunos". A comemoração ("Seu espaço está pronto!") vem na 1ª matrícula do curso, quando a configuração inicial está mesmo 100% concluída, e leva às cobranças geradas.
   - O título da comemoração é "Seu espaço está pronto!" em todas as áreas (antes "Sua academia está pronta!").
+- **Área de pacote** (só "Outra área" com "Pacote de aulas"): Definir horário de funcionamento → Cadastrar modalidades → **Criar um pacote de aulas** → Cadastrar professores e instrutores → Cadastrar alunos → Criar a primeira turma. O passo do pacote conclui quando existe um pacote no catálogo e leva a `/classes/plans?tab=packages`. A nova turma já vem em "Pacote de aulas".
+- **Área sem cobrança** (só "Outra área" com "Não cobro"): Definir horário de funcionamento → Cadastrar modalidades → Cadastrar professores e instrutores → Cadastrar alunos → Criar a primeira turma. A nova turma já vem em "Sem cobrança".
+- Em pacote e sem cobrança, como no curso, turma ativa cobrando mensalidade traz "Definir regras da mensalidade" e "Criar planos de mensalidade" de volta (fora da área de mensalidade o passo é só de planos, e ter pacote não dispensa as regras). A fase 1 do checklist cita só os passos que existem ("Horário de funcionamento, modalidades e pacotes.").
 - Boas-vindas, tour e checklist não citam mensalidade na área de curso ("cursos, alunos, cobranças e configurações"; "horários de funcionamento, cursos e matrículas").
 - O checklist só esconde passos: mensalidade, planos e regras continuam disponíveis em qualquer área.
-- **Cadastro do aluno**: na área de curso, o aluno novo começa em "Não paga mensalidade"; editar mantém a forma salva. Demais áreas começam em "Paga mensalidade".
-- Código: `buildClassesOnboardingSteps` (pura, em `features/onboarding/onboarding-steps.ts`, testada em `features/onboarding/__tests__/onboarding-steps.test.ts`); o hook `useOnboardingSteps` só junta os dados. Padrão do aluno: `defaultPaymentMode` em `features/clients/client-schema.ts`.
+- Boas-vindas na área de pacote: *"turmas, pacotes de aulas, alunos e configurações"*; sem cobrança: *"turmas, alunos, chamada e configurações"*.
+- **Cadastro do aluno**: áreas de mensalidade começam em "Paga mensalidade"; área de pacote em **"Pacote de aulas"** (15/10/2026); curso e sem cobrança em "Não paga mensalidade". Editar mantém a forma salva (sem plano e com pacote em uso abre em "Pacote de aulas").
+- Código: `buildClassesOnboardingSteps` (pura, recebe `areaBillingMode` e `lessonPackagesCount`, em `features/onboarding/onboarding-steps.ts`, testada em `features/onboarding/__tests__/onboarding-steps.test.ts`); o hook `useOnboardingSteps` só junta os dados. Padrão do aluno: `defaultPaymentMode({ areaBillingMode })` em `features/clients/client-schema.ts`.
 
 #### Estilo da trilha (11/10/2026)
 
@@ -235,6 +245,39 @@ Fora de escopo (recurso novo, não configuração): capacidade por aparelho, rai
 - **Até 6 sugestões**, sem as que o aluno já tem. Digitando, as sugestões passam a ser as que contêm o texto.
 - Maiúsculas e acentos não diferenciam: "guarda fechada" e "Guarda Fechada" são o mesmo termo, exibido e salvo com a grafia mais usada. Cada aluno conta uma vez por termo.
 - Código: `clientsService.getProgressionTermSuggestions(modalityId)` → `ProgressionTermSuggestions` (`strengths`, `goals`); telas em `ProgressionTermsEditor` (pontos fortes) e "Nova meta". Modais da evolução: doc 11, seção "Evolução do aluno".
+
+### 4.6. Pulsos de atenção no onboarding (15/10/2026)
+
+- **Pulso contínuo até interagir.** O que chama para o próximo passo pulsa sem parar enquanto se aplica e para quando o usuário interage. Ao sair e voltar à situação, pulsa de novo.
+- **"Continuar" do banner e do checklist:** pulsa enquanto o passo pendente não é o da tela atual; para no clique.
+- **Seções destacadas na chegada** (Horários em Configurações, "Regras da mensalidade" em Geral): **sem pulso desde 15/10/2026.** Usam um destaque com o resto da tela escuro (`SectionSpotlight`, `components/shared/section-spotlight.tsx`), como o tour, mas a seção continua clicável e o escuro é só visual (o clique passa: "Salvar horários" salva de primeira). Uma frase curta acima diz o que fazer ("Ligue os dias em que o espaço abre e salve." / "Confira as regras e confirme."). Fecha num clique fora da seção, com Esc ou ao concluir o passo; menus e modais abertos pela seção não fecham. O recorte cobre a seção **e o botão que conclui o passo** ("Salvar horários" / "Confirmar regras recomendadas", com mais de um alvo quando estão separados) e acompanha a seção crescendo (mede a cada quadro enquanto aberto).
+- **Primeira etapa concluída (15/10/2026):** ao concluir a **primeira** etapa da configuração inicial (o contador vai a 1), o aviso de primeiros passos do topo ganha o mesmo destaque, com "Etapa concluída! Siga para a próxima.", e a tela rola até ele. Enquanto o destaque está aberto o "Continuar" não pulsa; ao fechar (clique fora, Esc, trocar de tela ou continuar) volta a pulsar até o clique. Só na primeira etapa: dali em diante o pulso do "Continuar" basta.
+- **Passo atual no Dashboard (15/10/2026):** logo depois de fechar as boas-vindas (uma vez, e não quando a pessoa escolhe o tour guiado), o cartão do passo atual da lista de primeiros passos ganha o mesmo destaque, com "Comece por aqui.". Enquanto o destaque está aberto, o "Continuar" do cartão não pulsa; depois de fechado, volta a pulsar.
+- **Botão principal da tela do passo** ("Novo plano", "Novo pacote", "Novo profissional", "Novo aluno", "Nova turma", "Matricular alunos", "Novo serviço", "Novo" da agenda): pulsa até o clique enquanto aquele passo é o pendente. Marcado com `data-onboarding-cta="<passo>"`; o banner liga `data-onboarding-cta-attention` no `<html>` e desliga no clique.
+- **Exceção, Modalidades:** "Nova modalidade" pulsa só 2 ciclos ao entrar e **só quando ainda não há nenhuma modalidade** (15/10/2026). Com pelo menos uma (ex.: as criadas no setup), não pulsa.
+- **"+ Gerenciar categorias"** (lançamento financeiro) segue pulsando uma vez só, até o primeiro clique.
+- Movimento reduzido (`prefers-reduced-motion`) não anima nada.
+- Código: `useAttentionUntilInteraction(active, key)` em `apps/web/src/lib/use-attention-until-interaction.ts` (regra pura em `lib/attention.ts`, testada) e as animações `animate-attention-loop-infinite` e `animate-attention-ring-infinite` em `globals.css`. As de 2 ciclos continuam para os outros usos.
+
+### 4.7. Depois da configuração inicial: Descubra o dia a dia (15/10/2026)
+
+Concluídos os primeiros passos, o Dashboard mostra no mesmo lugar um card **opcional**, **"Descubra o dia a dia"**, com o que se faz na rotina. Só no modelo de turmas, para o dono e o gerente.
+- **Cabeçalho**: título, "2 de 6 feitos" e uma barra fina de progresso. **"Fechar"** esconde o card de vez (por organização e usuário, no navegador: `gestarahub_discovery_dismissed:<orgId>:<userId>`). Com tudo feito, o card some sozinho (sem tela de "tudo pronto").
+- **Item**: ícone, título, uma dica curta e **"Fazer agora →"**. Feito: check e "Feito". Bloqueado: "Requer: matrícula", como no checklist, e sem link.
+- **Itens** (cada um se marca sozinho pelo dado real):
+  1. **Matricular alunos na turma** ("no curso" na área de curso): "Quem já frequenta, em poucos cliques." Feito com alguma matrícula ativa. Leva à primeira turma ativa (por nome) com `?enroll=true`; sem turma ativa, a `/classes`.
+  2. **Fazer a primeira chamada**: "Presença em um toque, no celular." Feito com alguma presença marcada. Bloqueado até a primeira matrícula (chamada já feita não volta a bloquear). Leva ao Calendário (`/classes/calendar`, semana atual).
+  3. **Dinheiro, pela forma de cobrança da área** (`defaultBillingMode`; na "Outra área", a resposta de "Como você cobra?"):
+     - Mensalidade: **Registrar um pagamento**, "Marque pago em Cobranças." Feito com alguma cobrança paga. Leva a `/classes/billing`.
+     - Curso: **Ver as parcelas do curso**, "E emitir o certificado ao terminar." Feito ao abrir Cobranças filtrando curso (`?kind=course`, marca no navegador) ou com alguma parcela de curso paga. Leva a `/classes/billing?kind=course`.
+     - Pacote: **Vender um pacote de aulas**, "O saldo aparece na chamada." Feito com algum pacote vendido. Leva a Alunos (`/clients`), onde fica "Vender pacote".
+     - Sem cobrança: sem item de dinheiro.
+  4. **Mandar um lembrete no WhatsApp**: "Mensagem pronta, sai do seu número." Feito com alguma mensagem registrada. Leva a `/communication`.
+  5. **Registrar a evolução de um aluno**: "Registro de aula, meta ou graduação." Feito com algum registro de aula, meta ou graduação na ficha. Leva a Alunos.
+  6. **Ver o resultado do mês**: "O que entrou, saiu e falta." Feito ao abrir o Financeiro (marca no navegador). Leva a `/finance`.
+- **Permissões**: item sem a permissão da ação fica de fora (matrícula `enrollment:manage`, chamada `attendance:mark`, pagamento e pacote `billing:manage`, parcelas `billing:view`, WhatsApp `communication:view`, evolução `clients:manage`, resultado `finance:view`).
+- **Atualização**: qualquer mutação bem-sucedida refaz a leitura dos marcos se o card está na tela (`createQueryClient`, em `lib/providers.tsx`); fora dela, a leitura fica velha e refaz ao voltar ao Dashboard. As marcas de "tela aberta" reagem na hora (`useSyncExternalStore`).
+- Código: marcos em `onboardingService.getDiscoveryMilestones()` (uma leitura, contrato `DiscoveryMilestones`), itens em `buildDiscoveryItems` (pura, `features/onboarding/discovery-items.ts`, testada), card em `features/onboarding/components/discovery-checklist.tsx`, marcas do navegador em `lib/discovery-flags.ts` (com try/catch; gravadas por `BillingView` com `kind=course` e por `FinanceView`).
 
 ---
 

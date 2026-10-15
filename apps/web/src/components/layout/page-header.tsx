@@ -17,7 +17,8 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
         ) : null}
       </div>
       {children ? (
-        <div className="flex items-center gap-2">{children}</div>
+        // Quebra a linha no celular: as acoes nunca saem da tela.
+        <div className="flex flex-wrap items-center gap-2">{children}</div>
       ) : null}
     </div>
   );

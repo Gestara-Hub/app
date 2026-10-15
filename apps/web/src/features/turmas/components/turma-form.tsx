@@ -64,10 +64,10 @@ const WEEKDAYS = [
 ];
 
 const BILLING_MODE_OPTIONS: SegmentedChoiceOption[] = [
-  { value: "membership", label: "Mensalidade", description: "Pelo plano do aluno" },
-  { value: "course", label: "Curso com valor fechado", description: "Parcelas na matrícula" },
-  { value: "package", label: "Pacote de aulas", description: "Usa o pacote do aluno" },
-  { value: "free", label: "Sem cobrança", description: "Turma gratuita" },
+  { value: "membership", label: "Mensalidade", description: "Cada aluno paga pelo seu plano" },
+  { value: "course", label: "Curso com valor fechado", description: "Valor único, à vista ou parcelado" },
+  { value: "package", label: "Pacote de aulas", description: "Cada aula usa uma do pacote" },
+  { value: "free", label: "Sem cobrança", description: "Turma gratuita, sem cobranças" },
 ];
 
 const MAX_INSTALLMENT_OPTIONS = Array.from({ length: MAX_INSTALLMENTS }, (_, i) => ({
@@ -552,7 +552,7 @@ function MeetingSlotsEditor({
                           usedElsewhere
                             ? `${d.short}: já marcado em outro horário`
                             : isClosed
-                              ? `${d.short}: Unidade fechada neste dia (configurações da academia)`
+                              ? `${d.short}: Unidade fechada neste dia (configurações do espaço)`
                               : `${d.short}: clique para ${on ? "desmarcar" : "marcar"}`
                         }
                         className={cn(
@@ -796,6 +796,27 @@ export function TurmaForm({
     if (form.getValues("billingMode") === defaultBillingMode) return;
     form.resetField("billingMode", { defaultValue: defaultBillingMode });
   }, [defaultBillingMode, isEdit, form]);
+  // Idem para as vagas e a duracao do encontro padrao (ex.: pilates 6 vagas e
+  // 50 min): sem isso, abrir a nova turma antes da organizacao carregar deixava
+  // os padroes de lutas (20 vagas, 1h).
+  const prevDurationRef = useRef(classDefaults.durationMinutes);
+  useEffect(() => {
+    if (isEdit) return;
+    if (!form.getFieldState("capacity").isDirty && form.getValues("capacity") !== classDefaults.capacity) {
+      form.resetField("capacity", { defaultValue: classDefaults.capacity });
+    }
+    const previous = prevDurationRef.current;
+    prevDurationRef.current = classDefaults.durationMinutes;
+    if (previous === classDefaults.durationMinutes || form.getFieldState("meetingSlots").isDirty) return;
+    const slots = form.getValues("meetingSlots") ?? [];
+    if (slots.length !== 1) return;
+    const [slot] = slots;
+    // So o encontro padrao, ainda com a duracao antiga.
+    const before = getUnitTimesForWeekday(slot.weekday, unit, previous);
+    if (before.start !== slot.start || before.end !== slot.end) return;
+    const after = getUnitTimesForWeekday(slot.weekday, unit, classDefaults.durationMinutes);
+    form.setValue("meetingSlots", [{ ...slot, end: after.end }]);
+  }, [classDefaults.capacity, classDefaults.durationMinutes, isEdit, form, unit]);
   const isCourse = billingMode === "course";
 
   const modalityId = useWatch({
@@ -983,23 +1004,14 @@ export function TurmaForm({
           />
         </div>
 
-        <FieldShell
-          label="Cobrança"
-          hint={
-            billingMode === "membership"
-              ? "Cada aluno paga pelo próprio plano."
-              : billingMode === "free"
-                ? "A turma não gera cobrança."
-                : billingMode === "package"
-                  ? "Cada aula dada usa uma aula do pacote do aluno."
-                  : undefined
-          }
-        >
+        {/* A dica de cada forma fica no proprio cartao (sem repetir abaixo). */}
+        <FieldShell label="Cobrança">
           <div className="space-y-3">
             <SegmentedChoiceField<TurmaFormValues>
               name="billingMode"
               ariaLabel="Cobrança"
               options={BILLING_MODE_OPTIONS}
+              variant="cards"
               disabled={pending}
             />
             {isCourse ? (

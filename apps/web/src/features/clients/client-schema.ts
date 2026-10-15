@@ -1,7 +1,9 @@
 import { format } from "date-fns";
 import { z } from "zod";
+import type { ClassBillingMode } from "@gestarahub/contracts";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const addressSchema = z.object({
   postalCode: z.string().optional(),
@@ -90,8 +92,17 @@ export const clientFormSchema = z.object({
     .min(0, "O desconto não pode ser negativo.")
     .nullish(),
   discountReason: z.string().trim().optional(),
-  /** Como o aluno paga: mensalidade (plano), bolsa ou sem mensalidade. */
-  paymentMode: z.enum(["membership", "scholarship", "none"]).optional(),
+  /** Como o aluno paga: mensalidade (plano), pacote de aulas, bolsa ou sem mensalidade. */
+  paymentMode: z.enum(["membership", "package", "scholarship", "none"]).optional(),
+  /**
+   * Cadastro que ja vende o pacote escolhido (aluno novo, com permissao de
+   * cobrar). Na edicao, o pacote se vende pela acao "Vender pacote".
+   */
+  sellsPackage: z.boolean().optional(),
+  packageId: z.string().optional(),
+  packagePriceCents: z.number({ error: "Informe o valor." }).nullish(),
+  packageInstallments: z.string().optional(),
+  packageFirstDueDate: z.string().optional(),
   scholarshipKind: z.enum(["full", "partial"]).optional(),
   /** Bolsa parcial definida por % ou pelo valor que o aluno paga. */
   scholarshipBy: z.enum(["percent", "amount"]).optional(),
@@ -133,7 +144,29 @@ export const clientFormSchema = z.object({
     return true;
   },
   { message: "Selecione o plano.", path: ["planId"] },
-);
+).superRefine((data, ctx) => {
+  // Venda do pacote junto do cadastro: mesmos campos e regras de "Vender pacote".
+  if (!isPackageSale(data)) return;
+  if (!data.packageId) ctx.addIssue({ code: "custom", path: ["packageId"], message: "Selecione o pacote." });
+  const price = data.packagePriceCents ?? 0;
+  if (!Number.isInteger(price) || price < 1) {
+    ctx.addIssue({ code: "custom", path: ["packagePriceCents"], message: "Informe o valor." });
+  } else if (price < Number(data.packageInstallments || 1)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["packageInstallments"],
+      message: "Cada parcela precisa de pelo menos R$ 0,01.",
+    });
+  }
+  if (!DATE_RE.test(data.packageFirstDueDate ?? "")) {
+    ctx.addIssue({ code: "custom", path: ["packageFirstDueDate"], message: "Informe o 1º vencimento." });
+  }
+});
+
+/** O cadastro vende o pacote escolhido (opcao "Pacote de aulas" no aluno novo). */
+export function isPackageSale(data: { paymentMode?: string; sellsPackage?: boolean }): boolean {
+  return data.paymentMode === "package" && Boolean(data.sellsPackage);
+}
 
 function isPartialScholarship(data: { paymentMode?: string; scholarshipKind?: string }): boolean {
   return data.paymentMode === "scholarship" && data.scholarshipKind === "partial";
@@ -146,21 +179,28 @@ export type ClientPaymentMode = NonNullable<ClientFormValues["paymentMode"]>;
 
 /**
  * Forma de pagamento inicial do formulario. Fora do modelo de turmas nao ha
- * escolha. Aluno salvo mantem o que tem: bolsa, sem plano = "Não paga
- * mensalidade", com plano = "Paga mensalidade". Aluno novo comeca em "Paga
- * mensalidade", exceto na area de curso fechado, onde comeca sem mensalidade.
+ * escolha. Aluno salvo mantem o que tem: bolsa, com plano = "Paga
+ * mensalidade", sem plano com pacote em uso = "Pacote de aulas", sem nada =
+ * "Não paga mensalidade". Aluno novo segue a area: mensalidade comeca em
+ * "Paga mensalidade", pacote em "Pacote de aulas"; curso e sem cobranca
+ * comecam sem mensalidade.
  */
 export function defaultPaymentMode({
   client,
   isClasses,
-  isCourseArea,
+  areaBillingMode,
+  hasActivePackage = false,
 }: {
   client?: { planId?: string; discount?: { scholarship?: boolean } };
   isClasses: boolean;
-  isCourseArea: boolean;
+  /** Forma de cobranca padrao da area (`defaultBillingMode`). */
+  areaBillingMode: ClassBillingMode;
+  /** Aluno salvo com pacote em uso (ativo, com saldo e valido). */
+  hasActivePackage?: boolean;
 }): ClientPaymentMode | undefined {
   if (!isClasses) return undefined;
   if (client?.discount?.scholarship) return "scholarship";
-  if (client) return client.planId ? "membership" : "none";
-  return isCourseArea ? "none" : "membership";
+  if (client) return client.planId ? "membership" : hasActivePackage ? "package" : "none";
+  if (areaBillingMode === "membership") return "membership";
+  return areaBillingMode === "package" ? "package" : "none";
 }

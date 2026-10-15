@@ -25,8 +25,10 @@ import { categoriesService } from "@/services/categoriesService";
 import { useOrganization } from "@/features/settings";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import {
+  CUSTOM_BILLING_OPTIONS,
   CUSTOM_PROGRESSION_OPTIONS,
   DEFAULT_CLASS_SEGMENT,
+  DEFAULT_CUSTOM_BILLING,
   DEFAULT_CUSTOM_PROGRESSION,
   getAllSegmentPresets,
   getSegmentPreset,
@@ -35,7 +37,11 @@ import {
   type BusinessSegmentPreset,
 } from "@/lib/business-segment-presets";
 import { SEGMENT_ICONS } from "@/lib/business-segment-icons";
-import type { ClassesBusinessSegment, CustomSegmentProgression } from "@gestarahub/contracts";
+import type {
+  ClassBillingMode,
+  ClassesBusinessSegment,
+  CustomSegmentProgression,
+} from "@gestarahub/contracts";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 
@@ -77,6 +83,7 @@ export function BusinessSetupWizard() {
   const [customProgression, setCustomProgression] = useState<CustomSegmentProgression>(
     DEFAULT_CUSTOM_PROGRESSION,
   );
+  const [customBilling, setCustomBilling] = useState<ClassBillingMode>(DEFAULT_CUSTOM_BILLING);
   const [selectedModalities, setSelectedModalities] = useState<string[]>([]);
   const [customAddedModalities, setCustomAddedModalities] = useState<string[]>([]);
   const [newModalityInput, setNewModalityInput] = useState("");
@@ -98,10 +105,11 @@ export function BusinessSetupWizard() {
   }, [selectedSegment]);
 
   const isCustom = selectedSegment === "custom";
-  // Preset efetivo: na "Outra área", a trilha e as palavras seguem a escolha do dono.
+  // Preset efetivo: na "Outra área", trilha, palavras e cobranca seguem a escolha do dono.
   const activePreset: BusinessSegmentPreset = getSegmentPreset(
     selectedSegment ?? DEFAULT_CLASS_SEGMENT,
     customProgression,
+    customBilling,
   );
   const previewName = businessName.trim() || "Seu espaço";
   const canLeaveStep2 = selectedSegment !== null && (!isCustom || Boolean(customSegmentName.trim()));
@@ -148,7 +156,7 @@ export function BusinessSetupWizard() {
     if (!selectedSegment) return;
     setIsSubmitting(true);
     try {
-      const finalName = businessName.trim() || organization?.name || "Minha Academia";
+      const finalName = businessName.trim() || organization?.name || "Meu espaço";
 
       // 1. Atualiza dados da organização
       await settingsService.updateOrganization({
@@ -158,6 +166,7 @@ export function BusinessSetupWizard() {
         classSegment: selectedSegment,
         customSegmentName: isCustom ? customSegmentName.trim() : undefined,
         customSegmentProgression: isCustom ? customProgression : undefined,
+        customSegmentBilling: isCustom ? customBilling : undefined,
         settings: {
           ...organization?.settings,
           onboardingCompleted: true,
@@ -201,13 +210,13 @@ export function BusinessSetupWizard() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-background flex flex-col justify-between pt-6 sm:pt-8 pb-6 px-4 sm:px-6 lg:px-8 overflow-x-hidden">
+    <div className="relative min-h-screen w-full bg-background flex flex-col justify-between pt-6 sm:pt-8 pb-6 px-4 sm:px-6 lg:px-8 overflow-x-clip">
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[480px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 left-1/2 -z-10 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-primary/3 blur-3xl" />
 
       {/* Top Header com margem superior confortável */}
-      <header className="mx-auto w-full max-w-4xl flex items-center justify-between pb-5 border-b border-border/40">
+      <header className="mx-auto w-full max-w-4xl flex items-center pb-5 border-b border-border/40">
         <div className="flex items-center gap-3">
           <Image
             src={logoLightImage}
@@ -223,96 +232,18 @@ export function BusinessSetupWizard() {
           />
         </div>
 
-        {/* Step Progress Tracker */}
-        <nav aria-label="Progresso do cadastro" className="flex items-center gap-1.5 sm:gap-2 text-xs font-medium">
-          {/* Step 1 badge */}
-          <div
-            onClick={() => {
-              if (step > 1) setStep(1);
-            }}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-semibold",
-              step === 1
-                ? "bg-primary/10 text-primary border border-primary/25"
-                : step > 1
-                  ? "text-primary hover:bg-muted/40 cursor-pointer"
-                  : "text-muted-foreground",
-            )}
-          >
-            <span
-              className={cn(
-                "size-5 rounded-full flex items-center justify-center font-bold text-[10px]",
-                step === 1
-                  ? "bg-primary text-primary-foreground"
-                  : step > 1
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground",
-              )}
-            >
-              {step > 1 ? "✓" : "1"}
-            </span>
-            <span className="hidden sm:inline">Espaço</span>
-          </div>
-
-          <span className="text-border text-xs">→</span>
-
-          {/* Step 2 badge */}
-          <div
-            onClick={() => {
-              if (step > 2 && businessName.trim()) setStep(2);
-            }}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-semibold",
-              step === 2
-                ? "bg-primary/10 text-primary border border-primary/25"
-                : step > 2
-                  ? "text-primary hover:bg-muted/40 cursor-pointer"
-                  : "text-muted-foreground",
-            )}
-          >
-            <span
-              className={cn(
-                "size-5 rounded-full flex items-center justify-center font-bold text-[10px]",
-                step === 2
-                  ? "bg-primary text-primary-foreground"
-                  : step > 2
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground",
-              )}
-            >
-              {step > 2 ? "✓" : "2"}
-            </span>
-            <span className="hidden sm:inline">Área</span>
-          </div>
-
-          <span className="text-border text-xs">→</span>
-
-          {/* Step 3 badge */}
-          <div
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-semibold",
-              step === 3
-                ? "bg-primary/10 text-primary border border-primary/25"
-                : "text-muted-foreground",
-            )}
-          >
-            <span
-              className={cn(
-                "size-5 rounded-full flex items-center justify-center font-bold text-[10px]",
-                step === 3
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              3
-            </span>
-            <span className="hidden sm:inline">Modalidades</span>
-          </div>
-        </nav>
       </header>
 
       {/* Main Content Area */}
       <main className="mx-auto w-full max-w-4xl flex-1 flex flex-col justify-center py-6 sm:py-8">
+        {/* Passos logo acima do formulario: circulos ligados por linha, largura do form. */}
+        <SetupStepper
+          step={step}
+          onGoTo={(target) => {
+            if (target === 1 && step > 1) setStep(1);
+            if (target === 2 && step > 2 && businessName.trim()) setStep(2);
+          }}
+        />
         {/* STEP 1: IDENTIFICAÇÃO DO ESPAÇO */}
         {step === 1 && (
           <div className="mx-auto w-full max-w-lg space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
@@ -521,7 +452,7 @@ export function BusinessSetupWizard() {
               </p>
             )}
 
-            {/* "Outra área": nome da area e como os alunos avancam. */}
+            {/* "Outra área": nome da area, como os alunos avancam e como cobra. */}
             {isCustom && (
               <div className="p-4 sm:p-5 rounded-2xl border border-primary/25 bg-card space-y-4 animate-in fade-in-50 duration-200">
                 <div className="space-y-2">
@@ -598,6 +529,42 @@ export function BusinessSetupWizard() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Na dúvida, escolha “Não avançam”. Dá para mudar depois.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <p id="custom-billing-label" className="text-sm font-semibold text-foreground">
+                    Como você cobra?
+                  </p>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby="custom-billing-label"
+                    className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/40 p-1"
+                  >
+                    {CUSTOM_BILLING_OPTIONS.map((option) => {
+                      const selected = customBilling === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => setCustomBilling(option.value)}
+                          className={cn(
+                            "rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            selected
+                              ? "bg-background text-foreground shadow-xs ring-1 ring-border"
+                              : "text-muted-foreground hover:bg-background/50",
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    É só o padrão: cada turma pode cobrar diferente.
                   </p>
                 </div>
               </div>
@@ -785,5 +752,74 @@ export function BusinessSetupWizard() {
         <p>Você poderá alterar essas informações em Configurações.</p>
       </footer>
     </div>
+  );
+}
+
+const SETUP_STEPS = ["Espaço", "Área", "Modalidades"] as const;
+
+/**
+ * Indicador dos 3 passos: numero em circulo + nome, ligados por uma linha.
+ * Atual em destaque, concluido com check (clicavel para voltar), proximo em
+ * cinza. Mesma largura do formulario do passo 1.
+ */
+function SetupStepper({ step, onGoTo }: { step: number; onGoTo: (step: number) => void }) {
+  return (
+    <nav aria-label="Progresso do cadastro" className="mx-auto mb-8 w-full max-w-lg sm:mb-10">
+      <ol className="flex items-center">
+        {SETUP_STEPS.map((label, index) => {
+          const number = index + 1;
+          const done = number < step;
+          const current = number === step;
+          const content = (
+            <>
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                  current && "bg-primary text-primary-foreground shadow-xs",
+                  done && "bg-primary/10 text-primary",
+                  !current && !done && "border border-border bg-background text-muted-foreground",
+                )}
+              >
+                {done ? <Check className="size-3.5" strokeWidth={3} /> : number}
+              </span>
+              <span
+                className={cn(
+                  "text-sm whitespace-nowrap",
+                  // Celular estreito: so o nome do passo atual (os outros ficam no numero).
+                  !current && "hidden min-[400px]:inline",
+                  current ? "font-semibold text-foreground" : done ? "font-medium text-foreground" : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </span>
+            </>
+          );
+          return (
+            <li key={label} className={cn("flex items-center", index < SETUP_STEPS.length - 1 && "flex-1")}>
+              {done ? (
+                <button
+                  type="button"
+                  onClick={() => onGoTo(number)}
+                  className="flex items-center gap-2 rounded-full pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Voltar para ${label}`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <span className="flex items-center gap-2" aria-current={current ? "step" : undefined}>
+                  {content}
+                </span>
+              )}
+              {index < SETUP_STEPS.length - 1 ? (
+                <span
+                  aria-hidden
+                  className={cn("mx-3 h-px flex-1 sm:mx-4", done ? "bg-primary/40" : "bg-border")}
+                />
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

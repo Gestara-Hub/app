@@ -24,6 +24,7 @@ export type UpdateOrganization = Partial<
     | "classSegment"
     | "customSegmentName"
     | "customSegmentProgression"
+    | "customSegmentBilling"
     | "settings"
   >
 >;

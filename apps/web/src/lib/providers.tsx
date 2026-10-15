@@ -61,6 +61,10 @@ export function createQueryClient(): QueryClient {
     mutationCache: new MutationCache({
       onSuccess: () => {
         void client.invalidateQueries({ queryKey: queryKeys.audit.all });
+        // Marcos do "Descubra o dia a dia": matricula, chamada, pagamento,
+        // venda de pacote, mensagem e evolucao viram "Feito" na hora, mesmo
+        // quando a acao acontece com o card na tela (refaz so se montado).
+        void client.invalidateQueries({ queryKey: queryKeys.onboarding.discovery });
         // Nomes embutidos em outras views (cliente/profissional em agendamento,
         // turma, cobranca): marca tudo como stale SEM refetch imediato; cada
         // tela rebusca ao montar de novo.

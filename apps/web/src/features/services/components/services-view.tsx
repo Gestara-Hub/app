@@ -72,7 +72,7 @@ export function ServicesView() {
               <Tags className="size-4" />
               Categorias
             </Button>
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} data-onboarding-cta="services">
               <Plus className="size-4" />
               Novo serviço
             </Button>

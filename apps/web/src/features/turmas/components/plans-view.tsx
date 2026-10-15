@@ -469,8 +469,8 @@ function MembershipPlansTab({
         emptyGuide={
           <ModuleEmptyGuide
             icon={<Layers className="size-8" />}
-            title="Nenhum plano cadastrado ainda."
-            description="Cadastre os planos usados pelas turmas."
+            title="Nenhum plano de mensalidade ainda."
+            description="Para quem paga todo mês. Dá para usar junto com pacotes."
           />
         }
       />
@@ -635,7 +635,7 @@ export function PlansView() {
 
   return (
     <>
-      <PageHeader title="Planos" description="Mensalidades e pacotes de aulas.">
+      <PageHeader title="Planos e pacotes" description="Mensalidades e pacotes de aulas.">
         {canManage ? (
           tab === "plans" ? (
             <Button onClick={() => setCreatingPlan(true)} data-onboarding-cta="plans">
@@ -643,13 +643,14 @@ export function PlansView() {
               Novo plano
             </Button>
           ) : (
-            <Button onClick={() => setCreatingPackage(true)}>
+            <Button onClick={() => setCreatingPackage(true)} data-onboarding-cta="plans packages">
               <Plus className="size-4" />
               Novo pacote
             </Button>
           )
         ) : null}
       </PageHeader>
+
 
       <div
         role="tablist"

@@ -4,6 +4,7 @@ import { Check, ListChecks, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { useCurrentUser } from "@/features/auth";
 import {
   useBusinessSegment,
   useMarkModalitiesReviewed,
@@ -12,13 +13,16 @@ import {
 
 /**
  * Aviso enquanto as modalidades criadas no setup nao foram revisadas: explica a
- * trilha de evolucao (vale para qualquer area) e fecha o passo "Falta revisar"
- * do onboarding. Editar e salvar uma modalidade tambem fecha.
+ * trilha de evolucao (vale para qualquer area). O dono confirma no aviso de
+ * primeiros passos do topo ("Esta tudo certo"); os outros perfis, que nao veem
+ * esse aviso, confirmam aqui. Editar e salvar uma modalidade tambem fecha.
  */
 export function ModalitiesReviewNotice() {
   const { data: organization } = useOrganization();
   const segment = useBusinessSegment();
   const markMut = useMarkModalitiesReviewed();
+  // O aviso de primeiros passos (com o botao) so aparece para o dono.
+  const confirmsOnBanner = useCurrentUser().profile === "owner";
 
   if (organization?.settings?.modalitiesReviewed !== false) return null;
 
@@ -55,8 +59,14 @@ export function ModalitiesReviewNotice() {
               acompanhar o progresso dos alunos.
             </p>
           ) : null}
+          {confirmsOnBanner ? (
+            <p className="text-xs font-medium text-foreground">
+              Quando estiver tudo certo, confirme em “Está tudo certo” no aviso acima.
+            </p>
+          ) : null}
         </div>
       </div>
+      {confirmsOnBanner ? null : (
       <Button
         type="button"
         variant="outline"
@@ -72,6 +82,7 @@ export function ModalitiesReviewNotice() {
         )}
         Está tudo certo
       </Button>
+      )}
     </div>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeftRight, LayoutDashboard, Lock, Plus, Settings2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { useCan, useHasFeature } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { OnlinePaymentsSettingsCard } from "@/features/settings";
+import { markDiscoveryVisit } from "@/lib/discovery-flags";
 import { cn } from "@/lib/utils";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
 import type { FinanceTab } from "../lib";
@@ -35,6 +36,11 @@ export function FinanceView() {
   const hasFeature = useHasFeature();
   const hasOnlineFeature = hasFeature("online_payments");
   const [createOpen, setCreateOpen] = useState(false);
+  // Abrir o Financeiro conclui "Ver o resultado do mês" (Dashboard).
+  const user = useCurrentUser();
+  useEffect(() => {
+    markDiscoveryVisit(user, "finance");
+  }, [user]);
 
   return (
     <>

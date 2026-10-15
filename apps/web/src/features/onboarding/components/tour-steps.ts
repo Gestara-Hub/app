@@ -1,4 +1,4 @@
-import type { TourStep } from "./product-tour";
+import type { TourStep } from "@/components/shared/product-tour";
 
 /** Passos do tour para agendamento individual (Barbearia, Clínica, etc.) */
 export const TOUR_STEPS_DEFAULT: TourStep[] = [
@@ -43,7 +43,7 @@ export const TOUR_STEPS_CLASSES: TourStep[] = [
   },
   {
     target: '[data-tour="nav-group-catalog"]',
-    title: "Cadastros da Academia",
+    title: "Cadastros",
     body: "Modalidades, Planos e Equipe ficam organizados nesta seção — você estrutura no início e altera quando precisar.",
   },
   {

@@ -55,18 +55,42 @@ function isSidebarTarget(target: string): boolean {
 export function ProductTour({
   steps,
   onClose,
+  mobileMenuStep = true,
+  finishLabel = "Concluir",
 }: {
   steps: TourStep[];
   onClose: () => void;
+  /** Rotulo do ultimo botao ("Concluir"; dicas de 1 passo usam "Entendi"). */
+  finishLabel?: string;
+  /** Tour do menu: no celular abre pelo botao do menu. Tours dentro de uma tela passam `false`. */
+  mobileMenuStep?: boolean;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [tooltipHeight, setTooltipHeight] = useState(188);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  // O balao so aparece depois de achar o alvo (ou, sem alvo, no centro apos um
+  // tempo): antes ele surgia no centro e deslizava ate o alvo quando a tela
+  // terminava de carregar. A primeira posicao nao anima; trocar de passo sim.
+  const [placedOnce, setPlacedOnce] = useState(false);
+  // Passo em que o alvo nao apareceu a tempo: so ele usa o centro.
+  const [centerFallbackStep, setCenterFallbackStep] = useState<number | null>(null);
+  const visible = rect !== null || centerFallbackStep === index;
+  useEffect(() => {
+    if (rect !== null) return;
+    const timer = setTimeout(() => setCenterFallbackStep(index), 900);
+    return () => clearTimeout(timer);
+  }, [rect, index]);
+  // Liga a animacao so depois que o balao ja foi pintado no lugar certo.
+  useEffect(() => {
+    if (!visible || placedOnce) return;
+    const raf = requestAnimationFrame(() => setPlacedOnce(true));
+    return () => cancelAnimationFrame(raf);
+  }, [visible, placedOnce]);
 
   const effectiveSteps = useMemo(() => {
-    if (!isMobile) return steps;
+    if (!isMobile || !mobileMenuStep) return steps;
     if (steps.length === 0) return steps;
     if (steps[0]?.target === '[data-tour="sidebar-nav"]') {
       return [MOBILE_TRIGGER_STEP, ...steps.slice(1)];
@@ -75,7 +99,7 @@ export function ProductTour({
       return [MOBILE_TRIGGER_STEP, ...steps];
     }
     return steps;
-  }, [isMobile, steps]);
+  }, [isMobile, mobileMenuStep, steps]);
 
   const step = effectiveSteps[index];
 
@@ -217,12 +241,16 @@ export function ProductTour({
     <div data-product-tour className="pointer-events-auto fixed inset-0 z-[100]">
       {/* Captura cliques para bloquear a UI por baixo; dim quando nao ha recorte. */}
       <div
-        className={rect ? "absolute inset-0" : "absolute inset-0 bg-black/60"}
+        className={rect || !visible ? "absolute inset-0" : "absolute inset-0 bg-black/60"}
       />
 
       {highlight ? (
         <div
-          className="pointer-events-none absolute rounded-lg ring-2 ring-primary transition-all duration-200"
+          className={
+            placedOnce
+              ? "pointer-events-none absolute rounded-lg ring-2 ring-primary transition-all duration-200"
+              : "pointer-events-none absolute rounded-lg ring-2 ring-primary"
+          }
           style={{
             top: highlight.top,
             left: highlight.left,
@@ -237,8 +265,12 @@ export function ProductTour({
         ref={tooltipRef}
         role="dialog"
         aria-label={step.title}
-        className="absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg transition-[top,left] duration-200"
-        style={tooltipStyle}
+        className={
+          placedOnce
+            ? "absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg transition-[top,left] duration-200"
+            : "absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
+        }
+        style={{ ...tooltipStyle, visibility: visible ? "visible" : "hidden" }}
       >
         <button
           type="button"
@@ -274,7 +306,7 @@ export function ProductTour({
               isLast ? handleClose() : setIndex((i) => i + 1)
             }
           >
-            {isLast ? "Concluir" : "Próximo"}
+            {isLast ? finishLabel : "Próximo"}
           </Button>
         </div>
       </div>

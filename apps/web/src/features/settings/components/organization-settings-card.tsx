@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,17 +33,21 @@ import {
 } from "@/components/form";
 import {
   CLASSES_SEGMENT_PRESETS,
+  CUSTOM_BILLING_OPTIONS,
   CUSTOM_PROGRESSION_OPTIONS,
   DEFAULT_CLASS_SEGMENT,
+  DEFAULT_CUSTOM_BILLING,
   DEFAULT_CUSTOM_PROGRESSION,
 } from "@/lib/business-segment-presets";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
+import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type {
   Address,
+  ClassBillingMode,
   ClassesBusinessSegment,
   CustomSegmentProgression,
   Organization,
@@ -99,6 +103,9 @@ const schema = z.object({
   customSegmentProgression: z.enum(
     CUSTOM_PROGRESSION_OPTIONS.map((o) => o.value) as [CustomSegmentProgression, ...CustomSegmentProgression[]],
   ),
+  customSegmentBilling: z.enum(
+    CUSTOM_BILLING_OPTIONS.map((o) => o.value) as [ClassBillingMode, ...ClassBillingMode[]],
+  ),
 }).superRefine((values, ctx) => {
   if (values.classSegment === "custom" && !values.customSegmentName) {
     ctx.addIssue({
@@ -116,6 +123,11 @@ const CLASS_SEGMENT_OPTIONS: SelectOption[] = Object.values(CLASSES_SEGMENT_PRES
 }));
 
 const CUSTOM_PROGRESSION_SELECT_OPTIONS: SelectOption[] = CUSTOM_PROGRESSION_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+}));
+
+const CUSTOM_BILLING_SELECT_OPTIONS: SelectOption[] = CUSTOM_BILLING_OPTIONS.map((o) => ({
   value: o.value,
   label: o.label,
 }));
@@ -220,6 +232,7 @@ function OrgUnitForm({
       classSegment: organization.classSegment ?? DEFAULT_CLASS_SEGMENT,
       customSegmentName: organization.customSegmentName ?? "",
       customSegmentProgression: organization.customSegmentProgression ?? DEFAULT_CUSTOM_PROGRESSION,
+      customSegmentBilling: organization.customSegmentBilling ?? DEFAULT_CUSTOM_BILLING,
     },
   });
 
@@ -286,15 +299,24 @@ function OrgUnitForm({
   // "Continuar" do onboarding vindo de Horarios) troca a URL via pushState, sem
   // disparar `hashchange`. Por isso reage tambem a troca dos search params.
   const searchParams = useSearchParams();
-  // Chegou pelo deep-link (ex.: onboarding): o cartao pulsa ate o usuario clicar nele.
-  const [highlightBilling, setHighlightBilling] = useState(false);
+  // Chegou pelo deep-link (ex.: onboarding): o cartao pulsa sem parar ate o
+  // usuario tocar, focar ou abrir algo nele. Cada chegada rearma o pulso.
+  const [billingArrival, setBillingArrival] = useState(0);
+  const billingAttention = useAttentionUntilInteraction(
+    isBillingUnconfirmed && billingArrival > 0,
+    billingArrival,
+  );
+  const billingSectionRef = useRef<HTMLDivElement>(null);
+  // Destaque cobre a secao e o rodape com "Confirmar regras recomendadas".
+  const formFooterRef = useRef<HTMLDivElement>(null);
+  const billingSpotlightRefs = useMemo(() => [billingSectionRef, formFooterRef], []);
   useEffect(() => {
     let timer: number | undefined;
     const handleHash = () => {
       if (!isBillingUnconfirmed) return;
       if (!hashTargets(window.location.hash).includes("billing-rules")) return;
       setOpenSections(["billing"]);
-      setHighlightBilling(true);
+      setBillingArrival((n) => n + 1);
       window.clearTimeout(timer);
       // Aguarda a animacao de abertura do acordeao (200ms) concluir para ter a altura real da pagina
       timer = window.setTimeout(() => {
@@ -319,7 +341,8 @@ function OrgUnitForm({
       errors.phone ||
       errors.classSegment ||
       errors.customSegmentName ||
-      errors.customSegmentProgression
+      errors.customSegmentProgression ||
+      errors.customSegmentBilling
     ) {
       toOpen.push("business");
     }
@@ -339,7 +362,10 @@ function OrgUnitForm({
     // Grava so o que mudou, para cada salvamento virar um unico evento na auditoria.
     const dirty = form.formState.dirtyFields;
     const segmentDirty = Boolean(
-      dirty.classSegment || dirty.customSegmentName || dirty.customSegmentProgression,
+      dirty.classSegment ||
+      dirty.customSegmentName ||
+      dirty.customSegmentProgression ||
+      dirty.customSegmentBilling,
     );
     const orgDirty = Boolean(
       segmentDirty ||
@@ -362,6 +388,7 @@ function OrgUnitForm({
                 classSegment: values.classSegment,
                 customSegmentName: isCustom ? customName : undefined,
                 customSegmentProgression: isCustom ? values.customSegmentProgression : undefined,
+                customSegmentBilling: isCustom ? values.customSegmentBilling : undefined,
                 segment: isCustom ? customName : CLASSES_SEGMENT_PRESETS[values.classSegment].label,
               }
             : {}),
@@ -389,7 +416,7 @@ function OrgUnitForm({
         const cleanUrl = `${window.location.pathname}${window.location.search || ""}`;
         window.history.replaceState(null, "", cleanUrl);
       }
-      setHighlightBilling(false);
+      setBillingArrival(0);
       form.reset(values);
     } catch (error) {
       toast.error(
@@ -482,6 +509,14 @@ function OrgUnitForm({
                         clearable={false}
                         disabled={pending}
                       />
+                      <SelectField<OrgUnitValues>
+                        name="customSegmentBilling"
+                        label="Como você cobra?"
+                        hint="É só o padrão: cada turma pode cobrar diferente."
+                        options={CUSTOM_BILLING_SELECT_OPTIONS}
+                        clearable={false}
+                        disabled={pending}
+                      />
                     </>
                   ) : null}
                 </div>
@@ -520,12 +555,8 @@ function OrgUnitForm({
               value="billing"
               id="billing-rules"
               data-tour="settings-billing-rules"
-              onPointerDownCapture={() => setHighlightBilling(false)}
-              className={cn(
-                "rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors scroll-mt-20",
-                highlightBilling &&
-                  "border-primary/60 motion-safe:animate-attention-ring",
-              )}
+              ref={billingSectionRef}
+              className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors scroll-mt-20"
             >
               <AccordionTrigger className="py-4 hover:no-underline cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -550,7 +581,7 @@ function OrgUnitForm({
                   <div className="mt-3 mb-2 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground">
                     <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />
                     <p>
-                      Sugerimos o modelo mais comum para academias (mensalidade antecipada, proporcional no 1º mês e vencimento dia 10). Se estiver de acordo, basta confirmar abaixo.
+                      Sugerimos o modelo mais comum (mensalidade antecipada, proporcional no 1º mês e vencimento dia 10). Se estiver de acordo, basta confirmar abaixo.
                     </p>
                   </div>
                 ) : null}
@@ -610,9 +641,17 @@ function OrgUnitForm({
             </AccordionItem>
           ) : null}
         </Accordion>
+        {isClasses ? (
+          <SectionSpotlight
+            active={billingAttention.attention}
+            targetRefs={billingSpotlightRefs}
+            onDismiss={billingAttention.stop}
+            hint="Confira as regras e confirme."
+          />
+        ) : null}
 
         {/* Rodapé de Ação */}
-        <div className="flex items-center justify-between pt-2">
+        <div ref={formFooterRef} className="flex items-center justify-between pt-2">
           <div>
             {isBillingUnconfirmed && !form.formState.isDirty ? (
               <p className="text-xs font-medium text-amber-600 dark:text-amber-400">

@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Category } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useUpdateCategory } from "@/features/categories";
+import { useCategories, useUpdateCategory } from "@/features/categories";
 import { ModalitiesList } from "./modalities-list";
 import { ModalitiesReviewNotice } from "./modalities-review-notice";
 import { ModalityFormDialog } from "./modality-form-dialog";
@@ -24,6 +24,10 @@ export function ModalitiesView() {
 
   const updateMut = useUpdateCategory();
   const canManage = useCan()("classes:manage");
+  // Com pelo menos 1 modalidade (ex.: as criadas no setup), "Nova modalidade"
+  // nao pulsa no passo a passo: o passo ja tem o que precisa.
+  const { data: modalities } = useCategories();
+  const hasModalities = (modalities?.length ?? 0) > 0;
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (modality: Category) => setFormState({ open: true, modality });
@@ -60,7 +64,7 @@ export function ModalitiesView() {
         description="Os tipos de aula que a unidade oferece. As turmas e os instrutores se organizam por elas."
       >
         {canManage ? (
-          <Button onClick={openCreate} data-onboarding-cta="modalities">
+          <Button onClick={openCreate} data-onboarding-cta={hasModalities ? undefined : "modalities"}>
             <Plus className="size-4" />
             Nova modalidade
           </Button>

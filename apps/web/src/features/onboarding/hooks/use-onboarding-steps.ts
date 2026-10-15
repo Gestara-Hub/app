@@ -7,7 +7,7 @@ import { useAppointments } from "@/features/appointments";
 import { useBusinessSegment, useOrganization, useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
-import { useClassGroups, usePlans } from "@/features/turmas";
+import { useClassGroups, useLessonPackages, usePlans } from "@/features/turmas";
 import {
   buildClassesOnboardingSteps,
   buildSchedulingOnboardingSteps,
@@ -21,7 +21,8 @@ export { isStepSatisfied, type OnboardingStep } from "../onboarding-steps";
  * Passos do onboarding com conclusao derivada do dado real (nao manual): cada
  * passo se marca sozinho quando a entidade correspondente passa a existir.
  * Contextualizado ao modelo operacional (atendimento individual vs turmas) e,
- * nas turmas, a forma de cobranca da area (mensalidade ou curso fechado).
+ * nas turmas, a forma de cobranca da area (mensalidade, curso, pacote ou
+ * sem cobranca).
  * A montagem dos passos fica em `../onboarding-steps` (pura, testada).
  */
 export function useOnboardingSteps() {
@@ -36,9 +37,11 @@ export function useOnboardingSteps() {
   const categoriesQuery = useCategories();
   const classGroupsQuery = useClassGroups();
   const plansQuery = usePlans();
+  const lessonPackagesQuery = useLessonPackages();
 
   const isClasses = model === "classes";
-  const isCourseArea = isClasses && segment.defaultBillingMode === "course";
+  const areaBillingMode = isClasses ? segment.defaultBillingMode : "membership";
+  const isCourseArea = areaBillingMode === "course";
 
   const hoursSet = Boolean(
     unitQuery.data?.businessHours?.some((day) => !day.closed),
@@ -55,18 +58,21 @@ export function useOnboardingSteps() {
       !categoriesQuery.isPending &&
       !classGroupsQuery.isPending &&
       !clientsQuery.isPending &&
-      !plansQuery.isPending;
+      !plansQuery.isPending &&
+      !lessonPackagesQuery.isPending;
 
     steps = buildClassesOnboardingSteps({
       hoursSet,
       billingSet: Boolean(orgQuery.data?.settings?.billingTiming),
       modalitiesCount: categoriesQuery.data?.length ?? 0,
       modalitiesNeedReview: orgQuery.data?.settings?.modalitiesReviewed === false,
-      plansCount: plansQuery.data?.length ?? 0,
+      // So os ativos contam (inativo nao se vende nem se atribui).
+      plansCount: plansQuery.data?.filter((p) => p.status === "active").length ?? 0,
+      lessonPackagesCount: lessonPackagesQuery.data?.filter((p) => p.status === "active").length ?? 0,
       professionalsCount: professionalsQuery.data?.length ?? 0,
       clientsCount: clientsQuery.data?.length ?? 0,
       classGroups: classGroupsQuery.data ?? [],
-      isCourseArea,
+      areaBillingMode,
     });
   } else {
     isReady =
@@ -91,5 +97,6 @@ export function useOnboardingSteps() {
     isReady,
     isClasses,
     isCourseArea,
+    areaBillingMode,
   };
 }

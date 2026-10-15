@@ -5,31 +5,56 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useState,
   useSyncExternalStore,
-  type CSSProperties,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import { LayoutGrid, List, Sparkles, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LayoutGrid, List } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { VIEW_MODE_STORAGE_PREFIX } from "./view-mode-script";
-
-export type ListViewMode = "list" | "grid";
+import { ProductTour } from "@/components/shared/product-tour";
+import {
+  DEFAULT_VIEW_MODE,
+  resolveViewMode,
+  shouldShowViewModeTip,
+  VIEW_MODE_STORAGE_PREFIX,
+  VIEW_MODE_TIP_MIN_ITEMS,
+  viewModeTipSeenKey,
+  type ListViewMode,
+} from "./view-mode-script";
 
 const ViewModeServerContext = createContext<Record<string, ListViewMode>>({});
+
+function shortKeyOf(fullKey: string): string {
+  return fullKey.startsWith(VIEW_MODE_STORAGE_PREFIX)
+    ? fullKey.slice(VIEW_MODE_STORAGE_PREFIX.length)
+    : fullKey;
+}
 
 function setViewModeCookie(fullKey: string, mode: ListViewMode) {
   if (typeof document === "undefined") return;
   try {
-    const shortKey = fullKey.startsWith(VIEW_MODE_STORAGE_PREFIX)
-      ? fullKey.slice(VIEW_MODE_STORAGE_PREFIX.length)
-      : fullKey;
-    document.documentElement.setAttribute(`data-vm-${shortKey}`, mode);
+    document.documentElement.setAttribute(`data-vm-${shortKeyOf(fullKey)}`, mode);
     document.cookie = `${fullKey}=${mode}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {
+    // ignore cookie errors
+  }
+}
+
+/**
+ * Sem escolha salva no localStorage: o cookie (SSR) nao vale mais e a tela
+ * volta para Lista. So escreve quando ha algo antigo para limpar.
+ */
+function clearViewModeCookie(fullKey: string) {
+  if (typeof document === "undefined") return;
+  try {
+    const attr = `data-vm-${shortKeyOf(fullKey)}`;
+    if (document.documentElement.getAttribute(attr) !== DEFAULT_VIEW_MODE) {
+      document.documentElement.setAttribute(attr, DEFAULT_VIEW_MODE);
+    }
+    if (document.cookie.split("; ").some((c) => c.startsWith(`${fullKey}=`))) {
+      document.cookie = `${fullKey}=; path=/; max-age=0; SameSite=Lax`;
+    }
   } catch {
     // ignore cookie errors
   }
@@ -45,6 +70,14 @@ function syncAllLocalStorageViewModesToCookies() {
         if (val === "list" || val === "grid") {
           setViewModeCookie(key, val);
         }
+      }
+    }
+    // Cookie sem o valor no localStorage (dados limpos, demo reiniciada) sai.
+    for (const entry of document.cookie ? document.cookie.split("; ") : []) {
+      const name = entry.split("=")[0];
+      if (name.startsWith(VIEW_MODE_STORAGE_PREFIX)) {
+        const val = window.localStorage.getItem(name);
+        if (val !== "list" && val !== "grid") clearViewModeCookie(name);
       }
     }
   } catch {
@@ -111,12 +144,14 @@ function notify() {
 
 export function useViewMode(
   storageKey: string,
-  defaultMode: ListViewMode = "list",
+  defaultMode: ListViewMode = DEFAULT_VIEW_MODE,
 ): [ListViewMode, (mode: ListViewMode) => void] {
   const fullKey = `${VIEW_MODE_STORAGE_PREFIX}${storageKey}`;
   const serverModes = useContext(ViewModeServerContext);
   const serverFallback = serverModes[storageKey] ?? defaultMode;
 
+  // No navegador o localStorage manda: sem escolha salva, o padrao (Lista),
+  // mesmo que um cookie antigo diga "grid" (o cookie so evita o flicker no SSR).
   const getSnapshot = useCallback((): ListViewMode => {
     try {
       const saved = window.localStorage.getItem(fullKey);
@@ -125,10 +160,12 @@ export function useViewMode(
         return saved;
       }
     } catch {
-      // ignore storage errors
+      // Sem localStorage (bloqueado): fica o que o servidor leu do cookie.
+      return serverFallback;
     }
-    return serverFallback;
-  }, [fullKey, serverFallback]);
+    clearViewModeCookie(fullKey);
+    return resolveViewMode(null, defaultMode);
+  }, [fullKey, defaultMode, serverFallback]);
 
   const mode = useSyncExternalStore(
     subscribe,
@@ -200,256 +237,157 @@ export function SkeletonCards({
 export function ViewModeToggle({
   value,
   onChange,
+  tipKey,
+  itemCount,
 }: {
   value: ListViewMode;
   onChange: (mode: ListViewMode) => void;
+  /**
+   * Chave da tela (a mesma do `useViewMode`): com `itemCount`, mostra uma vez
+   * a dica "Lista ou cards" quando a tela ganha o 1º registro.
+   */
+  tipKey?: string;
+  itemCount?: number;
 }) {
   return (
-    <div
-      role="group"
-      data-tour="view-mode-toggle"
-      aria-label="Modo de visualização"
-      className="inline-flex h-9 shrink-0 items-center rounded-md border border-input bg-background p-0.5 shadow-2xs"
-    >
-      <button
-        type="button"
-        onClick={() => onChange("list")}
-        title="Visualização em lista"
-        aria-label="Visualização em lista"
-        aria-pressed={value === "list"}
-        className={cn(
-          "inline-flex h-full items-center gap-1.5 rounded-xs px-2.5 text-xs font-medium transition-colors",
-          value === "list"
-            ? "bg-muted text-foreground shadow-2xs"
-            : "text-muted-foreground hover:text-foreground",
-        )}
+    <>
+      <div
+        role="group"
+        data-tour="view-mode-toggle"
+        data-view-mode-key={tipKey}
+        aria-label="Modo de visualização"
+        className="inline-flex h-9 shrink-0 items-center rounded-md border border-input bg-background p-0.5 shadow-2xs"
       >
-        <List className="size-3.5" />
-        <span className="hidden sm:inline">Lista</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("grid")}
-        title="Visualização em cards"
-        aria-label="Visualização em cards"
-        aria-pressed={value === "grid"}
-        className={cn(
-          "inline-flex h-full items-center gap-1.5 rounded-xs px-2.5 text-xs font-medium transition-colors",
-          value === "grid"
-            ? "bg-muted text-foreground shadow-2xs"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <LayoutGrid className="size-3.5" />
-        <span className="hidden sm:inline">Cards</span>
-      </button>
-    </div>
+        <button
+          type="button"
+          onClick={() => onChange("list")}
+          title="Visualização em lista"
+          aria-label="Visualização em lista"
+          aria-pressed={value === "list"}
+          className={cn(
+            "inline-flex h-full items-center gap-1.5 rounded-xs px-2.5 text-xs font-medium transition-colors",
+            value === "list"
+              ? "bg-muted text-foreground shadow-2xs"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <List className="size-3.5" />
+          <span className="hidden sm:inline">Lista</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("grid")}
+          title="Visualização em cartões"
+          aria-label="Visualização em cartões"
+          aria-pressed={value === "grid"}
+          className={cn(
+            "inline-flex h-full items-center gap-1.5 rounded-xs px-2.5 text-xs font-medium transition-colors",
+            value === "grid"
+              ? "bg-muted text-foreground shadow-2xs"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <LayoutGrid className="size-3.5" />
+          <span className="hidden sm:inline">Cartões</span>
+        </button>
+      </div>
+      {tipKey && itemCount !== undefined ? (
+        <ViewModeCoachmark storageKey={tipKey} itemCount={itemCount} />
+      ) : null}
+    </>
   );
 }
 
-interface Rect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+function toggleSelector(storageKey: string): string {
+  return `[data-tour="view-mode-toggle"][data-view-mode-key="${storageKey}"]`;
 }
 
-const TOOLTIP_WIDTH = 340;
-const GAP = 12;
-const HIGHLIGHT_PADDING = 6;
+const UNKEYED_TOGGLE = '[data-tour="view-mode-toggle"]:not([data-view-mode-key])';
+
+/** Seletor do toggle da tela (o da chave; sem chave marcada, o unico da pagina). */
+function findToggleSelector(storageKey: string): string | null {
+  if (document.querySelector(toggleSelector(storageKey))) return toggleSelector(storageKey);
+  if (document.querySelector(UNKEYED_TOGGLE)) return UNKEYED_TOGGLE;
+  return null;
+}
 
 /**
- * Coachmark contextual (1 passo) exibido uma unica vez quando a listagem atinge
- * `threshold` (padrao: 3) registros e nenhuma modal esta aberta.
- * Alterna automaticamente para o modo "grid" (Cards) na abertura para o usuario
- * visualizar na hora a diferenca entre Lista e Cards.
+ * Dica de 1 passo, uma vez por tela (`viewModeTipSeenKey`), quando a listagem
+ * tem pelo menos 1 registro e nenhum modal ou tour esta aberto. Usa o mesmo
+ * tour do produto (`ProductTour`, destaque no toggle + balao) e nao troca o
+ * modo da tela: a lista continua em Lista.
  */
 export function ViewModeCoachmark({
   storageKey,
   itemCount,
-  threshold = 3,
-  onViewModeChange,
+  threshold = VIEW_MODE_TIP_MIN_ITEMS,
 }: {
   storageKey: string;
   itemCount: number;
   threshold?: number;
-  onViewModeChange: (mode: ListViewMode) => void;
 }) {
-  const seenKey = `gestarahub_coachmark_view_mode_${storageKey}`;
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<Rect | null>(null);
+  const seenKey = viewModeTipSeenKey(storageKey);
+  const [target, setTarget] = useState<string | null>(null);
 
   useEffect(() => {
-    if (itemCount < threshold || typeof window === "undefined") return;
-    try {
-      if (window.localStorage.getItem(seenKey) === "1") return;
-    } catch {
-      return;
-    }
+    if (typeof window === "undefined") return;
+    const isSeen = () => {
+      try {
+        return window.localStorage.getItem(seenKey) === "1";
+      } catch {
+        return true;
+      }
+    };
+    if (!shouldShowViewModeTip(itemCount, isSeen(), threshold)) return;
 
     const tryTrigger = () => {
-      try {
-        if (window.localStorage.getItem(seenKey) === "1") return;
-      } catch {
-        return;
-      }
-      // Aguarda qualquer modal de cadastro/sucesso fechar antes de apresentar
+      if (isSeen()) return;
+      // Espera o modal de cadastro/sucesso (ou outro tour) fechar.
       const hasOpenDialog = Boolean(
         document.querySelector(
-          '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-product-tour]',
+          '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"], [data-product-tour]',
         ),
       );
       if (hasOpenDialog) return;
-
-      const targetEl = document.querySelector('[data-tour="view-mode-toggle"]');
-      if (!targetEl) return;
+      const selector = findToggleSelector(storageKey);
+      if (!selector) return;
 
       try {
         window.localStorage.setItem(seenKey, "1");
       } catch {
         // ignore
       }
-      onViewModeChange("grid");
-      setOpen(true);
+      setTarget(selector);
     };
 
-    const timer = setTimeout(tryTrigger, 320);
+    const timer = setTimeout(tryTrigger, 400);
+    let pending: ReturnType<typeof setTimeout> | undefined;
     const observer = new MutationObserver(() => {
-      setTimeout(tryTrigger, 200);
+      clearTimeout(pending);
+      pending = setTimeout(tryTrigger, 250);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(pending);
       observer.disconnect();
     };
-  }, [itemCount, threshold, seenKey, onViewModeChange]);
+  }, [itemCount, threshold, seenKey, storageKey]);
 
-  const measure = useCallback(() => {
-    const el = document.querySelector('[data-tour="view-mode-toggle"]');
-    if (!el) {
-      setRect(null);
-      return;
-    }
-    const r = el.getBoundingClientRect();
-    setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    let raf = requestAnimationFrame(measure);
-    const schedule = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(measure);
-    };
-    window.addEventListener("resize", schedule);
-    window.addEventListener("scroll", schedule, true);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", schedule);
-      window.removeEventListener("scroll", schedule, true);
-    };
-  }, [open, measure]);
-
-  if (!open || typeof document === "undefined") return null;
-
-  const highlight = rect
-    ? {
-        top: rect.top - HIGHLIGHT_PADDING,
-        left: rect.left - HIGHLIGHT_PADDING,
-        width: rect.width + HIGHLIGHT_PADDING * 2,
-        height: rect.height + HIGHLIGHT_PADDING * 2,
-      }
-    : null;
-
-  let tooltipStyle: CSSProperties;
-  if (!rect) {
-    tooltipStyle = {
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-    };
-  } else {
-    const tooltipWidth = Math.min(TOOLTIP_WIDTH, window.innerWidth - 24);
-    const left = Math.max(
-      12,
-      Math.min(
-        rect.left + rect.width - tooltipWidth,
-        window.innerWidth - tooltipWidth - 12,
-      ),
-    );
-    const top = Math.min(rect.top + rect.height + GAP, window.innerHeight - 220);
-    tooltipStyle = { top, left };
-  }
-
-  return createPortal(
-    <div data-product-tour className="pointer-events-auto fixed inset-0 z-[100]">
-      <div
-        className={rect ? "absolute inset-0" : "absolute inset-0 bg-black/45"}
-        onClick={() => setOpen(false)}
-      />
-
-      {highlight ? (
-        <div
-          className="pointer-events-none absolute rounded-lg ring-2 ring-primary transition-all duration-200"
-          style={{
-            top: highlight.top,
-            left: highlight.left,
-            width: highlight.width,
-            height: highlight.height,
-            boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.42)",
-          }}
-        />
-      ) : null}
-
-      <div
-        role="dialog"
-        aria-label="Modo Lista ou Cards"
-        className="absolute w-[min(21.25rem,calc(100vw-1.5rem))] rounded-xl border bg-popover p-4 text-popover-foreground shadow-xl"
-        style={tooltipStyle}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="Fechar dica"
-          className="absolute top-3 right-3 cursor-pointer rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-3.5" />
-        </button>
-
-        <div className="pr-6">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-            <Sparkles className="size-3" />
-            Dica de visualização
-          </span>
-          <h3 className="mt-1.5 text-sm font-semibold">
-            Alterne entre Lista e Cards
-          </h3>
-        </div>
-
-        <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-          Mudamos para o modo <strong className="font-medium text-foreground">Cards</strong>{" "}
-          para você conhecer! Você pode alternar aqui quando quiser — sua
-          preferência fica salva em cada tela.
-        </p>
-
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              onViewModeChange("list");
-              setOpen(false);
-            }}
-          >
-            Voltar para Lista
-          </Button>
-          <Button size="sm" onClick={() => setOpen(false)}>
-            Manter em Cards
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+  if (!target) return null;
+  return (
+    <ProductTour
+      steps={[
+        {
+          target,
+          title: "Veja em lista ou em cartões",
+          body: "Troque a visão aqui. Cada tela guarda sua escolha.",
+        },
+      ]}
+      onClose={() => setTarget(null)}
+      mobileMenuStep={false}
+      finishLabel="Entendi"
+    />
   );
 }
