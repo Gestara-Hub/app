@@ -1,5 +1,8 @@
 import { expect, test as base, type Page } from "@playwright/test";
 
+/** Origem do app nos testes (ver E2E_PORT no playwright.config). */
+export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3000}`;
+
 /**
  * Base dos testes de ponta a ponta.
  * - Relogio do navegador fixo em 22/09/2026 (status de atraso e meses previsiveis).
@@ -13,7 +16,32 @@ type World = { v: number; data: { tenants: Record<string, Tenant>; activeOrganiz
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Tenant = Record<string, any>;
 
-export const test = base.extend<{ pageErrors: string[] }>({
+/** Telas com alternancia Lista/Cards (chaves do `useViewMode`). */
+const VIEW_MODE_TIP_KEYS = ["clients", "turmas", "modalities", "plans", "professionals"] as const;
+
+export const test = base.extend<{ pageErrors: string[]; viewModeTipsSeen: boolean; viewModeTips: void }>({
+  /**
+   * Dica "Lista ou cards" ja vista em todas as telas (ela aparece com o 1º
+   * registro e cobriria cliques). Spec que testa a dica: `test.use({ viewModeTipsSeen: false })`.
+   */
+  viewModeTipsSeen: [true, { option: true }],
+  viewModeTips: [
+    async ({ page, viewModeTipsSeen }, use) => {
+      if (viewModeTipsSeen) {
+        await page.addInitScript((keys) => {
+          try {
+            for (const key of keys) localStorage.setItem(`gestarahub_coachmark_view_mode_${key}`, "1");
+            // Tour das abas de Planos e pacotes (primeiro acesso pela configuracao inicial).
+            localStorage.setItem("gestarahub_tour_plans_tabs", "1");
+          } catch {
+            // about:blank e afins nao tem localStorage
+          }
+        }, [...VIEW_MODE_TIP_KEYS]);
+      }
+      await use();
+    },
+    { auto: true },
+  ],
   pageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
@@ -82,7 +110,7 @@ export async function setSessionCookie(page: Page, name: keyof typeof DEMO_USERS
     {
       name: "gestarahub_session",
       value: Buffer.from(JSON.stringify(claims), "utf8").toString("base64"),
-      url: "http://localhost:3000",
+      url: BASE_URL,
       httpOnly: true,
       sameSite: "Lax",
     },

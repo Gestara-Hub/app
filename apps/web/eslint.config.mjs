@@ -9,6 +9,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Build do servidor dos testes do navegador em outra porta (E2E_PORT).
+    ".next-e2e/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

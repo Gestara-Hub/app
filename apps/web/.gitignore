@@ -44,3 +44,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# servidor dos testes do navegador em outra porta (E2E_PORT)
+/.next-e2e/
