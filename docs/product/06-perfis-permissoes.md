@@ -109,6 +109,7 @@ As acoes do sistema sao `capability keys` no formato `entidade:acao`, com fonte 
 | classes:manage | ✓ | ✓ | | |
 | enrollment:manage | ✓ | ✓ | ✓ | |
 | attendance:mark | ✓ | ✓ | ✓ | ✓ |
+| grades:manage | ✓ | ✓ | | ✓ (so nas proprias turmas) |
 | billing:view | ✓ | ✓ | ✓ | |
 | billing:manage | ✓ | ✓ | | |
 | finance:view | ✓ | ✓ | | |
@@ -127,6 +128,7 @@ Regras especificas:
 - **Bloquear horario** (`appointments:block`): Proprietario e Gerente. Atendente/Profissional apenas visualizam o bloqueio na agenda.
 - **Remarcar** (`appointments:reschedule`) e **recorrencia** (`recurrence:manage`): Proprietario, Gerente e Atendente.
 - **Avancar status** (`appointments:status`): todos os perfis; o Profissional so enxerga (e portanto so opera) os proprios atendimentos.
+- **Notas** (`grades:manage`): Proprietario e Gerente em todas as turmas; o Profissional so nas turmas em que e o instrutor titular (o `gradesService` recusa as demais com `FORBIDDEN`). O Atendente ve as avaliacoes e o boletim (`classes:view`), mas nao lanca.
 - **Modalidades** exigem `classes:manage`; **Planos** e **Mensalidades** aparecem com `billing:view`, e as acoes de gestao exigem `billing:manage`.
 
 ## Gestao de usuarios (`/users`)

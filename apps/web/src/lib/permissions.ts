@@ -27,12 +27,14 @@ const APPOINTMENT_OPS = [
 
 // Modelo 3 (turmas). Keys por perfil (model-agnosticas); a nav por modelo gata
 // a visibilidade. `classes:manage` = criar/editar turmas; `enrollment:manage` =
-// matricular/cancelar; `attendance:mark` = marcar presenca.
+// matricular/cancelar; `attendance:mark` = marcar presenca; `grades:manage` =
+// avaliacoes e notas (o professor tem, mas so nas turmas dele: o service escopa).
 const CLASS_OPS = [
   "classes:view",
   "classes:manage",
   "enrollment:manage",
   "attendance:mark",
+  "grades:manage",
 ] as const satisfies readonly Permission[];
 
 // Financeiro do M3 (planos + mensalidades) — territorio de owner/gerente.
@@ -135,13 +137,14 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     // Relatorios: pode ver relatorios operacionais.
     "reports:view",
   ],
-  // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas e
-  // marca presenca; nada de gestao.
+  // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas,
+  // marca presenca e lanca notas (so nas turmas dele); nada de gestao.
   professional: [
     "schedule:view",
     "appointments:status",
     "classes:view",
     "attendance:mark",
+    "grades:manage",
   ],
 };
 

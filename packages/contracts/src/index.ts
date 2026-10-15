@@ -13,6 +13,8 @@ export * from "./time-block";
 export * from "./recurrence-series";
 export * from "./audit-log";
 export * from "./class";
+export * from "./assessment";
+export * from "./certificate";
 export * from "./billing";
 export * from "./package";
 export * from "./subscription";

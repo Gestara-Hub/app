@@ -6,3 +6,4 @@ export { usersService } from "./usersService";
 export { auditLogService } from "./auditLogService";
 export { systemService } from "./system";
 export { subscriptionService } from "./subscriptionService";
+export { certificatesService } from "./certificatesService";

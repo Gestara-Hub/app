@@ -1,18 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
+import { Controller, useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Award,
   ChevronDown,
+  ClipboardCheck,
   ChevronUp,
   GripVertical,
   Plus,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { InputText, SwitchField } from "@/components/form";
+import {
+  FieldShell,
+  InputText,
+  SegmentedChoiceField,
+  SelectField,
+  SwitchField,
+  fieldAria,
+} from "@/components/form";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
@@ -43,16 +51,29 @@ import {
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import {
+  CONCEPT_GRADES,
+  defaultPassingGrade,
+  formatGrade,
+  normalizePassingGrade,
+} from "@gestarahub/core/grades";
 import type {
+  AssessmentScale,
   Category,
   CreateCategory,
+  ModalityAssessmentSettings,
   ModalityProgressionTrack,
   ProgressionBeltColor,
   ProgressionCriteriaType,
   ProgressionLevelStep,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
-import { segmentDefaultTrack, vocabularyForTrack } from "@/lib/business-segment-presets";
+import {
+  segmentDefaultAssessments,
+  segmentDefaultTrack,
+  vocabularyForTrack,
+  type BusinessSegmentPreset,
+} from "@/lib/business-segment-presets";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCreateCategory, useUpdateCategory } from "@/features/categories";
 import { useBusinessSegment } from "@/features/settings";
@@ -73,12 +94,31 @@ const QUICK_MODALITY_SUGGESTIONS = [
   "Krav Maga",
 ] as const;
 
-function toDefaults(modality?: Category): ModalityFormValues {
+/** Nota minima no campo de texto ("6", "60", "C"; apto nao tem campo). */
+function passingGradeText(scale: AssessmentScale, value: ModalityAssessmentSettings["passingGrade"]): string {
+  if (scale === "pass_fail") return "pass";
+  return typeof value === "number" ? formatGrade(scale, value) : String(value);
+}
+
+function toDefaults(modality: Category | undefined, segment: BusinessSegmentPreset): ModalityFormValues {
+  // Modalidade nova: a area sugere (ligada em idiomas, musica e cursos livres).
+  const assessments = modality ? modality.assessments : segmentDefaultAssessments(segment);
+  const scale = assessments?.scale ?? "zero_ten";
   return {
     name: modality?.name ?? "",
     active: modality ? modality.status === "active" : true,
+    assessmentsEnabled: Boolean(assessments?.enabled),
+    assessmentScale: scale,
+    passingGrade: passingGradeText(scale, assessments?.passingGrade ?? defaultPassingGrade(scale)),
   };
 }
+
+const SCALE_OPTIONS: { value: AssessmentScale; label: string }[] = [
+  { value: "zero_ten", label: "0 a 10" },
+  { value: "zero_hundred", label: "0 a 100" },
+  { value: "concept", label: "A a E" },
+  { value: "pass_fail", label: "Apto" },
+];
 
 const BELT_COLORS = Object.keys(BELT_COLOR_META) as ProgressionBeltColor[];
 /** Cores do estilo nivel: as mesmas, sem a "Neutra" (sem cor ja e o neutro). */
@@ -160,8 +200,19 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
     resolver: zodResolver(modalityFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: toDefaults(modality),
+    defaultValues: toDefaults(modality, segment),
   });
+  const assessmentsOn = useWatch({ control: form.control, name: "assessmentsEnabled" });
+  const assessmentScale = useWatch({ control: form.control, name: "assessmentScale" });
+  // Trocar a escala volta a nota minima para o padrao dela (6 / 60 / C / apto).
+  const lastScaleRef = useRef(assessmentScale);
+  useEffect(() => {
+    if (lastScaleRef.current === assessmentScale) return;
+    lastScaleRef.current = assessmentScale;
+    form.setValue("passingGrade", passingGradeText(assessmentScale, defaultPassingGrade(assessmentScale)), {
+      shouldDirty: true,
+    });
+  }, [assessmentScale, form]);
 
   const watchedName = useWatch({ control: form.control, name: "name" }) ?? "";
 
@@ -307,6 +358,13 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
       })),
     };
 
+    const passing = normalizePassingGrade(values.assessmentScale, values.passingGrade);
+    const assessments: ModalityAssessmentSettings = {
+      enabled: values.assessmentsEnabled,
+      scale: values.assessmentScale,
+      passingGrade: passing.ok ? passing.value : defaultPassingGrade(values.assessmentScale),
+    };
+
     try {
       if (isEdit && modality) {
         await updateMut.mutateAsync({
@@ -314,6 +372,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
           payload: {
             name: values.name,
             progressionTrack: sanitizedTrack,
+            assessments,
             status: values.active ? "active" : "inactive",
           },
         });
@@ -322,6 +381,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
         const payload: CreateCategory = {
           name: values.name,
           progressionTrack: sanitizedTrack,
+          assessments,
         };
         await createMut.mutateAsync(payload);
         toast.success("Modalidade criada com sucesso.");
@@ -331,7 +391,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
       const fields = getFieldErrors(error);
       if (fields && fields.length > 0) {
         for (const f of fields) {
-          form.setError(f.field as Path<ModalityFormValues>, {
+          const field = f.field.startsWith("assessments.") ? "passingGrade" : f.field;
+          form.setError(field as Path<ModalityFormValues>, {
             message: f.message,
           });
         }
@@ -1056,6 +1117,76 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                     </div>
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Avaliacoes e notas (doc 21 §2.1) */}
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <ClipboardCheck className="size-4 text-primary shrink-0" />
+                <label htmlFor="assessmentsEnabled" className="text-sm font-semibold text-foreground leading-tight">
+                  Esta modalidade tem avaliações
+                </label>
+              </div>
+              <Controller
+                control={form.control}
+                name="assessmentsEnabled"
+                render={({ field }) => (
+                  <Switch
+                    id="assessmentsEnabled"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={pending}
+                  />
+                )}
+              />
+            </div>
+            {assessmentsOn ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Escala da nota</p>
+                  <SegmentedChoiceField<ModalityFormValues>
+                    name="assessmentScale"
+                    ariaLabel="Escala da nota"
+                    disabled={pending}
+                    options={SCALE_OPTIONS}
+                  />
+                </div>
+                {assessmentScale === "concept" ? (
+                  <SelectField<ModalityFormValues>
+                    name="passingGrade"
+                    label="Nota mínima para aprovar"
+                    clearable={false}
+                    disabled={pending}
+                    options={CONCEPT_GRADES.map((c) => ({ value: c, label: c }))}
+                  />
+                ) : assessmentScale === "pass_fail" ? (
+                  <p className="text-xs text-muted-foreground">Aprova quem fica apto.</p>
+                ) : (
+                  <Controller
+                    control={form.control}
+                    name="passingGrade"
+                    render={({ field, fieldState }) => (
+                      <FieldShell
+                        id="passingGrade"
+                        label="Nota mínima para aprovar"
+                        error={fieldState.error?.message}
+                      >
+                        <Input
+                          id="passingGrade"
+                          inputMode={assessmentScale === "zero_ten" ? "decimal" : "numeric"}
+                          autoComplete="off"
+                          className="w-28 text-base tabular-nums md:text-sm"
+                          disabled={pending}
+                          {...field}
+                          {...fieldAria("passingGrade", fieldState.error?.message)}
+                        />
+                      </FieldShell>
+                    )}
+                  />
+                )}
               </div>
             ) : null}
           </div>

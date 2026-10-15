@@ -5,13 +5,14 @@ import type {
   AbsenceStreakView,
   Charge,
   ClassGroup,
+  Client,
   ClassGroupFilter,
   ClassGroupView,
   ClassMeetingSlot,
   ClassReservation,
   ClassSessionDetail,
   ClassSessionView,
-  CourseCertificate,
+  CourseCertificateDocument,
   CreateClassGroup,
   CreateEnrollment,
   DateISO,
@@ -50,6 +51,7 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
+import { currentCertificateTemplate } from "./certificatesService";
 import { assertFeature } from "./subscriptionService";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import {
@@ -836,9 +838,10 @@ export const turmasService = {
 
   /**
    * Certificado de conclusao (doc 20, fase D; recurso pago `certificates`).
-   * So para matricula ativa em curso ja terminado ("Concluído").
+   * So para matricula ativa em curso ja terminado ("Concluído"). Devolve os
+   * dados do aluno e o modelo do espaco (doc 21, secao 1).
    */
-  getCourseCertificate(enrollmentId: Id): Promise<CourseCertificate> {
+  getCourseCertificate(enrollmentId: Id): Promise<CourseCertificateDocument> {
     return simulateRead(() => {
       assertFeature("certificates");
       const e = store.enrollments.find((x) => x.id === enrollmentId);
@@ -850,7 +853,7 @@ export const turmasService = {
       }
       const address = store.unit.address;
       const { presentCount, absentCount } = frequencyOf(g.id, e.studentId);
-      return buildCourseCertificate({
+      const certificate = buildCourseCertificate({
         enrollmentId: e.id,
         classGroupId: g.id,
         organizationName: store.organization.name,
@@ -859,13 +862,14 @@ export const turmasService = {
         modalityName: modalityName(g.modalityId),
         startDate: g.startDate,
         endDate: g.endDate,
-        meetingWeekdays: g.meetingSlots.map((slot) => slot.weekday),
+        meetingSlots: g.meetingSlots,
         presentCount,
         absentCount,
         instructorName: instructorName(g.instructorId),
         city: typeof address === "object" ? address?.city : undefined,
         issuedOn: todayISO(),
       });
+      return clone({ certificate, template: currentCertificateTemplate() });
     });
   },
 

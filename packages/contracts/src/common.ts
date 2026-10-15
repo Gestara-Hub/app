@@ -72,6 +72,7 @@ export type ApiErrorCode =
   | "NETWORK"
   | "NOT_FOUND"
   | "VALIDATION"
+  | "FORBIDDEN" // sem permissao para a acao (403)
   // Regras de negocio (agenda)
   | "OVERLAP_CONFLICT"
   | "OUTSIDE_BUSINESS_HOURS"

@@ -1,8 +1,10 @@
 import type {
   Appointment,
+  Assessment,
   Attendance,
   AuditLogEntry,
   Category,
+  CertificateTemplate,
   Charge,
   ClassGroup,
   ClassReservation,
@@ -90,6 +92,9 @@ export interface MockStore {
   waitlist: WaitlistEntry[];
   reservations: ClassReservation[];
   sessionOverrides?: ClassSessionOverride[];
+  // Avaliacoes e notas (doc 21 §2.1). Opcional: nasce vazio no 1o lancamento,
+  // sem migracao (ver gradesService.assessmentsStore).
+  assessments?: Assessment[];
   // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
   // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
   financialCategories: FinancialCategory[];
@@ -103,6 +108,8 @@ export interface MockStore {
   whatsAppConnection?: WhatsAppConnection;
   messageTemplates: MessageTemplate[];
   messageLogs: MessageLog[];
+  // Modelo de certificado do espaco (Plano Pro). Ausente = modelo padrao.
+  certificateTemplate?: CertificateTemplate;
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];
   reservas?: ClassReservation[];

@@ -1,6 +1,9 @@
-import type { AttendanceStatus, ClassGroupView } from "@gestarahub/contracts";
+import type { AttendanceStatus, ClassGroupView, SaveCertificateTemplate } from "@gestarahub/contracts";
+import { defaultCertificateTemplate, renderCertificate } from "@gestarahub/core/certificate";
 import { beforeEach, describe, expect, it } from "vitest";
+import { getFileBlob } from "@/mocks/file-blobs";
 import { store } from "@/mocks/store";
+import { certificatesService } from "@/services/certificatesService";
 import { turmasService } from "@/services/turmasService";
 import { createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
@@ -84,7 +87,8 @@ describe("certificado de conclusão", () => {
     };
     for (const tier of ["pro", "scale"] as const) {
       setTier(tier);
-      expect(await turmasService.getCourseCertificate(enrollment.id)).toMatchObject({
+      const { certificate } = await turmasService.getCourseCertificate(enrollment.id);
+      expect(certificate).toMatchObject({
         enrollmentId: enrollment.id,
         classGroupId: g.id,
         organizationName: "Academia X",
@@ -93,6 +97,8 @@ describe("certificado de conclusão", () => {
         startDate: "2026-08-03",
         endDate: "2026-09-21",
         lessonsCount: 8,
+        // 8 aulas de 2h.
+        workloadMinutes: 960,
         attendancePercent: 67,
         instructorName: "Chef Bia",
         city: "Campinas",
@@ -127,8 +133,142 @@ describe("certificado de conclusão", () => {
   it("sem chamada, a frequência fica de fora (null)", async () => {
     setTier("pro");
     const { enrollment } = await completedEnrollment();
-    const cert = await turmasService.getCourseCertificate(enrollment.id);
+    const { certificate: cert } = await turmasService.getCourseCertificate(enrollment.id);
     expect(cert.attendancePercent).toBeNull();
     expect("city" in cert).toBe(false);
+  });
+});
+
+/** Modelo de certificado do espaco (doc 21, secao 1): Plano Pro, um por organizacao. */
+function customTemplate(over: Partial<SaveCertificateTemplate> = {}): SaveCertificateTemplate {
+  return {
+    layout: "modern",
+    accentColor: "navy",
+    title: "  Certificado de {curso}  ",
+    body: "{aluno} concluiu {curso} com {carga_horaria}. Frequência de {frequencia}.",
+    signatures: [{ name: " Maria Lima ", role: " Diretora " }],
+    showAttendance: true,
+    ...over,
+  };
+}
+
+const imageFile = (sizeBytes: number, type = "image/png", name = "logo.png") =>
+  new File([new Uint8Array(sizeBytes)], name, { type });
+
+describe("modelo de certificado", () => {
+  beforeEach(() => resetAcademy());
+
+  it("sem modelo salvo vale o padrão (que reproduz o texto da fase D)", async () => {
+    const template = await certificatesService.getTemplate();
+    expect(template).toEqual(defaultCertificateTemplate());
+    expect("updatedAt" in template).toBe(false);
+  });
+
+  it("salvar e restaurar são do Plano Pro: o grátis recebe FEATURE_NOT_IN_PLAN", async () => {
+    await expect(certificatesService.saveTemplate(customTemplate())).rejects.toMatchObject({
+      code: "FEATURE_NOT_IN_PLAN",
+      httpStatus: 403,
+      message: "Certificado de conclusão está disponível no Plano Pro.",
+    });
+    await expect(certificatesService.resetTemplate()).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
+    await expect(certificatesService.uploadLogo(imageFile(10))).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
+    expect(store.certificateTemplate).toBeUndefined();
+  });
+
+  it("salva sem espaços nas pontas, devolve o mesmo na leitura e audita", async () => {
+    setTier("pro");
+    const saved = await certificatesService.saveTemplate(customTemplate());
+    expect(saved).toMatchObject({
+      layout: "modern",
+      accentColor: "navy",
+      title: "Certificado de {curso}",
+      signatures: [{ name: "Maria Lima", role: "Diretora" }],
+      showAttendance: true,
+      updatedAt: expect.any(String),
+    });
+    expect(await certificatesService.getTemplate()).toEqual(saved);
+    expect(store.auditLog.at(-1)?.summary).toBe("Ana Ribeiro atualizou o modelo de certificado");
+  });
+
+  it("recusa título, texto, assinaturas e variáveis fora das regras", async () => {
+    setTier("pro");
+    const fieldsOf = async (over: Partial<SaveCertificateTemplate>) => {
+      try {
+        await certificatesService.saveTemplate(customTemplate(over));
+        return [];
+      } catch (error) {
+        expect(error).toMatchObject({ code: "VALIDATION" });
+        return (error as { fields: { field: string }[] }).fields.map((f) => f.field);
+      }
+    };
+    expect(await fieldsOf({ title: "   " })).toEqual(["title"]);
+    expect(await fieldsOf({ title: "x".repeat(61) })).toEqual(["title"]);
+    expect(await fieldsOf({ body: "" })).toEqual(["body"]);
+    expect(await fieldsOf({ body: "x".repeat(601) })).toEqual(["body"]);
+    expect(await fieldsOf({ signatures: [] })).toEqual(["signatures"]);
+    expect(
+      await fieldsOf({
+        signatures: [
+          { name: "A", role: "" },
+          { name: "B", role: "" },
+          { name: "C", role: "" },
+        ],
+      }),
+    ).toEqual(["signatures"]);
+    expect(await fieldsOf({ signatures: [{ name: "x".repeat(61), role: "y".repeat(61) }] })).toEqual([
+      "signatures.0.name",
+      "signatures.0.role",
+    ]);
+    expect(await fieldsOf({ title: "Certificado {nota}" })).toEqual(["title"]);
+    expect(store.certificateTemplate).toBeUndefined();
+
+    await expect(certificatesService.saveTemplate(customTemplate({ body: "Nota {nota} de {aluno}." }))).rejects.toMatchObject({
+      fields: [{ field: "body", message: expect.stringMatching(/^Variável desconhecida: \{nota\}\. Use: \{aluno\}, \{curso\}, \{inicio\}/) }],
+    });
+  });
+
+  it("restaurar padrão apaga o modelo salvo e audita", async () => {
+    setTier("pro");
+    await certificatesService.saveTemplate(customTemplate());
+    expect(await certificatesService.resetTemplate()).toEqual(defaultCertificateTemplate());
+    expect(store.certificateTemplate).toBeUndefined();
+    expect(store.auditLog.at(-1)?.summary).toBe("Ana Ribeiro restaurou o modelo de certificado padrão");
+  });
+
+  it("logo: só imagem de até 1 MB; o modelo guarda o id do arquivo", async () => {
+    setTier("pro");
+    await expect(certificatesService.uploadLogo(imageFile(10, "application/pdf", "logo.pdf"))).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "logo", message: "“logo.pdf”: Formato não aceito (use imagem)." }],
+    });
+    await expect(certificatesService.uploadLogo(imageFile(1024 * 1024 + 1))).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "logo", message: "“logo.png”: Arquivo maior que 1 MB." }],
+    });
+    const logo = await certificatesService.uploadLogo(imageFile(1024 * 1024));
+    expect(logo).toMatchObject({ name: "logo.png", contentType: "image/png", sizeBytes: 1024 * 1024 });
+    expect(await getFileBlob(logo.id)).toBeDefined();
+    const saved = await certificatesService.saveTemplate(customTemplate({ logoFileId: logo.id }));
+    expect(saved.logoFileId).toBe(logo.id);
+    // Salvar sem `logoFileId` tira a logo.
+    expect("logoFileId" in (await certificatesService.saveTemplate(customTemplate()))).toBe(false);
+  });
+
+  it("o certificado do aluno vem com o modelo do espaco", async () => {
+    setTier("pro");
+    const { g, student, enrollment } = await completedEnrollment();
+    mark(g.id, student.id, "2026-09-14", "present");
+    const before = await turmasService.getCourseCertificate(enrollment.id);
+    expect(before.template).toEqual(defaultCertificateTemplate());
+
+    await certificatesService.saveTemplate(customTemplate({ showAttendance: false }));
+    const { certificate, template } = await turmasService.getCourseCertificate(enrollment.id);
+    expect(template).toMatchObject({ layout: "modern", accentColor: "navy", showAttendance: false });
+    expect(renderCertificate(certificate, template)).toMatchObject({
+      title: "Certificado de Confeitaria",
+      // Frequência desligada: a frase dela sai.
+      body: "Rui Lima concluiu Confeitaria com 16 horas.",
+      signatures: [{ name: "Maria Lima", role: "Diretora" }],
+    });
   });
 });

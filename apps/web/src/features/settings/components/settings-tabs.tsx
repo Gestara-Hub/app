@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, Clock, Database, QrCode, Sparkles } from "lucide-react";
+import { Award, Building2, Clock, Database, QrCode, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { ResetDataActions } from "@/features/system";
@@ -12,8 +12,9 @@ import { BusinessHoursForm } from "./business-hours-card";
 import { useBeforeUnloadGuard } from "./unsaved-changes";
 import { SubscriptionPlanCard } from "./subscription-plan-card";
 import { OnlinePaymentsSettingsCard } from "./online-payments-settings-card";
+import { CertificateTemplateCard } from "./certificate-template-card";
 
-type Tab = "geral" | "horarios" | "pagamento" | "plano" | "dados";
+type Tab = "geral" | "horarios" | "pagamento" | "certificado" | "plano" | "dados";
 
 const TABS: {
   value: Tab;
@@ -43,6 +44,12 @@ const TABS: {
       "Cobrança das mensalidades por Pix, link de pagamento e Pix Automático (simulado nesta versão).",
   },
   {
+    value: "certificado",
+    label: "Certificado",
+    icon: Award,
+    description: "Modelo do certificado de conclusão dos cursos.",
+  },
+  {
     value: "plano",
     label: "Plano GestaraHub",
     icon: Sparkles,
@@ -59,7 +66,7 @@ const TABS: {
 ];
 
 /**
- * Configurações em abas: uma seção por vez (Geral / Horários / Pagamento online / Plano / Dados). Os três
+ * Configurações em abas: uma seção por vez (Geral / Horários / Pagamento online / Certificado / Plano / Dados). Os
  * painéis ficam montados e alternamos só a visibilidade, para não descartar
  * edições em andamento ao trocar de aba.
  */
@@ -73,9 +80,11 @@ export function SettingsTabs() {
   const searchParams = useSearchParams();
 
   // Deep-link: `/settings?tab=horarios` ou `/settings?tab=geral` deriva diretamente da URL
-  // Pagamento online vale para as mensalidades (Modelo 3, turmas).
+  // Pagamento online e Certificado sao do Modelo 3 (turmas e cursos).
   const isClasses = useModel() === "classes";
-  const visibleTabs = TABS.filter((t) => t.value !== "pagamento" || isClasses);
+  const visibleTabs = TABS.filter(
+    (t) => (t.value !== "pagamento" && t.value !== "certificado") || isClasses,
+  );
   const paramTab = searchParams.get("tab");
   const tab: Tab =
     isTab(paramTab) && visibleTabs.some((t) => t.value === paramTab) ? paramTab : "geral";
@@ -96,7 +105,14 @@ export function SettingsTabs() {
       setDirtyTabs((prev) => (prev.pagamento === dirty ? prev : { ...prev, pagamento: dirty })),
     [],
   );
-  useBeforeUnloadGuard(Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento));
+  const setCertificadoDirty = useCallback(
+    (dirty: boolean) =>
+      setDirtyTabs((prev) => (prev.certificado === dirty ? prev : { ...prev, certificado: dirty })),
+    [],
+  );
+  useBeforeUnloadGuard(
+    Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento || dirtyTabs.certificado),
+  );
   const { confirm, dialog: confirmDialog } = useConfirmAction();
 
   const handleTabChange = async (nextTab: Tab) => {
@@ -122,7 +138,8 @@ export function SettingsTabs() {
   };
 
   return (
-    <div className="max-w-3xl">
+    // O editor do certificado usa duas colunas (campos e previa): aba mais larga.
+    <div className={tab === "certificado" ? "max-w-6xl" : "max-w-3xl"}>
       <div
         role="tablist"
         aria-label="Seções de configurações"
@@ -176,6 +193,9 @@ export function SettingsTabs() {
           {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={setHorariosDirty} /> : null}
           {t.value === "pagamento" ? (
             <OnlinePaymentsSettingsCard onDirtyChange={setPagamentoDirty} />
+          ) : null}
+          {t.value === "certificado" ? (
+            <CertificateTemplateCard onDirtyChange={setCertificadoDirty} />
           ) : null}
           {t.value === "plano" ? <SubscriptionPlanCard /> : null}
           {t.value === "dados" ? <ResetDataActions /> : null}

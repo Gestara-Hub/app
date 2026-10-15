@@ -42,6 +42,7 @@ export type AuditEntityType =
   | "charge"
   | "class_group"
   | "enrollment"
+  | "assessment"
   // Financeiro (plano pago) e assinatura do GestaraHub.
   | "financial_entry"
   | "financial_category"

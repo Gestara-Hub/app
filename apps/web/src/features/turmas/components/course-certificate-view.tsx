@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { Award, ChevronLeft, Printer } from "lucide-react";
-import { isApiError, type CourseCertificate } from "@gestarahub/contracts";
+import { isApiError, type CourseCertificateDocument } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { defaultCertificateText } from "@gestarahub/core/certificate";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { useCan } from "@/features/auth";
+import { CertificateSheet, useStoredFileUrl } from "@/features/certificates";
 import { useCourseCertificate } from "../hooks/use-turmas";
 
 /** Texto da tela de upsell (uma linha, como os outros recursos do Pro). */
@@ -46,35 +46,16 @@ export function CourseCertificateLocked({
   );
 }
 
-/**
- * Modelo padrao do certificado (A4 deitado na impressao). So desenho: os dados
- * vem prontos do servico e o texto de `defaultCertificateText`, para um futuro
- * gerador trocar o modelo sem mexer nos dados.
- */
-function DefaultCertificateSheet({ certificate }: { certificate: CourseCertificate }) {
-  const text = defaultCertificateText(certificate);
+/** Folha com o modelo do espaco (layout, cor, logo e texto). */
+function TemplateCertificateSheet({ sheet }: { sheet: CourseCertificateDocument }) {
+  const logoUrl = useStoredFileUrl(sheet.template.logoFileId);
   return (
-    <article className="certificate-sheet mx-auto flex aspect-[297/210] w-full max-w-4xl flex-col rounded-md border-4 border-double border-foreground/40 bg-white p-6 text-center text-zinc-900 sm:p-12 print:max-w-none print:rounded-none print:border-zinc-500">
-      <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase sm:text-sm">
-        {certificate.organizationName}
-      </p>
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 sm:gap-6">
-        <h1 className="font-serif text-2xl font-semibold sm:text-4xl">{text.title}</h1>
-        <p className="max-w-2xl text-sm leading-relaxed sm:text-lg">{text.body}</p>
-        <p className="text-xs text-zinc-600 sm:text-sm">{text.placeAndDate}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-6 pt-6 sm:gap-16 sm:pt-10">
-        {[
-          { name: certificate.instructorName, role: "Instrutor" },
-          { name: certificate.organizationName, role: "Responsável" },
-        ].map((signature) => (
-          <div key={signature.role} className="border-t border-zinc-500 pt-2">
-            <p className="text-xs font-medium sm:text-sm">{signature.name}</p>
-            <p className="text-[11px] text-zinc-500 sm:text-xs">{signature.role}</p>
-          </div>
-        ))}
-      </div>
-    </article>
+    <CertificateSheet
+      certificate={sheet.certificate}
+      template={sheet.template}
+      logoUrl={logoUrl}
+      className="mx-auto max-w-4xl print:max-w-none"
+    />
   );
 }
 
@@ -90,7 +71,7 @@ export function CourseCertificateView({
   enrollmentId: string;
 }) {
   const can = useCan();
-  const { data: certificate, isPending, error } = useCourseCertificate(enrollmentId);
+  const { data: sheet, isPending, error } = useCourseCertificate(enrollmentId);
 
   if (isApiError(error) && error.code === "FEATURE_NOT_IN_PLAN") {
     return <CourseCertificateLocked classGroupId={classGroupId} canManagePlan={can("subscription:manage")} />;
@@ -98,11 +79,11 @@ export function CourseCertificateView({
 
   return (
     <div className="space-y-4">
-      {/* Folha deitada; a margem da impressao fica com a borda do certificado. */}
+      {/* Folha deitada (A4); a margem da impressao fica fora da folha. */}
       <style>{"@media print { @page { size: A4 landscape; margin: 10mm; } }"}</style>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <BackLink classGroupId={classGroupId} />
-        {certificate ? (
+        {sheet ? (
           <Button type="button" className="gap-1.5" onClick={() => window.print()}>
             <Printer className="size-4" />
             Imprimir ou salvar em PDF
@@ -111,8 +92,8 @@ export function CourseCertificateView({
       </div>
       {isPending ? (
         <Skeleton className="mx-auto aspect-[297/210] w-full max-w-4xl rounded-md" />
-      ) : certificate ? (
-        <DefaultCertificateSheet certificate={certificate} />
+      ) : sheet ? (
+        <TemplateCertificateSheet sheet={sheet} />
       ) : (
         <p className="rounded-md border border-dashed px-3 py-10 text-center text-sm text-muted-foreground">
           {getErrorMessage(error, "Não foi possível carregar o certificado.")}

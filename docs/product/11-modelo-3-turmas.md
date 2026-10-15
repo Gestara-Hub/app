@@ -361,3 +361,14 @@ Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Vínculo "package" na aula:** "Adicionar aluno nesta aula" oferece **"Pacote"** ("Usa 1 aula do pacote") quando há aluno ativo com pacote válido para a modalidade e a data; a lista mostra só esses alunos, com o saldo. Escolher um deles com "Aula avulsa" marcado troca para "Pacote". Vale em qualquer turma da modalidade, mesmo sem avulso (como o avulso, sem checar lotação), e não gera cobrança. O serviço recusa sem pacote válido: "Ana não tem pacote com aulas para esta modalidade.". Remover da aula devolve a aula, se já tinha gastado.
 - **Chamada:** selo do saldo em quem paga com pacote: "7 de 10" (restam 7 de 10), **"Última aula"** e **"Sem pacote"** (âmbar, sem pacote válido com saldo; a presença é marcada e nada é gasto). Avulso e experimental numa turma de pacote não gastam o pacote.
 - **Desmarcar presença:** tocar de novo no botão marcado desmarca (volta a "a marcar") e devolve a aula do pacote, se tinha gastado (`turmasService.clearAttendance`). Vale para qualquer turma.
+
+## Notas: avaliações da turma (14/10/2026)
+
+Fase 1 das notas (detalhe e decisões em [21-ideias-certificados-e-notas.md](21-ideias-certificados-e-notas.md), seções 2.1 e 2.2).
+
+- **Liga por modalidade:** `Category.assessments` (`enabled`, `scale`: `zero_ten` | `zero_hundred` | `concept` | `pass_fail`, `passingGrade`). Modalidade nova segue a área (ligada em idiomas, música e cursos livres); o editor da modalidade tem "Esta modalidade tem avaliações", a escala e a nota mínima.
+- **Avaliação pertence à turma** (`Assessment`: nome, data, peso > 0 com padrão 1, etapa da trilha opcional, `modalityId` da turma na criação) e guarda as notas dos alunos (`grades[]`: `graded` com valor, `absent` ou sem linha = sem nota).
+- **Detalhe da turma:** aba "Avaliações" só com a modalidade ligada; lançamento por avaliação só para matriculados ativos, com validação na escala.
+- **Boletim "Notas"** ao lado de Graduação e Registros de aula (lista de alunos, lista da turma e chamada).
+- **RBAC:** `grades:manage` (dono, gerente, professor). O professor só lança nas turmas em que é o instrutor titular, regra aplicada no `gradesService` (primeiro escopo de turma do professor feito no serviço; a chamada segue sem escopo). Ver é `classes:view`.
+- Regras puras (escala, validação, média ponderada, arredondamento) em `@gestarahub/core/grades`.

@@ -3,8 +3,16 @@ import assert from "node:assert/strict";
 import {
   attendancePercent,
   buildCourseCertificate,
+  CERTIFICATE_VARIABLES,
   countCourseLessons,
+  countCourseWorkloadMinutes,
+  defaultCertificateTemplate,
   defaultCertificateText,
+  fillCertificateText,
+  formatWorkload,
+  renderCertificate,
+  unknownCertificateVariables,
+  validateCertificateTemplate,
   type CourseCertificateInput,
 } from "../src/certificate.ts";
 
@@ -17,8 +25,8 @@ function input(over: Partial<CourseCertificateInput> = {}): CourseCertificateInp
     courseName: "Confeitaria",
     startDate: "2026-09-01",
     endDate: "2026-09-29",
-    // Terças.
-    meetingWeekdays: [2],
+    // Terças, das 19h às 21h.
+    meetingSlots: [{ weekday: 2, start: "19:00", end: "21:00" }],
     presentCount: 4,
     absentCount: 1,
     instructorName: "Chef Bia",
@@ -71,6 +79,7 @@ describe("certificado: dados e texto padrão", () => {
       startDate: "2026-09-01",
       endDate: "2026-09-29",
       lessonsCount: 5,
+      workloadMinutes: 600,
       attendancePercent: 80,
       instructorName: "Chef Bia",
       city: "Campinas",
@@ -88,7 +97,14 @@ describe("certificado: dados e texto padrão", () => {
 
   it("sem chamada, sem cidade e de um dia só", () => {
     const cert = buildCourseCertificate(
-      input({ startDate: "2026-09-05", endDate: "2026-09-05", meetingWeekdays: [6], presentCount: 0, absentCount: 0, city: "  " }),
+      input({
+        startDate: "2026-09-05",
+        endDate: "2026-09-05",
+        meetingSlots: [{ weekday: 6, start: "09:00", end: "12:00" }],
+        presentCount: 0,
+        absentCount: 0,
+        city: "  ",
+      }),
     );
     assert.equal(cert.city, undefined);
     assert.deepEqual(defaultCertificateText(cert), {
@@ -96,5 +112,123 @@ describe("certificado: dados e texto padrão", () => {
       body: "Certificamos que Ana Souza concluiu o curso Confeitaria, em 05/09/2026, com 1 aula.",
       placeAndDate: "14 de outubro de 2026",
     });
+  });
+});
+
+describe("certificado: carga horária", () => {
+  it("soma a duração de cada aula do curso", () => {
+    // Terças 2h (5 aulas) + quintas 1h30 (4 aulas) em setembro.
+    const slots = [
+      { weekday: 2, start: "19:00", end: "21:00" },
+      { weekday: 4, start: "19:00", end: "20:30" },
+    ];
+    assert.equal(countCourseWorkloadMinutes("2026-09-01", "2026-09-30", slots), 5 * 120 + 4 * 90);
+    assert.equal(countCourseWorkloadMinutes("2026-09-05", "2026-09-04", slots), 0);
+  });
+
+  it("formata em horas, horas e minutos ou só minutos", () => {
+    assert.equal(formatWorkload(16 * 60), "16 horas");
+    assert.equal(formatWorkload(60), "1 hora");
+    assert.equal(formatWorkload(12 * 60 + 30), "12h30");
+    assert.equal(formatWorkload(65), "1h05");
+    assert.equal(formatWorkload(45), "45 minutos");
+    assert.equal(formatWorkload(0), "");
+  });
+});
+
+describe("certificado: variáveis do modelo", () => {
+  const values = { aluno: "Ana Souza", curso: "Confeitaria", aulas: "8 aulas", frequencia: "92%" };
+
+  it("troca as variáveis pelos valores", () => {
+    assert.equal(
+      fillCertificateText("{aluno} concluiu {curso} com {aulas}.", values),
+      "Ana Souza concluiu Confeitaria com 8 aulas.",
+    );
+  });
+
+  it("frase sem valor sai inteira; as outras ficam", () => {
+    assert.equal(
+      fillCertificateText("Parabéns, {aluno}! Realizado em {cidade}. Até breve.", values),
+      "Parabéns, Ana Souza! Até breve.",
+    );
+    assert.equal(fillCertificateText("Realizado em {cidade}.", values), "");
+  });
+
+  it("trecho sem valor no fim ou no meio sai só ele", () => {
+    assert.equal(
+      fillCertificateText("Concluiu {curso}, com {aulas} e frequência de {frequencia}.", { ...values, frequencia: undefined }),
+      "Concluiu Confeitaria, com 8 aulas.",
+    );
+    assert.equal(
+      fillCertificateText("Concluiu {curso}, com carga de {carga_horaria}, e frequência de {frequencia}.", values),
+      "Concluiu Confeitaria, e frequência de 92%.",
+    );
+  });
+
+  it("variável desconhecida conta como sem valor e é listada", () => {
+    assert.equal(fillCertificateText("Olá {nome}. Fim.", values), "Fim.");
+    assert.deepEqual(unknownCertificateVariables("{aluno} {nome} {nota} {nome}"), ["nome", "nota"]);
+    assert.deepEqual(unknownCertificateVariables(`{${CERTIFICATE_VARIABLES.join("} {")}}`), []);
+  });
+
+  it("valor com chaves não vira variável", () => {
+    assert.equal(fillCertificateText("Aluno: {aluno}.", { aluno: "{curso}" }), "Aluno: {curso}.");
+  });
+
+  it("curso de um dia: 'de {inicio} a {fim}' vira 'em {inicio}'", () => {
+    assert.equal(
+      fillCertificateText("De {inicio} a {fim}, curso de {inicio} a {fim}.", { inicio: "05/09/2026", fim: "05/09/2026" }, { sameDay: true }),
+      "Em 05/09/2026, curso em 05/09/2026.",
+    );
+  });
+
+  it("modelo com todas as variáveis, frequência escondida e assinaturas", () => {
+    const cert = buildCourseCertificate(input());
+    const rendered = renderCertificate(cert, {
+      title: "Certificado de {curso}",
+      body: "{aluno} fez {curso} ({inicio} a {fim}), {aulas}, {carga_horaria}. Frequência de {frequencia}. {cidade}, {data}. Por {professor}, {empresa}.",
+      signatures: [{ name: "{professor}", role: " Chef " }],
+      showAttendance: false,
+    });
+    assert.deepEqual(rendered, {
+      title: "Certificado de Confeitaria",
+      body: "Ana Souza fez Confeitaria (01/09/2026 a 29/09/2026), 5 aulas, 10 horas. Campinas, 14 de outubro de 2026. Por Chef Bia, Ateliê Doce.",
+      placeAndDate: "Campinas, 14 de outubro de 2026",
+      signatures: [{ name: "Chef Bia", role: "Chef" }],
+    });
+  });
+
+  it("o modelo padrão traz as duas assinaturas da fase D", () => {
+    const rendered = renderCertificate(buildCourseCertificate(input()), defaultCertificateTemplate());
+    assert.deepEqual(rendered.signatures, [
+      { name: "Chef Bia", role: "Instrutor" },
+      { name: "Ateliê Doce", role: "Responsável" },
+    ]);
+  });
+});
+
+describe("certificado: validação do modelo", () => {
+  it("o padrão é válido", () => {
+    assert.deepEqual(validateCertificateTemplate(defaultCertificateTemplate()), []);
+  });
+
+  it("recusa título, texto e assinaturas fora das regras", () => {
+    const base = defaultCertificateTemplate();
+    const fields = (over: Partial<typeof base>) =>
+      validateCertificateTemplate({ ...base, ...over }).map((issue) => issue.field);
+    assert.deepEqual(fields({ title: "  " }), ["title"]);
+    assert.deepEqual(fields({ title: "x".repeat(61) }), ["title"]);
+    assert.deepEqual(fields({ body: "" }), ["body"]);
+    assert.deepEqual(fields({ body: "x".repeat(601) }), ["body"]);
+    assert.deepEqual(fields({ signatures: [] }), ["signatures"]);
+    assert.deepEqual(fields({ signatures: [...base.signatures, { name: "C", role: "" }] }), ["signatures"]);
+    assert.deepEqual(fields({ signatures: [{ name: " ", role: "x".repeat(61) }] }), ["signatures.0.name", "signatures.0.role"]);
+    assert.deepEqual(fields({ layout: "kids" as never, accentColor: "pink" as never }), ["layout", "accentColor"]);
+  });
+
+  it("variável desconhecida vem com a lista das válidas", () => {
+    const [issue] = validateCertificateTemplate({ ...defaultCertificateTemplate(), body: "Nota {nota} de {aluno}." });
+    assert.equal(issue.field, "body");
+    assert.match(issue.message, /^Variável desconhecida: \{nota\}\. Use: \{aluno\}, \{curso\}, .*\{data\}\.$/);
   });
 });

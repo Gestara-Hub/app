@@ -7,8 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Category } from "@gestarahub/contracts";
-import { useModalityVocabulary } from "@/features/settings";
+import { useModalityVocabulary, useOrganization } from "@/features/settings";
 import { ModalityForm } from "./modality-form";
 
 interface ModalityFormDialogProps {
@@ -25,6 +26,9 @@ export function ModalityFormDialog({
   const isEdit = Boolean(modality);
   // Editar: palavras da trilha da modalidade; nova: as da area.
   const vocabulary = useModalityVocabulary(modality);
+  // Modalidade nova parte do padrao da area (trilha e avaliacoes): espera a
+  // organizacao carregar, senao o formulario nasce com o padrao de lutas.
+  const { isPending: segmentPending } = useOrganization();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,12 +47,19 @@ export function ModalityFormDialog({
               : `Configure a modalidade e, se quiser, a ${vocabulary.trackTitle.toLowerCase()}.`}
           </DialogDescription>
         </DialogHeader>
-        <ModalityForm
-          key={modality?.id ?? "nova"}
-          modality={modality}
-          formId="modality-form"
-          onSuccess={() => onOpenChange(false)}
-        />
+        {!isEdit && segmentPending ? (
+          <div className="space-y-3 p-6">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+        ) : (
+          <ModalityForm
+            key={modality?.id ?? "nova"}
+            modality={modality}
+            formId="modality-form"
+            onSuccess={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

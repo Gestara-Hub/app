@@ -24,7 +24,8 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 8. [product/18-pesquisa-dores-e-caminhos.md](product/18-pesquisa-dores-e-caminhos.md) — Pesquisa (com fontes) das dores de academias, salões e docerias e dos caminhos de expansão além do marketplace (pagamentos, WhatsApp, canal próprio de captação, crédito, app do aluno).
 9. [product/19-levantamento-pagamentos.md](product/19-levantamento-pagamentos.md) — Levantamento dos três fluxos de dinheiro (assinatura do GestaraHub, mensagens do WhatsApp, mensalidade online com split) e dos provedores a validar.
 10. [product/20-plano-novas-formas-de-cobranca.md](product/20-plano-novas-formas-de-cobranca.md) — Proposta: cobrança avulsa, curso fechado e pacote de aulas (fases A a D e decisões pendentes).
-11. [product/21-ideias-certificados-e-notas.md](product/21-ideias-certificados-e-notas.md) — Ideias para refinar: gerador de certificados (Pro) e notas dos alunos (avaliações, boletim, critério da trilha).
+11. [product/21-ideias-certificados-e-notas.md](product/21-ideias-certificados-e-notas.md) — Ideias para refinar: gerador de certificados (Pro) e notas dos alunos (fase 1 entregue: avaliações na turma, lançamento e boletim; critério da trilha na fase 2).
+12. [product/22-antes-do-backend.md](product/22-antes-do-backend.md) — O que falta no frontend antes do backend: decisões pendentes (notas, ficha do aluno, apps), ajustes pequenos e rascunho dos apps de aluno e professor.
 7. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Histórico)* Plano original do wizard de 1º acesso e presets por segmento. A versão implementada está em `frontend/08`, seções 4.3 e 4.5.
 
 ---

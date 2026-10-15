@@ -1,7 +1,9 @@
+import { defaultAssessmentSettings } from "@gestarahub/core/grades";
 import type {
   ClassBillingMode,
   ClassesBusinessSegment,
   CustomSegmentProgression,
+  ModalityAssessmentSettings,
   ModalityProgressionTrack,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
@@ -70,10 +72,18 @@ export interface BusinessSegmentPreset {
   /** Padroes do formulario de nova turma. */
   classDefaults: { durationMinutes: number; capacity: number };
   /**
-   * Forma de cobranca sugerida na nova turma (doc 20, fase B): curso com valor
-   * fechado em gastronomia, artes e beleza; mensalidade nas demais.
+   * Forma de cobranca padrao da area (doc 20, fase B): curso com valor fechado
+   * em gastronomia, artes e beleza; mensalidade nas demais. Na "Outra área"
+   * segue a resposta de "Como você cobra?" (qualquer forma, inclusive pacote e
+   * sem cobranca). Guia a nova turma, o cadastro do aluno e os primeiros passos.
    */
   defaultBillingMode: ClassBillingMode;
+  /**
+   * Avaliacoes e notas ligadas nas modalidades NOVAS (doc 21 §2.1): idiomas,
+   * musica e cursos livres. Lutas fica desligado (o exame de faixa ja e a
+   * graduacao). Cada modalidade liga ou desliga no proprio editor.
+   */
+  assessmentsByDefault: boolean;
   vocabulary: SegmentVocabulary;
 }
 
@@ -151,6 +161,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["bjj_adult", "judo_karate", "muay_thai", "karate", "taekwondo", "capoeira", "kickboxing"],
     classDefaults: { durationMinutes: 60, capacity: 20 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: BELT_VOCABULARY,
   },
   pilates_yoga: {
@@ -162,6 +173,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 50, capacity: 6 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
   functional_training: {
@@ -173,6 +185,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "functional_categories", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
   dance: {
@@ -184,6 +197,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
   music: {
@@ -195,6 +209,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 6 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: true,
     vocabulary: MODULE_VOCABULARY,
   },
   languages: {
@@ -206,6 +221,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["language_cefr", "general_levels", "modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: true,
     vocabulary: LEVEL_VOCABULARY,
   },
   swimming_sports: {
@@ -217,6 +233,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["swim_stages", "general_levels", "blank"],
     classDefaults: { durationMinutes: 45, capacity: 8 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: STAGE_VOCABULARY,
   },
   gastronomy: {
@@ -228,6 +245,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
     defaultBillingMode: "course",
+    assessmentsByDefault: false,
     vocabulary: MODULE_VOCABULARY,
   },
   arts_crafts: {
@@ -239,6 +257,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 10 },
     defaultBillingMode: "course",
+    assessmentsByDefault: false,
     vocabulary: MODULE_VOCABULARY,
   },
   beauty_courses: {
@@ -250,6 +269,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
     defaultBillingMode: "course",
+    assessmentsByDefault: true,
     vocabulary: MODULE_VOCABULARY,
   },
   custom: {
@@ -261,6 +281,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
     defaultBillingMode: "membership",
+    assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
 };
@@ -278,11 +299,21 @@ export const CUSTOM_PROGRESSION_OPTIONS: { value: CustomSegmentProgression; labe
 
 export const DEFAULT_CUSTOM_PROGRESSION: CustomSegmentProgression = "none";
 
+/** Opcoes de "Como você cobra?" da area `custom` (setup e Configuracoes). */
+export const CUSTOM_BILLING_OPTIONS: { value: ClassBillingMode; label: string }[] = [
+  { value: "membership", label: "Mensalidade" },
+  { value: "course", label: "Curso com valor fechado" },
+  { value: "package", label: "Pacote de aulas" },
+  { value: "free", label: "Não cobro" },
+];
+
+export const DEFAULT_CUSTOM_BILLING: ClassBillingMode = "membership";
+
 /**
- * Area `custom` ajustada pela escolha do dono. Pre-calculadas para o hook
- * devolver sempre o mesmo objeto (referencia estavel entre renders).
+ * Area `custom` ajustada pela trilha escolhida (a cobranca entra depois, em
+ * `CUSTOM_PRESETS_BY_BILLING`).
  */
-const CUSTOM_PRESETS: Record<CustomSegmentProgression, BusinessSegmentPreset> = {
+const CUSTOM_PROGRESSION_PRESETS: Record<CustomSegmentProgression, BusinessSegmentPreset> = {
   belts: {
     ...CLASSES_SEGMENT_PRESETS.custom,
     progressionTemplate: "judo_karate",
@@ -304,21 +335,45 @@ const CUSTOM_PRESETS: Record<CustomSegmentProgression, BusinessSegmentPreset> = 
   none: CLASSES_SEGMENT_PRESETS.custom,
 };
 
+const BILLING_MODES = CUSTOM_BILLING_OPTIONS.map((option) => option.value);
+
+/**
+ * Area `custom` por trilha e por forma de cobranca. Pre-calculadas para o hook
+ * devolver sempre o mesmo objeto (referencia estavel entre renders); mensalidade
+ * reaproveita o preset da trilha.
+ */
+const CUSTOM_PRESETS = Object.fromEntries(
+  (Object.keys(CUSTOM_PROGRESSION_PRESETS) as CustomSegmentProgression[]).map((progression) => {
+    const base = CUSTOM_PROGRESSION_PRESETS[progression];
+    const byBilling = Object.fromEntries(
+      BILLING_MODES.map((mode) => [
+        mode,
+        mode === base.defaultBillingMode ? base : { ...base, defaultBillingMode: mode },
+      ]),
+    ) as Record<ClassBillingMode, BusinessSegmentPreset>;
+    return [progression, byBilling];
+  }),
+) as Record<CustomSegmentProgression, Record<ClassBillingMode, BusinessSegmentPreset>>;
+
 export function getAllSegmentPresets(): BusinessSegmentPreset[] {
   return Object.values(CLASSES_SEGMENT_PRESETS);
 }
 
 /**
  * Preset efetivo da area. Para `custom` (ou area desconhecida), a trilha e as
- * palavras seguem `customProgression` (ausente = sem etapas).
+ * palavras seguem `customProgression` (ausente = sem etapas) e a forma de
+ * cobranca padrao segue `customBilling` (ausente = mensalidade).
  */
 export function getSegmentPreset(
   id: ClassesBusinessSegment | undefined,
   customProgression?: CustomSegmentProgression,
+  customBilling?: ClassBillingMode,
 ): BusinessSegmentPreset {
   const preset = CLASSES_SEGMENT_PRESETS[id ?? DEFAULT_CLASS_SEGMENT];
   if (preset && preset.id !== "custom") return preset;
-  return CUSTOM_PRESETS[customProgression ?? DEFAULT_CUSTOM_PROGRESSION] ?? CLASSES_SEGMENT_PRESETS.custom;
+  const byBilling =
+    CUSTOM_PRESETS[customProgression ?? DEFAULT_CUSTOM_PROGRESSION] ?? CUSTOM_PRESETS[DEFAULT_CUSTOM_PROGRESSION];
+  return byBilling[customBilling ?? DEFAULT_CUSTOM_BILLING] ?? byBilling[DEFAULT_CUSTOM_BILLING];
 }
 
 const PROGRESSION_SUMMARY: Partial<Record<NonNullable<BusinessSegmentPreset["progressionTemplate"]>, string>> = {
@@ -433,4 +488,12 @@ export function sharedVocabularyFor(
     shared = current;
   }
   return shared ?? fallback;
+}
+
+/**
+ * Avaliacoes de uma modalidade NOVA, conforme a area: ligadas (0 a 10, minima
+ * 6) em idiomas, musica e cursos livres; desligadas nas demais.
+ */
+export function segmentDefaultAssessments(preset: BusinessSegmentPreset): ModalityAssessmentSettings {
+  return defaultAssessmentSettings(preset.assessmentsByDefault);
 }

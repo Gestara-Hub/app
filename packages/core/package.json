@@ -11,7 +11,8 @@
     "./billing": "./src/billing.ts",
     "./finance": "./src/finance.ts",
     "./packages": "./src/packages.ts",
-    "./certificate": "./src/certificate.ts"
+    "./certificate": "./src/certificate.ts",
+    "./grades": "./src/grades.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

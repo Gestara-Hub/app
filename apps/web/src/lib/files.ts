@@ -32,6 +32,14 @@ export const ENTRY_ATTACHMENT_RULES = {
   maxFiles: 10,
 } as const satisfies FileRules;
 
+/** Logo do certificado: uma imagem de ate 1 MB (doc 21, secao 1). */
+export const CERTIFICATE_LOGO_RULES = {
+  accept: ["image/*"],
+  maxSizeBytes: 1 * MB,
+  maxFiles: 1,
+  acceptLabel: "imagem",
+} as const satisfies FileRules;
+
 /** Rotulo curto do tipo ("PDF", "PNG"); cai na extensao quando nao ha MIME. */
 export function fileTypeLabel(name: string, contentType: string): string {
   const sub = contentType.split("/")[1];

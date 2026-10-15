@@ -33,6 +33,9 @@ export const queryKeys = {
     list: (filter?: ClientFilter) => ["clients", "list", filter] as const,
     detail: (id: Id) => ["clients", "detail", id] as const,
     progressionTerms: (modalityId: Id) => ["clients", "progression-terms", modalityId] as const,
+    // Resumo do aluno (ficha): cobrancas, pacotes, chamada e mensagens tambem o invalidam.
+    summaries: ["clients", "summary"] as const,
+    summary: (id: Id) => ["clients", "summary", id] as const,
   },
   professionals: {
     all: ["professionals"] as const,
@@ -95,7 +98,15 @@ export const queryKeys = {
       ["classes", "attendanceSummary", date] as const,
     absenceStreaks: ["classes", "absenceStreaks"] as const,
     enrolledModalities: ["classes", "enrolledModalities"] as const,
+    certificates: ["classes", "certificate"] as const,
     certificate: (enrollmentId: Id) => ["classes", "certificate", enrollmentId] as const,
+  },
+  // Notas dos alunos (avaliacoes da turma, lancamento e boletim).
+  grades: {
+    all: ["grades"] as const,
+    classAssessments: (classGroupId: Id) => ["grades", "class", classGroupId] as const,
+    sheet: (assessmentId: Id) => ["grades", "sheet", assessmentId] as const,
+    reportCard: (studentId: Id) => ["grades", "reportCard", studentId] as const,
   },
   billing: {
     all: ["billing"] as const,
@@ -141,14 +152,23 @@ export const queryKeys = {
   organization: {
     detail: ["organization"] as const,
   },
+  // Modelo de certificado do espaco (Plano Pro).
+  certificates: {
+    template: ["certificates", "template"] as const,
+  },
   unit: {
     detail: ["unit"] as const,
+  },
+  // Marcos do "Descubra o dia a dia" (Dashboard): qualquer mutacao os refaz
+  // (ver `createQueryClient`).
+  onboarding: {
+    discovery: ["onboarding", "discovery"] as const,
   },
   communication: {
     all: ["communication"] as const,
     session: ["communication", "session"] as const,
     templates: ["communication", "templates"] as const,
-    logs: (filter?: { trigger?: string; status?: string; search?: string }) =>
+    logs: (filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }) =>
       ["communication", "logs", filter] as const,
     metrics: ["communication", "metrics"] as const,
   },

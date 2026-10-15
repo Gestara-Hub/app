@@ -6,7 +6,13 @@ import type {
   Id,
   UpdateCategory,
 } from "@gestarahub/contracts";
+import {
+  ASSESSMENT_SCALES,
+  assessmentsEnabled,
+  normalizePassingGrade,
+} from "@gestarahub/core/grades";
 import { store } from "@/mocks/store";
+import { getSegmentPreset, segmentDefaultAssessments } from "@/lib/business-segment-presets";
 import { normalizeText } from "@/lib/text";
 import {
   newId,
@@ -48,7 +54,38 @@ function validateCategory(
     }
   }
 
+  if (payload.assessments) {
+    const { scale, passingGrade } = payload.assessments;
+    if (!ASSESSMENT_SCALES.includes(scale)) {
+      fields.push({ field: "assessments.scale", message: "Escolha a escala das notas." });
+    } else {
+      const check = normalizePassingGrade(scale, passingGrade);
+      if (!check.ok) fields.push({ field: "assessments.passingGrade", message: check.message });
+    }
+  }
+
   if (fields.length > 0) throw validationError(fields);
+}
+
+/** Avaliacoes normalizadas (nota minima na escala); desligada sem config = ausente. */
+function normalizedAssessments(payload: Pick<CreateCategory, "assessments">): Category["assessments"] {
+  const settings = payload.assessments;
+  if (!settings) return undefined;
+  const check = normalizePassingGrade(settings.scale, settings.passingGrade);
+  return { ...settings, passingGrade: check.ok ? check.value : settings.passingGrade };
+}
+
+/**
+ * Modalidade nova sem configuracao de avaliacoes: segue a area do espaco
+ * (ligada em idiomas, musica e cursos livres). So no modelo de turmas.
+ */
+function defaultAssessmentsForNewModality(): Category["assessments"] {
+  const org = store.organization;
+  if (org.model !== "classes") return undefined;
+  const defaults = segmentDefaultAssessments(
+    getSegmentPreset(org.classSegment, org.customSegmentProgression),
+  );
+  return assessmentsEnabled(defaults) ? defaults : undefined;
 }
 
 function sortCategories(list: Category[]): Category[] {
@@ -92,12 +129,16 @@ export const categoriesService = {
       const nextPosition =
         payload.position ??
         Math.max(0, ...store.categories.map((c) => c.position)) + 1;
+      const assessments = payload.assessments
+        ? normalizedAssessments(payload)
+        : defaultAssessmentsForNewModality();
       const category: Category = {
         id: newId(),
         organizationId: store.organization.id,
         name: payload.name.trim(),
         position: nextPosition,
         progressionTrack: payload.progressionTrack,
+        ...(assessments ? { assessments } : {}),
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,
@@ -127,6 +168,7 @@ export const categoriesService = {
         ...current,
         ...payload,
         name: payload.name !== undefined ? payload.name.trim() : current.name,
+        ...(payload.assessments !== undefined ? { assessments: normalizedAssessments(payload) } : {}),
         updatedAt: nowIso(),
       };
       store.categories[idx] = updated;

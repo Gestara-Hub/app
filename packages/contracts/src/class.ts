@@ -144,8 +144,8 @@ export interface EnrollmentView extends Enrollment {
 
 /**
  * Certificado de conclusao do curso (doc 20, fase D; recurso pago
- * `certificates`). So dados: o texto e o desenho ficam no modelo da tela, para
- * um futuro gerador de certificados escolher outro modelo sem mudar a API.
+ * `certificates`). So dados: o texto e o desenho ficam no modelo do espaco
+ * (`CertificateTemplate`), que a API devolve junto (`CourseCertificateDocument`).
  */
 export interface CourseCertificate {
   enrollmentId: Id;
@@ -158,6 +158,8 @@ export interface CourseCertificate {
   endDate: DateISO;
   /** Aulas do curso (encontros entre o inicio e o fim). */
   lessonsCount: number;
+  /** Carga horaria: soma da duracao das aulas do curso, em minutos. */
+  workloadMinutes: number;
   /** Frequencia em % (presencas / presencas + faltas); null sem chamada. */
   attendancePercent: number | null;
   instructorName: string;

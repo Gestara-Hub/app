@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   CLASSES_SEGMENT_PRESETS,
+  CUSTOM_BILLING_OPTIONS,
   DEFAULT_CLASS_SEGMENT,
+  DEFAULT_CUSTOM_BILLING,
   getAllSegmentPresets,
   getSegmentPreset,
   segmentDefaultTrack,
@@ -360,5 +362,40 @@ describe("forma de cobrança sugerida na nova turma (curso fechado)", () => {
       expect(getSegmentPreset("custom", progression).defaultBillingMode).toBe("membership");
     }
     expect(getSegmentPreset(undefined).defaultBillingMode).toBe("membership");
+  });
+  it("outra área sem resposta de cobrança (tenant antigo) segue mensalidade", () => {
+    expect(DEFAULT_CUSTOM_BILLING).toBe("membership");
+    expect(getSegmentPreset("custom", "levels", undefined)).toBe(getSegmentPreset("custom", "levels"));
+  });
+
+  it("outra área: \"Como você cobra?\" vira a cobrança padrão, sem mudar trilha nem palavras", () => {
+    expect(CUSTOM_BILLING_OPTIONS.map((o) => o.label)).toEqual([
+      "Mensalidade",
+      "Curso com valor fechado",
+      "Pacote de aulas",
+      "Não cobro",
+    ]);
+    for (const progression of ["belts", "levels", "modules", "none"] as const) {
+      const base = getSegmentPreset("custom", progression);
+      for (const { value } of CUSTOM_BILLING_OPTIONS) {
+        const preset = getSegmentPreset("custom", progression, value);
+        expect(preset.defaultBillingMode).toBe(value);
+        expect(preset.progressionTemplate).toBe(base.progressionTemplate);
+        expect(preset.vocabulary).toBe(base.vocabulary);
+        expect(preset.classDefaults).toEqual(base.classDefaults);
+      }
+    }
+  });
+
+  it("outra área: mesma escolha devolve o mesmo objeto (referência estável)", () => {
+    expect(getSegmentPreset("custom", "modules", "package")).toBe(getSegmentPreset("custom", "modules", "package"));
+    expect(getSegmentPreset("custom", "none", "free")).toBe(getSegmentPreset("custom", "none", "free"));
+    // Mensalidade reaproveita o preset da trilha.
+    expect(getSegmentPreset("custom", "none", "membership")).toBe(presets.custom);
+  });
+
+  it("áreas da lista ignoram a cobrança da outra área", () => {
+    expect(getSegmentPreset("dance", "levels", "package")).toBe(presets.dance);
+    expect(getSegmentPreset("gastronomy", undefined, "free").defaultBillingMode).toBe("course");
   });
 });
