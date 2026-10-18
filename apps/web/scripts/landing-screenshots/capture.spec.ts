@@ -53,9 +53,9 @@ async function buildDemo(page: Page) {
   await freshTenant(page);
   await page.getByLabel("Nome").fill("Espaço Movimento");
   await page.getByRole("button", { name: "Continuar" }).click();
+  // Escolher a area ja avanca para as aulas.
   await page.getByRole("radio", { name: /^Lutas/ }).click();
-  await page.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("button", { name: "Concluir e Começar" }).click();
+  await page.getByRole("button", { name: "Concluir" }).click();
   await page.waitForURL("**/dashboard");
   await page.waitForTimeout(800);
   const modalities = (await readTenant(page)).categories as { id: string; name: string }[];
@@ -97,7 +97,8 @@ async function buildDemo(page: Page) {
       phone: `1198${String(1234567 + i * 7919).slice(0, 7)}`,
       birthDate: `199${i % 10}-0${(i % 9) + 1}-1${i % 9}`,
       planId: PLAN_OF[cg][0],
-      planStartDate: "2026-03-01",
+      // Plano a partir deste mes: os meses antes nao geram mensalidade atrasada.
+      planStartDate: `${MONTH}-01`,
       billingStrategy: "prorated",
       cyclePaymentTiming: "prepaid",
       dueDay,
@@ -115,7 +116,21 @@ async function buildDemo(page: Page) {
         promotedAt: "2026-03-14",
         strengths: ["Guarda fechada", "Raspagens", "Passagem de guarda"],
         goals: [],
-        evaluations: [],
+        // Registros de aula recentes (ficha com historico, nao vazia).
+        evaluations: [
+          { tone: "positive", note: "Boa base na guarda fechada.", classNote: "Raspagens da guarda aberta" },
+          { tone: "attention", note: "Ajustar a postura na passagem de guarda." },
+          { tone: "positive", note: "Finalizou bem no treino de posição." },
+        ].map((e, k) => ({
+          id: `ev-${k}`,
+          date: PAST[k],
+          classGroupId: "cg-jj",
+          classGroupName: "Jiu-Jitsu Adulto",
+          sessionId: `cg-jj~${PAST[k]}~${START}`,
+          authorName: "Carlos Silva",
+          createdAt: `${PAST[k]}T22:00:00.000Z`,
+          ...e,
+        })),
         promotionHistory: [],
         updatedAt: TS,
       },
@@ -163,7 +178,11 @@ async function buildDemo(page: Page) {
   await skipWelcomeDialog(page);
 }
 
+// SHOTS=attendance,student refaz so esses (padrao: todos).
+const ONLY = process.env.SHOTS?.split(",").map((s) => s.trim());
+
 async function shoot(page: Page, name: string, url: string, size: { width: number; height: number }) {
+  if (ONLY && !ONLY.includes(name)) return;
   await page.setViewportSize(size);
   for (const theme of ["light", "dark"]) {
     await page.evaluate((th) => localStorage.setItem("gestarahub:theme", th), theme);
@@ -187,5 +206,6 @@ test("telas da landing", async ({ page }) => {
   await buildDemo(page);
   await shoot(page, "attendance", `/classes/sessions/${encodeURIComponent(`cg-jj~${TODAY}~${START}`)}`, { width: 390, height: 844 });
   await shoot(page, "billing", "/classes/billing", { width: 1280, height: 800 });
-  await shoot(page, "student", "/clients/s-lucas", { width: 1280, height: 800 });
+  // Ficha em sanfona: abre a evolucao (faixa, graus e pontos fortes).
+  await shoot(page, "student", "/clients/s-lucas?tab=evolution", { width: 1280, height: 800 });
 });
