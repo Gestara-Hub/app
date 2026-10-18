@@ -9,7 +9,7 @@ import { ResetDataActions } from "@/features/system";
 import { useModel } from "@/features/auth";
 import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
-import { useBeforeUnloadGuard } from "./unsaved-changes";
+import { useBeforeUnloadGuard, useLeaveLinkGuard } from "./unsaved-changes";
 import { SubscriptionPlanCard } from "./subscription-plan-card";
 import { OnlinePaymentsSettingsCard } from "./online-payments-settings-card";
 import { CertificateTemplateCard } from "./certificate-template-card";
@@ -110,10 +110,22 @@ export function SettingsTabs() {
       setDirtyTabs((prev) => (prev.certificado === dirty ? prev : { ...prev, certificado: dirty })),
     [],
   );
-  useBeforeUnloadGuard(
-    Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento || dirtyTabs.certificado),
-  );
+  const anyDirty = Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento || dirtyTabs.certificado);
+  useBeforeUnloadGuard(anyDirty);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
+  // Sair pelo menu com alteracoes nao salvas pergunta antes (antes perdia tudo).
+  const askLeave = useCallback(
+    () =>
+      confirm({
+        title: "Sair sem salvar?",
+        description: "As alterações não salvas desta tela serão perdidas.",
+        confirmLabel: "Sair sem salvar",
+        cancelLabel: "Continuar editando",
+        highlightAction: "cancel",
+      }),
+    [confirm],
+  );
+  useLeaveLinkGuard(anyDirty, askLeave);
 
   const handleTabChange = async (nextTab: Tab) => {
     if (nextTab === tab) return;

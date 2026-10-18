@@ -113,6 +113,8 @@ function useAcademyDashboard() {
   const groupsQuery = useClassGroups();
   // So mensalidades: aula avulsa nao entra em "Mensalidades recebidas".
   const chargesQuery = useCharges({ competence: currentCompetence, kind: "membership" });
+  // Selo de atraso igual ao "Para fazer hoje": todas as cobrancas atrasadas.
+  const overdueAllQuery = useCharges({ status: "overdue" });
   const attendanceQuery = useAttendanceSummary(todayDate);
 
   const sessions = sessionsQuery.data ?? [];
@@ -152,14 +154,19 @@ function useAcademyDashboard() {
   const paidRevenue = paidCharges.reduce((sum, c) => sum + c.amountCents, 0);
   const pendingRevenue = pendingCharges.reduce((sum, c) => sum + c.amountCents, 0);
   const overdueRevenue = overdueCharges.reduce((sum, c) => sum + c.amountCents, 0);
-  // "Quitadas" so quando ha mensalidade no mes e nenhuma em aberto.
+  // "Quitadas" so quando ha mensalidade no mes e nenhuma em aberto (pendente ou atrasada).
   const billedCharges = charges.filter((c) => c.status !== "canceled" && c.status !== "waived");
+  const openParts = [
+    pendingRevenue > 0 ? `${formatCents(pendingRevenue)} pendente` : null,
+    overdueRevenue > 0 ? `${formatCents(overdueRevenue)} atrasado` : null,
+  ].filter(Boolean);
   const revenueHint =
-    pendingRevenue > 0
-      ? `${formatCents(pendingRevenue)} pendente`
+    openParts.length > 0
+      ? openParts.join(" · ")
       : billedCharges.length === 0
         ? "Nenhuma mensalidade gerada no mês"
         : "Todas as mensalidades quitadas";
+  const overdueCount = overdueAllQuery.data?.length ?? 0;
 
   const isPending =
     sessionsQuery.isPending ||
@@ -186,6 +193,7 @@ function useAcademyDashboard() {
     sessionsHint,
     upcomingSessions,
     overdueCharges,
+    overdueCount,
     paidRevenue,
     overdueRevenue,
     revenueHint,
@@ -236,9 +244,9 @@ function DashboardKpis({ d }: { d: DashboardData }) {
         value={formatCents(d.paidRevenue)}
         href="/classes/billing"
         badge={
-          d.overdueCharges.length > 0 ? (
+          d.overdueCount > 0 ? (
             <Badge variant="destructive" className="h-4.5 px-1.5 text-[10px] font-semibold">
-              {d.overdueCharges.length} em atraso
+              {d.overdueCount} em atraso
             </Badge>
           ) : null
         }

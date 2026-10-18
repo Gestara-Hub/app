@@ -62,7 +62,9 @@ export function SubscriptionPlanCard() {
     );
   }
 
-  const isPro = data.tier === "pro";
+  // Scale inclui tudo do Pro (e a multiunidade): nao e Gratis.
+  const isPro = data.tier !== "free";
+  const isScale = data.tier === "scale";
 
   const handleChange = async () => {
     const next = isPro ? "free" : "pro";
@@ -103,7 +105,9 @@ export function SubscriptionPlanCard() {
             </Badge>
           </div>
           <CardDescription>
-            {isPro
+            {isScale
+              ? "Sua organização tem todos os recursos do Pro e várias unidades."
+              : isPro
               ? "Sua organização tem todos os recursos do Pro."
               : "O cadastro e a operação do dia a dia são grátis. Os recursos abaixo fazem parte do Pro."}
             {data.changedAt ? ` Alterado em ${formatDateTime(data.changedAt)}.` : null}

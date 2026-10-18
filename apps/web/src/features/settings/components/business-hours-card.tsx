@@ -602,8 +602,8 @@ function BusinessHoursEditor({
         )}
         <Button
           onClick={() => {
-            // Sem dia ligado: avisa e segue pulsando (ainda falta salvar).
-            if (hoursUnset && !anyDayOpen) {
+            // Sem dia ligado: avisa e nao salva (vale sempre, nao so na 1a vez).
+            if (!anyDayOpen) {
               setNeedsOpenDay(true);
               return;
             }
