@@ -438,7 +438,7 @@ export function BillingView() {
                 <span className="text-xs font-medium text-muted-foreground">
                   Recebido
                 </span>
-                <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="size-4" />
                 </div>
               </div>
@@ -525,7 +525,7 @@ export function BillingView() {
                   className={cn(
                     "flex size-7 items-center justify-center rounded-md",
                     !isLoading && canceledList.length > 0
-                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
                       : "bg-muted text-muted-foreground",
                   )}
                 >
@@ -929,7 +929,7 @@ export function BillingView() {
                           </Link>
                           {/* So a aula avulsa tem selo de tipo; mensalidade e o padrao da tela. */}
                           {c.kind === "dropin" ? (
-                            <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                            <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                               Aula Avulsa
                             </span>
                           ) : null}

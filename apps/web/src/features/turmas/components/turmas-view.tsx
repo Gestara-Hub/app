@@ -155,7 +155,7 @@ function TurmaRow({
           className={cn(
             "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
             full
-              ? "border-amber-500/20 bg-amber-500/10 text-amber-500 dark:text-amber-400"
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400"
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >
@@ -293,7 +293,7 @@ function TurmaCard({
           className={cn(
             "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-none",
             full
-              ? "border-amber-500/20 bg-amber-500/10 text-amber-500 dark:text-amber-400"
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400"
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >

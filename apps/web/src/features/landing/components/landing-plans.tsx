@@ -59,7 +59,7 @@ export function LandingPlans() {
               <ul className="flex-1 space-y-2.5">
                 {FREE_POINTS.map((point) => (
                   <li key={point} className="flex items-start gap-2 text-sm text-foreground/90">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
                     <span>{point}</span>
                   </li>
                 ))}

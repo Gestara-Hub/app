@@ -85,11 +85,21 @@ function ClassRecordsForm({
             id="class-note"
             value={classNote}
             onChange={(e) => setClassNote(e.target.value)}
-            placeholder="Informe o que foi treinado (opcional)"
+            placeholder="O que foi treinado"
             className="text-base md:text-sm"
           />
           <p className="text-xs text-muted-foreground">Com anotação, entra no registro de todos os presentes.</p>
         </div>
+
+        {/* Legenda dos tons: no celular nao ha tooltip e as bolinhas ficavam sem nome. */}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-hidden>
+          {TONES.map((t) => (
+            <span key={t} className="inline-flex items-center gap-1.5">
+              <span className={cn("size-2.5 rounded-full", TONE_META[t].dot)} />
+              {TONE_META[t].label}
+            </span>
+          ))}
+        </p>
 
         <TooltipProvider delayDuration={200}>
           <ul className="divide-y rounded-xl border" aria-label="Presentes">
@@ -99,7 +109,9 @@ function ClassRecordsForm({
               return (
                 <li key={s.id} className="space-y-2 px-3 py-2.5">
                   <div className="flex items-center gap-3">
-                    <InitialsAvatar name={s.name} />
+                    <span className="max-sm:hidden">
+                      <InitialsAvatar name={s.name} />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="min-w-0 break-words text-sm font-medium text-foreground">{s.name}</p>
                       {reminder ? (
@@ -152,7 +164,7 @@ function ClassRecordsForm({
                     <Input
                       value={notes[s.id] ?? ""}
                       onChange={(e) => setNotes((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                      placeholder={`Anotação sobre ${s.name.split(" ")[0]} (opcional)`}
+                      placeholder={`Anotação sobre ${s.name.split(" ")[0]}`}
                       className="text-base md:text-sm"
                       aria-label={`Anotação sobre ${s.name}`}
                     />
@@ -163,11 +175,11 @@ function ClassRecordsForm({
           </ul>
         </TooltipProvider>
       </DialogBody>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/40 px-6 py-4">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <span className="text-xs text-muted-foreground">
           {total > 0 ? `${plural(total, "aluno", "alunos")} com registro` : "Marque só quem se destacou."}
         </span>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button type="button" variant="outline" onClick={onDone} disabled={addMut.isPending}>
             Cancelar
           </Button>

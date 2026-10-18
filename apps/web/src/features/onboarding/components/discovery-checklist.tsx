@@ -111,7 +111,7 @@ export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: Class
                 className={cn(
                   "flex size-8 shrink-0 items-center justify-center rounded-lg",
                   item.done
-                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -129,7 +129,7 @@ export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: Class
                 </p>
                 <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
                   {locked ? (
-                    <span className="font-medium text-amber-600 dark:text-amber-400">
+                    <span className="font-medium text-amber-700 dark:text-amber-400">
                       Requer: {item.requires}
                     </span>
                   ) : (
@@ -140,7 +140,7 @@ export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: Class
 
               <div className="shrink-0">
                 {item.done ? (
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
                     Feito
                   </span>
                 ) : locked ? (

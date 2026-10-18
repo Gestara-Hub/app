@@ -12,6 +12,10 @@ interface Rect {
 
 // Folga do recorte em volta da secao: cabe o anel de atencao (10px) dos botoes destacados.
 const PADDING = 12;
+/** Altura do balao com folga. */
+const HINT_GAP = 44;
+/** Barra do topo (56px) com folga: o balao nao cobre os icones dela. */
+const TOPBAR_SPACE = 64;
 
 /**
  * Destaque de uma secao da tela (chegada pelo onboarding): escurece o resto da
@@ -120,6 +124,12 @@ export function SectionSpotlight({
   const left = rect.left - PADDING;
   const width = rect.width + PADDING * 2;
   const height = rect.height + PADDING * 2;
+  // Balao acima da secao so com espaco abaixo da barra do topo; senao, embaixo
+  // (cobria o titulo da etapa e os icones do topo no celular).
+  const hintAbove = top - HINT_GAP >= TOPBAR_SPACE;
+  const hintTop = hintAbove
+    ? top - HINT_GAP
+    : Math.min(top + height + 8, window.innerHeight - HINT_GAP);
   return createPortal(
     <div data-section-spotlight>
       {/* Um recorte arredondado com sombra larga em volta: o escuro segue a
@@ -137,8 +147,8 @@ export function SectionSpotlight({
       {hint ? (
         <p
           role="status"
-          className="pointer-events-none fixed z-40 rounded-full bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-lg"
-          style={{ top: Math.max(8, top - 44), left }}
+          className="pointer-events-none fixed z-40 max-w-[calc(100vw-1rem)] rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-lg"
+          style={{ top: hintTop, left: Math.max(8, left) }}
         >
           {hint}
         </p>

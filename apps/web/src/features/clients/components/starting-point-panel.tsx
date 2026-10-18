@@ -219,7 +219,7 @@ export function StartingPointPanel({
                 )
               ) : null}
               {outOfAge ? (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
                   Fora da faixa etária ({levelAgeLabel(level)}). O aluno tinha {age} anos nessa data.
                 </p>
               ) : null}

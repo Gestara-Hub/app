@@ -8,7 +8,7 @@ export function UnsavedChangesStatus({ dirty }: { dirty: boolean }) {
   return (
     <p className="text-xs text-muted-foreground" aria-live="polite">
       {dirty ? (
-        <span className="text-amber-600 dark:text-amber-400 font-medium">
+        <span className="text-amber-700 dark:text-amber-400 font-medium">
           ● Alterações não salvas
         </span>
       ) : (

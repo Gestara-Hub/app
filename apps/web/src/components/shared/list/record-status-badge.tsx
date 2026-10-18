@@ -4,7 +4,7 @@ import type { RecordStatus } from "@gestarahub/contracts";
 
 export function getRecordStatusClasses(isActive: boolean): string {
   return isActive
-    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
     : "border border-border/60 bg-muted/50 text-muted-foreground";
 }
 

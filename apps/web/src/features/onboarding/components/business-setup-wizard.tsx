@@ -649,45 +649,41 @@ export function BusinessSetupWizard() {
                   {allAvailableModalities.map((mod) => {
                     const isMarked = selectedModalities.includes(mod);
                     const isCustomAdded = customAddedModalities.includes(mod);
+                    // Chip com alvo de toque de 32px; remover e um botao irmao
+                    // (antes um span role=button dentro do botao).
                     return (
-                      <button
+                      <span
                         key={mod}
-                        type="button"
-                        aria-pressed={isMarked}
-                        onClick={() => handleToggleModality(mod)}
                         className={cn(
-                          "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-sm font-medium transition-colors cursor-pointer",
+                          "inline-flex max-w-full items-center rounded-full border transition-colors",
                           isMarked
                             ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                             : "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground",
                         )}
                       >
-                        <span aria-hidden className="w-3 text-center text-xs font-bold">
-                          {isMarked ? "✓" : "+"}
-                        </span>
-                        <span>{mod}</span>
+                        <button
+                          type="button"
+                          aria-pressed={isMarked}
+                          onClick={() => handleToggleModality(mod)}
+                          className="inline-flex min-h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-left text-sm font-medium"
+                        >
+                          <span aria-hidden className="w-3 shrink-0 text-center text-xs font-bold">
+                            {isMarked ? "✓" : "+"}
+                          </span>
+                          <span className="min-w-0 break-words">{mod}</span>
+                        </button>
                         {isCustomAdded && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveCustomModality(mod);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleRemoveCustomModality(mod);
-                              }
-                            }}
-                            className="ml-0.5 opacity-70 hover:opacity-100"
-                            title="Remover"
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomModality(mod)}
+                            className="-ml-1.5 flex min-h-8 cursor-pointer items-center rounded-full pl-1 pr-2.5 opacity-70 hover:opacity-100"
+                            aria-label={`Remover ${mod}`}
+                            title={`Remover ${mod}`}
                           >
                             <X className="size-3.5" />
-                          </span>
+                          </button>
                         )}
-                      </button>
+                      </span>
                     );
                   })}
                 </div>
@@ -695,7 +691,7 @@ export function BusinessSetupWizard() {
                   {selectedModalities.length} {selectedModalities.length === 1 ? "selecionada" : "selecionadas"}
                 </p>
                 {selectedModalities.length === 0 && modalitiesTouched && (
-                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
                     Nenhuma aula marcada. Dá para cadastrar depois.
                   </p>
                 )}

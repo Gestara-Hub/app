@@ -111,7 +111,7 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                             </p>
                             <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
                               {session.isSubstitute ? (
-                                <span className="font-medium text-amber-600 dark:text-amber-400">
+                                <span className="font-medium text-amber-700 dark:text-amber-400">
                                   {session.instructorName} (Subst.)
                                 </span>
                               ) : (

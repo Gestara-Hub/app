@@ -173,7 +173,7 @@ function CurrentLevelDetails({
               />
             </>
           ) : (
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">Último nível da trilha</span>
+            <span className="font-medium text-emerald-700 dark:text-emerald-400">Último nível da trilha</span>
           )}
           {ready ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">

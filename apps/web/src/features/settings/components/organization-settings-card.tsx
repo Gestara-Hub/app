@@ -665,7 +665,7 @@ function OrgUnitForm({
         <div ref={formFooterRef} className="flex items-center justify-between pt-2">
           <div>
             {isBillingUnconfirmed && !form.formState.isDirty ? (
-              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
                 ● Falta confirmar
               </p>
             ) : (

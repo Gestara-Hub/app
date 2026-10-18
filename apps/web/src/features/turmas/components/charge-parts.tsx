@@ -22,7 +22,7 @@ export const STATUS_LABEL: Record<ChargeStatus, string> = {
 
 export const STATUS_CLASS: Record<ChargeStatus, string> = {
   pending: "border-border/60 bg-muted/50 text-muted-foreground",
-  paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
   canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",

@@ -42,7 +42,7 @@ function detailOf(e: StudentSummaryEnrollment): string {
 
 /** A direita: a situacao quando nao e ativa; ativa mostra a presenca. */
 function StatusText({ e }: { e: StudentSummaryEnrollment }) {
-  if (e.state === "paused") return <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Trancada</span>;
+  if (e.state === "paused") return <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Trancada</span>;
   if (e.state === "completed") return <span className="text-xs font-medium text-sky-700 dark:text-sky-300">Concluído</span>;
   if (e.state === "canceled") {
     return (

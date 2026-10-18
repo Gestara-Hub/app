@@ -96,7 +96,7 @@ export function LevelSelect({
                 />
                 <span>{l.name}</span>
                 {outOfAge ? (
-                  <span className="text-xs text-amber-600 dark:text-amber-400">
+                  <span className="text-xs text-amber-700 dark:text-amber-400">
                     · fora da idade ({levelAgeLabel(l)})
                   </span>
                 ) : null}
@@ -373,7 +373,7 @@ export function GraduatePanel({
               )
             ) : null}
             {otherOutOfAge ? (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
                 Fora da faixa etária ({levelAgeLabel(otherLevel)}). O aluno tem {age} anos.
               </p>
             ) : null}

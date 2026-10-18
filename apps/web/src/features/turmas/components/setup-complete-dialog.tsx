@@ -60,7 +60,7 @@ export function SetupCompleteDialog({
           <div className="relative mx-auto flex size-13 items-center justify-center rounded-full bg-primary text-primary-foreground ring-8 ring-primary/10 animate-in zoom-in-50 duration-500">
             <PartyPopper className="size-6" />
           </div>
-          <div className="relative mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="relative mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="size-3.5" />
             <span>Configuração inicial 100% concluída</span>
           </div>

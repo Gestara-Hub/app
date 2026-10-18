@@ -219,7 +219,7 @@ function DashboardKpis({ d }: { d: DashboardData }) {
       />
       <Kpi
         icon={<CheckCheck className="size-5" />}
-        iconColor="bg-sky-500/10 text-sky-600 dark:text-sky-400"
+        iconColor="bg-sky-500/10 text-sky-700 dark:text-sky-400"
         label="Presenças hoje"
         value={
           d.attendance.total > 0
@@ -239,7 +239,7 @@ function DashboardKpis({ d }: { d: DashboardData }) {
       />
       <Kpi
         icon={<Wallet className="size-5" />}
-        iconColor="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        iconColor="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
         label="Mensalidades recebidas"
         value={formatCents(d.paidRevenue)}
         href="/classes/billing"

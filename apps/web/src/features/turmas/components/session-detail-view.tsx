@@ -90,11 +90,11 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
  */
 function PackageBalance({ entry }: { entry: SessionRosterEntry }) {
   if (entry.noPackage) {
-    return <span className="font-medium text-amber-600 dark:text-amber-400">Sem pacote</span>;
+    return <span className="font-medium text-amber-700 dark:text-amber-400">Sem pacote</span>;
   }
   if (entry.packageTotal === undefined) return null;
   if (entry.packageLastLesson) {
-    return <span className="font-medium text-amber-600 dark:text-amber-400">Última aula do pacote</span>;
+    return <span className="font-medium text-amber-700 dark:text-amber-400">Última aula do pacote</span>;
   }
   return (
     <span title="Aulas restantes no pacote" className="tabular-nums">
@@ -657,7 +657,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             "text-xs font-medium",
                             r.attendance === "absent"
                               ? "text-red-600 dark:text-red-400"
-                              : "text-amber-600 dark:text-amber-400",
+                              : "text-amber-700 dark:text-amber-400",
                           )}
                         >
                           {ATTENDANCE_LABEL[r.attendance as AttendanceStatus]}
@@ -716,7 +716,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                       ) : isPackage ? (
                         <span>Pacote</span>
                       ) : !isEnrolled ? (
-                        <span className="font-medium text-amber-600 dark:text-amber-400">Avulso</span>
+                        <span className="font-medium text-amber-700 dark:text-amber-400">Avulso</span>
                       ) : null}
                       <PackageBalance entry={r} />
                       <BirthdayBadge birthDate={student?.birthDate} date={session.date} showUpcoming compact />

@@ -354,7 +354,7 @@ export function TurmasCalendarView() {
                               <p className="min-w-0 break-words text-xs text-muted-foreground">
                                 {s.modalityName ? `${s.modalityName} · ` : ""}
                                 {s.isSubstitute ? (
-                                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                                  <span className="font-medium text-amber-700 dark:text-amber-400">
                                     {s.instructorName} (Subst.)
                                   </span>
                                 ) : (
@@ -363,7 +363,7 @@ export function TurmasCalendarView() {
                                 {" · "}
                                 <span
                                   className={cn(
-                                    full && "font-medium text-amber-600 dark:text-amber-400",
+                                    full && "font-medium text-amber-700 dark:text-amber-400",
                                   )}
                                 >
                                   {full

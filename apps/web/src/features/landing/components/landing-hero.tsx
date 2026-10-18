@@ -17,7 +17,7 @@ export function LandingHero() {
         <div className="mx-auto max-w-4xl text-center space-y-6">
           {/* Pill announcement badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shadow-2xs backdrop-blur-sm">
-            <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <Sparkles className="size-3.5 text-emerald-700 dark:text-emerald-400" />
             <span>Plano grátis • Sem cartão de crédito</span>
           </div>
 
@@ -65,15 +65,15 @@ export function LandingHero() {
           {/* Trust badges */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />
               Em grupo ou aulas particulares
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />
               Sem limite de alunos ou horários
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />
               Chamada direta no celular
             </span>
           </div>

@@ -105,7 +105,7 @@ export function BirthdaysList({
                     disabled={!whatsapp.ready}
                     title={greetedToday.has(item.id) ? "Parabéns já mandado hoje" : "Mandar parabéns no WhatsApp"}
                     aria-label={`Mandar parabéns para ${item.name} no WhatsApp`}
-                    className={cn(greetedToday.has(item.id) && "text-emerald-600 dark:text-emerald-400")}
+                    className={cn(greetedToday.has(item.id) && "text-emerald-700 dark:text-emerald-400")}
                     onClick={() =>
                       whatsapp.send({
                         trigger: "birthday_greeting",

@@ -323,9 +323,9 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  --success: oklch(0.5202 0.1031 154.14);
-  --warning: oklch(0.6264 0.1248 70.45);
-  --info: oklch(0.471 0.0889 246.61);
+  --success: oklch(0.74 0.12 154.14);
+  --warning: oklch(0.8 0.13 75);
+  --info: oklch(0.74 0.1 246.61);
 }
 
 @layer base {

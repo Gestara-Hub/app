@@ -147,7 +147,7 @@ function WhatsAppButton({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={cn(done && "text-emerald-600 dark:text-emerald-400")}
+      className={cn(done && "text-emerald-700 dark:text-emerald-400")}
       onClick={onClick}
     >
       <MessageCircle className="size-4" />

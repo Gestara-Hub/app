@@ -133,7 +133,7 @@ function VariantSimplified({
               className={cn(
                 "flex size-8 items-center justify-center rounded-xl",
                 isPositive
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                   : "bg-destructive/15 text-destructive",
               )}
             >
@@ -158,7 +158,7 @@ function VariantSimplified({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Total Entrou
             </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <ArrowDownRight className="size-4" />
             </div>
           </div>
@@ -180,7 +180,7 @@ function VariantSimplified({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Total Saiu
             </span>
-            <div className="flex size-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-400">
               <ArrowUpRight className="size-4" />
             </div>
           </div>
@@ -213,7 +213,7 @@ function VariantSimplified({
               className={cn(
                 "flex size-8 items-center justify-center rounded-xl",
                 hasOverdue
-                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
                   : "bg-muted text-muted-foreground",
               )}
             >
@@ -294,7 +294,7 @@ function VariantSimplified({
                   </div>
 
                   <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-rose-700 dark:text-rose-400">
                       <div className="size-2.5 rounded-full bg-rose-400" />
                       Custos Pagos ({spentPct}%)
                     </div>
@@ -307,7 +307,7 @@ function VariantSimplified({
                 {/* Frase Humana de Insight */}
                 <p className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3 border border-border/40">
                   💡 <strong className="text-foreground">Resumo prático:</strong> A cada R$ 100 arrecadados neste mês,{" "}
-                  <strong className="text-emerald-600 dark:text-emerald-400">R$ {savedPct}</strong> ficaram livres de lucro no caixa do seu negócio.
+                  <strong className="text-emerald-700 dark:text-emerald-400">R$ {savedPct}</strong> ficaram livres de lucro no caixa do seu negócio.
                 </p>
               </div>
             ) : (
@@ -521,11 +521,11 @@ function VariantExecutive({
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                 <span>
-                  Entrou <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{formatCents(summary.incomePaidCents)}</strong>
+                  Entrou <strong className="text-emerald-700 dark:text-emerald-400 font-semibold">{formatCents(summary.incomePaidCents)}</strong>
                 </span>
                 <span>(−)</span>
                 <span>
-                  Saiu <strong className="text-rose-600 dark:text-rose-400 font-semibold">{formatCents(summary.expensePaidCents)}</strong>
+                  Saiu <strong className="text-rose-700 dark:text-rose-400 font-semibold">{formatCents(summary.expensePaidCents)}</strong>
                 </span>
               </div>
             </div>
@@ -542,7 +542,7 @@ function VariantExecutive({
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40 text-[11px] text-muted-foreground">
                 {summary.incomeForecastCents > 0 && (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
                     +{formatCents(summary.incomeForecastCents)} a receber
                   </span>
                 )}
@@ -550,7 +550,7 @@ function VariantExecutive({
                   <span className="text-muted-foreground/40">•</span>
                 )}
                 {summary.expenseForecastCents > 0 && (
-                  <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-medium">
+                  <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-medium">
                     −{formatCents(summary.expenseForecastCents)} a pagar
                   </span>
                 )}
@@ -581,7 +581,7 @@ function VariantExecutive({
                 </span>
                 <div className="mt-1 flex items-center gap-1.5 text-xs">
                   {incomePct !== null ? (
-                    <span className={cn("font-medium", incomePct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                    <span className={cn("font-medium", incomePct >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive")}>
                       {incomePct >= 0 ? `+${incomePct}%` : `${incomePct}%`}{" "}
                       <span className="text-muted-foreground font-normal">vs anterior</span>
                     </span>
@@ -638,7 +638,7 @@ function VariantExecutive({
             <div className="mt-3 border-t border-border/40 pt-2 space-y-1">
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>A vencer:</span>
-                <span className={cn("font-semibold tabular-nums", summary.expenseForecastCents > 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground")}>
+                <span className={cn("font-semibold tabular-nums", summary.expenseForecastCents > 0 ? "text-rose-700 dark:text-rose-400" : "text-foreground")}>
                   {summary.expenseForecastCents > 0 ? formatCents(summary.expenseForecastCents) : "R$ 0,00"}
                 </span>
               </div>
@@ -666,7 +666,7 @@ function VariantExecutive({
                 <div
                   className={cn(
                     "flex size-7 items-center justify-center rounded-lg",
-                    hasOverdue ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground",
+                    hasOverdue ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground",
                   )}
                 >
                   <AlertCircle className="size-4" />
@@ -678,7 +678,7 @@ function VariantExecutive({
                   <span className="text-xl font-bold tabular-nums text-foreground xl:text-2xl">
                     {formatCents(overdueCents)}
                   </span>
-                  <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
                     {overdueRatio}% do mês em atraso
                   </span>
                 </div>
@@ -806,11 +806,11 @@ function ModernCategoryBreakdown({
 
 const CATEGORY_TONE = {
   income: {
-    title: "text-emerald-600 dark:text-emerald-400",
+    title: "text-emerald-700 dark:text-emerald-400",
     bar: "bg-emerald-500 group-hover:bg-emerald-400",
   },
   expense: {
-    title: "text-rose-600 dark:text-rose-400",
+    title: "text-rose-700 dark:text-rose-400",
     bar: "bg-rose-500 group-hover:bg-rose-400",
   },
 } as const;
@@ -979,7 +979,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
                       item.overdue
                         ? "border-destructive/30 bg-destructive/10 text-destructive"
                         : isToday
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                           : "border-border/60 bg-muted/30 text-foreground",
                     )}
                   >
@@ -997,7 +997,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
                           Atrasado
                         </span>
                       ) : isToday ? (
-                        <span className="inline-flex rounded-full bg-amber-500/10 px-1.5 py-0.2 text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">
+                        <span className="inline-flex rounded-full bg-amber-500/10 px-1.5 py-0.2 text-[10px] font-semibold text-amber-700 dark:text-amber-400 shrink-0">
                           Vence hoje
                         </span>
                       ) : null}

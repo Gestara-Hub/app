@@ -838,7 +838,7 @@ export function TurmaDetailView({
                                 <span title="Cada presença gasta uma aula do pacote">Pacote</span>
                               ) : null}
                               {e.isCompleted ? (
-                                <span className="font-medium text-emerald-600 dark:text-emerald-400">Concluído</span>
+                                <span className="font-medium text-emerald-700 dark:text-emerald-400">Concluído</span>
                               ) : null}
                               <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />
                               <LevelChangeBadge
@@ -853,7 +853,7 @@ export function TurmaDetailView({
                                   <span
                                     key={a.label}
                                     className={
-                                      a.warn ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                                      a.warn ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
                                     }
                                   >
                                     {a.label}

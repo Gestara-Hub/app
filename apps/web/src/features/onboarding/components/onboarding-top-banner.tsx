@@ -317,7 +317,7 @@ export function OnboardingTopBanner() {
               </div>
             ) : (
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                   <Check className="size-3.5 stroke-[2.5]" />
                   <span>Configuração concluída · 100%</span>
                 </p>

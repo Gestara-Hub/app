@@ -265,14 +265,14 @@ export function OnboardingChecklist({
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] px-3.5 py-2.5 text-left transition-colors hover:bg-emerald-500/[0.08] cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
                       <Check className="size-3.5 stroke-[3]" />
                     </span>
                     <div className="min-w-0">
                       <span className="text-xs font-bold uppercase tracking-wider text-foreground">
                         {group.label}
                       </span>
-                      <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span className="ml-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                         {groupDoneCount}/{groupSteps.length} concluídas
                       </span>
                     </div>
@@ -328,7 +328,7 @@ export function OnboardingChecklist({
                             className={cn(
                               "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums mt-0.5 sm:mt-0 transition-colors",
                               step.done
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
                                 : step.needsReview && !active
                                   ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
                                   : active
@@ -366,7 +366,7 @@ export function OnboardingChecklist({
                             </div>
                             <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
                               {locked ? (
-                                <span className="font-medium text-amber-600 dark:text-amber-400">
+                                <span className="font-medium text-amber-700 dark:text-amber-400">
                                   Requer: {missing.join(", ")}
                                 </span>
                               ) : (
@@ -379,7 +379,7 @@ export function OnboardingChecklist({
                         {/* Ação à direita */}
                         <div className="shrink-0 flex items-center gap-2">
                           {step.done ? (
-                            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hidden sm:inline">
+                            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hidden sm:inline">
                               Concluído
                             </span>
                           ) : active ? (
