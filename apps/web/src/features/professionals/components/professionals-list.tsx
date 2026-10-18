@@ -117,7 +117,7 @@ function ProfessionalRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+            <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
               {professional.name}
             </p>
             {professional.role?.name ? (
@@ -228,7 +228,7 @@ function ProfessionalCard({
         <div className="flex min-w-0 items-center gap-3">
           <InitialsAvatar name={professional.name} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+            <p className="min-w-0 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {professional.name}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">

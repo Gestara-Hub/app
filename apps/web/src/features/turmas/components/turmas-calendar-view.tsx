@@ -258,7 +258,7 @@ export function TurmasCalendarView() {
         {/* No celular os filtros empilham em largura total para o texto caber. */}
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <Select value={modality} onValueChange={setModality}>
-            <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por modalidade">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Filtrar por modalidade">
               <SelectValue placeholder="Modalidade" />
             </SelectTrigger>
             <SelectContent>
@@ -272,7 +272,7 @@ export function TurmasCalendarView() {
           </Select>
 
           <Select value={instructor} onValueChange={setInstructor}>
-            <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por instrutor">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Filtrar por instrutor">
               <SelectValue placeholder="Instrutor" />
             </SelectTrigger>
             <SelectContent>
@@ -351,7 +351,7 @@ export function TurmasCalendarView() {
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-medium">{s.className}</p>
-                              <p className="truncate text-xs text-muted-foreground">
+                              <p className="min-w-0 break-words text-xs text-muted-foreground">
                                 {s.modalityName ? `${s.modalityName} · ` : ""}
                                 {s.isSubstitute ? (
                                   <span className="font-medium text-amber-600 dark:text-amber-400">

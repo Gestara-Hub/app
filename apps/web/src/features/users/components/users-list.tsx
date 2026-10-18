@@ -107,7 +107,7 @@ function UserRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+            <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
               {user.name}
             </p>
             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -123,9 +123,9 @@ function UserRow({
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5 truncate">
+            <span className="inline-flex min-w-0 items-center gap-1.5">
               <Mail className="size-3 text-muted-foreground/60" />
-              <span className="truncate">{user.email}</span>
+              <span className="break-all">{user.email}</span>
             </span>
             {user.professional ? (
               <span className="inline-flex items-center gap-1.5">

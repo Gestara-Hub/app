@@ -101,7 +101,7 @@ export function AuditLogDetailDialog({
             </Avatar>
             <div className="min-w-0 flex-1">
               <DialogTitle className="flex flex-wrap items-center gap-2 text-left text-base">
-                <span className="truncate">{entry.actor.name}</span>
+                <span className="min-w-0 break-words">{entry.actor.name}</span>
                 <Chip>{userProfileLabel(entry.actor.profile)}</Chip>
                 {entry.security ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">

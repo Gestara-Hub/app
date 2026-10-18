@@ -466,7 +466,7 @@ export function FinanceEntriesTab({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <p className={cn("truncate text-sm font-medium text-foreground", canceled && "text-muted-foreground line-through")}>
+              <p className={cn("break-words text-sm font-medium text-foreground", canceled && "text-muted-foreground line-through")}>
                 {row.description}
               </p>
               <StatusBadge status={row.status} />
@@ -547,7 +547,7 @@ export function FinanceEntriesTab({
               setCategoryFilter("all");
             }}
           >
-            <SelectTrigger className="sm:w-40" aria-label="Filtrar por tipo">
+            <SelectTrigger className="sm:w-auto sm:min-w-40" aria-label="Filtrar por tipo">
               <SelectValue>{TYPE_FILTER_LABEL[typeFilter]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -559,7 +559,7 @@ export function FinanceEntriesTab({
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-            <SelectTrigger className="sm:w-40" aria-label="Filtrar por status">
+            <SelectTrigger className="sm:w-auto sm:min-w-40" aria-label="Filtrar por status">
               <SelectValue>{statusFilterLabel(statusFilter)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -571,7 +571,7 @@ export function FinanceEntriesTab({
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="col-span-2 sm:w-48" aria-label="Filtrar por categoria">
+            <SelectTrigger className="col-span-2 sm:w-auto sm:min-w-48" aria-label="Filtrar por categoria">
               <SelectValue>{selectedCategoryName}</SelectValue>
             </SelectTrigger>
             <SelectContent>

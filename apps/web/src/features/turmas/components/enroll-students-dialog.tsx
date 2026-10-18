@@ -454,9 +454,9 @@ export function EnrollStudentsDialog({
                       </span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm">{client.name}</p>
+                      <p className="min-w-0 break-words text-sm">{client.name}</p>
                       {client.phone ? (
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="min-w-0 break-words text-xs text-muted-foreground">
                           {formatPhone(client.phone)}
                         </p>
                       ) : null}
@@ -543,7 +543,7 @@ export function EnrollStudentsDialog({
             <p className="text-sm font-medium">Como paga esta turma</p>
             {withPackage.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate text-sm">{c.name}</span>
+                <span className="min-w-0 break-words text-sm">{c.name}</span>
                 <PaymentToggle
                   name={c.name}
                   withPackage={paysWithPackageOf(c)}

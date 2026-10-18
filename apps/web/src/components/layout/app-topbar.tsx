@@ -93,12 +93,15 @@ export function AppTopbar() {
             {(switchOptions ?? []).map((opt) => (
               <form key={opt.user.id} action={switchUser.bind(null, opt.user)}>
                 <DropdownMenuItem asChild disabled={opt.user.id === user.id}>
-                  <button type="submit" className="w-full cursor-pointer">
-                    <span className="flex-1 truncate">{opt.user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {opt.organizationName}
+                  <button type="submit" className="w-full cursor-pointer items-start text-left">
+                    {/* Nome e, embaixo, perfil e organizacao (dois "Carlos Silva" se distinguem). */}
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words">{opt.user.name}</span>
+                      <span className="block break-words text-xs text-muted-foreground">
+                        {userProfileLabel(opt.user.profile)} · {opt.organizationName}
+                      </span>
                     </span>
-                    {opt.user.id === user.id ? <Check className="size-4" /> : null}
+                    {opt.user.id === user.id ? <Check className="mt-0.5 size-4" /> : null}
                   </button>
                 </DropdownMenuItem>
               </form>

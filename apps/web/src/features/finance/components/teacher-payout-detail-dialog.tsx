@@ -326,7 +326,7 @@ function DetailContent({
             <InitialsAvatar name={data.professionalName} className="size-11" />
             <div className="min-w-0">
               <DialogTitle className="flex flex-wrap items-center gap-2 text-left">
-                <span className="truncate">{data.professionalName}</span>
+                <span className="min-w-0 break-words">{data.professionalName}</span>
                 <TeacherPayoutStatusBadge status={data.status} />
               </DialogTitle>
               <DialogDescription className="text-left">{monthLabel}</DialogDescription>
@@ -443,7 +443,7 @@ function DetailContent({
             <div className="divide-y rounded-lg border">
               {adjustments.map((a, i) => (
                 <div key={`${a.label}-${i}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                  <span className="min-w-0 truncate">{a.label}</span>
+                  <span className="min-w-0 break-words">{a.label}</span>
                   <div className="flex shrink-0 items-center gap-1">
                     <span
                       className={cn(
@@ -657,7 +657,7 @@ function SessionsSection({
             return (
               <li key={s.sessionId} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{s.className}</p>
+                  <p className="min-w-0 break-words font-medium">{s.className}</p>
                   <p className="text-xs capitalize text-muted-foreground">
                     {sessionDate(s.date)} · {s.start}
                   </p>

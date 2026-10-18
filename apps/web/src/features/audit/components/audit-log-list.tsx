@@ -225,7 +225,7 @@ export function AuditLogList() {
               setEntityType(value as "all" | AuditEntityType)
             }
           >
-            <SelectTrigger className="sm:w-44" aria-label="Filtrar por tipo">
+            <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por tipo">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>

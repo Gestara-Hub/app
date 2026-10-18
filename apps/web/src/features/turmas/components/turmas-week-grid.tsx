@@ -103,13 +103,13 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                             title={`${session.className} · ${session.start}–${session.end} · ${session.instructorName}`}
                             className="block rounded-md border bg-background px-2 py-1.5 transition-colors hover:border-foreground/20 hover:bg-accent"
                           >
-                            <p className="truncate text-xs font-medium leading-tight text-foreground">
+                            <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">
                               {session.className}
                             </p>
-                            <p className="truncate text-[0.7rem] leading-tight text-muted-foreground">
+                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
                               {session.start}–{session.end}
                             </p>
-                            <p className="truncate text-[0.7rem] leading-tight text-muted-foreground">
+                            <p className="min-w-0 break-words text-[0.7rem] leading-tight text-muted-foreground">
                               {session.isSubstitute ? (
                                 <span className="font-medium text-amber-600 dark:text-amber-400">
                                   {session.instructorName} (Subst.)

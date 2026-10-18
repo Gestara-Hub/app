@@ -57,10 +57,10 @@ export function LoginForm({ from }: { from: string }) {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">
+                <div className="min-w-0 break-words text-sm font-medium">
                   {opt.user.name}
                 </div>
-                <div className="truncate text-xs text-muted-foreground">
+                <div className="min-w-0 break-words text-xs text-muted-foreground">
                   {opt.organizationName} · {userProfileLabel(opt.user.profile)}
                 </div>
               </div>

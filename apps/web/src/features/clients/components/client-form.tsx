@@ -134,8 +134,8 @@ const GUARDIAN_RELATIONSHIPS = ["Mãe", "Pai", "Avó", "Avô", "Tio(a)"];
 const SCHOLARSHIP_REASONS = ["Atleta", "Social", "Família de professor", "Parceria"];
 
 const DISCOUNT_TYPE_OPTIONS = [
-  { value: "fixed", label: "Valor fixo em reais (R$)" },
-  { value: "percentage", label: "Porcentagem sobre a mensalidade (%)" },
+  { value: "fixed", label: "Valor em R$" },
+  { value: "percentage", label: "Porcentagem (%)" },
 ];
 
 const todayDateISO = format(new Date(), "yyyy-MM-dd");
@@ -253,7 +253,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         .trim();
       return {
         value: p.id,
-        label: `${cleanName} — ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
+        label: `${cleanName} · ${formatCents(p.priceCents)}/${PERIOD_SUFFIX[p.period ?? "monthly"]}`,
       };
     });
     return list;

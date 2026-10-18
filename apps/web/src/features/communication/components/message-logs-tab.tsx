@@ -120,7 +120,7 @@ export function MessageLogsTab() {
         />
         <div className="flex gap-2">
           <Select value={status} onValueChange={(v) => setStatus(v as "all" | MessageLogStatus)}>
-            <SelectTrigger className="w-full sm:w-48" aria-label="Status">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-48" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -132,7 +132,7 @@ export function MessageLogsTab() {
             </SelectContent>
           </Select>
           <Select value={kind} onValueChange={(v) => setKind(v as KindFilter)}>
-            <SelectTrigger className="w-full sm:w-44" aria-label="Tipo">
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Tipo">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

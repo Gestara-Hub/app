@@ -303,7 +303,7 @@ function Row<T extends ManagedEntity>({
       }
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+        <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
           {entity.name}
         </p>
         <RecordStatusBadge status={entity.status} />

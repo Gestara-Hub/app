@@ -210,8 +210,8 @@ export function TeacherPayTab({ competence }: { competence: string }) {
                 <div className="flex min-w-0 items-center gap-3">
                   <InitialsAvatar name={t.name} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{t.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="min-w-0 break-words text-sm font-medium text-foreground">{t.name}</p>
+                    <p className="min-w-0 break-words text-xs text-muted-foreground">
                       {noRuleReason(t)}
                       {t.ruleSummary ? ` · ${t.ruleSummary}` : ""}
                     </p>
@@ -283,7 +283,7 @@ function PayoutRow({
           <InitialsAvatar name={payout.professionalName} />
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-              <span className="truncate">{payout.professionalName}</span>
+              <span className="min-w-0 break-words">{payout.professionalName}</span>
               <TeacherPayoutStatusBadge status={payout.status} />
               {inactive ? (
                 <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">
@@ -291,7 +291,7 @@ function PayoutRow({
                 </span>
               ) : null}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="min-w-0 break-words text-xs text-muted-foreground">
               {payout.ruleSummary ?? "Regra removida"}
             </p>
           </div>

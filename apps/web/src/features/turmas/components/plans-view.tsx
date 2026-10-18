@@ -146,7 +146,7 @@ function PlanRow({
       <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
-            <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+            <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
               {plan.name}
             </p>
             <div className="hidden items-center gap-2 sm:flex">

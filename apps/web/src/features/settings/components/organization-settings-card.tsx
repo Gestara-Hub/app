@@ -461,7 +461,7 @@ function OrgUnitForm({
                   <h3 className="font-semibold text-foreground text-sm leading-tight">
                     Identificação do Negócio
                   </h3>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5 font-normal">
+                  <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
                     {businessSummary}
                   </p>
                 </div>
@@ -547,7 +547,7 @@ function OrgUnitForm({
                   <h3 className="font-semibold text-foreground text-sm leading-tight">
                     Endereço da Unidade
                   </h3>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5 font-normal">
+                  <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
                     {addressSummary}
                   </p>
                 </div>
@@ -576,7 +576,7 @@ function OrgUnitForm({
                     <h3 className="font-semibold text-foreground text-sm leading-tight">
                       Regras da mensalidade
                     </h3>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5 font-normal">
+                    <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
                       {billingSummary}
                     </p>
                   </div>

@@ -101,7 +101,7 @@ function ClassRecordsForm({
                   <div className="flex items-center gap-3">
                     <InitialsAvatar name={s.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
+                      <p className="min-w-0 break-words text-sm font-medium text-foreground">{s.name}</p>
                       {reminder ? (
                         <p className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
                           <NotebookPen className="size-3 shrink-0" />

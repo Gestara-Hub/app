@@ -127,7 +127,7 @@ export function Combobox({
           disabled={disabled}
           onBlur={onBlur}
           className={cn(
-            "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
+            "flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1.5 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
             "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
             "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
             "disabled:cursor-not-allowed disabled:opacity-50",
@@ -135,7 +135,7 @@ export function Combobox({
             className,
           )}
         >
-          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+          <span className={cn("min-w-0 break-words", !selected && "text-muted-foreground")}>
             {selected ? selected.label : placeholder}
           </span>
           <span className="flex items-center gap-1">

@@ -142,7 +142,7 @@ function TurmaRow({
       }
     >
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+        <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
           {turma.name}
         </p>
         {turma.modalityName ? (
@@ -244,7 +244,7 @@ function TurmaCard({
       <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+            <p className="min-w-0 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {turma.name}
             </p>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -274,15 +274,15 @@ function TurmaCard({
 
         <div className="space-y-1.5 pt-1 text-xs text-muted-foreground">
           {turma.instructorName ? (
-            <div className="flex items-center gap-1.5 truncate">
+            <div className="flex min-w-0 items-center gap-1.5">
               <User className="size-3.5 shrink-0 text-muted-foreground/60" />
-              <span className="truncate">{turma.instructorName}</span>
+              <span className="min-w-0 break-words">{turma.instructorName}</span>
             </div>
           ) : null}
           {turma.meetingSlots.length > 0 ? (
-            <div className="flex items-center gap-1.5 truncate">
+            <div className="flex min-w-0 items-center gap-1.5">
               <Clock className="size-3.5 shrink-0 text-muted-foreground/60" />
-              <span className="truncate">{slotsSummary(turma.meetingSlots)}</span>
+              <span className="min-w-0 break-words">{slotsSummary(turma.meetingSlots)}</span>
             </div>
           ) : null}
         </div>

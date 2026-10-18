@@ -58,14 +58,14 @@ function Kpi({
     <div className="flex items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
+          <p className="min-w-0 text-xs font-medium text-muted-foreground break-words">{label}</p>
           {badge}
         </div>
         <p className="text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl mt-0.5">
           {value}
         </p>
         {hint ? (
-          <div className="text-xs text-muted-foreground leading-snug mt-0.5 truncate">
+          <div className="min-w-0 text-xs text-muted-foreground leading-snug mt-0.5 break-words">
             {hint}
           </div>
         ) : null}
@@ -311,7 +311,7 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
                           </Badge>
                         ) : null}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <p className="min-w-0 text-xs text-muted-foreground mt-0.5 break-words">
                         Prof. {s.instructorName}
                         {classGroup ? (
                           <span>
@@ -385,7 +385,7 @@ function OccupancyList({ d, scrollClassName }: { d: DashboardData; scrollClassNa
             return (
               <li key={g.id} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-medium truncate">{g.name}</span>
+                  <span className="min-w-0 font-medium break-words">{g.name}</span>
                   <span
                     className={cn(
                       "shrink-0 tabular-nums",

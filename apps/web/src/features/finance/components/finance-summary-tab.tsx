@@ -358,7 +358,7 @@ function VariantSimplified({
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{item.description}</p>
+                        <p className="min-w-0 font-medium text-foreground break-words">{item.description}</p>
                         <p className="text-[11px] text-muted-foreground">
                           {item.source === "teacher_payout" ? "Professor" : "Conta operacional"}
                         </p>
@@ -991,7 +991,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-foreground truncate">{item.description}</p>
+                      <p className="min-w-0 font-medium text-foreground break-words">{item.description}</p>
                       {item.overdue ? (
                         <span className="inline-flex rounded-full bg-destructive/10 px-1.5 py-0.2 text-[10px] font-semibold text-destructive shrink-0">
                           Atrasado

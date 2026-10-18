@@ -585,7 +585,7 @@ export function BillingView() {
                 value={kindFilter}
                 onValueChange={(v) => setKindFilter(v as "all" | ChargeKind)}
               >
-                <SelectTrigger className="sm:w-44" aria-label="Filtrar por tipo">
+                <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por tipo">
                   <SelectValue>{KIND_FILTER_LABEL[kindFilter]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -601,7 +601,7 @@ export function BillingView() {
                 value={statusFilter}
                 onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
               >
-                <SelectTrigger className="sm:w-44" aria-label="Filtrar por situação">
+                <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por situação">
                   <SelectValue>
                     {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
                   </SelectValue>
@@ -763,7 +763,7 @@ export function BillingView() {
                                 <Link
                                   href={`/clients/${group.studentId}`}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+                                  className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
                                 >
                                   {group.studentName}
                                 </Link>
@@ -923,7 +923,7 @@ export function BillingView() {
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
                             href={`/clients/${c.studentId}`}
-                            className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+                            className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
                           >
                             {c.studentName}
                           </Link>

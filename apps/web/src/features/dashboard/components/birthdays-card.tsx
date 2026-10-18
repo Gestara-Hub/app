@@ -86,8 +86,8 @@ export function BirthdaysList({
             >
               <InitialsAvatar name={item.name} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="min-w-0 break-words text-sm font-medium text-foreground">{item.name}</p>
+                <p className="min-w-0 break-words text-xs text-muted-foreground">
                   {ageTurning > 0 ? `Faz ${ageTurning} anos` : "Aniversário"}
                   {item.phone ? ` · ${formatPhone(item.phone)}` : ""}
                 </p>

@@ -298,8 +298,8 @@ function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
       )}
     >
       <Wallet className="size-3 shrink-0 opacity-75" />
-      <span className="truncate max-w-[14rem]">{cleanName}</span>
-      <span className="opacity-50">•</span>
+      <span className="min-w-0 break-words">{cleanName}</span>
+      <span className="opacity-50">·</span>
       <span className="font-semibold tabular-nums">
         {formatCents(effectiveCents)}/{PERIOD_SHORT[period]}
       </span>
@@ -526,7 +526,7 @@ function ClientRow({
               <Link
                 href={`/clients/${client.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors"
+                className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors"
               >
                 {client.name}
               </Link>
@@ -549,15 +549,9 @@ function ClientRow({
                 </span>
               ) : null}
               {client.email ? (
-                <span className="inline-flex items-center gap-1.5 truncate">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
                   <Mail className="size-3 text-muted-foreground/60" />
-                  <span className="truncate">{client.email}</span>
-                </span>
-              ) : null}
-              {client.notes ? (
-                <span className="inline-flex items-center gap-1.5 truncate text-muted-foreground/70 max-w-sm">
-                  <span className="text-muted-foreground/30">·</span>
-                  <span className="truncate italic">{client.notes}</span>
+                  <span className="break-all">{client.email}</span>
                 </span>
               ) : null}
             </div>
@@ -748,7 +742,7 @@ function ClientCard({
               <Link
                 href={`/clients/${client.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="block truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors"
+                className="min-w-0 block break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors"
               >
                 {client.name}
               </Link>
@@ -798,9 +792,9 @@ function ClientCard({
           <span className="text-muted-foreground/60">Sem telefone</span>
         )}
         {client.email ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+          <span className="inline-flex min-w-0 items-center gap-1.5">
             <Mail className="size-3.5 shrink-0 text-muted-foreground/60" />
-            <span className="truncate">{client.email}</span>
+            <span className="break-all">{client.email}</span>
           </span>
         ) : null}
       </div>

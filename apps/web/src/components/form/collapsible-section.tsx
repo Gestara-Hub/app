@@ -54,7 +54,7 @@ export function CollapsibleSection({
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-foreground truncate">
+              <span className="min-w-0 text-sm font-medium text-foreground break-words">
                 {title}
               </span>
               {badge && (
@@ -68,7 +68,7 @@ export function CollapsibleSection({
               )}
             </div>
             {subtitle && (
-              <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+              <p className="min-w-0 text-xs text-muted-foreground break-words">{subtitle}</p>
             )}
           </div>
         </div>

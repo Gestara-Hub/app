@@ -102,7 +102,7 @@ function ModalityRow({
       }
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <p className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+        <p className="min-w-0 font-medium text-sm text-foreground break-words group-hover:text-primary transition-colors">
           {modality.name}
         </p>
         <RecordStatusBadge status={modality.status} />
@@ -182,13 +182,13 @@ function ModalityCard({
         <InitialsAvatar name={modality.name} size="default" />
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+            <p className="min-w-0 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {modality.name}
             </p>
             <RecordStatusBadge status={modality.status} />
           </div>
           {trackSummary ? (
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="min-w-0 break-words text-xs text-muted-foreground">
               {trackSummary}
             </p>
           ) : null}

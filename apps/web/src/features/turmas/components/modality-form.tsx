@@ -839,7 +839,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                                         />
                                       ) : null}
                                     </span>
-                                    <span className="truncate">
+                                    <span className="min-w-0 break-words">
                                       {step.tipColor &&
                                       step.tipColor !== step.color
                                         ? `${BELT_COLOR_META[step.color ?? "slate"]?.label}/${BELT_COLOR_META[step.tipColor]?.label}`
@@ -928,7 +928,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                                                 .swatchClass,
                                             )}
                                           />
-                                          <span className="truncate">
+                                          <span className="min-w-0 break-words">
                                             {BELT_COLOR_META[colorKey].label}
                                           </span>
                                         </button>

@@ -87,7 +87,7 @@ export function SelectField<T extends FieldValues>({
                     disabled={disabled}
                     {...fieldAria(fieldId, fieldState.error?.message, hint)}
                     className={cn(
-                      "flex h-9 w-full items-center rounded-md border border-input bg-transparent py-2 pl-3 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
+                      "flex min-h-9 w-full items-center rounded-md border border-input bg-transparent py-1.5 pl-3 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
                       "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
                       "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
                       "disabled:cursor-not-allowed disabled:opacity-50",
@@ -95,7 +95,7 @@ export function SelectField<T extends FieldValues>({
                       !selected && "text-muted-foreground",
                     )}
                   >
-                    <span className="truncate">
+                    <span className="min-w-0 break-words">
                       {selected ? (selected.shortLabel ?? selected.label) : placeholder}
                     </span>
                   </button>

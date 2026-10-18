@@ -165,7 +165,7 @@ export function BeltBadge({
       )}
 
       {showLabel ? (
-        <span className="truncate">
+        <span className="min-w-0 break-words">
           {modalityName ? (
             <span className="opacity-75 font-normal">{modalityName}: </span>
           ) : null}
