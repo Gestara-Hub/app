@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { addDays, differenceInCalendarDays, parseISO } from "date-fns";
 import type {
   DateISO,
   EvaluationEntryTone,
+  Id,
   ModalityProgressionTrack,
   ProgressionLevelStep,
   StudentModalityOverviewItem,
@@ -59,16 +61,29 @@ export function levelOf(
 
 /**
  * Lembrete "Para hoje": o "Para a próxima aula" do registro mais recente
- * ANTES da data da aula (o registro da propria aula vale para a seguinte).
+ * ANTES da data da aula (o registro da propria aula vale para a seguinte), e
+ * so na primeira aula depois dele. Na mesma turma, nenhum encontro dela entre
+ * o registro e esta aula (`weekdays` = dias da turma); sem saber os dias ou em
+ * outra turma, vale por ate 7 dias.
  */
 export function nextClassReminder(
   progression: StudentModalityProgression | undefined,
   beforeDate: DateISO,
+  current?: { classGroupId?: Id; weekdays?: readonly number[] },
 ): string | undefined {
   const latest = [...(progression?.evaluations ?? [])]
     .filter((e) => e.date < beforeDate)
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))[0];
-  return latest?.nextClassNote || undefined;
+  if (!latest?.nextClassNote) return undefined;
+  const recordDay = parseISO(latest.date);
+  const sessionDay = parseISO(beforeDate);
+  if (current?.weekdays?.length && current.classGroupId && latest.classGroupId === current.classGroupId) {
+    for (let day = addDays(recordDay, 1); day < sessionDay; day = addDays(day, 1)) {
+      if (current.weekdays.includes(day.getDay())) return undefined;
+    }
+    return latest.nextClassNote;
+  }
+  return differenceInCalendarDays(sessionDay, recordDay) <= 7 ? latest.nextClassNote : undefined;
 }
 
 /** Modalidades com trilha em que o aluno esta matriculado, e a escolhida. */

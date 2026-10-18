@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { plural } from "@gestarahub/core/format";
 import { classBillingMode, MAX_INSTALLMENTS } from "@gestarahub/core/billing";
@@ -39,6 +40,7 @@ import {
   weekdayOf,
 } from "@gestarahub/core/scheduling";
 import type {
+  ClassBillingMode,
   ClassGroupView,
   CreateClassGroup,
   Unit,
@@ -620,6 +622,14 @@ function MeetingSlotsEditor({
   );
 }
 
+/** O que muda para quem ja esta matriculado ao trocar a forma de cobranca. */
+const BILLING_CHANGE_TEXT: Record<ClassBillingMode, string> = {
+  membership: "Eles passam a pagar pela mensalidade do plano de cada um.",
+  package: "Cada presença passa a gastar uma aula do pacote; quem não tem fica \"Sem pacote\".",
+  course: "As matrículas atuais não ganham parcelas do curso; só as novas.",
+  free: "A turma deixa de cobrar das próximas aulas.",
+};
+
 export function TurmaForm({
   turma,
   formId,
@@ -631,6 +641,7 @@ export function TurmaForm({
 }) {
   const createMut = useCreateClassGroup();
   const updateMut = useUpdateClassGroup();
+  const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const isEdit = Boolean(turma);
   const pending = createMut.isPending || updateMut.isPending;
   const { data: unit } = useUnit();
@@ -890,6 +901,17 @@ export function TurmaForm({
     }
 
     const mode = values.billingMode;
+    // Trocar a forma de cobranca com alunos matriculados diz o que muda antes.
+    if (turma && turma.enrolledCount > 0 && classBillingMode(turma) !== mode) {
+      const fromCourse = classBillingMode(turma) === "course";
+      const ok = await confirmAction({
+        title: "Mudar a forma de cobrança?",
+        description: `${plural(turma.enrolledCount, "aluno matriculado", "alunos matriculados")}. ${BILLING_CHANGE_TEXT[mode]}${fromCourse ? " A data de fim do curso sai." : ""}`,
+        confirmLabel: "Mudar a cobrança",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     // Turma sem cobranca nao aceita avulso pago.
     const dropin = mode !== "free" && values.allowDropin;
     const payload: CreateClassGroup = {
@@ -953,6 +975,7 @@ export function TurmaForm({
   }));
   return (
     <FormProvider {...form}>
+      {confirmDialog}
       <form
         id={formId}
         onSubmit={onSubmit}

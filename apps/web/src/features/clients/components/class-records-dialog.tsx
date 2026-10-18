@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import type { Client, DateISO, EvaluationEntryTone, Id } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { plural } from "@gestarahub/core/format";
-import { relativeDateLabel, todayISO } from "@gestarahub/core/date";
+import { todayISO } from "@gestarahub/core/date";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,8 @@ export interface ClassRecordsSession {
   classGroupId: Id;
   classGroupName: string;
   modalityId: Id;
+  /** Dias da semana da turma (lembrete "Para hoje" so na 1a aula depois do registro). */
+  weekdays?: number[];
 }
 
 function ClassRecordsForm({
@@ -41,9 +43,18 @@ function ClassRecordsForm({
   onDone: () => void;
 }) {
   const addMut = useAddClassRecords();
-  const [classNote, setClassNote] = useState("");
-  const [tones, setTones] = useState<Record<string, EvaluationEntryTone | undefined>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  // Aula ja registrada: abre com o que foi salvo (salvar de novo troca, nao duplica).
+  const existing = (s: Client) =>
+    s.progressions?.[session.modalityId]?.evaluations.find((e) => e.sessionId === session.sessionId);
+  const [classNote, setClassNote] = useState(
+    () => students.map((s) => existing(s)?.classNote).find(Boolean) ?? "",
+  );
+  const [tones, setTones] = useState<Record<string, EvaluationEntryTone | undefined>>(() =>
+    Object.fromEntries(students.map((s) => [s.id, existing(s)?.tone])),
+  );
+  const [notes, setNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(students.map((s) => [s.id, existing(s)?.note ?? ""])),
+  );
   const [openNote, setOpenNote] = useState<string | null>(null);
 
   const marked = students.filter((s) => tones[s.id] || notes[s.id]?.trim()).length;
@@ -74,7 +85,7 @@ function ClassRecordsForm({
             id="class-note"
             value={classNote}
             onChange={(e) => setClassNote(e.target.value)}
-            placeholder="Informe o que foi treinado hoje (opcional)"
+            placeholder="Informe o que foi treinado (opcional)"
             className="text-base md:text-sm"
           />
           <p className="text-xs text-muted-foreground">Com anotação, entra no registro de todos os presentes.</p>
@@ -83,7 +94,7 @@ function ClassRecordsForm({
         <TooltipProvider delayDuration={200}>
           <ul className="divide-y rounded-xl border" aria-label="Presentes">
             {students.map((s) => {
-              const reminder = nextClassReminder(s.progressions?.[session.modalityId], session.date);
+              const reminder = nextClassReminder(s.progressions?.[session.modalityId], session.date, session);
               const hasNote = Boolean(notes[s.id]?.trim());
               return (
                 <li key={s.id} className="space-y-2 px-3 py-2.5">
@@ -185,7 +196,11 @@ export function ClassRecordsDialog({
   session: ClassRecordsSession | null;
   students: Client[];
 }) {
-  const when = session ? (session.date === todayISO() ? "hoje" : relativeDateLabel(session.date)) : "";
+  const when = session
+    ? session.date === todayISO()
+      ? "hoje"
+      : `${session.date.slice(8, 10)}/${session.date.slice(5, 7)}`
+    : "";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">

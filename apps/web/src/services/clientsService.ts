@@ -313,6 +313,13 @@ function validateClient(
   if (fields.length > 0) throw validationError(fields);
 }
 
+/** Registro de aula so no dia da aula ou depois. */
+function assertRecordDate(date: DateISO): void {
+  if (date > todayISO()) {
+    throw validationError([{ field: "date", message: "Registre a aula no dia dela ou depois." }]);
+  }
+}
+
 /**
  * Inativar encerra as matriculas (decisao de 18/10/2026): a vaga libera e o
  * aluno sai das chamadas. Curso em andamento: as parcelas futuras saem e as
@@ -809,6 +816,7 @@ export const clientsService = {
   /** Registro de aula de um aluno: anotacao, avanco de metas e lembrete. */
   addClassRecord(payload: CreateStudentClassRecord): Promise<Client> {
     return simulateWrite(() => {
+      assertRecordDate(payload.date);
       assertCanManageProgression(payload.studentId, {
         modalityId: payload.modalityId,
         classGroupId: payload.classGroupId,
@@ -851,6 +859,7 @@ export const clientsService = {
    */
   addClassRecords(payload: CreateClassRecordsBatch): Promise<number> {
     return simulateWrite(() => {
+      assertRecordDate(payload.date);
       for (const entry of payload.entries) {
         assertCanManageProgression(entry.studentId, {
           modalityId: payload.modalityId,
@@ -860,11 +869,23 @@ export const clientsService = {
       }
       const classNote = payload.classNote?.trim() ?? "";
       let created = 0;
+      let removed = 0;
       for (const entry of payload.entries) {
         const note = entry.note?.trim() ?? "";
-        if (!entry.tone && !note && !classNote) continue;
         const idx = store.clients.findIndex((c) => c.id === entry.studentId);
         if (idx === -1) continue;
+        // Um registro por aluno e aula: registrar de novo troca o anterior.
+        const current = store.clients[idx].progressions?.[payload.modalityId];
+        const hadRecord = Boolean(current?.evaluations.some((e) => e.sessionId === payload.sessionId));
+        if (!entry.tone && !note && !classNote) {
+          if (hadRecord && current) {
+            const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
+            progression.evaluations = progression.evaluations.filter((e) => e.sessionId !== payload.sessionId);
+            writeProgression(idx, progression);
+            removed += 1;
+          }
+          continue;
+        }
         const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
         progression.evaluations = [
           newClassRecord({
@@ -876,12 +897,12 @@ export const clientsService = {
             note,
             ...(classNote ? { classNote } : {}),
           }),
-          ...progression.evaluations,
+          ...progression.evaluations.filter((e) => e.sessionId !== payload.sessionId),
         ];
         writeProgression(idx, progression);
         created += 1;
       }
-      if (created === 0) {
+      if (created === 0 && removed === 0) {
         throw validationError([{ field: "entries", message: "Marque ao menos um aluno ou escreva a anotação da turma." }]);
       }
       auditLogService.record({

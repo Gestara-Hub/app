@@ -290,6 +290,32 @@ describe("addClassRecords (registro em lote pela chamada)", () => {
     });
   });
 
+  it("registrar a mesma aula de novo troca o registro, sem duplicar", async () => {
+    const a = await createStudent("Ana");
+    await clientsService.addClassRecords({ ...base, modalityId: bjj, entries: [{ studentId: a.id, tone: "positive" }] });
+    await clientsService.addClassRecords({
+      ...base,
+      modalityId: bjj,
+      entries: [{ studentId: a.id, tone: "attention", note: "Cansado" }],
+    });
+    const records = (await stored(a.id, bjj)).evaluations.filter((e) => e.sessionId === base.sessionId);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ tone: "attention", note: "Cansado" });
+  });
+
+  it("aula futura nao tem registro", async () => {
+    const a = await createStudent("Ana");
+    await expect(
+      clientsService.addClassRecords({
+        ...base,
+        sessionId: "grp-1~2026-09-29~19:00",
+        date: "2026-09-29",
+        modalityId: bjj,
+        entries: [{ studentId: a.id, tone: "positive" }],
+      }),
+    ).rejects.toMatchObject({ fields: [{ field: "date", message: "Registre a aula no dia dela ou depois." }] });
+  });
+
   it("nenhum registro criado vira erro de validacao em entries, sem auditoria", async () => {
     const a = await createStudent("Ana");
     const auditBefore = store.auditLog.length;

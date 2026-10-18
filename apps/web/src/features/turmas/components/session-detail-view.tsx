@@ -253,15 +253,18 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   };
 
   // Registro de aula: so com trilha na modalidade (os registros ficam nela).
-  const recordSession = modalityTrack?.modalityId
-    ? {
-        sessionId: session.id,
-        date: session.date,
-        classGroupId: session.classGroupId,
-        classGroupName: session.className,
-        modalityId: modalityTrack.modalityId,
-      }
-    : null;
+  // Aula futura nao tem registro (so no dia ou depois).
+  const recordSession =
+    modalityTrack?.modalityId && !isFutureSession
+      ? {
+          sessionId: session.id,
+          date: session.date,
+          classGroupId: session.classGroupId,
+          classGroupName: session.className,
+          modalityId: modalityTrack.modalityId,
+          weekdays: turma?.meetingSlots.map((slot) => slot.weekday),
+        }
+      : null;
   const presentStudents = roster
     .filter((r) => r.attendance === "present")
     .map((r) => clientById.get(r.studentId))
@@ -338,8 +341,18 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     }
   };
 
-  // Concluir: quem nao foi marcado vira falta.
+  // Concluir: quem nao foi marcado vira falta. Sem nenhum presente, confirma
+  // antes (falta gasta pacote e entra no "Sentimos sua falta").
   const concludeAttendance = async () => {
+    if (counts.present === 0) {
+      const ok = await confirmAction({
+        title: "Ninguém veio?",
+        description: `Os ${plural(counts.pending, "aluno fica", "alunos ficam")} com falta.`,
+        confirmLabel: "Marcar falta em todos",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     try {
       const absences = await markPending("absent");
       toast.success(
@@ -523,7 +536,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
             const currentSub = prog?.subLevel ?? 0;
             const isBelt = resolveTrackStyle(modalityTrack?.track) === "belt";
             // "Para a próxima aula" do registro anterior vira o lembrete de hoje.
-            const reminder = modalityTrack ? nextClassReminder(prog, session.date) : undefined;
+            const reminder = modalityTrack
+              ? nextClassReminder(prog, session.date, {
+                  classGroupId: session.classGroupId,
+                  weekdays: turma?.meetingSlots.map((slot) => slot.weekday),
+                })
+              : undefined;
             const markActions: ListItemAction[] = marking
               ? [
                   ...(r.attendance !== "absent"
@@ -730,7 +748,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
               {recordSession && canProgress && presentStudents.length > 0 ? (
                 <Button variant="outline" onClick={() => setClassRecordsOpen(true)}>
                   <MessageSquarePlus className="size-4" />
-                  Registrar a aula
+                  {presentStudents.some((c) =>
+                    c.progressions?.[recordSession.modalityId]?.evaluations.some((e) => e.sessionId === session.id),
+                  )
+                    ? "Editar registro da aula"
+                    : "Registrar a aula"}
                 </Button>
               ) : null}
             </>

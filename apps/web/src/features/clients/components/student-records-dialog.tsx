@@ -57,6 +57,8 @@ export interface ClassRecordContext {
   classGroupId?: Id;
   classGroupName?: string;
   modalityId?: Id;
+  /** Dias da semana da turma (lembrete "Para hoje"). */
+  weekdays?: number[];
 }
 
 const PAGE_SIZE = 10;
@@ -229,7 +231,7 @@ function Composer({
 
   const isToday = context.date === todayISO();
   const label = context.classGroupName
-    ? `${isToday ? "Aula de hoje" : `Aula de ${relativeDateLabel(context.date)}`} · ${context.classGroupName}`
+    ? `${isToday ? "Aula de hoje" : `Aula de ${context.date.slice(8, 10)}/${context.date.slice(5, 7)}`} · ${context.classGroupName}`
     : "Registro de hoje";
 
   async function save() {
@@ -405,7 +407,7 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
   const records = [...(progression?.evaluations ?? [])].sort(
     (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
   );
-  const reminder = nextClassReminder(progression, context.date);
+  const reminder = nextClassReminder(progression, context.date, context);
   const goalKeys = new Set(goals.map((g) => normalizeText(g.title)));
   const goalSuggestions = (suggestions?.goals ?? []).filter((t) => !goalKeys.has(normalizeText(t)));
   // A aula da chamada so vale para a propria modalidade.

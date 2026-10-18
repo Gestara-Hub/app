@@ -596,7 +596,8 @@ export function EnrollStudentsDialog({
           </p>
         )}
 
-        <DialogFooter>
+        {/* Lotada: dois botoes de texto longo, empilhados no celular. */}
+        <DialogFooter className={cn(isFull && "max-sm:grid-cols-1")}>
           {isFull ? (
             <Button
               variant="outline"
