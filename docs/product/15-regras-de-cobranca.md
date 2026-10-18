@@ -184,6 +184,35 @@ Fase D do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - Os dois modelos ficam em Comunicação > Mensagens (texto editável por todos; envio automático e horário só no Pro) e no Histórico. Migração do mock v36 adiciona os dois aos espaços que já tinham modelos, com o texto da área.
 
 
+## Modelos na mensagem para o aluno (17/10/2026)
+
+A mensagem para um aluno ("Enviar WhatsApp" no menu do aluno em Alunos, "Nova mensagem" na ficha e em Comunicação) mostra **chips "Modelos"** abaixo do campo. Um clique preenche o texto com o nome do aluno e do espaço; dá para editar antes de enviar. O envio registra o tipo do modelo e a cobrança ligada, como os atalhos de cada tela.
+
+**Pela situação do aluno**, nesta ordem (`messageSuggestions`, `apps/web/src/features/communication/message-suggestions.ts`):
+
+| Chip | Quando aparece | Modelo |
+|---|---|---|
+| "Mensalidade a vencer", "Mensalidade vence hoje", "Mensalidade em atraso" | Mensalidade em atraso ou vencendo em até 7 dias (a mais urgente) | Lembrete da situação, ligado à cobrança |
+| "Lembrete de cobrança" | Avulsa, curso ou pacote em atraso ou vencendo em até 7 dias (a mais urgente) | `charge_reminder`, ligado à cobrança |
+| "Sentimos sua falta" | 3 faltas seguidas (a mesma conta do Dashboard) | `absence_alert` |
+| "Pacote acabando" | Mesma regra do "Para fazer hoje" (`selectEndingPackages`, agora em `apps/web/src/lib/package-ending.ts`) | `package_ending` |
+| "Aniversário" | No dia e até 6 dias depois | `birthday_greeting` |
+| "Parabéns pelo avanço" | Avanço nos últimos 14 dias (o mais recente) | `level_up`, com `{nivel}` = nome do nível ("Faixa Azul") |
+| "Pagamento recebido" | Pagamento nos últimos 7 dias (o mais recente) | `payment_received`, ligado à cobrança; `{referencia}` "mensalidade de outubro" ou a referência do lembrete |
+| "Boas-vindas" | Até 7 dias depois do cadastro | `welcome_student` |
+
+**Sempre**, depois desses: "Aula cancelada", "Mudança de horário" e "Feriado ou recesso".
+
+**Modelos novos, só de envio manual** (`payment_received`, `level_up`, `class_canceled`, `schedule_change`, `holiday_notice`): ficam em Comunicação > Mensagens para editar o texto (Avisos é um grupo novo), sem envio automático nem no Pro (o serviço recusa "Este modelo é só de envio manual."), e não contam nas automações ativas. Textos padrão (lutas fala em treino):
+- Pagamento recebido: "Oi, {aluno}! Recebemos o pagamento de {valor} da {referencia}. Obrigado!" + o fecho da área.
+- Parabéns pelo avanço: "Parabéns, {aluno}! 🎉 Nova conquista na {empresa}: {nivel}. É resultado da sua dedicação." + o fecho da área.
+- Aula cancelada: "Oi, {aluno}! A aula de hoje na {empresa} foi cancelada. Desculpe o transtorno, nos vemos na próxima aula!"
+- Mudança de horário: "Oi, {aluno}! Aviso da {empresa}: sua turma vai mudar de horário. Novo horário:" (a pessoa completa).
+- Feriado ou recesso: "Oi, {aluno}! Aviso da {empresa}: no feriado não teremos aula. Bom descanso e até a volta!"
+
+"Pagamento recebido" é da categoria cobrança, mas não entra no "Recebido depois de lembrete" (que agora conta só os lembretes). Migração do mock v37 adiciona os cinco aos espaços que já tinham modelos, com o texto da área. Avisar a turma toda de uma vez fica para depois (na tela da turma).
+
+
 ## Certificado de conclusão do curso (14/10/2026)
 
 Fase D. **Recurso do Plano Pro** (`certificates`, Pro e Scale).

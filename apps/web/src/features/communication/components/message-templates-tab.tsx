@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { HeartHandshake, Pencil, Wallet } from "lucide-react";
+import { HeartHandshake, Megaphone, Pencil, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { fillMessage } from "@/lib/whatsapp";
+import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
@@ -36,6 +36,8 @@ function TemplateCard({
   const updateMut = useUpdateTemplate();
   const meta = TRIGGER_META[template.trigger];
   const preview = fillMessage(template.content, sampleValues(orgName, withPaymentLink));
+  // Modelo so de envio manual: sem interruptor nem prazo, nem no oficial.
+  const automatic = official && !isManualTrigger(template.trigger);
 
   function toggle(enabled: boolean) {
     updateMut.mutate(
@@ -48,13 +50,13 @@ function TemplateCard({
   }
 
   return (
-    <div className={cn("space-y-3 rounded-xl border bg-card p-4", official && !template.enabled && "opacity-75")}>
+    <div className={cn("space-y-3 rounded-xl border bg-card p-4", automatic && !template.enabled && "opacity-75")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{meta.label}</p>
-          <p className="text-xs text-muted-foreground">{official ? automationTiming(template) : meta.where}</p>
+          <p className="text-xs text-muted-foreground">{automatic ? automationTiming(template) : meta.where}</p>
         </div>
-        {official ? (
+        {automatic ? (
           <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
             Automático
             <Switch
@@ -84,13 +86,19 @@ const GROUPS = [
     category: "billing" as const,
     title: "Cobrança",
     icon: Wallet,
-    hint: "Lembretes de mensalidade e das outras cobranças.",
+    hint: "Lembretes das cobranças e pagamento recebido.",
   },
   {
     category: "retention" as const,
     title: "Relacionamento",
     icon: HeartHandshake,
-    hint: "Boas-vindas, faltas, pacote acabando e aniversário.",
+    hint: "Boas-vindas, faltas, pacote, aniversário e avanço.",
+  },
+  {
+    category: "administrative" as const,
+    title: "Avisos",
+    icon: Megaphone,
+    hint: "Aula cancelada, mudança de horário e feriado.",
   },
 ];
 

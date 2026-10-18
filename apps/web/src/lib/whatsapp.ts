@@ -1,7 +1,22 @@
+import type { MessageTrigger } from "@gestarahub/contracts";
+
 /**
  * WhatsApp do proprio espaco: numero no formato do `wa.me`, link com o texto
  * pronto (envio assistido) e preenchimento das variaveis dos modelos.
  */
+
+/** Modelos so de envio manual: sem envio automatico, nem no WhatsApp oficial. */
+export const MANUAL_MESSAGE_TRIGGERS: readonly MessageTrigger[] = [
+  "payment_received",
+  "level_up",
+  "class_canceled",
+  "schedule_change",
+  "holiday_notice",
+];
+
+export function isManualTrigger(trigger: MessageTrigger): boolean {
+  return MANUAL_MESSAGE_TRIGGERS.includes(trigger);
+}
 
 /**
  * "(11) 99999-8888" -> "5511999998888" (o wa.me pede DDI). O 0 de ligacao

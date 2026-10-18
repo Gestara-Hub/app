@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Check } from "lucide-react";
 import { formatPhone } from "@gestarahub/core/format";
 import { ComboboxField, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -14,8 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
-import { useMessageRecipients, useWhatsAppSend } from "../hooks/use-communication";
+import { useMessageRecipients, useMessageSuggestions, useWhatsAppSend } from "../hooks/use-communication";
+import type { MessageSuggestion } from "../message-suggestions";
 
 const schema = z.object({
   clientId: z.string({ error: "Selecione o aluno." }).min(1, "Selecione o aluno."),
@@ -41,6 +45,46 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
   const clientId = useWatch({ control: form.control, name: "clientId" });
   const recipient = clients.find((c) => c.id === clientId);
   const noPhone = Boolean(recipient && !whatsappNumber(recipient.phone));
+  const suggestions = useMessageSuggestions(recipient?.id);
+  // Modelo escolhido (o envio leva o tipo dele e a cobranca ligada).
+  const [chosen, setChosen] = useState<MessageSuggestion | null>(null);
+  // Texto que o modelo montou: trocar o aluno com ele intacto limpa o campo.
+  const chosenText = useRef<string | null>(null);
+
+  useEffect(
+    () =>
+      form.subscribe({
+        name: ["clientId", "content"],
+        formState: { values: true },
+        callback: ({ values, name }) => {
+          const switchedStudent = name === "clientId";
+          if (!switchedStudent && values.content?.trim()) return;
+          if (switchedStudent && chosenText.current !== null && values.content === chosenText.current) {
+            form.setValue("content", "");
+          }
+          // Campo apagado ou outro aluno: volta a ser mensagem avulsa.
+          chosenText.current = null;
+          setChosen(null);
+        },
+      }),
+    [form],
+  );
+
+  // So os modelos que existem (o texto sai do modelo salvo em Comunicacao).
+  const templates = recipient
+    ? suggestions.flatMap((suggestion) => {
+        const text = whatsapp.compose(suggestion.trigger, suggestion.values, recipient.name);
+        return text ? [{ suggestion, text }] : [];
+      })
+    : [];
+
+  function applyTemplate(item: { suggestion: MessageSuggestion; text: string }) {
+    form.setValue("content", item.text, { shouldDirty: true, shouldValidate: form.formState.isSubmitted });
+    chosenText.current = item.text;
+    setChosen(item.suggestion);
+    // No toque, sem foco automatico (o teclado cobriria a tela).
+    if (!window.matchMedia("(pointer: coarse)").matches) form.setFocus("content");
+  }
 
   const options = clients.map((c) => ({
     value: c.id,
@@ -55,9 +99,10 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
       return;
     }
     whatsapp.send({
-      trigger: "manual_broadcast",
+      trigger: chosen?.trigger ?? "manual_broadcast",
       recipient: { name: client.name, phone: client.phone, clientId: client.id },
       content: values.content,
+      chargeId: chosen?.chargeId,
     });
     onDone();
   });
@@ -85,10 +130,37 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
           <TextArea<FormValues>
             name="content"
             label="Mensagem"
-            placeholder="Escreva a mensagem para o aluno"
+            placeholder="Escreva a mensagem ou use um modelo"
             rows={5}
             required
           />
+          {templates.length > 0 ? (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Modelos</p>
+              <div className="flex flex-wrap gap-1.5">
+                {templates.map((item) => {
+                  const active = chosen?.key === item.suggestion.key;
+                  return (
+                    <button
+                      key={item.suggestion.key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => applyTemplate(item)}
+                      className={cn(
+                        "inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs transition-colors",
+                        active
+                          ? "border-primary bg-primary/10 font-medium text-foreground"
+                          : "text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+                      )}
+                    >
+                      {active ? <Check className="size-3" /> : null}
+                      {item.suggestion.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </DialogBody>
         <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
           <Button type="button" variant="outline" onClick={onDone}>

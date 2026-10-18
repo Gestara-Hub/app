@@ -285,6 +285,8 @@ Confirmações: "Cancelar pacote?" ("O pacote {nome} de {aluno} é cancelado. As
 
 WhatsApp (fase D): "Lembrar no WhatsApp" em toda cobrança em aberto menos a aula avulsa; modelos novos **"Lembrete de cobrança"** e **"Pacote acabando"** em Comunicação > Mensagens e no Histórico. No Dashboard, "Para fazer hoje" ganha **"N pacotes acabando"** (Ver → "Avisar" no WhatsApp, que vira "Avisado hoje", e "Vender pacote").
 
+Mensagem para o aluno (17/10/2026): **"Enviar WhatsApp"** no menu do aluno em Alunos (logo depois de "Abrir ficha"; só com telefone com DDD e `communication:view`) abre "Mensagem para {aluno}". Placeholder "Escreva a mensagem ou use um modelo" e chips **"Modelos"** abaixo do campo: os da situação do aluno e os avisos "Aula cancelada", "Mudança de horário" e "Feriado ou recesso" (regras em [15](15-regras-de-cobranca.md), "Modelos na mensagem para o aluno"). Comunicação > Mensagens ganha o grupo **"Avisos"**; modelo manual mostra onde aparece ("Mensagem para o aluno: sempre"), sem o interruptor "Automático".
+
 ## Empty states com call-to-action (Modelo 1)
 
 Estados vazios "sem dados" orientam a proxima acao; "por busca/filtro" oferecem limpar, nao cadastrar.

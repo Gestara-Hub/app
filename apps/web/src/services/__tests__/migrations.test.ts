@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 36;
+const CURRENT_VERSION = 37;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -656,6 +656,48 @@ describe("v36: modelos de WhatsApp do lembrete de cobrança e do pacote acabando
     expect(find(store, "charge_reminder")).toHaveLength(1);
     expect(find(store, "charge_reminder")[0].content).toBe("Já editado");
     expect(find(store, "package_ending")).toHaveLength(1);
+    expect(saved()?.data.tenants[otherId].messageTemplates).toEqual([]);
+  });
+});
+
+describe("v37: modelos de WhatsApp so de envio manual", () => {
+  const MANUAL = ["payment_received", "level_up", "class_canceled", "schedule_change", "holiday_notice"] as const;
+  const MANUAL_SET = new Set<MessageTemplate["trigger"]>(MANUAL);
+  const find = (t: MockStore, trigger: MessageTemplate["trigger"]) =>
+    t.messageTemplates.filter((x) => x.trigger === trigger);
+
+  it("adiciona os cinco uma vez, desligados e com o texto da área do espaço", async () => {
+    const world = oldWorld((t) => {
+      t.organization.classSegment = "martial_arts";
+      t.messageTemplates = defaultMessageTemplates(t.organization.id, "martial_arts").filter(
+        (x) => !MANUAL_SET.has(x.trigger),
+      );
+      t.messageTemplates.find((x) => x.trigger === "birthday_greeting")!.content = "Texto meu";
+    });
+    const before = world.tenants[ACADEMY_ORG].messageTemplates.length;
+    const { store, saved } = await hydrate(36, world);
+    const own = defaultMessageTemplates(ACADEMY_ORG, "martial_arts");
+    expect(store.messageTemplates).toHaveLength(before + MANUAL.length);
+    for (const trigger of MANUAL) {
+      expect(find(store, trigger)).toEqual([own.find((x) => x.trigger === trigger)]);
+      expect(find(store, trigger)[0].enabled).toBe(false);
+    }
+    expect(find(store, "class_canceled")[0].content).toContain("treino");
+    expect(find(store, "birthday_greeting")[0].content).toBe("Texto meu");
+    expect(saved()?.v).toBe(CURRENT_VERSION);
+  });
+
+  it("não duplica quem já tem e não mexe em quem está sem modelos", async () => {
+    const world = oldWorld((t) => {
+      t.messageTemplates.find((x) => x.trigger === "holiday_notice")!.content = "Já editado";
+      t.messageTemplates = t.messageTemplates.filter((x) => x.trigger !== "level_up");
+    });
+    const otherId = Object.keys(world.tenants).find((id) => id !== ACADEMY_ORG)!;
+    world.tenants[otherId].messageTemplates = [];
+    const { store, saved } = await hydrate(36, world);
+    expect(find(store, "holiday_notice")).toHaveLength(1);
+    expect(find(store, "holiday_notice")[0].content).toBe("Já editado");
+    expect(find(store, "level_up")).toHaveLength(1);
     expect(saved()?.data.tenants[otherId].messageTemplates).toEqual([]);
   });
 });

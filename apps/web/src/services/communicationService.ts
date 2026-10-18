@@ -5,6 +5,7 @@ import type {
   MessageCategory,
   MessageLog,
   MessageTemplate,
+  MessageTrigger,
   SendMessagePayload,
   UpdateConnectionSettingsPayload,
   UpdateTemplatePayload,
@@ -13,7 +14,7 @@ import type {
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
-import { fillMessage, whatsappNumber } from "@/lib/whatsapp";
+import { fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
 import {
   apiError,
   newId,
@@ -62,10 +63,31 @@ function ensureLogs(): MessageLog[] {
   return store.messageLogs;
 }
 
-function categoryOf(trigger?: string): MessageCategory {
-  if (trigger?.startsWith("billing") || trigger === "charge_reminder") return "billing";
-  if (trigger === "manual_broadcast" || !trigger) return "administrative";
-  return "retention";
+const TRIGGER_CATEGORY: Record<MessageTrigger, MessageCategory> = {
+  billing_before_due: "billing",
+  billing_due_date: "billing",
+  billing_after_due: "billing",
+  billing_critical: "billing",
+  charge_reminder: "billing",
+  payment_received: "billing",
+  welcome_student: "retention",
+  absence_alert: "retention",
+  birthday_greeting: "retention",
+  package_ending: "retention",
+  level_up: "retention",
+  class_canceled: "administrative",
+  schedule_change: "administrative",
+  holiday_notice: "administrative",
+  manual_broadcast: "administrative",
+};
+
+function categoryOf(trigger?: MessageTrigger): MessageCategory {
+  return trigger ? TRIGGER_CATEGORY[trigger] : "administrative";
+}
+
+/** Lembretes de cobranca: os que contam no valor recuperado. */
+function isBillingReminder(trigger: MessageTrigger): boolean {
+  return trigger.startsWith("billing") || trigger === "charge_reminder";
 }
 
 function validateMessage(payload: SendMessagePayload): void {
@@ -221,7 +243,12 @@ export const communicationService = {
         (payload.enabled !== undefined && payload.enabled !== template.enabled) ||
         (payload.sendHour !== undefined && payload.sendHour !== template.sendHour) ||
         (payload.daysOffset !== undefined && payload.daysOffset !== template.daysOffset);
-      if (automationChange) assertFeature("messaging");
+      if (automationChange) {
+        if (isManualTrigger(template.trigger)) {
+          throw validationError([{ field: "enabled", message: "Este modelo é só de envio manual." }]);
+        }
+        assertFeature("messaging");
+      }
 
       if (payload.content !== undefined) {
         if (!payload.content.trim()) {
@@ -329,7 +356,8 @@ export const communicationService = {
 
       // Recuperado: mensalidade paga no mes depois de um lembrete de cobranca
       // ligado a ela (ou ao aluno) pelo WhatsApp.
-      const billingLogs = ensureLogs().filter((l) => l.category === "billing");
+      // "Pagamento recebido" e cobranca, mas vem depois do pagamento: nao conta.
+      const billingLogs = ensureLogs().filter((l) => isBillingReminder(l.trigger));
       const recoveredAmountCents = store.charges
         .filter((c) => c.status === "paid" && Boolean(c.paidAt) && localMonth(c.paidAt as string) === month)
         .filter((c) =>
@@ -348,7 +376,7 @@ export const communicationService = {
         deliveryRate: sent.length > 0 ? Math.round((delivered / sent.length) * 1000) / 10 : null,
         readRate: sent.length > 0 ? Math.round((read / sent.length) * 1000) / 10 : null,
         recoveredAmountCents,
-        activeAutomationsCount: ensureTemplates().filter((t) => t.enabled).length,
+        activeAutomationsCount: ensureTemplates().filter((t) => t.enabled && !isManualTrigger(t.trigger)).length,
       };
     });
   },

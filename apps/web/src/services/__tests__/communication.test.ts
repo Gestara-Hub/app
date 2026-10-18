@@ -144,7 +144,53 @@ describe("modelos de mensagem", () => {
 
   it("modelos sumidos sao recriados com o texto padrao", async () => {
     store.messageTemplates = [];
-    expect(await communicationService.listTemplates()).toHaveLength(9);
+    expect(await communicationService.listTemplates()).toHaveLength(14);
+  });
+
+  it("modelos so de envio manual: desligados, com a categoria de cada um", async () => {
+    const list = await communicationService.listTemplates();
+    const manual = (trigger: string) => list.find((t) => t.trigger === trigger);
+    expect(manual("payment_received")).toMatchObject({ id: tmpl("payment-received"), category: "billing", enabled: false });
+    expect(manual("level_up")).toMatchObject({
+      category: "retention",
+      enabled: false,
+      availableVariables: expect.arrayContaining(["{nivel}"]),
+    });
+    for (const trigger of ["class_canceled", "schedule_change", "holiday_notice"]) {
+      expect(manual(trigger)).toMatchObject({ category: "administrative", enabled: false });
+    }
+  });
+
+  it("textos dos modelos manuais seguem a area do espaco", () => {
+    const fill = (segment: "martial_arts" | "music", trigger: string, values: Record<string, string> = {}) => {
+      const template = defaultMessageTemplates(ACADEMY_ORG, segment).find((t) => t.trigger === trigger)!;
+      return fillMessage(template.content, { aluno: "Ana", empresa: "Espaço", ...values }).replace(/\u00a0/g, " ");
+    };
+    expect(fill("music", "payment_received", { valor: "R$ 150,00", referencia: "mensalidade de outubro" })).toBe(
+      "Oi, Ana! Recebemos o pagamento de R$ 150,00 da mensalidade de outubro. Obrigado! Boas aulas!",
+    );
+    expect(fill("martial_arts", "level_up", { nivel: "Faixa Azul" })).toBe(
+      "Parabéns, Ana! 🎉 Nova conquista na Espaço: Faixa Azul. É resultado da sua dedicação. Bons treinos! 🥋",
+    );
+    expect(fill("martial_arts", "class_canceled")).toBe(
+      "Oi, Ana! O treino de hoje na Espaço foi cancelado. Desculpe o transtorno, nos vemos no próximo treino!",
+    );
+    expect(fill("music", "class_canceled")).toContain("A aula de hoje na Espaço foi cancelada.");
+    expect(fill("music", "schedule_change")).toBe(
+      "Oi, Ana! Aviso da Espaço: sua turma vai mudar de horário. Novo horário:",
+    );
+    expect(fill("music", "holiday_notice")).toContain("no feriado não teremos aula.");
+    expect(fill("martial_arts", "holiday_notice")).toContain("no feriado não teremos treino.");
+  });
+
+  it("modelo manual tem texto livre, mas nao liga envio automatico nem no Pro", async () => {
+    expect(
+      (await communicationService.updateTemplate({ id: tmpl("holiday-notice"), content: "Sem aula, {aluno}." })).content,
+    ).toBe("Sem aula, {aluno}.");
+    setTier("pro");
+    await expect(
+      communicationService.updateTemplate({ id: tmpl("holiday-notice"), enabled: true }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
   it("tem o lembrete de cobrança (avulsa, curso e pacote) e o pacote acabando", async () => {
@@ -290,6 +336,16 @@ describe("envio assistido", () => {
     expect(ending).toMatchObject({ trigger: "package_ending", category: "retention", status: "opened" });
     const logs = await communicationService.listLogs({ trigger: "package_ending" });
     expect(logs.map((l) => l.id)).toEqual([ending.id]);
+  });
+
+  it("pagamento recebido e de cobranca; avanco, de relacionamento; avisos, administrativos", async () => {
+    const send = (trigger: SendMessagePayload["trigger"]) =>
+      communicationService.registerAssistedMessage(message({ trigger, clientId: "cli-1" }));
+    expect((await send("payment_received")).category).toBe("billing");
+    expect((await send("level_up")).category).toBe("retention");
+    expect((await send("class_canceled")).category).toBe("administrative");
+    expect((await send("schedule_change")).category).toBe("administrative");
+    expect((await send("holiday_notice")).category).toBe("administrative");
   });
 
   it("nao guarda aluno nem cobranca quando nao vieram", async () => {
@@ -593,6 +649,16 @@ describe("numeros do mes", () => {
     const metrics = await communicationService.getMetrics();
     expect(metrics.recoveredAmountCents).toBe(amounts[0] + amounts[1]);
     expect(metrics.recoveredAmountCents).toBeGreaterThan(0);
+  });
+
+  it("pagamento recebido antes da proxima mensalidade nao conta como lembrete", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const student = await enrollStudent({ name: "Aluno", plan, startDate: "2026-09-01" });
+    const charge = store.charges.find((c) => c.studentId === student.id)!;
+    await communicationService.registerAssistedMessage(message({ trigger: "payment_received", clientId: student.id }));
+    at("15:00");
+    await billingService.markPaid(charge.id);
+    expect((await communicationService.getMetrics()).recoveredAmountCents).toBe(0);
   });
 
   it("lembrete ligado a outra cobranca nao conta para o aluno", async () => {

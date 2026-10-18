@@ -172,7 +172,10 @@ const STORAGE_KEY = "gestarahub:db";
 // v36: modelos de WhatsApp "Lembrete de cobrança" (`charge_reminder`) e
 //      "Pacote acabando" (`package_ending`), com o texto da area do espaco,
 //      para quem ainda nao tem. Migracao suave.
-const SEED_VERSION = 36;
+// v37: modelos de WhatsApp so de envio manual (pagamento recebido, parabens
+//      pelo avanco, aula cancelada, mudanca de horario e feriado), com o texto
+//      da area do espaco, para quem ainda nao tem. Migracao suave.
+const SEED_VERSION = 37;
 
 /** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
 const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
@@ -430,6 +433,26 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
   if (fromVersion < 36) {
     // So quem ja tem modelos: lista vazia e recriada inteira na leitura.
     const added: MessageTemplate["trigger"][] = ["charge_reminder", "package_ending"];
+    for (const tenant of Object.values(data.tenants)) {
+      const templates = tenant.messageTemplates ?? [];
+      if (templates.length === 0) continue;
+      const defaults = defaultMessageTemplates(tenant.organization.id, tenant.organization.classSegment);
+      for (const trigger of added) {
+        if (templates.some((t) => t.trigger === trigger)) continue;
+        const template = defaults.find((t) => t.trigger === trigger);
+        if (template) templates.push(template);
+      }
+    }
+  }
+  if (fromVersion < 37) {
+    // Mesmo criterio da v36: so quem ja tem modelos.
+    const added: MessageTemplate["trigger"][] = [
+      "payment_received",
+      "level_up",
+      "class_canceled",
+      "schedule_change",
+      "holiday_notice",
+    ];
     for (const tenant of Object.values(data.tenants)) {
       const templates = tenant.messageTemplates ?? [];
       if (templates.length === 0) continue;

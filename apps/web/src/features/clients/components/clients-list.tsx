@@ -10,6 +10,7 @@ import {
   ClipboardList,
   GraduationCap,
   Mail,
+  MessageCircle,
   MessageSquarePlus,
   Pencil,
   Phone,
@@ -49,6 +50,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor } from "@/lib/business-segment-presets";
 import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
+import { whatsappNumber } from "@/lib/whatsapp";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
 import type {
   Category,
@@ -325,6 +327,8 @@ interface ClientsListProps {
   canManage: boolean;
   onCreate: () => void;
   onEdit: (client: Client) => void;
+  /** Mensagem no WhatsApp (so com permissao de comunicacao). */
+  onSendMessage?: (client: Client) => void;
   onOpenGraduation?: (client: Client) => void;
   onOpenRecords?: (client: Client) => void;
   /** Boletim "Notas" (so quando alguma modalidade tem avaliacoes). */
@@ -345,6 +349,7 @@ function ClientRow({
   canManage,
   isClasses,
   onEdit,
+  onSendMessage,
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
@@ -361,6 +366,7 @@ function ClientRow({
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
+  onSendMessage?: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onOpenGrades?: (c: Client) => void;
@@ -385,6 +391,16 @@ function ClientRow({
           icon: <UserRound className="size-4" />,
           onSelect: openProfile,
         },
+        ...(onSendMessage && whatsappNumber(client.phone)
+          ? [
+              {
+                key: "whatsapp",
+                label: "Enviar WhatsApp",
+                icon: <MessageCircle className="size-4" />,
+                onSelect: () => onSendMessage(client),
+              },
+            ]
+          : []),
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -556,6 +572,7 @@ function ClientCard({
   canManage,
   isClasses,
   onEdit,
+  onSendMessage,
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
@@ -572,6 +589,7 @@ function ClientCard({
   canManage: boolean;
   isClasses: boolean;
   onEdit: (c: Client) => void;
+  onSendMessage?: (c: Client) => void;
   onOpenGraduation?: (c: Client) => void;
   onOpenRecords?: (c: Client) => void;
   onOpenGrades?: (c: Client) => void;
@@ -596,6 +614,16 @@ function ClientCard({
           icon: <UserRound className="size-4" />,
           onSelect: openProfile,
         },
+        ...(onSendMessage && whatsappNumber(client.phone)
+          ? [
+              {
+                key: "whatsapp",
+                label: "Enviar WhatsApp",
+                icon: <MessageCircle className="size-4" />,
+                onSelect: () => onSendMessage(client),
+              },
+            ]
+          : []),
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -845,6 +873,7 @@ const DEFAULT_STATUS: "all" | RecordStatus = "active";
 export function ClientsList({
   canManage,
   onEdit,
+  onSendMessage,
   onOpenGraduation,
   onOpenRecords,
   onOpenGrades,
@@ -961,6 +990,7 @@ export function ClientsList({
         canManage={canManage}
         isClasses={isClasses}
         onEdit={onEdit}
+        onSendMessage={onSendMessage}
         onOpenGraduation={onOpenGraduation}
         onOpenRecords={onOpenRecords}
         onOpenGrades={gradesAction}
@@ -1031,6 +1061,7 @@ export function ClientsList({
               canManage={canManage}
               isClasses={isClasses}
               onEdit={onEdit}
+              onSendMessage={onSendMessage}
               onOpenGraduation={onOpenGraduation}
               onOpenRecords={onOpenRecords}
               onOpenGrades={gradesAction}

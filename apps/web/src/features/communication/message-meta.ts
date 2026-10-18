@@ -20,6 +20,11 @@ export const TRIGGER_META: Record<MessageTrigger, { label: string; where: string
     where: "Cobranças: menu da avulsa, do curso ou do pacote",
   },
   package_ending: { label: "Pacote acabando", where: "Dashboard: Para fazer hoje, pacotes acabando" },
+  payment_received: { label: "Pagamento recebido", where: "Mensagem para o aluno: até 7 dias após pagar" },
+  level_up: { label: "Parabéns pelo avanço", where: "Mensagem para o aluno: até 14 dias após avançar" },
+  class_canceled: { label: "Aula cancelada", where: "Mensagem para o aluno: sempre" },
+  schedule_change: { label: "Mudança de horário", where: "Mensagem para o aluno: sempre" },
+  holiday_notice: { label: "Feriado ou recesso", where: "Mensagem para o aluno: sempre" },
   manual_broadcast: { label: "Mensagem avulsa", where: "Botão Nova mensagem" },
 };
 
@@ -42,10 +47,15 @@ export const TRIGGER_ORDER: MessageTrigger[] = [
   "billing_after_due",
   "billing_critical",
   "charge_reminder",
+  "payment_received",
   "welcome_student",
   "absence_alert",
   "package_ending",
   "birthday_greeting",
+  "level_up",
+  "class_canceled",
+  "schedule_change",
+  "holiday_notice",
   "manual_broadcast",
 ];
 
@@ -74,6 +84,7 @@ export function sampleValues(orgName?: string, withPaymentLink = false): Record<
     referencia: "parcela 2 de 4 do curso Confeitaria",
     pacote: "10 aulas",
     restante: "resta 1 aula",
+    nivel: "Faixa Azul",
   };
 }
 

@@ -1,4 +1,5 @@
 export { CommunicationView } from "./components/communication-view";
+export { SendMessageDialog, type MessageRecipient } from "./components/send-message-dialog";
 export { StudentMessagesPanel } from "./components/student-messages-panel";
 export {
   useCommunicationMetrics,

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { fillMessage } from "@/lib/whatsapp";
+import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useUpdateTemplate } from "../hooks/use-communication";
@@ -35,6 +35,7 @@ const VARIABLE_LABELS: Record<string, string> = {
   "{referencia}": "O que é cobrado",
   "{pacote}": "Nome do pacote",
   "{restante}": "Aulas e validade",
+  "{nivel}": "Novo nível",
 };
 
 function EditTemplateForm({
@@ -53,6 +54,8 @@ function EditTemplateForm({
   const [content, setContent] = useState(template.content);
   const [enabled, setEnabled] = useState(template.enabled);
   const [sendHour, setSendHour] = useState(template.sendHour);
+  // Modelo so de envio manual: sem envio automatico nem horario.
+  const automatic = official && !isManualTrigger(template.trigger);
 
   // Insere a variavel onde esta o cursor (ou no fim).
   function insertVariable(variable: string) {
@@ -76,7 +79,7 @@ function EditTemplateForm({
       await updateMut.mutateAsync({
         id: template.id,
         content,
-        ...(official ? { enabled, sendHour } : {}),
+        ...(automatic ? { enabled, sendHour } : {}),
       });
       toast.success("Mensagem salva.");
       onClose();
@@ -90,7 +93,7 @@ function EditTemplateForm({
   return (
     <>
       <DialogBody className="space-y-4">
-        {official ? (
+        {automatic ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
             <label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Switch checked={enabled} onCheckedChange={setEnabled} />
@@ -175,7 +178,11 @@ export function EditTemplateDialog({
         <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
           <DialogTitle>{template ? TRIGGER_META[template.trigger].label : "Mensagem"}</DialogTitle>
           <DialogDescription>
-            {template ? (official ? automationTiming(template) : TRIGGER_META[template.trigger].where) : ""}
+            {template
+              ? official && !isManualTrigger(template.trigger)
+                ? automationTiming(template)
+                : TRIGGER_META[template.trigger].where
+              : ""}
           </DialogDescription>
         </DialogHeader>
         {template ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import type {
   Id,
@@ -12,9 +13,13 @@ import type {
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { queryKeys } from "@/lib/queryKeys";
 import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
+import { billingService } from "@/services/billingService";
 import { clientsService } from "@/services/clientsService";
 import { communicationService } from "@/services/communicationService";
+import { studentSummaryService } from "@/services/studentSummaryService";
+import { turmasService } from "@/services/turmasService";
 import { useOrganization } from "@/features/settings";
+import { ABSENCE_STREAK, messageSuggestions } from "../message-suggestions";
 
 function useInvalidateCommunication() {
   const qc = useQueryClient();
@@ -82,6 +87,38 @@ export function useMessageRecipients() {
   return useQuery({
     queryKey: queryKeys.clients.list({ status: "active" }),
     queryFn: () => clientsService.list({ status: "active" }),
+  });
+}
+
+/**
+ * Modelos sugeridos para o aluno escolhido, pela situacao dele. Usa as mesmas
+ * consultas (e o mesmo cache) da ficha, de Cobrancas e do Dashboard; sem
+ * aluno ou com alguma consulta indisponivel, sobram os avisos.
+ */
+export function useMessageSuggestions(clientId?: Id) {
+  const enabled = Boolean(clientId);
+  const id = clientId ?? "";
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.clients.summary(id),
+    queryFn: () => studentSummaryService.getStudentSummary(id),
+    enabled,
+  });
+  const { data: charges } = useQuery({
+    queryKey: queryKeys.billing.charges({ studentId: id }),
+    queryFn: () => billingService.listCharges({ studentId: id }),
+    enabled,
+  });
+  const { data: streaks } = useQuery({
+    queryKey: queryKeys.classes.absenceStreaks,
+    queryFn: () => turmasService.listAbsenceStreaks(ABSENCE_STREAK),
+    enabled,
+  });
+  if (!clientId) return [];
+  return messageSuggestions({
+    today: format(new Date(), "yyyy-MM-dd"),
+    summary,
+    charges,
+    absenceStreak: streaks?.find((s) => s.studentId === clientId)?.streak ?? 0,
   });
 }
 

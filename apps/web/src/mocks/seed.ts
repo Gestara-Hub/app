@@ -238,6 +238,8 @@ function messageTone(segment: ClassesBusinessSegment | undefined) {
       welcomeTail: "acompanhar seus treinos, horários e graduações. Nos vemos no tatame!",
       absenceLine: "nos últimos treinos da {empresa}. Seu lugar no tatame está guardado!",
       renewQuestion: "Quer renovar e seguir treinando?",
+      canceledLine: "O treino de hoje na {empresa} foi cancelado. Desculpe o transtorno, nos vemos no próximo treino!",
+      noClass: "não teremos treino",
     };
   }
   return {
@@ -245,6 +247,8 @@ function messageTone(segment: ClassesBusinessSegment | undefined) {
     welcomeTail: "acompanhar suas aulas, horários e evolução. Até a primeira aula!",
     absenceLine: "nas últimas aulas da {empresa}. Seu lugar na turma está guardado!",
     renewQuestion: "Quer renovar e seguir com as aulas?",
+    canceledLine: "A aula de hoje na {empresa} foi cancelada. Desculpe o transtorno, nos vemos na próxima aula!",
+    noClass: "não teremos aula",
   };
 }
 
@@ -391,6 +395,70 @@ export function defaultMessageTemplates(
       availableVariables: ["{aluno}", "{empresa}"],
       ...ts,
     },
+    // So envio manual (sem automatico): sugeridos na mensagem para o aluno.
+    ...manualMessageTemplates(organizationId, tone, ts),
+  ];
+}
+
+/** Modelos so de envio manual: desligados, sem horario nem prazo que valham. */
+function manualMessageTemplates(
+  organizationId: Id,
+  tone: ReturnType<typeof messageTone>,
+  ts: ReturnType<typeof timestamps>,
+): MessageTemplate[] {
+  const manual = (
+    key: string,
+    template: Pick<MessageTemplate, "trigger" | "category" | "title" | "description" | "content" | "availableVariables">,
+  ): MessageTemplate => ({
+    id: `tmpl-${organizationId}-${key}`,
+    organizationId,
+    enabled: false,
+    sendHour: "09:00",
+    daysOffset: 0,
+    ...template,
+    ...ts,
+  });
+  return [
+    manual("payment-received", {
+      trigger: "payment_received",
+      category: "billing",
+      title: "Pagamento recebido",
+      description: "Agradecimento depois de um pagamento",
+      content: `Oi, {aluno}! Recebemos o pagamento de {valor} da {referencia}. Obrigado!${tone.closing}`,
+      availableVariables: ["{aluno}", "{valor}", "{referencia}", "{empresa}"],
+    }),
+    manual("level-up", {
+      trigger: "level_up",
+      category: "retention",
+      title: "Parabéns pelo avanço",
+      description: "Depois de uma graduação ou troca de nível",
+      content: `Parabéns, {aluno}! 🎉 Nova conquista na {empresa}: {nivel}. É resultado da sua dedicação.${tone.closing}`,
+      availableVariables: ["{aluno}", "{nivel}", "{empresa}"],
+    }),
+    manual("class-canceled", {
+      trigger: "class_canceled",
+      category: "administrative",
+      title: "Aula cancelada",
+      description: "Aviso de aula cancelada",
+      content: `Oi, {aluno}! ${tone.canceledLine}`,
+      availableVariables: ["{aluno}", "{empresa}"],
+    }),
+    manual("schedule-change", {
+      trigger: "schedule_change",
+      category: "administrative",
+      title: "Mudança de horário",
+      description: "Aviso de novo horário da turma",
+      content: "Oi, {aluno}! Aviso da {empresa}: sua turma vai mudar de horário. Novo horário:",
+      availableVariables: ["{aluno}", "{empresa}"],
+    }),
+    manual("holiday-notice", {
+      trigger: "holiday_notice",
+      category: "administrative",
+      title: "Feriado ou recesso",
+      description: "Aviso de pausa nas aulas",
+      content: `Oi, {aluno}! Aviso da {empresa}: no feriado ${tone.noClass}. Bom descanso e até a volta!`,
+      availableVariables: ["{aluno}", "{empresa}"],
+    }),
   ];
 }
 

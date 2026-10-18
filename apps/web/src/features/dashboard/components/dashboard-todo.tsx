@@ -26,7 +26,7 @@ import { StudentGraduationDialog, useClients } from "@/features/clients";
 import { packageRemainingText, useMessageLogs, useWhatsAppSend } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
 import { SellPackageDialog, useAbsenceStreaks, useCharges, useStudentPackages } from "@/features/turmas";
-import { selectEndingPackages } from "../package-ending";
+import { selectEndingPackages } from "@/lib/package-ending";
 import { useMonthBirthdays } from "./birthdays-card";
 import { useLevelChangePending } from "./use-level-change-pending";
 

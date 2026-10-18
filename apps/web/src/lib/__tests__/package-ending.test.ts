@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectEndingPackages, type PackageLike } from "../package-ending";
+import { selectEndingPackages, type PackageLike } from "@/lib/package-ending";
 
 const TODAY = "2026-10-14";
 

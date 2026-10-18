@@ -51,6 +51,16 @@ export type MessageTrigger =
   | "charge_reminder"
   /** Pacote de aulas na ultima aula, perto de vencer ou vencido ha pouco. */
   | "package_ending"
+  /**
+   * Modelos so de envio manual (sem automatico): sugeridos na mensagem para o
+   * aluno. Pagamento recebido e avanco aparecem pela situacao dele; os avisos
+   * (aula cancelada, mudanca de horario, feriado) sempre.
+   */
+  | "payment_received"
+  | "level_up"
+  | "class_canceled"
+  | "schedule_change"
+  | "holiday_notice"
   | "manual_broadcast";
 
 export type MessageCategory = "billing" | "retention" | "administrative";

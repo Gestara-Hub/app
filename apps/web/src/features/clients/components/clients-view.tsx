@@ -10,6 +10,7 @@ import type { Client, StudentPackageView } from "@gestarahub/contracts";
 import { useCan, useModel } from "@/features/auth";
 import { NewExtraChargeDialog, SellPackageDialog, useCancelStudentPackage } from "@/features/turmas";
 import { StudentGradesDialog } from "@/features/grades";
+import { SendMessageDialog } from "@/features/communication";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
 import { ClientFormDialog } from "./client-form-dialog";
@@ -34,12 +35,15 @@ export function ClientsView() {
   const [chargeClient, setChargeClient] = useState<Client | null>(null);
   // Venda de pacote de aulas com o aluno fixo.
   const [packageClient, setPackageClient] = useState<Client | null>(null);
+  // Mensagem no WhatsApp com o aluno fixo (o aluno fica ate o fim da animacao).
+  const [messageState, setMessageState] = useState<{ open: boolean; client?: Client }>({ open: false });
   const cancelPackageMut = useCancelStudentPackage();
 
   const updateMut = useUpdateClient();
   const can = useCan();
   const canManage = can("clients:manage");
   const canCharge = isClasses && can("billing:manage");
+  const canMessage = can("communication:view");
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (client: Client) => setFormState({ open: true, client });
@@ -116,6 +120,7 @@ export function ClientsView() {
         canManage={canManage}
         onCreate={openCreate}
         onEdit={openEdit}
+        onSendMessage={canMessage ? (client) => setMessageState({ open: true, client }) : undefined}
         onOpenGraduation={isClasses ? setGraduationClient : undefined}
         onOpenRecords={isClasses ? setRecordsClient : undefined}
         onOpenGrades={isClasses ? setGradesClient : undefined}
@@ -173,6 +178,18 @@ export function ClientsView() {
           />
         </>
       ) : null}
+
+      <SendMessageDialog
+        open={messageState.open}
+        onOpenChange={(open) => {
+          if (!open) setMessageState((state) => ({ ...state, open: false }));
+        }}
+        recipient={
+          messageState.client
+            ? { id: messageState.client.id, name: messageState.client.name, phone: messageState.client.phone }
+            : undefined
+        }
+      />
 
       <InactivateClientDialog
         client={inactivating}

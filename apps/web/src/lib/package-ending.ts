@@ -3,7 +3,8 @@ import type { DateISO, Id, StudentPackageStatus } from "@gestarahub/contracts";
 import { modalitiesOverlap, packageState } from "@gestarahub/core/packages";
 
 /**
- * "Para fazer hoje": pacotes de aulas acabando (doc 20, fase D). Avisos da
+ * Pacotes de aulas acabando ("Para fazer hoje" do Dashboard e o modelo
+ * "Pacote acabando" na mensagem para o aluno; doc 20, fase D). Avisos da
  * regra 5 (ultima aula e 7 dias antes de vencer), o vencido ha ate 7 dias e o
  * usado ate o fim ainda valido (doc 22, item 8), para lembrar de renovar.
  * Quem ja comprou outro pacote nas mesmas modalidades sai da lista.
