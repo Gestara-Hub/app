@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 
 interface Rect {
   top: number;
@@ -68,9 +69,11 @@ export function SectionSpotlight({
     );
   }, [targetRefs]);
 
-  // Traz a secao para a tela uma vez, ao ligar.
+  // Traz a secao para a tela uma vez, ao ligar. Avisos (toasts) abertos saem
+  // para nao cobrir o botao destacado (ONB-14).
   useEffect(() => {
     if (!active) return;
+    toast.dismiss();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     targetRefs[0]?.current?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
     // So na ligada: as partes nao mudam enquanto o destaque esta aberto.

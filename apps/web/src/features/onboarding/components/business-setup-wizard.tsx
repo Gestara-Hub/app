@@ -62,6 +62,20 @@ export const MAX_SPACE_NAME = 80;
 const sameName = (a: string, b: string) => normalizeText(a) === normalizeText(b);
 
 /**
+ * "Outra área" com o nome de uma area da lista ("Lutas", "Pilates", "Judô"):
+ * a area pronta tem trilha e textos (ONB-31). Compara o nome e os exemplos.
+ */
+function matchingPreset(name: string): BusinessSegmentPreset | undefined {
+  const target = normalizeText(name);
+  if (target.length < 3) return undefined;
+  return STANDARD_PRESETS.find((preset) =>
+    [preset.label, ...preset.label.split(/\s+e\s+/), ...preset.examples.split(/,\s*/)].some(
+      (word) => normalizeText(word) === target,
+    ),
+  );
+}
+
+/**
  * Rascunho do assistente na aba (sessionStorage): recarregar no meio nao perde
  * o que foi escolhido. O passo fica na URL (?passo=2), e o Voltar do
  * navegador volta um passo.
@@ -191,6 +205,32 @@ export function BusinessSetupWizard() {
   const unitInputRef = useRef<HTMLInputElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
   const customFormRef = useRef<HTMLFormElement>(null);
+  // Troca de passo leva o foco ao titulo novo (o foco se perdia). ONB-22.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    headingRef.current?.focus({ preventScroll: true });
+  }, [step]);
+
+  // Setas e Home/End andam pela lista de areas (Enter ou espaco escolhe).
+  const moveAreaFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : event.key === "ArrowDown" || event.key === "ArrowRight"
+            ? Math.min(items.length - 1, index + 1)
+            : Math.max(0, index - 1);
+    event.preventDefault();
+    items[next]?.focus();
+  };
 
   // Foco so com teclado fisico: no celular, o teclado cobriria a orientacao.
   useEffect(() => {
@@ -225,6 +265,7 @@ export function BusinessSetupWizard() {
   );
   const previewName = businessName.trim() || "Seu espaço";
   const areaLabel = isCustom ? customSegmentName.trim() || activePreset.label : activePreset.label;
+  const suggestedPreset = isCustom ? matchingPreset(customSegmentName) : undefined;
 
   const handleSelectSegment = (segId: ClassesBusinessSegment) => {
     if (segId === selectedSegment) return;
@@ -284,7 +325,9 @@ export function BusinessSetupWizard() {
           ...organization?.settings,
           onboardingCompleted: true,
           // Modalidades criadas aqui vem com a trilha padrao: pede revisao.
-          modalitiesReviewed: selectedModalities.length > 0 ? false : undefined,
+          // Area sem trilha (pilates, funcional...) nao tem niveis nem metas a revisar (ONB-18).
+          modalitiesReviewed:
+            selectedModalities.length > 0 && activePreset.progressionTemplate !== null ? false : undefined,
         },
       });
 
@@ -410,7 +453,13 @@ export function BusinessSetupWizard() {
         </div>
 
         <div key={step} className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{copy.title}</h1>
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-3xl font-extrabold tracking-tight text-foreground outline-none sm:text-4xl"
+          >
+            {copy.title}
+          </h1>
           <p className="mt-2 text-muted-foreground">{copy.subtitle}</p>
 
           {/* PASSO 1: NOME DO ESPACO */}
@@ -506,6 +555,7 @@ export function BusinessSetupWizard() {
               <div
                 role="radiogroup"
                 aria-label="Área do espaço"
+                onKeyDown={moveAreaFocus}
                 className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
               >
                 {STANDARD_PRESETS.map((preset) => {
@@ -583,6 +633,18 @@ export function BusinessSetupWizard() {
                       {error ? (
                         <p id="custom-segment-error" role="alert" className="text-sm text-destructive">
                           {error}
+                        </p>
+                      ) : null}
+                      {suggestedPreset ? (
+                        <p className="text-sm text-muted-foreground">
+                          Já existe a área {suggestedPreset.label}, com a evolução pronta.{" "}
+                          <button
+                            type="button"
+                            onClick={() => handlePickArea(suggestedPreset.id)}
+                            className="cursor-pointer font-medium text-foreground underline underline-offset-4 hover:text-primary"
+                          >
+                            Usar {suggestedPreset.label}
+                          </button>
                         </p>
                       ) : null}
                       <div className="flex flex-wrap gap-1.5">

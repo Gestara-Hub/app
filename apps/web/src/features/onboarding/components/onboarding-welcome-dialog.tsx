@@ -67,7 +67,9 @@ export function OnboardingWelcomeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-xl p-0 overflow-hidden border shadow-2xl"
+        // Fecha so pelo X ou pelos botoes: Esc fechava de vez e o clique fora nao (ONB-30).
         onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => event.preventDefault()}
       >
         {/* Topo com ambientação e boas-vindas */}
         <div className="px-6 pt-6 pb-2 bg-gradient-to-b from-primary/[0.06] via-transparent to-transparent">

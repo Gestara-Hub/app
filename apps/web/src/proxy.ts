@@ -19,12 +19,37 @@ function isPublic(pathname: string): boolean {
   );
 }
 
+/**
+ * Telas do app (pedem sessao). Endereco que nao existe segue para o 404 do
+ * Next, em vez de mandar ao login (ONB-27).
+ */
+const APP_PATHS = [
+  "/appointments",
+  "/audit",
+  "/classes",
+  "/clients",
+  "/communication",
+  "/dashboard",
+  "/finance",
+  "/reports",
+  "/schedule",
+  "/services",
+  "/settings",
+  "/setup",
+  "/team",
+  "/users",
+];
+
+function isAppPath(pathname: string): boolean {
+  return APP_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
   const publicPath = isPublic(pathname);
 
-  if (!hasSession && !publicPath) {
+  if (!hasSession && !publicPath && isAppPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     // Destino relativo com a query original (filtros na URL); o login sanitiza.

@@ -18,7 +18,7 @@ export const LANDING_NAV_LINKS = [
   { href: "/#faq", label: "Dúvidas" },
 ];
 
-export function LandingHeader() {
+export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const { resolvedTheme, setTheme } = useTheme();
@@ -104,24 +104,35 @@ export function LandingHeader() {
             <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
 
-          <Button variant="ghost" asChild className="text-sm font-medium">
-            <Link href="/login">Entrar</Link>
-          </Button>
+          {signedIn ? (
+            <Button asChild className="gap-1.5 px-4 font-semibold shadow-xs">
+              <Link href="/dashboard">
+                <span>Ir para o painel</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" asChild className="text-sm font-medium">
+                <Link href="/login">Entrar</Link>
+              </Button>
 
-          <Button asChild className="gap-1.5 px-4 font-semibold shadow-xs">
-            <Link href="/#cadastro">
-              <span>Criar conta grátis</span>
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </Button>
+              <Button asChild className="gap-1.5 px-4 font-semibold shadow-xs">
+                <Link href="/#cadastro">
+                  <span>Criar conta grátis</span>
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
         {/* No celular o botao de criar conta fica sempre a vista; o tema vai para o menu. */}
         <div className="flex items-center gap-2 lg:hidden">
           <Button asChild className="px-3 font-semibold">
-            <Link href="/#cadastro" onClick={() => setMobileMenuOpen(false)}>
-              Criar conta
+            <Link href={signedIn ? "/dashboard" : "/#cadastro"} onClick={() => setMobileMenuOpen(false)}>
+              {signedIn ? "Ir para o painel" : "Criar conta"}
             </Link>
           </Button>
           <Button
@@ -156,11 +167,13 @@ export function LandingHeader() {
             ))}
           </nav>
           <div className="flex flex-col gap-2 pt-2 border-t border-border/40">
-            <Button variant="outline" asChild className="w-full justify-center">
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                Entrar
-              </Link>
-            </Button>
+            {signedIn ? null : (
+              <Button variant="outline" asChild className="w-full justify-center">
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  Entrar
+                </Link>
+              </Button>
+            )}
             <Button
               variant="ghost"
               className="w-full justify-center gap-2 text-muted-foreground"
