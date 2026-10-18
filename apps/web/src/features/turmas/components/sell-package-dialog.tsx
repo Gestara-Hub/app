@@ -10,7 +10,7 @@ import type { Client, LessonPackage } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
-import { carryOverSources } from "@gestarahub/core/packages";
+import { carryOverSources, modalitiesOverlap, packageState } from "@gestarahub/core/packages";
 import {
   ComboboxField,
   DateField,
@@ -116,10 +116,18 @@ function SellPackageForm({
     form.setValue("priceCents", chosen.priceCents, { shouldDirty: true });
   }, [chosen, form]);
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
-  // Regra 6: o saldo do pacote em uso nas mesmas modalidades vem junto.
-  const carried = chosen
-    ? carryOverSources(owned ?? [], chosen.modalityIds, format(new Date(), "yyyy-MM-dd")).lessons
-    : 0;
+  // Regra 6: comprar de novo o mesmo pacote traz o saldo dele; outro pacote da
+  // mesma modalidade fica separado (avisa, para ninguem esperar a soma).
+  const today = format(new Date(), "yyyy-MM-dd");
+  const carried = chosen ? carryOverSources(owned ?? [], chosen.id, today).lessons : 0;
+  const keptApart = chosen
+    ? (owned ?? []).filter(
+        (p) =>
+          p.packageId !== chosen.id &&
+          packageState(p, today).remaining > 0 &&
+          modalitiesOverlap(p.modalityIds, chosen.modalityIds),
+      )
+    : [];
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -177,6 +185,14 @@ function SellPackageForm({
           {carried > 0 ? (
             <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
               O saldo de {plural(carried, "aula", "aulas")} do pacote atual passa para este.
+            </p>
+          ) : null}
+          {keptApart.length > 0 ? (
+            <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+              {keptApart.length === 1
+                ? `O pacote ${keptApart[0].name} continua valendo.`
+                : `Os pacotes ${keptApart.map((p) => p.name).join(" e ")} continuam valendo.`}{" "}
+              A aula usa o que vence primeiro.
             </p>
           ) : null}
         </DialogBody>

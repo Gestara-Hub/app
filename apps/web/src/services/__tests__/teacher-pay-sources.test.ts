@@ -206,15 +206,15 @@ describe("% do que os alunos pagaram: prévia com várias fontes", () => {
     const paula = await createInstructor("Paula");
     const g = await classOf(paula, { billingMode: "package" });
     const ana = await createStudent("Ana");
-    const small = await newPackage(10, 50000); // R$ 50 a aula
-    const cheap = await newPackage(10, 30000); // R$ 30 a aula
+    // Renova o mesmo pacote com desconto: a 1a compra sai a R$ 50 a aula, a 2a a R$ 30.
+    const pkg = await newPackage(10, 50000);
     const sale = (packageId: string, priceCents: number) =>
       packagesService.sellPackage({ studentId: ana.id, packageId, priceCents, installments: 1, firstDueDate: "2026-09-14" });
 
-    await sale(small.id, 50000);
+    await sale(pkg.id, 50000);
     await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
     await turmasService.markAttendance({ sessionId: sessionOf(g, "2026-09-14"), studentId: ana.id, status: "present" });
-    const renewed = await sale(cheap.id, 30000);
+    const renewed = await sale(pkg.id, 30000);
     expect(store.studentPackages.find((p) => p.id === renewed.id)?.carriedFrom).toEqual([
       { fromPackageId: store.studentPackages[0].id, lessons: 9 },
     ]);

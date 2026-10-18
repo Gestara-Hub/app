@@ -125,17 +125,20 @@ export function pickPackageFor<T extends Candidate>(
 }
 
 /**
- * Renovacao (regra 6): comprar um pacote com outro ativo nas mesmas
- * modalidades leva o saldo para o novo. So pacotes ativos, validos hoje e com
- * saldo; vencido perde o saldo e usado ate o fim nao tem o que levar.
+ * Renovacao (regra 6, revista em 18/10/2026): comprar de novo o MESMO pacote do
+ * catalogo leva o saldo do que esta em uso para o novo. Pacote diferente, mesmo
+ * da mesma modalidade (ex.: aulas em grupo e particulares), fica separado: os
+ * dois valem e a aula usa o que vence primeiro (`pickPackageFor`). So pacotes
+ * ativos, validos hoje e com saldo; vencido perde o saldo e usado ate o fim nao
+ * tem o que levar.
  */
-export function carryOverSources<T extends Candidate>(
+export function carryOverSources<T extends PackageBalance & { packageId: Id }>(
   packages: readonly T[],
-  newModalityIds: readonly Id[],
+  catalogPackageId: Id,
   today: DateISO,
 ): { sources: T[]; lessons: number } {
   const sources = packages.filter(
-    (p) => packageState(p, today).remaining > 0 && modalitiesOverlap(p.modalityIds, newModalityIds),
+    (p) => p.packageId === catalogPackageId && packageState(p, today).remaining > 0,
   );
   const lessons = sources.reduce((sum, p) => sum + packageState(p, today).remaining, 0);
   return { sources, lessons };

@@ -1,13 +1,14 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import type { DateISO, Id, StudentPackageStatus } from "@gestarahub/contracts";
-import { modalitiesOverlap, packageState } from "@gestarahub/core/packages";
+import { packageState } from "@gestarahub/core/packages";
 
 /**
  * Pacotes de aulas acabando ("Para fazer hoje" do Dashboard e o modelo
  * "Pacote acabando" na mensagem para o aluno; doc 20, fase D). Avisos da
  * regra 5 (ultima aula e 7 dias antes de vencer), o vencido ha ate 7 dias e o
  * usado ate o fim ainda valido (doc 22, item 8), para lembrar de renovar.
- * Quem ja comprou outro pacote nas mesmas modalidades sai da lista.
+ * Quem ja renovou (comprou de novo o mesmo pacote do catalogo) sai da lista;
+ * um pacote diferente nao renova este (regra 6, revista em 18/10/2026).
  */
 
 /** Vencido aparece por ate 7 dias depois do ultimo dia valido. */
@@ -18,6 +19,8 @@ export type PackageEndingReason = "expired" | "used_up" | "expiring" | "last_les
 export interface PackageLike {
   id: Id;
   studentId: Id;
+  /** Pacote do catalogo: so o mesmo renova. */
+  packageId: Id;
   status: StudentPackageStatus;
   lessonsTotal: number;
   lessonsUsed: number;
@@ -66,7 +69,7 @@ const REASON_RANK: Record<PackageEndingReason, number> = {
 /**
  * Pacotes ativos acabando hoje: na ultima aula, vencendo em ate 7 dias (com
  * saldo), sem aulas (usado ate o fim, ainda valido) ou vencidos ha ate 7 dias,
- * sem pacote mais novo nas mesmas modalidades. Ordem: vencidos, sem aulas, os
+ * sem compra mais nova do mesmo pacote. Ordem: vencidos, sem aulas, os
  * que vencem primeiro, ultima aula.
  */
 export function selectEndingPackages<T extends PackageLike>(
@@ -78,7 +81,7 @@ export function selectEndingPackages<T extends PackageLike>(
     if (pkg.status !== "active") continue;
     const reason = reasonOf(pkg, today);
     if (!reason) continue;
-    const renewed = packages.some((other) => isNewer(other, pkg) && modalitiesOverlap(other.modalityIds, pkg.modalityIds));
+    const renewed = packages.some((other) => isNewer(other, pkg) && other.packageId === pkg.packageId);
     if (renewed) continue;
     const daysToExpire = pkg.expiresAt
       ? differenceInCalendarDays(parseISO(pkg.expiresAt), parseISO(today))

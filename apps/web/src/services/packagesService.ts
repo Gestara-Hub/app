@@ -390,7 +390,8 @@ export const packagesService = {
       const ts = nowIso();
       const id = newId();
       const owned = store.studentPackages.filter((p) => p.studentId === student.id);
-      const carry = carryOverSources(owned, catalog.modalityIds, today);
+      // Renova so o mesmo pacote do catalogo; outro pacote fica separado.
+      const carry = carryOverSources(owned, catalog.id, today);
       // De onde vem cada aula trazida (o pacote que a vendeu), antes de renovar.
       const carriedFrom = mergeLots(carry.sources.flatMap((source) => leftoverLots(source, source.lessonsUsed)));
       for (const source of carry.sources) {

@@ -14,9 +14,12 @@ import {
 
 const today = "2026-09-22";
 
-function pkg(over: Partial<Parameters<typeof packageState>[0] & { id: string; modalityIds: string[]; purchasedAt: string }> = {}) {
+function pkg(
+  over: Partial<Parameters<typeof packageState>[0] & { id: string; packageId: string; modalityIds: string[]; purchasedAt: string }> = {},
+) {
   return {
     id: "p",
+    packageId: "lp-10",
     lessonsTotal: 10,
     lessonsUsed: 0,
     status: "active" as const,
@@ -122,21 +125,21 @@ describe("pacote: qual pacote paga a aula", () => {
   });
 });
 
-describe("pacote: renovação (regra 6)", () => {
-  it("leva o saldo dos ativos válidos nas mesmas modalidades", () => {
-    const pilates = pkg({ id: "pilates", modalityIds: ["pilates"], lessonsUsed: 7 });
-    const yoga = pkg({ id: "yoga", modalityIds: ["yoga"], lessonsUsed: 2 });
+describe("pacote: renovação (regra 6, só o mesmo pacote do catálogo)", () => {
+  it("leva o saldo das compras válidas do mesmo pacote", () => {
+    const first = pkg({ id: "primeira", modalityIds: ["pilates"], lessonsUsed: 7 });
     const expired = pkg({ id: "vencido", modalityIds: ["pilates"], expiresAt: "2026-09-01" });
     const usedUp = pkg({ id: "usado", modalityIds: ["pilates"], lessonsUsed: 10 });
-    const result = carryOverSources([pilates, yoga, expired, usedUp], ["pilates"], today);
-    assert.deepEqual(result.sources.map((p) => p.id), ["pilates"]);
+    const result = carryOverSources([first, expired, usedUp], "lp-10", today);
+    assert.deepEqual(result.sources.map((p) => p.id), ["primeira"]);
     assert.equal(result.lessons, 3);
   });
 
-  it("pacote para todas as modalidades leva o saldo de todos", () => {
-    const pilates = pkg({ id: "pilates", modalityIds: ["pilates"], lessonsUsed: 7 });
-    const yoga = pkg({ id: "yoga", modalityIds: ["yoga"], lessonsUsed: 2 });
-    assert.equal(carryOverSources([pilates, yoga], [], today).lessons, 11);
+  it("pacote diferente, mesmo na mesma modalidade ou para todas, fica separado", () => {
+    const group = pkg({ id: "grupo", packageId: "lp-grupo", modalityIds: ["pilates"], lessonsUsed: 2 });
+    const all = pkg({ id: "todas", packageId: "lp-todas", modalityIds: [], lessonsUsed: 1 });
+    assert.deepEqual(carryOverSources([group, all], "lp-particular", today), { sources: [], lessons: 0 });
+    assert.equal(carryOverSources([group, all], "lp-grupo", today).lessons, 8);
   });
 });
 

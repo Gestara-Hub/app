@@ -7,6 +7,7 @@ function pkg(id: string, over: Partial<PackageLike> = {}): PackageLike {
   return {
     id,
     studentId: `stu-${id}`,
+    packageId: "lp-10",
     status: "active",
     lessonsTotal: 10,
     lessonsUsed: 3,
@@ -60,7 +61,7 @@ describe("Para fazer hoje: pacotes acabando", () => {
     ).toEqual(["recent:expired"]);
   });
 
-  it("usado até o fim sai com pacote novo nas mesmas modalidades", () => {
+  it("usado até o fim sai quando compra de novo o mesmo pacote", () => {
     expect(
       ids([
         pkg("usedUp", { studentId: "ana", lessonsUsed: 10, modalityIds: ["pilates"] }),
@@ -86,7 +87,7 @@ describe("Para fazer hoje: pacotes acabando", () => {
     ]);
   });
 
-  it("renovado, cancelado ou com pacote mais novo nas mesmas modalidades sai", () => {
+  it("renovado, cancelado ou com compra mais nova do mesmo pacote sai", () => {
     expect(
       ids([
         pkg("renewed", { status: "renewed", lessonsUsed: 9 }),
@@ -97,11 +98,20 @@ describe("Para fazer hoje: pacotes acabando", () => {
     ).toEqual([]);
   });
 
+  it("pacote diferente (mesmo na mesma modalidade) não renova: o aviso continua", () => {
+    expect(
+      ids([
+        pkg("group", { studentId: "ana", lessonsUsed: 9, modalityIds: ["pilates"] }),
+        pkg("private", { studentId: "ana", packageId: "lp-private", purchasedAt: "2026-10-01", modalityIds: ["pilates"] }),
+      ]),
+    ).toEqual(["group:last_lesson"]);
+  });
+
   it("pacote novo em outra modalidade ou cancelado não esconde o aviso", () => {
     expect(
       ids([
         pkg("pilates", { studentId: "ana", lessonsUsed: 9, modalityIds: ["pilates"] }),
-        pkg("music", { studentId: "ana", purchasedAt: "2026-10-01", modalityIds: ["music"] }),
+        pkg("music", { studentId: "ana", packageId: "lp-music", purchasedAt: "2026-10-01", modalityIds: ["music"] }),
         pkg("canceledNew", { studentId: "ana", purchasedAt: "2026-10-02", status: "canceled", modalityIds: ["pilates"] }),
       ]),
     ).toEqual(["pilates:last_lesson"]);

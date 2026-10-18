@@ -233,13 +233,14 @@ describe("pacote: venda", () => {
   });
 });
 
-describe("pacote: renovação (regra 6)", () => {
-  it("o saldo passa para o pacote novo, com a validade dele; o antigo fica Renovado", async () => {
-    const pkg = await newPackage({ validityDays: 30 });
+describe("pacote: renovação (regra 6, só o mesmo pacote do catálogo)", () => {
+  it("comprar de novo o mesmo pacote leva o saldo, com a validade nova; o antigo fica Renovado", async () => {
     const big = await newPackage({ name: "20 aulas", lessons: 20, validityDays: 90 });
     const ana = await createStudent("Ana");
-    const first = await sell({ studentId: ana.id, packageId: pkg.id });
-    spend(first.id, 7);
+    const first = await sell({ studentId: ana.id, packageId: big.id });
+    // Perto de vencer: a renovacao leva o saldo com a validade do novo.
+    Object.assign(stored(first.id), { expiresAt: "2026-10-01" });
+    spend(first.id, 17);
 
     const renewed = await sell({ studentId: ana.id, packageId: big.id });
     expect(renewed).toMatchObject({
@@ -249,11 +250,29 @@ describe("pacote: renovação (regra 6)", () => {
       expiresAt: "2026-12-21",
       remaining: 23,
     });
-    expect(stored(first.id)).toMatchObject({ status: "renewed", renewedIntoId: renewed.id, lessonsUsed: 7 });
+    expect(stored(first.id)).toMatchObject({ status: "renewed", renewedIntoId: renewed.id, lessonsUsed: 17 });
     expect((await packagesService.listStudentPackages({ studentId: ana.id })).find((p) => p.id === first.id)?.remaining).toBe(0);
     expect(lastAudit()).toBe(
       "Ana Ribeiro vendeu o pacote 20 aulas para Ana (R$ 500,00), com 3 aulas trazidas do pacote anterior",
     );
+  });
+
+  it("pacote diferente na mesma modalidade fica separado; a aula usa o que vence primeiro", async () => {
+    const g = await teacherClass();
+    const group = await newPackage({ name: "10 aulas em grupo", validityDays: 60 });
+    const privateLessons = await newPackage({ name: "4 particulares", lessons: 4, validityDays: 30 });
+    const ana = await createStudent("Ana");
+    const first = await sell({ studentId: ana.id, packageId: group.id });
+    spend(first.id, 2);
+    const second = await sell({ studentId: ana.id, packageId: privateLessons.id });
+    expect(second.lessonsTotal).toBe(4);
+    expect(second.carriedOverLessons).toBeUndefined();
+    expect(owned(ana.id).map((p) => p.status)).toEqual(["active", "active"]);
+
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    await turmasService.markAttendance({ sessionId: sessionOf(g), studentId: ana.id, status: "present" });
+    expect(stored(second.id).lessonsUsed).toBe(1);
+    expect(stored(first.id).lessonsUsed).toBe(2);
   });
 
   it("modalidades diferentes: os dois continuam valendo", async () => {
