@@ -677,3 +677,20 @@ describe("numeros do mes", () => {
     expect((await communicationService.getMetrics()).recoveredAmountCents).toBe(0);
   });
 });
+
+describe("limite de caracteres com emoji (ALU-38)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("emoji conta 1 na mensagem (1000) e no modelo (900)", async () => {
+    await communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1000) }));
+    await expect(
+      communicationService.registerAssistedMessage(message({ content: "🥋".repeat(1001) })),
+    ).rejects.toMatchObject({ fields: [{ field: "content", message: "Use no máximo 1000 caracteres." }] });
+
+    const id = tmpl("birthday");
+    await communicationService.updateTemplate({ id, content: "🎉".repeat(900) });
+    await expect(communicationService.updateTemplate({ id, content: "🎉".repeat(901) })).rejects.toMatchObject({
+      fields: [{ field: "content", message: "Use no máximo 900 caracteres." }],
+    });
+  });
+});

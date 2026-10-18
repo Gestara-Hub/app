@@ -7,6 +7,11 @@ import { whatsappDigits } from "@gestarahub/core/phone";
  */
 
 /** Modelos so de envio manual: sem envio automatico, nem no WhatsApp oficial. */
+/** Mensagem para o aluno: ate 1000 caracteres (emoji conta 1, `charCount`). */
+export const MESSAGE_MAX_LENGTH = 1000;
+/** Modelo de mensagem: 900, folga para os nomes trocados pelas variaveis. */
+export const TEMPLATE_MAX_LENGTH = 900;
+
 export const MANUAL_MESSAGE_TRIGGERS: readonly MessageTrigger[] = [
   "payment_received",
   "level_up",

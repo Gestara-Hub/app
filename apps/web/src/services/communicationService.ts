@@ -14,7 +14,8 @@ import type {
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
-import { fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
+import { MESSAGE_MAX_LENGTH, TEMPLATE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
+import { charCount } from "@/lib/text";
 import {
   apiError,
   newId,
@@ -97,6 +98,10 @@ function validateMessage(payload: SendMessagePayload): void {
     fields.push({ field: "recipientPhone", message: "Informe um WhatsApp com DDD." });
   }
   if (!payload.content.trim()) fields.push({ field: "content", message: "Escreva a mensagem." });
+  // Emoji conta 1, como no contador da tela (ALU-38).
+  else if (charCount(payload.content.trim()) > MESSAGE_MAX_LENGTH) {
+    fields.push({ field: "content", message: `Use no máximo ${MESSAGE_MAX_LENGTH} caracteres.` });
+  }
   if (fields.length > 0) throw validationError(fields);
 }
 
@@ -255,8 +260,8 @@ export const communicationService = {
           throw validationError([{ field: "content", message: "Escreva o texto da mensagem." }]);
         }
         // Folga para os nomes: a mensagem enviada aceita ate 1000 caracteres.
-        if (payload.content.trim().length > 900) {
-          throw validationError([{ field: "content", message: "Use no máximo 900 caracteres." }]);
+        if (charCount(payload.content.trim()) > TEMPLATE_MAX_LENGTH) {
+          throw validationError([{ field: "content", message: `Use no máximo ${TEMPLATE_MAX_LENGTH} caracteres.` }]);
         }
         template.content = payload.content.trim();
       }

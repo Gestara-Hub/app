@@ -18,13 +18,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { whatsappNumber } from "@/lib/whatsapp";
+import { MESSAGE_MAX_LENGTH, whatsappNumber } from "@/lib/whatsapp";
+import { charCount } from "@/lib/text";
 import { useMessageRecipients, useMessageSuggestions, useWhatsAppSend } from "../hooks/use-communication";
 import type { MessageSuggestion } from "../message-suggestions";
 
 const schema = z.object({
   clientId: z.string({ error: "Selecione o aluno." }).min(1, "Selecione o aluno."),
-  content: z.string().trim().min(1, "Escreva a mensagem.").max(1000, "Use no máximo 1000 caracteres."),
+  content: z
+    .string()
+    .trim()
+    .min(1, "Escreva a mensagem.")
+    .refine((v) => charCount(v) <= MESSAGE_MAX_LENGTH, `Use no máximo ${MESSAGE_MAX_LENGTH} caracteres.`),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -44,6 +49,7 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
     defaultValues: { clientId: fixed?.id ?? "", content: "" },
   });
   const clientId = useWatch({ control: form.control, name: "clientId" });
+  const contentLength = charCount(useWatch({ control: form.control, name: "content" }) ?? "");
   const recipient = clients.find((c) => c.id === clientId);
   const noPhone = Boolean(recipient && !whatsappNumber(recipient.phone));
   const suggestions = useMessageSuggestions(recipient?.id);
@@ -129,13 +135,24 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
               hint={noPhone ? "Este aluno não tem WhatsApp com DDD no cadastro." : undefined}
             />
           )}
-          <TextArea<FormValues>
-            name="content"
-            label="Mensagem"
-            placeholder="Escreva a mensagem ou use um modelo"
-            rows={5}
-            required
-          />
+          <div className="space-y-1">
+            <TextArea<FormValues>
+              name="content"
+              label="Mensagem"
+              placeholder="Escreva a mensagem ou use um modelo"
+              rows={5}
+              required
+            />
+            {/* Contador como a pessoa ve: emoji conta 1 (ALU-38). */}
+            <p
+              className={cn(
+                "text-right text-[11px] tabular-nums",
+                contentLength > MESSAGE_MAX_LENGTH ? "font-medium text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {contentLength} de {MESSAGE_MAX_LENGTH}
+            </p>
+          </div>
           {templates.length > 0 ? (
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground">Modelos</p>

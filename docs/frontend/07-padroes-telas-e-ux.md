@@ -250,3 +250,4 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Boas-vindas:** fecha só pelo X ou pelos botões (nem Esc nem clique fora).
 - **Landing com sessão:** "Ir para o painel" no cabeçalho e no lugar do cadastro.
 - **Dia de vencimento nas Configurações:** o erro sai numa linha própria.
+- **Limite de texto da mensagem:** "Nova mensagem" (1000) e modelo (900) com contador "N de M"; emoji conta 1 caractere (`charCount`, em `@/lib/text`), na tela e no serviço (ALU-38).

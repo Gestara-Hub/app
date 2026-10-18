@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeText, withKind } from "@/lib/text";
+import { charCount, normalizeText, withKind } from "@/lib/text";
 
 describe("normalizeText", () => {
   it("remove acentos e cedilha", () => {
@@ -31,5 +31,14 @@ describe("withKind", () => {
     expect(withKind("pacote", "Pacote 10 aulas")).toBe("Pacote 10 aulas");
     expect(withKind("Curso", "curso de defesa")).toBe("curso de defesa");
     expect(withKind("curso", "Cursinho")).toBe("curso Cursinho");
+  });
+});
+
+describe("charCount", () => {
+  it("emoji conta 1 caractere (ALU-38)", () => {
+    expect("🥋".length).toBe(2);
+    expect(charCount("🥋")).toBe(1);
+    expect(charCount("Bons treinos! 🥋🎉")).toBe(16);
+    expect(charCount("")).toBe(0);
   });
 });

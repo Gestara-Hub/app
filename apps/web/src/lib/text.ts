@@ -18,3 +18,14 @@ export function withKind(kind: string, name: string): string {
   const trimmed = name.trim();
   return normalizeText(trimmed).startsWith(`${normalizeText(kind)} `) ? trimmed : `${kind} ${trimmed}`;
 }
+
+/**
+ * Caracteres como a pessoa ve: emoji conta 1 (no `length` do JS contava 2).
+ * Usa o Intl.Segmenter quando ha; senao, conta os pontos de codigo.
+ */
+export function charCount(text: string): number {
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    return Array.from(new Intl.Segmenter("pt-BR", { granularity: "grapheme" }).segment(text)).length;
+  }
+  return [...text].length;
+}
