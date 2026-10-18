@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, GraduationCap, MessageSquarePlus, TrendingUp } from "lucide-react";
+import { ArrowUpCircle, ClipboardCheck, GraduationCap, MessageSquarePlus, TrendingUp } from "lucide-react";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
@@ -49,14 +49,22 @@ export function StudentEvolutionTab({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 space-y-1.5">
               <h3 className="text-sm font-semibold text-foreground">{level.modalityName}</h3>
-              <BeltBadge
-                name={level.levelName}
-                color={level.levelColor}
-                variant={level.trackStyle}
-                subLevel={level.subLevel}
-                maxSubLevels={level.maxSubLevels}
-                size="sm"
-              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <BeltBadge
+                  name={level.levelName}
+                  color={level.levelColor}
+                  variant={level.trackStyle}
+                  subLevel={level.subLevel}
+                  maxSubLevels={level.maxSubLevels}
+                  size="sm"
+                />
+                {level.agedOut ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                    <ArrowUpCircle className="size-3" aria-hidden />
+                    Trocar {level.words.level.toLowerCase()}
+                  </span>
+                ) : null}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {[
                   level.promotedAt ? `${level.words.promotion} em ${brDate(level.promotedAt)}` : null,

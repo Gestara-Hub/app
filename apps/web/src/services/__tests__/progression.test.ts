@@ -1,7 +1,7 @@
 import type { Client, StudentModalityProgression } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ORG_ID } from "@/config/tenant";
-import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { PROGRESSION_TEMPLATES, resolveModalityTrack } from "@/lib/progression-tracks";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { setActiveOrganization, store } from "@/mocks/store";
 import { categoriesService } from "@/services/categoriesService";
@@ -643,5 +643,27 @@ describe("promoteStudent e ponto de partida", () => {
     await expect(
       clientsService.promoteStudent({ studentId: "nao-existe", modalityId: bjj, toLevelName: "Azul", toSubLevel: 0, date: "2026-09-22" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("graduação e troca de trilha (rodada de 18/10/2026)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("graduação com data futura é recusada", async () => {
+    const bjj = await createModality("Jiu-Jitsu");
+    const a = await createStudent("Ana");
+    await expect(
+      clientsService.promoteStudent({ studentId: a.id, modalityId: bjj, toLevelName: "Azul", toSubLevel: 0, date: "2026-10-01" }),
+    ).rejects.toMatchObject({ fields: [{ field: "date", message: "A data não pode ser futura." }] });
+  });
+
+  it("trocar a trilha volta quem não tem mais o nível ao primeiro, sem grau", async () => {
+    const bjj = await createModality("Jiu-Jitsu");
+    const a = await createStudent("Ana");
+    await clientsService.promoteStudent({ studentId: a.id, modalityId: bjj, toLevelName: "Faixa Azul", toSubLevel: 2, date: "2026-09-20" });
+    await categoriesService.update(bjj, { progressionTrack: structuredClone(PROGRESSION_TEMPLATES.modules.track) });
+    const progression = progressionOf(await clientsService.getById(a.id), bjj);
+    expect(progression.subLevel).toBe(0);
+    expect(progression.levelName).toBe(PROGRESSION_TEMPLATES.modules.track.levels[0].name);
   });
 });

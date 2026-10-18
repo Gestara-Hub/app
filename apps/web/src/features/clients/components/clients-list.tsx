@@ -47,8 +47,9 @@ import {
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { sharedVocabularyFor } from "@/lib/business-segment-presets";
-import { resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
+import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
@@ -69,6 +70,7 @@ import {
   canSellPackageTo,
   cancelablePackage,
   displayPackage,
+  useEnrolledModalities,
   usePlans,
   useStudentPackages,
 } from "@/features/turmas";
@@ -110,8 +112,15 @@ function getEffectivePriceCents(client: Client, plan: Plan): number {
  */
 function useClientVocabulary(client: Client, categoryById: Map<string, Category>) {
   const area = useSegmentVocabulary();
+  // Tambem as modalidades das turmas dele: aluno de modulos sem nivel salvo
+  // ve "Definir módulo", nao a palavra da area.
+  const { data: enrolled } = useEnrolledModalities();
+  const ids = new Set([
+    ...Object.keys(client.progressions ?? {}),
+    ...(enrolled ?? []).filter((pair) => pair.studentId === client.id).map((pair) => pair.modalityId),
+  ]);
   return sharedVocabularyFor(
-    Object.keys(client.progressions ?? {}).map((id) => categoryById.get(id)),
+    [...ids].map((id) => categoryById.get(id)),
     area,
   );
 }
@@ -125,7 +134,8 @@ function ClientProgressionBadges({
   categoryById: Map<string, Category>;
   onOpenGraduation?: (client: Client) => void;
 }) {
-  const vocabulary = useSegmentVocabulary();
+  const vocabulary = useClientVocabulary(client, categoryById);
+  const age = ageAt(client.birthDate, format(new Date(), "yyyy-MM-dd"));
   const entries = Object.values(client.progressions ?? {});
   const resolvedBadges = entries
     .map((prog) => {
@@ -144,6 +154,9 @@ function ClientProgressionBadges({
         level: lvl,
         style: resolveTrackStyle(track),
         subLevel: prog.subLevel,
+        // Passou da idade do nivel: "Trocar faixa" tambem na lista.
+        agedOut: isAgedOutOfLevel(lvl, age),
+        levelWord: vocabularyForModality(cat, vocabulary).level,
       };
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -190,6 +203,11 @@ function ClientProgressionBadges({
           size="xs"
         />
       ))}
+      {resolvedBadges.slice(0, 2).map((b) =>
+        b.agedOut ? (
+          <LevelChangeBadge key={`change-${b.modalityId}`} level={b.level} birthDate={client.birthDate} levelWord={b.levelWord} />
+        ) : null,
+      )}
     </div>
   );
 }

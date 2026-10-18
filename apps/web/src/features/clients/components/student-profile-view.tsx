@@ -61,6 +61,7 @@ import { StudentEnrollmentsTab } from "./student-enrollments-tab";
 import { StudentEvolutionTab } from "./student-evolution-tab";
 import { StudentProfileAlerts } from "./student-profile-alerts";
 import { brDate } from "./student-profile-parts";
+import { levelWithSubLevel } from "@/lib/progression-tracks";
 
 type ProfileSectionId = "classes" | "charges" | "packages" | "evolution" | "messages" | "data";
 
@@ -362,7 +363,7 @@ export function StudentProfileView({ id }: { id: Id }) {
     .at(-1);
   const evolutionSummary = level
     ? [
-        `${level.levelName}${summary.levels.length > 1 ? ` · +${summary.levels.length - 1}` : ""}`,
+        `${levelWithSubLevel(level.levelName, level.subLevel, level.trackStyle)}${summary.levels.length > 1 ? ` · +${summary.levels.length - 1}` : ""}`,
         lastRecordDate ? `último registro ${brDate(lastRecordDate).slice(0, 5)}` : "sem registros",
       ].join(" · ")
     : "Sem trilha de evolução";

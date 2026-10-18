@@ -116,6 +116,10 @@ export interface StudentSummaryLevel {
   trackStyle: ProgressionTrackStyle;
   /** Data do ultimo avanco (ausente sem progresso salvo). */
   promotedAt?: DateISO;
+  /** Passou da idade do nivel atual: hora de trocar ("Trocar faixa"). */
+  agedOut: boolean;
+  /** Data do ultimo avanco registrado (graduacao de verdade, nao o ponto de partida). */
+  lastAdvancedAt?: DateISO;
   words: StudentLevelWords;
   /** Ultimos registros de aula, do mais novo ao mais antigo (ate 3). */
   lastRecords: StudentEvaluationEntry[];

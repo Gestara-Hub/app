@@ -19,7 +19,13 @@ import { packageState } from "@gestarahub/core/packages";
 import { addDays, format, parseISO } from "date-fns";
 import { daysUntilBirthday } from "@/lib/birthdays";
 import { getSegmentPreset, vocabularyForModality } from "@/lib/business-segment-presets";
-import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import {
+  ageAt,
+  currentLevelOf,
+  isAgedOutOfLevel,
+  resolveModalityTrack,
+  resolveTrackStyle,
+} from "@/lib/progression-tracks";
 import { store } from "@/mocks/store";
 import { notFoundError, simulateRead } from "@/mocks/helpers";
 import { autoGenerateMembershipCharges } from "./billingService";
@@ -255,6 +261,8 @@ function levelsOf(client: Client, enrollments: StudentSummaryEnrollment[], today
       maxSubLevels: level.maxSubLevels,
       trackStyle: resolveTrackStyle(track),
       promotedAt: progression?.promotedAt,
+      agedOut: isAgedOutOfLevel(level, age),
+      lastAdvancedAt: [...(progression?.promotionHistory ?? [])].sort((a, b) => b.date.localeCompare(a.date))[0]?.date,
       words: { level: words.level, levelsTitle: words.levelsTitle, promotion: words.promotion },
       lastRecords: records.slice(0, LAST_RECORDS),
       recordsCount: records.length,

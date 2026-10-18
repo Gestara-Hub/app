@@ -14,6 +14,9 @@ import {
 import { store } from "@/mocks/store";
 import { getSegmentPreset, segmentDefaultAssessments } from "@/lib/business-segment-presets";
 import { normalizeText } from "@/lib/text";
+import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
+import { plural } from "@gestarahub/core/format";
+import { format } from "date-fns";
 import {
   newId,
   notFoundError,
@@ -172,6 +175,9 @@ export const categoriesService = {
         updatedAt: nowIso(),
       };
       store.categories[idx] = updated;
+      // Trilha trocada: quem estava num nivel que nao existe mais volta ao 1o
+      // nivel da idade, sem grau (antes ficava "Iniciante • 2ª etapa").
+      const reset = payload.progressionTrack !== undefined ? resetMissingLevels(updated) : 0;
       // Editar uma modalidade criada no setup conta como revisao (passo do onboarding).
       const settings = store.organization.settings;
       if (
@@ -183,7 +189,7 @@ export const categoriesService = {
       auditLogService.record({
         action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
         target: { type: "category", id: updated.id, label: updated.name },
-        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} a ${categoryNoun()} ${updated.name}`,
+        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} a ${categoryNoun()} ${updated.name}${reset > 0 ? ` (${plural(reset, "aluno voltou", "alunos voltaram")} ao primeiro nível da nova trilha)` : ""}`,
       });
       return clone(updated);
     });
@@ -208,3 +214,34 @@ export const categoriesService = {
     });
   },
 };
+
+/**
+ * Alunos da modalidade num nivel que a trilha nova nao tem: voltam ao 1o
+ * nivel da idade, sem grau. Grau acima do maximo do nivel cai para o maximo.
+ * Devolve quantos voltaram.
+ */
+function resetMissingLevels(category: Category): number {
+  const track = resolveModalityTrack(category);
+  if (!track.enabled || track.levels.length === 0) return 0;
+  const today = format(new Date(), "yyyy-MM-dd");
+  let reset = 0;
+  for (const client of store.clients) {
+    const progression = client.progressions?.[category.id];
+    if (!progression) continue;
+    const level = track.levels.find((l) => l.id === progression.levelId || l.name === progression.levelName);
+    if (level) {
+      const max = level.maxSubLevels ?? 0;
+      if (progression.subLevel > max) progression.subLevel = max;
+      continue;
+    }
+    const first = firstLevelForAge(track, client.birthDate, today) ?? track.levels[0];
+    progression.levelId = first.id;
+    progression.levelName = first.name;
+    progression.levelColor = first.color;
+    progression.subLevel = 0;
+    progression.maxSubLevels = first.maxSubLevels;
+    progression.updatedAt = nowIso();
+    reset += 1;
+  }
+  return reset;
+}

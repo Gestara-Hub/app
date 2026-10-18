@@ -519,8 +519,11 @@ export function resolveModalityTrack(
 /** Idade completa em `onDate` (YYYY-MM-DD), pela data local. Sem nascimento = null. */
 export function ageAt(birthDate: string | undefined, onDate: string): number | null {
   if (!birthDate || birthDate.length < 10) return null;
-  const [by, bm, bd] = birthDate.split("-").map(Number);
+  const [by, bm, bdRaw] = birthDate.split("-").map(Number);
   const [y, m, d] = onDate.split("-").map(Number);
+  // Nascido em 29/02 completa ano em 28/02 fora do bissexto.
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const bd = bm === 2 && bdRaw === 29 && !leap ? 28 : bdRaw;
   let age = y - by;
   if (m < bm || (m === bm && d < bd)) age -= 1;
   return age >= 0 ? age : null;
@@ -638,4 +641,13 @@ export function formatTrackSummary(track?: ModalityProgressionTrack): string | n
           ? `${track.targetAttendances ?? 30} aulas e ${track.targetMonths ?? 6}m`
           : "Exame livre";
   return `${count} ${count === 1 ? "nível" : "níveis"} • Meta: ${criteria}`;
+}
+
+/**
+ * Nivel com o grau ou a etapa, em texto: "Faixa Branca · 1º grau",
+ * "Iniciante · 2ª etapa". Sem grau, so o nome.
+ */
+export function levelWithSubLevel(name: string, subLevel: number, style: ProgressionTrackStyle): string {
+  if (!subLevel || subLevel <= 0) return name;
+  return style === "belt" ? `${name} · ${subLevel}º grau` : `${name} · ${subLevel}ª etapa`;
 }

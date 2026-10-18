@@ -6,6 +6,7 @@ import { daysUntilBirthday } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { TRIGGER_META } from "./message-meta";
 import { chargeReference, chargeReminder, packageRemainingText } from "./message-values";
+import { levelWithSubLevel } from "@/lib/progression-tracks";
 
 /**
  * Modelos sugeridos na mensagem para o aluno: primeiro os da situacao dele
@@ -141,15 +142,16 @@ function contextualSuggestions(context: StudentMessageContext): MessageSuggestio
     out.push({ key: "birthday", trigger: "birthday_greeting", label: TRIGGER_META.birthday_greeting.label });
   }
 
+  // So avanco de verdade (graduacao registrada), com o grau: "Faixa Azul · 1º grau".
   const promoted = (summary?.levels ?? [])
-    .filter((l) => l.promotedAt && daysSince(l.promotedAt, today) <= PROMOTION_WINDOW_DAYS)
-    .sort((a, b) => (b.promotedAt ?? "").localeCompare(a.promotedAt ?? ""))[0];
+    .filter((l) => l.lastAdvancedAt && daysSince(l.lastAdvancedAt, today) <= PROMOTION_WINDOW_DAYS)
+    .sort((a, b) => (b.lastAdvancedAt ?? "").localeCompare(a.lastAdvancedAt ?? ""))[0];
   if (promoted) {
     out.push({
       key: `level-${promoted.modalityId}`,
       trigger: "level_up",
       label: TRIGGER_META.level_up.label,
-      values: { nivel: promoted.levelName },
+      values: { nivel: levelWithSubLevel(promoted.levelName, promoted.subLevel, promoted.trackStyle) },
     });
   }
 

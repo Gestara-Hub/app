@@ -243,11 +243,18 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
     if (key === track.templateKey || !isTemplateKey(key)) return;
     // So pergunta quando ha personalizacao de verdade (niveis ou metas diferentes
     // de qualquer modelo); trocar entre modelos intactos e direto.
+    // Na edicao avisa sempre: quem ja tem nivel volta ao 1o da nova trilha, sem grau.
+    const customized = isCustomizedTrack(track);
     if (
-      isCustomizedTrack(track) &&
+      (customized || isEdit) &&
       !(await confirmAction({
         title: "Trocar o modelo da trilha?",
-        description: "Os níveis e metas que você personalizou serão substituídos pelos do modelo.",
+        description: [
+          customized ? "Os níveis e metas que você personalizou serão substituídos pelos do modelo." : null,
+          isEdit ? "Quem já tem nível nesta modalidade volta ao primeiro da nova trilha, sem grau." : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
         confirmLabel: "Trocar modelo",
       }))
     ) {

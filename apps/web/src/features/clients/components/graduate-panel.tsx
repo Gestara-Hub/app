@@ -470,8 +470,14 @@ export function GraduatePanel({
             value={date}
             max={todayISO()}
             onChange={(e) => setDate(e.target.value)}
+            aria-invalid={date > todayISO() ? true : undefined}
             className="text-base md:text-sm"
           />
+          {date > todayISO() ? (
+            <p role="alert" className="text-xs text-destructive">
+              A data não pode ser futura.
+            </p>
+          ) : null}
         </div>
         <div className="space-y-1.5">
           <label htmlFor="graduate-examiner" className="text-sm font-medium text-foreground">
@@ -507,7 +513,7 @@ export function GraduatePanel({
         </Button>
         <Button
           type="button"
-          disabled={isPending || !target || !date || unchanged}
+          disabled={isPending || !target || !date || date > todayISO() || unchanged}
           onClick={() =>
             target &&
             onConfirm({

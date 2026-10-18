@@ -22,7 +22,7 @@ import type {
 } from "@gestarahub/contracts";
 import { chargesDueIn, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
 import { getCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
@@ -173,6 +173,14 @@ function progressionOf(client: Client, modalityId: Id, date: DateISO): StudentMo
     color: "white" as const,
     maxSubLevels: 4,
   };
+  // "Desde": quando entrou na modalidade (1a matricula numa turma dela), nao a
+  // data do registro, que nao e graduacao.
+  const groupIds = new Set(store.classGroups.filter((g) => g.modalityId === modalityId).map((g) => g.id));
+  const since =
+    store.enrollments
+      .filter((e) => e.studentId === client.id && groupIds.has(e.classGroupId))
+      .map((e) => format(parseISO(e.enrolledAt), "yyyy-MM-dd"))
+      .sort()[0] ?? (client.createdAt ? format(parseISO(client.createdAt), "yyyy-MM-dd") : date);
   return {
     modalityId,
     modalityName: modality?.name,
@@ -181,7 +189,7 @@ function progressionOf(client: Client, modalityId: Id, date: DateISO): StudentMo
     levelColor: firstLevel.color,
     subLevel: 0,
     maxSubLevels: firstLevel.maxSubLevels,
-    promotedAt: date,
+    promotedAt: since < date ? since : date,
     strengths: [],
     goals: [],
     evaluations: [],
@@ -752,6 +760,9 @@ export const clientsService = {
   }): Promise<Client> {
     return simulateWrite(() => {
       assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
+      if (payload.date > todayISO()) {
+        throw validationError([{ field: "date", message: "A data não pode ser futura." }]);
+      }
       const idx = store.clients.findIndex((c) => c.id === payload.studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];

@@ -139,17 +139,33 @@ describe("modelos sugeridos na mensagem para o aluno", () => {
       today: TODAY,
       summary: summary({
         levels: [
-          { modalityId: "m-1", levelName: "Faixa Cinza", promotedAt: "2026-10-01" },
-          { modalityId: "m-2", levelName: "Faixa Azul", promotedAt: "2026-10-10" },
-          { modalityId: "m-3", levelName: "Faixa Roxa", promotedAt: "2026-09-29" },
+          { modalityId: "m-1", levelName: "Faixa Cinza", promotedAt: "2026-10-01", lastAdvancedAt: "2026-10-01" },
+          { modalityId: "m-2", levelName: "Faixa Azul", promotedAt: "2026-10-10", lastAdvancedAt: "2026-10-10" },
+          { modalityId: "m-3", levelName: "Faixa Roxa", promotedAt: "2026-09-29", lastAdvancedAt: "2026-09-29" },
         ],
       }),
     });
     expect(list[0]).toMatchObject({ trigger: "level_up", label: "Parabéns pelo avanço", values: { nivel: "Faixa Azul" } });
     expect(list.filter((s) => s.trigger === "level_up")).toHaveLength(1);
     expect(
-      triggers({ summary: summary({ levels: [{ modalityId: "m-1", levelName: "X", promotedAt: "2026-09-29" }] }) }),
+      triggers({ summary: summary({ levels: [{ modalityId: "m-1", levelName: "X", promotedAt: "2026-09-29", lastAdvancedAt: "2026-09-29" }] }) }),
     ).toEqual(NOTICES);
+  });
+
+  it("parabéns leva o grau e só vale para avanço registrado (não o ponto de partida)", () => {
+    const withGrade = messageSuggestions({
+      today: TODAY,
+      summary: summary({
+        levels: [
+          { modalityId: "m-1", levelName: "Faixa Azul", subLevel: 1, trackStyle: "belt", promotedAt: "2026-10-10", lastAdvancedAt: "2026-10-10" },
+        ],
+      }),
+    });
+    expect(withGrade[0]).toMatchObject({ trigger: "level_up", values: { nivel: "Faixa Azul · 1º grau" } });
+    const startOnly = triggers({
+      summary: summary({ levels: [{ modalityId: "m-1", levelName: "Faixa Branca", promotedAt: "2026-10-10" }] }),
+    });
+    expect(startOnly).not.toContain("level_up");
   });
 
   it("pagamento recebido nos últimos 7 dias, o mais recente, com o mês da mensalidade", () => {
@@ -203,7 +219,7 @@ describe("modelos sugeridos na mensagem para o aluno", () => {
         summary: summary({
           student: { birthDate: "2000-10-14" },
           studentSince: "2026-10-10",
-          levels: [{ modalityId: "m-1", levelName: "Nível 2", promotedAt: "2026-10-13" }],
+          levels: [{ modalityId: "m-1", levelName: "Nível 2", promotedAt: "2026-10-13", lastAdvancedAt: "2026-10-13" }],
           packages: [
             {
               id: "pkg-1",
