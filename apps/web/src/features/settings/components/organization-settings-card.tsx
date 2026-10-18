@@ -81,8 +81,9 @@ const schema = z.object({
   organizationName: z
     .string()
     .trim()
-    .min(1, "Informe o nome da organização."),
-  unitName: z.string().trim().optional(),
+    .min(1, "Informe o nome da organização.")
+    .max(80, "Use até 80 caracteres."),
+  unitName: z.string().trim().max(80, "Use até 80 caracteres.").optional(),
   // 29 a 31 caem no ultimo dia dos meses mais curtos.
   defaultDueDay: z
     .number({ error: "Use um dia de 1 a 31." })

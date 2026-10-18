@@ -188,3 +188,19 @@ describe("revisao das modalidades da configuracao inicial", () => {
     expect(lastAudit()).toBe("Ana Ribeiro revisou as modalidades criadas na configuração inicial");
   });
 });
+
+describe("nome do espaço e da unidade", () => {
+  beforeEach(() => resetAcademy());
+
+  it("aceita até 80 caracteres", async () => {
+    await expect(settingsService.updateOrganization({ name: "a".repeat(81) })).rejects.toMatchObject({
+      fields: [{ field: "organizationName", message: "Use até 80 caracteres." }],
+    });
+    await expect(settingsService.updateUnit({ name: "b".repeat(81) })).rejects.toMatchObject({
+      fields: [{ field: "unitName" }],
+    });
+    await expect(settingsService.updateOrganization({ name: "a".repeat(80) })).resolves.toMatchObject({
+      name: "a".repeat(80),
+    });
+  });
+});

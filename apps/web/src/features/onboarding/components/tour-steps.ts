@@ -1,3 +1,4 @@
+import type { ClassBillingMode } from "@gestarahub/contracts";
 import type { TourStep } from "@/components/shared/product-tour";
 
 /** Passos do tour para agendamento individual (Barbearia, Clínica, etc.) */
@@ -10,7 +11,7 @@ export const TOUR_STEPS_DEFAULT: TourStep[] = [
   {
     target: '[data-tour="nav-agenda"]',
     title: "Agenda",
-    body: "É aqui que você marca e acompanha os agendamentos — por dia, semana ou mês.",
+    body: "Marque e acompanhe os agendamentos por dia, semana ou mês.",
   },
   {
     target: '[data-tour="nav-users"]',
@@ -25,35 +26,44 @@ export const TOUR_STEPS_DEFAULT: TourStep[] = [
   {
     target: '[data-tour="onboarding-checklist"]',
     title: "Primeiros passos",
-    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
+    body: "Siga a lista: cada item leva ao lugar certo.",
   },
 ];
 
-/** Passos do tour para turmas e aulas coletivas (Escola de Idiomas, Cursos, Academia, etc.) */
-export const TOUR_STEPS_CLASSES: TourStep[] = [
-  {
-    target: '[data-tour="nav-group-operations"]',
-    title: "Operação Diária",
-    body: "Calendário, Turmas e Alunos ficam juntos no topo e a 1 clique de distância para o atendimento rápido na recepção e lista de chamada.",
-  },
-  {
-    target: '[data-tour="nav-group-financial"]',
-    title: "Financeiro",
-    body: "Aqui você acompanha as cobranças, registra os pagamentos e vê quem está em dia ou pendente.",
-  },
-  {
-    target: '[data-tour="nav-group-catalog"]',
-    title: "Cadastros",
-    body: "Modalidades, Planos e Equipe ficam organizados nesta seção — você estrutura no início e altera quando precisar.",
-  },
-  {
-    target: '[data-tour="nav-settings"]',
-    title: "Configurações",
-    body: "No rodapé você ajusta o horário de funcionamento, as regras da mensalidade e as permissões de usuários.",
-  },
-  {
-    target: '[data-tour="onboarding-checklist"]',
-    title: "Primeiros passos",
-    body: "Siga esta lista para deixar tudo pronto. Cada item te leva direto ao lugar certo — alguns só abrem depois que você cadastra o que vem antes.",
-  },
-];
+/**
+ * Passos do tour para turmas e aulas (doc 08): uma frase curta por passo, e o
+ * passo de Configuracoes so cita as regras da mensalidade em area que cobra
+ * mensalidade.
+ */
+export function tourStepsForClasses(billingMode: ClassBillingMode): TourStep[] {
+  return [
+    {
+      target: '[data-tour="nav-group-operations"]',
+      title: "Operação diária",
+      body: "Calendário, turmas, alunos e mensagens do dia.",
+    },
+    {
+      target: '[data-tour="nav-group-financial"]',
+      title: "Financeiro",
+      body: "Cobranças, pagamentos e quem está em dia.",
+    },
+    {
+      target: '[data-tour="nav-group-catalog"]',
+      title: "Cadastros",
+      body: "Modalidades, planos e pacotes, e a equipe.",
+    },
+    {
+      target: '[data-tour="nav-settings"]',
+      title: "Configurações",
+      body:
+        billingMode === "membership"
+          ? "Horários, regras da mensalidade e usuários."
+          : "Horários de funcionamento e usuários.",
+    },
+    {
+      target: '[data-tour="onboarding-checklist"]',
+      title: "Primeiros passos",
+      body: "Siga a lista: cada item leva ao lugar certo.",
+    },
+  ];
+}

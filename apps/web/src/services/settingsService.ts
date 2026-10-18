@@ -8,8 +8,11 @@ import type {
 } from "@gestarahub/contracts";
 import { setActiveOrganization, store } from "@/mocks/store";
 import { defaultMessageTemplates } from "@/mocks/seed";
-import { simulateRead, simulateWrite } from "@/mocks/helpers";
+import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
+
+/** Nome do espaco e da unidade. */
+const MAX_NAME = 80;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -73,6 +76,10 @@ export const settingsService = {
 
   updateOrganization(payload: UpdateOrganization): Promise<Organization> {
     return simulateWrite(() => {
+      // Nome ate 80 caracteres: cabe no topo e no cookie da sessao.
+      if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
+        throw validationError([{ field: "organizationName", message: "Use até 80 caracteres." }]);
+      }
       const previousSegment = store.organization.classSegment;
       store.organization = {
         ...store.organization,
@@ -116,6 +123,9 @@ export const settingsService = {
 
   updateUnit(payload: UpdateUnit): Promise<Unit> {
     return simulateWrite(() => {
+      if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
+        throw validationError([{ field: "unitName", message: "Use até 80 caracteres." }]);
+      }
       store.unit = {
         ...store.unit,
         ...payload,

@@ -5,7 +5,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Cadastro rapido da landing: so nome e e-mail. */
 export const signupSchema = z.object({
-  name: z.string().trim().min(1, "Informe seu nome."),
+  name: z.string().trim().min(1, "Informe seu nome.").max(80, "Use até 80 caracteres."),
   email: z
     .string()
     .trim()

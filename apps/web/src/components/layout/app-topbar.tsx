@@ -21,12 +21,13 @@ import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
-import { useUnit } from "@/features/settings";
+import { useOrganization, useUnit } from "@/features/settings";
 import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 
 export function AppTopbar() {
   const user = useCurrentUser();
-  const { data: unit, isError: unitError } = useUnit();
+  const { data: unit } = useUnit();
+  const { data: organization, isError: orgError } = useOrganization();
   const { data: rawSwitchOptions } = useSwitchableUsers();
   const switchOptions = (rawSwitchOptions ?? []).filter(
     (opt) => opt.user.name !== "Marcelo Andrade" && opt.user.id !== "usr-marcelo",
@@ -38,11 +39,13 @@ export function AppTopbar() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-5" />
 
-      <div className="hidden items-center gap-2 text-sm font-medium sm:flex">
-        <Building2 className="size-4 text-muted-foreground" />
-        {/* Esqueleto enquanto a unidade carrega, para o nome nao "pular" */}
-        {unit || unitError ? (
-          <span className="truncate">{unit?.name ?? ""}</span>
+      <div className="flex min-w-0 items-center gap-2 text-xs font-medium sm:text-sm">
+        <Building2 className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
+        {/* Nome do espaco (o da configuracao inicial) e a unidade, quando tem. */}
+        {organization || orgError ? (
+          <span className="min-w-0 break-words leading-tight">
+            {[organization?.name, unit?.name].filter(Boolean).join(" · ")}
+          </span>
         ) : (
           <Skeleton className="h-4 w-32" aria-hidden />
         )}

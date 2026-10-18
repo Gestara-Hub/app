@@ -10,7 +10,7 @@ import { ProductTour } from "@/components/shared/product-tour";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
 
-import { TOUR_STEPS_CLASSES, TOUR_STEPS_DEFAULT } from "./tour-steps";
+import { TOUR_STEPS_DEFAULT, tourStepsForClasses } from "./tour-steps";
 
 /**
  * Orquestra o checklist e tour guiado no Dashboard após a conclusão do setup inicial.
@@ -91,7 +91,7 @@ export function Onboarding() {
 
       {tourOpen ? (
         <ProductTour
-          steps={isClasses ? TOUR_STEPS_CLASSES : TOUR_STEPS_DEFAULT}
+          steps={isClasses ? tourStepsForClasses(areaBillingMode) : TOUR_STEPS_DEFAULT}
           onClose={() => setTourOpen(false)}
         />
       ) : null}

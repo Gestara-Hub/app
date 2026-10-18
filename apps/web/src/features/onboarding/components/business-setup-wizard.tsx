@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InitialsAvatar } from "@/components/shared/list";
 import { cn } from "@/lib/utils";
+import { normalizeText } from "@/lib/text";
 import { queryKeys } from "@/lib/queryKeys";
 import { settingsService } from "@/services/settingsService";
 import { categoriesService } from "@/services/categoriesService";
@@ -53,6 +55,48 @@ const CustomAreaIcon = SEGMENT_ICONS.custom;
 /** Sugestoes clicaveis do nome da area em "Outra área". */
 const CUSTOM_AREA_SUGGESTIONS = ["Teatro", "Xadrez", "Fotografia", "Autoescola"];
 
+/** Nome do espaco e da unidade: ate 80 caracteres (cabe no topo e no cookie). */
+export const MAX_SPACE_NAME = 80;
+
+/** Mesma aula com outra caixa ou acento ("Judo" e "Judô") e a mesma aula. */
+const sameName = (a: string, b: string) => normalizeText(a) === normalizeText(b);
+
+/**
+ * Rascunho do assistente na aba (sessionStorage): recarregar no meio nao perde
+ * o que foi escolhido. O passo fica na URL (?passo=2), e o Voltar do
+ * navegador volta um passo.
+ */
+const DRAFT_KEY = "gestarahub:setup-draft";
+
+interface SetupDraft {
+  businessName: string;
+  unitCity: string;
+  showUnitField: boolean;
+  selectedSegment: ClassesBusinessSegment | null;
+  customSegmentName: string;
+  customProgression: CustomSegmentProgression;
+  customBilling: ClassBillingMode;
+  selectedModalities: string[];
+  customAddedModalities: string[];
+  modalitiesTouched: boolean;
+}
+
+function readDraft(): Partial<SetupDraft> {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(DRAFT_KEY) ?? "{}") as Partial<SetupDraft>;
+  } catch {
+    return {};
+  }
+}
+
+function clearDraft(): void {
+  try {
+    window.sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Sem armazenamento: nada a limpar.
+  }
+}
+
 /** Celular/tablet: nao abre o teclado sozinho (doc 07, 3.2). */
 function isTouchDevice(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
@@ -72,21 +116,74 @@ export function BusinessSetupWizard() {
   const { data: organization } = useOrganization();
   const [, updateOnboardingState] = useOnboardingState();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const searchParams = useSearchParams();
+  // O assistente so monta no navegador (SetupRouteGuard): o rascunho le direto.
+  const [draft] = useState(readDraft);
   const [businessName, setBusinessName] = useState(
-    organization?.name === "Academia X" ? "" : organization?.name ?? "",
+    draft.businessName ?? (organization?.name === "Academia X" ? "" : organization?.name ?? ""),
   );
-  const [unitCity, setUnitCity] = useState("");
-  const [showUnitField, setShowUnitField] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState<ClassesBusinessSegment | null>(null);
-  const [customSegmentName, setCustomSegmentName] = useState("");
+  const [unitCity, setUnitCity] = useState(draft.unitCity ?? "");
+  const [showUnitField, setShowUnitField] = useState(draft.showUnitField ?? false);
+  const [selectedSegment, setSelectedSegment] = useState<ClassesBusinessSegment | null>(
+    draft.selectedSegment ?? null,
+  );
+  const [customSegmentName, setCustomSegmentName] = useState(draft.customSegmentName ?? "");
   const [customProgression, setCustomProgression] = useState<CustomSegmentProgression>(
-    DEFAULT_CUSTOM_PROGRESSION,
+    draft.customProgression ?? DEFAULT_CUSTOM_PROGRESSION,
   );
-  const [customBilling, setCustomBilling] = useState<ClassBillingMode>(DEFAULT_CUSTOM_BILLING);
-  const [selectedModalities, setSelectedModalities] = useState<string[]>([]);
-  const [customAddedModalities, setCustomAddedModalities] = useState<string[]>([]);
+  const [customBilling, setCustomBilling] = useState<ClassBillingMode>(
+    draft.customBilling ?? DEFAULT_CUSTOM_BILLING,
+  );
+  const [selectedModalities, setSelectedModalities] = useState<string[]>(draft.selectedModalities ?? []);
+  const [customAddedModalities, setCustomAddedModalities] = useState<string[]>(
+    draft.customAddedModalities ?? [],
+  );
+  // O aviso de "nenhuma aula" so depois de mexer nas aulas.
+  const [modalitiesTouched, setModalitiesTouched] = useState(draft.modalitiesTouched ?? false);
   const [newModalityInput, setNewModalityInput] = useState("");
+
+  // Passo da URL, sem pular o que falta: sem nome fica no 1; sem area, no 2.
+  const areaReady =
+    selectedSegment !== null && (selectedSegment !== "custom" || customSegmentName.trim() !== "");
+  const maxStep = !businessName.trim() ? 1 : areaReady ? 3 : 2;
+  const requestedStep = Number(searchParams.get("passo")) || 1;
+  const step = Math.min(Math.max(requestedStep, 1), maxStep) as 1 | 2 | 3;
+  const goTo = (next: 1 | 2 | 3, replace = false) => {
+    const url = `/setup?passo=${next}`;
+    if (replace) router.replace(url, { scroll: false });
+    else router.push(url, { scroll: false });
+  };
+
+  useEffect(() => {
+    const value: SetupDraft = {
+      businessName,
+      unitCity,
+      showUnitField,
+      selectedSegment,
+      customSegmentName,
+      customProgression,
+      customBilling,
+      selectedModalities,
+      customAddedModalities,
+      modalitiesTouched,
+    };
+    try {
+      window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(value));
+    } catch {
+      // Sem armazenamento: segue sem rascunho.
+    }
+  }, [
+    businessName,
+    unitCity,
+    showUnitField,
+    selectedSegment,
+    customSegmentName,
+    customProgression,
+    customBilling,
+    selectedModalities,
+    customAddedModalities,
+    modalitiesTouched,
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,6 +235,7 @@ export function BusinessSetupWizard() {
   };
 
   const handleToggleModality = (modality: string) => {
+    setModalitiesTouched(true);
     if (selectedModalities.includes(modality)) {
       setSelectedModalities((prev) => prev.filter((m) => m !== modality));
     } else {
@@ -148,16 +246,17 @@ export function BusinessSetupWizard() {
   const handleAddCustomModality = () => {
     const trimmed = newModalityInput.trim();
     if (!trimmed) return;
-    if (!customAddedModalities.includes(trimmed) && !activePreset.defaultModalities.includes(trimmed)) {
-      setCustomAddedModalities((prev) => [...prev, trimmed]);
-    }
-    if (!selectedModalities.includes(trimmed)) {
-      setSelectedModalities((prev) => [...prev, trimmed]);
-    }
+    setModalitiesTouched(true);
+    // "judo" com "Judô" na lista marca a que ja existe, sem outro chip.
+    const existing = [...activePreset.defaultModalities, ...customAddedModalities].find((m) => sameName(m, trimmed));
+    const name = existing ?? trimmed;
+    if (!existing) setCustomAddedModalities((prev) => [...prev, trimmed]);
+    if (!selectedModalities.includes(name)) setSelectedModalities((prev) => [...prev, name]);
     setNewModalityInput("");
   };
 
   const handleRemoveCustomModality = (modality: string) => {
+    setModalitiesTouched(true);
     setCustomAddedModalities((prev) => prev.filter((m) => m !== modality));
     setSelectedModalities((prev) => prev.filter((m) => m !== modality));
   };
@@ -198,15 +297,23 @@ export function BusinessSetupWizard() {
 
       // 3. Cria so as modalidades marcadas, com a trilha padrao da area. Sem
       // nenhuma marcada, nao inventa modalidade: o dono cadastra depois.
-      for (const modName of selectedModalities) {
+      // Repetidas por caixa ou acento viram uma so.
+      const unique = selectedModalities.filter(
+        (name, index, list) => list.findIndex((other) => sameName(other, name)) === index,
+      );
+      const failed: string[] = [];
+      for (const modName of unique) {
         try {
           await categoriesService.create({
             name: modName,
             progressionTrack: segmentTrackForModality(activePreset, modName),
           });
         } catch {
-          // Ignora se já existir
+          failed.push(modName);
         }
+      }
+      if (failed.length > 0) {
+        toast.error(`Não deu para criar: ${failed.join(", ")}. Cadastre em Modalidades.`);
       }
 
       // 4. Garante que as boas-vindas apareçam no Dashboard e invalida queries
@@ -216,16 +323,17 @@ export function BusinessSetupWizard() {
       await qc.invalidateQueries({ queryKey: queryKeys.categories.all });
 
       // 5. Redireciona para o dashboard
+      clearDraft();
       router.push("/dashboard");
-    } catch (err) {
-      console.error("Erro ao concluir setup:", err);
+    } catch {
+      setError("Não foi possível concluir. Tente de novo.");
       setIsSubmitting(false);
     }
   };
 
   const goBack = () => {
     setError(null);
-    if (step > 1) setStep((step - 1) as 1 | 2 | 3);
+    if (step > 1) goTo((step - 1) as 1 | 2 | 3, true);
   };
 
   // Passo 1: nome obrigatorio (Enter no nome ou na unidade tambem avanca).
@@ -236,24 +344,30 @@ export function BusinessSetupWizard() {
       return;
     }
     setError(null);
-    setStep(2);
+    goTo(2);
   };
 
   // Passo 2: area padrao avanca no clique; "Outra área" abre os campos e usa o botao.
   const handlePickArea = (segId: ClassesBusinessSegment) => {
     setError(null);
     handleSelectSegment(segId);
-    if (segId !== "custom") setStep(3);
+    if (segId !== "custom") goTo(3);
   };
 
   const submitCustomArea = () => {
-    if (!customSegmentName.trim()) {
+    const name = customSegmentName.trim();
+    if (!name) {
       setError("Informe o que você ensina.");
       customInputRef.current?.focus();
       return;
     }
     setError(null);
-    setStep(3);
+    // O nome da area ja e a 1a aula sugerida (marcada); da para desmarcar.
+    if (!modalitiesTouched && selectedModalities.length === 0) {
+      setCustomAddedModalities([name]);
+      setSelectedModalities([name]);
+    }
+    goTo(3);
   };
 
   const copy = STEP_COPY[step];
@@ -322,6 +436,7 @@ export function BusinessSetupWizard() {
                     if (error) setError(null);
                   }}
                   placeholder="Nome da escola, estúdio ou o seu"
+                  maxLength={MAX_SPACE_NAME}
                   aria-describedby={error ? "business-name-error" : "business-name-hint"}
                   aria-invalid={error ? true : undefined}
                   className="bg-background"
@@ -358,6 +473,7 @@ export function BusinessSetupWizard() {
                     value={unitCity}
                     onChange={(e) => setUnitCity(e.target.value)}
                     placeholder="Nome da unidade"
+                    maxLength={MAX_SPACE_NAME}
                     className="bg-background"
                   />
                 </div>
@@ -578,9 +694,9 @@ export function BusinessSetupWizard() {
                 <p className="text-xs text-muted-foreground">
                   {selectedModalities.length} {selectedModalities.length === 1 ? "selecionada" : "selecionadas"}
                 </p>
-                {selectedModalities.length === 0 && (
+                {selectedModalities.length === 0 && modalitiesTouched && (
                   <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                    Nenhuma modalidade selecionada. Você poderá cadastrar turmas depois no painel.
+                    Nenhuma aula marcada. Dá para cadastrar depois.
                   </p>
                 )}
               </div>
@@ -616,6 +732,11 @@ export function BusinessSetupWizard() {
                 </div>
               </div>
 
+              {error ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
               <Button
                 onClick={handleFinishSetup}
                 disabled={isSubmitting}
