@@ -25,6 +25,16 @@ export type ListItemAction = {
   destructive?: boolean;
 };
 
+/**
+ * Acao que abre um dialogo: o menu nao devolve o foco ao botao (o foco ficava
+ * atras do dialogo aberto). Sem dialogo, segue o padrao do Radix.
+ */
+export function keepFocusInOpenDialog(event: Event): void {
+  if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')) {
+    event.preventDefault();
+  }
+}
+
 function ActionItems({
   actions,
   kind,
@@ -91,7 +101,7 @@ export function ListItemActionsMenu({
           <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-48">
+      <DropdownMenuContent align="end" className="min-w-48" onCloseAutoFocus={keepFocusInOpenDialog}>
         <ActionItems actions={actions} kind="dropdown" />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -116,7 +126,7 @@ export function ListItemContextMenu({
     <ContextMenu>
       {/* h-full: em grade de cards, o card ocupa a altura da linha (todos iguais) */}
       <ContextMenuTrigger className="block h-full">{children}</ContextMenuTrigger>
-      <ContextMenuContent className="min-w-48" onCloseAutoFocus={onCloseAutoFocus}>
+      <ContextMenuContent className="min-w-48" onCloseAutoFocus={onCloseAutoFocus ?? keepFocusInOpenDialog}>
         <ActionItems actions={actions} kind="context" />
       </ContextMenuContent>
     </ContextMenu>

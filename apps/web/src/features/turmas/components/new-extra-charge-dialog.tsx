@@ -89,7 +89,8 @@ function ExtraChargeForm({
     defaultValues: {
       studentId: student?.id ?? "",
       description: "",
-      totalCents: 0,
+      // Valor comeca vazio (antes "R$ 0,00", que parecia preenchido).
+      totalCents: undefined,
       firstDueDate: format(new Date(), "yyyy-MM-dd"),
       installments: "1",
     },

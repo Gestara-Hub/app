@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ListItemAction } from "./list-item-actions-menu";
+import { keepFocusInOpenDialog, type ListItemAction } from "./list-item-actions-menu";
 
 /**
  * Menu "mais acoes" do cabecalho de uma tela (⋮): as acoes raras saem da tela
@@ -23,7 +23,7 @@ export function PageActionsMenu({ label, actions }: { label: string; actions: Li
           <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
+      <DropdownMenuContent align="end" className="min-w-56" onCloseAutoFocus={keepFocusInOpenDialog}>
         {actions.map((action) => (
           <DropdownMenuItem
             key={action.key}

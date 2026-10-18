@@ -27,12 +27,12 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DialogFormFooter } from "@/components/form";
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -928,12 +928,12 @@ function AddStudentSessionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-md"
+        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
         onInteractOutside={(event) => event.preventDefault()}
         expandable
         storageKey="session-add-student"
       >
-        <DialogHeader className="pr-14">
+        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
           <DialogTitle>Adicionar aluno nesta aula</DialogTitle>
           <DialogDescription>
             {session.allowDropin ? "" : "Esta turma não aceita aula avulsa. "}
@@ -950,7 +950,8 @@ function AddStudentSessionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <DialogBody className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Aluno *</label>
             <Combobox
@@ -1012,16 +1013,8 @@ function AddStudentSessionDialog({
             </div>
           ) : null}
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={isPending}>
-                Cancelar
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={isPending || !studentId}>
-              {isPending ? "Adicionando..." : "Confirmar inscrição"}
-            </Button>
-          </DialogFooter>
+          </DialogBody>
+          <DialogFormFooter isPending={isPending} className="shrink-0 border-t border-border/40 px-6 py-4" />
         </form>
       </DialogContent>
     </Dialog>

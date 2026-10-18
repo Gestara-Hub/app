@@ -11,7 +11,7 @@ import type {
 import { todayISO } from "@gestarahub/core/date";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
-import { DialogBody } from "@/components/ui/dialog";
+import { DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -507,7 +507,7 @@ export function GraduatePanel({
       </div>
 
       </DialogBody>
-      <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+      <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
           Cancelar
         </Button>
@@ -528,7 +528,7 @@ export function GraduatePanel({
           <Award className="size-4" />
           {isPending ? "Salvando..." : `Confirmar ${vocabulary.promotionLower}`}
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 }

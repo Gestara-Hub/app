@@ -13,6 +13,7 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -163,14 +164,14 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
             </div>
           ) : null}
         </DialogBody>
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+        <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
           <Button type="button" variant="outline" onClick={onDone}>
             Cancelar
           </Button>
           <Button type="submit" disabled={noPhone || whatsapp.isSending}>
             {whatsapp.mode === "official" ? (whatsapp.isSending ? "Enviando..." : "Enviar") : "Abrir no WhatsApp"}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </FormProvider>
   );

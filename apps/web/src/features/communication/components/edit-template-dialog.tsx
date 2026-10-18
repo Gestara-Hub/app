@@ -10,6 +10,7 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -161,14 +162,14 @@ function EditTemplateForm({
           <MessageBubble text={preview} />
         </div>
       </DialogBody>
-      <div className="flex shrink-0 justify-end gap-2 border-t border-border/40 px-6 py-4">
+      <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
         <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
           Cancelar
         </Button>
         <Button type="button" onClick={() => void save()} disabled={updateMut.isPending}>
           {updateMut.isPending ? "Salvando..." : "Salvar"}
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 }
