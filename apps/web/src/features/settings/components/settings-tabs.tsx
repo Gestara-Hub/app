@@ -34,7 +34,7 @@ const TABS: {
     label: "Horários",
     icon: Clock,
     description:
-      "Define o expediente e os turnos de funcionamento da unidade — usado para validar os agendamentos.",
+      "Dias e horários em que o espaço funciona. Turmas e agenda seguem esse horário.",
   },
   {
     value: "pagamento",

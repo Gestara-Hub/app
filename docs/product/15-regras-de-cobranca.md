@@ -6,7 +6,7 @@
 
 A academia define **uma regra padrão de cobrança** em Configurações → Regras da mensalidade, aplicada a cada **nova matrícula em plano**. O aluno guarda a própria regra (pode ser personalizada no cadastro) e ela não muda quando a academia muda a regra depois.
 
-**Só mensalidade (14/10/2026):** as regras valem apenas para mensalidades (plano do aluno). Cursos, pacotes de aulas, cobranças avulsas e aulas avulsas usam o valor e o vencimento definidos na hora. O cartão em Configurações se chama **"Regras da mensalidade"** e diz isso numa linha: "Valem só para mensalidades. Cursos, pacotes e cobranças avulsas usam o valor e o vencimento definidos na hora." Na área de curso, o passo "Definir regras da mensalidade" só aparece nos primeiros passos se houver turma ativa cobrando mensalidade (doc frontend 08, "Primeiros passos pela forma de cobrança").
+**Só mensalidade (14/10/2026):** as regras valem apenas para mensalidades (plano do aluno). Cursos, pacotes de aulas, cobranças avulsas e aulas avulsas usam o valor e o vencimento definidos na hora. O cartão em Configurações se chama **"Regras da mensalidade"** e diz isso numa linha: "Só para mensalidades. Curso, pacote e avulso têm valor e vencimento próprios." (texto encurtado em 17/10/2026) Na área de curso, o passo "Definir regras da mensalidade" só aparece nos primeiros passos se houver turma ativa cobrando mensalidade (doc frontend 08, "Primeiros passos pela forma de cobrança").
 
 A regra tem três partes:
 

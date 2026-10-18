@@ -41,6 +41,7 @@ import {
 } from "@/lib/business-segment-presets";
 import { Button } from "@/components/ui/button";
 import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
+import { cn } from "@/lib/utils";
 import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@gestarahub/core/format";
@@ -139,7 +140,7 @@ const BILLING_TIMING_OPTIONS: SegmentedChoiceOption[] = [
 
 const MID_MONTH_STRATEGY_OPTIONS: SegmentedChoiceOption[] = [
   { value: "prorated", label: "Proporcional", description: "Só os dias restantes" },
-  { value: "full_cycle", label: "Mês cheio", description: "Ciclo a partir da entrada" },
+  { value: "full_cycle", label: "Mês cheio", description: "Vence no dia da matrícula" },
 ];
 
 function SettingRow({
@@ -306,6 +307,8 @@ function OrgUnitForm({
     isBillingUnconfirmed && billingArrival > 0,
     billingArrival,
   );
+  // O botao de confirmar pulsa ate o clique enquanto as regras nao foram confirmadas.
+  const confirmAttention = useAttentionUntilInteraction(isBillingUnconfirmed, "billing-confirm");
   const billingSectionRef = useRef<HTMLDivElement>(null);
   // Destaque cobre a secao e o rodape com "Confirmar regras recomendadas".
   const formFooterRef = useRef<HTMLDivElement>(null);
@@ -575,13 +578,13 @@ function OrgUnitForm({
               </AccordionTrigger>
               <AccordionContent className="pb-5 border-t border-border/40 mt-1">
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Valem só para mensalidades. Cursos, pacotes e cobranças avulsas usam o valor e o vencimento definidos na hora.
+                  Só para mensalidades. Curso, pacote e avulso têm valor e vencimento próprios.
                 </p>
                 {isBillingUnconfirmed ? (
                   <div className="mt-3 mb-2 flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-xs text-muted-foreground">
                     <Sparkles className="size-4 shrink-0 text-primary mt-0.5" />
                     <p>
-                      Sugerimos o modelo mais comum (mensalidade antecipada, proporcional no 1º mês e vencimento dia 10). Se estiver de acordo, basta confirmar abaixo.
+                      Este é o modelo mais comum. Se servir para você, é só confirmar.
                     </p>
                   </div>
                 ) : null}
@@ -646,7 +649,6 @@ function OrgUnitForm({
             active={billingAttention.attention}
             targetRefs={billingSpotlightRefs}
             onDismiss={billingAttention.stop}
-            hint="Confira as regras e confirme."
           />
         ) : null}
 
@@ -655,22 +657,30 @@ function OrgUnitForm({
           <div>
             {isBillingUnconfirmed && !form.formState.isDirty ? (
               <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                ● Pendente de confirmação para concluir o passo
+                ● Falta confirmar
               </p>
             ) : (
               <UnsavedChangesStatus dirty={form.formState.isDirty} />
             )}
           </div>
-          <Button type="submit" disabled={pending} className="min-w-36">
+          <Button
+            type="submit"
+            disabled={pending}
+            onClick={confirmAttention.stop}
+            // Treme de leve e solta o anel, sem crescer: o botao fica dentro do destaque.
+            className={cn("min-w-36", confirmAttention.attention && "motion-safe:animate-attention-soft-infinite")}
+          >
             {pending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 Salvando...
               </>
-            ) : isBillingUnconfirmed && !form.formState.isDirty ? (
+            ) : isBillingUnconfirmed ? (
+              // Enquanto o passo esta pendente, salvar tambem confirma as regras:
+              // o botao continua dizendo isso, mesmo com alguma regra alterada.
               <>
                 <Check className="mr-2 size-4" />
-                Confirmar regras recomendadas
+                {form.formState.isDirty ? "Confirmar regras" : "Confirmar regras recomendadas"}
               </>
             ) : (
               <>

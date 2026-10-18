@@ -10,7 +10,8 @@ interface Rect {
   height: number;
 }
 
-const PADDING = 8;
+// Folga do recorte em volta da secao: cabe o anel de atencao (10px) dos botoes destacados.
+const PADDING = 12;
 
 /**
  * Destaque de uma secao da tela (chegada pelo onboarding): escurece o resto da

@@ -41,6 +41,13 @@ const WEEKDAYS: { weekday: Weekday; label: string }[] = [
   { weekday: 6, label: "Sábado" },
 ];
 
+/** Atalhos da 1a configuracao: ligam esses dias (08:00 as 18:00) e fecham os outros. */
+const QUICK_START: { label: string; weekdays: Weekday[] }[] = [
+  { label: "Seg a sex", weekdays: [1, 2, 3, 4, 5] },
+  { label: "Seg a sáb", weekdays: [1, 2, 3, 4, 5, 6] },
+  { label: "Todos os dias", weekdays: [0, 1, 2, 3, 4, 5, 6] },
+];
+
 interface NormalizedDay {
   weekday: Weekday;
   closed: boolean;
@@ -349,6 +356,14 @@ function BusinessHoursEditor({
   // destaque, com o resto da tela escuro, ate salvar, clicar fora ou Esc.
   const hoursUnset = !unit.businessHours.some((day) => !day.closed);
   const hoursAttention = useAttentionUntilInteraction(hoursUnset);
+  // 1a configuracao: a orientacao muda conforme o progresso (ligar dias ->
+  // conferir horario e salvar) e o "Salvar horarios" pulsa quando ha o que salvar.
+  const anyDayOpen = days.some((d) => !d.closed);
+  const saveAttention = useAttentionUntilInteraction(hoursUnset, "hours-save");
+  // Salvar sem nenhum dia ligado na 1a vez gravaria tudo fechado e nao concluiria o passo.
+  const [needsOpenDay, setNeedsOpenDay] = useState(false);
+  const quickStartActive = (weekdays: Weekday[]) =>
+    days.every((d) => d.closed !== weekdays.includes(d.weekday));
   // Destaque cobre a lista e o rodape com "Salvar horarios".
   const hoursCardRef = useRef<HTMLDivElement>(null);
   const hoursSpotlightRefs = useMemo(() => [hoursCardRef], []);
@@ -374,6 +389,17 @@ function BusinessHoursEditor({
           d.shifts.length > 0 ? d.shifts : [{ start: "08:00", end: "18:00" }];
         return { ...d, closed: !open, shifts };
       }),
+    );
+  }
+
+  function applyQuickStart(weekdays: Weekday[]) {
+    clearError(WEEKDAYS.map((w) => w.weekday));
+    setDays((prev) =>
+      prev.map((d) => ({
+        ...d,
+        closed: !weekdays.includes(d.weekday),
+        shifts: d.shifts.length > 0 ? d.shifts : [{ start: "08:00", end: "18:00" }],
+      })),
     );
   }
 
@@ -461,8 +487,34 @@ function BusinessHoursEditor({
         active={hoursAttention.attention}
         targetRefs={hoursSpotlightRefs}
         onDismiss={hoursAttention.stop}
-        hint="Ligue os dias em que o espaço abre e salve."
       />
+      {/* Orientacao da 1a configuracao, dentro da area destacada (o balao
+          flutuante cobria a descricao da aba). Some depois do 1o salvar. */}
+      {hoursUnset ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
+          <p role="status" className="text-sm font-medium text-foreground">
+            {anyDayOpen
+              ? "Horário diferente de 08:00 às 18:00? Use Editar. Depois, salve."
+              : "Ligue os dias em que o espaço abre."}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Comece rápido:</span>
+            {QUICK_START.map((preset) => (
+              <Button
+                key={preset.label}
+                type="button"
+                variant="outline"
+                aria-pressed={quickStartActive(preset.weekdays)}
+                disabled={pending}
+                onClick={() => applyQuickStart(preset.weekdays)}
+                className={cn(quickStartActive(preset.weekdays) && "border-primary bg-primary/10 text-primary")}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="divide-y rounded-lg border bg-card transition-colors">
         {days.map((day) => {
           const label = WEEKDAYS[day.weekday].label;
@@ -538,8 +590,32 @@ function BusinessHoursEditor({
 
       {confirmDialog}
       <div className="flex items-center justify-between gap-3 pt-1">
-        <UnsavedChangesStatus dirty={dirty} />
-        <Button onClick={save} disabled={pending || groupsPending}>
+        {/* Na 1a vez, "Todas as alteracoes estao salvas" enganava: nada foi definido. */}
+        {needsOpenDay && !anyDayOpen ? (
+          <p role="alert" className="text-xs font-medium text-destructive">
+            Ligue pelo menos um dia antes de salvar.
+          </p>
+        ) : hoursUnset && !dirty ? (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            Nenhum dia aberto ainda
+          </p>
+        ) : (
+          <UnsavedChangesStatus dirty={dirty} />
+        )}
+        <Button
+          onClick={() => {
+            // Sem dia ligado: avisa e segue pulsando (ainda falta salvar).
+            if (hoursUnset && !anyDayOpen) {
+              setNeedsOpenDay(true);
+              return;
+            }
+            saveAttention.stop();
+            void save();
+          }}
+          disabled={pending || groupsPending}
+          // Treme de leve e solta o anel, sem crescer: o botao fica dentro do destaque.
+          className={cn(saveAttention.attention && "motion-safe:animate-attention-soft-infinite")}
+        >
           {pending ? "Salvando..." : "Salvar horários"}
         </Button>
       </div>

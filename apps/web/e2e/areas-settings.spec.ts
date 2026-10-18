@@ -209,9 +209,7 @@ test("Regras da mensalidade: valem só para mensalidade e as dicas acompanham a 
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
   const card = page.locator("#billing-rules");
   await expect(
-    card.getByText(
-      "Valem só para mensalidades. Cursos, pacotes e cobranças avulsas usam o valor e o vencimento definidos na hora.",
-    ),
+    card.getByText("Só para mensalidades. Curso, pacote e avulso têm valor e vencimento próprios."),
   ).toBeVisible();
   await expect(card.getByText("Quando a mensalidade vence.")).toBeVisible();
   await expect(card.getByText("Como fica a 1ª cobrança.")).toBeVisible();
