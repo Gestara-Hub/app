@@ -55,6 +55,7 @@ import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { currentCertificateTemplate } from "./certificatesService";
 import { assertFeature } from "./subscriptionService";
+import { actorTeacherId, assertTeacherSession, teacherSeesClass, teacherSeesSession } from "./teacherScope";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import {
   acceptsPackages,
@@ -810,6 +811,9 @@ export const turmasService = {
       if (filter?.status) {
         result = result.filter((g) => g.status === filter.status);
       }
+      // Professor: so as turmas em que e o titular.
+      const teacherId = actorTeacherId();
+      if (teacherId !== undefined) result = result.filter((g) => teacherSeesClass(g, teacherId));
       return clone(
         [...result]
           .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
@@ -821,7 +825,7 @@ export const turmasService = {
   getById(id: Id): Promise<ClassGroupView> {
     return simulateRead(() => {
       const g = store.classGroups.find((x) => x.id === id);
-      if (!g) throw notFoundError("Turma não encontrada.");
+      if (!g || !teacherSeesClass(g)) throw notFoundError("Turma não encontrada.");
       return clone(toGroupView(g));
     });
   },
@@ -1161,6 +1165,8 @@ export const turmasService = {
           (!filter.classGroupId || g.id === filter.classGroupId),
       );
       const out: ClassSessionListItem[] = [];
+      // Professor: aulas das turmas dele e as que ele substitui.
+      const teacherId = actorTeacherId();
       for (const date of datesBetween(filter.dateFrom, filter.dateTo)) {
         const wd = weekdayOf(date);
         for (const g of groups) {
@@ -1168,6 +1174,7 @@ export const turmasService = {
           if (g.endDate && date > g.endDate) continue;
           for (const slot of meetingSlotsOn(g, date)) {
             if (slot.weekday !== wd) continue;
+            if (!teacherSeesSession(g, makeSessionId(g.id, date, slot.start), teacherId)) continue;
             const view = toSessionView(g, date, slot);
             out.push({
               ...view,
@@ -1186,7 +1193,11 @@ export const turmasService = {
   },
 
   getSession(id: Id): Promise<ClassSessionDetail> {
-    return simulateRead(() => clone(buildSessionDetail(id)));
+    return simulateRead(() => {
+      const { g } = resolveSession(id);
+      if (!teacherSeesSession(g, id)) throw notFoundError("Aula não encontrada.");
+      return clone(buildSessionDetail(id));
+    });
   },
 
   markAttendance(input: {
@@ -1195,7 +1206,8 @@ export const turmasService = {
     status: AttendanceStatus;
   }): Promise<void> {
     return simulateWrite(() => {
-      const { date } = resolveSession(input.sessionId);
+      const { g, date } = resolveSession(input.sessionId);
+      assertTeacherSession(g, input.sessionId);
       if (date > todayISO()) {
         throw apiError("VALIDATION", "A chamada só pode ser feita no dia da aula ou depois.", {
           httpStatus: 422,
@@ -1224,6 +1236,7 @@ export const turmasService = {
   /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
   clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
     return simulateWrite(() => {
+      assertTeacherSession(resolveSession(input.sessionId).g, input.sessionId);
       store.attendances = store.attendances.filter(
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );

@@ -18,6 +18,7 @@ import type {
   ReportFilter,
   ReportHeaderInfo,
   ReportMetadata,
+  Permission,
   ReportType,
   StudentRosterReportData,
   StudentRosterRow,
@@ -26,10 +27,12 @@ import { classBillingMode, isCourseEnded } from "@gestarahub/core/billing";
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { ownLessons, packageState } from "@gestarahub/core/packages";
 import { format } from "date-fns";
-import { nowIso, simulateRead } from "@/mocks/helpers";
+import { apiError, nowIso, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { autoGenerateMembershipCharges } from "./billingService";
 import { assertFeature } from "./subscriptionService";
+import { can } from "@/lib/permissions";
+import { getCurrentActor } from "@/mocks/currentActor";
 
 const CATALOG: ReportMetadata[] = [
   // 1. Operacionais (Free)
@@ -99,6 +102,27 @@ const CATALOG: ReportMetadata[] = [
     iconName: "TrendingUp",
   },
 ];
+
+/**
+ * Valores de cobranca pedem `billing:view`; DRE, churn, previsao e repasse,
+ * `finance:view` (a atendente nao abre o financeiro por Relatorios).
+ */
+const REPORT_PERMISSION: Partial<Record<ReportType, Permission>> = {
+  billing_statement: "billing:view",
+  course_summary: "billing:view",
+  package_summary: "billing:view",
+  financial_income_statement: "finance:view",
+  churn_retention: "finance:view",
+  revenue_forecast: "finance:view",
+  teacher_performance: "finance:view",
+};
+
+/** O usuario logado pode ver o relatorio? Sem ator (scripts) passa. */
+function actorCanSee(type: ReportType): boolean {
+  const permission = REPORT_PERMISSION[type];
+  const actor = getCurrentActor();
+  return !permission || !actor || can(actor.profile, permission);
+}
 
 function buildHeader(periodLabel: string): ReportHeaderInfo {
   return {
@@ -222,11 +246,19 @@ function buildPackageReport(competence: string, today: string): Omit<PackageRepo
 
 export const reportsService = {
   getCatalog(): Promise<ReportMetadata[]> {
-    return simulateRead(() => [...CATALOG]);
+    return simulateRead(() =>
+      CATALOG.filter((r) => actorCanSee(r.type)).map((r) => ({
+        ...r,
+        permissionRequired: REPORT_PERMISSION[r.type],
+      })),
+    );
   },
 
   generateReport(type: ReportType, filter: ReportFilter = {}): Promise<GeneratedReportData> {
     return simulateRead(() => {
+      if (!actorCanSee(type)) {
+        throw apiError("FORBIDDEN", "Você não tem permissão para ver este relatório.", { httpStatus: 403 });
+      }
       const competence = filter.competence || new Date().toISOString().slice(0, 7);
       const [year, month] = competence.split("-");
       const periodLabel = `Competência ${month}/${year}`;

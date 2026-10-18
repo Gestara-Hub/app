@@ -32,6 +32,7 @@ export type Permission =
   | "enrollment:manage" // matricular/cancelar alunos
   | "attendance:mark" // marcar presenca nas sessoes
   | "grades:manage" // criar avaliacoes e lancar notas (professor: so nas proprias turmas)
+  | "progression:manage" // graduar e registrar a evolucao (professor: so nos alunos das turmas dele)
   | "billing:view" // ver planos e mensalidades/cobrancas
   | "billing:manage" // criar planos, gerar cobrancas, marcar pago
   // Financeiro do negocio (plano pago: tambem exige o recurso "finance").

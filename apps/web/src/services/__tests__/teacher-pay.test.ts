@@ -369,8 +369,8 @@ describe("regra de pagamento", () => {
     ).rejects.toMatchObject({
       fields: [{ field: "components.0.classGroupIds", message: "Escolha apenas turmas em que o professor é titular." }],
     });
-    await expect(save({ components: [perSession(6000)], paymentDay: 29, startCompetence: "2026-09" })).rejects.toMatchObject({
-      fields: [{ field: "paymentDay", message: "Informe um dia entre 1 e 28." }],
+    await expect(save({ components: [perSession(6000)], paymentDay: 32, startCompetence: "2026-09" })).rejects.toMatchObject({
+      fields: [{ field: "paymentDay", message: "Informe um dia entre 1 e 31." }],
     });
     await expect(save({ components: [perSession(6000)], startCompetence: "2026-13" })).rejects.toMatchObject({
       fields: [{ field: "startCompetence" }],

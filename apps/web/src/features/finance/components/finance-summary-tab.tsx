@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -1031,6 +1031,26 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
 // ABA PRINCIPAL DO FINANCEIRO
 // ===========================================================================
 
+/**
+ * Visao escolhida (Simples/Avancada), guardada no navegador. Lida depois de
+ * montar: o servidor desenha a Simples e a troca vem em seguida, sem quebrar a
+ * hidratacao.
+ */
+const viewModeListeners = new Set<() => void>();
+
+function readViewMode(): SummaryViewMode {
+  try {
+    return localStorage.getItem(VIEW_MODE_STORAGE_KEY) === "advanced" ? "advanced" : "simple";
+  } catch {
+    return "simple";
+  }
+}
+
+function subscribeViewMode(listener: () => void): () => void {
+  viewModeListeners.add(listener);
+  return () => viewModeListeners.delete(listener);
+}
+
 export function FinanceSummaryTab({
   competence,
   onCreateEntry,
@@ -1038,23 +1058,15 @@ export function FinanceSummaryTab({
   competence: string;
   onCreateEntry?: () => void;
 }) {
-  const [viewMode, setViewMode] = useState<SummaryViewMode>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      if (saved === "simple" || saved === "advanced") return saved;
-    }
-    return "simple";
-  });
+  const viewMode = useSyncExternalStore(subscribeViewMode, readViewMode, () => "simple" as const);
 
   const handleSetViewMode = (mode: SummaryViewMode) => {
-    setViewMode(mode);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-      } catch {
-        // Ignora erro em navegadores restritivos
-      }
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    } catch {
+      // Ignora erro em navegadores restritivos
     }
+    for (const listener of viewModeListeners) listener();
   };
 
   const summary = useFinanceSummary(competence);

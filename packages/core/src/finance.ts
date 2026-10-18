@@ -91,7 +91,10 @@ export function firstDayOfCompetence(competence: string): DateISO {
 
 /** Data do dia `day` (1..28, limitado) na competencia. */
 export function dateInCompetence(competence: string, day: number): DateISO {
-  const safe = Math.min(28, Math.max(1, Math.trunc(day) || 1));
+  // Dia 29 a 31 cai no ultimo dia dos meses mais curtos (decisao de 18/10/2026).
+  const [year, month] = competence.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  const safe = Math.min(lastDay, Math.max(1, Math.trunc(day) || 1));
   return `${competence}-${pad2(safe)}`;
 }
 

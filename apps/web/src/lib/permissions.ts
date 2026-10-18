@@ -28,13 +28,15 @@ const APPOINTMENT_OPS = [
 // Modelo 3 (turmas). Keys por perfil (model-agnosticas); a nav por modelo gata
 // a visibilidade. `classes:manage` = criar/editar turmas; `enrollment:manage` =
 // matricular/cancelar; `attendance:mark` = marcar presenca; `grades:manage` =
-// avaliacoes e notas (o professor tem, mas so nas turmas dele: o service escopa).
+// avaliacoes e notas; `progression:manage` = graduar e registrar a evolucao (o
+// professor tem os dois, mas so nas turmas dele: o service escopa).
 const CLASS_OPS = [
   "classes:view",
   "classes:manage",
   "enrollment:manage",
   "attendance:mark",
   "grades:manage",
+  "progression:manage",
 ] as const satisfies readonly Permission[];
 
 // Financeiro do M3 (planos + mensalidades) — territorio de owner/gerente.
@@ -132,19 +134,22 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
     "attendance:mark",
     // Financeiro: ve mensalidades, mas nao gerencia planos/cobrancas.
     "billing:view",
-    // Comunicacao: ve historico e status.
+    // Comunicacao: ve o historico e manda mensagens aos alunos (decisao de
+    // 18/10/2026); conectar o WhatsApp e mexer nos modelos fica com a gestao.
     "communication:view",
     // Relatorios: pode ver relatorios operacionais.
     "reports:view",
   ],
   // Profissional/instrutor: propria Agenda (M1) + suas turmas (M3): ve turmas,
-  // marca presenca e lanca notas (so nas turmas dele); nada de gestao.
+  // marca presenca, gradua e lanca notas so nas turmas dele e nas aulas em que
+  // substitui (os services escopam, services/teacherScope); nada de gestao.
   professional: [
     "schedule:view",
     "appointments:status",
     "classes:view",
     "attendance:mark",
     "grades:manage",
+    "progression:manage",
   ],
 };
 

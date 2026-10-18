@@ -135,16 +135,13 @@ describe("repetição mensal", () => {
     ]);
   });
 
-  it("vencimento depois do dia 28 não pode repetir", async () => {
-    await expect(
-      financeService.createEntry(entryPayload({ dueDate: "2026-09-29", repeatMonthly: true })),
-    ).rejects.toMatchObject({
-      code: "VALIDATION",
-      fields: [{ field: "dueDate", message: "Para repetir todo mês, escolha um vencimento entre os dias 1 e 28." }],
-    });
-    expect(store.financialRecurrences).toHaveLength(0);
-    // Sem repetir, o dia 29 é aceito.
-    await expect(financeService.createEntry(entryPayload({ dueDate: "2026-09-29" }))).resolves.toBeTruthy();
+  it("vencimento no dia 31 repete e cai no último dia dos meses curtos", async () => {
+    const e = await financeService.createEntry(entryPayload({ dueDate: "2026-08-31", repeatMonthly: true }));
+    expect(seriesOf(e.recurrenceId).map((line) => line.slice(0, 10))).toEqual([
+      "2026-08-31",
+      "2026-09-30",
+      "2026-10-31",
+    ]);
   });
 
   it("editar 'este e os próximos' muda a repetição e só os pendentes seguintes", async () => {
@@ -188,11 +185,11 @@ describe("repetição mensal", () => {
     expect(store.financialRecurrences[0].amountCents).toBe(200000);
   });
 
-  it("'este e os próximos' com dia > 28 é recusado", async () => {
+  it("'este e os próximos' aceita dia 30", async () => {
     const sep = await financeService.createEntry(entryPayload({ dueDate: "2026-09-05", repeatMonthly: true }));
     await expect(
       financeService.updateEntry(sep.id, { dueDate: "2026-09-30" }, "following"),
-    ).rejects.toMatchObject({ fields: [{ field: "dueDate" }] });
+    ).resolves.toBeTruthy();
   });
 
   it("encerrar a repetição cancela os pendentes de hoje em diante e para de gerar", async () => {

@@ -453,13 +453,9 @@ function validateCreate(payload: CreateFinancialEntry): void {
   validateCategoryRef(payload.categoryId, isEntryType(payload.type) ? payload.type : undefined, fields);
   validateDescription(payload.description, fields);
   validateAmount(payload.amountCents, fields);
+  // Repetir todo mes aceita qualquer dia: 29 a 31 caem no ultimo dia dos meses curtos.
   if (!isValidDate(payload.dueDate)) {
     fields.push({ field: "dueDate", message: "Informe uma data de vencimento válida." });
-  } else if (payload.repeatMonthly && Number(payload.dueDate.slice(8, 10)) > 28) {
-    fields.push({
-      field: "dueDate",
-      message: "Para repetir todo mês, escolha um vencimento entre os dias 1 e 28.",
-    });
   }
   if (payload.paidNow && !isPaymentMethod(payload.paidNow.method)) {
     fields.push({ field: "method", message: "Selecione a forma de pagamento." });
@@ -817,16 +813,6 @@ export const financeService = {
         throw conflict("Lançamento cancelado não pode ser editado.");
       }
       validateUpdate(entry, payload);
-      if (
-        scope === "following" &&
-        entry.recurrenceId &&
-        payload.dueDate !== undefined &&
-        Number(payload.dueDate.slice(8, 10)) > 28
-      ) {
-        throw validationError([
-          { field: "dueDate", message: "Para a repetição mensal, escolha um vencimento entre os dias 1 e 28." },
-        ]);
-      }
       const ts = nowIso();
       const before = clone(entry);
       applyPatch(entry, payload, ts);

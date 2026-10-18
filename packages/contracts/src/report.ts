@@ -1,3 +1,4 @@
+import type { Permission } from "./permission";
 import type { DateISO, DateTimeISO, Id } from "./common";
 import type { SubscriptionTier } from "./subscription";
 
@@ -21,6 +22,8 @@ export interface ReportMetadata {
   description: string;
   category: ReportCategory;
   tierRequired: SubscriptionTier;
+  /** Alem de `reports:view`: valores de cobranca ou do financeiro. */
+  permissionRequired?: Permission;
   iconName: string;
 }
 

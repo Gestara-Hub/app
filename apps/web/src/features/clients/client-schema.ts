@@ -1,3 +1,4 @@
+import { isPossiblePhone } from "@gestarahub/core/phone";
 import { format } from "date-fns";
 import { z } from "zod";
 import type { ClassBillingMode } from "@gestarahub/contracts";
@@ -24,7 +25,7 @@ export const clientFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Informe o telefone.")
-    .refine((v) => v.replace(/\D/g, "").length >= 10, {
+    .refine((v) => isPossiblePhone(v), {
       message: "Informe um telefone válido.",
     }),
   email: z
@@ -51,7 +52,7 @@ export const clientFormSchema = z.object({
           .string()
           .trim()
           .optional()
-          .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
+          .refine((v) => !v || isPossiblePhone(v), {
             message: "Informe um telefone válido.",
           }),
         email: z

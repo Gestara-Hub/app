@@ -67,7 +67,7 @@ describe("addClassRecord (registro individual)", () => {
 
   it("persiste o registro com turma, aula, autor logado e auditoria", async () => {
     const s = await createStudent("Bruno");
-    setCurrentActor({ userId: "usr-prof", name: "Prof. Carlos", profile: "professional" });
+    setCurrentActor({ userId: "usr-prof", name: "Prof. Carlos", profile: "manager" });
     const updated = await clientsService.addClassRecord({
       studentId: s.id,
       modalityId: bjj,
@@ -452,7 +452,7 @@ describe("sugestoes aprendidas de pontos fortes e metas", () => {
 
   it("e do espaco inteiro: outro usuario do mesmo tenant ve o que foi digitado", async () => {
     const a = await createStudent("Ana");
-    setCurrentActor({ userId: "usr-prof-1", name: "Prof. Carlos", profile: "professional" });
+    setCurrentActor({ userId: "usr-prof-1", name: "Prof. Carlos", profile: "manager" });
     await clientsService.updateStrengths(a.id, bjj, ["Guarda"]);
     setCurrentActor({ userId: "usr-prof-2", name: "Prof. Dani", profile: "professional" });
     expect((await clientsService.getProgressionTermSuggestions(bjj)).strengths).toEqual(["Guarda"]);

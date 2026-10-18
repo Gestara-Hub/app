@@ -626,6 +626,14 @@ if (typeof window !== "undefined") {
   applyStateToDOM(currentState);
 }
 
+/**
+ * Reaplica o tema salvo no <html>. Se a hidratacao falha, o React redesenha a
+ * pagina e os atributos que o script do <head> pos somem (barra lateral clara).
+ */
+export function reapplySavedTheme(): void {
+  applyStateToDOM(currentState);
+}
+
 function subscribe(callback: () => void) {
   listeners.add(callback);
   window.addEventListener("storage", callback);

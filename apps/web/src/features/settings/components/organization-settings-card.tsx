@@ -1,5 +1,6 @@
 "use client";
 
+import { isPossiblePhone } from "@gestarahub/core/phone";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
@@ -74,7 +75,7 @@ const addressSchema = z.object({
   state: z.string().optional(),
 });
 
-const MAX_DEFAULT_DUE_DAY = 28;
+const MAX_DEFAULT_DUE_DAY = 31;
 
 const schema = z.object({
   organizationName: z
@@ -82,19 +83,19 @@ const schema = z.object({
     .trim()
     .min(1, "Informe o nome da organização."),
   unitName: z.string().trim().optional(),
-  // Limitado a 28 para existir em todos os meses, inclusive fevereiro
+  // 29 a 31 caem no ultimo dia dos meses mais curtos.
   defaultDueDay: z
-    .number({ error: "Use um dia de 1 a 28." })
-    .int("Use um dia de 1 a 28.")
-    .min(1, "Use um dia de 1 a 28.")
-    .max(MAX_DEFAULT_DUE_DAY, "Use um dia de 1 a 28."),
+    .number({ error: "Use um dia de 1 a 31." })
+    .int("Use um dia de 1 a 31.")
+    .min(1, "Use um dia de 1 a 31.")
+    .max(MAX_DEFAULT_DUE_DAY, "Use um dia de 1 a 31."),
   billingTiming: z.enum(["prepaid", "postpaid"]),
   midMonthStrategy: z.enum(["prorated", "full_cycle"]),
   phone: z
     .string()
     .trim()
     .optional()
-    .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
+    .refine((v) => !v || isPossiblePhone(v), {
       message: "Telefone inválido.",
     }),
   address: addressSchema.optional(),
@@ -634,7 +635,10 @@ function OrgUnitForm({
                             disabled={pending}
                           />
                         </div>
-                        <span>de cada mês (1 a 28)</span>
+                        <span>de cada mês</span>
+                        {isValidDueDay && currentDueDay >= 29 ? (
+                          <span className="basis-full text-xs">Nos meses mais curtos, vence no último dia.</span>
+                        ) : null}
                       </div>
                     )}
                   </SettingRow>

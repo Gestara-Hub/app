@@ -1,3 +1,4 @@
+import { isPossiblePhone } from "@gestarahub/core/phone";
 import { z } from "zod";
 
 /**
@@ -22,7 +23,7 @@ export const professionalFormSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine((v) => !v || v.replace(/\D/g, "").length >= 10, {
+    .refine((v) => !v || isPossiblePhone(v), {
       message: "Informe um telefone válido.",
     }),
   // Endereço opcional

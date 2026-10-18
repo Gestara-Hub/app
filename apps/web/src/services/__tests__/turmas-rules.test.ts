@@ -124,13 +124,13 @@ describe("lista de espera", () => {
     expect(store.enrollments.filter((e) => e.studentId === s.id && e.status === "active")).toHaveLength(1);
   });
 
-  it("promover recusa aluno inativo", async () => {
+  it("inativar tira o aluno da lista de espera: não dá para promover", async () => {
     const g = await createClass({ instructorId: (await createInstructor("Carlos")).id, slots: [MON] });
     const s = await createStudent("Inativo");
     const w = await turmasService.addToWaitlist({ classGroupId: g.id, studentId: s.id });
     await clientsService.remove(s.id);
     await expect(turmasService.promoteFromWaitlist(w.id)).rejects.toMatchObject({
-      message: "Inativo está inativo. Reative o aluno antes de matricular.",
+      message: "Este aluno já saiu da lista de espera.",
     });
     expect(store.enrollments).toHaveLength(0);
   });

@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { initAnalytics } from "@/lib/analytics";
+import { reapplySavedTheme } from "@/lib/theme-customizer";
 import { toast } from "sonner";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
@@ -102,6 +103,8 @@ export function Providers({ children }: { children: ReactNode }) {
   useRefetchOnStoreChange(queryClient);
   // Analise de uso (PostHog); sem a chave no ambiente, nao liga.
   useEffect(() => initAnalytics(), []);
+  // Tema salvo de volta no <html> depois de montar (hidratacao refeita o perde).
+  useEffect(() => reapplySavedTheme(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

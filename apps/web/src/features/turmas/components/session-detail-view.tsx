@@ -150,6 +150,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
   const canManage = can("classes:manage");
+  // Graduar e registrar a evolucao (a atendente nao; o professor so nas aulas dele).
+  const canProgress = can("progression:manage");
 
   const [addOpen, setAddOpen] = useState(false);
   // Cada abertura comeca do zero (aluno e tipo da inscricao anterior nao ficam).
@@ -563,7 +565,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
               ...markActions,
               ...(student
                 ? [
-                    ...(recordSession
+                    ...(recordSession && canProgress
                       ? [
                           {
                             key: "records",
@@ -573,12 +575,16 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                           },
                         ]
                       : []),
-                    {
-                      key: "graduation",
-                      label: vocabulary.levelsTitle,
-                      icon: <GraduationCap className="size-4" />,
-                      onSelect: () => setGraduationClient(student),
-                    },
+                    ...(canProgress
+                      ? [
+                          {
+                            key: "graduation",
+                            label: vocabulary.levelsTitle,
+                            icon: <GraduationCap className="size-4" />,
+                            onSelect: () => setGraduationClient(student),
+                          },
+                        ]
+                      : []),
                     ...(hasAssessments
                       ? [
                           {
@@ -721,7 +727,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {counts.pending === 0 ? (
             <>
               <p className="text-sm text-foreground">Chamada concluída.</p>
-              {recordSession && presentStudents.length > 0 ? (
+              {recordSession && canProgress && presentStudents.length > 0 ? (
                 <Button variant="outline" onClick={() => setClassRecordsOpen(true)}>
                   <MessageSquarePlus className="size-4" />
                   Registrar a aula

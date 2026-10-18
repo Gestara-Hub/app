@@ -51,10 +51,10 @@ const componentSchema = z
 export const teacherPayRuleFormSchema = z.object({
   components: z.array(componentSchema).min(1, "Adicione ao menos uma parte ao pagamento."),
   paymentDay: z
-    .number({ error: "Informe um dia entre 1 e 28." })
-    .int("Informe um dia entre 1 e 28.")
-    .min(1, "Informe um dia entre 1 e 28.")
-    .max(28, "Informe um dia entre 1 e 28."),
+    .number({ error: "Informe um dia entre 1 e 31." })
+    .int("Informe um dia entre 1 e 31.")
+    .min(1, "Informe um dia entre 1 e 31.")
+    .max(31, "Informe um dia entre 1 e 31."),
   startCompetence: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Informe o mês de início."),
   active: z.boolean(),
 });

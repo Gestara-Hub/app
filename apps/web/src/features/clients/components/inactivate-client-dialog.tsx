@@ -11,7 +11,7 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import type { Client } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
 import { useCharges } from "@/features/turmas";
-import { useInactivateClient } from "../hooks/use-clients";
+import { useInactivateClient, useStudentSummary } from "../hooks/use-clients";
 
 interface InactivateClientDialogProps {
   client: Client | null;
@@ -59,15 +59,21 @@ export function InactivateClientDialog({
   const openExtras = (charges ?? []).filter(
     (c) => c.studentId === shown?.id && c.kind === "extra" && isOpen(c),
   );
-  // Parcelas de curso em aberto tambem continuam (o curso foi comprado).
+  // Curso: a matricula e encerrada; as parcelas vencidas continuam como
+  // divida e as que ainda nao venceram saem (como cancelar a matricula).
   const openCourseInstallments = (charges ?? []).filter(
-    (c) => c.studentId === shown?.id && c.kind === "course" && isOpen(c),
+    (c) => c.studentId === shown?.id && c.kind === "course" && isOpen(c) && c.dueDate <= today,
   );
   // Parcelas de pacote em aberto tambem continuam (o pacote foi comprado).
   const openPackageInstallments = (charges ?? []).filter(
     (c) => c.studentId === shown?.id && c.kind === "package" && isOpen(c),
   );
   const openTotal = openCharges.reduce((sum, c) => sum + c.amountCents, 0);
+  // Matriculas que serao encerradas (curso ja concluido fica).
+  const { data: summary } = useStudentSummary(isClasses && shown ? shown.id : "");
+  const endingEnrollments = (summary?.enrollments ?? []).filter(
+    (e) => e.state === "active" || e.state === "paused",
+  );
 
   async function handleConfirm() {
     if (!client) return;
@@ -113,11 +119,18 @@ export function InactivateClientDialog({
           </>
         ) : null
       }
-      cancelLabel="Voltar"
       confirmLabel="Inativar"
       isPending={inactivateMut.isPending}
       onConfirm={handleConfirm}
     >
+      {endingEnrollments.length > 0 ? (
+        <p className="text-sm font-medium text-foreground">
+          {endingEnrollments.length === 1
+            ? `A matrícula em ${endingEnrollments[0].className} será encerrada.`
+            : `As matrículas em ${endingEnrollments.map((e) => e.className).join(", ")} serão encerradas.`}{" "}
+          Reativar não matricula de novo.
+        </p>
+      ) : null}
       {openExtras.length > 0 ? (
         <p className="text-sm text-muted-foreground">
           {openExtras.length === 1
@@ -128,8 +141,8 @@ export function InactivateClientDialog({
       {openCourseInstallments.length > 0 ? (
         <p className="text-sm text-muted-foreground">
           {openCourseInstallments.length === 1
-            ? "A parcela de curso em aberto continua para receber."
-            : `As ${openCourseInstallments.length} parcelas de curso em aberto continuam para receber.`}
+            ? "A parcela de curso vencida continua para receber; as futuras saem."
+            : `As ${openCourseInstallments.length} parcelas de curso vencidas continuam para receber; as futuras saem.`}
         </p>
       ) : null}
       {openPackageInstallments.length > 0 ? (

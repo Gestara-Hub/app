@@ -12,11 +12,13 @@
     "./finance": "./src/finance.ts",
     "./packages": "./src/packages.ts",
     "./certificate": "./src/certificate.ts",
-    "./grades": "./src/grades.ts"
+    "./grades": "./src/grades.ts",
+    "./phone": "./src/phone.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
-    "date-fns": "^4.4.0"
+    "date-fns": "^4.4.0",
+    "libphonenumber-js": "1.13.14"
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\""

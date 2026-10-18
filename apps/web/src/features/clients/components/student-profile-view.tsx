@@ -421,7 +421,7 @@ export function StudentProfileView({ id }: { id: Id }) {
             content: (
               <StudentEvolutionTab
                 levels={summary.levels}
-                canManage={canManage}
+                canManage={can("progression:manage")}
                 onOpenRecords={setRecordsModality}
                 onOpenLevels={setLevelsModality}
                 gradedModalityIds={gradedModalityIds}

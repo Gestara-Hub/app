@@ -610,8 +610,8 @@ function normalizeComponents(
 function validateRulePayload(payload: SaveTeacherPayRule): void {
   const fields: ApiErrorField[] = [];
   const day = payload.paymentDay ?? DEFAULT_TEACHER_PAYMENT_DAY;
-  if (!Number.isInteger(day) || day < 1 || day > 28) {
-    fields.push({ field: "paymentDay", message: "Informe um dia entre 1 e 28." });
+  if (!Number.isInteger(day) || day < 1 || day > 31) {
+    fields.push({ field: "paymentDay", message: "Informe um dia entre 1 e 31." });
   }
   if (!isCompetence(payload.startCompetence)) {
     fields.push({ field: "startCompetence", message: "Informe o mês de início." });

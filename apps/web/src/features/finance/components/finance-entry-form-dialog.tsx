@@ -93,13 +93,6 @@ const schema = z
     if (values.paidNow && !values.method) {
       ctx.addIssue({ code: "custom", path: ["method"], message: "Selecione a forma de pagamento." });
     }
-    if (values.repeatMonthly && DATE_RE.test(values.dueDate) && Number(values.dueDate.slice(8, 10)) > 28) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["dueDate"],
-        message: "Para repetir todo mês, escolha um vencimento entre os dias 1 e 28.",
-      });
-    }
   });
 type EntryFormValues = z.infer<typeof schema>;
 

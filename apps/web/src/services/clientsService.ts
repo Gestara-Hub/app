@@ -20,7 +20,7 @@ import type {
   StudentProgressionOverview,
   UpdateClient,
 } from "@gestarahub/contracts";
-import { chargesDueIn } from "@gestarahub/core/billing";
+import { chargesDueIn, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
@@ -48,6 +48,8 @@ import {
   studentMembershipTerms,
 } from "./billingService";
 import { clientNoun } from "./nouns";
+import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import { assertCanManageProgression } from "./teacherScope";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -311,6 +313,54 @@ function validateClient(
   if (fields.length > 0) throw validationError(fields);
 }
 
+/**
+ * Inativar encerra as matriculas (decisao de 18/10/2026): a vaga libera e o
+ * aluno sai das chamadas. Curso em andamento: as parcelas futuras saem e as
+ * vencidas seguem como divida, como em cancelar a matricula; curso ja
+ * concluido fica (e o historico dele). Sai tambem da lista de espera e das
+ * aulas futuras reservadas. Retorna quantas matriculas encerrou.
+ */
+function endStudentEnrollments(studentId: Id): number {
+  const today = todayISO();
+  const ts = nowIso();
+  let ended = 0;
+  for (const e of store.enrollments) {
+    if (e.studentId !== studentId || e.status === "canceled") continue;
+    const g = store.classGroups.find((x) => x.id === e.classGroupId);
+    if (e.course && g && isCourseEnded(g, today)) continue;
+    e.status = "canceled";
+    e.canceledAt = ts;
+    e.cancellationReason = "Aluno inativado";
+    ended += 1;
+    if (!e.course) continue;
+    for (const c of store.charges) {
+      if (c.kind !== "course" || c.enrollmentId !== e.id || !isFutureOpenInstallment(c, today)) continue;
+      c.status = "canceled";
+      c.canceledBy = "system";
+      c.cancelReason = "Matrícula encerrada na inativação";
+      c.updatedAt = ts;
+      cancelOnlinePaymentsForCharge(c.id);
+    }
+  }
+  for (const w of store.waitlist) {
+    if (w.studentId === studentId && w.status === "waiting") w.status = "canceled";
+  }
+  for (const r of store.reservations) {
+    const date = r.sessionId.split("~")[1];
+    if (r.studentId !== studentId || r.status !== "reserved" || !date || date <= today) continue;
+    r.status = "canceled";
+    const chargeId = r.chargeId || r.cobrancaId;
+    const charge = chargeId ? store.charges.find((c) => c.id === chargeId) : undefined;
+    if (charge && (charge.status === "pending" || charge.status === "overdue")) {
+      charge.status = "canceled";
+      charge.canceledBy = "system";
+      charge.updatedAt = ts;
+      cancelOnlinePaymentsForCharge(charge.id);
+    }
+  }
+  return ended;
+}
+
 export const clientsService = {
   list(filter?: ClientFilter): Promise<Client[]> {
     return simulateRead(() => {
@@ -525,6 +575,7 @@ export const clientsService = {
       // Mensalidades de periodos que ainda nao comecaram deixam de valer; o que
       // ja foi usado continua em aberto como divida.
       const canceled = cancelOpenMembershipCharges(id, todayISO(), "Cancelada na inativação do aluno");
+      const ended = endStudentEnrollments(id);
       // Escolha do usuario: nao cobrar tambem o que ja estava em aberto.
       let waivedDebt = 0;
       if (opts.cancelOpenCharges) {
@@ -542,7 +593,7 @@ export const clientsService = {
       auditLogService.record({
         action: "inactivated",
         target: { type: "client", id, label: name },
-        predicate: `inativou o ${clientNoun()} ${name}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}${waivedDebt > 0 ? `; cancelou também ${plural(waivedDebt, "mensalidade em aberto", "mensalidades em aberto")} (não serão cobradas)` : ""}`,
+        predicate: `inativou o ${clientNoun()} ${name}${ended > 0 ? `, encerrou ${plural(ended, "matrícula", "matrículas")}` : ""}${charged > 0 ? `, gerou ${plural(charged, "mensalidade do período usado", "mensalidades dos períodos usados")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}${waivedDebt > 0 ? `; cancelou também ${plural(waivedDebt, "mensalidade em aberto", "mensalidades em aberto")} (não serão cobradas)` : ""}`,
       });
     });
   },
@@ -649,6 +700,7 @@ export const clientsService = {
     progression: Omit<StudentModalityProgression, "updatedAt">,
   ): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(studentId, { modalityId: progression.modalityId });
       const idx = store.clients.findIndex((c) => c.id === studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];
@@ -692,6 +744,7 @@ export const clientsService = {
     examiner?: string;
   }): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
       const idx = store.clients.findIndex((c) => c.id === payload.studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];
@@ -756,6 +809,11 @@ export const clientsService = {
   /** Registro de aula de um aluno: anotacao, avanco de metas e lembrete. */
   addClassRecord(payload: CreateStudentClassRecord): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(payload.studentId, {
+        modalityId: payload.modalityId,
+        classGroupId: payload.classGroupId,
+        sessionId: payload.sessionId,
+      });
       const note = payload.note?.trim() ?? "";
       const nextClassNote = payload.nextClassNote?.trim() ?? "";
       const hasGoals = (payload.goalProgress ?? []).some((g) => (g.amount ?? 0) > 0 || g.completed);
@@ -793,6 +851,13 @@ export const clientsService = {
    */
   addClassRecords(payload: CreateClassRecordsBatch): Promise<number> {
     return simulateWrite(() => {
+      for (const entry of payload.entries) {
+        assertCanManageProgression(entry.studentId, {
+          modalityId: payload.modalityId,
+          classGroupId: payload.classGroupId,
+          sessionId: payload.sessionId,
+        });
+      }
       const classNote = payload.classNote?.trim() ?? "";
       let created = 0;
       for (const entry of payload.entries) {
@@ -831,6 +896,7 @@ export const clientsService = {
   /** Pontos fortes do aluno na modalidade. */
   updateStrengths(studentId: Id, modalityId: Id, strengths: string[]): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(studentId, { modalityId });
       const idx = clientIndex(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       progression.strengths = [...new Set(strengths.map((t) => t.trim()).filter(Boolean))];
@@ -840,6 +906,7 @@ export const clientsService = {
 
   addGoal(studentId: Id, modalityId: Id, input: { title: string; target?: number }): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(studentId, { modalityId });
       const title = input.title.trim();
       const fields: ApiErrorField[] = [];
       if (!title) fields.push({ field: "title", message: "Informe a meta." });
@@ -867,6 +934,7 @@ export const clientsService = {
   /** Marca a meta como feita ou reabre. */
   setGoalCompleted(studentId: Id, modalityId: Id, goalId: Id, completed: boolean): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(studentId, { modalityId });
       const idx = clientIndex(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       const goal = findGoal(progression, goalId);
@@ -883,6 +951,7 @@ export const clientsService = {
 
   removeGoal(studentId: Id, modalityId: Id, goalId: Id): Promise<Client> {
     return simulateWrite(() => {
+      assertCanManageProgression(studentId, { modalityId });
       const idx = clientIndex(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       findGoal(progression, goalId);

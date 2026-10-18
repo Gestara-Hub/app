@@ -485,7 +485,7 @@ describe("curso fechado: mensalidades não são afetadas", () => {
     expect(await billingService.generateCharges("2026-09")).toEqual({ created: 1 });
   });
 
-  it("troca de plano não cancela as parcelas do curso; inativar mantém as parcelas em aberto", async () => {
+  it("troca de plano não cancela as parcelas do curso; inativar encerra a matrícula e tira as futuras", async () => {
     const plan = await createPlan("monthly", 15000, "Básico");
     const other = await createPlan("monthly", 20000, "Pro");
     const student = await enrollStudent({ plan, name: "Xavier", startDate: "2026-09-01", strategy: "full_cycle" });
@@ -494,7 +494,8 @@ describe("curso fechado: mensalidades não são afetadas", () => {
     await clientsService.update(student.id, { planId: other.id, planStartDate: "2026-10-01" });
     expect(courseCharges(student.id).map((c) => c.status)).toEqual(["pending", "pending", "pending", "pending"]);
     await clientsService.remove(student.id, { cancelOpenCharges: true });
-    expect(courseCharges(student.id).map((c) => c.status)).toEqual(["pending", "pending", "pending", "pending"]);
+    // Como cancelar a matricula: as parcelas que ainda nao venceram saem.
+    expect(courseCharges(student.id).map((c) => c.status)).toEqual(["canceled", "canceled", "canceled", "canceled"]);
   });
 });
 

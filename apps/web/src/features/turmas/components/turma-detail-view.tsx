@@ -736,7 +736,7 @@ export function TurmaDetailView({
                       ? [
                           ...certificate,
                           ...payment,
-                          ...(student
+                          ...(student && can("progression:manage")
                             ? [
                                 {
                                   key: "records",

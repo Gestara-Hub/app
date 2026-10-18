@@ -555,10 +555,13 @@ describe("helpers de competência e data", () => {
     assert.equal(lastDayOfCompetence("2028-02"), "2028-02-29");
   });
 
-  it("dateInCompetence limita o dia entre 1 e 28", () => {
+  it("dateInCompetence aceita até 31 e cai no último dia dos meses curtos", () => {
     assert.equal(dateInCompetence("2026-10", 5), "2026-10-05");
     assert.equal(dateInCompetence("2026-02", 31), "2026-02-28");
-    assert.equal(dateInCompetence("2026-10", 30), "2026-10-28");
+    assert.equal(dateInCompetence("2028-02", 30), "2028-02-29");
+    assert.equal(dateInCompetence("2026-11", 31), "2026-11-30");
+    assert.equal(dateInCompetence("2026-10", 30), "2026-10-30");
+    assert.equal(dateInCompetence("2026-10", 31), "2026-10-31");
     assert.equal(dateInCompetence("2026-10", 0), "2026-10-01");
     assert.equal(dateInCompetence("2026-10", -3), "2026-10-01");
   });

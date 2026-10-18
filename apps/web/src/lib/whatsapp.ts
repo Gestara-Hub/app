@@ -1,4 +1,5 @@
 import type { MessageTrigger } from "@gestarahub/contracts";
+import { whatsappDigits } from "@gestarahub/core/phone";
 
 /**
  * WhatsApp do proprio espaco: numero no formato do `wa.me`, link com o texto
@@ -19,13 +20,12 @@ export function isManualTrigger(trigger: MessageTrigger): boolean {
 }
 
 /**
- * "(11) 99999-8888" -> "5511999998888" (o wa.me pede DDI). O 0 de ligacao
- * interurbana ("011 ...") e o 00 internacional saem. `null` se nao for telefone.
+ * "+5511999998888" ou o antigo "(11) 99999-8888" -> "5511999998888" (o wa.me
+ * pede DDI). Numero de outro pais vai com o DDI dele. `null` se nao for
+ * telefone (core/phone).
  */
 export function whatsappNumber(phone?: string | null): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "").replace(/^0+/, "");
-  if (digits.length < 10) return null;
-  return digits.length <= 11 ? `55${digits}` : digits;
+  return whatsappDigits(phone);
 }
 
 /**

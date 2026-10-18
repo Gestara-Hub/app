@@ -121,8 +121,8 @@ export function ClientsView() {
         onCreate={openCreate}
         onEdit={openEdit}
         onSendMessage={canMessage ? (client) => setMessageState({ open: true, client }) : undefined}
-        onOpenGraduation={isClasses ? setGraduationClient : undefined}
-        onOpenRecords={isClasses ? setRecordsClient : undefined}
+        onOpenGraduation={isClasses && can("progression:manage") ? setGraduationClient : undefined}
+        onOpenRecords={isClasses && can("progression:manage") ? setRecordsClient : undefined}
         onOpenGrades={isClasses ? setGradesClient : undefined}
         onNewCharge={canCharge ? setChargeClient : undefined}
         onSellPackage={canCharge ? setPackageClient : undefined}
