@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { signOut, switchUser } from "@/app/(auth)/actions";
+import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
@@ -104,7 +105,7 @@ export function AppTopbar() {
             <DropdownMenuSeparator />
             <form action={signOut}>
               <DropdownMenuItem asChild variant="destructive">
-                <button type="submit" className="w-full cursor-pointer">
+                <button type="submit" onClick={resetAnalytics} className="w-full cursor-pointer">
                   <LogOut />
                   Sair
                 </button>

@@ -15,6 +15,7 @@ import {
   useQuery,
   type QueryClient,
 } from "@tanstack/react-query";
+import { identifyUser } from "@/lib/analytics";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
 import { createQueryClient } from "@/lib/providers";
@@ -109,6 +110,10 @@ export function SessionProvider({
     setCurrentActor({ userId: user.id, name: user.name, profile: user.profile });
     return () => setCurrentActor(null);
   }, [user]);
+  // Analise de uso: so id, perfil e organizacao (lib/analytics).
+  useEffect(() => {
+    identifyUser({ id: user.id, profile: user.profile, organizationId: user.organizationId });
+  }, [user.id, user.profile, user.organizationId]);
   return (
     <QueryClientProvider client={queryClient}>
       <SessionContext.Provider value={value}>

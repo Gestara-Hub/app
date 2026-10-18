@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useEffect } from "react";
 import {
   MutationCache,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
+import { initAnalytics } from "@/lib/analytics";
 import { toast } from "sonner";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
@@ -97,6 +98,8 @@ export function createQueryClient(): QueryClient {
  */
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
+  // Analise de uso (PostHog); sem a chave no ambiente, nao liga.
+  useEffect(() => initAnalytics(), []);
 
   return (
     <QueryClientProvider client={queryClient}>

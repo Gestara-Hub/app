@@ -42,6 +42,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/06-passagem-backend.md](technical/06-passagem-backend.md) — **Início da fase 3:** o que o mock faz e o servidor precisa assumir (tarefas agendadas, carimbos, arquivos, consultas), e ordem de construção das fatias.
 - [technical/07-integracao-whatsapp.md](technical/07-integracao-whatsapp.md) — Checklist da integração real com a API oficial do WhatsApp (conexão de cada espaço, modelos aprovados, avisos da Meta, consentimento, limites).
 - [technical/08-backend-supabase.md](technical/08-backend-supabase.md) — **Decisão do backend:** Supabase (banco, login, Edge Functions com Hono, Cron, Storage), custo por fase e o que validar na primeira fatia.
+- [technical/09-analise-de-uso.md](technical/09-analise-de-uso.md) — **Análise de uso:** PostHog (páginas, cliques, mapa de calor, gravação com textos ocultos na área logada), variáveis de ambiente e o que falta decidir (aviso de cookies).
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

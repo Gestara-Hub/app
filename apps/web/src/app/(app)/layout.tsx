@@ -50,7 +50,8 @@ export default async function AppLayout({
       <ViewModeProvider initialModes={initialViewModes}>
         <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
           <AppSidebar />
-          <SidebarInset className="print:bg-white print:p-0">
+          {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
+          <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
             <AppTopbar />
             <Suspense fallback={null}>
               <OnboardingTopBanner />

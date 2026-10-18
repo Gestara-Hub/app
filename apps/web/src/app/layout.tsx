@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
+import { AnalyticsConsentBanner } from "@/components/shared/analytics-consent-banner";
 import appIcon from "@/assets/icon.png";
 import { PRE_PAINT_VIEW_MODE_SCRIPT } from "@/components/shared/list/view-mode-script";
 
@@ -92,7 +93,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }} />
       </head>
       <body className="min-h-full">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <AnalyticsConsentBanner />
+        </Providers>
         <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>
