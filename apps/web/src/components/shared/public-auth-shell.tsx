@@ -24,21 +24,14 @@ type PublicAuthShellProps = {
   children: ReactNode;
 };
 
+// O que o produto faz hoje, no posicionamento atual (quem ensina, turma ou 1 a 1).
 const BASE_MODULES = [
-  { icon: CalendarClock, label: "Agenda" },
-  { icon: GraduationCap, label: "Turmas & Aulas" },
-  { icon: Users, label: "Clientes & Alunos" },
-  { icon: Briefcase, label: "Equipe" },
-  { icon: Store, label: "Serviços & Modalidades" },
-  { icon: Wallet, label: "Mensalidades & Planos" },
-];
-
-const ADDON_MODULES = [
-  "Comunicação & Notificações",
-  "Analytics & Relatórios",
-  "Controle de Caixa & Despesas",
-  "Pagamentos Online & Pix",
-  "Múltiplas Unidades",
+  { icon: CalendarClock, label: "Calendário de aulas" },
+  { icon: GraduationCap, label: "Turmas e aulas" },
+  { icon: Users, label: "Alunos e chamada" },
+  { icon: Briefcase, label: "Professores" },
+  { icon: Store, label: "Modalidades e evolução" },
+  { icon: Wallet, label: "Mensalidades e pacotes" },
 ];
 
 export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellProps) {
@@ -58,8 +51,7 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
                 GestaraHub
               </h1>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Gestão completa do seu negócio — agenda, turmas, clientes, equipe e
-                mensalidades, em um só lugar.
+                Grátis para quem ensina: turmas, alunos, chamada e cobranças num lugar só.
               </p>
             </div>
 
@@ -78,25 +70,6 @@ export function PublicAuthShell({ title, subtitle, children }: PublicAuthShellPr
                   );
                 })}
               </ul>
-
-              <div className="pt-1 text-sm text-muted-foreground">
-                <span>Complementos: </span>
-                <span className="relative inline-flex items-center group">
-                  <span className="cursor-help font-medium text-foreground underline decoration-dotted underline-offset-2">
-                    ver mais
-                  </span>
-                  <span className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-72 translate-y-1 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                    <strong className="block pb-1 text-[11px] tracking-wide text-muted-foreground">
-                      Complementos
-                    </strong>
-                    {ADDON_MODULES.map((addon) => (
-                      <span key={addon} className="block py-0.5">
-                        • {addon}
-                      </span>
-                    ))}
-                  </span>
-                </span>
-              </div>
             </div>
           </div>
         </section>

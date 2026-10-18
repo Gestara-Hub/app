@@ -193,7 +193,7 @@ function ClientProgressionBadges({
           key={b.modalityId}
           name={
             resolvedBadges.length > 1
-              ? `${b.modalityName.split(" ")[0]} • ${b.level.name}`
+              ? `${b.modalityName.split(" ")[0]} · ${b.level.name}`
               : b.level.name
           }
           color={b.level.color}
@@ -262,7 +262,7 @@ function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
         ) : (
           <>
             <span>Bolsa {percent}%</span>
-            <span className="opacity-50">•</span>
+            <span className="opacity-50">·</span>
             <span className="font-semibold tabular-nums">
               {formatCents(effectiveCents)}/{PERIOD_SHORT[period]}
             </span>

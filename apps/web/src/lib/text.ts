@@ -9,3 +9,12 @@ export function normalizeText(value: string): string {
     .toLowerCase()
     .trim();
 }
+
+/**
+ * Nome com o tipo na frente, sem repetir: ("pacote", "10 aulas") ->
+ * "pacote 10 aulas"; ("pacote", "Pacote 10 aulas") -> "Pacote 10 aulas".
+ */
+export function withKind(kind: string, name: string): string {
+  const trimmed = name.trim();
+  return normalizeText(trimmed).startsWith(`${normalizeText(kind)} `) ? trimmed : `${kind} ${trimmed}`;
+}

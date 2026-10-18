@@ -8,7 +8,7 @@ export function AuditView() {
     <>
       <PageHeader
         title="Auditoria"
-        description="Histórico de ações no sistema — quem fez o quê e quando."
+        description="Quem fez o quê e quando."
       />
       <AuditLogList />
     </>

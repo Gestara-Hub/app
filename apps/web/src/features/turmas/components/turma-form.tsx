@@ -614,7 +614,7 @@ function MeetingSlotsEditor({
             className="w-full border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"
           >
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Adicionar horário diferente (ex: Sábado ou manhã)
+            Adicionar outro horário
           </Button>
         )}
       </div>

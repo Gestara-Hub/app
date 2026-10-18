@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 37;
+const CURRENT_VERSION = 38;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -699,6 +699,26 @@ describe("v37: modelos de WhatsApp so de envio manual", () => {
     expect(find(store, "holiday_notice")[0].content).toBe("Já editado");
     expect(find(store, "level_up")).toHaveLength(1);
     expect(saved()?.data.tenants[otherId].messageTemplates).toEqual([]);
+  });
+});
+
+describe("v38: atraso de 10 dias com o valor", () => {
+  const OLD =
+    "Aviso Importante: Olá, {aluno}. Identificamos uma pendência na mensalidade vencida em {vencimento}. Para evitar a suspensão temporária do acesso às aulas, acesse o link de regularização: {link_pagamento} ou procure nossa recepção.";
+  const critical = (t: MockStore) => t.messageTemplates.find((x) => x.trigger === "billing_critical")!;
+
+  it("troca o texto padrão antigo e mantém o editado", async () => {
+    const world = oldWorld((t) => {
+      critical(t).content = OLD;
+    });
+    const otherId = Object.keys(world.tenants).find(
+      (id) => id !== ACADEMY_ORG && world.tenants[id].messageTemplates.length > 0,
+    );
+    if (otherId) critical(world.tenants[otherId]).content = "Texto meu";
+    const { store, saved } = await hydrate(37, world);
+    expect(critical(store).content).toContain("{valor}");
+    expect(critical(store).content).toMatch(/Obrigado!$/);
+    if (otherId) expect(critical(saved()!.data.tenants[otherId]).content).toBe("Texto meu");
   });
 });
 

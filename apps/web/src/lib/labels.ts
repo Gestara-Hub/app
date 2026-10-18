@@ -92,7 +92,7 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   settings: "Configurações",
   plan: "Plano",
   lesson_package: "Pacote de aulas",
-  charge: "Mensalidade",
+  charge: "Cobrança",
   class_group: "Turma",
   enrollment: "Matrícula",
   assessment: "Avaliação",
@@ -103,7 +103,7 @@ const AUDIT_ENTITY_TYPE_LABEL: Record<AuditEntityType, string> = {
   online_payment: "Pagamento online",
   subscription: "Plano GestaraHub",
   communication_session: "Conexão WhatsApp",
-  message_template: "Regra de comunicação",
+  message_template: "Modelo de mensagem",
   message_log: "Mensagem WhatsApp",
 };
 

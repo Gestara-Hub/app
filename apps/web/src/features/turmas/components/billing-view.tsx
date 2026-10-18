@@ -851,8 +851,8 @@ export function BillingView() {
                       {/* Painel Expandido: Sub-parcelas das semanas/quinzenas */}
                       {isExpanded ? (
                         <div className="space-y-1.5 border-t border-border/50 bg-muted/20 px-4 py-2.5 sm:px-6">
-                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                            Sub-parcelas do ciclo ({group.charges.length})
+                          <p className="text-[11px] font-medium text-muted-foreground">
+                            {plural(group.charges.length, "cobrança", "cobranças")} no mês
                           </p>
 
                           <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-card">

@@ -339,19 +339,17 @@ export function useChargeActions() {
             setCancelReason("");
           }
         }}
-        title="Cancelar cobrança"
+        title="Cancelar a cobrança?"
         description={
           shownChargeToCancel ? (
             <>
-              Deseja realmente cancelar a cobrança de{" "}
+              A cobrança de{" "}
               <strong className="text-foreground">{shownChargeToCancel.studentName}</strong>
               {getCycleTitle(shownChargeToCancel) !== "Mensalidade" ? (
                 <> ({getCycleTitle(shownChargeToCancel)})</>
               ) : null}{" "}
-              no valor de{" "}
-              <strong className="text-foreground">{formatCents(shownChargeToCancel.amountCents)}</strong>? Essa
-              cobrança não comporá o total a receber, mas continuará no histórico podendo ser revertida a
-              qualquer momento.
+              de <strong className="text-foreground">{formatCents(shownChargeToCancel.amountCents)}</strong> sai
+              do total a receber. Fica no histórico e dá para reverter.
             </>
           ) : null
         }

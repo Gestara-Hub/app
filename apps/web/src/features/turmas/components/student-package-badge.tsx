@@ -39,7 +39,7 @@ export function packageWarning(pkg: StudentPackageView): string | null {
   return null;
 }
 
-/** Selo do pacote do aluno: "Pacote 7 de 10" + o aviso, quando houver. */
+/** Selo do pacote do aluno: "Restam 7 de 10" + o aviso, quando houver. */
 export function StudentPackageBadge({ pkg }: { pkg: StudentPackageView }) {
   const warning = packageWarning(pkg);
   const left = Math.max(0, pkg.lessonsTotal - pkg.lessonsUsed);
@@ -56,7 +56,8 @@ export function StudentPackageBadge({ pkg }: { pkg: StudentPackageView }) {
     >
       <Ticket className="size-3 shrink-0 opacity-75" />
       <span className="tabular-nums">
-        {pkg.isExpired ? "Pacote" : `Pacote ${left} de ${pkg.lessonsTotal}`}
+        {/* "Restam": "Pacote 1 de 10" parecia a 1a aula (ao lado de "9 de 10 usadas"). */}
+        {pkg.isExpired ? "Pacote" : `${left === 1 ? "Resta" : "Restam"} ${left} de ${pkg.lessonsTotal}`}
       </span>
       {warning ? (
         <span className="rounded bg-background/60 px-1 text-[10px] font-semibold">{warning}</span>

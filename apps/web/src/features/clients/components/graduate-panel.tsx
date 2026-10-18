@@ -453,7 +453,7 @@ export function GraduatePanel({
           {!goalMet ? (
             <p className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
               <AlertTriangle className="mt-0.5 size-3 shrink-0" />
-              Ainda não atingiu a meta. Dá para registrar mesmo assim (ex.: exame).
+              Ainda não atingiu a meta. Dá para registrar mesmo assim, como num exame.
             </p>
           ) : null}
         </div>

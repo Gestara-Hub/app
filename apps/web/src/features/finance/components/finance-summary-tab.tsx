@@ -127,7 +127,7 @@ function VariantSimplified({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Saldo do Mês
+              Saldo do mês
             </span>
             <div
               className={cn(
@@ -156,7 +156,7 @@ function VariantSimplified({
         <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Entrou
+              Entrou
             </span>
             <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
               <ArrowDownRight className="size-4" />
@@ -178,7 +178,7 @@ function VariantSimplified({
         <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Saiu
+              Saiu
             </span>
             <div className="flex size-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-400">
               <ArrowUpRight className="size-4" />
@@ -207,7 +207,7 @@ function VariantSimplified({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Em Atraso
+              Em atraso
             </span>
             <div
               className={cn(
@@ -255,13 +255,13 @@ function VariantSimplified({
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-foreground">Equilíbrio Financeiro do Mês</h3>
+                <h3 className="text-base font-semibold text-foreground">Equilíbrio do mês</h3>
                 <p className="text-xs text-muted-foreground">
                   Proporção direta entre o que foi arrecadado e o que sobrou
                 </p>
               </div>
               <Badge variant="outline" className="text-xs font-normal">
-                {competence}
+                {competenceLabel(competence)}
               </Badge>
             </div>
 
@@ -484,7 +484,7 @@ function VariantExecutive({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Lucro Líquido
+                  Lucro líquido
                 </span>
                 {marginPct !== null && (
                   <span
@@ -494,7 +494,7 @@ function VariantExecutive({
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                         : "border-destructive/30 bg-destructive/10 text-destructive",
                     )}
-                    title="Margem Operacional = Resultado Líquido ÷ Entradas Pagas"
+                    title="Margem = resultado ÷ entradas pagas"
                   >
                     <Percent className="size-2.5" />
                     {marginPct >= 0 ? `+${marginPct}%` : `${marginPct}%`} margem
@@ -502,17 +502,19 @@ function VariantExecutive({
                 )}
               </div>
 
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0",
-                  isPositive
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-destructive/10 text-destructive",
-                )}
-              >
-                {isPositive ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                {isPositive ? "Superávit" : "Déficit"}
-              </span>
+              {summary.resultCents !== 0 ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0",
+                    isPositive
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "bg-destructive/10 text-destructive",
+                  )}
+                >
+                  {isPositive ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                  {isPositive ? "Sobrou" : "Faltou"}
+                </span>
+              ) : null}
             </div>
 
             <div className="mt-3">
@@ -547,7 +549,7 @@ function VariantExecutive({
                   </span>
                 )}
                 {summary.incomeForecastCents > 0 && summary.expenseForecastCents > 0 && (
-                  <span className="text-muted-foreground/40">•</span>
+                  <span className="text-muted-foreground/40">·</span>
                 )}
                 {summary.expenseForecastCents > 0 && (
                   <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-medium">
@@ -570,8 +572,8 @@ function VariantExecutive({
           <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-emerald-500/30">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Entradas Pagas</span>
-                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <span className="text-xs font-medium text-muted-foreground">Entradas pagas</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                   <ArrowDownRight className="size-4" />
                 </div>
               </div>
@@ -620,8 +622,8 @@ function VariantExecutive({
           <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-rose-500/30">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Saídas Pagas</span>
-                <div className="flex size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <span className="text-xs font-medium text-muted-foreground">Saídas pagas</span>
+                <div className="flex size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-400">
                   <ArrowUpRight className="size-4" />
                 </div>
               </div>
@@ -701,7 +703,11 @@ function VariantExecutive({
                     />
                   </div>
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">{paidRatio}% recebido</span>
+                    {totalBilledCents > 0 ? (
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">{paidRatio}% recebido</span>
+                    ) : (
+                      <span>Sem cobranças no mês</span>
+                    )}
                     {expenseOverdueCents > 0 && (
                       <span className="text-destructive font-medium">Contas: {formatCents(expenseOverdueCents)}</span>
                     )}
@@ -736,7 +742,7 @@ function VariantExecutive({
         <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-7">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Fluxo de Caixa Semestral</h3>
+              <h3 className="text-sm font-semibold text-foreground">Fluxo de caixa dos últimos 6 meses</h3>
               <p className="text-xs text-muted-foreground">Comparativo de entradas, saídas e resultado mês a mês</p>
             </div>
             <Badge variant="outline" className="text-[11px]">
@@ -749,7 +755,7 @@ function VariantExecutive({
         {/* Categorias com visual de Barras Proporcionais */}
         <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-5">
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-foreground">Destino das Receitas e Custos</h3>
+            <h3 className="text-sm font-semibold text-foreground">Receitas e custos por categoria</h3>
             <p className="text-xs text-muted-foreground">Clique numa categoria para abrir seus lançamentos</p>
           </div>
           <ModernCategoryBreakdown categories={categories ?? []} competence={competence} />
@@ -794,7 +800,7 @@ function ModernCategoryBreakdown({
         hrefOf={buildCategoryHref}
       />
       <CategoryColumn
-        title="Saídas & Custos"
+        title="Saídas e custos"
         emptyText="Sem despesas pagas no período."
         tone="expense"
         items={categories.filter((c) => c.type === "expense")}
@@ -1114,17 +1120,9 @@ export function FinanceSummaryTab({
 
   return (
     <div className="space-y-5">
-      {/* Barra de Seleção de Modo: Simplificada vs Avançada */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border/60 bg-muted/20 px-3.5 py-2.5">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Modo de visualização:</span>
-          <span>
-            {viewMode === "simple"
-              ? "Exibindo visão simplificada com foco em saldo e equilíbrio do mês."
-              : "Exibindo visão avançada completa com margem, projeções e categorias."}
-          </span>
-        </div>
-
+      {/* Visao simplificada ou avancada: so a escolha, sem texto longo. */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs text-muted-foreground">Visão</span>
         <div className="flex items-center gap-1 rounded-lg border bg-background/90 p-0.5 shadow-2xs self-start sm:self-auto shrink-0">
           <button
             type="button"

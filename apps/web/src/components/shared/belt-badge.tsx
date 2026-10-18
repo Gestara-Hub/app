@@ -65,11 +65,11 @@ export function BeltBadge({
     subLevel > 0
       ? isMartial
         ? subLevelLabelMode === "count"
-          ? ` • ${subLevel} ${subLevel === 1 ? "grau" : "graus"}`
-          : ` • ${subLevel}º grau`
+          ? ` · ${subLevel} ${subLevel === 1 ? "grau" : "graus"}`
+          : ` · ${subLevel}º grau`
         : subLevelLabelMode === "count"
-          ? ` • ${subLevel} ${subLevel === 1 ? "etapa" : "etapas"}`
-          : ` • ${subLevel}ª etapa`
+          ? ` · ${subLevel} ${subLevel === 1 ? "etapa" : "etapas"}`
+          : ` · ${subLevel}ª etapa`
       : null;
 
   return (

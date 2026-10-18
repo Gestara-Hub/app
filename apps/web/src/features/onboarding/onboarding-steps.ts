@@ -79,7 +79,7 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
     {
       id: "hours",
       label: "Definir horário de funcionamento",
-      description: "Configure os dias e horários de funcionamento da unidade.",
+      description: "Dias e horários em que o espaço abre.",
       href: "/settings?tab=horarios",
       cta: "Configurar",
       done: input.hoursSet,
@@ -88,7 +88,7 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
       ? {
           id: "billing",
           label: "Definir regras da mensalidade",
-          description: "Configure o regime padrão (pré/pós-pago) e vencimentos.",
+          description: "Antecipado ou depois do uso, e o dia do vencimento.",
           href: "/settings?tab=geral#billing-rules",
           cta: "Configurar",
           // Regras so valem para a mensalidade: so pacote, sem plano, dispensa.
@@ -196,7 +196,7 @@ export function buildSchedulingOnboardingSteps(input: SchedulingOnboardingInput)
     {
       id: "hours",
       label: "Definir horário de funcionamento",
-      description: "Configure o expediente da unidade — base da agenda.",
+      description: "Configure o expediente da unidade, base da agenda.",
       href: "/settings?tab=horarios",
       cta: "Configurar",
       done: input.hoursSet,

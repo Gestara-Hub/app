@@ -178,7 +178,13 @@ let lastSnapshot: string | null = null;
 // v37: modelos de WhatsApp so de envio manual (pagamento recebido, parabens
 //      pelo avanco, aula cancelada, mudanca de horario e feriado), com o texto
 //      da area do espaco, para quem ainda nao tem. Migracao suave.
-const SEED_VERSION = 37;
+// v38: lembrete de atraso de 10 dias com o valor e o fecho (COB-28), so para
+//      quem nao mudou o texto padrao. Migracao suave.
+const SEED_VERSION = 38;
+
+/** Texto padrao antigo do atraso de 10 dias (v38 troca so se ninguem editou). */
+const OLD_CRITICAL_REMINDER =
+  "Aviso Importante: Olá, {aluno}. Identificamos uma pendência na mensalidade vencida em {vencimento}. Para evitar a suspensão temporária do acesso às aulas, acesse o link de regularização: {link_pagamento} ou procure nossa recepção.";
 
 /** Nomes de modalidade que indicam escola de idiomas ou reforco (v32). */
 const LANGUAGE_MODALITY_PATTERN = /ingl|espanh|franc|idioma|alem|italian|japon|libras|refor|portugu|redaç/i;
@@ -465,6 +471,16 @@ function migrateWorld(data: MockWorld, fromVersion: number): MockWorld {
         const template = defaults.find((t) => t.trigger === trigger);
         if (template) templates.push(template);
       }
+    }
+  }
+  if (fromVersion < 38) {
+    for (const tenant of Object.values(data.tenants)) {
+      const critical = (tenant.messageTemplates ?? []).find((t) => t.trigger === "billing_critical");
+      if (!critical || critical.content !== OLD_CRITICAL_REMINDER) continue;
+      const fresh = defaultMessageTemplates(tenant.organization.id, tenant.organization.classSegment).find(
+        (t) => t.trigger === "billing_critical",
+      );
+      if (fresh) critical.content = fresh.content;
     }
   }
   return data;

@@ -241,8 +241,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         {linked ? (
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Check className="size-3.5 text-emerald-600" />
-            Vinculado ao profissional <strong>{linked.name}</strong> — aparece na
-            agenda dele.
+            Vinculado a <strong>{linked.name}</strong>, da equipe.
           </p>
         ) : null}
 

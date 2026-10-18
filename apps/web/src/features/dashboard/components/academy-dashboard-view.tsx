@@ -533,7 +533,7 @@ export function AcademyDashboardView() {
       {hasOperatingData ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <PageHeader
-            title="Dashboard"
+            title="Painel"
             description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
           />
           <div className="flex items-center gap-2">

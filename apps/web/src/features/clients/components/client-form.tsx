@@ -458,7 +458,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   const planBadge = !usesPlan
     ? undefined
     : selectedPlan
-    ? `${selectedPlan.name.replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "").trim()} • ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
+    ? `${selectedPlan.name.replace(/^(Mensal|Quinzenal|Semanal)\s*[-–—:]\s*/i, "").trim()} · ${formatCents(selectedPlan.priceCents)}/${PERIOD_SUFFIX[selectedPlan.period ?? "monthly"]}`
     : selectedPlanId
       ? "Plano selecionado"
       : undefined;
@@ -1016,10 +1016,10 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           </div>
         </div>
 
-        {/* Bloco 2: Plano & Mensalidade (específico de classes/academia) */}
+        {/* Bloco 2: Plano e mensalidade (específico de classes/academia) */}
         {isClasses ? (
           <CollapsibleSection
-            title="Plano & Mensalidade"
+            title="Plano e mensalidade"
             icon={<Wallet className="h-4 w-4" />}
             badge={
               planBadge || discountBadge ? (
@@ -1204,7 +1204,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     </span>
                     <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40">
                       {usesOrgRule ? "Regra do espaço" : "Regra deste aluno"}:{" "}
-                      {TIMING_LABEL[billingCalculation.terms.timing]} •{" "}
+                      {TIMING_LABEL[billingCalculation.terms.timing]} ·{" "}
                       {STRATEGY_LABEL[billingCalculation.terms.strategy]}
                     </span>
                   </div>

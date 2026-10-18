@@ -77,13 +77,13 @@ function classesGroups(steps: OnboardingStep[], isCourseArea: boolean) {
     isCourseArea
       ? {
           id: "ops",
-          label: "Fase 3: Cursos & Matrículas",
+          label: "Fase 3: Cursos e matrículas",
           description: "Criação do curso e matrícula dos alunos.",
           stepIds: ["classes", "enroll"],
         }
       : {
           id: "ops",
-          label: "Fase 3: Turmas & Matrículas",
+          label: "Fase 3: Turmas e matrículas",
           description: "Criação de turmas e matrículas de alunos.",
           stepIds: ["classes"],
         },
@@ -199,9 +199,9 @@ export function OnboardingChecklist({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-                Primeiros passos da sua unidade
+                Primeiros passos
               </h2>
-              <span className="text-muted-foreground/40 hidden sm:inline">•</span>
+              <span className="text-muted-foreground/40 hidden sm:inline">·</span>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-muted-foreground">
                   {doneCount} de {total} concluídos

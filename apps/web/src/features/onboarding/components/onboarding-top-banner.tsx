@@ -382,7 +382,7 @@ export function OnboardingTopBanner() {
               )
             ) : (
               <Button asChild variant="outline" className={CTA_CLASS}>
-                <Link href="/dashboard">Concluir na Dashboard</Link>
+                <Link href="/dashboard">Concluir no painel</Link>
               </Button>
             )}
           </div>

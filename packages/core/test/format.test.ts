@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { plural, pluralWord } from "../src/format.ts";
+import { formatCents, plural, pluralWord } from "../src/format.ts";
 
 describe("plural / pluralWord", () => {
   it("0 usa o plural", () => {
@@ -16,5 +16,12 @@ describe("plural / pluralWord", () => {
   it("2 usa o plural", () => {
     assert.equal(plural(2, "cobrança", "cobranças"), "2 cobranças");
     assert.equal(pluralWord(2, "aula", "aulas"), "aulas");
+  });
+});
+
+describe("formatCents", () => {
+  it("zero negativo sai sem sinal", () => {
+    assert.equal(formatCents(-0).replace(/\s/g, " "), "R$ 0,00");
+    assert.equal(formatCents(-1500).replace(/\s/g, " "), "-R$ 15,00");
   });
 });

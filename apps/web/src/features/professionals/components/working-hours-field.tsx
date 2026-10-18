@@ -272,7 +272,7 @@ export function WorkingHoursField<T extends FieldValues>({
                               checked={on}
                               onCheckedChange={(v) => setDayActive(d.value, v)}
                               disabled={disabled}
-                              aria-label={`${d.label} — atende`}
+                              aria-label={`${d.label}: atende`}
                             />
                             {on && s ? (
                               <>

@@ -337,7 +337,7 @@ export function EnrollStudentsDialog({
 
         {isFull ? (
           <p className="rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-500">
-            A turma atingiu a capacidade ({turma.capacity} vagas). Você pode pôr
+            A turma atingiu a capacidade ({plural(turma.capacity, "vaga", "vagas")}). Você pode pôr
             os selecionados na lista de espera ou matricular acima da
             capacidade.
           </p>
@@ -474,7 +474,7 @@ export function EnrollStudentsDialog({
             )}
             {hidden > 0 ? (
               <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
-                +{hidden} não exibidos — refine a busca.
+                Mais {hidden} alunos. Refine a busca.
               </p>
             ) : null}
           </div>
@@ -585,8 +585,7 @@ export function EnrollStudentsDialog({
         {overCapacity && !isFull ? (
           <p className="text-xs text-amber-700 dark:text-amber-500">
             Você selecionou {selected.size} para {remaining}{" "}
-            {remaining === 1 ? "vaga" : "vagas"} — a turma vai ficar acima da
-            capacidade.
+            {remaining === 1 ? "vaga" : "vagas"}. A turma vai passar da capacidade.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">

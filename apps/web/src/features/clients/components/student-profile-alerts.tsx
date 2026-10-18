@@ -20,6 +20,7 @@ import {
   useWhatsAppSend,
 } from "@/features/communication";
 import { useAbsenceStreaks, useChargeActions, useCharges } from "@/features/turmas";
+import { withKind } from "@/lib/text";
 
 interface StudentAlert {
   key: string;
@@ -173,7 +174,7 @@ export function StudentProfileAlerts({
     const restante = packageRemainingText(ending.pkg, today);
     alerts.push({
       key: "package",
-      title: `Pacote ${ending.pkg.name}`,
+      title: withKind("Pacote", ending.pkg.name),
       detail: capitalize(restante),
       actions: (
         <>

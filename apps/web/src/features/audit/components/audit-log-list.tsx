@@ -195,7 +195,7 @@ export function AuditLogList() {
           <ModuleEmptyGuide
             icon={<ScrollText className="size-8" />}
             title="Nenhum evento registrado ainda."
-            description="As ações feitas no sistema (agendamentos, cadastros, acessos) aparecem aqui."
+            description="Cadastros, cobranças e mudanças feitas no sistema aparecem aqui."
           />
         }
       />

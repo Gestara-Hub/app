@@ -520,8 +520,8 @@ export function TurmasView({
               Tem certeza que deseja desativar <strong>&ldquo;{shownDeactivatingTurma.name}&rdquo;</strong>?
               <br />
               <br />
-              Isso não deletará os dados — apenas impedirá novas aulas. O histórico
-              de frequência e matrículas será preservado.
+              Os dados ficam guardados e a turma para de gerar aulas. A frequência
+              e as matrículas continuam no histórico.
             </>
           ) : null
         }

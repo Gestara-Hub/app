@@ -81,7 +81,7 @@ const schema = z.object({
   organizationName: z
     .string()
     .trim()
-    .min(1, "Informe o nome da organização.")
+    .min(1, "Informe o nome do espaço.")
     .max(80, "Use até 80 caracteres."),
   unitName: z.string().trim().max(80, "Use até 80 caracteres.").optional(),
   // 29 a 31 caem no ultimo dia dos meses mais curtos.
@@ -115,7 +115,7 @@ const schema = z.object({
     ctx.addIssue({
       code: "custom",
       path: ["customSegmentName"],
-      message: "Informe o nome da área.",
+      message: "Informe o que você ensina.",
     });
   }
 });
@@ -269,13 +269,13 @@ function OrgUnitForm({
 
   const formattedPhone = phone ? formatPhone(phone) : null;
   const businessSummary =
-    [orgName, unitName, formattedPhone].filter(Boolean).join(" • ") ||
-    "Nome da organização, unidade e contato";
+    [orgName, unitName, formattedPhone].filter(Boolean).join(" · ") ||
+    "Nome, unidade e contato";
 
   const streetPart = street ? `${street}${number ? `, ${number}` : ""}` : "";
   const areaPart = neighborhood || (city ? `${city}${state ? ` - ${state}` : ""}` : "");
   const addressSummary =
-    [streetPart, areaPart].filter(Boolean).join(" • ") ||
+    [streetPart, areaPart].filter(Boolean).join(" · ") ||
     "Endereço e localização da unidade";
 
   const timingSummary = currentTiming === "postpaid" ? "Depois do uso" : "Antecipado";
@@ -286,7 +286,7 @@ function OrgUnitForm({
     currentStrategy === "full_cycle"
       ? "Vence no dia da entrada"
       : `Vence todo dia ${isValidDueDay ? currentDueDay : 10}`;
-  const billingSummary = `${timingSummary} • ${strategySummary} • ${dueSummary}`;
+  const billingSummary = `${timingSummary} · ${strategySummary} · ${dueSummary}`;
 
   // Só expande e destaca automaticamente as regras da mensalidade na etapa guiada do onboarding
   // (ou seja, quando o passo de cobrança ainda estiver pendente de confirmação).
@@ -447,7 +447,7 @@ function OrgUnitForm({
           onValueChange={setOpenSections}
           className="space-y-3"
         >
-          {/* Seção 1: Identificação do Negócio */}
+          {/* Seção 1: dados do espaço */}
           <AccordionItem
             value="business"
             className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors"
@@ -459,7 +459,7 @@ function OrgUnitForm({
                 </div>
                 <div className="min-w-0 text-left">
                   <h3 className="font-semibold text-foreground text-sm leading-tight">
-                    Identificação do Negócio
+                    Dados do espaço
                   </h3>
                   <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
                     {businessSummary}
@@ -470,8 +470,8 @@ function OrgUnitForm({
             <AccordionContent className="pt-2 pb-5 space-y-4 border-t border-border/40 mt-1">
               <InputText<OrgUnitValues>
                 name="organizationName"
-                label="Nome da organização"
-                placeholder="Informe o nome da organização"
+                label="Nome do espaço"
+                placeholder="Informe o nome do espaço"
                 required
                 disabled={pending}
               />
@@ -480,7 +480,7 @@ function OrgUnitForm({
                 <InputText<OrgUnitValues>
                   name="unitName"
                   label="Nome da unidade"
-                  placeholder="Ex.: Matriz Centro (opcional)"
+                  placeholder="Informe o nome da unidade"
                   disabled={pending}
                 />
                 <InputPhone<OrgUnitValues>
@@ -533,7 +533,7 @@ function OrgUnitForm({
             </AccordionContent>
           </AccordionItem>
 
-          {/* Seção 2: Endereço da Unidade */}
+          {/* Seção 2: endereço */}
           <AccordionItem
             value="address"
             className="rounded-xl border border-border/70 bg-card px-5 sm:px-6 shadow-xs transition-colors"
@@ -545,7 +545,7 @@ function OrgUnitForm({
                 </div>
                 <div className="min-w-0 text-left">
                   <h3 className="font-semibold text-foreground text-sm leading-tight">
-                    Endereço da Unidade
+                    Endereço
                   </h3>
                   <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
                     {addressSummary}

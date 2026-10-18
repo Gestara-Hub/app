@@ -52,6 +52,7 @@ import {
 import { formatCents, plural } from "@gestarahub/core/format";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { store } from "@/mocks/store";
+import { withKind } from "@/lib/text";
 import { auditLogService } from "./auditLogService";
 import { currentCertificateTemplate } from "./certificatesService";
 import { assertFeature } from "./subscriptionService";
@@ -537,7 +538,7 @@ function createEnrollment(
     action: "created",
     target: { type: "enrollment", id: enrollment.id, label: `${name} em ${g.name}` },
     predicate: course
-      ? `matriculou ${name} no curso ${g.name} (${formatCents(course.priceCents)}${course.installments > 1 ? `, em ${course.installments} parcelas` : ""})`
+      ? `matriculou ${name} no ${withKind("curso", g.name)} (${formatCents(course.priceCents)}${course.installments > 1 ? `, em ${course.installments} parcelas` : ""})`
       : `matriculou ${name} na turma ${g.name}${paysWithPackage ? " (paga com pacote)" : ""}`,
   });
   return enrollment;
@@ -1199,7 +1200,7 @@ export const turmasService = {
         action: "cancelled",
         target: { type: "enrollment", id, label: `${studentName(e.studentId)} em ${turma}` },
         predicate: e.course
-          ? `cancelou a matrícula de ${studentName(e.studentId)} no curso ${turma}${canceledInstallments > 0 ? ` e ${plural(canceledInstallments, "parcela futura", "parcelas futuras")}` : ""}`
+          ? `cancelou a matrícula de ${studentName(e.studentId)} no ${withKind("curso", turma)}${canceledInstallments > 0 ? ` e ${plural(canceledInstallments, "parcela futura", "parcelas futuras")}` : ""}`
           : `cancelou a matrícula de ${studentName(e.studentId)} na turma ${turma}`,
       });
     });

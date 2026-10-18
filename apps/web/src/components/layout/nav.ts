@@ -86,7 +86,7 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   // Topo: Visão Geral
   {
-    label: "Dashboard",
+    label: "Painel",
     href: "/dashboard",
     icon: LayoutDashboard,
     permission: "dashboard:view",

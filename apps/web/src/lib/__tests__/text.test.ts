@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeText } from "@/lib/text";
+import { normalizeText, withKind } from "@/lib/text";
 
 describe("normalizeText", () => {
   it("remove acentos e cedilha", () => {
@@ -22,5 +22,14 @@ describe("normalizeText", () => {
   it("texto vazio continua vazio", () => {
     expect(normalizeText("")).toBe("");
     expect(normalizeText("   ")).toBe("");
+  });
+});
+
+describe("withKind", () => {
+  it("põe o tipo na frente só quando o nome não tem (ALU-19)", () => {
+    expect(withKind("pacote", "10 aulas")).toBe("pacote 10 aulas");
+    expect(withKind("pacote", "Pacote 10 aulas")).toBe("Pacote 10 aulas");
+    expect(withKind("Curso", "curso de defesa")).toBe("curso de defesa");
+    expect(withKind("curso", "Cursinho")).toBe("curso Cursinho");
   });
 });

@@ -39,24 +39,24 @@ const CATALOG: ReportMetadata[] = [
   // 1. Operacionais (Free)
   {
     type: "attendance_sheet",
-    title: "Lista de Presença & Chamada",
-    description: "Relação de presença por turma e data, ideal para controle de tatame e frequência.",
+    title: "Lista de presença",
+    description: "Presença de cada aluno por turma e aula.",
     category: "operational",
     tierRequired: "free",
     iconName: "ClipboardCheck",
   },
   {
     type: "students_roster",
-    title: "Relação Geral de Alunos",
-    description: "Listagem completa com plano, data de matrícula, faixa/graduação e status cadastral.",
+    title: "Relação de alunos",
+    description: "Plano, matrícula, nível e situação de cada aluno.",
     category: "operational",
     tierRequired: "free",
     iconName: "Users",
   },
   {
     type: "billing_statement",
-    title: "Extrato de Mensalidades & Inadimplência",
-    description: "Resumo de cobranças geradas, recebidas, pendentes e taxa de inadimplência.",
+    title: "Cobranças e inadimplência",
+    description: "Cobranças geradas, recebidas, em aberto e taxa de atraso.",
     category: "operational",
     tierRequired: "free",
     iconName: "Wallet",
@@ -79,8 +79,8 @@ const CATALOG: ReportMetadata[] = [
   },
   {
     type: "monthly_birthdays",
-    title: "Aniversariantes do Mês",
-    description: "Lista de aniversariantes para ações de relacionamento, homenagens e felicitações.",
+    title: "Aniversariantes do mês",
+    description: "Quem faz aniversário no mês, com o contato.",
     category: "operational",
     tierRequired: "free",
     iconName: "Cake",
@@ -88,16 +88,16 @@ const CATALOG: ReportMetadata[] = [
   // 2. Gerenciais Avançados (Pro)
   {
     type: "financial_income_statement",
-    title: "DRE Gerencial Completa",
-    description: "Demonstrativo de Resultado do Exercício com margem líquida, custos fixos e variáveis.",
+    title: "DRE gerencial",
+    description: "Receitas, despesas e resultado do mês.",
     category: "financial",
     tierRequired: "pro",
     iconName: "FileSpreadsheet",
   },
   {
     type: "churn_retention",
-    title: "Análise de Churn & Retenção",
-    description: "Evolução da base de alunos, taxa de cancelamento e retenção por modalidade.",
+    title: "Retenção de alunos",
+    description: "Entradas, saídas e retenção por turma.",
     category: "retention",
     tierRequired: "pro",
     iconName: "TrendingUp",
@@ -131,7 +131,8 @@ function buildHeader(periodLabel: string): ReportHeaderInfo {
     organizationSegment: store.organization.segment || "Espaço",
     unitName: store.unit.name,
     generatedAt: nowIso(),
-    generatedBy: "Administração",
+    // Quem gerou (antes "Administração" fixo).
+    generatedBy: getCurrentActor()?.name ?? store.organization.name,
     periodLabel,
   };
 }

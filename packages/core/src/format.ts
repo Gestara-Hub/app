@@ -9,7 +9,8 @@ const BRL = new Intl.NumberFormat("pt-BR", {
 
 /** Centavos -> "R$ 45,00". */
 export function formatCents(cents: number): string {
-  return BRL.format(cents / 100);
+  // -0 sairia "-R$ 0,00".
+  return BRL.format(cents === 0 ? 0 : cents / 100);
 }
 
 /** Minutos -> "30 min", "1h", "1h 30min". */

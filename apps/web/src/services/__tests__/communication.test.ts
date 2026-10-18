@@ -244,7 +244,7 @@ describe("modelos de mensagem", () => {
   it("texto e livre no gratis (o assistido usa o mesmo texto)", async () => {
     const updated = await communicationService.updateTemplate({ id: tmpl("birthday"), content: "  Parabéns, {aluno}!  " });
     expect(updated.content).toBe("Parabéns, {aluno}!");
-    expect(lastAudit()).toBe('Ana Ribeiro atualizou a mensagem "Felicitações de Aniversário"');
+    expect(lastAudit()).toBe('Ana Ribeiro atualizou a mensagem "Aniversário"');
   });
 
   it("envio automatico, horario e prazo sao do Pro", async () => {

@@ -238,7 +238,7 @@ export function AuditLogDetailDialog({
             {/* Nota de imutabilidade */}
             <p className="flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
               <Lock className="size-3 shrink-0" />
-              Registro imutável — não pode ser editado nem removido.
+              Registro imutável: não pode ser editado nem removido.
             </p>
           </div>
 

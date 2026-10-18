@@ -857,7 +857,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                               >
                                 <div className="flex items-center justify-between px-1 pb-1 border-b border-border/60">
                                   <span className="text-[10px] font-medium text-muted-foreground">
-                                    Até 2 cores (1ª Faixa • 2ª Ponta)
+                                    Até 2 cores (1ª faixa e 2ª ponta)
                                   </span>
                                   {step.tipColor &&
                                   step.tipColor !== step.color ? (

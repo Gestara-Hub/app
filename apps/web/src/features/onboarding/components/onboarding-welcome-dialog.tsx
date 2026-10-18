@@ -76,7 +76,7 @@ export function OnboardingWelcomeDialog({
               variant="outline"
               className="border-primary/25 bg-background/80 text-[11px] font-semibold text-primary uppercase tracking-wider backdrop-blur-xs"
             >
-              {isClasses ? "Gestão de Turmas & Aulas" : "Primeiro Acesso"}
+              {isClasses ? "Turmas e aulas" : "Primeiro Acesso"}
             </Badge>
           </div>
 

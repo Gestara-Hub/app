@@ -160,7 +160,7 @@ export const PROGRESSION_TEMPLATES: Record<
     },
   },
   judo_karate: {
-    label: "Judô (CBJ — Infantil ao Adulto)",
+    label: "Judô (CBJ, infantil ao adulto)",
     description: "Todas as faixas e pontas da CBJ (Branca até Preta).",
     track: {
       enabled: true,
@@ -187,7 +187,7 @@ export const PROGRESSION_TEMPLATES: Record<
     },
   },
   muay_thai: {
-    label: "Muay Thai (CBMT — Kruang / Prajied)",
+    label: "Muay Thai (CBMT, kruang e prajied)",
     description: "Branco → Ponta Vermelha → Vermelho → Ponta Azul → Azul Claro → Ponta Azul Escuro → Azul Escuro → Ponta Preta → Preto.",
     track: {
       enabled: true,
@@ -640,7 +640,7 @@ export function formatTrackSummary(track?: ModalityProgressionTrack): string | n
         : track.criteriaType === "attendance_and_time"
           ? `${track.targetAttendances ?? 30} aulas e ${track.targetMonths ?? 6}m`
           : "Exame livre";
-  return `${count} ${count === 1 ? "nível" : "níveis"} • Meta: ${criteria}`;
+  return `${count} ${count === 1 ? "nível" : "níveis"} · Meta: ${criteria}`;
 }
 
 /**

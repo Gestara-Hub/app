@@ -493,7 +493,7 @@ function BusinessHoursEditor({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
           <p role="status" className="text-sm font-medium text-foreground">
             {anyDayOpen
-              ? "Horário diferente de 08:00 às 18:00? Use Editar. Depois, salve."
+              ? "Horário diferente das 08:00 às 18:00? Use Editar. Depois, salve."
               : "Ligue os dias em que o espaço abre."}
           </p>
           <div className="flex flex-wrap items-center gap-1.5">

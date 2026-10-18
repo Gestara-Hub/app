@@ -106,7 +106,7 @@ const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
 /** Texto do cancelamento da matricula: no curso, explica o que acontece com as parcelas (decisao 1). */
 function cancelEnrollmentText(e: EnrollmentView): string {
   if (!e.course) {
-    return `${e.studentName} sai da turma e deixa de aparecer na lista de chamada. A mensalidade do aluno não muda.`;
+    return `${e.studentName} sai da turma e deixa de aparecer na lista de chamada. As cobranças do aluno não mudam.`;
   }
   if (e.isCompleted) {
     return `${e.studentName} sai da turma. O curso já terminou: as parcelas continuam como estão.`;
@@ -121,7 +121,12 @@ function cancelEnrollmentText(e: EnrollmentView): string {
       : future === 1
         ? "A parcela futura será cancelada."
         : `As ${future} parcelas futuras serão canceladas.`,
-    due > 0 ? (due === 1 ? "A parcela vencida continua para receber." : `As ${due} parcelas vencidas continuam para receber.`) : null,
+    // "Vencida" errava para a que vence hoje.
+    due > 0
+      ? due === 1
+        ? "A parcela que vence até hoje continua para receber."
+        : `As ${due} parcelas que vencem até hoje continuam para receber.`
+      : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -656,7 +661,12 @@ export function TurmaDetailView({
               <ModuleEmptyGuide
                 icon={<GraduationCap className="size-8" />}
                 title="Nenhum aluno matriculado ainda."
-                description="Matricule os alunos desta turma para acompanhar frequência e mensalidades."
+                description={
+                  // A cobranca so aparece quando a turma cobra mensalidade.
+                  classBillingMode(turma) === "membership"
+                    ? "Matricule os alunos para acompanhar frequência e mensalidades."
+                    : "Matricule os alunos para acompanhar a frequência."
+                }
                 actionLabel={canEnroll ? "Matricular alunos" : undefined}
                 onAction={canEnroll ? () => setEnrollOpen(true) : undefined}
               />

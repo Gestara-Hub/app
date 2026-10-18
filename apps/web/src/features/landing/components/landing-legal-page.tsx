@@ -19,7 +19,7 @@ export function LandingLegalPage({ title, children }: LandingLegalPageProps) {
         <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16 space-y-8">
           <header className="space-y-2">
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h1>
-            <p className="text-sm text-muted-foreground">Atualizada em {LEGAL_UPDATED_AT}.</p>
+            <p className="text-sm text-muted-foreground">Última atualização: {LEGAL_UPDATED_AT}.</p>
           </header>
           {children}
           {SUPPORT_EMAIL ? (

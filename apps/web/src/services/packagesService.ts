@@ -46,6 +46,7 @@ import {
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import { withKind } from "@/lib/text";
 
 /**
  * Pacote de aulas (doc 20, fase C). Catalogo do espaco (`LessonPackage`),
@@ -350,7 +351,7 @@ export const packagesService = {
       auditLogService.record({
         action: "created",
         target: { type: "lesson_package", id: pkg.id, label: pkg.name },
-        predicate: `criou o pacote ${pkg.name} (${plural(pkg.lessons, "aula", "aulas")}, ${formatCents(pkg.priceCents)})`,
+        predicate: `criou o ${withKind("pacote", pkg.name)} (${plural(pkg.lessons, "aula", "aulas")}, ${formatCents(pkg.priceCents)})`,
       });
       return clone(pkg);
     });
@@ -371,8 +372,8 @@ export const packagesService = {
         action: statusChanged ? (after.status === "active" ? "activated" : "inactivated") : "updated",
         target: { type: "lesson_package", id, label: after.name },
         predicate: statusChanged
-          ? `${after.status === "active" ? "reativou" : "inativou"} o pacote ${after.name}`
-          : `atualizou o pacote ${after.name}`,
+          ? `${after.status === "active" ? "reativou" : "inativou"} o ${withKind("pacote", after.name)}`
+          : `atualizou o ${withKind("pacote", after.name)}`,
         changes:
           before.priceCents !== after.priceCents
             ? [
@@ -490,7 +491,7 @@ export const packagesService = {
         action: "created",
         // Mesmo alvo do cancelamento: o filtro "Pacote de aulas" mostra a venda.
         target: { type: "lesson_package", id: sold.id, label: `${catalog.name} de ${student.name}` },
-        predicate: `vendeu o pacote ${catalog.name} para ${student.name} (${formatCents(payload.priceCents)}${isSplit ? `, em ${parts.length} parcelas` : ""})${carry.lessons > 0 ? `, com ${plural(carry.lessons, "aula trazida", "aulas trazidas")} do pacote anterior` : ""}`,
+        predicate: `vendeu o ${withKind("pacote", catalog.name)} para ${student.name} (${formatCents(payload.priceCents)}${isSplit ? `, em ${parts.length} parcelas` : ""})${carry.lessons > 0 ? `, com ${plural(carry.lessons, "aula trazida", "aulas trazidas")} do pacote anterior` : ""}`,
       });
       return clone(toView(sold));
     });
@@ -537,7 +538,7 @@ export const packagesService = {
       auditLogService.record({
         action: "cancelled",
         target: { type: "lesson_package", id: pkg.id, label: `${pkg.name} de ${name}` },
-        predicate: `cancelou o pacote ${pkg.name} de ${name}${canceled > 0 ? ` e ${plural(canceled, "cobrança em aberto", "cobranças em aberto")}` : ""}`,
+        predicate: `cancelou o ${withKind("pacote", pkg.name)} de ${name}${canceled > 0 ? ` e ${plural(canceled, "cobrança em aberto", "cobranças em aberto")}` : ""}`,
       });
       return clone(toView(pkg));
     });

@@ -246,7 +246,7 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground print:text-zinc-600 mt-1">
-                {header.unitName} • GestaraHub Gestão Inteligente
+                {header.unitName} · GestaraHub
               </p>
             </div>
 
@@ -457,7 +457,7 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold text-foreground print:text-black">
-                Extrato de Mensalidades & Inadimplência
+                Cobranças e inadimplência
               </h2>
               <p className="text-xs text-muted-foreground print:text-zinc-600">
                 Consolidação de cobranças da competência com taxa de inadimplência.
@@ -835,7 +835,7 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold text-foreground print:text-black">
-                Análise de Retenção & Churn de Alunos
+                Retenção de alunos
               </h2>
               <p className="text-xs text-muted-foreground print:text-zinc-600">
                 Comportamento da base de alunos, adesão e cancelamentos.

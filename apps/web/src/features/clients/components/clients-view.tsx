@@ -18,6 +18,7 @@ import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { withKind } from "@/lib/text";
 
 export function ClientsView() {
   const isClasses = useModel() === "classes";
@@ -82,7 +83,7 @@ export function ClientsView() {
     if (
       !(await confirmAction({
         title: "Cancelar pacote?",
-        description: `O pacote ${pkg.name} de ${pkg.studentName} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
+        description: `O ${withKind("pacote", pkg.name)} de ${pkg.studentName} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
         confirmLabel: "Cancelar pacote",
         cancelLabel: "Voltar",
       }))

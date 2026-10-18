@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { handleFormApiError } from "@/lib/form-errors";
+import { withKind } from "@/lib/text";
 import { useLessonPackages, useSellPackage, useStudentPackages } from "../hooks/use-packages";
 import { pastDueHint, paymentSummary } from "../installments-summary";
 
@@ -41,7 +42,8 @@ const schema = z
     firstDueDate: z.string().regex(DATE_RE, "Informe o 1º vencimento."),
   })
   // Parcela de R$ 0 nao e cobranca (mesma regra do servico).
-  .refine((v) => v.priceCents >= Number(v.installments), {
+  // Valor vazio ou 0 ja tem o erro do valor (nao repete aqui).
+  .refine((v) => v.priceCents < 1 || v.priceCents >= Number(v.installments), {
     path: ["installments"],
     message: "Cada parcela precisa de pelo menos R$ 0,01.",
   });
@@ -202,13 +204,13 @@ function SellPackageForm({
 
           {carried > 0 ? (
             <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
-              O saldo de {plural(carried, "aula", "aulas")} do pacote atual passa para este.
+              O saldo de {plural(carried, "aula", "aulas")} do {withKind("pacote", chosen?.name ?? "")} que o aluno já tem passa para este.
             </p>
           ) : null}
           {keptApart.length > 0 ? (
             <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
               {keptApart.length === 1
-                ? `O pacote ${keptApart[0].name} continua valendo.`
+                ? `O ${withKind("pacote", keptApart[0].name)} continua valendo.`
                 : `Os pacotes ${keptApart.map((p) => p.name).join(" e ")} continuam valendo.`}{" "}
               A aula usa o que vence primeiro.
             </p>

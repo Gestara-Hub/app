@@ -6,6 +6,7 @@ import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
+import { withKind } from "@/lib/text";
 
 /**
  * Pecas da linha de cobranca, as mesmas em Cobrancas e no extrato da ficha do
@@ -41,6 +42,9 @@ export const PERIOD_UNIT: Record<PlanPeriod, string> = {
 };
 
 export const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
+/** "dd/MM" no ano atual; de outro ano, "dd/MM/aaaa" (atrasos antigos). */
+const dueDateLabel = (iso: string) =>
+  iso.slice(0, 4) === String(new Date().getFullYear()) ? shortDate(iso) : format(parseISO(iso), "dd/MM/yyyy");
 
 /** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
 export const SYSTEM_CANCELED_HINT =
@@ -141,8 +145,8 @@ export function installmentLabel(c: ChargeView): string | null {
 
 /** O que esta sendo cobrado: a descricao da avulsa, "Curso {turma}" ou "Pacote {nome}". */
 export function chargeSubject(c: ChargeView): string {
-  if (c.kind === "course") return `Curso ${c.description ?? c.className ?? ""}`.trim();
-  if (c.kind === "package") return `Pacote ${c.description ?? ""}`.trim();
+  if (c.kind === "course") return withKind("Curso", c.description ?? c.className ?? "");
+  if (c.kind === "package") return withKind("Pacote", c.description ?? "");
   return c.description ?? "Cobrança avulsa";
 }
 
@@ -252,7 +256,7 @@ export function ChargeDetails({ charge: c, showSubject = true }: { charge: Charg
   if (c.className && c.kind !== "course") parts.push(c.className);
   if (c.planName) parts.push(c.planName);
   if (c.planPeriod && c.planPeriod !== "monthly") parts.push(`cobrança por ${PERIOD_UNIT[c.planPeriod]}`);
-  parts.push(c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `vence ${shortDate(c.dueDate)}`);
+  parts.push(c.kind === "dropin" ? `aula em ${dueDateLabel(c.dueDate)}` : `vence ${dueDateLabel(c.dueDate)}`);
   const ref = referenceLabel(c);
   if (c.kind === "membership" && ref) parts.push(`referente a ${ref}`);
   const reason = cancelReasonOf(c);

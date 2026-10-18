@@ -42,7 +42,7 @@ export function ServiceSelectionField<T extends FieldValues>({
       placeholder="Selecione os serviços (opcional)"
       searchPlaceholder="Buscar serviço..."
       emptyMessage="Nenhum serviço encontrado."
-      hint="Informa o que o profissional costuma fazer — não limita o agendamento."
+      hint="O que o profissional costuma fazer. Não limita o agendamento."
       options={options}
       required={required}
       disabled={disabled}

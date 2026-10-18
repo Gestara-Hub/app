@@ -23,7 +23,8 @@ const coursePaymentSchema = z
     firstDueDate: z.string().regex(DATE_RE, "Informe o 1º vencimento."),
   })
   // Parcela de R$ 0 nao e cobranca (mesma regra do servico).
-  .refine((v) => v.priceCents >= Number(v.installments), {
+  // Valor vazio ou 0 ja tem o erro do valor (nao repete aqui).
+  .refine((v) => v.priceCents < 1 || v.priceCents >= Number(v.installments), {
     path: ["installments"],
     message: "Cada parcela precisa de pelo menos R$ 0,01.",
   });

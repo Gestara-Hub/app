@@ -50,8 +50,8 @@ function simulate({ billingTiming, midMonthStrategy, defaultDueDay }: BillingRul
   const recurring =
     midMonthStrategy === "full_cycle"
       ? postpaid
-        ? `todo dia ${terms.dueDay}, cobrindo os 30 dias que acabaram de passar`
-        : `todo dia ${terms.dueDay}, cobrindo sempre os 30 dias seguintes`
+        ? `todo dia ${terms.dueDay}, cobrindo o mês que acabou de passar`
+        : `todo dia ${terms.dueDay}, cobrindo sempre o mês seguinte`
       : postpaid
         ? `todo dia ${terms.dueDay}, referente ao mês que acabou de fechar`
         : `todo dia ${terms.dueDay}, referente ao mês em andamento`;

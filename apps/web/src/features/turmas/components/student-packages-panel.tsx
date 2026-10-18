@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { normalizeText } from "@/lib/text";
+import { normalizeText, withKind } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { plural } from "@gestarahub/core/format";
@@ -118,7 +118,7 @@ export function StudentPackagesPanel({
   async function cancel(pkg: StudentPackageView) {
     const ok = await confirm({
       title: "Cancelar pacote?",
-      description: `O pacote ${pkg.name} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
+      description: `O ${withKind("pacote", pkg.name)} é cancelado. As cobranças em aberto dele também; as pagas ficam.`,
       confirmLabel: "Cancelar pacote",
       cancelLabel: "Voltar",
       variant: "destructive",
@@ -253,7 +253,7 @@ export function StudentPackagesPanel({
                         <ListItemActionsMenu
                           actions={actions}
                           title="Ações do pacote"
-                          ariaLabel={`Ações do pacote ${pkg.name}`}
+                          ariaLabel={`Ações do ${withKind("pacote", pkg.name)}`}
                           variant="ghost"
                         />
                       ) : null
