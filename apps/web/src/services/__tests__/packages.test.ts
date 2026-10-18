@@ -7,7 +7,7 @@ import type {
   SellPackage,
   StudentPackage,
 } from "@gestarahub/contracts";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
 import { financeService } from "@/services/financeService";
@@ -23,6 +23,7 @@ import {
   createStudent,
   enrollStudent,
   resetAcademy,
+  sellPackageFrom,
   sessionIdOf,
 } from "@/test/academy";
 
@@ -64,8 +65,9 @@ function newPackage(over: Partial<CreateLessonPackage> = {}): Promise<LessonPack
   });
 }
 
+/** Venda de hoje valendo desde 01/09 (o pacote so paga aula a partir da compra). */
 function sell(over: Partial<SellPackage> & Pick<SellPackage, "studentId" | "packageId">) {
-  return packagesService.sellPackage({
+  return sellPackageFrom({
     priceCents: 50000,
     installments: 1,
     firstDueDate: "2026-09-22",
@@ -579,7 +581,7 @@ describe("pacote: aluno entra na aula pelo pacote", () => {
     const ana = await createStudent("Ana");
     await expect(
       turmasService.reserveSession({ classGroupId: g.id, sessionId: sessionOf(g), studentId: ana.id, kind: "package" }),
-    ).rejects.toMatchObject({ message: "Ana não tem pacote com aulas para esta modalidade." });
+    ).rejects.toMatchObject({ message: "Ana não tem pacote com aulas para esta turma." });
     await sell({ studentId: ana.id, packageId: other.id });
     await expect(
       turmasService.reserveSession({ classGroupId: g.id, sessionId: sessionOf(g), studentId: ana.id, kind: "package" }),
@@ -626,7 +628,7 @@ describe("pacote: aluno de pacote em turma de mensalidade", () => {
     await expect(
       turmasService.enroll({ classGroupId: g.id, studentId: ana.id, paysWithPackage: true }),
     ).rejects.toMatchObject({
-      fields: [{ field: "paysWithPackage", message: "Ana não tem pacote com aulas para esta modalidade." }],
+      fields: [{ field: "paysWithPackage", message: "Ana não tem pacote com aulas para esta turma." }],
     });
     expect(store.enrollments).toHaveLength(0);
 
@@ -787,5 +789,195 @@ describe("pacote: cobranças, financeiro e professores", () => {
     });
     const payout = (await teacherPayService.listPayouts("2026-09")).find((p) => p.professionalId === teacher.id);
     expect(payout?.lines).toMatchObject([{ kind: "percent_of_memberships", baseCents: 20000, amountCents: 8000 }]);
+  });
+});
+
+describe("pacote: onde e quando vale (decisões de 18/10/2026)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("com turmas escolhidas, só vale nelas", async () => {
+    const turmaA = await teacherClass({ name: "Grupo" });
+    const turmaB = await teacherClass({ name: "Particular" });
+    const pkg = await newPackage({ classGroupIds: [turmaA.id] });
+    const ana = await createStudent("Ana");
+    const sold = await sell({ studentId: ana.id, packageId: pkg.id });
+    await turmasService.enroll({ classGroupId: turmaA.id, studentId: ana.id });
+    await turmasService.enroll({ classGroupId: turmaB.id, studentId: ana.id });
+
+    await turmasService.markAttendance({ sessionId: sessionOf(turmaB), studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(0);
+    const rosterB = (await turmasService.getSession(sessionOf(turmaB))).roster.find((r) => r.studentId === ana.id);
+    expect(rosterB?.noPackage).toBe(true);
+
+    await turmasService.markAttendance({ sessionId: sessionOf(turmaA), studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(1);
+  });
+
+  it("o catálogo só aceita turmas de pacote ou de mensalidade", async () => {
+    const free = await teacherClass({ billingMode: "free" });
+    await expect(newPackage({ classGroupIds: [free.id] })).rejects.toMatchObject({
+      fields: [{ field: "classGroupIds" }],
+    });
+  });
+
+  it("turma sem cobrança e curso não aceitam pacote", async () => {
+    const free = await teacherClass({ billingMode: "free" });
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    await sell({ studentId: ana.id, packageId: pkg.id });
+
+    const detail = await turmasService.getSession(sessionOf(free));
+    expect(detail.packageCandidates).toEqual([]);
+    await expect(
+      turmasService.reserveSession({ classGroupId: free.id, sessionId: sessionOf(free), studentId: ana.id, kind: "package" }),
+    ).rejects.toMatchObject({ message: "Esta turma não aceita pacote." });
+  });
+
+  it("pacote comprado depois da aula não paga a aula atrasada", async () => {
+    const g = await teacherClass();
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    // Comprado hoje (22/09); a aula foi ontem (21/09).
+    const sold = await packagesService.sellPackage({
+      studentId: ana.id,
+      packageId: pkg.id,
+      priceCents: 50000,
+      installments: 1,
+      firstDueDate: "2026-09-22",
+    });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    await turmasService.markAttendance({ sessionId: sessionOf(g), studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(0);
+  });
+
+  it("o saldo na chamada soma os pacotes que valem na turma", async () => {
+    // Aula de hoje (terca): a matricula de hoje ja esta na lista.
+    const g = await teacherClass({ meetingSlots: [{ weekday: 2, start: "06:00", end: "07:00" }] });
+    const ten = await newPackage();
+    const four = await newPackage({ name: "4 aulas", lessons: 4, priceCents: 20000 });
+    const ana = await createStudent("Ana");
+    await sell({ studentId: ana.id, packageId: ten.id });
+    await sell({ studentId: ana.id, packageId: four.id });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+
+    const today = sessionOf(g, "2026-09-22");
+    const entry = (await turmasService.getSession(today)).roster.find((r) => r.studentId === ana.id);
+    expect(entry).toMatchObject({ packageRemaining: 14, packageTotal: 14, packageLastLesson: false });
+  });
+});
+
+describe("chamada: remover da aula e aula que não existe", () => {
+  beforeEach(() => resetAcademy());
+
+  it("remover da aula apaga a presença: voltar começa sem marcação e gasta de novo", async () => {
+    const g = await teacherClass({ billingMode: "membership" });
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const sold = await sell({ studentId: ana.id, packageId: pkg.id });
+    const session = sessionOf(g);
+    await turmasService.reserveSession({ classGroupId: g.id, sessionId: session, studentId: ana.id, kind: "package" });
+    await turmasService.markAttendance({ sessionId: session, studentId: ana.id, status: "present" });
+    expect(stored(sold.id).lessonsUsed).toBe(1);
+
+    await turmasService.cancelReservation({ sessionId: session, studentId: ana.id });
+    expect(stored(sold.id).lessonsUsed).toBe(0);
+    expect(store.attendances.some((a) => a.sessionId === session && a.studentId === ana.id)).toBe(false);
+
+    await turmasService.reserveSession({ classGroupId: g.id, sessionId: session, studentId: ana.id, kind: "package" });
+    const entry = (await turmasService.getSession(session)).roster.find((r) => r.studentId === ana.id);
+    expect(entry?.attendance).toBeUndefined();
+  });
+
+  it("aula fora da grade, antes do início, depois do fim ou com data inválida não existe", async () => {
+    const g = await teacherClass({ startDate: "2026-09-14", endDate: "2026-12-31" });
+    const ana = await createStudent("Ana");
+    for (const id of [
+      sessionOf(g, "2026-09-22"), // terca: a turma e de segunda
+      sessionOf(g, "2026-09-07"), // antes do inicio
+      sessionOf(g, "2027-01-04"), // depois do fim
+      sessionOf(g, "2026-02-30"), // data que nao existe
+      `${g.id}~2026-09-21~23:00`, // horario fora da grade
+    ]) {
+      await expect(turmasService.getSession(id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(
+        turmasService.markAttendance({ sessionId: id, studentId: ana.id, status: "present" }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  });
+
+  it("mudar o horário mantém as aulas passadas no horário antigo", async () => {
+    const g = await teacherClass({ startDate: "2026-09-01" });
+    const ana = await createStudent("Ana");
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    const past = sessionOf(g, "2026-09-14");
+    await turmasService.markAttendance({ sessionId: past, studentId: ana.id, status: "present" });
+
+    await turmasService.update(g.id, { meetingSlots: [{ weekday: 3, start: "19:00", end: "20:00" }] });
+
+    // A aula de segunda passada continua existindo, com a presenca.
+    const detail = await turmasService.getSession(past);
+    expect(detail.roster.find((r) => r.studentId === ana.id)?.attendance).toBe("present");
+    const week = await turmasService.listSessions({ classGroupId: g.id, dateFrom: "2026-09-14", dateTo: "2026-09-30" });
+    expect(week.map((s) => `${s.date} ${s.start}`)).toEqual([
+      "2026-09-14 06:00",
+      "2026-09-21 06:00",
+      "2026-09-23 19:00",
+      "2026-09-30 19:00",
+    ]);
+  });
+});
+
+describe("chamada: avulso que se matricula depois", () => {
+  beforeEach(() => resetAcademy());
+
+  it("a aula passada segue como avulsa e remarcar não gasta o pacote", async () => {
+    const g = await teacherClass({ billingMode: "package", allowDropin: true, sessionPriceCents: 5000 });
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    const past = sessionOf(g, "2026-09-14");
+    await turmasService.reserveSession({ classGroupId: g.id, sessionId: past, studentId: ana.id, kind: "dropin" });
+    await turmasService.markAttendance({ sessionId: past, studentId: ana.id, status: "present" });
+
+    const sold = await sell({ studentId: ana.id, packageId: pkg.id });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    await turmasService.markAttendance({ sessionId: past, studentId: ana.id, status: "absent" });
+    await turmasService.markAttendance({ sessionId: past, studentId: ana.id, status: "present" });
+
+    const entry = (await turmasService.getSession(past)).roster.filter((r) => r.studentId === ana.id);
+    expect(entry.map((r) => r.kind)).toEqual(["dropin"]);
+    expect(stored(sold.id).lessonsUsed).toBe(0);
+  });
+});
+
+describe("conflito de horário considera início e fim", () => {
+  beforeEach(() => resetAcademy());
+
+  it("curso encerrado não bloqueia o próximo do professor nem a matrícula do aluno", async () => {
+    const slot = [{ weekday: 1 as const, start: "18:00", end: "19:00" }];
+    const ended = await teacherClass({
+      name: "Confeitaria 1",
+      meetingSlots: slot,
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      billingMode: "course",
+      coursePriceCents: 80000,
+      courseMaxInstallments: 1,
+    });
+    const ana = await createStudent("Ana");
+    await turmasService.enroll({
+      classGroupId: ended.id,
+      studentId: ana.id,
+      course: { priceCents: 80000, installments: 1, firstDueDate: "2026-09-22" },
+    });
+    // O curso termina; a proxima turma no mesmo horario comeca depois.
+    vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+
+    const next = await teacherClass({ name: "Confeitaria 2", meetingSlots: slot, startDate: "2026-10-05" });
+    await expect(turmasService.enroll({ classGroupId: next.id, studentId: ana.id })).resolves.toBeTruthy();
+
+    // Ainda em andamento no mesmo horario: conflita.
+    await expect(
+      teacherClass({ name: "Confeitaria 3", meetingSlots: slot, startDate: "2026-10-12" }),
+    ).rejects.toMatchObject({ fields: [{ field: "meetingSlots" }] });
   });
 });

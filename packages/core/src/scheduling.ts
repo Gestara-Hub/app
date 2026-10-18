@@ -320,16 +320,47 @@ export interface InstructorSlotConflict {
   groupSlot: ClassMeetingSlot;
 }
 
+/** Periodo de uma turma: do inicio ao fim (sem fim = continua). */
+export interface ClassPeriod {
+  startDate: DateISO;
+  endDate?: DateISO;
+}
+
+/** Os dois periodos tem algum dia em comum? */
+export function periodsOverlap(a: ClassPeriod, b: ClassPeriod): boolean {
+  const open = "9999-12-31";
+  return a.startDate <= (b.endDate ?? open) && b.startDate <= (a.endDate ?? open);
+}
+
+/**
+ * Encontros da turma que valem na data: a grade antiga que cobre a data ou a
+ * atual. Mudar o horario nao redesenha as aulas que ja passaram.
+ */
+export function meetingSlotsOn(
+  group: Pick<ClassGroup, "meetingSlots" | "scheduleHistory">,
+  date: DateISO,
+): ClassMeetingSlot[] {
+  let chosen: { until: DateISO; meetingSlots: ClassMeetingSlot[] } | undefined;
+  for (const version of group.scheduleHistory ?? []) {
+    if (date <= version.until && (!chosen || version.until < chosen.until)) chosen = version;
+  }
+  return chosen?.meetingSlots ?? group.meetingSlots;
+}
+
 /**
  * Regra: o mesmo instrutor nao da aula em duas turmas ativas no mesmo dia com
  * horario sobreposto (outro instrutor pode). `excludeGroupId` ignora a propria
- * turma ao editar. Retorna um conflito por encontro de `slots`.
+ * turma ao editar. Com `period`, so conflita turma com algum dia em comum (curso
+ * encerrado nao bloqueia o proximo no mesmo horario). Retorna um conflito por
+ * encontro de `slots`.
  */
 export function findInstructorConflicts(
   slots: ClassMeetingSlot[],
   instructorId: string,
-  groups: Pick<ClassGroup, "id" | "name" | "status" | "instructorId" | "meetingSlots">[],
+  groups: (Pick<ClassGroup, "id" | "name" | "status" | "instructorId" | "meetingSlots"> &
+    Partial<Pick<ClassGroup, "startDate" | "endDate">>)[],
   excludeGroupId?: string,
+  period?: ClassPeriod,
 ): InstructorSlotConflict[] {
   if (!instructorId) return [];
   const conflicts: InstructorSlotConflict[] = [];
@@ -337,6 +368,9 @@ export function findInstructorConflicts(
     for (const group of groups) {
       if (group.id === excludeGroupId || group.status !== "active") continue;
       if (group.instructorId !== instructorId) continue;
+      if (period && group.startDate && !periodsOverlap(period, { startDate: group.startDate, endDate: group.endDate })) {
+        continue;
+      }
       const groupSlot = group.meetingSlots.find(
         (s) => s.weekday === slot.weekday && rangesOverlap(slot.start, slot.end, s.start, s.end),
       );

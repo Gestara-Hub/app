@@ -98,11 +98,25 @@ describe("Para fazer hoje: pacotes acabando", () => {
     ).toEqual([]);
   });
 
-  it("pacote diferente (mesmo na mesma modalidade) não renova: o aviso continua", () => {
+  it("outro pacote com aulas nas mesmas turmas: o aluno não está sem aula, sem aviso", () => {
     expect(
       ids([
         pkg("group", { studentId: "ana", lessonsUsed: 9, modalityIds: ["pilates"] }),
         pkg("private", { studentId: "ana", packageId: "lp-private", purchasedAt: "2026-10-01", modalityIds: ["pilates"] }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("pacote diferente em outras turmas não renova: o aviso continua", () => {
+    expect(
+      ids([
+        pkg("group", { studentId: "ana", lessonsUsed: 9, classGroupIds: ["turma-grupo"] }),
+        pkg("private", {
+          studentId: "ana",
+          packageId: "lp-private",
+          purchasedAt: "2026-10-01",
+          classGroupIds: ["turma-particular"],
+        }),
       ]),
     ).toEqual(["group:last_lesson"]);
   });

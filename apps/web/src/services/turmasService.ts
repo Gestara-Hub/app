@@ -36,6 +36,8 @@ import {
   checkSlotWithinBusinessHours,
   findInstructorConflicts,
   instructorConflictMessage,
+  meetingSlotsOn,
+  periodsOverlap,
   weekdayOf,
 } from "@gestarahub/core/scheduling";
 import { isPastSlot } from "@gestarahub/core/date";
@@ -55,6 +57,7 @@ import { currentCertificateTemplate } from "./certificatesService";
 import { assertFeature } from "./subscriptionService";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import {
+  acceptsPackages,
   hasUsablePackage,
   packageCandidatesFor,
   packageRosterInfo,
@@ -201,6 +204,32 @@ function parseSessionId(
   return { classGroupId: parts[0], date: parts[1], start: parts[2] };
 }
 
+/** Data real no formato yyyy-MM-dd (31/02 ou texto solto nao valem). */
+function isRealDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = parseISO(value);
+  return !Number.isNaN(parsed.getTime()) && format(parsed, "yyyy-MM-dd") === value;
+}
+
+/**
+ * Aula que existe de verdade: data valida, dentro do inicio e do fim da turma,
+ * no dia da semana e no horario da grade daquela data (mudar o horario nao
+ * apaga as aulas passadas) e, em turma desativada, so as que ja passaram.
+ */
+function resolveSession(id: Id): { g: ClassGroup; date: DateISO; slot: ClassMeetingSlot } {
+  const notFound = () => notFoundError("Aula não encontrada.");
+  const p = parseSessionId(id);
+  if (!p || !isRealDate(p.date)) throw notFound();
+  const g = store.classGroups.find((x) => x.id === p.classGroupId);
+  if (!g) throw notFound();
+  if (p.date < g.startDate || (g.endDate && p.date > g.endDate)) throw notFound();
+  if (g.status !== "active" && p.date > todayISO()) throw notFound();
+  const wd = weekdayOf(p.date);
+  const slot = meetingSlotsOn(g, p.date).find((s) => s.weekday === wd && s.start === p.start);
+  if (!slot) throw notFound();
+  return { g, date: p.date, slot };
+}
+
 function toSessionView(
   g: ClassGroup,
   date: DateISO,
@@ -271,6 +300,7 @@ function validateInstructorScheduleConflict(
     payload.instructorId,
     store.classGroups,
     currentGroupId,
+    payload.startDate ? upcomingPeriod(payload.startDate, payload.endDate) : undefined,
   );
   if (!conflict) return;
   const instructor = store.professionals.find((p) => p.id === payload.instructorId);
@@ -283,7 +313,14 @@ function validateInstructorScheduleConflict(
   throw validationError(fields);
 }
 
+/** Periodo que ainda vai acontecer: de hoje (ou do inicio, se for depois) ao fim. */
+function upcomingPeriod(startDate: DateISO, endDate?: DateISO) {
+  const today = todayISO();
+  return { startDate: startDate > today ? startDate : today, endDate };
+}
+
 // Valida se o aluno já está em outra turma com horário conflitante (mesmo dia/hora).
+// So conta turma com dias em comum daqui para frente (curso concluido nao bloqueia).
 function validateStudentScheduleConflict(
   studentId: Id,
   targetClassGroupId: Id,
@@ -307,6 +344,14 @@ function validateStudentScheduleConflict(
         (g) => g.id === enrollment.classGroupId && g.status === "active",
       );
       if (!otherGroup) continue;
+      if (
+        !periodsOverlap(upcomingPeriod(targetGroup.startDate, targetGroup.endDate), {
+          startDate: otherGroup.startDate,
+          endDate: otherGroup.endDate,
+        })
+      ) {
+        continue;
+      }
 
       const conflictSlot = otherGroup.meetingSlots.find(
         (s) =>
@@ -504,11 +549,11 @@ function createEnrollment(
  */
 function resolvePaysWithPackage(g: ClassGroup, studentId: Id, paysWithPackage?: boolean): boolean {
   if (!paysWithPackage || classBillingMode(g) !== "membership") return false;
-  if (!hasUsablePackage(studentId, g.modalityId, todayISO())) {
+  if (!hasUsablePackage(studentId, g, todayISO())) {
     throw validationError([
       {
         field: "paysWithPackage",
-        message: `${studentName(studentId)} não tem pacote com aulas para esta modalidade.`,
+        message: `${studentName(studentId)} não tem pacote com aulas para esta turma.`,
       },
     ]);
   }
@@ -523,7 +568,7 @@ function defaultPaysWithPackage(g: ClassGroup, student: Client): boolean {
   return (
     classBillingMode(g) === "membership" &&
     !student.planId &&
-    hasUsablePackage(student.id, g.modalityId, todayISO())
+    hasUsablePackage(student.id, g, todayISO())
   );
 }
 
@@ -560,6 +605,16 @@ function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id):
   validateInstructorScheduleConflict(payload, currentGroupId);
 }
 
+/** Mesma grade (ordem nao importa). */
+function sameSlots(a: ClassMeetingSlot[], b: ClassMeetingSlot[]): boolean {
+  const key = (slots: ClassMeetingSlot[]) =>
+    slots
+      .map((s) => `${s.weekday}|${s.start}|${s.end}`)
+      .sort()
+      .join(",");
+  return key(a) === key(b);
+}
+
 // Roster da aula (mesma regra no detalhe e na ocupacao do calendario).
 function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[] {
   // Roster unificado (híbrido):
@@ -570,8 +625,17 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
     store.attendances.filter((a) => a.sessionId === id).map((a) => a.studentId),
   );
   const onDate = enrollmentsOn(g.id, date);
+  // Quem veio como avulso ou experimental e se matriculou depois segue como
+  // reserva nesta aula (nao vira matriculado no passado nem gasta pacote).
+  const reserved = new Set(
+    store.reservations.filter((r) => r.sessionId === id && r.status === "reserved").map((r) => r.studentId),
+  );
   const extra = store.enrollments.filter(
-    (e) => e.classGroupId === g.id && marked.has(e.studentId) && !onDate.some((o) => o.studentId === e.studentId),
+    (e) =>
+      e.classGroupId === g.id &&
+      marked.has(e.studentId) &&
+      !reserved.has(e.studentId) &&
+      !onDate.some((o) => o.studentId === e.studentId),
   );
   const enrolledEntries: SessionRosterEntry[] = [...onDate, ...extra].map(
     (e) => ({
@@ -601,7 +665,7 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
   // ou vinculo "package"): saldo.
   const entries = [...enrolledEntries, ...reservedEntries].map((entry) =>
     paysWithPackage(g, entry.kind, entry.studentId)
-      ? { ...entry, ...packageRosterInfo(entry.studentId, id, g.modalityId, date) }
+      ? { ...entry, ...packageRosterInfo(entry.studentId, id, g, date) }
       : entry,
   );
   return entries.sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
@@ -613,7 +677,8 @@ function buildRoster(g: ClassGroup, id: Id, date: DateISO): SessionRosterEntry[]
  * Avulso e experimental nunca (o avulso tem a cobranca dele).
  */
 function paysWithPackage(g: ClassGroup, kind: SessionRosterKind | undefined, studentId: Id): boolean {
-  if (kind === "package") return true;
+  // Turma sem cobranca e curso nunca gastam pacote.
+  if (kind === "package") return acceptsPackages(g);
   if (kind !== "enrolled") return false;
   const mode = classBillingMode(g);
   if (mode === "package") return true;
@@ -646,15 +711,9 @@ export type ClassSessionListItem = ClassSessionView & {
 };
 
 function buildSessionDetail(id: Id): ClassSessionDetail {
-  const p = parseSessionId(id);
-  const g = p
-    ? store.classGroups.find((x) => x.id === p.classGroupId)
-    : undefined;
-  if (!p || !g) throw notFoundError("Aula não encontrada.");
-  const slot = g.meetingSlots.find((s) => s.start === p.start);
-  if (!slot) throw notFoundError("Aula não encontrada.");
-  const view = toSessionView(g, p.date, slot);
-  const roster = buildRoster(g, id, p.date);
+  const { g, date, slot } = resolveSession(id);
+  const view = toSessionView(g, date, slot);
+  const roster = buildRoster(g, id, date);
 
   const capacity = g.capacity;
   const availableSpots = Math.max(0, capacity - roster.length);
@@ -669,8 +728,8 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
     sessionPriceCents: g.sessionPriceCents,
     roster,
     packageCandidates: packageCandidatesFor(
-      g.modalityId,
-      p.date,
+      g,
+      date,
       new Set(roster.map((r) => r.studentId)),
     ),
   };
@@ -699,7 +758,7 @@ function instructorSessionsOn(
   for (const g of store.classGroups) {
     if (g.status !== "active" || date < g.startDate) continue;
     if (g.endDate && date > g.endDate) continue;
-    for (const slot of g.meetingSlots) {
+    for (const slot of meetingSlotsOn(g, date)) {
       if (slot.weekday !== wd) continue;
       const sid = makeSessionId(g.id, date, slot.start);
       if (sid === excludeSessionId) continue;
@@ -795,8 +854,22 @@ export const turmasService = {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       // Mudar a forma ou o valor nao mexe nas parcelas das matriculas ja feitas.
-      const next = normalizeBilling({ ...store.classGroups[idx], ...payload });
+      const current = store.classGroups[idx];
+      const next = normalizeBilling({ ...current, ...payload });
       validateGroup(next, id);
+      // Novo horario vale daqui para frente: a grade antiga fica para as aulas
+      // passadas (e para as de hoje, se a chamada de hoje ja foi feita).
+      if (payload.meetingSlots && !sameSlots(current.meetingSlots, payload.meetingSlots)) {
+        const today = todayISO();
+        const todayHasRecords = store.attendances.some((a) =>
+          a.sessionId.startsWith(`${id}${SEP}${today}${SEP}`),
+        );
+        const until = todayHasRecords ? today : format(addDays(parseISO(today), -1), "yyyy-MM-dd");
+        const history = current.scheduleHistory ?? [];
+        if (current.startDate <= until && !history.some((v) => v.until >= until)) {
+          next.scheduleHistory = [...history, { until, meetingSlots: current.meetingSlots }];
+        }
+      }
       store.classGroups[idx] = {
         ...next,
         updatedAt: nowIso(),
@@ -847,6 +920,7 @@ export const turmasService = {
         g.instructorId,
         store.classGroups,
         g.id,
+        upcomingPeriod(g.startDate, g.endDate),
       );
       if (conflict) {
         throw apiError(
@@ -1071,7 +1145,7 @@ export const turmasService = {
         for (const g of groups) {
           if (date < g.startDate) continue;
           if (g.endDate && date > g.endDate) continue;
-          for (const slot of g.meetingSlots) {
+          for (const slot of meetingSlotsOn(g, date)) {
             if (slot.weekday !== wd) continue;
             const view = toSessionView(g, date, slot);
             out.push({
@@ -1100,8 +1174,8 @@ export const turmasService = {
     status: AttendanceStatus;
   }): Promise<void> {
     return simulateWrite(() => {
-      const date = parseSessionId(input.sessionId)?.date;
-      if (date && date > todayISO()) {
+      const { date } = resolveSession(input.sessionId);
+      if (date > todayISO()) {
         throw apiError("VALIDATION", "A chamada só pode ser feita no dia da aula ou depois.", {
           httpStatus: 422,
         });
@@ -1230,16 +1304,11 @@ export const turmasService = {
     payload: SubstituteInstructorPayload,
   ): Promise<ClassSessionDetail> {
     return simulateWrite(() => {
-      const p = parseSessionId(sessionId);
-      if (!p) throw notFoundError("Aula não encontrada.");
-      const g = store.classGroups.find((x) => x.id === p.classGroupId);
-      if (!g) throw notFoundError("Turma não encontrada.");
+      const { date, slot } = resolveSession(sessionId);
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
       if (!instructor) throw notFoundError("Instrutor não encontrado.");
-      const slot = g.meetingSlots.find((s) => s.start === p.start);
-      if (!slot) throw notFoundError("Aula não encontrada.");
-      validateSubstituteConflict(sessionId, p.date, slot, instructor.id, instructor.name);
+      validateSubstituteConflict(sessionId, date, slot, instructor.id, instructor.name);
 
       if (!store.sessionOverrides) {
         store.sessionOverrides = [];
@@ -1390,8 +1459,8 @@ export const turmasService = {
     amountCents?: number;
   }): Promise<ReservationView> {
     return simulateWrite(() => {
-      const g = store.classGroups.find((x) => x.id === input.classGroupId);
-      if (!g) throw notFoundError("Turma não encontrada.");
+      const { g } = resolveSession(input.sessionId);
+      if (g.id !== input.classGroupId) throw notFoundError("Aula não encontrada.");
       const already = store.reservations.find(
         (r) =>
           r.sessionId === input.sessionId &&
@@ -1422,10 +1491,13 @@ export const turmasService = {
       const p = parseSessionId(input.sessionId);
       const sessionDate = p?.date ?? todayISO();
       // Pacote: entra em qualquer aula das modalidades dele, sem cobranca.
-      if (kind === "package" && !hasUsablePackage(input.studentId, g.modalityId, sessionDate)) {
+      if (kind === "package" && !acceptsPackages(g)) {
+        throw apiError("VALIDATION", "Esta turma não aceita pacote.", { httpStatus: 422 });
+      }
+      if (kind === "package" && !hasUsablePackage(input.studentId, g, sessionDate)) {
         throw apiError(
           "VALIDATION",
-          `${studentName(input.studentId)} não tem pacote com aulas para esta modalidade.`,
+          `${studentName(input.studentId)} não tem pacote com aulas para esta turma.`,
           { httpStatus: 422 },
         );
       }
@@ -1490,6 +1562,10 @@ export const turmasService = {
       if (!r) throw notFoundError("Reserva não encontrada.");
       // Quem entrou pelo pacote devolve a aula, se ja tinha gastado.
       const returned = r.kind === "package" && syncAttendanceUsage(input.sessionId, input.studentId) === "reverted";
+      // A presenca sai junto: voltar para a aula comeca sem marcacao (e gasta de novo).
+      store.attendances = store.attendances.filter(
+        (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
+      );
       r.status = "canceled";
       // Cancela a cobranca avulsa vinculada (por chargeId ou busca), se ainda nao paga.
       const targetChargeId = r.chargeId || r.cobrancaId;

@@ -267,6 +267,7 @@ function MeetingSlotsEditor({
   error,
   unit,
   startDate,
+  endDate,
   instructor,
   otherGroups,
   currentGroupId,
@@ -278,6 +279,8 @@ function MeetingSlotsEditor({
   error?: string;
   unit?: Unit;
   startDate?: string;
+  /** Fim da turma: conflito so com turma que tenha dias em comum. */
+  endDate?: string;
   /** Instrutor escolhido: cada bloco avisa na hora se ele ja da aula no horario. */
   instructor?: { id: string; name: string };
   otherGroups?: ClassGroupView[];
@@ -397,11 +400,15 @@ function MeetingSlotsEditor({
       }
     }
     if (instructor && block.start && block.end) {
+      const today = format(new Date(), "yyyy-MM-dd");
       const [conflict] = findInstructorConflicts(
         block.days.map((day) => ({ weekday: day as Weekday, start: block.start, end: block.end })),
         instructor.id,
         otherGroups ?? [],
         currentGroupId,
+        startDate
+          ? { startDate: startDate > today ? startDate : today, endDate: endDate || undefined }
+          : undefined,
       );
       if (conflict) return instructorConflictMessage(instructor.name, conflict);
     }
@@ -696,6 +703,10 @@ export function TurmaForm({
   const startDate = useWatch({
     control: form.control,
     name: "startDate",
+  });
+  const endDate = useWatch({
+    control: form.control,
+    name: "endDate",
   });
   const prevStartDateRef = useRef(startDate);
 
@@ -1071,6 +1082,7 @@ export function TurmaForm({
               error={fieldState.error?.message}
               unit={unit}
               startDate={startDate}
+              endDate={endDate}
               instructor={selectedInstructor}
               otherGroups={activeGroups}
               currentGroupId={turma?.id}

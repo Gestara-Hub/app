@@ -2,6 +2,7 @@ import type {
   ApiErrorField,
   AttendanceStatus,
   Charge,
+  ClassGroup,
   CreateLessonPackage,
   DateISO,
   Id,
@@ -15,7 +16,7 @@ import type {
   StudentPackageView,
   UpdateLessonPackage,
 } from "@gestarahub/contracts";
-import { MAX_INSTALLMENTS, splitInstallments } from "@gestarahub/core/billing";
+import { classBillingMode, MAX_INSTALLMENTS, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import {
   carriedLots,
@@ -28,6 +29,7 @@ import {
   packageExpiresAt,
   packageState,
   pickPackageFor,
+  usablePackagesFor,
   usageReasonFor,
 } from "@gestarahub/core/packages";
 import { format, parseISO } from "date-fns";
@@ -70,13 +72,26 @@ function modalityNames(ids: Id[]): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
+function classNames(ids: Id[] | undefined): string[] {
+  return (ids ?? [])
+    .map((id) => store.classGroups.find((g) => g.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+}
+
 function toView(p: StudentPackage): StudentPackageView {
   return {
     ...p,
     studentName: studentName(p.studentId),
     ...packageState(p, todayISO()),
     modalityNames: modalityNames(p.modalityIds),
+    classNames: classNames(p.classGroupIds),
   };
+}
+
+/** Turma de pacote ou de mensalidade aceita pacote; sem cobranca e curso, nunca. */
+export function acceptsPackages(g: Pick<ClassGroup, "billingMode">): boolean {
+  const mode = classBillingMode(g);
+  return mode === "package" || mode === "membership";
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -100,6 +115,13 @@ function validatePackage(payload: Partial<CreateLessonPackage>): void {
   const days = payload.validityDays;
   if (days !== undefined && (!Number.isInteger(days) || days < 1 || days > MAX_PACKAGE_VALIDITY_DAYS)) {
     fields.push({ field: "validityDays", message: `A validade vai de 1 a ${MAX_PACKAGE_VALIDITY_DAYS} dias.` });
+  }
+  const invalidClass = (payload.classGroupIds ?? []).some((id) => {
+    const g = store.classGroups.find((x) => x.id === id);
+    return !g || !acceptsPackages(g);
+  });
+  if (invalidClass) {
+    fields.push({ field: "classGroupIds", message: "Escolha turmas de pacote ou de mensalidade." });
   }
   if (fields.length > 0) throw validationError(fields);
 }
@@ -130,6 +152,7 @@ function normalizePackage<T extends Partial<CreateLessonPackage>>(payload: T): T
     ...payload,
     name: payload.name?.trim(),
     validityDays: payload.validityDays || undefined,
+    classGroupIds: [...new Set(payload.classGroupIds ?? [])],
     modalityIds: [...new Set(payload.modalityIds ?? [])],
     absenceConsumes: payload.absenceConsumes ?? true,
   };
@@ -208,7 +231,11 @@ export function syncPackageUsage(input: {
   }
   if (!input.status) return "none";
   const owned = store.studentPackages.filter((p) => p.studentId === input.studentId);
-  const pkg = pickPackageFor(owned, { modalityId: input.modalityId, date: input.date });
+  const pkg = pickPackageFor(owned, {
+    classGroupId: input.classGroupId,
+    modalityId: input.modalityId,
+    date: input.date,
+  });
   if (!pkg) return "none";
   const reason = usageReasonFor(input.status, pkg.absenceConsumes);
   if (!reason) return "none";
@@ -218,55 +245,67 @@ export function syncPackageUsage(input: {
   return "added";
 }
 
+/** Turma da aula para os pacotes: id, modalidade e forma de cobranca. */
+type PackageClass = Pick<ClassGroup, "id" | "modalityId" | "billingMode">;
+
 /**
- * Saldo mostrado na chamada para quem paga a aula com pacote: o pacote que ja
- * gastou esta aula ou o proximo a ser usado. Sem nenhum: "Sem pacote".
+ * Saldo mostrado na chamada para quem paga a aula com pacote: a soma dos
+ * pacotes que valem nesta aula (o que ja gastou esta aula entra). Ultima aula
+ * so quando todos juntos acabam. Sem nenhum: "Sem pacote".
  */
 export function packageRosterInfo(
   studentId: Id,
   sessionId: Id,
-  modalityId: Id | undefined,
+  g: PackageClass,
   date: DateISO,
 ): Pick<SessionRosterEntry, "packageRemaining" | "packageTotal" | "packageLastLesson" | "noPackage"> {
   const used = usageOf(studentId, sessionId)?.pkg;
-  const pkg =
-    used ??
-    pickPackageFor(
-      store.studentPackages.filter((p) => p.studentId === studentId),
-      { modalityId, date },
-    );
-  if (!pkg) return { noPackage: true };
-  const left = Math.max(0, pkg.lessonsTotal - pkg.lessonsUsed);
+  const usable = acceptsPackages(g)
+    ? usablePackagesFor(
+        store.studentPackages.filter((p) => p.studentId === studentId),
+        { classGroupId: g.id, modalityId: g.modalityId, date },
+      )
+    : [];
+  const counted = used && !usable.some((p) => p.id === used.id) ? [used, ...usable] : usable;
+  if (counted.length === 0) return { noPackage: true };
+  const left = counted.reduce((sum, p) => sum + Math.max(0, p.lessonsTotal - p.lessonsUsed), 0);
   return {
     packageRemaining: left,
-    packageTotal: pkg.lessonsTotal,
+    packageTotal: counted.reduce((sum, p) => sum + p.lessonsTotal, 0),
     // Com a aula ja gasta, era a ultima se nao sobrou nada; antes, se sobra uma.
     packageLastLesson: used ? left === 0 : left === 1,
   };
 }
 
-/** O aluno tem pacote valido com saldo para a modalidade na data? */
-export function hasUsablePackage(studentId: Id, modalityId: Id | undefined, date: DateISO): boolean {
+/** O aluno tem pacote valido com saldo para esta turma na data? */
+export function hasUsablePackage(studentId: Id, g: PackageClass, date: DateISO): boolean {
+  if (!acceptsPackages(g)) return false;
   return Boolean(
     pickPackageFor(
       store.studentPackages.filter((p) => p.studentId === studentId),
-      { modalityId, date },
+      { classGroupId: g.id, modalityId: g.modalityId, date },
     ),
   );
 }
 
 /** Alunos ativos com pacote valido para a aula (fora de `exceptIds`), por nome. */
 export function packageCandidatesFor(
-  modalityId: Id | undefined,
+  g: PackageClass,
   date: DateISO,
   exceptIds: Set<Id>,
 ): SessionPackageCandidate[] {
+  if (!acceptsPackages(g)) return [];
   const byStudent = new Map<Id, number>();
   for (const pkg of store.studentPackages) {
     if (exceptIds.has(pkg.studentId) || byStudent.has(pkg.studentId)) continue;
     const owned = store.studentPackages.filter((p) => p.studentId === pkg.studentId);
-    const pick = pickPackageFor(owned, { modalityId, date });
-    if (pick) byStudent.set(pkg.studentId, pick.lessonsTotal - pick.lessonsUsed);
+    const usable = usablePackagesFor(owned, { classGroupId: g.id, modalityId: g.modalityId, date });
+    if (usable.length > 0) {
+      byStudent.set(
+        pkg.studentId,
+        usable.reduce((sum, p) => sum + p.lessonsTotal - p.lessonsUsed, 0),
+      );
+    }
   }
   const out: SessionPackageCandidate[] = [];
   for (const [studentId, remaining] of byStudent) {
@@ -434,6 +473,7 @@ export const packagesService = {
         lessonsUsed: 0,
         purchasedAt: today,
         expiresAt: packageExpiresAt(today, catalog.validityDays),
+        classGroupIds: catalog.classGroupIds?.length ? [...catalog.classGroupIds] : undefined,
         modalityIds: [...catalog.modalityIds],
         absenceConsumes: catalog.absenceConsumes,
         status: "active",

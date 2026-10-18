@@ -69,7 +69,11 @@ function packageFacts(pkg: StudentPackageView): string {
     `${pkg.lessonsUsed} de ${pkg.lessonsTotal} ${pkg.lessonsTotal === 1 ? "aula usada" : "aulas usadas"}`,
     `comprado ${ddmmyy(pkg.purchasedAt)}`,
     pkg.expiresAt ? `${pkg.isExpired ? "venceu" : "vale até"} ${ddmmyy(pkg.expiresAt)}` : "sem validade",
-    pkg.modalityNames.length > 0 ? pkg.modalityNames.join(", ") : "todas as modalidades",
+    pkg.classNames.length > 0
+      ? pkg.classNames.join(", ")
+      : pkg.modalityNames.length > 0
+        ? pkg.modalityNames.join(", ")
+        : "todas as turmas",
     pkg.carriedOverLessons ? `${plural(pkg.carriedOverLessons, "aula trazida", "aulas trazidas")}` : null,
   ]
     .filter(Boolean)

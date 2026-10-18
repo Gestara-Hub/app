@@ -55,6 +55,33 @@ export function modalitiesOverlap(a: readonly Id[], b: readonly Id[]): boolean {
   return a.some((id) => b.includes(id));
 }
 
+/** Onde o pacote vale: turmas escolhidas no catalogo ou, em dado antigo, modalidades. */
+export interface PackageScope {
+  classGroupIds?: readonly Id[];
+  modalityIds: readonly Id[];
+}
+
+/**
+ * O pacote vale na turma? Com turmas escolhidas, so nelas. Sem escolha, pelas
+ * modalidades (dado antigo) ou em qualquer turma de pacote ou de mensalidade
+ * (turma sem cobranca e curso nunca aceitam pacote: quem chama confere).
+ */
+export function coversClass(pkg: PackageScope, session: { classGroupId?: Id; modalityId?: Id }): boolean {
+  if (pkg.classGroupIds && pkg.classGroupIds.length > 0) {
+    return Boolean(session.classGroupId && pkg.classGroupIds.includes(session.classGroupId));
+  }
+  return coversModality(pkg.modalityIds, session.modalityId);
+}
+
+/** Dois pacotes podem valer na mesma turma? (sem escolha = todas). */
+export function packageScopesOverlap(a: PackageScope, b: PackageScope): boolean {
+  const ac = a.classGroupIds ?? [];
+  const bc = b.classGroupIds ?? [];
+  if (ac.length > 0 && bc.length > 0) return ac.some((id) => bc.includes(id));
+  if (ac.length > 0 || bc.length > 0) return true;
+  return modalitiesOverlap(a.modalityIds, b.modalityIds);
+}
+
 export interface PackageBalance {
   lessonsTotal: number;
   lessonsUsed: number;
@@ -104,24 +131,39 @@ export function isUsableOn(pkg: PackageBalance, date: DateISO): boolean {
   return pkg.status === "active" && !isPackageExpired(pkg, date) && pkg.lessonsUsed < pkg.lessonsTotal;
 }
 
-type Candidate = PackageBalance & { modalityIds: readonly Id[]; purchasedAt: DateISO };
+type Candidate = PackageBalance & PackageScope & { purchasedAt: DateISO };
+
+/** A aula: turma, modalidade e data. */
+export interface PackageSession {
+  classGroupId?: Id;
+  modalityId?: Id;
+  date: DateISO;
+}
 
 /**
- * Pacote que paga a aula: ativo, valido na data da aula, com saldo e que cobre
- * a modalidade; o que vence primeiro (sem validade por ultimo), depois o mais
- * antigo.
+ * Pacotes que podem pagar a aula, na ordem de uso: ativos, comprados ate o dia
+ * da aula (pacote nao paga aula de antes da compra), validos na data, com saldo
+ * e que valem na turma; o que vence primeiro (sem validade por ultimo), depois
+ * o mais antigo.
  */
-export function pickPackageFor<T extends Candidate>(
-  packages: readonly T[],
-  session: { modalityId?: Id; date: DateISO },
-): T | undefined {
+export function usablePackagesFor<T extends Candidate>(packages: readonly T[], session: PackageSession): T[] {
   return packages
-    .filter((p) => isUsableOn(p, session.date) && coversModality(p.modalityIds, session.modalityId))
+    .filter(
+      (p) => isUsableOn(p, session.date) && p.purchasedAt <= session.date && coversClass(p, session),
+    )
     .sort(
       (a, b) =>
         (a.expiresAt ?? "9999-12-31").localeCompare(b.expiresAt ?? "9999-12-31") ||
         a.purchasedAt.localeCompare(b.purchasedAt),
-    )[0];
+    );
+}
+
+/** Pacote que paga a aula: o primeiro de `usablePackagesFor`. */
+export function pickPackageFor<T extends Candidate>(
+  packages: readonly T[],
+  session: PackageSession,
+): T | undefined {
+  return usablePackagesFor(packages, session)[0];
 }
 
 /**

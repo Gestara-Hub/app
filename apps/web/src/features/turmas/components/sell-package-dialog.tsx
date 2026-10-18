@@ -10,7 +10,7 @@ import type { Client, LessonPackage } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
-import { carryOverSources, modalitiesOverlap, packageState } from "@gestarahub/core/packages";
+import { carryOverSources, packageScopesOverlap, packageState } from "@gestarahub/core/packages";
 import {
   ComboboxField,
   DateField,
@@ -117,7 +117,7 @@ function SellPackageForm({
   }, [chosen, form]);
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
   // Regra 6: comprar de novo o mesmo pacote traz o saldo dele; outro pacote da
-  // mesma modalidade fica separado (avisa, para ninguem esperar a soma).
+  // mesma turma fica separado (avisa, para ninguem esperar a soma).
   const today = format(new Date(), "yyyy-MM-dd");
   const carried = chosen ? carryOverSources(owned ?? [], chosen.id, today).lessons : 0;
   const keptApart = chosen
@@ -125,7 +125,7 @@ function SellPackageForm({
         (p) =>
           p.packageId !== chosen.id &&
           packageState(p, today).remaining > 0 &&
-          modalitiesOverlap(p.modalityIds, chosen.modalityIds),
+          packageScopesOverlap(p, chosen),
       )
     : [];
 

@@ -56,14 +56,25 @@ export interface ClassGroup {
   coursePriceCents?: number;
   /** Curso: maximo de parcelas que o aluno pode escolher (1 a 12). */
   courseMaxInstallments?: number;
+  /**
+   * Grades anteriores (mais antiga primeiro): mudar o horario guarda a grade
+   * que valia ate ontem, e as aulas passadas seguem no horario delas.
+   */
+  scheduleHistory?: ClassScheduleVersion[];
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }
 
+/** Grade antiga da turma: valeu do inicio da turma (ou da versao anterior) ate `until`. */
+export interface ClassScheduleVersion {
+  until: DateISO;
+  meetingSlots: ClassMeetingSlot[];
+}
+
 export type CreateClassGroup = Omit<
   ClassGroup,
-  "id" | "createdAt" | "updatedAt" | TenantScopeFields
+  "id" | "createdAt" | "updatedAt" | "scheduleHistory" | TenantScopeFields
 >;
 export type UpdateClassGroup = Partial<CreateClassGroup>;
 

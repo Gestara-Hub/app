@@ -5,7 +5,8 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import type { CreateLessonPackage, LessonPackage } from "@gestarahub/contracts";
+import type { ClassGroupView, CreateLessonPackage, LessonPackage } from "@gestarahub/contracts";
+import { classBillingMode } from "@gestarahub/core/billing";
 import { MAX_PACKAGE_LESSONS } from "@gestarahub/core/packages";
 import {
   DialogFormFooter,
@@ -26,8 +27,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { handleFormApiError } from "@/lib/form-errors";
-import { useCategories } from "@/features/categories";
 import { useCreateLessonPackage, useUpdateLessonPackage } from "../hooks/use-packages";
+import { useClassGroups } from "../hooks/use-turmas";
 
 /** Validade em dias ("none" = sem validade). */
 export const VALIDITY_OPTIONS = [
@@ -51,7 +52,7 @@ const schema = z.object({
     .int("Informe um valor válido.")
     .min(1, "Informe um valor maior que zero."),
   validity: z.string(),
-  modalityIds: z.array(z.string()),
+  classGroupIds: z.array(z.string()),
   absenceConsumes: z.boolean(),
 });
 type PackageFormValues = z.infer<typeof schema>;
@@ -62,13 +63,37 @@ function validityOptions(current?: number) {
   return [...VALIDITY_OPTIONS, { value: String(current), label: `${current} dias` }];
 }
 
-function PackageForm({ pkg, onSuccess }: { pkg?: LessonPackage; onSuccess: () => void }) {
+/** Turmas que aceitam pacote: de pacote ou de mensalidade (curso e sem cobranca, nunca). */
+function acceptsPackages(g: ClassGroupView): boolean {
+  const mode = classBillingMode(g);
+  return mode === "package" || mode === "membership";
+}
+
+/**
+ * Turmas do pacote no formulario. Pacote antigo, por modalidade, vira as
+ * turmas dessas modalidades (a escolha agora e por turma).
+ */
+function initialClassIds(pkg: LessonPackage | undefined, classes: ClassGroupView[]): string[] {
+  if (!pkg) return [];
+  if (pkg.classGroupIds?.length) return pkg.classGroupIds;
+  if (pkg.modalityIds.length === 0) return [];
+  return classes.filter((g) => g.modalityId && pkg.modalityIds.includes(g.modalityId)).map((g) => g.id);
+}
+
+function PackageForm({
+  pkg,
+  classes,
+  onSuccess,
+}: {
+  pkg?: LessonPackage;
+  classes: ClassGroupView[];
+  onSuccess: () => void;
+}) {
   const createMut = useCreateLessonPackage();
   const updateMut = useUpdateLessonPackage();
   const isEdit = Boolean(pkg);
   const pending = createMut.isPending || updateMut.isPending;
-  const { data: categories } = useCategories({ status: "active" });
-  const modalityOptions: MultiSelectOption[] = (categories ?? []).map((c) => ({ label: c.name, value: c.id }));
+  const classOptions: MultiSelectOption[] = classes.map((g) => ({ label: g.name, value: g.id }));
 
   const form = useForm<PackageFormValues>({
     resolver: zodResolver(schema),
@@ -80,7 +105,7 @@ function PackageForm({ pkg, onSuccess }: { pkg?: LessonPackage; onSuccess: () =>
           lessons: pkg.lessons,
           priceCents: pkg.priceCents,
           validity: pkg.validityDays ? String(pkg.validityDays) : "none",
-          modalityIds: pkg.modalityIds,
+          classGroupIds: initialClassIds(pkg, classes),
           absenceConsumes: pkg.absenceConsumes,
         }
       : {
@@ -88,7 +113,7 @@ function PackageForm({ pkg, onSuccess }: { pkg?: LessonPackage; onSuccess: () =>
           lessons: 10,
           priceCents: 0,
           validity: "none",
-          modalityIds: [],
+          classGroupIds: [],
           absenceConsumes: true,
         },
   });
@@ -99,7 +124,9 @@ function PackageForm({ pkg, onSuccess }: { pkg?: LessonPackage; onSuccess: () =>
       lessons: values.lessons,
       priceCents: values.priceCents,
       validityDays: values.validity === "none" ? undefined : Number(values.validity),
-      modalityIds: values.modalityIds,
+      classGroupIds: values.classGroupIds,
+      // A escolha agora e por turma; modalidade fica so no dado antigo.
+      modalityIds: [],
       absenceConsumes: values.absenceConsumes,
       status: pkg?.status ?? "active",
     };
@@ -148,13 +175,13 @@ function PackageForm({ pkg, onSuccess }: { pkg?: LessonPackage; onSuccess: () =>
             disabled={pending}
           />
           <MultiSelectField<PackageFormValues>
-            name="modalityIds"
-            label="Modalidades"
-            placeholder="Todas as modalidades"
-            searchPlaceholder="Buscar modalidade..."
-            emptyMessage="Nenhuma modalidade cadastrada."
-            hint="Sem escolha, vale para todas."
-            options={modalityOptions}
+            name="classGroupIds"
+            label="Turmas"
+            placeholder="Todas as turmas"
+            searchPlaceholder="Buscar turma..."
+            emptyMessage="Nenhuma turma de pacote ou mensalidade."
+            hint="Sem escolha, vale em todas. Curso e turma sem cobrança, nunca."
+            options={classOptions}
             disabled={pending}
           />
           <SwitchField<PackageFormValues>
@@ -192,6 +219,8 @@ export function PackageFormDialog({
     setShown({ ...shown, open: false });
   }
   const editing = shown.pkg ?? undefined;
+  const { data: allClasses, isPending: classesPending } = useClassGroups({ status: "active" });
+  const classes = (allClasses ?? []).filter(acceptsPackages);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -207,11 +236,14 @@ export function PackageFormDialog({
             {editing ? "Vale para as próximas vendas." : "Aulas vendidas juntas, usadas na chamada."}
           </DialogDescription>
         </DialogHeader>
-        <PackageForm
-          key={`${shown.session}-${editing?.id ?? "new"}`}
-          pkg={editing}
-          onSuccess={() => onOpenChange(false)}
-        />
+        {classesPending ? null : (
+          <PackageForm
+            key={`${shown.session}-${editing?.id ?? "new"}`}
+            pkg={editing}
+            classes={classes}
+            onSuccess={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

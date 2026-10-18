@@ -156,6 +156,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const [addKey, setAddKey] = useState(0);
   const [substituteOpen, setSubstituteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  // Chamada otimista: o toque aparece na hora e as gravacoes de cada aluno
+  // seguem em fila, na ordem dos toques (toque rapido nunca se perde).
+  const [optimistic, setOptimistic] = useState<ReadonlyMap<string, AttendanceStatus | null>>(new Map());
+  // Filas por aluno: objeto estavel e mutavel, fora do que a tela desenha.
+  const [writeQueues] = useState(() => new Map<string, { chain: Promise<void>; size: number }>());
   // Dois modais por aluno (Graduação e Registros de aula) e o registro da turma inteira.
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
@@ -222,7 +227,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const rosterIds = new Set(session.roster.map((r) => r.studentId));
+  // Lista com os toques ainda gravando por cima do que veio do servidor.
+  const roster = session.roster.map((r) =>
+    optimistic.has(r.studentId) ? { ...r, attendance: optimistic.get(r.studentId) ?? undefined } : r,
+  );
+  const rosterIds = new Set(roster.map((r) => r.studentId));
   // Presenca so faz sentido para aula que ja aconteceu (ou acontece hoje).
   const isFutureSession = session.date > format(new Date(), "yyyy-MM-dd");
   const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
@@ -235,10 +244,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
 
   // Resumo da chamada (so para aula de hoje ou passada).
   const counts = {
-    present: session.roster.filter((r) => r.attendance === "present").length,
-    absent: session.roster.filter((r) => r.attendance === "absent").length,
-    justified: session.roster.filter((r) => r.attendance === "justified").length,
-    pending: session.roster.filter((r) => !r.attendance).length,
+    present: roster.filter((r) => r.attendance === "present").length,
+    absent: roster.filter((r) => r.attendance === "absent").length,
+    justified: roster.filter((r) => r.attendance === "justified").length,
+    pending: roster.filter((r) => !r.attendance).length,
   };
 
   // Registro de aula: so com trilha na modalidade (os registros ficam nela).
@@ -251,24 +260,47 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         modalityId: modalityTrack.modalityId,
       }
     : null;
-  const presentStudents = session.roster
+  const presentStudents = roster
     .filter((r) => r.attendance === "present")
     .map((r) => clientById.get(r.studentId))
     .filter((c): c is Client => Boolean(c));
 
   // Chamada so para aula de hoje ou passada, com permissao.
   const marking = canMark && !isFutureSession;
-  const attendanceBusy = markMut.isPending || clearMut.isPending || bulkPending;
-  const onMarkError = (err: unknown) =>
+  const attendanceBusy = bulkPending;
+  const onMarkError = (err: unknown) => {
     toast.error(getErrorMessage(err, "Não foi possível marcar a presença."));
-  const setAttendance = (r: SessionRosterEntry, status?: AttendanceStatus) => {
-    if (!status) {
-      // Desmarcar devolve a aula do pacote, se gastou.
-      clearMut.mutate({ sessionId, studentId: r.studentId }, { onError: onMarkError });
-      return;
-    }
-    markMut.mutate({ sessionId, studentId: r.studentId, status }, { onError: onMarkError });
   };
+  // Grava na fila do aluno; quando a fila dele esvazia, rele a aula e o que
+  // veio do servidor passa a valer (erro tambem volta ao estado real).
+  const writeAttendance = (studentId: string, status: AttendanceStatus | null) => {
+    setOptimistic((prev) => new Map(prev).set(studentId, status));
+    const queue = writeQueues.get(studentId) ?? { chain: Promise.resolve(), size: 0 };
+    queue.size += 1;
+    queue.chain = queue.chain
+      .then(() =>
+        status
+          ? markMut.mutateAsync({ sessionId, studentId, status })
+          : // Desmarcar devolve a aula do pacote, se gastou.
+            clearMut.mutateAsync({ sessionId, studentId }),
+      )
+      .then(() => undefined, onMarkError)
+      .then(async () => {
+        queue.size -= 1;
+        if (queue.size > 0) return;
+        writeQueues.delete(studentId);
+        await refetch();
+        if (writeQueues.has(studentId)) return;
+        setOptimistic((prev) => {
+          const next = new Map(prev);
+          next.delete(studentId);
+          return next;
+        });
+      });
+    writeQueues.set(studentId, queue);
+  };
+  const setAttendance = (r: SessionRosterEntry, status?: AttendanceStatus) =>
+    writeAttendance(r.studentId, status ?? null);
   // Toque na linha = veio. Com a chamada aberta, tocar de novo desmarca; com
   // ela concluida (ninguem a marcar), vira falta. Falta e justificada voltam a presente.
   const tapRow = (r: SessionRosterEntry) => {
@@ -281,9 +313,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   };
 
   const markPending = async (status: AttendanceStatus) => {
-    const pending = session.roster.filter((entry) => !entry.attendance);
     setBulkPending(true);
     try {
+      // Os toques ainda gravando entram antes (a lista ja mostra o que foi tocado).
+      await Promise.all([...writeQueues.values()].map((q) => q.chain));
+      const pending = roster.filter((entry) => !entry.attendance);
       for (const r of pending) {
         await markMut.mutateAsync({ sessionId, studentId: r.studentId, status });
       }
@@ -379,7 +413,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       : marking
         ? "Toque em quem veio"
         : `${summary} · ${counts.pending} a marcar`;
-  const total = session.roster.length;
+  const total = roster.length;
 
   const pageActions: ListItemAction[] = [
     ...(canAddStudent
@@ -472,7 +506,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         </ListContainer>
       ) : (
         <ListContainer>
-          {session.roster.map((r) => {
+          {roster.map((r) => {
             const isEnrolled = r.kind === "enrolled" || !r.kind;
             const isTrial = r.kind === "trial";
             const isPackage = r.kind === "package";

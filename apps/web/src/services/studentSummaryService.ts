@@ -280,6 +280,9 @@ function activePackagesOf(client: Client, today: DateISO): StudentPackageView[] 
       modalityNames: p.modalityIds
         .map((id) => store.categories.find((c) => c.id === id)?.name)
         .filter((name): name is string => Boolean(name)),
+      classNames: (p.classGroupIds ?? [])
+        .map((id) => store.classGroups.find((g) => g.id === id)?.name)
+        .filter((name): name is string => Boolean(name)),
     }))
     .sort(
       (a, b) =>

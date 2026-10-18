@@ -59,7 +59,7 @@ import { getErrorMessage } from "@gestarahub/core/api-error";
 import { nowTime, todayISO } from "@gestarahub/core/date";
 import { plural, pluralWord } from "@gestarahub/core/format";
 import { classBillingMode } from "@gestarahub/core/billing";
-import { packageState, pickPackageFor } from "@gestarahub/core/packages";
+import { packageState, usablePackagesFor } from "@gestarahub/core/packages";
 import {
   isApiError,
   type Client,
@@ -290,20 +290,22 @@ export function TurmaDetailView({
     { status: "active" },
     (isMembership || isPackageClass) && canManage,
   );
-  // Pacote valido hoje na modalidade da turma, por aluno.
-  const packageByStudent = useMemo(() => {
+  // Aulas que restam hoje nesta turma, somando os pacotes validos de cada aluno.
+  const packageLessonsByStudent = useMemo(() => {
     const owned = new Map<Id, StudentPackageView[]>();
     for (const p of activePackages ?? []) {
       owned.set(p.studentId, [...(owned.get(p.studentId) ?? []), p]);
     }
     const today = todayISO();
-    const picked = new Map<Id, StudentPackageView>();
+    const left = new Map<Id, number>();
     for (const [studentId, list] of owned) {
-      const pkg = pickPackageFor(list, { modalityId: turma?.modalityId, date: today });
-      if (pkg) picked.set(studentId, pkg);
+      const usable = usablePackagesFor(list, { classGroupId: turma?.id, modalityId: turma?.modalityId, date: today });
+      if (usable.length > 0) {
+        left.set(studentId, usable.reduce((sum, p) => sum + packageState(p, today).remaining, 0));
+      }
     }
-    return picked;
-  }, [activePackages, turma?.modalityId]);
+    return left;
+  }, [activePackages, turma?.id, turma?.modalityId]);
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-md" />;
@@ -514,9 +516,9 @@ export function TurmaDetailView({
   // Alerta de pacote de quem paga a aula com ele (turma de pacote ou mensalidade com pacote).
   const packageAlertOf = (e: EnrollmentView): string | null => {
     if (!(isPackageClass || (isMembership && e.paysWithPackage))) return null;
-    const pkg = packageByStudent.get(e.studentId);
-    if (!pkg) return "Sem pacote";
-    return packageState(pkg, todayISO()).isLastLesson ? "Última aula do pacote" : null;
+    const left = packageLessonsByStudent.get(e.studentId);
+    if (left === undefined) return "Sem pacote";
+    return left === 1 ? "Última aula do pacote" : null;
   };
 
   return (
@@ -695,7 +697,7 @@ export function TurmaDetailView({
                               onSelect: () => changePayment(e, false),
                             },
                           ]
-                        : packageByStudent.has(e.studentId)
+                        : packageLessonsByStudent.has(e.studentId)
                           ? [
                               {
                                 key: "pay-package",

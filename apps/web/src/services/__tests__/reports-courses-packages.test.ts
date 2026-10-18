@@ -11,7 +11,7 @@ import { billingService } from "@/services/billingService";
 import { packagesService } from "@/services/packagesService";
 import { reportsService } from "@/services/reportsService";
 import { turmasService } from "@/services/turmasService";
-import { createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
+import { createInstructor, createStudent, resetAcademy, sellPackageFrom, sessionIdOf } from "@/test/academy";
 
 /**
  * Relatorios "Cursos" e "Pacotes de aulas" (doc 20, fase D): mesmo plano e
@@ -199,9 +199,9 @@ describe("relatório de pacotes de aulas", () => {
     const beto = await createStudent("Beto");
     const caio = await createStudent("Caio");
 
-    await packagesService.sellPackage({ studentId: ana.id, packageId: ten.id, priceCents: 50000, installments: 2, firstDueDate: "2026-09-14" });
-    await packagesService.sellPackage({ studentId: beto.id, packageId: ten.id, priceCents: 45000, installments: 1, firstDueDate: "2026-09-14" });
-    const canceled = await packagesService.sellPackage({ studentId: caio.id, packageId: four.id, priceCents: 20000, installments: 1, firstDueDate: "2026-09-14" });
+    await sellPackageFrom({ studentId: ana.id, packageId: ten.id, priceCents: 50000, installments: 2, firstDueDate: "2026-09-14" });
+    await sellPackageFrom({ studentId: beto.id, packageId: ten.id, priceCents: 45000, installments: 1, firstDueDate: "2026-09-14" });
+    const canceled = await sellPackageFrom({ studentId: caio.id, packageId: four.id, priceCents: 20000, installments: 1, firstDueDate: "2026-09-14" });
     await packagesService.cancelStudentPackage(canceled.id);
 
     await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
@@ -239,7 +239,7 @@ describe("relatório de pacotes de aulas", () => {
     const ten = await newPackage("10 aulas", 10, 50000);
     const ana = await createStudent("Ana");
     const sale = () =>
-      packagesService.sellPackage({ studentId: ana.id, packageId: ten.id, priceCents: 50000, installments: 1, firstDueDate: "2026-09-14" });
+      sellPackageFrom({ studentId: ana.id, packageId: ten.id, priceCents: 50000, installments: 1, firstDueDate: "2026-09-14" });
     await sale();
     await sale(); // leva as 10 do primeiro: 20 de saldo
     expect((await packageReport("2026-09")).rows[0]).toMatchObject({ sold: 2, lessonsSold: 20, lessonsRemaining: 20 });

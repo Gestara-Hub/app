@@ -9,12 +9,15 @@ import type {
   ProfessionalView,
   StudentBillingStrategy,
   StudentCyclePaymentTiming,
+  SellPackage,
+  StudentPackageView,
 } from "@gestarahub/contracts";
 import { firstCharge, resolveMembershipTerms } from "@gestarahub/core/billing";
 import { resetStore, setActiveOrganization, store } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
 import { categoriesService } from "@/services/categoriesService";
 import { clientsService } from "@/services/clientsService";
+import { packagesService } from "@/services/packagesService";
 import { professionalsService } from "@/services/professionalsService";
 import { turmasService } from "@/services/turmasService";
 
@@ -158,3 +161,17 @@ export function createStudent(name: string): Promise<Client> {
 /** Id da aula gerada (`turma~data~inicio`). */
 export const sessionIdOf = (classGroupId: string, date: string, start: string) =>
   `${classGroupId}~${date}~${start}`;
+
+/**
+ * Venda de pacote valendo desde `purchasedAt` (padrao 01/09/2026): o pacote so
+ * paga aula a partir da compra, e os testes marcam aulas de setembro.
+ */
+export async function sellPackageFrom(
+  payload: SellPackage,
+  purchasedAt = "2026-09-01",
+): Promise<StudentPackageView> {
+  const sold = await packagesService.sellPackage(payload);
+  const stored = store.studentPackages.find((p) => p.id === sold.id);
+  if (stored) stored.purchasedAt = purchasedAt;
+  return sold;
+}

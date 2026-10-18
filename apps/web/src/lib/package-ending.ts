@@ -1,6 +1,6 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import type { DateISO, Id, StudentPackageStatus } from "@gestarahub/contracts";
-import { packageState } from "@gestarahub/core/packages";
+import { packageScopesOverlap, packageState } from "@gestarahub/core/packages";
 
 /**
  * Pacotes de aulas acabando ("Para fazer hoje" do Dashboard e o modelo
@@ -8,7 +8,9 @@ import { packageState } from "@gestarahub/core/packages";
  * regra 5 (ultima aula e 7 dias antes de vencer), o vencido ha ate 7 dias e o
  * usado ate o fim ainda valido (doc 22, item 8), para lembrar de renovar.
  * Quem ja renovou (comprou de novo o mesmo pacote do catalogo) sai da lista;
- * um pacote diferente nao renova este (regra 6, revista em 18/10/2026).
+ * um pacote diferente nao renova este (regra 6, revista em 18/10/2026), mas se
+ * ainda tem aulas que valem nas mesmas turmas o aluno nao esta sem aula: o
+ * aviso olha todos os pacotes validos.
  */
 
 /** Vencido aparece por ate 7 dias depois do ultimo dia valido. */
@@ -27,6 +29,7 @@ export interface PackageLike {
   purchasedAt: DateISO;
   createdAt: string;
   expiresAt?: DateISO;
+  classGroupIds?: Id[];
   modalityIds: Id[];
 }
 
@@ -83,6 +86,15 @@ export function selectEndingPackages<T extends PackageLike>(
     if (!reason) continue;
     const renewed = packages.some((other) => isNewer(other, pkg) && other.packageId === pkg.packageId);
     if (renewed) continue;
+    // Outro pacote do aluno com aulas nas mesmas turmas: ainda nao acabou.
+    const covered = packages.some(
+      (other) =>
+        other.id !== pkg.id &&
+        other.studentId === pkg.studentId &&
+        packageState(other, today).remaining > 0 &&
+        packageScopesOverlap(other, pkg),
+    );
+    if (covered) continue;
     const daysToExpire = pkg.expiresAt
       ? differenceInCalendarDays(parseISO(pkg.expiresAt), parseISO(today))
       : undefined;

@@ -81,10 +81,12 @@ export function EnrollStudentsDialog({
     const today = todayISO();
     const ids = new Set<Id>();
     for (const [studentId, owned] of byStudent) {
-      if (pickPackageFor(owned, { modalityId: turma.modalityId, date: today })) ids.add(studentId);
+      if (pickPackageFor(owned, { classGroupId: turma.id, modalityId: turma.modalityId, date: today })) {
+        ids.add(studentId);
+      }
     }
     return ids;
-  }, [activePackages, turma.modalityId]);
+  }, [activePackages, turma.id, turma.modalityId]);
   // Rematricula: parcelas em aberto de matriculas anteriores neste curso.
   const { data: courseCharges } = useCharges({ kind: "course" }, open && isCourse);
   const [cancelPrevious, setCancelPrevious] = useState(true);

@@ -38,7 +38,7 @@ import {
 } from "@gestarahub/core/finance";
 import { valuePackageLessons } from "@gestarahub/core/packages";
 import { isPastSlot } from "@gestarahub/core/date";
-import { weekdayOf } from "@gestarahub/core/scheduling";
+import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { formatCents, pluralWord } from "@gestarahub/core/format";
 import { addDays, addMonths, format, parseISO } from "date-fns";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
@@ -201,7 +201,7 @@ function sessionsIn(competence: string, when: "done" | "upcoming" = "done"): Der
       if (date < g.startDate) continue;
       const last = lastSessionDate(g);
       if (last && date > last) continue;
-      for (const slot of g.meetingSlots) {
+      for (const slot of meetingSlotsOn(g, date)) {
         if (slot.weekday !== wd) continue;
         if (isPastSlot(date, slot.end) !== (when === "done")) continue;
         const sessionId = [g.id, date, slot.start].join("~");

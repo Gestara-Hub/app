@@ -30,6 +30,7 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useLessonPackages, useUpdateLessonPackage } from "../hooks/use-packages";
+import { useClassGroups } from "../hooks/use-turmas";
 import { PackageFormDialog } from "./package-form-dialog";
 
 const DEFAULT_STATUS: "all" | RecordStatus = "active";
@@ -244,6 +245,7 @@ export function LessonPackagesTab({
     status: status === "all" ? undefined : status,
   });
   const { data: categories } = useCategories();
+  const { data: classGroups } = useClassGroups();
   const can = useCan();
   const canManage = can("billing:manage");
   const updateMut = useUpdateLessonPackage();
@@ -258,10 +260,14 @@ export function LessonPackagesTab({
   };
 
   const nameById = useMemo(() => new Map((categories ?? []).map((c) => [c.id, c.name])), [categories]);
+  const classNameById = useMemo(() => new Map((classGroups ?? []).map((g) => [g.id, g.name])), [classGroups]);
+  // Onde vale: turmas escolhidas; pacote antigo mostra as modalidades.
   const modalitiesOf = (pkg: LessonPackage) =>
-    pkg.modalityIds.length === 0
-      ? "Todas as modalidades"
-      : pkg.modalityIds.map((id) => nameById.get(id)).filter(Boolean).join(", ") || "Modalidade removida";
+    pkg.classGroupIds?.length
+      ? pkg.classGroupIds.map((id) => classNameById.get(id)).filter(Boolean).join(", ") || "Turma removida"
+      : pkg.modalityIds.length === 0
+        ? "Todas as turmas"
+        : pkg.modalityIds.map((id) => nameById.get(id)).filter(Boolean).join(", ") || "Modalidade removida";
 
   const packages = [...(data ?? [])].sort(
     (a, b) =>

@@ -17,7 +17,12 @@ export interface LessonPackage {
   priceCents: number;
   /** Validade em dias a partir da compra (1 a 730). Ausente = sem validade. */
   validityDays?: number;
-  /** Modalidades em que vale. Vazio = todas. */
+  /**
+   * Turmas em que vale (decisao de 18/10/2026). Vazio ou ausente = todas as
+   * turmas de pacote e de mensalidade; turma sem cobranca e curso nunca.
+   */
+  classGroupIds?: Id[];
+  /** Dado antigo: modalidades em que vale (vazio = todas). Novos pacotes usam `classGroupIds`. */
   modalityIds: Id[];
   /** Falta sem justificativa gasta a aula (padrao: sim). */
   absenceConsumes: boolean;
@@ -78,6 +83,8 @@ export interface StudentPackage {
   purchasedAt: DateISO;
   /** Ultimo dia em que as aulas valem. Ausente = sem validade. */
   expiresAt?: DateISO;
+  /** Turmas em que vale, copiadas do catalogo na venda (vazio = todas). */
+  classGroupIds?: Id[];
   modalityIds: Id[];
   absenceConsumes: boolean;
   status: StudentPackageStatus;
@@ -118,6 +125,8 @@ export interface StudentPackageView extends StudentPackage {
   daysToExpire?: number;
   /** Nomes das modalidades (vazio = todas). */
   modalityNames: string[];
+  /** Nomes das turmas em que vale (vazio = todas de pacote e de mensalidade). */
+  classNames: string[];
 }
 
 /** Venda de um pacote ao aluno. Valor ajustavel (unico desconto), 1 a 12 parcelas. */

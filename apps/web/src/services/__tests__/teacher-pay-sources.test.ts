@@ -17,6 +17,7 @@ import {
   createStudent,
   enrollStudent,
   resetAcademy,
+  sellPackageFrom,
   sessionIdOf,
 } from "@/test/academy";
 
@@ -125,7 +126,7 @@ async function mixedWorld(): Promise<World> {
 
   const caio = await createStudent("Caio");
   const pkg = await newPackage(10, 50000);
-  await packagesService.sellPackage({
+  await sellPackageFrom({
     studentId: caio.id,
     packageId: pkg.id,
     priceCents: 50000,
@@ -181,7 +182,7 @@ describe("% do que os alunos pagaram: prévia com várias fontes", () => {
     const g = await classOf(paula, { billingMode: "package" });
     const ana = await createStudent("Ana");
     const pkg = await newPackage(4, 40000);
-    await packagesService.sellPackage({
+    await sellPackageFrom({
       studentId: ana.id,
       packageId: pkg.id,
       priceCents: 40000,
@@ -209,7 +210,7 @@ describe("% do que os alunos pagaram: prévia com várias fontes", () => {
     // Renova o mesmo pacote com desconto: a 1a compra sai a R$ 50 a aula, a 2a a R$ 30.
     const pkg = await newPackage(10, 50000);
     const sale = (packageId: string, priceCents: number) =>
-      packagesService.sellPackage({ studentId: ana.id, packageId, priceCents, installments: 1, firstDueDate: "2026-09-14" });
+      sellPackageFrom({ studentId: ana.id, packageId, priceCents, installments: 1, firstDueDate: "2026-09-14" });
 
     await sale(pkg.id, 50000);
     await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
@@ -236,12 +237,12 @@ describe("% do que os alunos pagaram: prévia com várias fontes", () => {
     const g = await classOf(paula, { billingMode: "package" });
     const ana = await createStudent("Ana");
     const pkg = await newPackage(10, 50000);
-    const first = await packagesService.sellPackage({
+    const first = await sellPackageFrom({
       studentId: ana.id, packageId: pkg.id, priceCents: 50000, installments: 1, firstDueDate: "2026-09-14",
     });
     await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
     await turmasService.markAttendance({ sessionId: sessionOf(g, "2026-09-14"), studentId: ana.id, status: "present" });
-    const renewed = await packagesService.sellPackage({
+    const renewed = await sellPackageFrom({
       studentId: ana.id, packageId: pkg.id, priceCents: 20000, installments: 1, firstDueDate: "2026-09-14",
     });
     await turmasService.clearAttendance({ sessionId: sessionOf(g, "2026-09-14"), studentId: ana.id });
