@@ -18,6 +18,7 @@ import {
   recurrenceDueDate,
   summarizeByCategory,
   summarizeCashFlow,
+  summarizeOverdueToDate,
   summarizeMonthlySeries,
   teacherPayoutDueDate,
   type CashFlowItem,
@@ -441,6 +442,30 @@ describe("summarizeCashFlow", () => {
     const s = summarizeCashFlow([item({ status: "paid" })], "2026-10", today);
     assert.equal(s.incomePaidCents, 0);
     assert.equal(s.incomeForecastCents, 0);
+  });
+});
+
+describe("summarizeOverdueToDate", () => {
+  it("soma o atrasado de todos os meses, entradas por mês do vencimento", () => {
+    const items: CashFlowItem[] = [
+      item({ amountCents: 3000, dueDate: "2026-08-10" }),
+      item({ amountCents: 2000, dueDate: "2026-10-10" }),
+      item({ amountCents: 1000, dueDate: "2026-08-20" }),
+      item({ amountCents: 500, status: "overdue", dueDate: "2026-10-20" }), // overdue gravado
+      item({ amountCents: 9999, dueDate: "2026-10-15" }), // vence hoje: ainda não
+      item({ amountCents: 9999, status: "paid", paidAt: "2026-10-01T12:00:00.000Z", dueDate: "2026-08-01" }),
+      item({ amountCents: 9999, status: "canceled", dueDate: "2026-08-01" }),
+      item({ type: "expense", amountCents: 700, dueDate: "2026-09-05" }),
+    ];
+    assert.deepEqual(summarizeOverdueToDate(items, "2026-10-15"), {
+      incomeCents: 6500,
+      incomeCount: 4,
+      expenseCents: 700,
+      incomeByCompetence: [
+        { competence: "2026-08", amountCents: 4000 },
+        { competence: "2026-10", amountCents: 2500 },
+      ],
+    });
   });
 });
 

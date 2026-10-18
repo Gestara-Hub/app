@@ -42,7 +42,7 @@ import {
 } from "../hooks/use-finance";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
 import { competenceLabel, financeHref } from "../lib";
-import { billingHref, shortDate } from "../finance-ui";
+import { ALL_OVERDUE_BILLING_HREF, billingHref, overdueBreakdownText, shortDate } from "../finance-ui";
 import { FinanceCashFlowChart } from "./finance-cash-flow-chart";
 
 const SERIES_MONTHS = 6;
@@ -95,7 +95,13 @@ function VariantSimplified({
   onCreateEntry?: () => void;
 }) {
   const isPositive = summary.resultCents >= 0;
-  const hasOverdue = summary.incomeOverdueCents > 0;
+  // Mes atual: atraso acumulado de todos os meses; meses passados: so o do mes.
+  const overdueCents = summary.overdueToDate?.incomeCents ?? summary.incomeOverdueCents;
+  const hasOverdue = overdueCents > 0;
+  const overdueBreakdown = summary.overdueToDate ? overdueBreakdownText(summary.overdueToDate, competence) : null;
+  const overdueHref = summary.overdueToDate
+    ? ALL_OVERDUE_BILLING_HREF
+    : billingHref(competence, { status: "overdue" });
 
   // Cálculo amigável do equilíbrio financeiro do mês
   const totalIn = summary.incomePaidCents;
@@ -221,12 +227,15 @@ function VariantSimplified({
                 hasOverdue ? "text-amber-600 dark:text-amber-400" : "text-foreground",
               )}
             >
-              {formatCents(summary.incomeOverdueCents)}
+              {formatCents(overdueCents)}
             </div>
+            {overdueBreakdown ? (
+              <p className="mt-1 text-xs text-muted-foreground">{overdueBreakdown}</p>
+            ) : null}
             <div className="mt-1">
               {hasOverdue ? (
                 <Link
-                  href={billingHref(competence, { status: "overdue" })}
+                  href={overdueHref}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                 >
                   Cobrar alunos atrasados <ChevronRight className="size-3" />
@@ -432,7 +441,14 @@ function VariantExecutive({
   const isPositive = summary.resultCents >= 0;
   const projected = summary.resultCents + summary.incomeForecastCents - summary.expenseForecastCents;
   const hasPending = summary.incomeForecastCents > 0 || summary.expenseForecastCents > 0;
-  const hasOverdue = summary.incomeOverdueCents > 0 || summary.expenseOverdueCents > 0;
+  // Mes atual: atraso acumulado de todos os meses; a barra segue so o mes.
+  const overdueCents = summary.overdueToDate?.incomeCents ?? summary.incomeOverdueCents;
+  const expenseOverdueCents = summary.overdueToDate?.expenseCents ?? summary.expenseOverdueCents;
+  const hasOverdue = overdueCents > 0 || expenseOverdueCents > 0;
+  const overdueBreakdown = summary.overdueToDate ? overdueBreakdownText(summary.overdueToDate, competence) : null;
+  const overdueHref = summary.overdueToDate
+    ? ALL_OVERDUE_BILLING_HREF
+    : billingHref(competence, { status: "overdue" });
 
   const incomePct =
     previous?.incomeCents && previous.incomeCents > 0
@@ -661,12 +677,15 @@ function VariantExecutive({
               <div className="mt-2">
                 <div className="flex items-baseline justify-between">
                   <span className="text-2xl font-bold tabular-nums text-foreground">
-                    {formatCents(summary.incomeOverdueCents)}
+                    {formatCents(overdueCents)}
                   </span>
                   <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                    {overdueRatio}% em atraso
+                    {overdueRatio}% do mês em atraso
                   </span>
                 </div>
+                {overdueBreakdown ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{overdueBreakdown}</p>
+                ) : null}
 
                 {/* Barra de progresso visual: Recebido vs Atrasado */}
                 <div className="mt-2 space-y-1">
@@ -684,8 +703,8 @@ function VariantExecutive({
                   </div>
                   <div className="flex justify-between text-[10px] text-muted-foreground">
                     <span className="text-emerald-600 dark:text-emerald-400 font-medium">{paidRatio}% recebido</span>
-                    {summary.expenseOverdueCents > 0 && (
-                      <span className="text-destructive font-medium">Contas: {formatCents(summary.expenseOverdueCents)}</span>
+                    {expenseOverdueCents > 0 && (
+                      <span className="text-destructive font-medium">Contas: {formatCents(expenseOverdueCents)}</span>
                     )}
                   </div>
                 </div>
@@ -693,13 +712,12 @@ function VariantExecutive({
             </div>
 
             <div className="mt-3 border-t border-border/40 pt-2">
-              <Link href={billingHref(competence, { status: "overdue" })} className="block">
+              <Link href={overdueHref} className="block">
                 <Button
-                  size="sm"
-                  variant={summary.incomeOverdueCents > 0 ? "default" : "outline"}
+                  variant={overdueCents > 0 ? "default" : "outline"}
                   className={cn(
                     "w-full h-7 text-xs font-medium gap-1 cursor-pointer",
-                    summary.incomeOverdueCents > 0
+                    overdueCents > 0
                       ? "bg-amber-600 hover:bg-amber-700 text-white shadow-2xs"
                       : "text-muted-foreground",
                   )}

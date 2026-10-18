@@ -3,6 +3,7 @@ import type {
   DateISO,
   FinanceCategoryTotal,
   FinanceMonthPoint,
+  FinanceOverdueToDate,
   FinanceSummary,
   FinancialEntryDisplayStatus,
   FinancialEntryStatus,
@@ -190,6 +191,30 @@ export function summarizeCashFlow(
   }
   summary.resultCents = summary.incomePaidCents - summary.expensePaidCents;
   return summary;
+}
+
+/**
+ * Atrasos acumulados ate hoje, de todas as competencias: em aberto com
+ * vencimento antes de hoje. Entradas tambem por mes do vencimento.
+ */
+export function summarizeOverdueToDate(items: readonly CashFlowItem[], today: DateISO): FinanceOverdueToDate {
+  const result: FinanceOverdueToDate = { incomeCents: 0, incomeCount: 0, expenseCents: 0, incomeByCompetence: [] };
+  const byCompetence = new Map<string, number>();
+  for (const item of items) {
+    if (!isOpen(item) || !(item.status === "overdue" || item.dueDate < today)) continue;
+    if (item.type !== "income") {
+      result.expenseCents += item.amountCents;
+      continue;
+    }
+    result.incomeCents += item.amountCents;
+    result.incomeCount += 1;
+    const competence = competenceOf(item.dueDate);
+    byCompetence.set(competence, (byCompetence.get(competence) ?? 0) + item.amountCents);
+  }
+  result.incomeByCompetence = [...byCompetence.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([competence, amountCents]) => ({ competence, amountCents }));
+  return result;
 }
 
 /** Serie entradas x saidas pagas por competencia (grafico do Resumo). */

@@ -445,7 +445,7 @@ test.describe("Dashboard: cobranças em atraso", () => {
     await page.goto("/dashboard");
   }
 
-  test("mensalidade atrasada: \"Cobrar\" abre as atrasadas; avulsa e curso atrasados ficam em Cobranças, fora do bloco", async ({
+  test("cobranças atrasadas de todos os tipos entram no bloco; \"Cobrar\" abre todos os atrasos", async ({
     page,
   }) => {
     await seedAcademy(page, {
@@ -460,11 +460,11 @@ test.describe("Dashboard: cobranças em atraso", () => {
       },
     });
     await openDashboard(page);
-    // O bloco conta so mensalidades (a linha e o card "Mensalidades recebidas").
-    const row = todoRow(page, "1 mensalidade em atraso");
-    await expect(row).toContainText("R$ 55,00 aguardando nesta competência");
+    // O bloco conta todos os tipos e todos os meses (a divida nao some na virada).
+    const row = todoRow(page, "3 cobranças em atraso");
+    await expect(row).toContainText("até hoje");
     await row.getByRole("link", { name: "Cobrar" }).click();
-    await expect(page).toHaveURL(/\/classes\/billing\?status=overdue$/);
+    await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
     // Em Cobranças, as tres atrasadas.
     await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");
     await expect(rowOf(page, "Aluna Kimono")).toContainText("Atrasado");
@@ -472,7 +472,7 @@ test.describe("Dashboard: cobranças em atraso", () => {
     await expect(page.getByText("3 cobranças", { exact: true })).toBeVisible();
   });
 
-  test("sem mensalidade atrasada, avulsa atrasada não cria pendência", async ({ page }) => {
+  test("sem mensalidade atrasada, avulsa atrasada também cria a pendência", async ({ page }) => {
     await seedAcademy(page, {
       extra: (t) => {
         t.clients = [noPlan("c-1", "Aluna Kimono")];
@@ -482,6 +482,6 @@ test.describe("Dashboard: cobranças em atraso", () => {
     });
     await openDashboard(page);
     await expect(page.getByText("Nenhuma mensalidade gerada no mês")).toBeVisible();
-    await expect(page.getByText("Para fazer hoje")).toHaveCount(0);
+    await expect(todoRow(page, "1 cobrança em atraso")).toBeVisible();
   });
 });

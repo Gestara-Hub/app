@@ -508,11 +508,7 @@ function AcademyDashboardBody() {
       <DashboardKpis d={d} />
       {/* Pendencias do dia no topo, sem precisar rolar (some quando nao ha nada) */}
       {d.isClient ? (
-        <DashboardTodo
-          today={d.todayDate}
-          overdueCount={d.overdueCharges.length}
-          overdueCents={d.overdueRevenue}
-        />
+        <DashboardTodo today={d.todayDate} />
       ) : null}
       <DashboardMainGrid d={d} />
     </div>

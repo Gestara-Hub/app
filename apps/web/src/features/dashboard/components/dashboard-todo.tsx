@@ -25,7 +25,7 @@ import { useCan } from "@/features/auth";
 import { StudentGraduationDialog, useClients } from "@/features/clients";
 import { packageRemainingText, useMessageLogs, useWhatsAppSend } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
-import { SellPackageDialog, useAbsenceStreaks, useStudentPackages } from "@/features/turmas";
+import { SellPackageDialog, useAbsenceStreaks, useCharges, useStudentPackages } from "@/features/turmas";
 import { selectEndingPackages } from "../package-ending";
 import { useMonthBirthdays } from "./birthdays-card";
 import { useLevelChangePending } from "./use-level-change-pending";
@@ -158,19 +158,11 @@ function WhatsAppButton({
 
 /**
  * "Para fazer hoje": as pendencias do Dashboard num bloco so, no topo (sem
- * precisar rolar). Uma linha por pendencia, so as que tem algo: mensalidades
- * em atraso, pacotes acabando, alunos com 3 faltas seguidas, aniversariantes
+ * precisar rolar). Uma linha por pendencia, so as que tem algo: cobrancas em
+ * atraso (de todos os meses e tipos: a divida nao some na virada do mes), pacotes acabando, alunos com 3 faltas seguidas, aniversariantes
  * do dia e troca de faixa pela idade. As listas abrem na propria linha, com a acao.
  */
-export function DashboardTodo({
-  today,
-  overdueCount,
-  overdueCents,
-}: {
-  today: string;
-  overdueCount: number;
-  overdueCents: number;
-}) {
+export function DashboardTodo({ today }: { today: string }) {
   const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
   const { data: streaks = [] } = useAbsenceStreaks();
@@ -185,6 +177,10 @@ export function DashboardTodo({
   const { data: activeClients = [] } = useClients({ status: "active" });
   const { data: packageLogs = [] } = useMessageLogs({ trigger: "package_ending" });
   const [selling, setSelling] = useState<{ id: string; name: string } | null>(null);
+  const { data: overdueCharges = [] } = useCharges({ status: "overdue" });
+  const overdueCount = overdueCharges.length;
+  const overdueCents = overdueCharges.reduce((sum, c) => sum + c.amountCents, 0);
+  const overdueMonths = new Set(overdueCharges.map((c) => c.competence ?? c.dueDate.slice(0, 7))).size;
 
   const birthdaysToday = birthdays.filter((b) => b.isToday);
   const lastAbsenceMessage = lastMessageDay(absenceLogs);
@@ -219,10 +215,14 @@ export function DashboardTodo({
               <TodoRow
                 icon={<AlertCircle className="size-4" />}
                 tone="bg-destructive/15 text-destructive"
-                title={plural(overdueCount, "mensalidade em atraso", "mensalidades em atraso")}
-                detail={`${formatCents(overdueCents)} aguardando nesta competência`}
+                title={plural(overdueCount, "cobrança em atraso", "cobranças em atraso")}
+                detail={
+                  overdueMonths > 1
+                    ? `${formatCents(overdueCents)} até hoje, de ${overdueMonths} meses`
+                    : `${formatCents(overdueCents)} até hoje`
+                }
                 action="Cobrar"
-                href="/classes/billing?status=overdue"
+                href="/classes/billing?overdue=all"
               />
             ) : null}
 

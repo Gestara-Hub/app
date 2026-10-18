@@ -3,7 +3,7 @@ import { classGroup, enrollment, expect, seedAcademy, skipWelcome, student, test
 
 /**
  * Dashboard "Para fazer hoje": um bloco no topo so com as pendencias do dia
- * (mensalidades em atraso, 3 faltas seguidas, aniversariantes de hoje e troca
+ * (cobranças em atraso de todos os meses, 3 faltas seguidas, aniversariantes de hoje e troca
  * de faixa pela idade). Hoje e terca 22/09/2026.
  */
 
@@ -110,16 +110,16 @@ test("para fazer hoje: uma linha por pendência, com o contador", async ({ page 
   await seedTodo(page);
   const card = todoCard(page);
   await expect(card).toContainText("4 pendências");
-  await expect(card).toContainText("1 mensalidade em atraso");
-  await expect(card).toContainText("R$ 55,00 aguardando nesta competência");
+  await expect(card).toContainText("1 cobrança em atraso");
+  await expect(card).toContainText("R$ 55,00 até hoje");
   await expect(card).toContainText("1 aluno com 3 faltas seguidas");
   await expect(card).toContainText("1 aniversariante hoje");
   await expect(card).toContainText("1 aluno precisa trocar de faixa pela idade");
   // Quem voltou a treinar (presenca depois das faltas) nao entra.
   await expect(card).not.toContainText("Aluno Voltou");
 
-  await todoRow(page, "1 mensalidade em atraso").getByRole("link", { name: "Cobrar" }).click();
-  await expect(page).toHaveURL(/\/classes\/billing\?status=overdue$/);
+  await todoRow(page, "1 cobrança em atraso").getByRole("link", { name: "Cobrar" }).click();
+  await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
   await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
 });
 

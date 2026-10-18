@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { AlertCircle, Ban, CheckCircle2, ChevronDown, Plus, RotateCw, Wallet } from "lucide-react";
+import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   InitialsAvatar,
@@ -79,12 +79,16 @@ interface StudentBillingGroup {
   charges: ChargeView[];
 }
 
-function groupCharges(charges: ChargeView[]): StudentBillingGroup[] {
+/**
+ * Agrupa as parcelas do mes de um mesmo plano (semanal/quinzenal). `byCharge`:
+ * uma linha por cobranca (atrasos de todos os meses: cada mes e uma divida).
+ */
+function groupCharges(charges: ChargeView[], byCharge = false): StudentBillingGroup[] {
   const map = new Map<string, StudentBillingGroup>();
 
   for (const c of charges) {
     const isMembership = c.kind === "membership";
-    const key = isMembership ? `${c.studentId}_${c.planId ?? ""}` : c.id;
+    const key = isMembership && !byCharge ? `${c.studentId}_${c.planId ?? ""}` : c.id;
 
     if (!map.has(key)) {
       const isMulti = (c.cycleTotal ?? 1) > 1;
@@ -170,6 +174,7 @@ const currentCompetence = () => format(new Date(), "yyyy-MM");
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
  * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra|course|package`. Padroes
  * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
+ * `?overdue=all`: atrasos de todos os meses (ignora mes e situacao).
  */
 function useBillingFilters() {
   const router = useRouter();
@@ -191,6 +196,7 @@ function useBillingFilters() {
   const statusFilter: StatusFilterValue = isStatusFilterValue(statusParam) ? statusParam : "all";
   const kindParam = searchParams.get("kind");
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
+  const allOverdue = searchParams.get("overdue") === "all";
 
   const update = (patch: Record<string, string | null>) => {
     // Parte da ultima URL pedida (ou da atual): duas trocas seguidas antes do
@@ -206,7 +212,10 @@ function useBillingFilters() {
   };
 
   const setCompetence = (next: string) =>
-    update({ month: next === currentCompetence() ? null : next });
+    update({ month: next === currentCompetence() ? null : next, overdue: null });
+  // Atrasos de todos os meses: o mes e a situacao nao valem nesse modo.
+  const showAllOverdue = (on: boolean) =>
+    update({ overdue: on ? "all" : null, month: null, status: null });
   const setStatusFilter = (next: StatusFilterValue) =>
     update({ status: next === "all" ? null : next });
   const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
@@ -218,11 +227,49 @@ function useBillingFilters() {
     competence,
     statusFilter,
     kindFilter,
+    allOverdue,
+    showAllOverdue,
     setCompetence,
     setStatusFilter,
     setKindFilter,
     clearFilters,
   };
+}
+
+/** Resumo dos atrasos de todos os meses: total, quantas e de quantos meses. */
+function AllOverdueSummary({ charges, isLoading }: { charges: ChargeView[]; isLoading: boolean }) {
+  const totalCents = charges.reduce((s, c) => s + c.amountCents, 0);
+  const months = new Set(charges.map((c) => c.competence ?? c.dueDate.slice(0, 7))).size;
+  const hasOverdue = charges.length > 0;
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-4 shadow-2xs",
+        !isLoading && hasOverdue ? "border-red-500/30 bg-red-500/5 dark:bg-red-950/10" : "border-border/70 bg-card",
+      )}
+    >
+      <span className="text-xs font-medium text-muted-foreground">Em atraso até hoje</span>
+      {isLoading ? (
+        <Skeleton className="mt-2 h-7 w-28" />
+      ) : (
+        <div
+          className={cn(
+            "mt-2 text-xl font-bold tabular-nums sm:text-2xl",
+            hasOverdue ? "text-red-600 dark:text-red-400" : "text-foreground",
+          )}
+        >
+          {formatCents(totalCents)}
+        </div>
+      )}
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {isLoading
+          ? "—"
+          : hasOverdue
+            ? `${plural(charges.length, "cobrança", "cobranças")} de ${plural(months, "mês", "meses")}`
+            : "Nenhuma cobrança em atraso"}
+      </p>
+    </div>
+  );
 }
 
 export function BillingView() {
@@ -233,14 +280,18 @@ export function BillingView() {
   );
   const {
     competence,
-    statusFilter,
+    statusFilter: monthStatusFilter,
     kindFilter,
+    allOverdue,
+    showAllOverdue,
     setCompetence,
     setStatusFilter,
     setKindFilter,
     clearFilters,
   } =
     useBillingFilters();
+  // Todos os atrasos: so cobrancas em atraso, de qualquer mes.
+  const statusFilter: StatusFilterValue = allOverdue ? "overdue" : monthStatusFilter;
   const [newChargeOpen, setNewChargeOpen] = useState(false);
   const [search, setSearch] = useState("");
   // Abrir as parcelas de curso conclui "Ver as parcelas do curso" (Dashboard).
@@ -259,10 +310,19 @@ export function BillingView() {
     isLoading,
     isError,
     refetch,
-  } = useCharges({
-    competence,
-    kind: kindFilter === "all" ? undefined : kindFilter,
-  });
+  } = useCharges(
+    allOverdue
+      ? { status: "overdue", kind: kindFilter === "all" ? undefined : kindFilter }
+      : { competence, kind: kindFilter === "all" ? undefined : kindFilter },
+  );
+  // Faixa "em atraso de meses anteriores" (so no mes atual): a divida nao some
+  // na virada do mes.
+  const isCurrentMonth = !allOverdue && competence === currentCompetence();
+  const { data: allOverdueCharges } = useCharges({ status: "overdue" });
+  const earlierOverdue = isCurrentMonth
+    ? (allOverdueCharges ?? []).filter((c) => (c.competence ?? c.dueDate.slice(0, 7)) < competence)
+    : [];
+  const earlierOverdueCents = earlierOverdue.reduce((s, c) => s + c.amountCents, 0);
   const chargeActions = useChargeActions();
   const { canManage, overRecurringLimit } = chargeActions;
   const withChargeContextMenu = chargeActions.withContextMenu;
@@ -278,11 +338,14 @@ export function BillingView() {
         normalizeText(c.studentName).includes(query) ||
         (c.description !== undefined && normalizeText(c.description).includes(query))),
   );
-  const groups = groupCharges(filteredList);
-  const hasListFilters = statusFilter !== "all" || kindFilter !== "all" || query !== "";
+  const groups = groupCharges(filteredList, allOverdue);
+  const hasListFilters = allOverdue
+    ? kindFilter !== "all" || query !== ""
+    : statusFilter !== "all" || kindFilter !== "all" || query !== "";
   const clearListFilters = () => {
     setSearch("");
-    clearFilters();
+    if (allOverdue) setKindFilter("all");
+    else clearFilters();
   };
 
   // Isentas (bolsa integral) nao entram nos totais: R$ 0 e nada a receber.
@@ -309,10 +372,21 @@ export function BillingView() {
     <>
       <PageHeader
         title="Cobranças"
-        description="Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
+        description={
+          allOverdue
+            ? "Cobranças em atraso de todos os meses, até hoje."
+            : "Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
+        }
       >
-        {/* Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses) */}
-        <CompetencePicker competence={competence} onChange={setCompetence} />
+        {allOverdue ? (
+          <Button variant="outline" onClick={() => showAllOverdue(false)}>
+            <ChevronLeft className="size-4" />
+            Ver por mês
+          </Button>
+        ) : (
+          // Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses)
+          <CompetencePicker competence={competence} onChange={setCompetence} />
+        )}
         {canManage ? (
           <Button onClick={() => setNewChargeOpen(true)}>
             <Plus className="size-4" />
@@ -325,7 +399,10 @@ export function BillingView() {
         <Skeleton className="h-40 w-full rounded-md" />
       ) : (
         <div className="space-y-4">
-          {/* KPI Summary Cards */}
+          {allOverdue ? (
+            <AllOverdueSummary charges={list} isLoading={isLoading} />
+          ) : (
+          /* KPI Summary Cards */
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {/* Total Ativo */}
             <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
@@ -476,6 +553,24 @@ export function BillingView() {
               </div>
             </div>
           </div>
+          )}
+
+          {earlierOverdue.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 dark:bg-red-950/10">
+              <p className="flex items-center gap-2 text-sm">
+                <AlertCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
+                <span>
+                  <span className="font-semibold tabular-nums text-red-600 dark:text-red-400">
+                    {formatCents(earlierOverdueCents)}
+                  </span>{" "}
+                  em atraso de meses anteriores
+                </span>
+              </p>
+              <Button variant="outline" onClick={() => showAllOverdue(true)}>
+                Ver todos os atrasos
+              </Button>
+            </div>
+          ) : null}
 
           {/* Busca + filtros (padrao das listas: busca e selects lado a lado) */}
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -501,6 +596,7 @@ export function BillingView() {
                   ))}
                 </SelectContent>
               </Select>
+              {allOverdue ? null : (
               <Select
                 value={statusFilter}
                 onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
@@ -525,6 +621,7 @@ export function BillingView() {
                   })}
                 </SelectContent>
               </Select>
+              )}
             </div>
           </div>
 
@@ -570,7 +667,11 @@ export function BillingView() {
                 // ainda e "filtro sem resultado", nao mes sem cobranca.
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <p className="text-sm text-muted-foreground">
-                    {query !== ""
+                    {allOverdue
+                      ? query !== ""
+                        ? `Nenhum atraso de “${search.trim()}” com estes filtros.`
+                        : "Nenhum atraso deste tipo."
+                      : query !== ""
                       ? `Nenhuma cobrança de “${search.trim()}” com estes filtros no mês.`
                       : list.length === 0
                         ? kindFilter === "dropin"
@@ -587,6 +688,14 @@ export function BillingView() {
                   <Button variant="outline" size="sm" onClick={clearListFilters}>
                     Limpar filtros
                   </Button>
+                </div>
+              ) : !isLoading && groups.length === 0 && allOverdue ? (
+                <div className="py-6">
+                  <ModuleEmptyGuide
+                    icon={<CheckCircle2 className="size-8" />}
+                    title="Nenhuma cobrança em atraso."
+                    description="Todos os alunos estão em dia."
+                  />
                 </div>
               ) : !isLoading && groups.length === 0 ? (
                 <div className="py-6">

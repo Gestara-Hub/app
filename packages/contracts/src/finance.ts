@@ -304,6 +304,20 @@ export interface FinanceSummary {
   scholarshipGrantedCents?: number;
   /** Alunos com bolsa nas mensalidades do mes. */
   scholarshipStudents?: number;
+  /**
+   * So no mes atual: atrasos ate hoje de TODOS os meses (divida nao some na
+   * virada do mes). Os campos `*OverdueCents` acima continuam so do mes.
+   */
+  overdueToDate?: FinanceOverdueToDate;
+}
+
+/** Atrasos acumulados ate hoje (todas as competencias). */
+export interface FinanceOverdueToDate {
+  incomeCents: number;
+  incomeCount: number;
+  expenseCents: number;
+  /** Entradas atrasadas por mes do vencimento, do mais antigo ao mais novo. */
+  incomeByCompetence: { competence: string; amountCents: number }[];
 }
 
 /** Ponto do grafico entradas x saidas (ultimos N meses). */

@@ -219,6 +219,30 @@ describe("repetição mensal", () => {
 describe("resumo do mês", () => {
   beforeEach(() => resetAcademy());
 
+  it("mês atual soma os atrasos de todos os meses; mês passado não acumula", async () => {
+    const income = (description: string, amountCents: number, dueDate: string) =>
+      financeService.createEntry(entryPayload({ type: "income", categoryId: PRODUCTS, description, amountCents, dueDate }));
+    await income("Kimono", 37000, "2026-08-15");
+    await income("Faixa", 15000, "2026-09-10");
+    await income("Camiseta", 9000, "2026-09-30"); // a vencer: não é atraso
+    await financeService.createEntry(entryPayload({ amountCents: 700, description: "Gás", dueDate: "2026-08-10" }));
+
+    const sep = await financeService.getSummary("2026-09");
+    expect(sep.incomeOverdueCents).toBe(15000);
+    expect(sep.overdueToDate).toEqual({
+      incomeCents: 52000,
+      incomeCount: 2,
+      expenseCents: 700,
+      incomeByCompetence: [
+        { competence: "2026-08", amountCents: 37000 },
+        { competence: "2026-09", amountCents: 15000 },
+      ],
+    });
+    const aug = await financeService.getSummary("2026-08");
+    expect(aug.incomeOverdueCents).toBe(37000);
+    expect(aug.overdueToDate).toBeUndefined();
+  });
+
   it("resultado = cobranças pagas + entradas pagas − despesas pagas − professores pagos", async () => {
     const plan = await createPlan("monthly", 15000);
     await enrollStudent({ plan, startDate: "2026-09-01", strategy: "full_cycle" });

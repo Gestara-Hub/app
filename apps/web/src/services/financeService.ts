@@ -36,6 +36,7 @@ import {
   recurrenceDueDate,
   summarizeByCategory,
   summarizeCashFlow,
+  summarizeOverdueToDate,
   summarizeMonthlySeries,
   type CashFlowItem,
 } from "@gestarahub/core/finance";
@@ -584,7 +585,8 @@ export const financeService = {
   getSummary(competence: string): Promise<FinanceSummary> {
     return simulateRead(() => {
       ensureMaterialized(competence);
-      const summary = summarizeCashFlow(cashFlowItems(), competence, todayISO());
+      const items = cashFlowItems();
+      const summary = summarizeCashFlow(items, competence, todayISO());
       // Bolsas: diferenca entre o valor do plano e o cobrado (inclui isentos).
       const withScholarship = store.charges.filter(
         (c) =>
@@ -601,6 +603,10 @@ export const financeService = {
         ...summary,
         scholarshipGrantedCents,
         scholarshipStudents: new Set(withScholarship.map((c) => c.studentId)).size,
+        // Mes atual: o atraso de meses anteriores continua devido (acumula).
+        ...(competence === currentCompetence()
+          ? { overdueToDate: summarizeOverdueToDate(items, todayISO()) }
+          : {}),
       };
     });
   },
