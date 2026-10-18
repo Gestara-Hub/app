@@ -11,6 +11,7 @@ import { initAnalytics } from "@/lib/analytics";
 import { toast } from "sonner";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
+import { useRefetchOnStoreChange } from "./use-refetch-on-store-change";
 
 // Janela para o tratamento local (catch do mutateAsync ou onError do mutate)
 // mostrar o proprio toast antes do fallback global.
@@ -98,6 +99,7 @@ export function createQueryClient(): QueryClient {
  */
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
+  useRefetchOnStoreChange(queryClient);
   // Analise de uso (PostHog); sem a chave no ambiente, nao liga.
   useEffect(() => initAnalytics(), []);
 

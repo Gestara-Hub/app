@@ -6,7 +6,7 @@ import type {
   Id,
 } from "@gestarahub/contracts";
 import { mockConfig } from "./config";
-import { persist } from "./store";
+import { persist, syncFromStorage } from "./store";
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +69,7 @@ export function validationError(fields: ApiErrorField[]): ApiError {
 /** Leitura simulada: latencia + chance de erro de rede (readErrorRate). */
 export async function simulateRead<T>(produce: () => T): Promise<T> {
   await sleep(mockConfig.latencyMs);
+  syncFromStorage();
   if (
     mockConfig.readErrorRate > 0 &&
     Math.random() < mockConfig.readErrorRate
@@ -84,6 +85,8 @@ export async function simulateRead<T>(produce: () => T): Promise<T> {
  */
 export async function simulateWrite<T>(produce: () => T): Promise<T> {
   await sleep(mockConfig.latencyMs);
+  // Grava por cima do que esta salvo agora (outra aba pode ter gravado).
+  syncFromStorage();
   const result = produce();
   persist();
   return result;

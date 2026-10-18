@@ -11,6 +11,7 @@ import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
 import { cn } from "@/lib/utils";
+import { setModalitiesReviewOnBanner } from "@/lib/modalities-review-signal";
 import { useCurrentUser } from "@/features/auth";
 import { useMarkModalitiesReviewed } from "@/features/settings";
 import { useOnboardingSteps } from "../hooks/use-onboarding-steps";
@@ -226,6 +227,12 @@ export function OnboardingTopBanner() {
     isOnNextStepPage && nextStep?.id === "modalities" && Boolean(nextStep.needsReview);
   const markReviewed = useMarkModalitiesReviewed();
   const reviewAttention = useAttentionUntilInteraction(reviewOnPage, "modalities-review");
+  // Com o botao aqui, o aviso amarelo da tela nao repete o dele.
+  const reviewButtonShown = isHydrated && user.profile === "owner" && reviewOnPage;
+  useEffect(() => {
+    setModalitiesReviewOnBanner(reviewButtonShown);
+    return () => setModalitiesReviewOnBanner(false);
+  }, [reviewButtonShown]);
   // Confirmar a revisao conclui o passo e segue para o proximo, como o
   // "Continuar" (o passo seguinte so e conhecido depois que os passos recarregam).
   const router = useRouter();

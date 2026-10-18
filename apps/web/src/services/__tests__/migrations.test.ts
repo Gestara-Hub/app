@@ -701,3 +701,26 @@ describe("v37: modelos de WhatsApp so de envio manual", () => {
     expect(saved()?.data.tenants[otherId].messageTemplates).toEqual([]);
   });
 });
+
+describe("duas abas abertas", () => {
+  it("a gravação de uma aba não apaga o que a outra salvou", async () => {
+    const world = oldWorld((t) => {
+      t.clients = [client("a")];
+    });
+    const { store, persist, syncFromStorage, saved } = await hydrate(CURRENT_VERSION, world);
+    // A outra aba cria um aluno e grava.
+    const other = saved()!;
+    other.data.tenants[ACADEMY_ORG].clients.push(client("b"));
+    (window.localStorage as unknown as { setItem: (k: string, v: string) => void }).setItem(
+      STORAGE_KEY,
+      JSON.stringify(other),
+    );
+    // Esta aba rele antes de gravar (simulateWrite faz isso) e grava por cima.
+    expect(syncFromStorage()).toBe(true);
+    store.plans = [];
+    persist();
+    expect(saved()?.data.tenants[ACADEMY_ORG].clients.map((c) => c.id)).toEqual(["a", "b"]);
+    // Sem mudanca nova, nao rele.
+    expect(syncFromStorage()).toBe(false);
+  });
+});

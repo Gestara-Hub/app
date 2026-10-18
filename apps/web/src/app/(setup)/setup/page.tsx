@@ -1,5 +1,9 @@
-import { BusinessSetupWizard } from "@/features/onboarding";
+import { BusinessSetupWizard, SetupRouteGuard } from "@/features/onboarding";
 
 export default function SetupPage() {
-  return <BusinessSetupWizard />;
+  return (
+    <SetupRouteGuard>
+      <BusinessSetupWizard />
+    </SetupRouteGuard>
+  );
 }

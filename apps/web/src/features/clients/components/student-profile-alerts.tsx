@@ -4,14 +4,20 @@ import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Cake, MessageCircle } from "lucide-react";
-import type { ChargeView, Id, StudentSummary } from "@gestarahub/contracts";
+import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
-import { chargeReference, chargeReminder, packageRemainingText, useWhatsAppSend } from "@/features/communication";
+import {
+  chargeReference,
+  chargeReminder,
+  packageRemainingText,
+  useMessageLogs,
+  useWhatsAppSend,
+} from "@/features/communication";
 import { useAbsenceStreaks, useChargeActions, useCharges } from "@/features/turmas";
 
 interface StudentAlert {
@@ -67,6 +73,29 @@ export function StudentProfileAlerts({
   const recipient = { name: student.name, phone: student.phone, clientId: student.id };
   const alerts: StudentAlert[] = [];
 
+  // Ja mandou hoje (a mao ou no automatico do oficial): o aviso diz quando, em
+  // vez de oferecer mandar de novo.
+  const { data: logs } = useMessageLogs({ clientId: student.id }, canMessage);
+  const sentTodayAt = (trigger: MessageTrigger, chargeId?: Id): string | null => {
+    const log = (logs ?? []).find(
+      (l) =>
+        l.trigger === trigger &&
+        l.status !== "failed" &&
+        (!chargeId || l.chargeId === chargeId) &&
+        format(parseISO(l.sentAt), "yyyy-MM-dd") === today,
+    );
+    return log ? format(parseISO(log.sentAt), "HH:mm") : null;
+  };
+  const sentNote = (time: string) => (
+    <span className="text-xs text-muted-foreground">Enviado hoje às {time}</span>
+  );
+  /** Botao de WhatsApp do aviso, ou "Enviado hoje as HH:mm". */
+  const whatsAppAction = (trigger: MessageTrigger, button: ReactNode, chargeId?: Id): ReactNode => {
+    if (!canWhatsApp) return null;
+    const time = sentTodayAt(trigger, chargeId);
+    return time ? sentNote(time) : button;
+  };
+
   // Atraso: um so mostra o que e e as acoes; varios levam para Cobrancas.
   const overdue = (charges ?? [])
     .filter((c) => c.status === "overdue")
@@ -87,17 +116,21 @@ export function StudentProfileAlerts({
               Marcar pago
             </Button>
           ) : null}
-          {canWhatsApp && reminder ? (
-            <Button
-              variant="outline"
-              onClick={() =>
-                whatsapp.send({ trigger: reminder.trigger, recipient, values: reminder.values, chargeId: charge.id })
-              }
-            >
-              <MessageCircle className="size-4" />
-              Cobrar
-            </Button>
-          ) : null}
+          {reminder
+            ? whatsAppAction(
+                reminder.trigger,
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    whatsapp.send({ trigger: reminder.trigger, recipient, values: reminder.values, chargeId: charge.id })
+                  }
+                >
+                  <MessageCircle className="size-4" />
+                  Cobrar
+                </Button>,
+                charge.id,
+              )
+            : null}
         </>
       ),
     });
@@ -123,12 +156,13 @@ export function StudentProfileAlerts({
       key: "absence",
       title: `Faltou nas últimas ${streak.streak} aulas`,
       detail: [`Desde ${ddmm(streak.since)}`, ...streak.classGroupNames].join(" · "),
-      actions: canWhatsApp ? (
+      actions: whatsAppAction(
+        "absence_alert",
         <Button variant="outline" onClick={() => whatsapp.send({ trigger: "absence_alert", recipient })}>
           <MessageCircle className="size-4" />
           Mandar mensagem
-        </Button>
-      ) : null,
+        </Button>,
+      ),
     });
   }
 
@@ -147,7 +181,8 @@ export function StudentProfileAlerts({
               Vender pacote
             </Button>
           ) : null}
-          {canWhatsApp ? (
+          {whatsAppAction(
+            "package_ending",
             <Button
               variant="outline"
               onClick={() =>
@@ -156,8 +191,8 @@ export function StudentProfileAlerts({
             >
               <MessageCircle className="size-4" />
               Avisar
-            </Button>
-          ) : null}
+            </Button>,
+          )}
         </>
       ),
     });
@@ -171,12 +206,13 @@ export function StudentProfileAlerts({
       key: "birthday",
       title: days === 0 ? "Faz aniversário hoje" : "Faz aniversário amanhã",
       detail: turning === null ? ddmm(student.birthDate) : `${turning} anos em ${ddmm(student.birthDate)}`,
-      actions: canWhatsApp ? (
+      actions: whatsAppAction(
+        "birthday_greeting",
         <Button variant="outline" onClick={() => whatsapp.send({ trigger: "birthday_greeting", recipient })}>
           <Cake className="size-4" />
           Mandar parabéns
-        </Button>
-      ) : null,
+        </Button>,
+      ),
     });
   }
 

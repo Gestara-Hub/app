@@ -55,6 +55,7 @@ import type {
   Unit,
 } from "@gestarahub/contracts";
 import {
+  useBusinessSegment,
   useOrganization,
   useUnit,
   useUpdateOrganization,
@@ -241,9 +242,12 @@ function OrgUnitForm({
   const hasBusinessHours = Boolean(
     unit.businessHours?.some((day) => !day.closed),
   );
+  // Regras da mensalidade so pedem confirmacao em area de mensalidade (curso,
+  // pacote e sem cobranca nao usam). Pendente nao e alteracao nao salva.
+  const usesMembership = useBusinessSegment().defaultBillingMode === "membership";
   const isBillingUnconfirmed =
-    isClasses && hasBusinessHours && !organization.settings?.billingTiming;
-  useReportDirty(form.formState.isDirty || isBillingUnconfirmed, onDirtyChange);
+    isClasses && usesMembership && hasBusinessHours && !organization.settings?.billingTiming;
+  useReportDirty(form.formState.isDirty, onDirtyChange);
 
   // Watch fields para compor resumos dinâmicos nas barras dos accordions
   const orgName = useWatch({ control: form.control, name: "organizationName" });

@@ -103,6 +103,7 @@ function SendMessageForm({ onDone, fixed }: { onDone: () => void; fixed?: Messag
       recipient: { name: client.name, phone: client.phone, clientId: client.id },
       content: values.content,
       chargeId: chosen?.chargeId,
+      reviewed: true,
     });
     onDone();
   });

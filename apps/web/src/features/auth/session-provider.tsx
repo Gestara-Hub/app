@@ -19,6 +19,7 @@ import { identifyUser } from "@/lib/analytics";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
 import { createQueryClient } from "@/lib/providers";
+import { useRefetchOnStoreChange } from "@/lib/use-refetch-on-store-change";
 import { queryKeys } from "@/lib/queryKeys";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { setActiveOrganization } from "@/mocks/store";
@@ -82,6 +83,8 @@ export function SessionProvider({
     setSession(current);
   }
   const queryClient = current.client;
+  // Outra aba gravou: esta rebusca o que mostra.
+  useRefetchOnStoreChange(queryClient);
 
   // Descarta o cache da sessao anterior (nao no cleanup: o StrictMode roda
   // mount/cleanup/mount e limparia o cache vivo).

@@ -10,14 +10,15 @@ import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 import type { UserSwitchOption } from "@/services/usersService";
 import { signIn } from "../actions";
 
+/** Usuario de demonstracao (dona da Academia X no seed). */
+const DEMO_OWNER_ID = "usr-ac-ana";
+
 export function LoginForm({ from }: { from: string }) {
   const { data: options, isLoading } = useSwitchableUsers();
   const [isPending, startTransition] = useTransition();
 
-  // Deixar apenas a Ana Ribeiro por enquanto (conforme solicitado pelo usuário)
-  const filteredOptions = (options ?? []).filter(
-    (opt) => opt.user.name === "Ana Ribeiro" || opt.user.email === "ana@academiax.com",
-  );
+  // Demo: so a dona da Academia X, pelo id (trocar nome ou e-mail nao tranca a conta).
+  const filteredOptions = (options ?? []).filter((opt) => opt.user.id === DEMO_OWNER_ID);
 
   const onSelect = (opt: UserSwitchOption) => {
     startTransition(async () => {
@@ -37,6 +38,10 @@ export function LoginForm({ from }: { from: string }) {
       <div className="space-y-2">
         {isLoading ? (
           <Skeleton className="h-16 w-full rounded-lg" />
+        ) : filteredOptions.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+            Nenhum usuário disponível. Recarregue a página.
+          </p>
         ) : (
           filteredOptions.map((opt) => (
             <button

@@ -4,7 +4,7 @@ import { Check, ListChecks, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { useCurrentUser } from "@/features/auth";
+import { useModalitiesReviewOnBanner } from "@/lib/modalities-review-signal";
 import {
   useBusinessSegment,
   useMarkModalitiesReviewed,
@@ -13,16 +13,16 @@ import {
 
 /**
  * Aviso enquanto as modalidades criadas no setup nao foram revisadas: explica a
- * trilha de evolucao (vale para qualquer area). O dono confirma no aviso de
- * primeiros passos do topo ("Esta tudo certo"); os outros perfis, que nao veem
- * esse aviso, confirmam aqui. Editar e salvar uma modalidade tambem fecha.
+ * trilha de evolucao (vale para qualquer area). Quando o aviso de configuracao
+ * inicial do topo mostra o "Esta tudo certo", confirma-se la; senao (outro
+ * perfil ou outro passo pendente), aqui. Editar e salvar uma modalidade tambem
+ * fecha.
  */
 export function ModalitiesReviewNotice() {
   const { data: organization } = useOrganization();
   const segment = useBusinessSegment();
   const markMut = useMarkModalitiesReviewed();
-  // O aviso de primeiros passos (com o botao) so aparece para o dono.
-  const confirmsOnBanner = useCurrentUser().profile === "owner";
+  const confirmsOnBanner = useModalitiesReviewOnBanner();
 
   if (organization?.settings?.modalitiesReviewed !== false) return null;
 

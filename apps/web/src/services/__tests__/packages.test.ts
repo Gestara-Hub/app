@@ -981,3 +981,26 @@ describe("conflito de horário considera início e fim", () => {
     ).rejects.toMatchObject({ fields: [{ field: "meetingSlots" }] });
   });
 });
+
+describe("turma desativada", () => {
+  beforeEach(() => resetAcademy());
+
+  it("não aceita matrícula, some das aulas futuras e cancela as reservas futuras", async () => {
+    const g = await teacherClass({ billingMode: "membership", allowDropin: true, sessionPriceCents: 5000 });
+    const ana = await createStudent("Ana");
+    const beto = await createStudent("Beto");
+    const future = sessionOf(g, "2026-09-28");
+    await turmasService.reserveSession({ classGroupId: g.id, sessionId: future, studentId: ana.id, kind: "dropin" });
+    const dropin = store.charges.find((c) => c.kind === "dropin" && c.studentId === ana.id)!;
+
+    await turmasService.deactivate(g.id);
+
+    expect(store.reservations.find((r) => r.sessionId === future)?.status).toBe("canceled");
+    expect(store.charges.find((c) => c.id === dropin.id)).toMatchObject({ status: "canceled", canceledBy: "system" });
+    await expect(turmasService.getSession(future)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(turmasService.getSession(sessionOf(g, "2026-09-21"))).resolves.toBeTruthy();
+    await expect(turmasService.enroll({ classGroupId: g.id, studentId: beto.id })).rejects.toMatchObject({
+      message: "Turma desativada. Reative para matricular.",
+    });
+  });
+});

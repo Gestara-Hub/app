@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { PublicAuthShell } from "@/components/shared/public-auth-shell";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { firstAllowedRoute } from "@/components/layout/nav";
-import { isOnboardingCompletedById, organizationModelById } from "@/mocks/store";
+import { organizationModelById } from "@/mocks/store";
 import { safeRedirectPath } from "@/lib/session";
 import { LoginForm } from "./login-form";
 
@@ -11,14 +11,13 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ from?: string }>;
 }) {
-  // Ja logado com cookie VALIDO -> vai pra home do perfil ou setup. Cookie stale/invalido
+  // Ja logado com cookie VALIDO -> vai pra home do perfil. Configuracao inicial
+  // pendente quem decide e o SetupGuard no navegador (o servidor so ve o mundo
+  // semeado, nao o que a dona ja concluiu). Cookie stale/invalido
   // (getCurrentUser null) cai no seletor e sera sobrescrito no proximo login,
   // evitando loop de redirect com o layout.
   const current = await getCurrentUser();
   if (current) {
-    if (current.profile === "owner" && !isOnboardingCompletedById(current.organizationId)) {
-      redirect("/setup");
-    }
     const model = organizationModelById(current.organizationId) ?? "scheduling";
     redirect(firstAllowedRoute(current, model));
   }

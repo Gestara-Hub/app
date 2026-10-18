@@ -1,4 +1,5 @@
 export { SetupGuard } from "./components/setup-guard";
+export { SetupRouteGuard } from "./components/setup-route-guard";
 export { BusinessSetupWizard } from "./components/business-setup-wizard";
 export { Onboarding } from "./components/onboarding";
 export { OnboardingTopBanner } from "./components/onboarding-top-banner";

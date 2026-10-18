@@ -10,6 +10,7 @@ import { SessionProvider } from "@/features/auth/session-provider";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
 import { OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
+import { WhatsAppConfirmHost } from "@/features/communication";
 import {
   VIEW_MODE_STORAGE_PREFIX,
   ViewModeProvider,
@@ -52,6 +53,7 @@ export default async function AppLayout({
         <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
           <AppSidebar />
           <NavigationTracker />
+          <WhatsAppConfirmHost />
           {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
           <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
             <AppTopbar />

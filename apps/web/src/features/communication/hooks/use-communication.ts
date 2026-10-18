@@ -19,6 +19,7 @@ import { communicationService } from "@/services/communicationService";
 import { studentSummaryService } from "@/services/studentSummaryService";
 import { turmasService } from "@/services/turmasService";
 import { useOrganization } from "@/features/settings";
+import { confirmOfficialSend } from "../components/whatsapp-confirm-host";
 import { ABSENCE_STREAK, messageSuggestions } from "../message-suggestions";
 
 function useInvalidateCommunication() {
@@ -70,10 +71,14 @@ export function useUpdateTemplate() {
   });
 }
 
-export function useMessageLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }) {
+export function useMessageLogs(
+  filter?: { trigger?: string; status?: string; search?: string; clientId?: Id },
+  enabled = true,
+) {
   return useQuery({
     queryKey: queryKeys.communication.logs(filter),
     queryFn: () => communicationService.listLogs(filter),
+    enabled,
   });
 }
 
@@ -137,6 +142,8 @@ export interface WhatsAppSendInput {
   /** Texto pronto (dispensa o modelo), ex.: mensagem avulsa. */
   content?: string;
   chargeId?: Id;
+  /** O usuario ja viu e revisou o texto (dialogo de mensagem): no oficial, envia sem perguntar. */
+  reviewed?: boolean;
 }
 
 /**
@@ -186,12 +193,17 @@ export function useWhatsAppSend() {
       chargeId: input.chargeId,
     };
     if (mode === "official") {
-      // Promessa em vez do callback do `mutate`: quem chamou costuma fechar o
-      // dialogo na hora, e o callback por chamada nao roda depois de desmontar.
-      send
-        .mutateAsync(payload)
-        .then(() => toast.success(`Mensagem enviada para ${input.recipient.name}.`))
-        .catch((err: unknown) => toast.error(getErrorMessage(err, "Não foi possível enviar a mensagem.")));
+      // A API envia sozinha: um toque num aviso nunca manda direto, confirma
+      // vendo o texto. Promessa em vez do callback do `mutate`: quem chamou
+      // costuma fechar o dialogo na hora, e o callback nao roda depois de desmontar.
+      const confirmed = input.reviewed ? Promise.resolve(true) : confirmOfficialSend(input.recipient.name, content);
+      void confirmed.then((ok) => {
+        if (!ok) return;
+        send
+          .mutateAsync(payload)
+          .then(() => toast.success(`Mensagem enviada para ${input.recipient.name}.`))
+          .catch((err: unknown) => toast.error(getErrorMessage(err, "Não foi possível enviar a mensagem.")));
+      });
       return;
     }
     window.open(whatsappLink(phone, content), "_blank", "noopener,noreferrer");

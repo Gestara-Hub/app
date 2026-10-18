@@ -39,6 +39,7 @@ import type {
   WaitlistEntry,
   WhatsAppConnection,
 } from "@gestarahub/contracts";
+import { STORE_CHANGED_EVENT } from "@/lib/store-events";
 import { mockConfig } from "./config";
 import {
   createInitialWorld,
@@ -122,6 +123,8 @@ export interface MockWorld {
 }
 
 const STORAGE_KEY = "gestarahub:db";
+/** Ultimo texto lido ou gravado: outra aba gravou se o salvo for diferente. */
+let lastSnapshot: string | null = null;
 
 // Versao do seed. Subir quando a forma/conteudo do seed mudar: dados salvos com
 // versao diferente sao descartados e re-seedados (migracao/auto-reset do mock).
@@ -475,6 +478,7 @@ function loadFromStorage(): MockWorld | null {
     const parsed = JSON.parse(raw) as Partial<PersistedBlob>;
     if (!parsed.data || typeof parsed.v !== "number") return null;
     if (parsed.v < 20) return null; // versões muito antigas reiniciam limpas
+    lastSnapshot = raw;
 
     let worldData = parsed.data;
     if (parsed.v < SEED_VERSION) {
@@ -512,7 +516,9 @@ function saveToStorage(snapshot: MockWorld): void {
   if (typeof window === "undefined") return;
   try {
     const blob: PersistedBlob = { v: SEED_VERSION, data: snapshot };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(blob));
+    const raw = JSON.stringify(blob);
+    window.localStorage.setItem(STORAGE_KEY, raw);
+    lastSnapshot = raw;
   } catch {
     // Modo privado / quota excedida: segue apenas em memoria.
   }
@@ -533,6 +539,43 @@ if (canPersist()) {
 
 function activeStore(): MockStore {
   return world.tenants[world.activeOrganizationId];
+}
+
+/**
+ * Duas abas: antes de cada leitura e escrita, rele o que a outra aba gravou,
+ * para uma nunca apagar o que a outra salvou. O tenant ativo e desta aba.
+ * Devolve true quando trouxe dados novos.
+ */
+export function syncFromStorage(): boolean {
+  if (!canPersist()) return false;
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return false;
+  }
+  if (!raw || raw === lastSnapshot) return false;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedBlob>;
+    // Outra versao do app (aba antiga aberta): nao mistura.
+    if (parsed.v !== SEED_VERSION || !parsed.data?.tenants) return false;
+    lastSnapshot = raw;
+    world.tenants = parsed.data.tenants;
+    if (!world.tenants[world.activeOrganizationId]) {
+      world.activeOrganizationId = parsed.data.activeOrganizationId;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Outra aba gravou: rele e avisa as telas desta aba (lib/store-events).
+if (canPersist() && typeof window.addEventListener === "function") {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    if (syncFromStorage()) window.dispatchEvent(new Event(STORE_CHANGED_EVENT));
+  });
 }
 
 /**
@@ -590,11 +633,6 @@ export function organizationTierById(organizationId: Id): SubscriptionTier | und
   const org = world.tenants[organizationId]?.organization;
   if (!org) return undefined;
   return org.subscription?.tier ?? "free";
-}
-
-/** Indica se a organizacao ja concluiu a etapa de setup inicial (onboarding). */
-export function isOnboardingCompletedById(organizationId: Id): boolean {
-  return Boolean(world.tenants[organizationId]?.organization.settings?.onboardingCompleted);
 }
 
 /**

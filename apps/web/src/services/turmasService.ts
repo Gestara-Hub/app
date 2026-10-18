@@ -899,10 +899,28 @@ export const turmasService = {
         status: "inactive",
         updatedAt: nowIso(),
       };
+      // Sem aulas daqui para frente: reservas futuras saem, e a avulsa em aberto
+      // delas tambem (cancelada pelo sistema, nao e perda).
+      const today = todayISO();
+      let canceledReservations = 0;
+      for (const r of store.reservations) {
+        const date = parseSessionId(r.sessionId)?.date;
+        if (r.status !== "reserved" || !r.sessionId.startsWith(`${id}${SEP}`) || !date || date <= today) continue;
+        r.status = "canceled";
+        canceledReservations += 1;
+        const chargeId = r.chargeId || r.cobrancaId;
+        const charge = chargeId ? store.charges.find((c) => c.id === chargeId) : undefined;
+        if (charge && (charge.status === "pending" || charge.status === "overdue")) {
+          charge.status = "canceled";
+          charge.canceledBy = "system";
+          charge.updatedAt = nowIso();
+          cancelOnlinePaymentsForCharge(charge.id);
+        }
+      }
       auditLogService.record({
         action: "inactivated",
         target: { type: "class_group", id, label: g.name },
-        predicate: `desativou a turma ${g.name}`,
+        predicate: `desativou a turma ${g.name}${canceledReservations > 0 ? ` e cancelou ${plural(canceledReservations, "reserva futura", "reservas futuras")}` : ""}`,
       });
       return clone(toGroupView(store.classGroups[idx]));
     });
@@ -1004,6 +1022,9 @@ export const turmasService = {
     return simulateWrite(() => {
       const g = store.classGroups.find((x) => x.id === payload.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
+      if (g.status !== "active") {
+        throw apiError("VALIDATION", "Turma desativada. Reative para matricular.", { httpStatus: 409 });
+      }
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) {
         throw validationError([{ field: "studentId", message: "Selecione um aluno." }]);

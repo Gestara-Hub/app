@@ -19,6 +19,7 @@ import {
   MessageSquarePlus,
   Package,
   Pencil,
+  Power,
   UserCheck,
   UserPlus,
   UserX,
@@ -40,7 +41,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListItemCard } from "@/components/shared/list-item-card";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
-import { ListContainer, ListRow, SearchInput } from "@/components/shared/list";
+import { ListContainer, ListRow, RecordStatusBadge, SearchInput } from "@/components/shared/list";
 import { PageActionsMenu } from "@/components/shared/page-actions-menu";
 import { BackLink } from "@/components/shared/back-link";
 import {
@@ -80,6 +81,7 @@ import {
   useRemoveFromWaitlist,
   useSetEnrollmentPayment,
   useClassSessions,
+  useReactivateClassGroup,
   useWaitlist,
 } from "../hooks/use-turmas";
 import { useCharges } from "../hooks/use-billing";
@@ -213,6 +215,7 @@ export function TurmaDetailView({
   const promoteMut = usePromoteWaitlist();
   const removeWaitMut = useRemoveFromWaitlist();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+  const reactivateMut = useReactivateClassGroup();
   const can = useCan();
   // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
   const canOpenProfile = can("clients:view");
@@ -449,8 +452,9 @@ export function TurmaDetailView({
   };
 
   const isCourse = classBillingMode(turma) === "course";
-  // Curso terminado nao recebe matricula nova (o servico tambem recusa).
-  const canEnroll = canManage && !(isCourse && turma.isEnded);
+  const isInactive = turma.status !== "active";
+  // Turma desativada e curso terminado nao recebem matricula nova (o servico tambem recusa).
+  const canEnroll = canManage && !isInactive && !(isCourse && turma.isEnded);
   const selectedHasCourse = selectedRows.some((e) => e.course && !e.isCompleted);
 
   // Uma linha de informacao; preco e regras do curso ficam em "Editar turma".
@@ -488,7 +492,25 @@ export function TurmaDetailView({
     setSelected(new Set());
   };
 
+  const reactivateTurma = async () => {
+    const ok = await confirmAction({
+      title: "Reativar turma?",
+      description: `“${turma.name}” volta a gerar aulas e a aceitar matrícula.`,
+      confirmLabel: "Reativar",
+    });
+    if (!ok) return;
+    try {
+      await reactivateMut.mutateAsync(turma.id);
+      toast.success("Turma reativada.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível reativar a turma."));
+    }
+  };
+
   const pageActions: ListItemAction[] = [
+    ...(canEditTurma && isInactive
+      ? [{ key: "reactivate", label: "Reativar turma", icon: <Power className="size-4" />, onSelect: () => void reactivateTurma() }]
+      : []),
     ...(canEditTurma
       ? [{ key: "edit", label: "Editar turma", icon: <Pencil className="size-4" />, onSelect: () => setEditOpen(true) }]
       : []),
@@ -530,7 +552,10 @@ export function TurmaDetailView({
       <div className="mb-6 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{turma.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight">{turma.name}</h1>
+              {isInactive ? <RecordStatusBadge status={turma.status} /> : null}
+            </div>
             <p className="text-sm text-muted-foreground" data-testid="class-billing-summary">
               {meta}
             </p>
@@ -551,7 +576,7 @@ export function TurmaDetailView({
             Matricular alunos
           </Button>
         ) : null}
-        <NextSessionLink classGroupId={turma.id} canMark={canMark} />
+        {isInactive ? null : <NextSessionLink classGroupId={turma.id} canMark={canMark} />}
       </div>
 
       <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
