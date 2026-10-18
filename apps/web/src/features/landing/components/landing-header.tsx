@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Menu, Moon, Sun, X } from "lucide-react";
@@ -22,6 +22,24 @@ export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const { resolvedTheme, setTheme } = useTheme();
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Menu do celular fecha com Esc e com toque fora do cabecalho.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     const updateScrollProgress = () => {
@@ -42,7 +60,7 @@ export function LandingHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-colors relative">
+    <header ref={headerRef} className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-colors relative">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">

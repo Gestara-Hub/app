@@ -74,6 +74,9 @@ export function StudentMessagesPanel({
         normalizeText(TRIGGER_META[log.trigger]?.label ?? "").includes(query)),
   );
   const hasFilters = status !== "all";
+  // Sem nenhuma mensagem: so o vazio com "Nova mensagem" (busca, filtro e o
+  // segundo botao nao servem para nada).
+  const noMessages = !isPending && logs.length === 0;
 
   const actionsFor = (log: MessageLog): ListItemAction[] => [
     { key: "view", label: "Ver mensagem", icon: <Eye className="size-4" />, onSelect: () => setSelected(log) },
@@ -81,46 +84,50 @@ export function StudentMessagesPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar no texto..."
-          aria-label="Buscar mensagem"
-        />
-        <div className="flex gap-2">
-          <Select value={status} onValueChange={(v) => setStatus(v as "all" | MessageLogStatus)}>
-            <SelectTrigger className="w-full sm:w-48" aria-label="Status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTERS.map((f) => (
-                <SelectItem key={f.value} value={f.value}>
-                  {f.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {canSend ? (
-            <Button className="shrink-0" onClick={() => setSendOpen(true)}>
-              <MessageSquarePlus className="size-4" />
-              Nova mensagem
-            </Button>
-          ) : null}
+      {noMessages ? null : (
+          <>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar no texto..."
+            aria-label="Buscar mensagem"
+          />
+          <div className="flex gap-2">
+            <Select value={status} onValueChange={(v) => setStatus(v as "all" | MessageLogStatus)}>
+              <SelectTrigger className="w-full sm:w-48" aria-label="Status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FILTERS.map((f) => (
+                  <SelectItem key={f.value} value={f.value}>
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {canSend ? (
+              <Button className="shrink-0" onClick={() => setSendOpen(true)}>
+                <MessageSquarePlus className="size-4" />
+                Nova mensagem
+              </Button>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <ListSummaryBar
-        count={rows.length}
-        singularLabel="mensagem"
-        pluralLabel="mensagens"
-        isLoading={isPending}
-        hasFilters={hasFilters || query !== ""}
-        onClearFilters={() => {
-          setSearch("");
-          setStatus("all");
-        }}
-      />
+        <ListSummaryBar
+          count={rows.length}
+          singularLabel="mensagem"
+          pluralLabel="mensagens"
+          isLoading={isPending}
+          hasFilters={hasFilters || query !== ""}
+          onClearFilters={() => {
+            setSearch("");
+            setStatus("all");
+          }}
+        />
+        </>
+      )}
 
       <ListContainer
         emptyState={

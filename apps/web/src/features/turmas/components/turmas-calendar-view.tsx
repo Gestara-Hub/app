@@ -88,6 +88,8 @@ function useCalendarFilters() {
     viewParam === "list" || viewParam === "grid" ? viewParam : isMobile ? "list" : "grid";
   const modality = searchParams.get("modality") ?? ALL;
   const instructor = searchParams.get("instructor") ?? ALL;
+  // Vindo de uma turma ("Ver aulas no calendario"): so as aulas dela.
+  const classGroupId = searchParams.get("class");
 
   const update = (patch: Record<string, string | null>) => {
     // Parte da URL atual (nao do snapshot do render): duas trocas seguidas
@@ -118,13 +120,16 @@ function useCalendarFilters() {
   const setModality = (value: string) => update({ modality: value === ALL ? null : value });
   const setInstructor = (value: string) =>
     update({ instructor: value === ALL ? null : value });
-  const clearFilters = () => update({ modality: null, instructor: null });
+  const clearFilters = () => update({ modality: null, instructor: null, class: null });
+  const clearClassGroup = () => update({ class: null });
 
   return {
     anchor,
     view,
     modality,
     instructor,
+    classGroupId,
+    clearClassGroup,
     setAnchor,
     shiftWeek,
     setView,
@@ -140,6 +145,8 @@ export function TurmasCalendarView() {
     view,
     modality,
     instructor,
+    classGroupId,
+    clearClassGroup,
     setAnchor,
     shiftWeek,
     setView,
@@ -182,12 +189,16 @@ export function TurmasCalendarView() {
       (sessions ?? []).filter(
         (s) =>
           (modality === ALL || s.modalityName === modality) &&
-          (instructor === ALL || s.instructorName === instructor),
+          (instructor === ALL || s.instructorName === instructor) &&
+          (!classGroupId || s.classGroupId === classGroupId),
       ),
-    [sessions, modality, instructor],
+    [sessions, modality, instructor, classGroupId],
   );
 
-  const hasFilters = modality !== ALL || instructor !== ALL;
+  const hasFilters = modality !== ALL || instructor !== ALL || Boolean(classGroupId);
+  const filteredClassName = classGroupId
+    ? (sessions ?? []).find((s) => s.classGroupId === classGroupId)?.className
+    : undefined;
 
   return (
     <>
@@ -286,6 +297,19 @@ export function TurmasCalendarView() {
           </Select>
         </div>
       </div>
+
+      {classGroupId ? (
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+          <span>Só as aulas {filteredClassName ? `da turma ${filteredClassName}` : "desta turma"}.</span>
+          <button
+            type="button"
+            onClick={clearClassGroup}
+            className="cursor-pointer font-medium text-foreground underline underline-offset-4 hover:text-primary"
+          >
+            Ver todas
+          </button>
+        </p>
+      ) : null}
 
       {!mounted || isLoading ? (
         <Skeleton className="h-96 w-full rounded-lg" />

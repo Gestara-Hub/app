@@ -294,7 +294,7 @@ export function TurmaDetailView({
   // Turma de pacote (ou quem paga com ele): avisos de ultima aula e sem pacote.
   const isMembership = turma ? classBillingMode(turma) === "membership" : false;
   const isPackageClass = turma ? classBillingMode(turma) === "package" : false;
-  const { data: activePackages } = useStudentPackages(
+  const { data: activePackages, isPending: packagesPending } = useStudentPackages(
     { status: "active" },
     (isMembership || isPackageClass) && canManage,
   );
@@ -534,13 +534,15 @@ export function TurmaDetailView({
       key: "calendar",
       label: "Ver aulas no calendário",
       icon: <CalendarDays className="size-4" />,
-      onSelect: () => router.push("/classes/calendar"),
+      onSelect: () => router.push(`/classes/calendar?class=${encodeURIComponent(turma.id)}`),
     },
   ];
 
   // Alerta de pacote de quem paga a aula com ele (turma de pacote ou mensalidade com pacote).
   const packageAlertOf = (e: EnrollmentView): string | null => {
     if (!(isPackageClass || (isMembership && e.paysWithPackage))) return null;
+    // Sem os pacotes carregados ainda nao da para dizer "Sem pacote" (piscava).
+    if (packagesPending) return null;
     const left = packageLessonsByStudent.get(e.studentId);
     if (left === undefined) return "Sem pacote";
     return left === 1 ? "Última aula do pacote" : null;
@@ -899,8 +901,9 @@ export function TurmaDetailView({
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* "Cancelar" ao lado de "Cancelar matrícula" confundia. */}
                     <Button variant="ghost" onClick={stopSelecting}>
-                      Cancelar
+                      Sair da seleção
                     </Button>
                     <Button
                       variant="outline"

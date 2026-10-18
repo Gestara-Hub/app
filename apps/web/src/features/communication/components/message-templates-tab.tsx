@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HeartHandshake, Megaphone, Pencil, Wallet } from "lucide-react";
+import { ChevronDown, HeartHandshake, Megaphone, Pencil, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
@@ -113,6 +114,9 @@ export function MessageTemplatesTab() {
   const hasFeature = useHasFeature();
   const canManage = useCan()("communication:manage");
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
+  // Grupos em sanfona: no celular so o primeiro abre (eram 14 cartoes seguidos).
+  const isMobile = useIsMobile();
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const official = connection?.mode === "official";
   const withPaymentLink = hasFeature("online_payments");
 
@@ -128,21 +132,36 @@ export function MessageTemplatesTab() {
 
   return (
     <div className="space-y-8">
-      {GROUPS.map((group) => {
+      {GROUPS.map((group, index) => {
         const items = (templates ?? [])
           .filter((t) => t.category === group.category)
           .sort((a, b) => TRIGGER_ORDER.indexOf(a.trigger) - TRIGGER_ORDER.indexOf(b.trigger));
         if (items.length === 0) return null;
+        const open = toggled[group.category] ?? (!isMobile || index === 0);
+        const panelId = `templates-${group.category}`;
         return (
           <section key={group.category} className="space-y-3">
-            <div>
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <group.icon className="size-4 text-muted-foreground" />
-                {group.title}
-              </h3>
-              <p className="text-xs text-muted-foreground">{group.hint}</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={panelId}
+              onClick={() => setToggled((prev) => ({ ...prev, [group.category]: !open }))}
+              className="flex w-full cursor-pointer items-start justify-between gap-3 text-left"
+            >
+              <span>
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <group.icon className="size-4 text-muted-foreground" />
+                  {group.title}
+                  <span className="text-xs font-normal text-muted-foreground tabular-nums">({items.length})</span>
+                </span>
+                <span className="block text-xs text-muted-foreground">{group.hint}</span>
+              </span>
+              <ChevronDown
+                className={cn("mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+                aria-hidden
+              />
+            </button>
+            <div id={panelId} hidden={!open} className="grid gap-4 md:grid-cols-2">
               {items.map((template) => (
                 <TemplateCard
                   key={template.id}

@@ -41,7 +41,7 @@ import { useMessageLogs, useRetryMessage, useWhatsAppConnection } from "../hooks
 import { STATUS_META, TRIGGER_META } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
-type KindFilter = "all" | "billing" | "retention" | "manual";
+type KindFilter = "all" | "billing" | "retention" | "notices" | "manual";
 
 const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
   { value: "all", label: "Todos os status" },
@@ -55,6 +55,7 @@ const KIND_FILTERS: { value: KindFilter; label: string }[] = [
   { value: "all", label: "Todos os tipos" },
   { value: "billing", label: "Cobrança" },
   { value: "retention", label: "Relacionamento" },
+  { value: "notices", label: "Avisos" },
   { value: "manual", label: "Avulsa" },
 ];
 
@@ -84,6 +85,8 @@ export function MessageLogsTab() {
     if (kind === "manual") return log.trigger === "manual_broadcast";
     if (kind === "billing") return log.category === "billing";
     if (kind === "retention") return log.category === "retention";
+    // Aula cancelada, mudanca de horario e feriado (antes caiam em "Avulsa").
+    if (kind === "notices") return log.category === "administrative" && log.trigger !== "manual_broadcast";
     return true;
   });
   const hasSearch = search.trim().length > 0;

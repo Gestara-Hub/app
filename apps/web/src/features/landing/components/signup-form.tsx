@@ -115,7 +115,7 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
             required
             disabled={isPending}
           />
-          <SubmitButton pending={isPending} className="h-11 w-full" />
+          <SubmitButton pending={isPending} className="w-full" />
         </div>
 
         {submitError ? (

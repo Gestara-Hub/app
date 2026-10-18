@@ -22,8 +22,8 @@ export function LandingHero() {
           </div>
 
           {/* Headline limpa e objetiva */}
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-foreground leading-[1.15]">
-            <span className="block">Chega de caderno e planilha.</span>
+          <h1 className="text-balance text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-foreground leading-[1.15]">
+            <span className="block text-balance">Chega de caderno e planilha.</span>
             <span className="block">Gestão simples para</span>
             <span className="sr-only">quem ensina.</span>
             <span aria-hidden="true" className="block text-primary">
