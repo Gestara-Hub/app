@@ -9,7 +9,7 @@ import type { ClassGroup, EnrollmentCourseChoice } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { DateField, InputCurrency, SelectField } from "@/components/form";
-import { paymentSummary } from "../installments-summary";
+import { pastDueHint, paymentSummary } from "../installments-summary";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -77,8 +77,9 @@ function chargeLine(priceCents: number, installments: number, firstDueDate: stri
       ? "hoje"
       : format(parseISO(firstDueDate), "dd/MM");
   const price = formatCents(priceCents);
-  if (installments <= 1) return due ? `${price} à vista, vence ${due}` : `${price} à vista`;
-  return due ? `${price} em ${installments}x, 1ª vence ${due}` : `${price} em ${installments}x`;
+  const late = pastDueHint(firstDueDate) ? " (já atrasada)" : "";
+  if (installments <= 1) return due ? `${price} à vista, vence ${due}${late}` : `${price} à vista`;
+  return due ? `${price} em ${installments}x, 1ª vence ${due}${late}` : `${price} em ${installments}x`;
 }
 
 /**
@@ -110,6 +111,7 @@ export function CoursePaymentFields({
     name: ["priceCents", "installments", "firstDueDate"],
   });
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
+  const pastDue = pastDueHint(firstDueDate ?? "");
   const [editing, setEditing] = useState(false);
   const { errors } = useFormState({ control: form.control });
   const open = editing || Object.keys(errors).length > 0;
@@ -167,6 +169,11 @@ export function CoursePaymentFields({
           <p className="text-xs text-muted-foreground" data-testid="course-installments-summary">
             {summary}
             {appliesToMany ? " Vale para cada aluno." : ""}
+          </p>
+        ) : null}
+        {pastDue ? (
+          <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-due-hint">
+            {pastDue}
           </p>
         ) : null}
       </section>

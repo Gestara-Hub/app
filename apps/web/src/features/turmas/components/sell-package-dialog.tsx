@@ -5,7 +5,7 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { Client, LessonPackage } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
@@ -26,9 +26,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { handleFormApiError } from "@/lib/form-errors";
 import { useLessonPackages, useSellPackage, useStudentPackages } from "../hooks/use-packages";
-import { paymentSummary } from "../installments-summary";
+import { pastDueHint, paymentSummary } from "../installments-summary";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -116,6 +117,8 @@ function SellPackageForm({
     form.setValue("priceCents", chosen.priceCents, { shouldDirty: true });
   }, [chosen, form]);
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
+  const pastDue = pastDueHint(firstDueDate ?? "");
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Regra 6: comprar de novo o mesmo pacote traz o saldo dele; outro pacote da
   // mesma turma fica separado (avisa, para ninguem esperar a soma).
   const today = format(new Date(), "yyyy-MM-dd");
@@ -130,6 +133,16 @@ function SellPackageForm({
     : [];
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Data no passado costuma ser engano (ano errado): confirma antes de vender.
+    if (pastDueHint(values.firstDueDate)) {
+      const ok = await confirm({
+        title: "Vencimento no passado?",
+        description: `O 1º vencimento é ${format(parseISO(values.firstDueDate), "dd/MM/yyyy")} e já entra atrasado.`,
+        confirmLabel: "Vender assim",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     try {
       await sellMut.mutateAsync({
         studentId: student.id,
@@ -175,6 +188,11 @@ function SellPackageForm({
             />
             <DateField<SellPackageValues> name="firstDueDate" label="1º vencimento" required disabled={pending} />
           </div>
+          {pastDue ? (
+            <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-due-hint">
+              {pastDue}
+            </p>
+          ) : null}
 
           {summary ? (
             <p className="text-xs text-muted-foreground" data-testid="package-installments-summary">
@@ -201,6 +219,7 @@ function SellPackageForm({
           className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
         />
       </form>
+      {confirmDialog}
     </FormProvider>
   );
 }

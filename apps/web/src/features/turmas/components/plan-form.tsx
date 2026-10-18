@@ -13,6 +13,9 @@ import {
 import { handleFormApiError } from "@/lib/form-errors";
 import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { useClients } from "@/features/clients";
+import { plural } from "@gestarahub/core/format";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
@@ -42,6 +45,9 @@ export function PlanForm({
   const createMut = useCreatePlan();
   const updateMut = useUpdatePlan();
   const isEdit = Boolean(plan);
+  // Mudar o valor de um plano em uso diz para quem vale antes de salvar.
+  const { data: activeClients } = useClients({ status: "active" }, isEdit);
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
   const pending = createMut.isPending || updateMut.isPending;
 
   const form = useForm<PlanFormValues>({
@@ -58,6 +64,16 @@ export function PlanForm({
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
+    const inPlan = plan ? (activeClients ?? []).filter((c) => c.planId === plan.id).length : 0;
+    if (plan && inPlan > 0 && values.priceCents !== plan.priceCents) {
+      const ok = await confirm({
+        title: "Mudar o valor do plano?",
+        description: `Vale para ${plural(inPlan, "o aluno deste plano", "os alunos deste plano")} a partir da próxima mensalidade. As já geradas ficam como estão.`,
+        confirmLabel: "Mudar o valor",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     const payload: CreatePlan = {
       name: values.name,
       period: values.period,
@@ -80,6 +96,7 @@ export function PlanForm({
 
   return (
     <FormProvider {...form}>
+      {confirmDialog}
       <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
         <InputText<PlanFormValues>
           name="name"

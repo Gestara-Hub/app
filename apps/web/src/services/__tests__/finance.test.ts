@@ -305,10 +305,20 @@ describe("resumo do mês", () => {
       },
     ]);
 
+    // Lançamentos mostra a mesma prévia (Resumo e lista batem).
+    const entries = await financeService.listEntries({ competence: "2026-09" });
+    expect(entries.filter((e) => e.source === "teacher_payout")).toMatchObject([
+      { description: "Pagamento de Carlos (agosto, prévia)", amountCents: 100000, status: "overdue" },
+    ]);
+
     // Fechado vem do registro (não duplica com a prévia).
     await teacherPayService.closePayout(teacher.id, "2026-08");
     const after = await financeService.getUpcoming(7);
     expect(after.map((u) => u.description)).toEqual(["Pagamento de Carlos (agosto)"]);
+    const closed = await financeService.listEntries({ competence: "2026-09" });
+    expect(closed.filter((e) => e.source === "teacher_payout").map((e) => e.description)).toEqual([
+      "Pagamento de Carlos (agosto)",
+    ]);
   });
 
   it("Pix Automático é processado antes de ler o Resumo", async () => {

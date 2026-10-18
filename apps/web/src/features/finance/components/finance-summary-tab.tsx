@@ -328,8 +328,8 @@ function VariantSimplified({
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-foreground">Próximos Pagamentos</h3>
-                <p className="text-xs text-muted-foreground">Contas e professores nos próximos 7 dias</p>
+                <h3 className="text-base font-semibold text-foreground">Contas a pagar</h3>
+                <p className="text-xs text-muted-foreground">Atrasadas e as que vencem em 7 dias</p>
               </div>
               <Clock className="size-4 text-muted-foreground" />
             </div>
@@ -337,7 +337,7 @@ function VariantSimplified({
             {nextPayments.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
                 <CheckCircle2 className="size-6 text-emerald-500 mx-auto mb-2 opacity-80" />
-                Nenhum pagamento pendente para os próximos 7 dias. Tudo em dia!
+                Nenhuma conta atrasada nem vencendo em 7 dias.
               </div>
             ) : (
               <div className="divide-y divide-border/40">
@@ -911,7 +911,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div className="flex items-center gap-2">
           <Clock className="size-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Compromissos Financeiros Próximos (7 dias)</h3>
+          <h3 className="text-sm font-semibold text-foreground">Contas a pagar: atrasadas e próximos 7 dias</h3>
           <Badge variant="outline" className="text-[11px] font-normal">
             {plural(items.length, "vencimento", "vencimentos")}
           </Badge>

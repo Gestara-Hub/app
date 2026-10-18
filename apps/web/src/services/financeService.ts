@@ -693,6 +693,24 @@ export const financeService = {
         const row = payoutRow(p);
         if (row) rows.push(row);
       }
+      // Previa do professor (mes ainda nao fechado): o Resumo ja conta como a
+      // pagar, entao Lancamentos mostra tambem (antes os totais nao batiam).
+      const teachers = systemCategoryId("teachers");
+      for (const p of openPreviews()) {
+        if (competenceOf(p.dueDate) !== competence) continue;
+        rows.push({
+          id: `preview:${p.professionalId}:${p.competence}`,
+          source: "teacher_payout",
+          type: "expense",
+          categoryId: teachers,
+          categoryName: categoryName(teachers, "Professores"),
+          description: `Pagamento de ${p.professionalName} (${monthName(p.competence)}, prévia)`,
+          amountCents: p.totalCents,
+          dueDate: p.dueDate,
+          status: p.dueDate < today ? "overdue" : "pending",
+          professionalId: p.professionalId,
+        });
+      }
       for (const e of store.financialEntries) {
         if (competenceOf(e.dueDate) === competence) rows.push(toEntryView(e, today));
       }

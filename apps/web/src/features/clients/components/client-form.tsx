@@ -77,6 +77,9 @@ import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
 import { MAX_INSTALLMENTS, resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 
+/** Teto da 1a cobranca (R$ 100.000,00): evita valor digitado errado. */
+const MAX_FIRST_CHARGE_CENTS = 10_000_000;
+
 const MEMBERSHIP_STATUS_OPTIONS = [
   { value: "active", label: "Ativa (treinando normalmente)" },
   { value: "paused", label: "Trancada / Pausada (não gera cobrança)" },
@@ -809,6 +812,23 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       planId && (!isEdit || planId !== client?.planId),
     );
     let initialChargePayload: CreateClient["initialCharge"] | undefined;
+
+    // 1a cobranca: vazia ou zero nao viram a previa em silencio; valor absurdo, nao.
+    if (isNewPlanAssignment && billingCalculation && showFirstCharge && !discountPayload?.scholarship) {
+      const amount = values.firstChargeAmount;
+      const message =
+        amount === undefined || amount === null
+          ? "Informe o valor da 1ª cobrança."
+          : amount <= 0 && billingCalculation.first.amountCents > 0
+            ? "Use um valor maior que zero. Para não cobrar, use desconto ou bolsa."
+            : amount > MAX_FIRST_CHARGE_CENTS
+              ? "Valor muito alto. Confira o valor da 1ª cobrança."
+              : null;
+      if (message) {
+        form.setError("firstChargeAmount", { message });
+        return;
+      }
+    }
 
     if (isNewPlanAssignment && billingCalculation) {
       const { first } = billingCalculation;

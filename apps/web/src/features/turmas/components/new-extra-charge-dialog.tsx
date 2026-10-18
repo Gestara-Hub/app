@@ -5,7 +5,7 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { ChargeView, Client } from "@gestarahub/contracts";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { getFieldErrors } from "@gestarahub/core/api-error";
@@ -30,7 +30,8 @@ import { cn } from "@/lib/utils";
 import { useClients } from "@/features/clients";
 import { useBusinessSegment } from "@/features/settings";
 import { useCreateExtraCharge } from "../hooks/use-billing";
-import { installmentsSummary } from "../installments-summary";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { installmentsSummary, pastDueHint } from "../installments-summary";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DESCRIPTION_MAX = 80;
@@ -99,8 +100,20 @@ function ExtraChargeForm({
     name: ["description", "totalCents", "firstDueDate", "installments"],
   });
   const summary = installmentsSummary(totalCents, Number(installments), firstDueDate);
+  const pastDue = pastDueHint(firstDueDate);
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Data no passado costuma ser engano (ano errado): confirma antes de lancar.
+    if (pastDueHint(values.firstDueDate)) {
+      const ok = await confirm({
+        title: "Vencimento no passado?",
+        description: `A cobrança vence em ${format(parseISO(values.firstDueDate), "dd/MM/yyyy")} e já entra atrasada.`,
+        confirmLabel: "Lançar assim",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     try {
       const created = await createMut.mutateAsync({
         studentId: values.studentId,
@@ -176,6 +189,11 @@ function ExtraChargeForm({
             <InputCurrency<ExtraChargeValues> name="totalCents" label="Valor" required disabled={pending} />
             <DateField<ExtraChargeValues> name="firstDueDate" label="Vencimento" required disabled={pending} />
           </div>
+          {pastDue ? (
+            <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-due-hint">
+              {pastDue}
+            </p>
+          ) : null}
 
           <div className="space-y-2">
             <SelectField<ExtraChargeValues>
@@ -194,6 +212,7 @@ function ExtraChargeForm({
         </DialogBody>
         <DialogFormFooter isPending={pending} className="shrink-0 border-t border-border/40 px-6 py-4" />
       </form>
+      {confirmDialog}
     </FormProvider>
   );
 }
