@@ -711,6 +711,28 @@ export type ClassSessionListItem = ClassSessionView & {
   occupiedCount: number;
 };
 
+/** Detalhe da aula, sincrono, para outros services (relatorios). Lanca NOT_FOUND. */
+export function sessionDetailOf(id: Id): ClassSessionDetail {
+  return buildSessionDetail(id);
+}
+
+/** Aulas de uma turma entre duas datas, na grade de cada data (relatorios). */
+export function sessionsOfClass(
+  g: ClassGroup,
+  dateFrom: DateISO,
+  dateTo: DateISO,
+): { id: Id; date: DateISO; start: TimeISO }[] {
+  const out: { id: Id; date: DateISO; start: TimeISO }[] = [];
+  for (const date of datesBetween(dateFrom, dateTo)) {
+    if (date < g.startDate || (g.endDate && date > g.endDate)) continue;
+    const wd = weekdayOf(date);
+    for (const slot of meetingSlotsOn(g, date)) {
+      if (slot.weekday === wd) out.push({ id: makeSessionId(g.id, date, slot.start), date, start: slot.start });
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+}
+
 function buildSessionDetail(id: Id): ClassSessionDetail {
   const { g, date, slot } = resolveSession(id);
   const view = toSessionView(g, date, slot);

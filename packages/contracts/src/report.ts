@@ -32,6 +32,8 @@ export interface ReportFilter {
   startDate?: DateISO;
   endDate?: DateISO;
   classGroupId?: Id;
+  /** Lista de presenca: a aula (`turma~data~inicio`); sem ela, a ultima do mes. */
+  sessionId?: Id;
   professionalId?: Id;
   status?: string;
 }
@@ -45,17 +47,24 @@ export interface ReportHeaderInfo {
   periodLabel: string;
 }
 
-// 1. Lista de Chamada e Presença
+// 1. Lista de Chamada e Presença (uma aula de uma turma)
 export interface AttendanceReportRow {
   studentId: Id;
   studentName: string;
   belt?: string;
-  status: "present" | "absent";
+  /** Marcacao da chamada; `unmarked` = chamada ainda nao feita para o aluno. */
+  status: "present" | "absent" | "justified" | "unmarked";
   checkInTime?: string;
 }
 
 export interface AttendanceReportData {
   header: ReportHeaderInfo;
+  /** Turma e aula mostradas (ausentes sem turma ativa ou sem aula no mes). */
+  classGroupId?: Id;
+  sessionId?: Id;
+  /** Turmas ativas e aulas do mes da turma (ate hoje), para escolher. */
+  classOptions: { id: Id; name: string }[];
+  sessionOptions: { id: Id; date: DateISO; start: string }[];
   className: string;
   modalityName: string;
   teacherName: string;
@@ -63,6 +72,8 @@ export interface AttendanceReportData {
   sessionTime: string;
   totalPresent: number;
   totalAbsent: number;
+  totalJustified: number;
+  totalUnmarked: number;
   occupancyRatePercent: number;
   rows: AttendanceReportRow[];
 }
@@ -199,6 +210,12 @@ export interface DREStatementReportData {
 }
 
 // 6. Churn e Retenção (Pro)
+/**
+ * Retencao do mes pelas matriculas: aluno ativo = com alguma matricula
+ * valendo. Inicio = ativos na vespera do mes; fim = ativos no ultimo dia (ou
+ * hoje); novas = ativos no fim que nao estavam no inicio; cancelamentos =
+ * ativos no inicio que nao estao no fim. Inicio + novas - cancelamentos = fim.
+ */
 export interface ChurnReportData {
   header: ReportHeaderInfo;
   activeStudentsStart: number;

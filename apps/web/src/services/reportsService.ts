@@ -26,11 +26,12 @@ import type {
 import { classBillingMode, isCourseEnded } from "@gestarahub/core/billing";
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { ownLessons, packageState } from "@gestarahub/core/packages";
-import { format } from "date-fns";
-import { apiError, nowIso, simulateRead } from "@/mocks/helpers";
+import { addDays, format, parseISO } from "date-fns";
+import { apiError, notFoundError, nowIso, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { autoGenerateMembershipCharges } from "./billingService";
 import { assertFeature } from "./subscriptionService";
+import { sessionDetailOf, sessionsOfClass } from "./turmasService";
 import { can } from "@/lib/permissions";
 import { getCurrentActor } from "@/mocks/currentActor";
 
@@ -259,72 +260,67 @@ export const reportsService = {
       if (!actorCanSee(type)) {
         throw apiError("FORBIDDEN", "Você não tem permissão para ver este relatório.", { httpStatus: 403 });
       }
-      const competence = filter.competence || new Date().toISOString().slice(0, 7);
+      // Mes local (toISOString daria o mes seguinte depois das 21h no Brasil).
+      const competence = filter.competence || format(new Date(), "yyyy-MM");
       const [year, month] = competence.split("-");
       const periodLabel = `Competência ${month}/${year}`;
 
       switch (type) {
         case "attendance_sheet": {
-          const classGroup =
-            (filter.classGroupId && store.classGroups.find((cg) => cg.id === filter.classGroupId)) ||
-            store.classGroups[0] ||
-            null;
+          // Uma aula de uma turma: a escolhida ou, sem escolha, a primeira turma
+          // ativa e a ultima aula do mes ate hoje (lista de chamada de verdade,
+          // com a marcacao de cada aluno).
+          const groups = store.classGroups
+            .filter((g) => g.status === "active")
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+          const classGroup = groups.find((g) => g.id === filter.classGroupId) ?? groups[0] ?? null;
+          const today = format(new Date(), "yyyy-MM-dd");
+          const monthEnd = lastDayOfCompetence(competence);
+          const sessions = classGroup
+            ? sessionsOfClass(classGroup, firstDayOfCompetence(competence), monthEnd < today ? monthEnd : today)
+            : [];
+          const session = sessions.find((x) => x.id === filter.sessionId) ?? sessions.at(-1);
+          const detail = session ? sessionDetailOf(session.id) : undefined;
 
           const modality = classGroup?.modalityId
             ? store.categories.find((c) => c.id === classGroup.modalityId)
             : null;
+          const teacherId = detail?.instructorId ?? classGroup?.instructorId;
+          const teacher = teacherId ? store.professionals.find((p) => p.id === teacherId) : null;
 
-          const teacher = classGroup?.instructorId
-            ? store.professionals.find((p) => p.id === classGroup.instructorId)
-            : null;
-
-          // Alunos matriculados na turma
-          const enrollments = classGroup
-            ? store.enrollments.filter((e) => e.classGroupId === classGroup.id && e.status === "active")
-            : [];
-
-          // So os matriculados da turma (turma vazia = lista vazia).
-          const enrolledStudentIds = new Set(enrollments.map((e) => e.studentId));
-          const targetClients = store.clients.filter((c) => enrolledStudentIds.has(c.id));
-          // Aulas da turma no mes: o id da aula e "turma~AAAA-MM-DD~HH:mm".
-          const sessionPrefix = classGroup ? `${classGroup.id}~${competence}-` : null;
-
-          const rows: AttendanceReportRow[] = targetClients.map((c) => {
-            const hasAttendance =
-              sessionPrefix !== null &&
-              store.attendances.some(
-                (a) => a.studentId === c.id && a.status === "present" && a.sessionId.startsWith(sessionPrefix),
-              );
-
+          const rows: AttendanceReportRow[] = (detail?.roster ?? []).map((r) => {
+            const client = store.clients.find((c) => c.id === r.studentId);
+            const progression = classGroup?.modalityId ? client?.progressions?.[classGroup.modalityId] : undefined;
             return {
-              studentId: c.id,
-              studentName: c.name,
-              // Nivel/faixa salvo na modalidade da turma (as observacoes do aluno
-              // nao sao faixa).
-              belt: (classGroup?.modalityId && c.progressions?.[classGroup.modalityId]?.levelName) || undefined,
-              status: hasAttendance ? "present" : "absent",
+              studentId: r.studentId,
+              studentName: r.studentName,
+              // Nivel salvo na modalidade da turma (as observacoes nao sao faixa).
+              belt: progression?.levelName || undefined,
+              status: r.attendance ?? "unmarked",
               // Sem registro de horario de chegada no sistema.
               checkInTime: undefined,
             };
           });
-
-          const totalPresent = rows.filter((r) => r.status === "present").length;
-          const totalAbsent = rows.filter((r) => r.status === "absent").length;
-          const occupancyRatePercent =
-            rows.length > 0 ? Math.round((totalPresent / rows.length) * 100) : 0;
+          const count = (status: AttendanceReportRow["status"]) => rows.filter((r) => r.status === status).length;
+          const totalPresent = count("present");
 
           const data: AttendanceReportData = {
-            header: buildHeader(periodLabel),
+            header: buildHeader(session ? `Aula de ${session.date.slice(8, 10)}/${session.date.slice(5, 7)}/${session.date.slice(0, 4)}` : periodLabel),
+            classGroupId: classGroup?.id,
+            sessionId: session?.id,
+            classOptions: groups.map((g) => ({ id: g.id, name: g.name })),
+            sessionOptions: sessions.map((x) => ({ id: x.id, date: x.date, start: x.start })),
             // So dados reais: sem turma, sem nomes inventados.
-            className: classGroup?.name || "Nenhuma turma cadastrada",
+            className: classGroup?.name || "Nenhuma turma ativa",
             modalityName: modality?.name || "—",
             teacherName: teacher?.name || "—",
-            // Frequencia do mes inteiro (nao de uma aula so).
-            sessionDate: competence,
-            sessionTime: "",
+            sessionDate: session?.date ?? competence,
+            sessionTime: session?.start ?? "",
             totalPresent,
-            totalAbsent,
-            occupancyRatePercent,
+            totalAbsent: count("absent"),
+            totalJustified: count("justified"),
+            totalUnmarked: count("unmarked"),
+            occupancyRatePercent: rows.length > 0 ? Math.round((totalPresent / rows.length) * 100) : 0,
             rows,
           };
 
@@ -333,8 +329,11 @@ export const reportsService = {
 
         case "students_roster": {
           const plansById = new Map(store.plans.map((p) => [p.id, p.name]));
+          // Quem ja era aluno no mes escolhido (cadastrado ate o ultimo dia dele).
+          const monthEnd = lastDayOfCompetence(competence);
+          const inMonth = store.clients.filter((c) => !c.createdAt || localDateOf(c.createdAt) <= monthEnd);
 
-          const rows: StudentRosterRow[] = store.clients.map((c) => ({
+          const rows: StudentRosterRow[] = inMonth.map((c) => ({
             id: c.id,
             name: c.name,
             phone: c.phone || "Não informado",
@@ -349,7 +348,7 @@ export const reportsService = {
                 ? "paused"
                 : "active",
             belt: Object.values(c.progressions ?? {}).map((p) => p.levelName).join(", ") || undefined,
-            enrolledAt: c.createdAt ? c.createdAt.slice(0, 10) : competence,
+            enrolledAt: c.createdAt ? localDateOf(c.createdAt) : competence,
           }));
 
           const totalActive = rows.filter((r) => r.status === "active").length;
@@ -584,54 +583,51 @@ export const reportsService = {
         case "churn_retention": {
           assertFeature("reports_advanced");
 
-          // So dados reais (como os demais relatorios): espaco sem alunos sai
-          // zerado e a quebra por turma usa as matriculas de verdade.
-          const activeStudentsEnd = store.clients.filter(
-            (c) => c.status === "active" && c.membershipStatus !== "canceled",
-          ).length;
+          // Pelas matriculas: aluno ativo = com alguma matricula valendo no dia.
+          const first = firstDayOfCompetence(competence);
+          const monthEnd = lastDayOfCompetence(competence);
+          const today = format(new Date(), "yyyy-MM-dd");
+          const endDay = monthEnd < today ? monthEnd : today;
+          const dayBefore = format(addDays(parseISO(first), -1), "yyyy-MM-dd");
+          const validOn = (e: (typeof store.enrollments)[number], date: string) =>
+            localDateOf(e.enrolledAt) <= date &&
+            (e.status !== "canceled" || (e.canceledAt !== undefined && localDateOf(e.canceledAt) > date));
+          const activeOn = (date: string, classGroupId?: string) =>
+            new Set(
+              store.enrollments
+                .filter((e) => (!classGroupId || e.classGroupId === classGroupId) && validOn(e, date))
+                .map((e) => e.studentId),
+            );
+          const startSet = activeOn(dayBefore);
+          const endSet = activeOn(endDay);
+          const newEnrollments = [...endSet].filter((id) => !startSet.has(id)).length;
+          const cancellations = [...startSet].filter((id) => !endSet.has(id)).length;
+          const oneDecimal = (n: number) => Math.round(n * 10) / 10;
+          const churnRatePercent = startSet.size > 0 ? oneDecimal((cancellations / startSet.size) * 100) : 0;
 
-          const cancellations = store.clients.filter(
-            (c) => c.membershipStatus === "canceled" || c.status === "inactive",
-          ).length;
-
-          const newEnrollments = store.clients.filter((c) =>
-            c.createdAt ? c.createdAt.startsWith(competence) : false,
-          ).length;
-
-          const activeStudentsStart = Math.max(0, activeStudentsEnd - newEnrollments + cancellations);
-          const finalActive = activeStudentsEnd;
-          const finalNew = newEnrollments;
-          const finalCancelled = cancellations;
-          const netGrowth = finalNew - finalCancelled;
-
-          const churnRatePercent =
-            activeStudentsStart > 0
-              ? Math.round((finalCancelled / activeStudentsStart) * 1000) / 10
-              : 0;
-          const retentionRatePercent = Math.max(0, Math.min(100, 100 - churnRatePercent));
-
-          // Quebra por turma: ativos e matriculas canceladas de cada uma.
-          const modalitiesBreakdown = store.classGroups.map((cg) => {
-            const enrollments = store.enrollments.filter((e) => e.classGroupId === cg.id);
-            const activeCount = enrollments.filter((e) => e.status === "active").length;
-            const canceledCount = enrollments.filter((e) => e.status === "canceled").length;
-            const base = activeCount + canceledCount;
-            return {
-              modalityName: cg.name,
-              activeCount,
-              churnRatePercent: base > 0 ? Math.round((canceledCount / base) * 1000) / 10 : 0,
-            };
-          });
+          // Por turma: ativos no fim e quem saiu dela no mes.
+          const modalitiesBreakdown = store.classGroups
+            .map((cg) => {
+              const before = activeOn(dayBefore, cg.id);
+              const after = activeOn(endDay, cg.id);
+              const left = [...before].filter((id) => !after.has(id)).length;
+              return {
+                modalityName: cg.name,
+                activeCount: after.size,
+                churnRatePercent: before.size > 0 ? oneDecimal((left / before.size) * 100) : 0,
+              };
+            })
+            .filter((row) => row.activeCount > 0 || row.churnRatePercent > 0);
 
           const data: ChurnReportData = {
             header: buildHeader(periodLabel),
-            activeStudentsStart,
-            newEnrollments: finalNew,
-            cancellations: finalCancelled,
-            activeStudentsEnd: finalActive,
-            netGrowth,
+            activeStudentsStart: startSet.size,
+            newEnrollments,
+            cancellations,
+            activeStudentsEnd: endSet.size,
+            netGrowth: endSet.size - startSet.size,
             churnRatePercent,
-            retentionRatePercent,
+            retentionRatePercent: startSet.size > 0 ? oneDecimal(100 - churnRatePercent) : 0,
             modalitiesBreakdown,
           };
 
@@ -639,7 +635,7 @@ export const reportsService = {
         }
 
         default:
-          throw new Error(`Tipo de relatório não suportado: ${type}`);
+          throw notFoundError("Relatório não encontrado.");
       }
     });
   },

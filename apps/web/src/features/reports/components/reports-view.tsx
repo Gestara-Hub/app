@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import type { ReportType } from "@gestarahub/contracts";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { Button } from "@/components/ui/button";
@@ -15,27 +16,44 @@ interface ReportsViewProps {
   initialCompetence?: string;
 }
 
+/** Relatorios que existem (link antigo com outro tipo abre o catalogo). */
+const AVAILABLE_REPORTS: ReportType[] = [
+  "attendance_sheet",
+  "students_roster",
+  "billing_statement",
+  "course_summary",
+  "package_summary",
+  "monthly_birthdays",
+  "financial_income_statement",
+  "churn_retention",
+];
+
 export function ReportsView({
   initialReportType = null,
   initialCompetence,
 }: ReportsViewProps) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = format(new Date(), "yyyy-MM");
   const [competence, setCompetence] = useState(initialCompetence || currentMonth);
-  const [selectedReport, setSelectedReport] = useState<ReportType | null>(initialReportType);
+  const [selectedReport, setSelectedReport] = useState<ReportType | null>(
+    initialReportType && AVAILABLE_REPORTS.includes(initialReportType) ? initialReportType : null,
+  );
+  // Lista de presenca: turma e aula escolhidas no proprio relatorio.
+  const [sheet, setSheet] = useState<{ classGroupId?: string; sessionId?: string }>({});
 
   const hasFeature = useHasFeature();
   const hasAdvancedReports = hasFeature("reports_advanced");
 
   const isProReport =
-    selectedReport === "financial_income_statement" ||
-    selectedReport === "churn_retention" ||
-    selectedReport === "revenue_forecast" ||
-    selectedReport === "teacher_performance";
+    selectedReport === "financial_income_statement" || selectedReport === "churn_retention";
 
   const { data: reportResult, isLoading } = useReportData(
     selectedReport && (!isProReport || hasAdvancedReports) ? selectedReport : null,
-    { competence },
+    selectedReport === "attendance_sheet" ? { competence, ...sheet } : { competence },
   );
+  const openReport = (type: ReportType | null) => {
+    setSheet({});
+    setSelectedReport(type);
+  };
 
   return (
     <div className="space-y-6">
@@ -54,7 +72,7 @@ export function ReportsView({
       {/* View routing: Catalog vs Document View vs Upsell Locked */}
       {!selectedReport ? (
         <ReportsCatalogTab
-          onSelectReport={(type) => setSelectedReport(type)}
+          onSelectReport={(type) => openReport(type)}
           competence={competence}
           onCompetenceChange={setCompetence}
         />
@@ -62,7 +80,7 @@ export function ReportsView({
         <div className="space-y-6">
           <Button
             variant="outline"
-            onClick={() => setSelectedReport(null)}
+            onClick={() => openReport(null)}
             className="text-xs"
           >
             ← Voltar ao Catálogo de Relatórios
@@ -70,13 +88,12 @@ export function ReportsView({
 
           <FeatureLocked
             title="Relatórios Gerenciais Avançados"
-            description="Tome decisões com base em números precisos. Tenha acesso a DRE Completa do negócio, margem operacional líquida, análise de retenção de alunos e faturamento previsto."
+            description="DRE do negócio com margem operacional e a retenção dos alunos mês a mês."
             benefits={[
-              "DRE Gerencial Completa com margens líquidas e operacionais",
-              "Análise de Retenção e taxa de Churn por modalidade",
-              "Projeção de fluxo de caixa futuro e recebíveis",
-              "Exportação em PDF timbrado para contabilidade e sócios",
-              "Exportação de dados analíticos para Excel/CSV",
+              "DRE gerencial com receitas, despesas e margem",
+              "Retenção e cancelamentos por turma",
+              "PDF timbrado para contabilidade e sócios",
+              "Exportação para Excel (CSV)",
             ]}
           />
         </div>
@@ -87,12 +104,14 @@ export function ReportsView({
       ) : reportResult ? (
         <ReportDocumentView
           report={reportResult}
-          onBack={() => setSelectedReport(null)}
+          onBack={() => openReport(null)}
+          onSheetChange={setSheet}
+          competence={competence}
         />
       ) : (
         <div className="p-8 text-center text-sm text-muted-foreground space-y-3">
           <p>Não foi possível carregar os dados deste relatório.</p>
-          <Button variant="outline" onClick={() => setSelectedReport(null)}>
+          <Button variant="outline" onClick={() => openReport(null)}>
             Voltar ao Catálogo
           </Button>
         </div>

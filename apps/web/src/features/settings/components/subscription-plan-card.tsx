@@ -19,7 +19,7 @@ import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscripti
 const FEATURE_DESCRIPTION: Record<PaidFeature, string> = {
   online_payments: "Cobrança por Pix, link e Pix Automático com baixa automática no app e web.",
   messaging: "Lembretes de cobrança e avisos automáticos via WhatsApp.",
-  reports_advanced: "DRE gerencial, projeção financeira e análise de retenção/churn.",
+  reports_advanced: "DRE gerencial e retenção dos alunos.",
   certificates: "Certificado de conclusão do curso para imprimir ou salvar em PDF.",
   bi: "Inteligência analítica preditiva e mapas de ocupação avançados.",
 };

@@ -1,7 +1,7 @@
 "use client";
 
-import type { GeneratedReportData } from "@gestarahub/contracts";
-import { formatCents, formatDate, formatDateTime, formatPhone } from "@gestarahub/core/format";
+import type { GeneratedReportData, PaymentMethod } from "@gestarahub/contracts";
+import { formatCents, formatDate, formatDateTime, formatPhone, plural } from "@gestarahub/core/format";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { toast } from "sonner";
 import { useCan } from "@/features/auth";
 import { useCategories } from "@/features/categories";
@@ -21,9 +29,53 @@ import { useModalityVocabulary, useSegmentVocabulary } from "@/features/settings
 interface ReportDocumentViewProps {
   report: GeneratedReportData;
   onBack: () => void;
+  /** Lista de presenca: troca a turma ou a aula mostrada. */
+  onSheetChange?: (sheet: { classGroupId?: string; sessionId?: string }) => void;
+  /** Mes do relatorio ("2026-09"), para o nome do arquivo. */
+  competence: string;
 }
 
-export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) {
+// --- CSV no formato do Excel brasileiro -------------------------------------
+
+/** Campo entre aspas (aspas internas dobradas). */
+const csvCell = (value: string | number | undefined | null) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+const csvLine = (cells: (string | number | undefined | null)[]) => `${cells.map(csvCell).join(";")}\n`;
+/** "250,00": o Excel em pt-BR le como numero. */
+const csvMoney = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
+/** "21/09/2026" (data ISO ou instante ISO). */
+const csvDate = (iso?: string) => (iso ? formatDate(iso) : "");
+const csvPercent = (value: number) => `${String(value).replace(".", ",")}%`;
+const isPaymentMethod = (value: string): value is PaymentMethod => (PAYMENT_METHODS as string[]).includes(value);
+const CHARGE_STATUS_LABEL: Record<string, string> = { paid: "Pago", pending: "Pendente", overdue: "Atrasado" };
+const ROSTER_STATUS_LABEL: Record<string, string> = { active: "Ativo", paused: "Trancado", inactive: "Inativo" };
+const ATTENDANCE_STATUS_LABEL: Record<string, string> = {
+  present: "Presente",
+  absent: "Faltou",
+  justified: "Justificada",
+  unmarked: "Sem marcação",
+};
+/** Nome do arquivo em portugues: relatorio-alunos-2026-09.csv. */
+const CSV_FILE_NAME: Record<GeneratedReportData["type"], string> = {
+  attendance_sheet: "lista-de-presenca",
+  students_roster: "alunos",
+  billing_statement: "cobrancas",
+  course_summary: "cursos",
+  package_summary: "pacotes",
+  monthly_birthdays: "aniversariantes",
+  financial_income_statement: "dre",
+  churn_retention: "retencao",
+};
+
+/** "seg, 21/09 · 06:00". */
+function sessionOptionLabel(date: string, start: string): string {
+  const weekday = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][new Date(`${date}T12:00:00`).getDay()];
+  return `${weekday}, ${date.slice(8, 10)}/${date.slice(5, 7)} · ${start}`;
+}
+
+/** "1,5%" (percentual com virgula). */
+const percentText = (value: number) => `${String(value).replace(".", ",")}%`;
+
+export function ReportDocumentView({ report, onBack, onSheetChange, competence }: ReportDocumentViewProps) {
   const { header } = report.data;
   // Lista de chamada e de uma turma: a coluna segue a modalidade dela (Faixa
   // ou Nivel). A relacao de alunos mistura modalidades: fica a palavra da area.
@@ -49,76 +101,83 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
 
     switch (report.type) {
       case "attendance_sheet": {
-        csvContent += `Turma;${report.data.className}\n`;
-        csvContent += `Modalidade;${report.data.modalityName}\n`;
-        csvContent += `Data;${report.data.sessionDate}\n\n`;
-        csvContent += `Aluno;${sheetVocabulary.level};Presença;Check-in\n`;
+        csvContent += csvLine(["Turma", report.data.className]);
+        csvContent += csvLine(["Modalidade", report.data.modalityName]);
+        csvContent += csvLine(["Aula", `${csvDate(report.data.sessionDate)} ${report.data.sessionTime}`.trim()]);
+        csvContent += "\n" + csvLine(["Aluno", sheetVocabulary.level, "Presença"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.studentName}";"${r.belt || ""}";"${r.status === "present" ? "Presente" : "Ausente"}";"${r.checkInTime || ""}"\n`;
+          csvContent += csvLine([r.studentName, r.belt, ATTENDANCE_STATUS_LABEL[r.status]]);
         });
         break;
       }
       case "students_roster": {
-        csvContent += `Aluno;Telefone;Plano;Vencimento;Status;${vocabulary.level};Matrícula\n`;
+        csvContent += csvLine(["Aluno", "Telefone", "Plano", "Vencimento", "Situação", vocabulary.level, "Cadastro"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.name}";"${formatPhone(r.phone)}";"${r.planName}";"${r.dueDay}";"${r.status}";"${r.belt || ""}";"${r.enrolledAt}"\n`;
+          csvContent += csvLine([r.name, formatPhone(r.phone), r.planName, `Dia ${r.dueDay}`, ROSTER_STATUS_LABEL[r.status], r.belt, csvDate(r.enrolledAt)]);
         });
         break;
       }
       case "billing_statement": {
-        csvContent += "Aluno;Vencimento;Valor;Status;Data Pagamento;Forma\n";
+        csvContent += csvLine(["Aluno", "Vencimento", "Valor", "Situação", "Pago em", "Forma"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.studentName}";"${r.dueDate}";"${(r.amountCents / 100).toFixed(2)}";"${r.status}";"${r.paidAt || ""}";"${r.paymentMethod || ""}"\n`;
+          csvContent += csvLine([
+            r.studentName,
+            csvDate(r.dueDate),
+            csvMoney(r.amountCents),
+            CHARGE_STATUS_LABEL[r.status] ?? r.status,
+            csvDate(r.paidAt),
+            r.paymentMethod && isPaymentMethod(r.paymentMethod) ? paymentMethodLabel(r.paymentMethod) : r.paymentMethod,
+          ]);
         });
         break;
       }
       case "course_summary": {
-        csvContent += "Curso;Professor;Início;Fim;Matriculados;Concluídos;Cancelados;Contratado;Recebido;Em aberto\n";
+        csvContent += csvLine(["Curso", "Professor", "Início", "Fim", "Matriculados", "Concluídos", "Cancelados", "Contratado", "Recebido", "Em aberto"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.className}";"${r.teacherName}";"${r.startDate}";"${r.endDate || ""}";"${r.enrolled}";"${r.completed}";"${r.canceled}";"${(r.contractedCents / 100).toFixed(2)}";"${(r.receivedCents / 100).toFixed(2)}";"${(r.openCents / 100).toFixed(2)}"\n`;
+          csvContent += csvLine([r.className, r.teacherName, csvDate(r.startDate), csvDate(r.endDate), r.enrolled, r.completed, r.canceled, csvMoney(r.contractedCents), csvMoney(r.receivedCents), csvMoney(r.openCents)]);
         });
         break;
       }
       case "package_summary": {
-        csvContent += "Pacote;Vendidos;Aulas vendidas;Aulas usadas;Saldo de aulas;Recebido\n";
+        csvContent += csvLine(["Pacote", "Vendidos", "Aulas vendidas", "Aulas usadas", "Saldo de aulas", "Recebido"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.packageName}";"${r.sold}";"${r.lessonsSold}";"${r.lessonsUsed}";"${r.lessonsRemaining}";"${(r.receivedCents / 100).toFixed(2)}"\n`;
+          csvContent += csvLine([r.packageName, r.sold, r.lessonsSold, r.lessonsUsed, r.lessonsRemaining, csvMoney(r.receivedCents)]);
         });
         break;
       }
       case "monthly_birthdays": {
-        csvContent += "Dia;Aluno;Telefone;Data Nascimento;Plano\n";
+        csvContent += csvLine(["Dia", "Aluno", "Telefone", "Nascimento", "Plano"]);
         report.data.rows.forEach((r) => {
-          csvContent += `"${r.day}";"${r.name}";"${formatPhone(r.phone)}";"${r.birthDate}";"${r.planName}"\n`;
+          csvContent += csvLine([r.day, r.name, formatPhone(r.phone), csvDate(r.birthDate), r.planName]);
         });
         break;
       }
       case "financial_income_statement": {
-        csvContent += `Demonstrativo do Resultado do Exercício (DRE);${header.periodLabel}\n\n`;
-        csvContent += `Receita Bruta;${(report.data.grossRevenueCents / 100).toFixed(2)}\n`;
-        csvContent += `Deduções;${(report.data.deductionsCents / 100).toFixed(2)}\n`;
-        csvContent += `Receita Líquida;${(report.data.netRevenueCents / 100).toFixed(2)}\n`;
-        csvContent += `Despesas Operacionais;${(report.data.operatingExpensesCents / 100).toFixed(2)}\n`;
-        csvContent += `Resultado Operacional;${(report.data.operationalResultCents / 100).toFixed(2)}\n`;
-        csvContent += `Margem Operacional;${report.data.operatingMarginPercent}%\n\n`;
-        csvContent += "Receitas Detalhadas;Valor;%\n";
+        csvContent += csvLine(["Demonstrativo do Resultado do Exercício (DRE)", header.periodLabel]) + "\n";
+        csvContent += csvLine(["Receita bruta", csvMoney(report.data.grossRevenueCents)]);
+        csvContent += csvLine(["Deduções", csvMoney(report.data.deductionsCents)]);
+        csvContent += csvLine(["Receita líquida", csvMoney(report.data.netRevenueCents)]);
+        csvContent += csvLine(["Despesas operacionais", csvMoney(report.data.operatingExpensesCents)]);
+        csvContent += csvLine(["Resultado operacional", csvMoney(report.data.operationalResultCents)]);
+        csvContent += csvLine(["Margem operacional", csvPercent(report.data.operatingMarginPercent)]) + "\n";
+        csvContent += csvLine(["Receitas", "Valor", "%"]);
         report.data.incomeCategories.forEach((cat) => {
-          csvContent += `"${cat.name}";"${(cat.amountCents / 100).toFixed(2)}";"${cat.percent}%"\n`;
+          csvContent += csvLine([cat.name, csvMoney(cat.amountCents), csvPercent(cat.percent)]);
         });
-        csvContent += "\nDespesas Detalhadas;Valor;%\n";
+        csvContent += "\n" + csvLine(["Despesas", "Valor", "%"]);
         report.data.expenseCategories.forEach((cat) => {
-          csvContent += `"${cat.name}";"${(cat.amountCents / 100).toFixed(2)}";"${cat.percent}%"\n`;
+          csvContent += csvLine([cat.name, csvMoney(cat.amountCents), csvPercent(cat.percent)]);
         });
         break;
       }
       case "churn_retention": {
-        csvContent += `Análise de Churn e Retenção;${header.periodLabel}\n\n`;
-        csvContent += `Alunos Início;${report.data.activeStudentsStart}\n`;
-        csvContent += `Novas Matrículas;${report.data.newEnrollments}\n`;
-        csvContent += `Cancelamentos;${report.data.cancellations}\n`;
-        csvContent += `Alunos Fim;${report.data.activeStudentsEnd}\n`;
-        csvContent += `Taxa de Churn;${report.data.churnRatePercent}%\n`;
-        csvContent += `Taxa de Retenção;${report.data.retentionRatePercent}%\n`;
+        csvContent += csvLine(["Retenção de alunos", header.periodLabel]) + "\n";
+        csvContent += csvLine(["Alunos no início", report.data.activeStudentsStart]);
+        csvContent += csvLine(["Novos", report.data.newEnrollments]);
+        csvContent += csvLine(["Saíram", report.data.cancellations]);
+        csvContent += csvLine(["Alunos no fim", report.data.activeStudentsEnd]);
+        csvContent += csvLine(["Cancelamento", csvPercent(report.data.churnRatePercent)]);
+        csvContent += csvLine(["Retenção", csvPercent(report.data.retentionRatePercent)]);
         break;
       }
     }
@@ -127,7 +186,8 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `relatorio-${report.type}-${header.periodLabel.replace(/[\s/]+/g, "_")}.csv`);
+    const fileDate = report.type === "attendance_sheet" ? report.data.sessionDate : competence;
+    link.setAttribute("download", `relatorio-${CSV_FILE_NAME[report.type]}-${fileDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -206,24 +266,75 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-foreground print:text-black">
-                  Lista de Chamada & Frequência
+                  Lista de presença
                 </h2>
                 <p className="text-xs text-muted-foreground print:text-zinc-600">
-                  {report.data.className} • {report.data.modalityName} ({report.data.teacherName})
+                  {[
+                    report.data.className,
+                    report.data.modalityName !== "—" ? report.data.modalityName : null,
+                    report.data.teacherName !== "—" ? report.data.teacherName : null,
+                    report.data.sessionId
+                      ? sessionOptionLabel(report.data.sessionDate, report.data.sessionTime)
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
-                  {report.data.totalPresent} Presentes
+                  {plural(report.data.totalPresent, "presente", "presentes")}
                 </Badge>
                 <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-300">
-                  {report.data.totalAbsent} Ausentes
+                  {plural(report.data.totalAbsent, "falta", "faltas")}
                 </Badge>
-                <Badge variant="secondary">
-                  {report.data.occupancyRatePercent}% Ocupação
-                </Badge>
+                {report.data.totalJustified > 0 ? (
+                  <Badge variant="outline">{plural(report.data.totalJustified, "justificada", "justificadas")}</Badge>
+                ) : null}
+                {report.data.totalUnmarked > 0 ? (
+                  <Badge variant="secondary">{plural(report.data.totalUnmarked, "sem marcação", "sem marcação")}</Badge>
+                ) : null}
               </div>
             </div>
+
+            {/* Turma e aula (fora da impressao) */}
+            {onSheetChange && report.data.classOptions.length > 0 ? (
+              <div className="grid gap-2 sm:grid-cols-2 print:hidden">
+                <Select
+                  value={report.data.classGroupId}
+                  onValueChange={(classGroupId) => onSheetChange({ classGroupId })}
+                >
+                  <SelectTrigger aria-label="Turma" className="w-full">
+                    <SelectValue placeholder="Turma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {report.data.classOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={report.data.sessionId}
+                  onValueChange={(sessionId) =>
+                    onSheetChange({ classGroupId: report.data.classGroupId, sessionId })
+                  }
+                  disabled={report.data.sessionOptions.length === 0}
+                >
+                  <SelectTrigger aria-label="Aula" className="w-full">
+                    <SelectValue placeholder="Nenhuma aula neste mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...report.data.sessionOptions].reverse().map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {sessionOptionLabel(option.date, option.start)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
             {/* Attendance Table */}
             <div className="overflow-x-auto rounded-lg border border-border print:border-zinc-300">
@@ -233,16 +344,15 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                     <th className="py-2.5 px-3 w-10 text-center">#</th>
                     <th className="py-2.5 px-3">Nome do Aluno</th>
                     <th className="py-2.5 px-3">{sheetVocabulary.level}</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                    <th className="py-2.5 px-3 text-center">Check-in</th>
-                    <th className="py-2.5 px-3 w-40 text-center">Rubrica / Assinatura</th>
+                    <th className="py-2.5 px-3 text-center">Presença</th>
+                    <th className="py-2.5 px-3 w-40 text-center">Assinatura</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border print:divide-zinc-200">
                   {report.data.rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-muted-foreground text-xs">
-                        Nenhum aluno registrado ou matriculado nesta turma para a data selecionada.
+                      <td colSpan={5} className="py-8 text-center text-muted-foreground text-xs">
+                        {report.data.sessionId ? "Nenhum aluno nesta aula." : "Nenhuma aula desta turma neste mês."}
                       </td>
                     </tr>
                   ) : (
@@ -257,14 +367,17 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                               <CheckCircle2 className="size-3 text-emerald-600 print:hidden" />
                               Presente
                             </span>
-                          ) : (
+                          ) : row.status === "absent" ? (
                             <span className="inline-flex items-center gap-1 text-rose-600 print:text-zinc-500">
                               <XCircle className="size-3 text-rose-500 print:hidden" />
-                              Ausente
+                              Faltou
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground print:text-zinc-500">
+                              {ATTENDANCE_STATUS_LABEL[row.status]}
                             </span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-center text-muted-foreground">{row.checkInTime || "—"}</td>
                         <td className="py-2 px-3 border-l border-border print:border-zinc-300"></td>
                       </tr>
                     ))
@@ -414,7 +527,13 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                         <td className="py-2 px-3 text-center text-muted-foreground">
                           {row.paidAt ? formatDate(row.paidAt) : "—"}
                         </td>
-                        <td className="py-2 px-3 text-muted-foreground">{row.paymentMethod || "—"}</td>
+                        <td className="py-2 px-3 text-muted-foreground">
+                          {row.paymentMethod
+                            ? isPaymentMethod(row.paymentMethod)
+                              ? paymentMethodLabel(row.paymentMethod)
+                              : row.paymentMethod
+                            : "—"}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -726,29 +845,29 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
             {/* Churn Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-lg border bg-muted/20">
-                <span className="text-[11px] text-muted-foreground block">Alunos Início</span>
+                <span className="text-[11px] text-muted-foreground block">Alunos no início</span>
                 <span className="text-base font-bold text-foreground print:text-black">
                   {report.data.activeStudentsStart}
                 </span>
               </div>
               <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
-                <span className="text-[11px] block">Novas Matrículas</span>
+                <span className="text-[11px] block">Novos</span>
                 <span className="text-base font-bold flex items-center gap-1">
                   <TrendingUp className="size-4" />
                   +{report.data.newEnrollments}
                 </span>
               </div>
               <div className="p-3 rounded-lg border bg-rose-50/50 text-rose-800">
-                <span className="text-[11px] block">Cancelamentos</span>
+                <span className="text-[11px] block">Saíram</span>
                 <span className="text-base font-bold flex items-center gap-1">
                   <TrendingDown className="size-4" />
                   -{report.data.cancellations}
                 </span>
               </div>
               <div className="p-3 rounded-lg border bg-primary/10 text-primary">
-                <span className="text-[11px] block">Taxa de Retenção</span>
+                <span className="text-[11px] block">Retenção</span>
                 <span className="text-base font-bold">
-                  {report.data.retentionRatePercent}%
+                  {percentText(report.data.retentionRatePercent)}
                 </span>
               </div>
             </div>
@@ -769,10 +888,10 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
                       <td className="py-2 px-3 font-medium text-foreground print:text-black">{m.modalityName}</td>
                       <td className="py-2 px-3 text-center text-muted-foreground">{m.activeCount}</td>
                       <td className="py-2 px-3 text-center font-semibold text-rose-600">
-                        {m.churnRatePercent}%
+                        {percentText(m.churnRatePercent)}
                       </td>
                       <td className="py-2 px-3 text-center font-semibold text-emerald-600">
-                        {(100 - m.churnRatePercent).toFixed(1)}%
+                        {percentText(Math.round((100 - m.churnRatePercent) * 10) / 10)}
                       </td>
                     </tr>
                   ))}
