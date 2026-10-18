@@ -206,18 +206,18 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
           className="gap-2 text-xs w-fit"
         >
           <ArrowLeft className="size-3.5" />
-          Voltar aos Relatórios
+          Voltar aos relatórios
         </Button>
 
         {canExport ? (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={handleExportCsv}
             className="gap-1.5 text-xs"
           >
             <Download className="size-3.5" />
-            Exportar CSV / Excel
+            Exportar CSV
           </Button>
 
           <Button
@@ -225,14 +225,14 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
             className="gap-1.5 text-xs shadow-xs"
           >
             <Printer className="size-3.5" />
-            Imprimir / Salvar em PDF
+            Imprimir ou salvar PDF
           </Button>
         </div>
         ) : null}
       </div>
 
       {/* Printable Sheet Container */}
-      <div className="bg-card print:bg-white text-card-foreground print:text-black rounded-xl border print:border-none shadow-sm print:shadow-none p-6 sm:p-10 max-w-4xl mx-auto print:max-w-none print:p-0">
+      <div className="bg-card print:bg-white text-card-foreground print:text-black rounded-xl border print:border-none shadow-sm print:shadow-none p-4 sm:p-10 max-w-4xl mx-auto print:max-w-none print:p-0">
         {/* Document Letterhead */}
         <div className="border-b pb-6 mb-6 print:border-zinc-300">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -282,10 +282,10 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
                   {plural(report.data.totalPresent, "presente", "presentes")}
                 </Badge>
-                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-300">
+                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800">
                   {plural(report.data.totalAbsent, "falta", "faltas")}
                 </Badge>
                 {report.data.totalJustified > 0 ? (
@@ -400,13 +400,13 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                   {report.data.totalActive} Ativos
                 </Badge>
-                <Badge variant="outline" className="bg-amber-50 text-amber-700">
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                   {report.data.totalPaused} Trancados
                 </Badge>
-                <Badge variant="outline" className="bg-zinc-100 text-zinc-700">
+                <Badge variant="outline" className="bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                   {report.data.totalInactive} Inativos
                 </Badge>
               </div>
@@ -472,19 +472,19 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                   {formatCents(report.data.totalBilledCents)}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <span className="text-[11px] block">Recebido</span>
                 <span className="text-base font-bold">
                   {formatCents(report.data.totalReceivedCents)}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-amber-50/50 text-amber-800">
+              <div className="p-3 rounded-lg border bg-amber-50/50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                 <span className="text-[11px] block">Pendente</span>
                 <span className="text-base font-bold">
                   {formatCents(report.data.totalPendingCents)}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-rose-50/50 text-rose-800">
+              <div className="p-3 rounded-lg border bg-rose-50/50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
                 <span className="text-[11px] block">Inadimplência</span>
                 <span className="text-base font-bold">
                   {report.data.defaultRatePercent}% ({formatCents(report.data.totalOverdueCents)})
@@ -559,11 +559,11 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                   {formatCents(report.data.totalContractedCents)}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <span className="text-[11px] block">Recebido</span>
                 <span className="text-base font-bold">{formatCents(report.data.totalReceivedCents)}</span>
               </div>
-              <div className="p-3 rounded-lg border bg-amber-50/50 text-amber-800">
+              <div className="p-3 rounded-lg border bg-amber-50/50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                 <span className="text-[11px] block">Em aberto</span>
                 <span className="text-base font-bold">{formatCents(report.data.totalOpenCents)}</span>
               </div>
@@ -652,7 +652,7 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                   {report.data.totalLessonsRemaining}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <span className="text-[11px] block">Recebido</span>
                 <span className="text-base font-bold">{formatCents(report.data.totalReceivedCents)}</span>
               </div>
@@ -850,14 +850,14 @@ export function ReportDocumentView({ report, onBack, onSheetChange, competence }
                   {report.data.activeStudentsStart}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800">
+              <div className="p-3 rounded-lg border bg-emerald-50/50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <span className="text-[11px] block">Novos</span>
                 <span className="text-base font-bold flex items-center gap-1">
                   <TrendingUp className="size-4" />
                   +{report.data.newEnrollments}
                 </span>
               </div>
-              <div className="p-3 rounded-lg border bg-rose-50/50 text-rose-800">
+              <div className="p-3 rounded-lg border bg-rose-50/50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
                 <span className="text-[11px] block">Saíram</span>
                 <span className="text-base font-bold flex items-center gap-1">
                   <TrendingDown className="size-4" />

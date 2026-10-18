@@ -200,9 +200,14 @@ export function TeacherPayTab({ competence }: { competence: string }) {
                 key={t.professionalId}
                 actions={
                   canManage ? (
-                    <Button variant="outline" onClick={() => setConfiguring(t)}>
+                    <Button
+                      variant="outline"
+                      className="max-sm:px-2.5"
+                      aria-label={t.rule ? "Editar pagamento" : "Configurar pagamento"}
+                      onClick={() => setConfiguring(t)}
+                    >
                       <Settings2 className="size-4" />
-                      {t.rule ? "Editar pagamento" : "Configurar pagamento"}
+                      <span className="max-sm:hidden">{t.rule ? "Editar pagamento" : "Configurar pagamento"}</span>
                     </Button>
                   ) : undefined
                 }

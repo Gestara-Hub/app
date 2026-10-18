@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import type { ReportType } from "@gestarahub/contracts";
 import {
   Cake,
-  Calendar,
   ClipboardCheck,
   FileSpreadsheet,
   GraduationCap,
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useHasFeature } from "@/features/auth";
+import { CompetencePicker } from "@/features/finance";
 import { useReportsCatalog } from "../hooks/use-reports";
 
 interface ReportsCatalogTabProps {
@@ -92,56 +92,42 @@ export function ReportsCatalogTab({
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar relatórios por nome..."
+            placeholder="Buscar relatório"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 text-xs h-9"
+            className="pl-8"
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Calendar className="size-3.5" />
-            <span>Mês de Referência:</span>
-          </div>
-          <Input
-            type="month"
-            value={competence}
-            onChange={(e) => onCompetenceChange(e.target.value)}
-            className="w-36 text-xs h-9"
-          />
-        </div>
+        {/* Mes em portugues (o campo "month" do navegador mostrava "September 202"). */}
+        <CompetencePicker competence={competence} onChange={onCompetenceChange} label="Mês" />
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant={categoryFilter === "all" ? "default" : "outline"}
-          className="text-xs"
           onClick={() => setCategoryFilter("all")}
         >
-          Todos os Relatórios ({catalog.length})
+          Todos ({catalog.length})
         </Button>
         <Button
           variant={categoryFilter === "operational" ? "default" : "outline"}
-          className="text-xs"
           onClick={() => setCategoryFilter("operational")}
         >
-          Operacionais (Grátis)
+          Operacionais
         </Button>
         <Button
           variant={categoryFilter === "financial" ? "default" : "outline"}
-          className="text-xs"
           onClick={() => setCategoryFilter("financial")}
         >
-          Financeiros (DRE)
+          Financeiros
         </Button>
         <Button
           variant={categoryFilter === "retention" ? "default" : "outline"}
-          className="text-xs"
           onClick={() => setCategoryFilter("retention")}
         >
-          Retenção & Churn
+          Retenção
         </Button>
       </div>
 
@@ -174,11 +160,7 @@ export function ReportsCatalogTab({
                       {isLocked ? <Lock className="size-2.5" /> : <Sparkles className="size-2.5" />}
                       Plano Pro
                     </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Operacional
-                    </Badge>
-                  )}
+                  ) : null}
                 </div>
 
                 <CardTitle className="text-base font-semibold mt-3">
@@ -191,7 +173,7 @@ export function ReportsCatalogTab({
 
               <CardContent className="pt-0">
                 <Button
-                  className="w-full text-xs gap-1.5"
+                  className="w-full"
                   variant={isLocked ? "outline" : "default"}
                   onClick={() => onSelectReport(report.type)}
                 >
@@ -201,7 +183,7 @@ export function ReportsCatalogTab({
                       Disponível no Plano Pro
                     </>
                   ) : (
-                    "Visualizar & Exportar"
+                    "Abrir"
                   )}
                 </Button>
               </CardContent>

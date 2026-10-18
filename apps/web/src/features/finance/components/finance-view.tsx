@@ -64,7 +64,7 @@ export function FinanceView() {
       <div
         role="tablist"
         aria-label="Seções do financeiro"
-        className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
+        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
       >
         {TABS.map((t) => {
           const active = t.value === tab;

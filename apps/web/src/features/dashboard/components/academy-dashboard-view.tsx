@@ -260,16 +260,14 @@ function DashboardKpis({ d }: { d: DashboardData }) {
 function TodaySessionsCard({ d, className }: { d: DashboardData; className?: string }) {
   return (
     <Card className={cn("flex flex-col", className)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <div className="space-y-0.5">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3">
+        <div className="min-w-0 space-y-0.5">
           <CardTitle className="text-base font-semibold">Aulas de hoje</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Grade e lista de presença das turmas com encontro hoje
-          </p>
+          <p className="text-xs text-muted-foreground">Turmas com encontro hoje</p>
         </div>
-        <Button variant="ghost" asChild>
+        <Button variant="ghost" asChild className="max-sm:-ml-3">
           <Link href="/classes/calendar">
-            Ver grade completa
+            Ver calendário
             <ArrowUpRight className="size-3.5" />
           </Link>
         </Button>
@@ -306,7 +304,7 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <p className="min-w-0 break-words text-sm font-semibold">{s.className}</p>
                         {s.modalityName ? (
-                          <Badge variant="outline" className="text-[11px] font-normal py-0 h-4">
+                          <Badge variant="outline" className="text-[11px] font-normal py-0">
                             {s.modalityName}
                           </Badge>
                         ) : null}
@@ -316,18 +314,16 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
                         {classGroup ? (
                           <span>
                             {" "}
-                            · {classGroup.enrolledCount}/{classGroup.capacity} alunos (
-                            {classGroup.availableSpots > 0
-                              ? plural(classGroup.availableSpots, "vaga", "vagas")
-                              : "lotada"}
-                            )
+                            · {classGroup.availableSpots > 0
+                              ? `${classGroup.enrolledCount} de ${classGroup.capacity} alunos`
+                              : "Turma lotada"}
                           </span>
                         ) : null}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0">
                     {isDone ? (
                       <Badge variant="secondary" className="text-xs font-normal">
                         Concluída
@@ -394,7 +390,7 @@ function OccupancyList({ d, scrollClassName }: { d: DashboardData; scrollClassNa
                         : "text-muted-foreground",
                     )}
                   >
-                    {g.enrolledCount}/{g.capacity} ({pct}%)
+                    {g.enrolledCount} de {g.capacity} ({pct}%)
                     {isOverCapacity ? " · acima da capacidade" : ""}
                   </span>
                 </div>
@@ -433,7 +429,7 @@ function OccupancyCard({
 }) {
   return (
     <Card className={cn("flex flex-col gap-0", className)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3">
         <CardTitle className="text-base font-semibold">Ocupação das turmas</CardTitle>
         <Button variant="ghost" asChild>
           <Link href="/classes">

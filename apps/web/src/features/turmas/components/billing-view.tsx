@@ -375,7 +375,7 @@ export function BillingView() {
         description={
           allOverdue
             ? "Cobranças em atraso de todos os meses, até hoje."
-            : "Cobranças por competência (mês). As mensalidades do mês são geradas automaticamente."
+            : "Cobranças do mês. As mensalidades são geradas sozinhas."
         }
       >
         {allOverdue ? (

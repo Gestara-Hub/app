@@ -149,7 +149,7 @@ export function BirthdaysCard({
   return (
     // gap-0: o card padrao tem 24px entre cabecalho e conteudo; aqui so o pb-3.
     <Card className={cn("flex flex-col gap-0", className)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-3">
         <CardTitle className="text-base font-semibold">
           Aniversariantes de {monthLabel}
           {birthdays.length > 0 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -475,10 +475,8 @@ export function TurmaDetailView({
     slotsSummary(turma.meetingSlots) || null,
     turma.instructorName,
     billingShort,
-    isFull ? "Turma lotada" : `${turma.enrolledCount} de ${turma.capacity} vagas`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    isFull ? "Turma lotada" : `${turma.enrolledCount} de ${turma.capacity} alunos`,
+  ].filter((part): part is string => Boolean(part));
 
   const enrolledCount = (enrollments ?? []).length;
   const waitlistCount = (waitlist ?? []).length;
@@ -556,8 +554,14 @@ export function TurmaDetailView({
               <h1 className="text-2xl font-semibold tracking-tight">{turma.name}</h1>
               {isInactive ? <RecordStatusBadge status={turma.status} /> : null}
             </div>
+            {/* Pedacos curtos nao quebram no meio ("3 / de 10 alunos"). */}
             <p className="text-sm text-muted-foreground" data-testid="class-billing-summary">
-              {meta}
+              {meta.map((part, i) => (
+                <Fragment key={`${i}-${part}`}>
+                  {i > 0 ? " · " : null}
+                  <span className={part.length <= 24 ? "whitespace-nowrap" : undefined}>{part}</span>
+                </Fragment>
+              ))}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

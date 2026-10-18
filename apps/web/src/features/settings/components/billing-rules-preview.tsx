@@ -76,7 +76,23 @@ export function BillingRulesPreview(props: BillingRulesPreviewProps) {
         </span>
       </p>
 
-      <div className="mt-2.5 overflow-x-auto">
+      {/* Celular: um bloco por cobranca (a tabela nao cabe e cortava valores). */}
+      <ul className="mt-2.5 divide-y divide-border/20 sm:hidden">
+        {result.charges.map((charge) => (
+          <li key={charge.periodStart} className="flex items-start justify-between gap-3 py-1.5">
+            <div className="min-w-0 text-xs text-muted-foreground">
+              <p className="font-medium">{charge.orderLabel}</p>
+              <p className="tabular-nums">Vence {charge.dueLabel}</p>
+              <p className="tabular-nums">Aulas de {charge.reference}</p>
+            </div>
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+              {formatCents(charge.amountCents)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-2.5 hidden sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/40 text-[11px] font-medium text-muted-foreground/75">

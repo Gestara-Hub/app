@@ -486,9 +486,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       <div className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">{session.className}</h1>
+          {/* Pedacos curtos nao quebram no meio ("Carlos / Silva"). */}
           <p className="text-sm text-muted-foreground">
-            {whenLabel} · {session.instructorName}
-            {session.isSubstitute ? " (substituto)" : ""}
+            <span className="whitespace-nowrap">{whenLabel}</span> ·{" "}
+            <span className={session.instructorName.length <= 24 ? "whitespace-nowrap" : undefined}>
+              {session.instructorName}
+            </span>
           </p>
           {session.isSubstitute ? (
             <p className="text-xs text-muted-foreground">
@@ -500,9 +503,9 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         <PageActionsMenu label="Mais ações da aula" actions={pageActions} />
       </div>
 
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h2 className="text-base font-semibold text-foreground">Chamada</h2>
-        {total > 0 ? <p className="text-right text-xs text-muted-foreground">{rollCallHint}</p> : null}
+        {total > 0 ? <p className="text-xs text-muted-foreground sm:text-right">{rollCallHint}</p> : null}
       </div>
 
       {total === 0 ? (

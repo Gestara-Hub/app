@@ -367,8 +367,8 @@ export function TurmasCalendarView() {
                                   )}
                                 >
                                   {full
-                                    ? `${s.occupiedCount}/${s.capacity} · Turma lotada`
-                                    : `${s.occupiedCount}/${s.capacity} vagas`}
+                                    ? "Turma lotada"
+                                    : `${s.occupiedCount} de ${s.capacity} alunos`}
                                 </span>
                               </p>
                             </div>

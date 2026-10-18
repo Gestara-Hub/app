@@ -159,7 +159,7 @@ function TurmaRow({
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >
-          {turma.enrolledCount}/{turma.capacity} vagas
+          {turma.enrolledCount} de {turma.capacity} alunos
         </span>
         <RecordStatusBadge status={turma.status} />
       </div>
@@ -297,7 +297,7 @@ function TurmaCard({
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >
-          {turma.enrolledCount}/{turma.capacity} vagas
+          {turma.enrolledCount} de {turma.capacity} alunos
         </span>
 
         {turma.allowDropin && turma.sessionPriceCents ? (

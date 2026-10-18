@@ -376,9 +376,10 @@ export function FinanceEntriesTab({
     if (row.source === "charge" && row.chargeCounts) {
       meta = <span>{chargeCountsLabel(row.chargeCounts)}</span>;
       trailing = (
-        <Button asChild variant="ghost" className="text-xs">
-          <Link href={billingHref(competence, { kind: chargeKindOf(row) })}>
-            Ver em Cobranças
+        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
+          <Link href={billingHref(competence, { kind: chargeKindOf(row) })} aria-label="Ver em Cobranças">
+            {/* No celular so o icone: o texto tomava metade da linha. */}
+            <span className="max-sm:hidden">Ver em Cobranças</span>
             <ChevronRight className="size-3.5" />
           </Link>
         </Button>
@@ -392,10 +393,10 @@ export function FinanceEntriesTab({
         </>
       );
       trailing = (
-        <Button asChild variant="ghost" className="text-xs">
-          <Link href={financeHref("professores", competence)}>
+        <Button asChild variant="ghost" className="text-xs max-sm:px-2">
+          <Link href={financeHref("professores", competence)} aria-label="Ver professores">
             <Users className="size-3.5" />
-            Ver professores
+            <span className="max-sm:hidden">Ver professores</span>
           </Link>
         </Button>
       );

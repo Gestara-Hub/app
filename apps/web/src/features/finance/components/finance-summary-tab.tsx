@@ -119,7 +119,7 @@ function VariantSimplified({
         {/* Card 1: Saldo do Mês */}
         <div
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all",
+            "flex min-w-0 flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all",
             isPositive
               ? "border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-background to-background"
               : "border-destructive/25 bg-gradient-to-br from-destructive/10 via-background to-background",
@@ -141,7 +141,7 @@ function VariantSimplified({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-4xl">
+            <div className="text-2xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-3xl lg:text-2xl xl:text-3xl">
               {formatCents(summary.resultCents)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -153,7 +153,7 @@ function VariantSimplified({
         </div>
 
         {/* Card 2: Total Entrou */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
+        <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Total Entrou
@@ -163,7 +163,7 @@ function VariantSimplified({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-4xl">
+            <div className="text-2xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-3xl lg:text-2xl xl:text-3xl">
               {formatCents(summary.incomePaidCents)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -175,7 +175,7 @@ function VariantSimplified({
         </div>
 
         {/* Card 3: Total Saiu */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
+        <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Total Saiu
@@ -185,7 +185,7 @@ function VariantSimplified({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-4xl">
+            <div className="text-2xl font-extrabold tracking-tight tabular-nums text-foreground sm:text-3xl lg:text-2xl xl:text-3xl">
               {formatCents(summary.expensePaidCents)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -199,7 +199,7 @@ function VariantSimplified({
         {/* Card 4: Mensalidades em Atraso */}
         <div
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all",
+            "flex min-w-0 flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all",
             hasOverdue
               ? "border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/15"
               : "border-border/60 bg-card",
@@ -223,8 +223,8 @@ function VariantSimplified({
           <div className="mt-3">
             <div
               className={cn(
-                "text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl",
-                hasOverdue ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+                "text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl lg:text-2xl xl:text-3xl",
+                hasOverdue ? "text-amber-700 dark:text-amber-400" : "text-foreground",
               )}
             >
               {formatCents(overdueCents)}
@@ -251,7 +251,7 @@ function VariantSimplified({
       {/* Seção Inferior: Termômetro do Dinheiro + Próximos Pagamentos */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {/* Termômetro do Mês (Para onde foi o dinheiro?) */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-xs lg:col-span-7">
+        <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-xs lg:col-span-7">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -324,7 +324,7 @@ function VariantSimplified({
         </div>
 
         {/* Próximas Contas a Pagar Imediatas */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-xs lg:col-span-5">
+        <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 shadow-xs lg:col-span-5">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -474,7 +474,7 @@ function VariantExecutive({
         {/* Bloco Nobre: Resultado Líquido */}
         <div
           className={cn(
-            "relative flex flex-col justify-between overflow-hidden rounded-2xl border p-5 shadow-xs transition-all lg:col-span-5",
+            "relative flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl border p-5 shadow-xs transition-all lg:col-span-5",
             isPositive
               ? "border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-background to-background dark:from-emerald-950/25"
               : "border-destructive/25 bg-gradient-to-br from-destructive/10 via-background to-background dark:from-destructive-950/25",
@@ -516,7 +516,7 @@ function VariantExecutive({
             </div>
 
             <div className="mt-3">
-              <div className="text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl text-foreground">
+              <div className="text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl lg:text-2xl xl:text-3xl text-foreground">
                 {formatCents(summary.resultCents)}
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -565,9 +565,9 @@ function VariantExecutive({
         </div>
 
         {/* 3 Cartões Laterais de Apoio */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:col-span-7">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 lg:col-span-7">
           {/* Entradas */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-emerald-500/30">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-emerald-500/30">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Entradas Pagas</span>
@@ -576,7 +576,7 @@ function VariantExecutive({
                 </div>
               </div>
               <div className="mt-2">
-                <span className="text-2xl font-bold tabular-nums text-foreground">
+                <span className="text-xl font-bold tabular-nums text-foreground xl:text-2xl">
                   {formatCents(summary.incomePaidCents)}
                 </span>
                 <div className="mt-1 flex items-center gap-1.5 text-xs">
@@ -617,7 +617,7 @@ function VariantExecutive({
           </div>
 
           {/* Saídas */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-rose-500/30">
+          <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs transition-all hover:border-rose-500/30">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">Saídas Pagas</span>
@@ -626,7 +626,7 @@ function VariantExecutive({
                 </div>
               </div>
               <div className="mt-2">
-                <span className="text-2xl font-bold tabular-nums text-foreground">
+                <span className="text-xl font-bold tabular-nums text-foreground xl:text-2xl">
                   {formatCents(summary.expensePaidCents)}
                 </span>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -654,7 +654,7 @@ function VariantExecutive({
           {/* Inadimplência / Atrasos */}
           <div
             className={cn(
-              "flex flex-col justify-between rounded-2xl border p-4 shadow-2xs transition-all",
+              "flex min-w-0 flex-col justify-between rounded-2xl border p-4 shadow-2xs transition-all",
               hasOverdue
                 ? "border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10"
                 : "border-border/60 bg-card hover:border-amber-500/30",
@@ -675,7 +675,7 @@ function VariantExecutive({
 
               <div className="mt-2">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-bold tabular-nums text-foreground">
+                  <span className="text-xl font-bold tabular-nums text-foreground xl:text-2xl">
                     {formatCents(overdueCents)}
                   </span>
                   <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
@@ -733,7 +733,7 @@ function VariantExecutive({
       {/* Grid Secundária: Gráfico Amplo + Categorias com visual moderno */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Gráfico */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-7">
+        <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-7">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Fluxo de Caixa Semestral</h3>
@@ -747,7 +747,7 @@ function VariantExecutive({
         </div>
 
         {/* Categorias com visual de Barras Proporcionais */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-5">
+        <div className="min-w-0 rounded-2xl border border-border/60 bg-card p-5 shadow-xs lg:col-span-5">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-foreground">Destino das Receitas e Custos</h3>
             <p className="text-xs text-muted-foreground">Clique numa categoria para abrir seus lançamentos</p>

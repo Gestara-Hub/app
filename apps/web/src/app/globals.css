@@ -1054,6 +1054,18 @@ html[data-vm-packages="list"] [data-vm-skeleton="packages:list"] {
     min-height: auto !important;
   }
 
+  /* Tema escuro nao vai para o papel: a folha sai sempre clara. */
+  .dark {
+    color-scheme: light;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.45 0 0);
+    --border: oklch(0.922 0 0);
+  }
+
   @page {
     margin: 12mm 15mm;
     size: auto;
