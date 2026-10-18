@@ -420,3 +420,12 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md).
 - Ocupação num formato só: "3 de 10 alunos" (ou "Turma lotada").
 - "Ver aulas no calendário" abre o calendário só com a turma (`/classes/calendar?class=<id>`), com "Ver todas" para tirar o filtro.
 - Selo do pacote do aluno: "Restam 7 de 10".
+
+### Achados sem prioridade (18/10/2026)
+
+- **Notas (ALU-28):** avaliação não aceita data futura; o lançamento só lista quem já estava na turma no dia da avaliação ("entrou na turma depois da avaliação").
+- **Graduação (ALU-36):** "Escolher outra" que volta de nível ou pula níveis confirma antes.
+- **Etapa apagada em uso (ALU-27):** salvar a modalidade sem uma etapa que tem aluno confirma antes; o aluno volta ao primeiro nível da idade, sem grau. A ficha diz quando o aluno está em turmas de modalidades sem trilha.
+- **Editar turma (TUR-20):** modalidade ou professor inativos aparecem marcados "(inativa)"/"(inativo)" com dica; inativar a modalidade diz quantas turmas continuam.
+- **Avisos da turma (TUR-26):** "Pagamento atrasado" só do que a turma cobra (nada na turma sem cobrança); curso encerrado sem "Presença baixa" e sem vagas; o selo "Ativo" só aparece quando não está ativa; acima da capacidade, "3 alunos (capacidade 1)".
+- **Início e horário (TUR-28):** turma que ainda não começou mostra "Começa em dd/MM"; sem encontros, "Sem horário".

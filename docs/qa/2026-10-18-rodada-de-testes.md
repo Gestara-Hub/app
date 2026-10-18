@@ -127,9 +127,9 @@ Corrigir primeiro. Cada item junta os achados repetidos entre frentes.
 
 ## Prioridade 3: layout e texto (agrupado por tema)
 
-**Situação (18/10/2026): os itens abaixo foram corrigidos no código**, junto com os de layout e texto que não estavam em nenhuma prioridade (ACE-15, ACE-27, ACE-33, ACE-34, ACE-37, ACE-44, ALU-37, COB-18, COB-19, ONB-24). Padrões na frontend/07 ("Ajustes da Prioridade 3"). Layout e contraste foram ajustados sem abrir o navegador: conferir na rodada de e2e. Ficou de fora: a segunda parte do COB-23 ("Cancelar a cobrança" com duas mensalidades) e o ALU-27.
+**Situação (18/10/2026): os itens abaixo foram corrigidos no código**, junto com os de layout e texto que não estavam em nenhuma prioridade (ACE-15, ACE-27, ACE-33, ACE-34, ACE-37, ACE-44, ALU-37, COB-18, COB-19, ONB-24). Padrões na frontend/07 ("Ajustes da Prioridade 3"). Layout e contraste foram ajustados sem abrir o navegador: conferir na rodada de e2e. 
 
-**Achados sem prioridade que seguem abertos** (regra, bug ou UX, não de layout): ALU-20, ALU-23, ALU-25, ALU-27, ALU-28, ALU-32, ALU-36, ALU-39, COB-22, COB-25, COB-26, COB-29, COB-30, COB-31, COB-32, ONB-14, ONB-18, ONB-22, ONB-27, ONB-30, ONB-31, ONB-32, TUR-19, TUR-20, TUR-26, TUR-28, ACE-36 (vínculo mantido ao trocar o perfil), ACE-42 (doc 06) e ACE-43 (assinatura do cookie, no backend).
+**Achados sem prioridade (18/10/2026): corrigidos também**, com o COB-23 e o ALU-27: ALU-20, ALU-23, ALU-25, ALU-27, ALU-28, ALU-32, ALU-36, ALU-39, COB-22, COB-25, COB-26, COB-29, COB-30, COB-31, COB-32, ONB-14, ONB-18, ONB-22, ONB-27, ONB-30, ONB-31, ONB-32, TUR-19, TUR-20, TUR-26, TUR-28, ACE-36 e ACE-42. Regras nas docs 06, 11 e 15 e na frontend/07 ("Achados sem prioridade"). Fica para o backend o ACE-43 (cookie de sessão sem assinatura).
 
 - **Reticências cortando texto** (proibido pelo doc 08):
   - nomes longos em Alunos, Cobranças, Matricular, Calendário, Dashboard e Trocar usuário (ALU-18, ACE-22, TUR-21, ACE-23);

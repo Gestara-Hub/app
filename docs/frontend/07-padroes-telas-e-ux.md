@@ -238,3 +238,15 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Balão do destaque** ("Comece por aqui.") vai para baixo da seção quando não cabe acima da barra do topo; cor primária.
 - **Textos:** sem "&" nem "Ex.:"; títulos só com a primeira maiúscula; separador "·"; ocupação "3 de 10 alunos"; "Dashboard" virou "Painel"; nome com o tipo não repete ("Pacote Pacote", `withKind`); selo do pacote "Restam 7 de 10"; relatórios com títulos curtos e mês em português (`CompetencePicker`).
 - **Pequenas UX:** seleção em lote com "Sair da seleção"; "Ver aulas no calendário" abre só a turma (`?class=`); "Sem pacote" só depois de carregar os pacotes; Mensagens da ficha sem busca nem filtro quando não há mensagem; Histórico com o filtro "Avisos"; grupos de Comunicação em sanfona (no celular só o primeiro abre); menu do celular da landing fecha com Esc e toque fora.
+
+## Achados sem prioridade (18/10/2026)
+
+- **Sem telefone com DDD:** sem "Lembrar no WhatsApp" na cobrança e sem "Nova mensagem" na ficha (o vazio diz para cadastrar o telefone).
+- **Avisos da ficha:** botões com contorno; no celular dividem a linha.
+- **Comunicação:** "Abertas no WhatsApp" conta só as abertas; taxas só no oficial; "Cobranças pagas depois de um lembrete". Variável desconhecida no modelo avisa que a frase sai.
+- **Cadastro do aluno:** ano de nascimento de até 110 anos atrás; idade "menos de 1 ano"; observações até 1000 caracteres.
+- **Configuração inicial:** setas e Home/End na lista de áreas; trocar de passo leva o foco ao título; "Outra área" com nome de área da lista sugere usá-la; área sem trilha não pede revisão de níveis e metas.
+- **Destaque de seção** fecha os avisos (toasts) abertos.
+- **Boas-vindas:** fecha só pelo X ou pelos botões (nem Esc nem clique fora).
+- **Landing com sessão:** "Ir para o painel" no cabeçalho e no lugar do cadastro.
+- **Dia de vencimento nas Configurações:** o erro sai numa linha própria.

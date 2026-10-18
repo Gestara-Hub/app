@@ -250,3 +250,14 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md), co
 - Lembrete de atraso de 10 dias com o valor e o fecho; a migração v38 troca o texto só de quem não mudou o padrão.
 - Datas de vencimento de outro ano aparecem com o ano ("10/12/2025").
 - Na Auditoria a entidade é "Cobrança" (não "Mensalidade" para todas).
+
+### Achados sem prioridade (18/10/2026)
+
+- **Pacote e mensalidade (TUR-19):** aula que já gastou pacote continua no pacote depois de o aluno passar a pagar com mensalidade; remarcar não devolve a aula, só desmarcar devolve.
+- **Dia do vencimento por periodicidade (COB-22):** no semanal e no quinzenal de ciclo cheio o aluno vence a cada 7 ou 15 dias desde a matrícula (o campo some e a tela explica); no quinzenal proporcional o dia vai até 15 e a dica mostra os dois vencimentos do mês ("dias 10 e 25").
+- **Linha paga (COB-25):** mostra a forma e a data ("pago via Pix em 22/09") e se tem comprovante; o selo "Cancelado" não é mais riscado.
+- **Desconto do professor (COB-29):** desconto que deixa o mês negativo é recusado ao salvar o ajuste, não só ao fechar.
+- **Periodicidade do plano (COB-30):** com alunos no plano, o campo fica travado com a dica "crie outro plano".
+- **Cobrança avulsa repetida (COB-31):** mesma descrição para o mesmo aluno pede confirmação.
+- **Desconto ou bolsa no meio do mês (COB-32):** ao editar, a conta diz "Vale a partir do próximo período; o atual não muda."
+- **Inativar com uma ou várias mensalidades (COB-23):** os textos da escolha seguem o número.

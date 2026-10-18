@@ -4,7 +4,7 @@
 
 O frontend mockado **simula multi-usuario e RBAC**: usuarios com perfis, login por selecao de usuario e permissoes aplicadas de verdade na interface (navegacao, acoes e rotas). O modelo de dados e a matriz de permissoes seguem o formato de um contrato de API real, para encaixe direto na fase de backend.
 
-O seed cria **um unico usuario por organizacao, o proprietario** (Corte Nobre: Marcelo Andrade; Academia X: Ana Ribeiro). Os demais usuarios sao cadastrados em `/users`. A tela de login lista os usuarios de todas as organizacoes; entrar ou trocar de usuario troca a organizacao ativa (ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md)).
+O seed cria **um unico usuario por organizacao, o proprietario** (Corte Nobre: Marcelo Andrade; Academia X: Ana Ribeiro). Os demais usuarios sao cadastrados em `/users`. A tela de login mostra so a dona da Academia X (demonstracao, achada pelo id); trocar de usuario pelo menu do topo troca a organizacao ativa (ver [`../technical/03-multi-tenant-e-escopo.md`](../technical/03-multi-tenant-e-escopo.md)).
 
 ## Entidade Usuario
 
@@ -152,14 +152,16 @@ Regras especificas:
 
 ## Fluxo de acesso (mock)
 
-- **Login por selecao de usuario:** a tela de login lista os usuarios de todas as organizacoes (semeados + criados na UI), com organizacao e perfil; clicar em um entra como aquele usuario (senha irrelevante). O cookie de sessao guarda o snapshot do usuario (`UserView`), espelhando um futuro token assinado (JWT).
-- **Trocar usuario:** o menu do usuario (topbar) alterna entre usuarios sem logout; trocar para um usuario de outra organizacao troca o tenant ativo.
+- **Login de demonstracao:** a tela de login mostra so a dona da Academia X, achada pelo id (trocar nome ou e-mail nao tranca a conta); clicar entra sem senha. Dona sem a configuracao inicial vai para `/setup`. Com sessao, `/login` leva a primeira tela do perfil. O cookie de sessao guarda o snapshot do usuario (`UserView`), espelhando um futuro token assinado (JWT).
+- **Rotas sem sessao:** so as telas do app (`proxy.ts`, `APP_PATHS`) mandam ao login; endereco que nao existe mostra o 404.
+- **Landing com sessao:** mostra "Ir para o painel" no lugar do cadastro (um cadastro novo trocaria o nome e o e-mail da conta aberta).
+- **Trocar usuario:** o menu do usuario (topbar) alterna entre usuarios sem logout, com perfil e organizacao de cada um; trocar para um usuario de outra organizacao troca o tenant ativo.
 - **Enforcement:**
   - A navegacao mostra so os itens do modelo do tenant (`navForModel`) e com permissao (`can`).
   - Acoes (botoes/menus) sao ocultadas por `can()`.
   - As pages protegidas chamam `requirePermission` no server (Dashboard, Clientes, Equipe, Servicos, Turmas, detalhe de turma e de aula, Calendario, Modalidades, Planos, Mensalidades, Usuarios, Auditoria, Configuracoes); sem permissao, redireciona para a primeira rota acessivel do perfil no modelo (`firstAllowedRoute`). **A Agenda (`/schedule`) nao tem esse guard** (todos os perfis tem `schedule:view`).
   - `canAccessRoute` valida o destino pos-login (`?from=`), recusando rota de outro modelo. Acessar diretamente pela URL uma rota de outro modelo nao e barrado por um guard proprio.
-- **Escopo do Profissional:** a Agenda (Calendario e Lista) filtra para o `professionalId` do usuario. E so na UI; os services retornam tudo.
+- **Escopo do Profissional:** na Agenda (modelo de servicos), Calendario e Lista filtram para o `professionalId` do usuario, so na UI. No modelo de turmas o escopo e do service (`services/teacherScope.ts`): turmas em que e titular e aulas em que substitui; chamada, registros e graduacao fora disso sao recusados.
 
 ## Fora de escopo no MVP
 
@@ -167,7 +169,7 @@ Regras especificas:
 - Convite real de usuarios por e-mail e definicao de senha.
 - Tela de gestao de permissoes (matriz editavel).
 - Politicas por unidade.
-- Enforcement server-side de dados (escopo do Profissional e restricao de perfis gerenciaveis pelo Gerente sao so na UI).
+- Enforcement server-side de dados na Agenda (escopo do Profissional) e na restricao de perfis gerenciaveis pelo Gerente (so na UI). No modelo de turmas o escopo do professor ja e do service do mock.
 - Restricao por campo (ex.: "editar apenas dados basicos").
 
 ## Pendencias
@@ -179,3 +181,4 @@ Regras especificas:
 
 - **Um usuario ativo por profissional** (ACE-08): o service recusa ligar um segundo ("Este profissional ja esta ligado ao usuario X.") e o formulario nao oferece quem ja tem usuario. Inativar o usuario libera o profissional; reativar o antigo esbarra no novo.
 - **Auditoria** registra tambem o WhatsApp assistido ("abriu no WhatsApp uma mensagem para X"; o envio em si nao e confirmado), o reenvio pela API oficial, a troca de instrutor numa aula e a volta do titular, e a chamada quando gasta ou devolve aula de pacote.
+- **Trocar o perfil de Profissional para outro** mantem o vinculo com a equipe (opcional nos outros perfis); o formulario nao fala mais em "agenda dele" (ACE-36). Para ligar o profissional a outro usuario, tire o vinculo ou inative este usuario.
