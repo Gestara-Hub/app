@@ -237,3 +237,10 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md), co
 - **Vencimento até o dia 31 (decisão):** nas regras da academia, no aluno, nos lançamentos recorrentes e no dia de pagamento do professor. Dias 29 a 31 caem no último dia dos meses mais curtos (`dayInMonth`, `dateInCompetence`).
 - **Inativar o aluno (decisão):** encerra as matrículas (motivo "Aluno inativado"), tira da lista de espera e das aulas futuras reservadas; curso em andamento perde as parcelas futuras e mantém as vencidas, como em cancelar a matrícula; curso já concluído fica. O diálogo avisa antes quais matrículas serão encerradas.
 - Testes: `apps/web/src/services/__tests__/money-rules.test.ts` e `permissions-scope.test.ts`.
+
+### Prioridade 2 (18/10/2026)
+
+- **1ª cobrança no cadastro (COB-09):** vazia é erro ("Informe o valor da 1ª cobrança."); zero só quando a conta também dá zero (senão: "Para não cobrar, use desconto ou bolsa."); teto de R$ 100.000,00. Nada é trocado em silêncio.
+- **Mudar o valor do plano (COB-12):** com alunos ativos no plano, o formulário confirma antes ("Mudar o valor do plano?"): vale para os alunos do plano a partir da próxima mensalidade, e as já geradas ficam como estão.
+- **Resumo e Lançamentos batem (COB-15):** a prévia do pagamento do professor (mês ainda não fechado) aparece também em Lançamentos, como "Pagamento de Carlos (agosto, prévia)", pendente ou atrasada, com "Ver professores". O cartão do Resumo virou "Contas a pagar: atrasadas e próximos 7 dias".
+- **Vencimento no passado (COB-16):** cobrança avulsa, venda de pacote e cobrança do curso avisam "Data que já passou: a cobrança entra atrasada."; a avulsa e o pacote confirmam antes de lançar. Não bloqueia (lançar atraso antigo é legítimo).

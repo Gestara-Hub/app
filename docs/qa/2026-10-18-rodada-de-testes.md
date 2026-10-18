@@ -82,6 +82,8 @@ Corrigir primeiro. Cada item junta os achados repetidos entre frentes.
 
 ## Prioridade 2: regras e experiência
 
+**Situação (18/10/2026): os itens abaixo foram corrigidos.** Regras nas docs 06, 11 e 15 e na frontend/07; testes de serviço novos em `reports-sheets`, `finance`, `users`, `turmas`, `packages`, `progression`, `communication` e `settings`. A suíte e2e ainda não rodou (fica para o fim das correções).
+
 - **Relatórios:**
   - Lista de Presença sempre na primeira turma, sem escolher turma nem aula (ACE-04).
   - Churn com números incoerentes (ACE-13).

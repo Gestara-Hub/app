@@ -210,3 +210,14 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - Todo campo de telefone usa `InputPhone`: seletor de país (bandeira e DDI, Brasil +55 primeiro) ao lado do número, máscara do país enquanto digita e "+DDI" colado troca o país sozinho.
 - Guardado em E.164 (`+5511977770000`). Número antigo só com dígitos vale como Brasil. Exibição: Brasil "(11) 97777-0000", outros países no formato internacional. Validação: tamanho do país e, no Brasil, com DDD (`isPossiblePhone`). O WhatsApp usa o DDI de cada país (`whatsappDigits`).
 - Registrar pagamento sempre pede "Pago em" (padrão hoje, nunca no futuro) além da forma e do comprovante.
+
+## Ajustes da Prioridade 2 (18/10/2026)
+
+- **Sair de Configurações com alteração não salva** pelo menu ou por qualquer link interno confirma antes ("Sair sem salvar?"), além da troca de aba (`useLeaveLinkGuard`).
+- **Configuração inicial:** o passo fica na URL (`?passo=`) e o rascunho na sessão do navegador; recarregar não perde nada. Nome do espaço até 80 caracteres (também no cadastro e em Configurações). Aulas repetidas (caixa ou acento) contam uma vez. Outra área já começa com uma aula com o nome dela.
+- **Topo:** nome do espaço e da unidade também no celular.
+- **Modelo de mensagem:** até 900 caracteres, com contador "N de 900" (o serviço recusa acima).
+- **Aluno com telefone já cadastrado:** ao criar, confirma antes mostrando quem já tem o número.
+- **Aniversário:** "Mandar parabéns" só no dia; antes dele, a ficha mostra a data (dd/MM). Quem nasceu em 29/02 faz aniversário em 28/02 nos anos não bissextos, com a idade certa.
+- **Voltar** desempilha só quando o navegador volta de verdade (ir para a frente não tira da pilha).
+- **Matricular com turma lotada no celular:** os botões do rodapé ficam um embaixo do outro.

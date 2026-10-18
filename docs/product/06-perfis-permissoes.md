@@ -135,7 +135,7 @@ Regras especificas:
 - **Notas** (`grades:manage`): Proprietario e Gerente em todas as turmas; o Profissional so nas turmas em que e o instrutor titular (o `gradesService` recusa as demais com `FORBIDDEN`). O Atendente ve as avaliacoes e o boletim (`classes:view`), mas nao lanca.
 - **Modalidades** exigem `classes:manage`; **Planos** e **Mensalidades** aparecem com `billing:view`, e as acoes de gestao exigem `billing:manage`.
 - **Evolucao** (`progression:manage`, 18/10/2026): graduar, registrar a aula, metas e pontos fortes. Proprietario e Gerente em todos os alunos; o Profissional so nos alunos das turmas dele (o registro da aula tambem vale na aula em que substitui). O Atendente nao tem: a ficha mostra a evolucao sem os botoes.
-- **Relatorios**: alem de `reports:view`, os de cobranca (cobrancas, cursos, pacotes) pedem `billing:view` e os financeiros (DRE, churn, previsao, repasse) pedem `finance:view`. Sem a permissao, o relatorio nao aparece no catalogo e o service recusa.
+- **Relatorios**: alem de `reports:view`, os de cobranca (cobrancas, cursos, pacotes) pedem `billing:view` e os financeiros (DRE, churn, previsao, repasse) pedem `finance:view`. Sem a permissao, o relatorio nao aparece no catalogo e o service recusa. Previsao e desempenho de professores ficam fora do catalogo ate existirem (18/10/2026).
 
 ## Gestao de usuarios (`/users`)
 
@@ -174,3 +174,8 @@ Regras especificas:
 
 - Ao integrar a API: transformar `PROFILE_PERMISSIONS` em policies/scopes reais e aplicar o enforcement tambem no servidor, incluindo `manageableProfiles`, o escopo do Profissional e a visibilidade da auditoria.
 - Decidido em 18/10/2026: o instrutor ve so as proprias turmas e as aulas em que substitui (feito no mock; repetir no backend).
+
+### Usuarios e auditoria (18/10/2026)
+
+- **Um usuario ativo por profissional** (ACE-08): o service recusa ligar um segundo ("Este profissional ja esta ligado ao usuario X.") e o formulario nao oferece quem ja tem usuario. Inativar o usuario libera o profissional; reativar o antigo esbarra no novo.
+- **Auditoria** registra tambem o WhatsApp assistido ("abriu no WhatsApp uma mensagem para X"; o envio em si nao e confirmado), o reenvio pela API oficial, a troca de instrutor numa aula e a volta do titular, e a chamada quando gasta ou devolve aula de pacote.

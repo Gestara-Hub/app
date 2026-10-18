@@ -405,3 +405,12 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md).
 - **Turma desativada:** selo "Inativo" com "Reativar turma" no menu, sem "Matricular alunos" nem próxima aula; o serviço recusa a matrícula ("Turma desativada. Reative para matricular.") e, ao desativar, cancela as reservas futuras e as avulsas em aberto delas.
 - **Professor:** vê e age só nas turmas em que é o titular e nas aulas em que substitui (doc 06).
 - **Duas abas abertas:** cada leitura e gravação relê o banco salvo se outra aba gravou, e a tela da outra aba se atualiza sozinha (mock; some com o backend).
+
+### Prioridade 2 (18/10/2026)
+
+- **Concluir chamada sem ninguém presente** pede confirmação ("Ninguém veio?") antes de marcar falta em todos (TUR-17).
+- **Trocar a forma de cobrança** de turma com matriculados confirma antes, explicando o que acontece com as cobranças (TUR-15).
+- **Registro da aula:** um por aula. Registrar de novo abre o que já existe e atualiza (esvaziar um aluno apaga o registro dele); aula futura não aceita registro; o título usa a data ("Aula de 21/09"). O lembrete "Para hoje" vale só até a próxima aula da turma depois do registro; de outra turma, por 7 dias (TUR-16, ALU-05, ALU-06).
+- **Evolução:** graduação não aceita data futura; o chip de avanço mostra o grau ("Faixa Azul · 2º grau"); trocar a trilha da modalidade devolve ao primeiro nível da idade, sem grau, quem estava num nível que não existe mais (com confirmação na tela e na Auditoria); "Trocar faixa" pela idade aparece na lista e na ficha; os selos usam a palavra da trilha de cada aluno; o primeiro nível criado pelo registro da aula usa a data da matrícula, não "hoje" (ALU-04, 07, 08, 14, 15, 26).
+- **Relatórios:** Lista de presença por turma e aula (padrão: a última aula do mês até hoje), com presente, falta, justificada e "a marcar"; relação de alunos só com quem já estava cadastrado no mês; churn pelas matrículas (início + novos − saídas = fim, por turma). Projeção financeira e desempenho de professores saíram do catálogo até existirem. CSV em pt-BR: rótulos, datas dd/MM/aaaa, valores "250,00" e nome `relatorio-<tipo>-<mês>.csv`.
+- **Auditoria (ACE-18):** troca de instrutor numa aula e a volta do titular entram; a chamada só entra quando gasta ou devolve aula de pacote (marcar presença o dia todo encheria o registro).
