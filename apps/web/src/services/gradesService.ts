@@ -39,6 +39,7 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
+import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { auditLogService } from "./auditLogService";
@@ -123,6 +124,11 @@ function activeEnrollments(classGroupId: Id) {
   return store.enrollments.filter((e) => e.classGroupId === classGroupId && e.status === "active");
 }
 
+/** Matriculados hoje que ja estavam na turma no dia da avaliacao (ALU-28). */
+function enrolledOnDate(classGroupId: Id, date: string) {
+  return activeEnrollments(classGroupId).filter((e) => format(parseISO(e.enrolledAt), "yyyy-MM-dd") <= date);
+}
+
 function studentName(studentId: Id): string {
   return store.clients.find((c) => c.id === studentId)?.name ?? "Aluno";
 }
@@ -157,6 +163,8 @@ function validateFields(
   if (!partial || has("date")) {
     if (!payload.date || !DATE_PATTERN.test(payload.date)) {
       fields.push({ field: "date", message: "Informe a data da avaliação." });
+    } else if (payload.date > format(new Date(), "yyyy-MM-dd")) {
+      fields.push({ field: "date", message: "A avaliação não pode ter data futura." });
     }
   }
   if (payload.weight !== undefined) {
@@ -241,7 +249,7 @@ export const gradesService = {
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
       const settings = requireSettings(group);
-      const rows = activeEnrollments(group.id)
+      const rows = enrolledOnDate(group.id, a.date)
         .map((e) => {
           const grade = a.grades.find((g) => g.studentId === e.studentId);
           return {
@@ -344,14 +352,20 @@ export const gradesService = {
       const group = findClass(current.classGroupId);
       assertCanManage(group);
       const settings = requireSettings(group);
-      const enrolled = new Set(activeEnrollments(group.id).map((e) => e.studentId));
+      const enrolled = new Set(enrolledOnDate(group.id, current.date).map((e) => e.studentId));
+      const enrolledLater = new Set(activeEnrollments(group.id).map((e) => e.studentId));
 
       const fields: ApiErrorField[] = [];
       const normalized: AssessmentGradeInput[] = [];
       for (const entry of entries) {
         const field = `grades.${entry.studentId}`;
         if (!enrolled.has(entry.studentId)) {
-          fields.push({ field, message: `${studentName(entry.studentId)} não está matriculado nesta turma.` });
+          fields.push({
+            field,
+            message: enrolledLater.has(entry.studentId)
+              ? `${studentName(entry.studentId)} entrou na turma depois da avaliação.`
+              : `${studentName(entry.studentId)} não está matriculado nesta turma.`,
+          });
           continue;
         }
         if (entry.status === "graded") {

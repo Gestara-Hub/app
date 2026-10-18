@@ -118,7 +118,7 @@ function SummaryCards({ metrics }: { metrics: CommunicationMetrics }) {
         <SummaryCard
           label="Recebido depois de lembrete"
           value={formatCents(metrics.recoveredAmountCents)}
-          hint="Mensalidades pagas neste mês depois de um lembrete"
+          hint="Cobranças pagas neste mês depois de um lembrete"
         />
       </div>
     );
@@ -135,7 +135,7 @@ function SummaryCards({ metrics }: { metrics: CommunicationMetrics }) {
       <SummaryCard
         label="Recebido depois de lembrete"
         value={formatCents(metrics.recoveredAmountCents)}
-        hint="Mensalidades pagas no mês"
+        hint="Cobranças pagas no mês depois de um lembrete"
       />
     </div>
   );

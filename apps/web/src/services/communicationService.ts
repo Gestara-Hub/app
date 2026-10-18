@@ -386,10 +386,14 @@ export const communicationService = {
 
       return {
         mode: view.mode,
-        messagesThisMonth: view.mode === "official" ? sent.length : monthLogs.length,
+        // Assistido: so as abertas no WhatsApp (falha nao conta).
+        messagesThisMonth:
+          view.mode === "official" ? sent.length : monthLogs.filter((l) => l.status === "opened").length,
         monthlyQuota: view.monthlyQuota.included,
-        deliveryRate: sent.length > 0 ? Math.round((delivered / sent.length) * 1000) / 10 : null,
-        readRate: sent.length > 0 ? Math.round((read / sent.length) * 1000) / 10 : null,
+        // Taxas so no oficial (no assistido nao ha entrega a medir).
+        deliveryRate:
+          view.mode === "official" && sent.length > 0 ? Math.round((delivered / sent.length) * 1000) / 10 : null,
+        readRate: view.mode === "official" && sent.length > 0 ? Math.round((read / sent.length) * 1000) / 10 : null,
         recoveredAmountCents,
         activeAutomationsCount: ensureTemplates().filter((t) => t.enabled && !isManualTrigger(t.trigger)).length,
       };

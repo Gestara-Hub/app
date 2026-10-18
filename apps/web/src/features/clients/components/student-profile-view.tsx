@@ -62,6 +62,7 @@ import { StudentEvolutionTab } from "./student-evolution-tab";
 import { StudentProfileAlerts } from "./student-profile-alerts";
 import { brDate } from "./student-profile-parts";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
+import { ageLabel } from "@/lib/birthdays";
 
 type ProfileSectionId = "classes" | "charges" | "packages" | "evolution" | "messages" | "data";
 
@@ -76,7 +77,7 @@ function headerFacts(summary: StudentSummary, isClasses: boolean): string {
   const { student } = summary;
   return [
     student.phone ? formatPhone(student.phone) : null,
-    summary.age !== null ? `${summary.age} anos` : null,
+    summary.age !== null ? ageLabel(summary.age) : null,
     `${isClasses ? "Aluno" : "Cliente"} desde ${brDate(summary.studentSince)}`,
   ]
     .filter(Boolean)
@@ -422,6 +423,7 @@ export function StudentProfileView({ id }: { id: Id }) {
             content: (
               <StudentEvolutionTab
                 levels={summary.levels}
+                inAnyClass={summary.enrollments.some((e) => e.state === "active" || e.state === "paused")}
                 canManage={can("progression:manage")}
                 onOpenRecords={setRecordsModality}
                 onOpenLevels={setLevelsModality}

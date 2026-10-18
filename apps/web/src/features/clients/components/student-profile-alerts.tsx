@@ -114,7 +114,7 @@ export function StudentProfileAlerts({
       actions: (
         <>
           {pay?.onSelect ? (
-            <Button variant="ghost" onClick={pay.onSelect}>
+            <Button variant="outline" onClick={pay.onSelect}>
               Marcar pago
             </Button>
           ) : null}
@@ -179,7 +179,7 @@ export function StudentProfileAlerts({
       actions: (
         <>
           {onSellPackage ? (
-            <Button variant="ghost" onClick={() => onSellPackage(ending.pkg.packageId)}>
+            <Button variant="outline" onClick={() => onSellPackage(ending.pkg.packageId)}>
               Vender pacote
             </Button>
           ) : null}
@@ -233,11 +233,16 @@ export function StudentProfileAlerts({
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">{a.title}</p>
-                <p className={cn("text-xs", a.danger ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
+                <p className={cn("text-xs", a.danger ? "text-red-700 dark:text-red-400" : "text-muted-foreground")}>
                   {a.detail}
                 </p>
               </div>
-              {a.actions ? <div className="flex flex-wrap items-center gap-2">{a.actions}</div> : null}
+              {/* Mesmo arranjo em todos os avisos: no celular os botoes dividem a linha. */}
+              {a.actions ? (
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
+                  {a.actions}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

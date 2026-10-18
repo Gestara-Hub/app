@@ -3,6 +3,9 @@ import { format } from "date-fns";
 import { z } from "zod";
 import type { ClassBillingMode } from "@gestarahub/contracts";
 
+/** Observacoes do aluno: limite para nao virar um livro. */
+export const NOTES_MAX = 1000;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -35,13 +38,17 @@ export const clientFormSchema = z.object({
     .refine((v) => !v || EMAIL_RE.test(v), {
       message: "Informe um e-mail válido.",
     }),
-  notes: z.string().trim().optional(),
+  notes: z.string().trim().max(NOTES_MAX, `Use no máximo ${NOTES_MAX} caracteres.`).optional(),
   birthDate: z
     .string()
     .optional()
     // Data local (nao UTC), como no resto do app.
     .refine((v) => !v || v <= format(new Date(), "yyyy-MM-dd"), {
       message: "A data de nascimento não pode ser futura.",
+    })
+    // 1900 virava "126 anos" (ALU-32): mais de 110 anos e ano errado.
+    .refine((v) => !v || Number(v.slice(0, 4)) >= new Date().getFullYear() - 110, {
+      message: "Confira o ano de nascimento.",
     }),
   guardians: z
     .array(

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
 import type { Client, StudentSummary } from "@gestarahub/contracts";
 import { brDate, PERIOD_SHORT, TIMING_LABEL } from "./student-profile-parts";
+import { ageLabel } from "@/lib/birthdays";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -68,7 +69,7 @@ export function StudentDataTab({
           <Field label="E-mail">{student.email || EMPTY}</Field>
           <Field label="Nascimento">
             {student.birthDate
-              ? `${brDate(student.birthDate)}${summary.age !== null ? ` · ${summary.age} anos` : ""}`
+              ? `${brDate(student.birthDate)}${summary.age !== null ? ` · ${ageLabel(summary.age)}` : ""}`
               : EMPTY}
           </Field>
           <Field label={isClasses ? "Aluno desde" : "Cliente desde"}>{brDate(summary.studentSince)}</Field>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   UPCOMING_BIRTHDAY_DAYS,
+  ageLabel,
   ageTurningThisYear,
   birthdaysOfMonth,
   daysUntilBirthday,
@@ -160,5 +161,13 @@ describe("29/02 fora do ano bissexto (rodada de 18/10/2026)", () => {
     expect(nextBirthdayLabel("2000-02-29", "2028-02-27")).toBe("29/02");
     expect(ageAt("2000-02-29", "2026-02-27")).toBe(25);
     expect(ageAt("2000-02-29", "2026-02-28")).toBe(26);
+  });
+});
+
+describe("ageLabel", () => {
+  it("bebê não aparece com 0 anos (ALU-32)", () => {
+    expect(ageLabel(0)).toBe("menos de 1 ano");
+    expect(ageLabel(1)).toBe("1 ano");
+    expect(ageLabel(7)).toBe("7 anos");
   });
 });

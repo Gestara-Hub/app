@@ -21,6 +21,7 @@ export function StudentEvolutionTab({
   onOpenLevels,
   gradedModalityIds,
   onOpenGrades,
+  inAnyClass = false,
 }: {
   levels: StudentSummaryLevel[];
   canManage: boolean;
@@ -29,6 +30,8 @@ export function StudentEvolutionTab({
   /** Modalidades com avaliacoes ligadas: mostram o atalho "Notas". */
   gradedModalityIds?: ReadonlySet<Id>;
   onOpenGrades?: (modalityId: Id) => void;
+  /** Esta em alguma turma: entao as modalidades dela nao tem trilha (ALU-27). */
+  inAnyClass?: boolean;
 }) {
   if (levels.length === 0) {
     return (
@@ -36,7 +39,11 @@ export function StudentEvolutionTab({
         <ModuleEmptyGuide
           icon={<TrendingUp className="size-8" />}
           title="Sem trilha de evolução ainda."
-          description="Aparece quando o aluno entra numa turma de modalidade com trilha."
+          description={
+            inAnyClass
+              ? "As turmas deste aluno são de modalidades sem trilha de níveis."
+              : "Aparece quando o aluno entra numa turma de modalidade com trilha."
+          }
         />
       </div>
     );

@@ -71,11 +71,12 @@ import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clien
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { normalizeText } from "@/lib/text";
 import { whatsappDigits } from "@gestarahub/core/phone";
-import { clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
+import { NOTES_MAX, clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
 import { MAX_INSTALLMENTS, resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
+import { ageLabel } from "@/lib/birthdays";
 
 /** Teto da 1a cobranca (R$ 100.000,00): evita valor digitado errado. */
 const MAX_FIRST_CHARGE_CENTS = 10_000_000;
@@ -697,8 +698,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     age === null
       ? "Usada para lembrar os aniversariantes."
       : age < 18 && guardianFields.length === 0
-        ? `${age} ${age === 1 ? "ano" : "anos"}. Menor de idade: cadastre um responsável abaixo.`
-        : `${age} ${age === 1 ? "ano" : "anos"}.`;
+        ? `${ageLabel(age)}. Menor de idade: cadastre um responsável abaixo.`
+        : `${ageLabel(age)}.`;
 
   const onInvalid = useCallback((errors: FieldErrors<ClientFormValues>) => {
     if (errors.address) {
@@ -1619,6 +1620,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           <TextArea<ClientFormValues>
             name="notes"
             placeholder="Histórico, restrições médicas, preferências, etc. (opcional)"
+            maxLength={NOTES_MAX}
             disabled={pending}
           />
         </CollapsibleSection>

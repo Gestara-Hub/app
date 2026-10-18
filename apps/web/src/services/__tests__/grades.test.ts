@@ -34,9 +34,11 @@ async function setupClass(
   return { group, modalityId: modality.id, instructorId: instructor.id };
 }
 
+/** Matricula no inicio do mes (as provas dos testes sao de 20/09). */
 async function enroll(groupId: string, name: string): Promise<string> {
   const s = await createStudent(name);
-  await turmasService.enroll({ classGroupId: groupId, studentId: s.id });
+  const e = await turmasService.enroll({ classGroupId: groupId, studentId: s.id });
+  store.enrollments.find((x) => x.id === e.id)!.enrolledAt = "2026-09-01T12:00:00.000Z";
   return s.id;
 }
 
@@ -313,5 +315,26 @@ describe("notas: boletim e média da turma", () => {
     const card = await gradesService.getReportCard(s.id);
     expect(card.modalities.map((m) => m.modalityName)).toEqual(["Inglês"]);
     expect(card.modalities[0]).toMatchObject({ entries: [], overall: null });
+  });
+});
+
+describe("data da avaliação (ALU-28)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("recusa data futura e não lança para quem entrou depois da prova", async () => {
+    const { group } = await setupClass();
+    await expect(
+      gradesService.create({ classGroupId: group.id, name: "Prova", date: "2026-09-30" }),
+    ).rejects.toMatchObject({ fields: [{ field: "date", message: "A avaliação não pode ter data futura." }] });
+
+    const ana = await enroll(group.id, "Ana");
+    const a = await gradesService.create({ classGroupId: group.id, name: "Prova", date: "2026-09-20" });
+    const late = await createStudent("Lia");
+    await turmasService.enroll({ classGroupId: group.id, studentId: late.id }); // hoje, 22/09
+    const sheet = await gradesService.getSheet(a.id);
+    expect(sheet.rows.map((r) => r.studentId)).toEqual([ana]);
+    await expect(
+      gradesService.setGrades(a.id, [{ studentId: late.id, status: "graded", value: 8 }]),
+    ).rejects.toMatchObject({ fields: [{ message: "Lia entrou na turma depois da avaliação." }] });
   });
 });

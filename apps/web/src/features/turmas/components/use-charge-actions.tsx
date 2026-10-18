@@ -19,6 +19,7 @@ import { paymentMethodLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
+import { whatsappDigits } from "@gestarahub/core/phone";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ChargeView } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
@@ -140,7 +141,8 @@ export function useChargeActions() {
       onSelect: () => setChargeToPay(c),
     },
     // Mensalidade: lembrete pela situacao; avulsa, curso e pacote: "Lembrete de cobrança".
-    ...(c.kind !== "dropin"
+    // Sem telefone valido o lembrete nao aparece (antes dava erro ao tocar).
+    ...(c.kind !== "dropin" && whatsappDigits(c.studentPhone)
       ? [
           {
             key: "whatsapp",

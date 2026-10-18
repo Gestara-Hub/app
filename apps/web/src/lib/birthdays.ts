@@ -22,6 +22,12 @@ export function nextBirthdayLabel(birthDate: string, today: string): string {
   return `${md.slice(3, 5)}/${md.slice(0, 2)}`;
 }
 
+/** "menos de 1 ano", "1 ano", "7 anos" (bebe nao aparece com "0 anos"). */
+export function ageLabel(age: number): string {
+  if (age < 1) return "menos de 1 ano";
+  return age === 1 ? "1 ano" : `${age} anos`;
+}
+
 /** Faz aniversario hoje? `today` em `YYYY-MM-DD`. */
 export function isBirthdayToday(birthDate: string | undefined, today: string): boolean {
   if (!birthDate || birthDate.length < 10) return false;

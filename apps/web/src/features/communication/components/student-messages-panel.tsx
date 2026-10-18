@@ -33,6 +33,7 @@ import { useMessageLogs } from "../hooks/use-communication";
 import { STATUS_META, TRIGGER_META } from "../message-meta";
 import { MessageDetailDialog, MessageStatusBadge } from "./message-logs-tab";
 import { SendMessageDialog, type MessageRecipient } from "./send-message-dialog";
+import { whatsappDigits } from "@gestarahub/core/phone";
 
 const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
   { value: "all", label: "Todos os status" },
@@ -77,6 +78,9 @@ export function StudentMessagesPanel({
   // Sem nenhuma mensagem: so o vazio com "Nova mensagem" (busca, filtro e o
   // segundo botao nao servem para nada).
   const noMessages = !isPending && logs.length === 0;
+  // Sem telefone com DDD nao ha como mandar: sem botao (abria com envio travado).
+  const hasPhone = Boolean(whatsappDigits(student.phone));
+  const canWrite = canSend && hasPhone;
 
   const actionsFor = (log: MessageLog): ListItemAction[] => [
     { key: "view", label: "Ver mensagem", icon: <Eye className="size-4" />, onSelect: () => setSelected(log) },
@@ -106,7 +110,7 @@ export function StudentMessagesPanel({
                 ))}
               </SelectContent>
             </Select>
-            {canSend ? (
+            {canWrite ? (
               <Button className="shrink-0" onClick={() => setSendOpen(true)}>
                 <MessageSquarePlus className="size-4" />
                 Nova mensagem
@@ -141,9 +145,13 @@ export function StudentMessagesPanel({
                 <ModuleEmptyGuide
                   icon={<MessageCircle className="size-8" />}
                   title="Nenhuma mensagem ainda."
-                  description="Lembretes e mensagens pelo WhatsApp aparecem aqui."
-                  actionLabel={canSend ? "Nova mensagem" : undefined}
-                  onAction={canSend ? () => setSendOpen(true) : undefined}
+                  description={
+                    canSend && !hasPhone
+                      ? "Cadastre um telefone com DDD para mandar mensagens."
+                      : "Lembretes e mensagens pelo WhatsApp aparecem aqui."
+                  }
+                  actionLabel={canWrite ? "Nova mensagem" : undefined}
+                  onAction={canWrite ? () => setSendOpen(true) : undefined}
                 />
               }
             />

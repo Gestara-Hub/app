@@ -17,6 +17,8 @@ interface TextAreaProps<T extends FieldValues> {
   required?: boolean;
   disabled?: boolean;
   rows?: number;
+  /** Limite de caracteres do campo (o navegador para de aceitar). */
+  maxLength?: number;
   id?: string;
 }
 
@@ -28,6 +30,7 @@ export function TextArea<T extends FieldValues>({
   required,
   disabled,
   rows = 3,
+  maxLength,
   id,
 }: TextAreaProps<T>) {
   const { control } = useFormContext<T>();
@@ -50,6 +53,7 @@ export function TextArea<T extends FieldValues>({
             placeholder={placeholder}
             disabled={disabled}
             rows={rows}
+            maxLength={maxLength}
             value={(field.value as string | undefined) ?? ""}
             onChange={(event) => field.onChange(event.target.value)}
             onBlur={field.onBlur}

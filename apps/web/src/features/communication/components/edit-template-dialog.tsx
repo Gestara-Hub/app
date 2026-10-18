@@ -97,6 +97,10 @@ function EditTemplateForm({
   }
 
   const preview = fillMessage(content, sampleValues(organization?.name, hasFeature("online_payments")));
+  // Variavel que o modelo nao conhece: a frase dela sumia sem aviso (ALU-39).
+  const unknownVariables = [...new Set([...content.matchAll(/\{(\w+)\}/g)].map((m) => `{${m[1]}}`))].filter(
+    (v) => !template.availableVariables.includes(v),
+  );
 
   return (
     <>
@@ -152,6 +156,12 @@ function EditTemplateForm({
               </button>
             ))}
           </div>
+          {unknownVariables.length > 0 ? (
+            <p role="alert" className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              {unknownVariables.join(", ")} não {unknownVariables.length === 1 ? "existe" : "existem"} neste
+              modelo. A frase com {unknownVariables.length === 1 ? "ela" : "elas"} sai da mensagem.
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             Frase com informação que o sistema não tem (como o link de pagamento sem cobrança online) sai da mensagem.
           </p>

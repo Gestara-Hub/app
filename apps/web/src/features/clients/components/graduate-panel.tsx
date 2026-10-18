@@ -30,6 +30,7 @@ import {
   trackUsesAges,
 } from "@/lib/progression-tracks";
 import { cn } from "@/lib/utils";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export interface GraduateResult {
   level: ProgressionLevelStep;
@@ -288,6 +289,7 @@ export function GraduatePanel({
   const goalMet = (!showAttendance || attendanceOk) && (!showTime || timeOk);
 
   const otherLevel = track.levels.find((l) => l.id === otherId);
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Mesmo nivel e grau de hoje: nada a registrar.
   const unchanged = Boolean(
     target && target.level.id === currentLevel.id && target.sub === currentSubLevel,
@@ -514,21 +516,38 @@ export function GraduatePanel({
         <Button
           type="button"
           disabled={isPending || !target || !date || date > todayISO() || unchanged}
-          onClick={() =>
-            target &&
+          onClick={async () => {
+            if (!target) return;
+            // "Escolher outra" que volta ou pula niveis confirma antes (ALU-36).
+            const targetIndex = track.levels.findIndex((l) => l.id === target.level.id);
+            const goesBack =
+              targetIndex < currentIndex || (targetIndex === currentIndex && target.sub < currentSubLevel);
+            const skipped = targetIndex - currentIndex - 1;
+            if (choice === "other" && (goesBack || skipped > 0)) {
+              const ok = await confirm({
+                title: goesBack ? `Voltar para ${target.level.name}?` : `Pular para ${target.level.name}?`,
+                description: goesBack
+                  ? `O aluno volta de ${levelWord}. Fica no histórico de graduações.`
+                  : `Pula ${skipped === 1 ? `1 ${levelWord}` : `${skipped} ${vocabulary.levelPlural.toLowerCase()}`} da trilha.`,
+                confirmLabel: "Confirmar",
+                variant: "default",
+              });
+              if (!ok) return;
+            }
             onConfirm({
               level: target.level,
               subLevel: target.sub,
               date,
               examiner: examiner.trim() || undefined,
               notes: notes.trim() || undefined,
-            })
-          }
+            });
+          }}
         >
           <Award className="size-4" />
           {isPending ? "Salvando..." : `Confirmar ${vocabulary.promotionLower}`}
         </Button>
       </DialogFooter>
+      {confirmDialog}
     </>
   );
 }

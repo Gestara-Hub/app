@@ -77,6 +77,8 @@ import {
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCreateCategory, useUpdateCategory } from "@/features/categories";
 import { useBusinessSegment } from "@/features/settings";
+import { useClients } from "@/features/clients";
+import { plural } from "@gestarahub/core/format";
 import { modalityFormSchema, type ModalityFormValues } from "../modality-schema";
 
 const QUICK_MODALITY_SUGGESTIONS = [
@@ -164,6 +166,7 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
   const pending = createMut.isPending || updateMut.isPending;
   const segment = useBusinessSegment();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
+  const { data: clients } = useClients(undefined, isEdit);
 
   const [showLevelsEditor, setShowLevelsEditor] = useState(false);
   const [isCustomizePulsing, setIsCustomizePulsing] = useState(false);
@@ -364,6 +367,30 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
         ...(isBelt ? {} : { tipColor: undefined, maxSubLevels: 0 }),
       })),
     };
+
+    // Etapa apagada com aluno nela: avisa antes (o aluno volta ao 1o nivel da
+    // idade, sem grau). Trocar o modelo inteiro ja confirmou no clique (ALU-27).
+    if (isEdit && modality) {
+      const before = modality.progressionTrack?.levels ?? [];
+      const keptIds = new Set(sanitizedTrack.levels.map((l) => l.id));
+      const removedIds = new Set(before.filter((l) => !keptIds.has(l.id)).map((l) => l.id));
+      const partial = removedIds.size > 0 && removedIds.size < before.length;
+      const onRemoved = partial
+        ? (clients ?? []).filter((c) => {
+            const levelId = c.progressions?.[modality.id]?.levelId;
+            return Boolean(levelId && removedIds.has(levelId));
+          }).length
+        : 0;
+      if (onRemoved > 0) {
+        const ok = await confirmAction({
+          title: "Remover etapa em uso?",
+          description: `${plural(onRemoved, "aluno está", "alunos estão")} numa etapa removida e ${onRemoved === 1 ? "volta" : "voltam"} ao primeiro nível da idade, sem grau.`,
+          confirmLabel: "Remover mesmo assim",
+          variant: "default",
+        });
+        if (!ok) return;
+      }
+    }
 
     const passing = normalizePassingGrade(values.assessmentScale, values.passingGrade);
     const assessments: ModalityAssessmentSettings = {

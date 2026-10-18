@@ -586,6 +586,9 @@ describe("numeros do mes", () => {
   it("assistido conta as abertas no WhatsApp, sem taxa de entrega", async () => {
     await communicationService.registerAssistedMessage(message());
     await communicationService.registerAssistedMessage(message());
+    // Falha (de quando estava no oficial) nao conta como aberta (ALU-25).
+    const failed = await communicationService.registerAssistedMessage(message());
+    store.messageLogs.find((l) => l.id === failed.id)!.status = "failed";
     const metrics = await communicationService.getMetrics();
     expect(metrics).toMatchObject({
       mode: "assisted",
