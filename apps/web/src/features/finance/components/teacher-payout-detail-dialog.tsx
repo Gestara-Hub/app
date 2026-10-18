@@ -24,7 +24,7 @@ import type {
   TeacherPayoutAdjustment,
   TeacherPayoutStatus,
 } from "@gestarahub/contracts";
-import { getErrorMessage } from "@gestarahub/core/api-error";
+import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents, formatDateTime, plural } from "@gestarahub/core/format";
 import { InputCurrency, InputText, SelectField } from "@/components/form";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -211,7 +211,8 @@ function DetailContent({
       toast.success(success);
       return true;
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível salvar o ajuste."));
+      // Erro de campo (desconto maior que o mes) diz o motivo, nao "verifique os campos".
+      toast.error(getFieldErrors(error)?.[0]?.message ?? getErrorMessage(error, "Não foi possível salvar o ajuste."));
       return false;
     }
   };
@@ -265,7 +266,7 @@ function DetailContent({
       });
       toast.success("Mês fechado.");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível fechar o mês."));
+      toast.error(getFieldErrors(error)?.[0]?.message ?? getErrorMessage(error, "Não foi possível fechar o mês."));
     }
   };
 

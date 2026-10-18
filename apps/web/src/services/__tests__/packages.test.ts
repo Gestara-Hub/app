@@ -655,6 +655,12 @@ describe("pacote: aluno de pacote em turma de mensalidade", () => {
     const back = await turmasService.setEnrollmentPayment(e.id, false);
     expect(back.paysWithPackage).toBeUndefined();
     expect(lastAudit()).toBe("Ana Ribeiro passou Ana a pagar a turma Pilates manhã com mensalidade");
+
+    // TUR-19: remarcar a aula paga com pacote nao devolve a aula; desmarcar devolve.
+    await turmasService.markAttendance({ sessionId: sessionOf(g), studentId: ana.id, status: "absent" });
+    expect(stored(sold.id).lessonsUsed).toBe(1);
+    await turmasService.clearAttendance({ sessionId: sessionOf(g), studentId: ana.id });
+    expect(stored(sold.id).lessonsUsed).toBe(0);
   });
 
   it("trocar é recusado fora da turma de mensalidade e sem pacote", async () => {

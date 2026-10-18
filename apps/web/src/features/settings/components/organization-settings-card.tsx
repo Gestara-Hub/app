@@ -3,7 +3,7 @@
 import { isPossiblePhone } from "@gestarahub/core/phone";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { useForm, FormProvider, useWatch, type FieldErrors } from "react-hook-form";
+import { useForm, FormProvider, useFormState, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -239,6 +239,7 @@ function OrgUnitForm({
       customSegmentBilling: organization.customSegmentBilling ?? DEFAULT_CUSTOM_BILLING,
     },
   });
+  const dueDayError = useFormState({ control: form.control, name: "defaultDueDay" }).errors.defaultDueDay?.message;
 
   const isClasses = organization.model === "classes";
   const hasBusinessHours = Boolean(
@@ -628,7 +629,9 @@ function OrgUnitForm({
                     ) : (
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>Todo dia</span>
-                        <div className="w-20">
+                        {/* O erro sai numa linha propria: dentro do campo de 80px
+                            quebrava em 3 linhas. */}
+                        <div className="w-20 [&_[role=alert]]:hidden">
                           <InputNumber<OrgUnitValues>
                             name="defaultDueDay"
                             min={1}
@@ -637,6 +640,11 @@ function OrgUnitForm({
                           />
                         </div>
                         <span>de cada mês</span>
+                        {dueDayError ? (
+                          <span role="alert" className="basis-full text-xs text-destructive">
+                            {dueDayError}
+                          </span>
+                        ) : null}
                         {isValidDueDay && currentDueDay >= 29 ? (
                           <span className="basis-full text-xs">Nos meses mais curtos, vence no último dia.</span>
                         ) : null}

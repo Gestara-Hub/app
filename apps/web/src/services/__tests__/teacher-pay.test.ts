@@ -292,11 +292,13 @@ describe("ajustes salvos sem fechar", () => {
     expect(store.auditLog.length).toBe(count);
   });
 
-  it("total negativo pode ficar salvo, mas o fechamento recusa", async () => {
+  it("desconto maior que o mês é recusado ao salvar e ao fechar (COB-29)", async () => {
     const { teacher } = await septemberSetup();
     const adjustments = [{ label: "Vale", amountCents: -100000 }];
-    const view = await teacherPayService.saveAdjustments(teacher.id, "2026-09", adjustments);
-    expect(view.totalCents).toBe(0); // total exibido nunca é negativo
+    await expect(teacherPayService.saveAdjustments(teacher.id, "2026-09", adjustments)).rejects.toMatchObject({
+      fields: [{ field: "adjustments", message: "Os descontos deixam o total do mês negativo." }],
+    });
+    expect(store.teacherPayouts).toHaveLength(0);
     await expect(teacherPayService.closePayout(teacher.id, "2026-09", adjustments)).rejects.toMatchObject({
       fields: [{ field: "adjustments" }],
     });

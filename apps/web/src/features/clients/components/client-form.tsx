@@ -408,6 +408,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     () => plans?.find((p) => p.id === selectedPlanId),
     [plans, selectedPlanId],
   );
+  // Como o motor usa o dia do vencimento em cada periodicidade (COB-22).
+  const planPeriod = selectedPlan?.period ?? "monthly";
+  const cycleDays =
+    planPeriod === "weekly" ? 7 : planPeriod === "biweekly" && billingStrategy === "full_cycle" ? 15 : null;
+  const isBiweekly = planPeriod === "biweekly" && !cycleDays;
+  const watchedDueDay = useWatch({ control: form.control, name: "dueDay" });
+  const biweeklyDueDay = Math.min(Math.max(Number(watchedDueDay) || 1, 1), 15);
 
   // Desconto efetivo do modo escolhido. Bolsa por "valor a pagar" vira desconto
   // fixo (preco do plano - valor pago); integral = 100%.
@@ -525,6 +532,17 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       ? `Plano ${formatCents(price)} → isento (desconto do valor todo)`
       : `Plano ${formatCents(price)} → paga ${formatCents(price - off)}`;
   }, [isScholarship, paymentMode, hasDiscount, selectedPlan, effectiveDiscount]);
+
+  // Editando: desconto ou bolsa trocados valem do proximo periodo (o motor
+  // refaz so as mensalidades que ainda nao comecaram). COB-32.
+  const discountWhen =
+    isEdit &&
+    client?.planId &&
+    client.planId === selectedPlanId &&
+    JSON.stringify(effectiveDiscount ? { type: effectiveDiscount.type, value: effectiveDiscount.value } : null) !==
+      JSON.stringify(client.discount ? { type: client.discount.type, value: client.discount.value } : null)
+      ? " Vale a partir do próximo período; o atual não muda."
+      : "";
 
   const basePriceCents = useMemo(() => {
     if (!selectedPlan) return 0;
@@ -1278,20 +1296,30 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
 
               {usesPlan && (selectedPlanId || isFullScholarship) ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <InputNumber<ClientFormValues>
-                    name="dueDay"
-                    label="Dia do vencimento recorrente"
-                    placeholder="10"
-                    min={1}
-                    max={31}
-                    required
-                    disabled={pending}
-                    hint={
-                      billingStrategy === "full_cycle"
-                        ? "No mês cheio, é o dia de início do ciclo. Dia inexistente cai no último dia do mês."
-                        : `Dia do mês das próximas mensalidades (padrão do espaço: ${defaultDueDay}).`
-                    }
-                  />
+                  {/* Semanal e quinzenal de ciclo cheio vencem a cada 7 ou 15 dias
+                      desde a matricula: o dia do mes nao vale (antes era pedido a toa). */}
+                  {cycleDays ? (
+                    <p className="self-center text-xs text-muted-foreground">
+                      Vence a cada {cycleDays} dias, contando da matrícula.
+                    </p>
+                  ) : (
+                    <InputNumber<ClientFormValues>
+                      name="dueDay"
+                      label={isBiweekly ? "Dia do vencimento (1ª quinzena)" : "Dia do vencimento recorrente"}
+                      placeholder="10"
+                      min={1}
+                      max={isBiweekly ? 15 : 31}
+                      required
+                      disabled={pending}
+                      hint={
+                        isBiweekly
+                          ? `Vence nos dias ${biweeklyDueDay} e ${biweeklyDueDay + 15} de cada mês.`
+                          : billingStrategy === "full_cycle"
+                            ? "No mês cheio, é o dia de início do ciclo. Dia inexistente cai no último dia do mês."
+                            : `Dia do mês das próximas mensalidades (padrão do espaço: ${defaultDueDay}).`
+                      }
+                    />
+                  )}
 
                   {isEdit ? (
                     <SelectField<ClientFormValues>
@@ -1354,7 +1382,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                         )}
                       </div>
                       {discountSummary ? (
-                        <p className="text-xs text-muted-foreground">{discountSummary}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {discountSummary}.{discountWhen}
+                        </p>
                       ) : null}
                       <InputText<ClientFormValues>
                         name="discountReason"
@@ -1402,7 +1432,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                           />
                         )}
                         {partialSummary ? (
-                          <p className="text-xs text-muted-foreground">{partialSummary}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {partialSummary}.{discountWhen}
+                          </p>
                         ) : null}
                       </div>
                     ) : (

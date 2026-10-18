@@ -164,6 +164,11 @@ const ACTIVE_STATUSES = new Set(["pending", "overdue"]);
 // --- Gasto de aula na chamada (usado pelo turmasService) ---------------------
 
 /** Pacote do aluno que ja gastou uma aula nesta aula (uma por aluno x aula). */
+/** A aula ja gastou um pacote do aluno? */
+export function hasPackageUsage(studentId: Id, sessionId: Id): boolean {
+  return usageOf(studentId, sessionId) !== null;
+}
+
 function usageOf(studentId: Id, sessionId: Id): { pkg: StudentPackage; index: number } | null {
   for (const pkg of store.studentPackages) {
     if (pkg.studentId !== studentId) continue;

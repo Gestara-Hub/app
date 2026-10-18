@@ -49,6 +49,8 @@ export function PlanForm({
   const { data: activeClients } = useClients({ status: "active" }, isEdit);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const pending = createMut.isPending || updateMut.isPending;
+  // Com alunos no plano a periodicidade nao muda (o servico recusa): ja trava na tela.
+  const studentsInPlan = plan ? (activeClients ?? []).filter((c) => c.planId === plan.id).length : 0;
 
   const form = useForm<PlanFormValues>({
     resolver: zodResolver(schema),
@@ -64,7 +66,7 @@ export function PlanForm({
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const inPlan = plan ? (activeClients ?? []).filter((c) => c.planId === plan.id).length : 0;
+    const inPlan = studentsInPlan;
     if (plan && inPlan > 0 && values.priceCents !== plan.priceCents) {
       const ok = await confirm({
         title: "Mudar o valor do plano?",
@@ -112,7 +114,8 @@ export function PlanForm({
             options={PERIOD_OPTIONS}
             clearable={false}
             required
-            disabled={pending}
+            disabled={pending || studentsInPlan > 0}
+            hint={studentsInPlan > 0 ? "Plano com alunos: para mudar, crie outro plano." : undefined}
           />
           <InputCurrency<PlanFormValues>
             name="priceCents"

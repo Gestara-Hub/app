@@ -60,6 +60,7 @@ import { actorTeacherId, assertTeacherSession, teacherSeesClass, teacherSeesSess
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import {
   acceptsPackages,
+  hasPackageUsage,
   hasUsablePackage,
   packageCandidatesFor,
   packageRosterInfo,
@@ -696,13 +697,16 @@ function syncAttendanceUsage(sessionId: Id, studentId: Id, status?: AttendanceSt
   const g = p ? store.classGroups.find((x) => x.id === p.classGroupId) : undefined;
   if (!p || !g) return "none" as const;
   const kind = buildRoster(g, sessionId, p.date).find((r) => r.studentId === studentId)?.kind;
+  // Aula que ja gastou pacote segue no pacote mesmo depois de o aluno passar
+  // a pagar com mensalidade (remarcar nao devolve a aula; desmarcar devolve).
+  const byPackage = paysWithPackage(g, kind, studentId) || hasPackageUsage(studentId, sessionId);
   return syncPackageUsage({
     studentId,
     sessionId,
     classGroupId: g.id,
     modalityId: g.modalityId,
     date: p.date,
-    status: paysWithPackage(g, kind, studentId) ? status : undefined,
+    status: byPackage ? status : undefined,
   });
 }
 

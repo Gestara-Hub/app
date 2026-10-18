@@ -851,6 +851,15 @@ export const teacherPayService = {
       }
 
       const lines = normalizeAdjustments(adjustments);
+      // Desconto maior que o mes ja e recusado aqui (antes so travava o fechar).
+      const ownFacts = factsFor(professionalId, buildFacts(competence));
+      const late = latePaymentShare(professionalId, rule, competence);
+      const computed = [...computeTeacherPayout(rule, ownFacts, competence), ...late.lines];
+      if ([...computed, ...lines].reduce((sum, l) => sum + l.amountCents, 0) < 0) {
+        throw validationError([
+          { field: "adjustments", message: "Os descontos deixam o total do mês negativo." },
+        ]);
+      }
       const before = adjustmentLines(existing);
       const ts = nowIso();
       let payout: TeacherPayout;

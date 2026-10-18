@@ -29,7 +29,8 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useClients } from "@/features/clients";
 import { useBusinessSegment } from "@/features/settings";
-import { useCreateExtraCharge } from "../hooks/use-billing";
+import { useCharges, useCreateExtraCharge } from "../hooks/use-billing";
+import { normalizeText } from "@/lib/text";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { installmentsSummary, pastDueHint } from "../installments-summary";
 
@@ -103,8 +104,26 @@ function ExtraChargeForm({
   const summary = installmentsSummary(totalCents, Number(installments), firstDueDate);
   const pastDue = pastDueHint(firstDueDate);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
+  const { data: extraCharges } = useCharges({ kind: "extra" });
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Mesma cobranca para o mesmo aluno ja lancada: confirma (clique duplo,
+    // lancamento repetido).
+    const same = (extraCharges ?? []).find(
+      (c) =>
+        c.studentId === values.studentId &&
+        c.status !== "canceled" &&
+        normalizeText(c.description ?? "") === normalizeText(values.description),
+    );
+    if (same) {
+      const ok = await confirm({
+        title: "Cobrança repetida?",
+        description: `${same.studentName} já tem "${same.description}". Lançar outra?`,
+        confirmLabel: "Lançar outra",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
     // Data no passado costuma ser engano (ano errado): confirma antes de lancar.
     if (pastDueHint(values.firstDueDate)) {
       const ok = await confirm({

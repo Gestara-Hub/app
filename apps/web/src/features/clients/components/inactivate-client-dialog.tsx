@@ -184,8 +184,17 @@ export function InactivateClientDialog({
                   {choice === o.value ? <span className="size-2 rounded-full bg-primary" /> : null}
                 </span>
                 <span>
-                  <span className="block text-sm font-medium text-foreground">{o.title}</span>
-                  <span className="block text-xs text-muted-foreground">{o.desc}</span>
+                  {/* Plural pelo numero de mensalidades em aberto (COB-23). */}
+                  <span className="block text-sm font-medium text-foreground">
+                    {o.value === "cancel" && openCharges.length > 1 ? "Cancelar as cobranças" : o.title}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {o.value === "cancel" && openCharges.length === 1
+                      ? "Não será cobrada. Fica em Canceladas e pode ser reaberta."
+                      : o.value === "keep" && openCharges.length === 1
+                        ? "Continua em Cobranças como pendente ou atrasada."
+                        : o.desc}
+                  </span>
                 </span>
               </button>
             ))}

@@ -24,8 +24,9 @@ export const STATUS_LABEL: Record<ChargeStatus, string> = {
 export const STATUS_CLASS: Record<ChargeStatus, string> = {
   pending: "border-border/60 bg-muted/50 text-muted-foreground",
   paid: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  overdue: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
-  canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 line-through",
+  overdue: "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400",
+  // Sem riscado no selo: o texto riscado ficava ilegivel (COB-25).
+  canceled: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
 
@@ -261,8 +262,13 @@ export function ChargeDetails({ charge: c, showSubject = true }: { charge: Charg
   if (c.kind === "membership" && ref) parts.push(`referente a ${ref}`);
   const reason = cancelReasonOf(c);
   if (reason) parts.push(reason);
-  if (c.status === "paid" && c.method) {
-    parts.push(`${c.paidVia === "online" ? "pago online via " : "pago via "}${paymentMethodLabel(c.method)}`);
+  // Paga: quando e como; com comprovante, avisa (abre pelo menu da linha).
+  if (c.status === "paid") {
+    const when = c.paidAt ? ` em ${dueDateLabel(c.paidAt.slice(0, 10))}` : "";
+    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
+    parts.push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}${when}`);
+    const receipts = c.attachments?.length ?? 0;
+    if (receipts > 0) parts.push(receipts === 1 ? "com comprovante" : `${receipts} comprovantes`);
   }
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
