@@ -1,5 +1,7 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
+> **Current work (18/10/2026):** read [`docs/qa/roteiros/CONTEXTO-PARA-AGENTE.md`](docs/qa/roteiros/CONTEXTO-PARA-AGENTE.md) first. It has the project state, the manual test scripts the user is running and how to validate the JSON they send. `CLAUDE.md` has the full, current rules (this file is a summary).
+
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
 - **Monorepo**: pnpm workspaces (`apps/web`, `packages/contracts`, `packages/core`).
