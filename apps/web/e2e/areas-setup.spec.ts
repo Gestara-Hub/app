@@ -435,6 +435,8 @@ test.describe("comemoração da configuração inicial", () => {
       await expect(page).toHaveURL(/\/classes\/[^/?]+\?enroll=true$/);
       const enroll = page.getByRole("dialog", { name: "Matricular alunos" });
       await enroll.getByRole("option", { name: /Aluna Primeira/ }).click();
+      // O 1º vencimento fica atras de "Alterar" (fechado vale o padrao da turma).
+      await enroll.getByRole("button", { name: "Alterar", exact: true }).click();
       await enroll.locator("input[name=firstDueDate]").fill("2026-10-15");
       await enroll.getByRole("button", { name: "Matricular 1 aluno" }).click();
       await expect(page.getByText("Aluno matriculado.")).toBeVisible();

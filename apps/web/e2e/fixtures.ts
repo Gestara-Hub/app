@@ -1,4 +1,4 @@
-import { expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
 
 /** Origem do app nos testes (ver E2E_PORT no playwright.config). */
 export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3000}`;
@@ -226,6 +226,66 @@ export function classGroup(id: string, name: string, over: Record<string, unknow
 /** Matricula ativa de um aluno numa turma. */
 export function enrollment(id: string, classGroupId: string, studentId: string) {
   return { id, classGroupId, studentId, status: "active", enrolledAt: TS };
+}
+
+/**
+ * Linha do aluno na chamada da aula: um botao "{Aluno}: {marcacao}" ("sem
+ * marcação", "Presente", "Faltou" ou "Justificada"). Tocar marca presenca.
+ */
+export function rollCallRow(page: Page, name: string): Locator {
+  return page.getByRole("button", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: `) });
+}
+
+/** Falta, justificativa e desmarcar ficam no menu ⋮ do aluno na chamada. */
+export async function attendanceAction(
+  page: Page,
+  name: string,
+  action: "Marcar falta" | "Justificar falta" | "Desmarcar",
+): Promise<void> {
+  await page.getByRole("button", { name: `Ações de ${name}`, exact: true }).click();
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+}
+
+/**
+ * Abre o menu ⋮ do cabecalho ("Mais ações da aula", "da turma", "do aluno" ou,
+ * no modelo de agenda, "do cliente") e escolhe a acao.
+ */
+export async function pageAction(
+  page: Page,
+  menu: "Mais ações da aula" | "Mais ações da turma" | "Mais ações do aluno" | "Mais ações do cliente",
+  action: string,
+): Promise<void> {
+  await page.getByRole("button", { name: menu, exact: true }).click();
+  await page.getByRole("menuitem", { name: action, exact: true }).click();
+}
+
+/** Secoes da ficha do aluno (sanfona). "Pacotes" so aparece com pacote ativo. */
+export type ProfileSectionTitle = "Turmas" | "Cobranças" | "Pacotes" | "Evolução" | "Mensagens" | "Cadastro";
+
+/**
+ * Botao de uma secao da ficha do aluno (`aria-expanded`). O nome acessivel e o
+ * titulo seguido do resumo de uma linha ("Cobranças 1 em aberto · R$ 55,00"):
+ * o resumo se confere com `toContainText` no proprio botao.
+ */
+export function profileSection(page: Page, title: ProfileSectionTitle): Locator {
+  return page.getByRole("main").getByRole("button", { name: new RegExp(`^${title}`) });
+}
+
+/**
+ * Abre uma secao da ficha (todas comecam fechadas; `?tab=<id>` abre uma no
+ * carregamento) e devolve o conteudo dela. Ja aberta, nao fecha.
+ */
+export async function openProfileSection(page: Page, title: ProfileSectionTitle): Promise<Locator> {
+  const button = profileSection(page, title);
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  const panelId = await button.getAttribute("aria-controls");
+  return page.locator(`[id="${panelId}"]`);
+}
+
+/** Cartao de aviso no topo da ficha (atraso, faltas seguidas, pacote acabando, aniversario) pelo titulo. */
+export function profileAlert(page: Page, title: string): Locator {
+  return page.locator("div.rounded-xl").filter({ has: page.getByText(title, { exact: true }) });
 }
 
 /** Marca as boas-vindas do onboarding como respondidas (o modal nao cobre o dashboard). */

@@ -16,3 +16,5 @@ export { StudentChargesPanel } from "./components/student-charges-panel";
 export { StudentPackagesPanel } from "./components/student-packages-panel";
 export { ModalitiesView } from "./components/modalities-view";
 export { CourseCertificateView, CourseCertificateLocked } from "./components/course-certificate-view";
+export { useChargeActions } from "./components/use-charge-actions";
+export { pickNextSession } from "./next-session";

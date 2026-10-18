@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  attendanceAction,
+  classGroup,
+  enrollment,
+  expect,
+  pageAction,
+  rollCallRow,
+  seedAcademy,
+  student,
+  test,
+} from "./fixtures";
 
 const TS = "2026-09-01T12:00:00.000Z";
 
@@ -30,28 +40,31 @@ const withClass = (t: Record<string, unknown>) => {
 test("chamada bloqueada em aula futura e liberada em aula passada", async ({ page }) => {
   await seedAcademy(page, { extra: withClass });
 
-  // Aula futura: sem botões de presença, só o aviso de quando a chamada abre.
+  // Aula futura: a linha do aluno nao marca nada, so o aviso de quando a chamada abre.
   await page.goto("/classes/sessions/cg-1~2026-09-23~17%3A00");
-  await expect(page.getByText("Próxima aula")).toBeVisible();
-  await expect(page.getByText("Chamada abre em 23/09")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Presente:/ })).toHaveCount(0);
+  await expect(page.getByRole("main")).toContainText("Quarta-feira, 23 de setembro, 17:00 · Carlos Silva");
+  await expect(page.getByText("A chamada abre em 23/09")).toBeVisible();
+  await expect(page.getByText("Aluno A20", { exact: true })).toBeVisible();
+  await expect(rollCallRow(page, "Aluno A20")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Concluir chamada" })).toHaveCount(0);
 
-  // Aula passada: chamada liberada, com resumo e "marcar todos".
+  // Aula passada: chamada liberada; tocar na linha marca presente.
   await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
-  await expect(page.getByText("Realizada")).toBeVisible();
-  await expect(page.getByText(/Chamada abre em/)).toHaveCount(0);
-  const present = page.getByRole("button", { name: "Presente: Aluno A20" });
-  await expect(present).toHaveAttribute("aria-pressed", "false");
-  await present.click();
-  await expect(present).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Faltou: Aluno A20" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("main")).toContainText("Segunda-feira, 21 de setembro, 17:00 · Carlos Silva");
+  await expect(page.getByText(/A chamada abre em/)).toHaveCount(0);
+  await expect(page.getByText("Toque em quem veio")).toBeVisible();
+  const row = rollCallRow(page, "Aluno A20");
+  await expect(row).toHaveAccessibleName("Aluno A20: sem marcação");
+  await row.click();
+  await expect(row).toHaveAccessibleName("Aluno A20: Presente");
+  await expect(page.getByText("Chamada concluída.")).toBeVisible();
 });
 
 test("avulso gera cobrança e remover da aula pede confirmação e a cancela", async ({ page }) => {
   await seedAcademy(page, { extra: withClass });
   await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
 
-  await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+  await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name: "Aluno Avulso" }).click();
@@ -79,7 +92,8 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
 test("cancelar matrícula individual pede confirmação", async ({ page }) => {
   await seedAcademy(page, { extra: withClass });
   await page.goto("/classes/cg-1");
-  await page.getByRole("button", { name: "Ações de Aluno A20" }).click();
+  // A linha tambem e um botao (abre a ficha) e o nome dela inclui o do menu: exact.
+  await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("A mensalidade do aluno não muda.");
@@ -129,7 +143,7 @@ test("primeira turma com a configuração incompleta (sem alunos) não comemora"
 const SESSION_PAST = "/classes/sessions/cg-1~2026-09-21~17%3A00";
 
 async function addToSession(page: Page, name: string) {
-  await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+  await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
   const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name }).click();
@@ -146,7 +160,7 @@ test.describe("aula", () => {
       },
     });
     await page.goto(SESSION_PAST);
-    await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
     await expect(dialog).toContainText("Esta turma não aceita aula avulsa.");
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toHaveCount(0);
@@ -160,12 +174,15 @@ test.describe("aula", () => {
         t.classGroups[0].capacity = 1;
       },
     });
+    // A lotacao aparece na linha de informacao da turma.
+    await page.goto("/classes/cg-1");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("Turma lotada");
     await page.goto(SESSION_PAST);
-    await expect(page.getByText("Turma lotada")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Adicionar aluno nesta aula" })).toBeEnabled();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
+    await expect(page.getByRole("dialog", { name: "Adicionar aluno nesta aula" })).toBeVisible();
   });
 
-  test("todos os alunos já na aula: botão desabilitado com o motivo", async ({ page }) => {
+  test("todos os alunos já na aula: o menu avisa o motivo", async ({ page }) => {
     await seedAcademy(page, {
       extra: (t) => {
         withClass(t);
@@ -173,15 +190,17 @@ test.describe("aula", () => {
       },
     });
     await page.goto(SESSION_PAST);
-    await expect(page.getByRole("button", { name: "Adicionar aluno nesta aula" })).toBeDisabled();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     await expect(page.getByText("Todos os alunos ativos já estão nesta aula.")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Adicionar aluno nesta aula" })).toHaveCount(0);
   });
 
-  test("ocupação igual no calendário e na aula depois de um avulso", async ({ page }) => {
+  test("avulso adicionado na aula conta na ocupação do calendário", async ({ page }) => {
     await seedAcademy(page, { extra: withClass });
     await page.goto(SESSION_PAST);
     await addToSession(page, "Aluno Avulso");
-    await expect(page.getByText("2/10 vagas ocupadas")).toBeVisible();
+    // A aula nao mostra mais as vagas: confere os dois na chamada e a ocupacao no calendario.
+    await expect(page.getByRole("button", { name: /: sem marcação$/ })).toHaveCount(2);
 
     await page.goto("/classes/calendar?view=list");
     const card = page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).filter({ hasText: "17:00" }).first();
@@ -190,7 +209,7 @@ test.describe("aula", () => {
     await expect(page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).nth(1)).toContainText("1/10 vagas");
   });
 
-  test("marcar todos como presentes só marca quem está pendente", async ({ page }) => {
+  test("\"Todos vieram\" só marca quem está pendente", async ({ page }) => {
     await seedAcademy(page, {
       extra: (t) => {
         withClass(t);
@@ -199,24 +218,52 @@ test.describe("aula", () => {
       },
     });
     await page.goto(SESSION_PAST);
-    await page.getByRole("button", { name: "Faltou: Aluna Carla" }).click();
-    await expect(page.getByRole("button", { name: "Faltou: Aluna Carla" })).toHaveAttribute("aria-pressed", "true");
-    await page.getByRole("button", { name: "Marcar todos como presentes" }).click();
-    await expect(page.getByRole("button", { name: "Presente: Aluno A20" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Faltou: Aluna Carla" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Presente: Aluna Carla" })).toHaveAttribute("aria-pressed", "false");
+    await attendanceAction(page, "Aluna Carla", "Marcar falta");
+    await expect(rollCallRow(page, "Aluna Carla")).toHaveAccessibleName("Aluna Carla: Faltou");
+    await page.getByRole("button", { name: "Todos vieram" }).click();
+    await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
+    await expect(rollCallRow(page, "Aluno A20")).toHaveAccessibleName("Aluno A20: Presente");
+    await expect(rollCallRow(page, "Aluna Carla")).toHaveAccessibleName("Aluna Carla: Faltou");
+    await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
+  });
+
+  test("\"Concluir chamada\" marca falta para quem ficou sem marcação", async ({ page }) => {
+    await seedAcademy(page, {
+      extra: (t) => {
+        withClass(t);
+        t.clients.push(student("c-c", "Aluna Carla"));
+        t.enrollments.push(enrollment("e-2", "cg-1", "c-c"));
+      },
+    });
+    await page.goto(SESSION_PAST);
+    await expect(page.getByText("0 de 2 presentes")).toBeVisible();
+    await rollCallRow(page, "Aluno A20").click();
+    await expect(page.getByText("1 de 2 presentes")).toBeVisible();
+    // Com alguem presente, "Todos vieram" sai e fica so o concluir.
+    await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Concluir chamada" }).click();
+    await expect(page.getByText("Chamada concluída. 1 falta marcada.")).toBeVisible();
+    await expect(rollCallRow(page, "Aluna Carla")).toHaveAccessibleName("Aluna Carla: Faltou");
+    await expect(page.getByText("1 presente · 1 falta")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Concluir chamada" })).toHaveCount(0);
   });
 });
 
 test("cancelar em lote com busca ativa cancela exatamente os selecionados", async ({ page }) => {
+  // A busca so aparece com mais de 8 alunos: 11 matriculados (sobram 9 depois do lote).
+  const others = Array.from({ length: 8 }, (_, i) => student(`c-${i + 4}`, `Aluno Extra ${i + 4}`));
   await seedAcademy(page, {
     extra: (t) => {
-      t.clients = [student("c-a", "Aluno A20"), student("c-b", "Bruno Lima"), student("c-c", "Carla Souza")];
-      t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
-      t.enrollments = [enrollment("e-1", "cg-1", "c-a"), enrollment("e-2", "cg-1", "c-b"), enrollment("e-3", "cg-1", "c-c")];
+      t.clients = [student("c-a", "Aluno A20"), student("c-b", "Bruno Lima"), student("c-c", "Carla Souza"), ...others];
+      t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto", { capacity: 20 })];
+      t.enrollments = t.clients.map((c: { id: string }, i: number) => enrollment(`e-${i + 1}`, "cg-1", c.id));
     },
   });
   await page.goto("/classes/cg-1");
+  // A selecao em lote abre pelo menu do cabecalho.
+  await expect(page.getByText("Aluno A20", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  await pageAction(page, "Mais ações da turma", "Selecionar alunos");
   await page.getByRole("checkbox", { name: "Selecionar Aluno A20" }).click();
   await page.getByRole("checkbox", { name: "Selecionar Bruno Lima" }).click();
   // A busca so filtra a lista: a selecao fora dela continua valendo.
@@ -228,11 +275,14 @@ test("cancelar em lote com busca ativa cancela exatamente os selecionados", asyn
   await confirm.getByRole("button", { name: "Cancelar matrículas" }).click();
   await expect(page.getByText("2 matrículas canceladas.")).toBeVisible();
   await expect(confirm).toBeHidden();
+  // Lote concluido: a selecao fecha.
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Limpar busca" }).click();
-  await expect(page.getByRole("checkbox", { name: "Selecionar Carla Souza" })).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: "Selecionar Aluno A20" })).toHaveCount(0);
-  await expect(page.getByRole("checkbox", { name: "Selecionar Bruno Lima" })).toHaveCount(0);
+  const list = page.getByRole("main");
+  await expect(list.getByText("Carla Souza", { exact: true })).toBeVisible();
+  await expect(list.getByText("Aluno A20", { exact: true })).toHaveCount(0);
+  await expect(list.getByText("Bruno Lima", { exact: true })).toHaveCount(0);
 });
 
 test.describe("não encontrado", () => {

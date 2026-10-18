@@ -1,11 +1,13 @@
 "use client";
 
-import { FormProvider, useForm, useWatch, type UseFormReturn } from "react-hook-form";
+import { useState } from "react";
+import { FormProvider, useForm, useFormState, useWatch, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { ClassGroup, EnrollmentCourseChoice } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
+import { formatCents } from "@gestarahub/core/format";
 import { DateField, InputCurrency, SelectField } from "@/components/form";
 import { paymentSummary } from "../installments-summary";
 
@@ -66,10 +68,25 @@ export function applyCourseErrors(form: UseFormReturn<CoursePaymentValues>, erro
   return fields.length > 0;
 }
 
+/** "R$ 150,00 à vista, vence hoje" ou "R$ 600,00 em 3x, 1ª vence 25/10". */
+function chargeLine(priceCents: number, installments: number, firstDueDate: string): string {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const due = !DATE_RE.test(firstDueDate)
+    ? null
+    : firstDueDate === today
+      ? "hoje"
+      : format(parseISO(firstDueDate), "dd/MM");
+  const price = formatCents(priceCents);
+  if (installments <= 1) return due ? `${price} à vista, vence ${due}` : `${price} à vista`;
+  return due ? `${price} em ${installments}x, 1ª vence ${due}` : `${price} em ${installments}x`;
+}
+
 /**
- * Bloco "Pagamento do curso" da matricula (e da promocao da lista de espera):
- * valor (cheio por padrao, editavel), parcelas de 1 ate o maximo da turma e
- * 1o vencimento, com a conta ao vivo pelo mesmo calculo do servico.
+ * Cobranca do curso na matricula (e na promocao da lista de espera). Fechado,
+ * e uma linha com o padrao da turma ("Cobrança de cada aluno: R$ 150,00 à
+ * vista, vence hoje · Alterar"); "Alterar" abre valor (cheio por padrao, e o
+ * desconto do curso), parcelas de 1 ate o maximo da turma e 1o vencimento, com
+ * a conta ao vivo. Erro de validacao ou do servico abre os campos.
  */
 export function CoursePaymentFields({
   form,
@@ -93,11 +110,35 @@ export function CoursePaymentFields({
     name: ["priceCents", "installments", "firstDueDate"],
   });
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
+  const [editing, setEditing] = useState(false);
+  const { errors } = useFormState({ control: form.control });
+  const open = editing || Object.keys(errors).length > 0;
+  const title = appliesToMany ? "Cobrança de cada aluno" : "Cobrança do aluno";
+
+  if (!open) {
+    return (
+      <section aria-label={title} className="rounded-lg border bg-muted/15 px-3.5 py-3">
+        <p className="text-sm text-foreground" data-testid="course-charge-line">
+          <span className="font-medium">{title}:</span>{" "}
+          {chargeLine(priceCents ?? 0, Number(installments), firstDueDate ?? "")}
+          <span className="text-muted-foreground"> · </span>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setEditing(true)}
+            className="cursor-pointer font-medium underline underline-offset-4 hover:text-primary disabled:cursor-default disabled:opacity-50"
+          >
+            Alterar
+          </button>
+        </p>
+      </section>
+    );
+  }
 
   return (
     <FormProvider {...form}>
-      <section aria-label="Pagamento do curso" className="space-y-3 rounded-lg border bg-muted/15 p-3.5">
-        <p className="text-sm font-medium">Pagamento do curso</p>
+      <section aria-label={title} className="space-y-3 rounded-lg border bg-muted/15 p-3.5">
+        <p className="text-sm font-medium">{title}</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <InputCurrency<CoursePaymentValues>
             id="course-price"

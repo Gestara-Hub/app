@@ -1,4 +1,4 @@
-import { expect, seedAcademy, skipWelcome, student, test } from "./fixtures";
+import { expect, openProfileSection, pageAction, profileSection, seedAcademy, skipWelcome, student, test } from "./fixtures";
 import {
   charge,
   contextMenuItems,
@@ -94,8 +94,7 @@ test("gastronomia: sugestão \"Exame de graduação\" e nova cobrança pela fich
     },
   });
   await page.goto("/clients/c-f");
-  await page.getByRole("button", { name: "Mais ações" }).click();
-  await page.getByRole("menuitem", { name: "Nova cobrança" }).click();
+  await pageAction(page, "Mais ações do aluno", "Nova cobrança");
   const dialog = page.getByRole("dialog", { name: "Nova cobrança" });
   await expect(dialog).toContainText("Cobrança avulsa para Aluna Ficha, à vista ou parcelada.");
   await expect(dialog.getByRole("combobox", { name: "Aluno" })).toHaveCount(0);
@@ -107,9 +106,9 @@ test("gastronomia: sugestão \"Exame de graduação\" e nova cobrança pela fich
   await expect(page.getByText("Cobrança lançada.")).toBeVisible();
   await expect(dialog).toBeHidden();
 
-  // Extrato da ficha mostra a avulsa.
-  await page.getByRole("tab", { name: "Cobranças" }).click();
-  const statement = page.getByRole("tabpanel");
+  // O resumo e o extrato da ficha mostram a avulsa.
+  await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 45,00");
+  const statement = await openProfileSection(page, "Cobranças");
   await expect(statement).toContainText("Material");
   await expect(statement).toContainText("vence 30/09");
   await expect(statement).toContainText("R$ 45,00");
@@ -267,7 +266,7 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
 
   // Inativo: sem "Nova cobrança" nem "Vender pacote" na ficha, na lista e no dialogo.
   await page.goto("/clients/c-1");
-  await page.getByRole("button", { name: "Mais ações" }).click();
+  await page.getByRole("button", { name: "Mais ações do aluno", exact: true }).click();
   await expect(page.getByRole("menuitem", { name: "Reativar" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toHaveCount(0);

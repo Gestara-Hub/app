@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { expect, openProfileSection, seedAcademy, student, test } from "./fixtures";
 import { loginAsUser, user } from "./ficha-notas-fixtures";
 import { TS, openedWhatsApp, waitWorld, type Tenant } from "./geral-fixtures";
 
@@ -122,8 +122,7 @@ test.describe("envio assistido de vários lugares", () => {
   test("ficha do aluno: nova mensagem já com o aluno e histórico dele", async ({ page }) => {
     await seedComm(page, (t) => (t.messageLogs = LOGS));
     await page.goto("/clients/c-b");
-    await page.getByRole("tab", { name: "Mensagens" }).click();
-    const panel = page.getByRole("tabpanel", { name: "Mensagens" });
+    const panel = await openProfileSection(page, "Mensagens");
     // So as mensagens da Bruna.
     await expect(panel.getByRole("button", { name: /^Mensagem de / })).toHaveCount(1);
     await expect(panel).toContainText("Aniversário");

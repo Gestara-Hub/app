@@ -71,12 +71,17 @@ test("lutas: curso pelo formulário (validação do fim), matrícula em lote com
   await expect(page.getByText('Turma "Defesa Pessoal Intensivo" criada com sucesso.')).toBeVisible();
   await page.getByRole("button", { name: "Matricular alunos" }).click();
   await expect(page).toHaveURL(/\/classes\/[^/?]+\?enroll=true$/);
-  await expect(page.getByTestId("class-billing-summary")).toHaveText("Curso · R$ 600,00 em até 3x · termina 15/12");
+  // Linha de informacao curta: so ate quando vai o curso (preco e parcelas ficam em "Editar turma").
+  await expect(page.getByTestId("class-billing-summary")).toContainText("Curso até 15/12");
 
   // Lote: os dois com o mesmo pagamento, valor ajustado (desconto) e 2x.
   const enroll = page.getByRole("dialog", { name: "Matricular alunos" });
   await enroll.getByRole("option", { name: /Aluna Um/ }).click();
   await enroll.getByRole("option", { name: /Aluno Dois/ }).click();
+  // Fechada, a cobranca e uma linha com o padrao da turma (vale para cada aluno).
+  await expect(enroll.getByTestId("course-charge-line")).toContainText("Cobrança de cada aluno: R$ 600,00 à vista, vence hoje");
+  await expect(enroll.getByTestId("course-installments-summary")).toHaveCount(0);
+  await enroll.getByRole("button", { name: "Alterar", exact: true }).click();
   await expect(enroll.getByLabel("Valor")).toHaveValue("600,00");
   // Parcelas so ate o maximo da turma.
   await enroll.getByRole("combobox", { name: "Parcelas" }).click();
@@ -145,7 +150,7 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   });
 
   await page.goto("/classes/cg-c");
-  await page.getByRole("button", { name: "Ações de Aluna Meio" }).click();
+  await page.getByRole("button", { name: "Ações de Aluna Meio", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const confirm = page.getByRole("alertdialog", { name: "Cancelar matrícula?" });
   await expect(confirm).toContainText(
@@ -209,11 +214,11 @@ test("curso terminado no grátis: Concluído, sem matrícula nova e certificado 
   await expect(ended).toContainText("Encerrado");
 
   await page.goto("/classes/cg-old");
-  await expect(page.getByTestId("class-billing-summary")).toContainText("terminou 20/09");
+  await expect(page.getByTestId("class-billing-summary")).toContainText("Curso encerrado em 20/09");
   await expect(page.getByText("Concluído")).toBeVisible();
   await expect(page.getByRole("button", { name: "Matricular alunos" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Ações de Aluna Formada" }).click();
+  await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
   await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
@@ -231,7 +236,7 @@ test("curso terminado no Pro: o certificado mostra a aluna, as aulas e a frequê
     },
   });
   await page.goto("/classes/cg-old");
-  await page.getByRole("button", { name: "Ações de Aluna Formada" }).click();
+  await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Certificado", exact: true }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
 
@@ -270,6 +275,8 @@ test("lista de espera do curso: promover com valor ajustado à vista gera uma pa
   await page.getByRole("tab", { name: /Lista de espera/ }).click();
   await page.getByRole("button", { name: "Promover" }).click();
   const dialog = page.getByRole("dialog", { name: "Matricular da lista de espera" });
+  await expect(dialog.getByTestId("course-charge-line")).toContainText("Cobrança do aluno: R$ 800,00 à vista, vence hoje");
+  await dialog.getByRole("button", { name: "Alterar", exact: true }).click();
   await expect(dialog.getByLabel("Valor")).toHaveValue("800,00");
   await expect(dialog.getByTestId("course-installments-summary")).toHaveText("À vista: R$ 800,00, vence 22/09.");
   await dialog.getByLabel("Valor").fill("60000");

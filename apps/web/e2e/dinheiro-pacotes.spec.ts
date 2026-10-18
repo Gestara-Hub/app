@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, test } from "./fixtures";
+import {
+  attendanceAction,
+  classGroup,
+  enrollment,
+  expect,
+  openProfileSection,
+  pageAction,
+  rollCallRow,
+  seedAcademy,
+  test,
+} from "./fixtures";
 import {
   TS,
   charge,
@@ -263,7 +273,7 @@ test.describe("venda", () => {
 
     // Ficha > Pacotes: o novo em uso, o antigo renovado, com as aulas usadas.
     await page.goto("/clients/c-1?tab=packages");
-    const panel = page.getByRole("tabpanel");
+    const panel = await openProfileSection(page, "Pacotes");
     await expect(panel).toContainText("2 pacotes");
     await pickSelect(page, "Filtrar por situação", "Renovados");
     await expect(panel).toContainText("1 pacote");
@@ -331,56 +341,60 @@ test.describe("chamada", () => {
     // Pacote vencido nao paga a aula.
     await expect(rosterRow(page, "Aluno Vencido")).toContainText("Sem pacote");
 
-    const mark = (status: string, name: string) => page.getByRole("button", { name: `${status}: ${name}`, exact: true });
+    const sete = rollCallRow(page, "Aluno Sete");
 
-    // Presenca gasta; tocar de novo desmarca e devolve.
-    await mark("Presente", "Aluno Sete").click();
-    await expect(mark("Presente", "Aluno Sete")).toHaveAttribute("aria-pressed", "true");
+    // Presenca gasta; tocar de novo (com gente a marcar) desmarca e devolve.
+    await sete.click();
+    await expect(sete).toHaveAccessibleName("Aluno Sete: Presente");
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
-    await mark("Presente", "Aluno Sete").click();
-    await expect(mark("Presente", "Aluno Sete")).toHaveAttribute("aria-pressed", "false");
+    await sete.click();
+    await expect(sete).toHaveAccessibleName("Aluno Sete: sem marcação");
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Falta sem justificativa gasta; trocar para justificada devolve.
-    await mark("Faltou", "Aluno Sete").click();
+    await attendanceAction(page, "Aluno Sete", "Marcar falta");
+    await expect(sete).toHaveAccessibleName("Aluno Sete: Faltou");
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
-    await mark("Justificada", "Aluno Sete").click();
-    await expect(mark("Justificada", "Aluno Sete")).toHaveAttribute("aria-pressed", "true");
+    await attendanceAction(page, "Aluno Sete", "Justificar falta");
+    await expect(sete).toHaveAccessibleName("Aluno Sete: Justificada");
     await expect(rosterRow(page, "Aluno Sete")).toContainText("7 de 10");
 
     // Pacote em que a falta nao gasta.
-    await mark("Faltou", "Aluna Falta Livre").click();
-    await expect(mark("Faltou", "Aluna Falta Livre")).toHaveAttribute("aria-pressed", "true");
+    await attendanceAction(page, "Aluna Falta Livre", "Marcar falta");
+    await expect(rollCallRow(page, "Aluna Falta Livre")).toHaveAccessibleName("Aluna Falta Livre: Faltou");
     await expect(rosterRow(page, "Aluna Falta Livre")).toContainText("5 de 10");
 
     // A ultima aula: gasta nesta chamada, o selo continua dizendo que foi a ultima.
-    await mark("Presente", "Aluna Última").click();
-    await expect(mark("Presente", "Aluna Última")).toHaveAttribute("aria-pressed", "true");
+    const last = rollCallRow(page, "Aluna Última");
+    await last.click();
+    await expect(last).toHaveAccessibleName("Aluna Última: Presente");
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 10);
 
-    // "Marcar todos" marca quem falta (Aluno Sem e Aluno Vencido): sem pacote valido, nada e gasto.
-    await page.getByRole("button", { name: "Marcar todos como presentes" }).click();
-    await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
-    await expect(mark("Presente", "Aluno Sem")).toHaveAttribute("aria-pressed", "true");
-    await expect(mark("Presente", "Aluno Vencido")).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Marcar todos como presentes" })).toHaveCount(0);
+    // Quem falta marcar (Aluno Sem e Aluno Vencido) vem: sem pacote valido, nada e gasto.
+    // ("Todos vieram" so aparece enquanto ninguem foi marcado presente.)
+    await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
+    await rollCallRow(page, "Aluno Sem").click();
+    await expect(rollCallRow(page, "Aluno Sem")).toHaveAccessibleName("Aluno Sem: Presente");
+    await rollCallRow(page, "Aluno Vencido").click();
+    await expect(rollCallRow(page, "Aluno Vencido")).toHaveAccessibleName("Aluno Vencido: Presente");
+    await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await waitForTenant(page, (t) => t.attendances.length === 5);
     expect(await remainingOf(page, "sp-v")).toBe(10);
     expect(await remainingOf(page, "sp-7")).toBe(7);
     expect(await remainingOf(page, "sp-f")).toBe(5);
     expect(await remainingOf(page, "sp-u")).toBe(0);
 
-    // Desmarcar a ultima aula devolve o saldo.
-    await mark("Presente", "Aluna Última").click();
-    await expect(mark("Presente", "Aluna Última")).toHaveAttribute("aria-pressed", "false");
+    // Desmarcar a ultima aula devolve o saldo (com a chamada concluida, desmarcar e pelo menu).
+    await attendanceAction(page, "Aluna Última", "Desmarcar");
+    await expect(last).toHaveAccessibleName("Aluna Última: sem marcação");
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-u")?.usages.length === 9);
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
   });
 
-  test("\"Marcar todos\" gasta uma aula de cada pacote", async ({ page }) => {
+  test("\"Todos vieram\" gasta uma aula de cada pacote", async ({ page }) => {
     await seedRollCall(page);
-    await page.getByRole("button", { name: "Marcar todos como presentes" }).click();
+    await page.getByRole("button", { name: "Todos vieram" }).click();
     await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
     await expect(rosterRow(page, "Aluno Sete")).toContainText("6 de 10");
     await expect(rosterRow(page, "Aluna Falta Livre")).toContainText("4 de 10");
@@ -413,7 +427,7 @@ test.describe("chamada", () => {
       },
     });
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
-    await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
     await expect(dialog).toContainText("Inscreva um aluno como aula avulsa, pelo pacote ou experimental para o dia 21/09/2026.");
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toBeVisible();
@@ -435,7 +449,7 @@ test.describe("chamada", () => {
     const row = rosterRow(page, "Aluna Com Pacote");
     await expect(row).toContainText("Pacote");
     await expect(row).toContainText("10 de 10");
-    await page.getByRole("button", { name: "Presente: Aluna Com Pacote", exact: true }).click();
+    await rollCallRow(page, "Aluna Com Pacote").click();
     await expect(row).toContainText("9 de 10");
     // Pela aula avulsa nao houve cobranca.
     await waitForTenant(page, (t) => t.studentPackages.find((p: { id: string }) => p.id === "sp-p")?.usages.length === 1);
@@ -464,7 +478,7 @@ test.describe("chamada", () => {
       },
     });
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
-    await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
     await expect(dialog).toContainText(
       "Esta turma não aceita aula avulsa. Inscreva um aluno pelo pacote ou como experimental para o dia 21/09/2026.",

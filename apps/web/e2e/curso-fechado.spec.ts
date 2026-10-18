@@ -68,10 +68,15 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await page.getByRole("button", { name: "Matricular alunos" }).click();
   await expect(page).toHaveURL(/\/classes\/[^/?]+\?enroll=true$/);
   const classUrl = page.url().replace("?enroll=true", "");
-  await expect(page.getByTestId("class-billing-summary")).toHaveText("Curso · R$ 800,00 em até 4x · termina 30/11");
+  // Linha de informacao curta: so ate quando vai o curso (preco e parcelas ficam em "Editar turma").
+  await expect(page.getByTestId("class-billing-summary")).toContainText("Curso até 30/11");
 
   const enroll = page.getByRole("dialog", { name: "Matricular alunos" });
   await enroll.getByRole("option", { name: /Aluna Curso/ }).click();
+  // A cobranca vem fechada numa linha com o padrao da turma; "Alterar" abre os campos.
+  await expect(enroll.getByTestId("course-charge-line")).toContainText("Cobrança do aluno: R$ 800,00 à vista, vence hoje");
+  await expect(enroll.getByLabel("Valor")).toHaveCount(0);
+  await enroll.getByRole("button", { name: "Alterar", exact: true }).click();
   await expect(enroll.getByLabel("Valor")).toHaveValue("800,00");
   await enroll.getByRole("combobox", { name: "Parcelas" }).click();
   await page.getByRole("menuitem", { name: "4x", exact: true }).click();
@@ -132,7 +137,7 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
 
   // Cancelar a matrícula: a paga fica, as 3 futuras saem.
   await page.goto(classUrl);
-  await page.getByRole("button", { name: "Ações de Aluna Curso" }).click();
+  await page.getByRole("button", { name: "Ações de Aluna Curso", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("As parcelas pagas ficam. As 3 parcelas futuras serão canceladas.");
@@ -197,13 +202,12 @@ test("curso terminado: Encerrado na lista, Concluído no detalhe e sem matrícul
   await expect(page.locator("div.group").filter({ hasText: "Jiu-Jitsu Adulto" })).not.toContainText("Encerrado");
 
   await page.goto("/classes/cg-old");
-  await expect(page.getByTestId("class-billing-summary")).toContainText("Curso · R$ 800,00 em até 4x · terminou 20/09");
-  await expect(page.getByTestId("class-billing-summary")).toContainText("Encerrado");
+  await expect(page.getByTestId("class-billing-summary")).toContainText("Curso encerrado em 20/09");
   await expect(page.getByText("Concluído")).toBeVisible();
   await expect(page.getByRole("button", { name: "Matricular alunos" })).toHaveCount(0);
 
   // Cancelar depois do fim não mexe nas parcelas.
-  await page.getByRole("button", { name: "Ações de Aluna Formada" }).click();
+  await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   await expect(page.getByRole("alertdialog")).toContainText("O curso já terminou: as parcelas continuam como estão.");
 });
@@ -225,6 +229,8 @@ test("lista de espera do curso: promover pede o pagamento", async ({ page }) => 
 
   const dialog = page.getByRole("dialog", { name: "Matricular da lista de espera" });
   await expect(dialog).toContainText("Aluno Esperando entra no curso Confeitaria");
+  await expect(dialog.getByTestId("course-charge-line")).toContainText("Cobrança do aluno: R$ 800,00 à vista, vence hoje");
+  await dialog.getByRole("button", { name: "Alterar", exact: true }).click();
   await dialog.getByRole("combobox", { name: "Parcelas" }).click();
   await page.getByRole("menuitem", { name: "2x", exact: true }).click();
   await dialog.locator("input[name=firstDueDate]").fill("2026-10-05");
@@ -233,6 +239,7 @@ test("lista de espera do curso: promover pede o pagamento", async ({ page }) => 
   await expect(page.getByText("Aluno matriculado no curso.")).toBeVisible();
   await expect(dialog).toBeHidden();
 
-  await page.getByRole("tab", { name: /Matriculados/ }).click();
+  // Lista de espera vazia: as abas somem e volta a lista de alunos.
+  await expect(page.getByRole("tablist", { name: "Seções da turma" })).toHaveCount(0);
   await expect(page.getByText("Aluno Esperando")).toBeVisible();
 });

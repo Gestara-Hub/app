@@ -81,10 +81,11 @@ export function useReactivatePlan() {
 }
 
 // --- Cobrancas (Charges) --------------------------------------------------
-export function useCharges(filter?: ChargeFilter) {
+export function useCharges(filter?: ChargeFilter, enabled = true) {
   return useQuery({
     queryKey: queryKeys.billing.charges(filter),
     queryFn: () => billingService.listCharges(filter),
+    enabled,
   });
 }
 

@@ -212,6 +212,8 @@ test.describe("registros de aula", () => {
       },
     });
     await page.goto(`/classes/sessions/${encodeURIComponent(SESSION)}`);
+    // Chamada concluida: a barra de baixo oferece registrar a aula.
+    await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await page.getByRole("button", { name: "Registrar a aula" }).click();
     const dialog = page.getByRole("dialog", { name: "Registrar a aula" });
     await expect(dialog).toContainText("Jiu-Jitsu Adulto · ontem · 3 presentes");
@@ -235,8 +237,9 @@ test.describe("registros de aula", () => {
     await expect(page.getByText("3 registros salvos.")).toBeVisible();
     await expect(dialog).toBeHidden();
 
-    // Na ficha de cada aluno: o tom, a anotacao individual e a da turma.
-    await page.getByRole("button", { name: "Registrar aula de Aluno Beta" }).click();
+    // No registro de cada aluno (menu do aluno na chamada): o tom, a anotacao individual e a da turma.
+    await page.getByRole("button", { name: "Ações de Aluno Beta", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Registrar aula", exact: true }).click();
     const beta = page.getByRole("dialog", { name: "Registros de aula" });
     await expect(beta.getByText("Aulas registradas (1)")).toBeVisible();
     await expect(beta.getByText("Ajustar · Jiu-Jitsu Adulto")).toBeVisible();
@@ -244,7 +247,8 @@ test.describe("registros de aula", () => {
     await expect(beta.getByText("Turma: Raspagens da meia-guarda")).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Registrar aula de Aluno Gama" }).click();
+    await page.getByRole("button", { name: "Ações de Aluno Gama", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Registrar aula", exact: true }).click();
     const gama = page.getByRole("dialog", { name: "Registros de aula" });
     await expect(gama.getByText("Observação · Jiu-Jitsu Adulto")).toBeVisible();
     await expect(gama.getByText("Turma: Raspagens da meia-guarda")).toBeVisible();

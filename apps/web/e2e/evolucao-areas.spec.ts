@@ -1,5 +1,15 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  classGroup,
+  enrollment,
+  expect,
+  openProfileSection,
+  profileSection,
+  rollCallRow,
+  seedAcademy,
+  student,
+  test,
+} from "./fixtures";
 import {
   ADULT,
   MODULES_TRACK,
@@ -79,7 +89,7 @@ async function seedMixed(page: Page, extra?: (t: Tenant) => void) {
   });
 }
 
-/** Card de uma modalidade na aba Evolucao da ficha. */
+/** Card de uma modalidade na secao Evolucao da ficha. */
 const evolutionCard = (page: Page, name: string) =>
   page.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
 
@@ -150,10 +160,11 @@ test.describe("palavras da trilha em espaço misto", () => {
     await expect(dialog.getByRole("heading", { name: "Módulos" })).toBeVisible();
     await page.keyboard.press("Escape");
 
+    // Na ficha: o resumo da Evolucao e o card de Violao ja no modulo novo.
     await page.goto("/clients/c-v");
-    const card = page.locator("div.rounded-xl").filter({ has: page.getByText("Módulo atual", { exact: true }) }).first();
-    await expect(card).toContainText("Módulo Pré-intermediário");
-    await expect(card).toContainText("Violão");
+    await expect(profileSection(page, "Evolução")).toContainText("Módulo Pré-intermediário");
+    await openProfileSection(page, "Evolução");
+    await expect(evolutionCard(page, "Violão")).toContainText("Módulo Pré-intermediário");
   });
 
   test("fases: ponto de partida 'Veio de outro lugar' com a fase atual", async ({ page }) => {
@@ -235,8 +246,11 @@ test.describe("registros de aula e metas", () => {
       }));
     });
     await page.goto(`/classes/sessions/${encodeURIComponent(MUSIC_SESSION)}`);
-    // A chamada de Violao fala em modulos.
-    await expect(page.getByTitle("Abrir módulos", { exact: true }).first()).toBeVisible();
+    // A chamada de Violao fala em modulos: o nivel em texto e "Módulos" no menu do aluno.
+    await expect(rollCallRow(page, "Aluno Violão")).toContainText("Módulo Básico");
+    await page.getByRole("button", { name: "Ações de Aluno Violão", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Módulos", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Registrar a aula" }).click();
     const dialog = page.getByRole("dialog", { name: "Registrar a aula" });
     await expect(dialog).toContainText("Violão Iniciante · ontem · 3 presentes");
@@ -245,12 +259,14 @@ test.describe("registros de aula e metas", () => {
     await dialog.getByRole("button", { name: "Salvar registros" }).click();
     await expect(page.getByText("1 registro salvo.")).toBeVisible();
 
-    await page.getByRole("button", { name: "Registrar aula de Aluno Violão" }).click();
+    await page.getByRole("button", { name: "Ações de Aluno Violão", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Registrar aula", exact: true }).click();
     const records = page.getByRole("dialog", { name: "Registros de aula" });
     await expect(records.getByText("Aulas registradas (1)")).toBeVisible();
     await expect(records).toContainText("Violão Iniciante");
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Registrar aula de Aluna Violino" }).click();
+    await page.getByRole("button", { name: "Ações de Aluna Violino", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Registrar aula", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Registros de aula" }).getByText("Aulas registradas")).toHaveCount(0);
   });
 

@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  attendanceAction,
+  classGroup,
+  enrollment,
+  expect,
+  pageAction,
+  rollCallRow,
+  seedAcademy,
+  student,
+  test,
+} from "./fixtures";
 import { modality } from "./ficha-notas-fixtures";
 import { TS, waitWorld, type Tenant } from "./geral-fixtures";
 
@@ -89,19 +99,22 @@ test.describe("cadastro de turma", () => {
 
     await page.getByText("Yoga Noturno", { exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Yoga Noturno" })).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("Instrutor: Paula Souza");
-    await expect(page.getByRole("main")).toContainText("0 de 12 vagas");
+    // Uma linha de informacao: horarios, instrutor, cobranca e vagas.
+    const meta = page.getByTestId("class-billing-summary");
+    await expect(meta).toContainText("Paula Souza");
+    await expect(meta).toContainText("0 de 12 vagas");
   });
 
   test("editar pelo detalhe muda a capacidade", async ({ page }) => {
     await seedClasses(page);
     await page.goto("/classes/cg-1");
-    await page.getByRole("button", { name: "Editar" }).click();
+    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 10 vagas");
+    await pageAction(page, "Mais ações da turma", "Editar turma");
     const edit = page.getByRole("dialog");
     await edit.getByLabel("Capacidade (vagas)").fill("20");
     await edit.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("1 de 20 vagas");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 20 vagas");
   });
 
   test("desativar e reativar com confirmação", async ({ page }) => {
@@ -177,8 +190,8 @@ test.describe("aula", () => {
   test("trocar o instrutor só nesta aula e restaurar o titular", async ({ page }) => {
     await seedClasses(page);
     await page.goto(SESSION_PAST);
-    await expect(page.getByRole("main")).toContainText("Instrutor: Carlos Silva");
-    await page.getByRole("button", { name: "Trocar instrutor" }).click();
+    await expect(page.getByRole("main")).toContainText("Segunda-feira, 21 de setembro, 17:00 · Carlos Silva");
+    await pageAction(page, "Mais ações da aula", "Trocar instrutor");
     const dialog = page.getByRole("dialog", { name: "Trocar instrutor desta aula" });
     await expect(dialog).toContainText("21/09/2026");
     await expect(dialog.getByRole("button", { name: "Confirmar alteração" })).toBeDisabled();
@@ -187,19 +200,23 @@ test.describe("aula", () => {
     await dialog.getByPlaceholder("Informe o motivo da substituição (opcional)").fill("Carlos em viagem");
     await dialog.getByRole("button", { name: "Confirmar alteração" }).click();
     await expect(page.getByText("Instrutor da aula atualizado com sucesso.")).toBeVisible();
-    await expect(page.getByText("Instrutor substituto nesta aula: Paula Souza")).toBeVisible();
-    await expect(page.getByText('Titular da turma: Carlos Silva · Motivo: "Carlos em viagem"')).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("Substituto: Paula Souza");
+    // O cabecalho diz quem da a aula e quem ele substitui.
+    await expect(page.getByRole("main")).toContainText("17:00 · Paula Souza (substituto)");
+    await expect(page.getByText("Substitui Carlos Silva · Carlos em viagem")).toBeVisible();
 
     // As outras aulas seguem com o titular.
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-22~17:00")}`);
-    await expect(page.getByRole("main")).toContainText("Instrutor: Carlos Silva");
+    await expect(page.getByRole("main")).toContainText("Hoje, 17:00 · Carlos Silva");
+    await expect(page.getByText(/\(substituto\)/)).toHaveCount(0);
 
     await page.goto(SESSION_PAST);
-    await page.getByRole("button", { name: "Restaurar titular" }).click();
+    await page.getByRole("button", { name: "Mais ações da aula", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Alterar substituto", exact: true })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Restaurar titular", exact: true }).click();
     await expect(page.getByText("Instrutor titular restaurado com sucesso.")).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("Instrutor: Carlos Silva");
-    await expect(page.getByText(/Instrutor substituto nesta aula/)).toHaveCount(0);
+    await expect(page.getByRole("main")).toContainText("17:00 · Carlos Silva");
+    await expect(page.getByText(/\(substituto\)/)).toHaveCount(0);
+    await expect(page.getByText(/^Substitui /)).toHaveCount(0);
   });
 
   test("chamada: presente, falta, justificada e desmarcar", async ({ page }) => {
@@ -207,38 +224,52 @@ test.describe("aula", () => {
       t.enrollments.push(enrollment("e-2", "cg-1", "c-b"), enrollment("e-3", "cg-1", "c-c"));
     });
     await page.goto(SESSION_PAST);
-    const summary = page.locator("div").filter({ hasText: /a marcar/ }).last();
-    await expect(summary).toContainText("3 a marcar");
+    const a20 = rollCallRow(page, "Aluno A20");
+    const bruno = rollCallRow(page, "Bruno Lima");
+    const carla = rollCallRow(page, "Carla Souza");
+    await expect(page.getByText("Toque em quem veio")).toBeVisible();
+    await expect(page.getByText("0 de 3 presentes")).toBeVisible();
 
-    await page.getByRole("button", { name: "Presente: Aluno A20" }).click();
-    await page.getByRole("button", { name: "Faltou: Bruno Lima" }).click();
-    await page.getByRole("button", { name: "Justificada: Carla Souza" }).click();
-    await expect(page.getByRole("button", { name: "Justificada: Carla Souza" })).toHaveAttribute("aria-pressed", "true");
-    await expect(summary).toContainText("1 presente");
-    await expect(summary).toContainText("1 falta");
-    await expect(summary).toContainText("1 justificada");
-    await expect(summary).toContainText("0 a marcar");
-    await expect(page.getByRole("button", { name: "Marcar todos como presentes" })).toHaveCount(0);
+    // Tocar na linha marca presente; falta e justificada ficam no menu do aluno.
+    await a20.click();
+    await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
+    await attendanceAction(page, "Bruno Lima", "Marcar falta");
+    await expect(bruno).toHaveAccessibleName("Bruno Lima: Faltou");
+    await attendanceAction(page, "Carla Souza", "Justificar falta");
+    await expect(carla).toHaveAccessibleName("Carla Souza: Justificada");
+    await expect(page.getByText("1 presente · 1 falta · 1 justificada")).toBeVisible();
+    await expect(page.getByText("Chamada concluída.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Todos vieram" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Concluir chamada" })).toHaveCount(0);
 
-    // Trocar a marca e desmarcar tocando de novo.
-    await page.getByRole("button", { name: "Presente: Bruno Lima" }).click();
-    await expect(page.getByRole("button", { name: "Faltou: Bruno Lima" })).toHaveAttribute("aria-pressed", "false");
-    await expect(summary).toContainText("2 presentes");
-    await page.getByRole("button", { name: "Presente: Bruno Lima" }).click();
-    await expect(page.getByRole("button", { name: "Presente: Bruno Lima" })).toHaveAttribute("aria-pressed", "false");
-    await expect(summary).toContainText("1 a marcar");
+    // Trocar a marca: tocar na falta vira presente; com a chamada concluida, tocar no presente vira falta.
+    await bruno.click();
+    await expect(bruno).toHaveAccessibleName("Bruno Lima: Presente");
+    await expect(page.getByText("2 presentes · 1 justificada")).toBeVisible();
+    await bruno.click();
+    await expect(bruno).toHaveAccessibleName("Bruno Lima: Faltou");
+
+    // Desmarcar pelo menu reabre a chamada; com alguem a marcar, tocar no presente desmarca.
+    await attendanceAction(page, "Bruno Lima", "Desmarcar");
+    await expect(bruno).toHaveAccessibleName("Bruno Lima: sem marcação");
+    await expect(page.getByText("1 de 3 presentes")).toBeVisible();
+    await a20.click();
+    await expect(a20).toHaveAccessibleName("Aluno A20: sem marcação");
+    await a20.click();
+    await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
 
     // Persistiu: recarregar mantem as marcas.
     await waitWorld(page, ORG, (t) => t.attendances.length === 2);
     await page.reload();
-    await expect(page.getByRole("button", { name: "Presente: Aluno A20" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Justificada: Carla Souza" })).toHaveAttribute("aria-pressed", "true");
+    await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
+    await expect(carla).toHaveAccessibleName("Carla Souza: Justificada");
+    await expect(bruno).toHaveAccessibleName("Bruno Lima: sem marcação");
   });
 
   test("aula experimental e avulso com valor na aula", async ({ page }) => {
     await seedClasses(page);
     await page.goto(SESSION_PAST);
-    await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     let dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
     await dialog.getByRole("combobox", { name: "Aluno" }).click();
     await page.getByRole("option", { name: "Carla Souza" }).click();
@@ -248,7 +279,7 @@ test.describe("aula", () => {
     await expect(page.getByText("Aluno inscrito como experimental.")).toBeVisible();
     await expect(page.getByRole("main")).toContainText("Experimental");
 
-    await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+    await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
     dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
     await dialog.getByRole("combobox", { name: "Aluno" }).click();
     await page.getByRole("option", { name: "Bruno Lima" }).click();
@@ -256,7 +287,8 @@ test.describe("aula", () => {
     await expect(dialog.getByText("Valor da cobrança")).toBeVisible();
     await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
     await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
-    await expect(page.getByText("3/10 vagas ocupadas")).toBeVisible();
+    // Os tres na chamada (a aula nao mostra mais as vagas).
+    await expect(page.getByRole("button", { name: /: sem marcação$/ })).toHaveCount(3);
     await waitWorld(page, ORG, (t) =>
       t.charges.some((c: Tenant) => c.kind === "dropin" && c.studentId === "c-b" && c.amountCents === 4000),
     );
@@ -283,6 +315,7 @@ test.describe("lista de espera", () => {
     await dialog.getByRole("button", { name: "Pôr na lista de espera" }).click();
     await expect(page.getByText("2 alunos na lista de espera.")).toBeVisible();
 
+    // A aba da lista de espera so aparece quando tem alguem nela.
     await page.getByRole("tab", { name: /Lista de espera/ }).click();
     const panel = page.getByRole("tabpanel");
     await expect(panel).toContainText("1. Bruno Lima");
@@ -298,11 +331,11 @@ test.describe("lista de espera", () => {
     await panel.getByRole("button", { name: "Remover Carla Souza da lista" }).click();
     await page.getByRole("alertdialog", { name: "Remover da lista de espera?" }).getByRole("button", { name: "Remover" }).click();
     await expect(page.getByText("Aluno removido da lista de espera.")).toBeVisible();
-    await expect(panel).toContainText("Ninguém na lista de espera.");
 
-    await page.getByRole("tab", { name: /Matriculados/ }).click();
+    // Lista de espera vazia: as abas somem e volta a lista de alunos.
+    await expect(page.getByRole("tablist", { name: "Seções da turma" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Ações de Bruno Lima", exact: true })).toBeVisible();
-    await expect(page.getByRole("main")).toContainText("2 de 1 vagas · turma lotada");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("Turma lotada");
   });
 
   test("matricular acima da capacidade pede o botão explícito", async ({ page }) => {
@@ -337,7 +370,7 @@ test.describe("calendário de turmas", () => {
     await page.getByRole("option", { name: "Todas as modalidades" }).click();
     await page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).first().click();
     await expect(page).toHaveURL(/\/classes\/sessions\/cg-1~2026-09-28~17%3A00/);
-    await expect(page.getByText("Próxima aula")).toBeVisible();
+    await expect(page.getByText("A chamada abre em 28/09")).toBeVisible();
   });
 
   test("grade semanal navega entre semanas", async ({ page }) => {

@@ -1,5 +1,17 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  classGroup,
+  enrollment,
+  expect,
+  openProfileSection,
+  pageAction,
+  profileAlert,
+  profileSection,
+  seedAcademy,
+  student,
+  test,
+  type ProfileSectionTitle,
+} from "./fixtures";
 import {
   LEVELS_TRACK,
   TS,
@@ -17,14 +29,15 @@ import {
 } from "./ficha-notas-fixtures";
 
 /**
- * Ficha do aluno (`/clients/[id]`, doc 22 item 2): por onde se chega, o topo,
- * os cards de resumo, "Editar", "Mais ações" e as abas (`?tab=`).
- * Hoje e terca 22/09/2026; a turma padrao (Jiu-Jitsu) e seg/ter/qua 17h.
+ * Ficha do aluno (`/clients/[id]`, doc 22 item 2, doc 07 §1.8): por onde se
+ * chega, o topo (so nome e situacao), os avisos do que pede acao, a sanfona de
+ * secoes com o resumo de cada uma (`?tab=` abre uma), "Editar" e o menu ⋮.
+ * Hoje e terca 22/09/2026, 12h; a turma padrao (Jiu-Jitsu) e seg/ter/qua 17h.
  */
 
 const PROFILE = "/clients/c-a";
 const NAME = "Aluna Ficha";
-/** Faz 36 anos em 24/09 (daqui a 2 dias): hoje tem 35. */
+/** Faz 36 anos em 24/09 (daqui a 2 dias, fora do aviso de aniversario): hoje tem 35. */
 const BIRTH = "1990-09-24";
 
 const present = (sessionId: string, status = "present") => ({
@@ -63,176 +76,18 @@ async function seedProfile(page: Page, extra?: (t: Tenant) => void) {
   });
 }
 
-const tab = (page: Page, name: string) => page.getByRole("tab", { name, exact: true });
-const kpi = (page: Page, label: string) =>
-  page.locator("div.rounded-xl").filter({ has: page.getByText(label, { exact: true }) }).first();
-
-async function moreAction(page: Page, item: string) {
-  await page.getByRole("button", { name: "Mais ações" }).click();
-  await page.getByRole("menuitem", { name: item, exact: true }).click();
-}
-
-test.describe("por onde se chega na ficha", () => {
-  test("Alunos: nome, linha, 'Abrir ficha', card e o link de volta", async ({ page }) => {
-    await seedProfile(page);
-    await skipClientsCoachmark(page);
-    await page.goto("/clients");
-
-    await page.getByRole("link", { name: NAME }).click();
-    await expect(page).toHaveURL(PROFILE);
-    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
-    await page.getByRole("link", { name: "Alunos" }).first().click();
-    await expect(page).toHaveURL("/clients");
-
-    // Clicar na linha (fora do nome e do menu) tambem abre.
-    await rowOf(page, NAME).getByText("(11) 97777-0000").click();
-    await expect(page).toHaveURL(PROFILE);
-    await page.goBack();
-
-    await page.getByRole("button", { name: `Ações de ${NAME}`, exact: true }).click();
-    await page.getByRole("menuitem", { name: "Abrir ficha" }).click();
-    await expect(page).toHaveURL(PROFILE);
-    await page.goBack();
-
-    await page.getByRole("radio", { name: "Visualização em cartões" }).or(page.getByRole("button", { name: "Visualização em cartões" })).click();
-    await page.getByRole("link", { name: NAME }).click();
-    await expect(page).toHaveURL(PROFILE);
-    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
-  });
-
-  test("turma, chamada e Cobranças levam à ficha pelo nome", async ({ page }) => {
-    await seedProfile(page);
-    await page.goto("/classes/cg-1");
-    await page.getByRole("link", { name: NAME }).click();
-    await expect(page).toHaveURL(PROFILE);
-
-    await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
-    await page.getByRole("link", { name: NAME }).click();
-    await expect(page).toHaveURL(PROFILE);
-
-    await page.goto("/classes/billing");
-    await page.getByRole("link", { name: NAME }).click();
-    await expect(page).toHaveURL(PROFILE);
-    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
-  });
-
-  test("link de aluno inexistente mostra 'Aluno não encontrado'", async ({ page }) => {
-    await seedProfile(page);
-    await page.goto("/clients/xyz");
-    await expect(page.getByText("Aluno não encontrado")).toBeVisible();
-    await expect(page.getByText("O cadastro pode ter sido removido ou o link está incorreto.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Tentar novamente" })).toHaveCount(0);
-    await page.getByRole("main").getByRole("link", { name: "Alunos" }).click();
-    await expect(page).toHaveURL("/clients");
-  });
-});
-
-test.describe("topo e resumo", () => {
-  test("contato, idade, aluno desde, mensalidade, aniversário e os cards", async ({ page }) => {
-    await seedProfile(page);
-    await page.goto(PROFILE);
-    const header = page.locator("h1").locator("../..");
-    await expect(header).toContainText("Ativo");
-    await expect(header).toContainText("Aniversário em 2 dias");
-    await expect(header).toContainText("(11) 97777-0000 · 35 anos · Aluno desde 01/09/2026");
-    await expect(header).toContainText(/Mensal Jiu-Jitsu\s*·\s*R\$\s150,00\/mês/);
-
-    // Mensalidade proporcional de 20 a 30/09 (R$ 55,00), vencida em 20/09.
-    const open = kpi(page, "Em aberto");
-    await expect(open).toContainText("R$ 55,00");
-    await expect(open).toContainText("R$ 55,00 em atraso");
-    const freq = kpi(page, "Frequência 30 dias");
-    await expect(freq).toContainText("75%");
-    await expect(freq).toContainText("3 presenças · 1 falta");
-    const level = kpi(page, "Faixa atual");
-    await expect(level).toContainText("Faixa Branca");
-    await expect(level).toContainText("Jiu-Jitsu");
-    // Sem pacote, sem o card.
-    await expect(page.getByText("Pacote", { exact: true })).toHaveCount(0);
-  });
-
-  test("'Em aberto' zera depois de pagar pela aba Cobranças", async ({ page }) => {
-    await seedProfile(page);
-    await page.goto(PROFILE);
-    await tab(page, "Cobranças").click();
-    await expect(page).toHaveURL(`${PROFILE}?tab=charges`);
-    const row = rowOf(page, "Mensalidade");
-    await expect(row).toContainText("Atrasado");
-    await page.getByRole("button", { name: `Ações de ${NAME}`, exact: true }).click();
-    await page.getByRole("menuitem", { name: "Marcar pago" }).click();
-    const pay = page.getByRole("dialog", { name: "Registrar pagamento" });
-    await pay.getByRole("radio", { name: "Pix" }).click();
-    await pay.getByRole("button", { name: "Registrar pagamento" }).click();
-    await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();
-
-    const open = kpi(page, "Em aberto");
-    await expect(open).toContainText("R$ 0,00");
-    await expect(open).toContainText("Nada em aberto");
-    await expect(row).toContainText("Pago");
-  });
-
-  test("sem chamada no período e nível em palavras de níveis (Pilates)", async ({ page }) => {
-    await seedProfile(page, (t) => {
-      t.categories = [modality("m-pil", "Pilates", 0, { progressionTrack: LEVELS_TRACK })];
-      t.classGroups = [classGroup("cg-1", "Pilates Manhã", { modalityId: "m-pil" })];
-      t.attendances = [];
-      t.clients[0].progressions = { "m-pil": progression("m-pil", "Pilates", "lvl-gen-int", "Intermediário") };
-    });
-    await page.goto(PROFILE);
-    await expect(kpi(page, "Frequência 30 dias")).toContainText("Sem chamada no período");
-    await expect(kpi(page, "Frequência 30 dias")).toContainText("—");
-    await expect(kpi(page, "Nível atual")).toContainText("Intermediário");
-    await expect(page.getByText("Faixa atual", { exact: true })).toHaveCount(0);
-  });
-
-  test("bolsa parcial e mensalidade trancada no selo do topo, matrícula 'Trancada' na aba", async ({ page }) => {
-    await seedProfile(page, (t) => {
-      t.clients[0].discount = { type: "percentage", value: 50, scholarship: true, reason: "Atleta" };
-      t.clients[0].membershipStatus = "paused";
-      t.enrollments = [{ ...enrollment("e-1", "cg-1", "c-a"), status: "paused" }];
-    });
-    await page.goto(PROFILE);
-    const header = page.locator("h1").locator("../..");
-    await expect(header).toContainText(/Bolsa 50%\s*·\s*R\$\s75,00\/mês/);
-    await expect(header).toContainText("Trancado");
-    await expect(page.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Trancada");
-    await tab(page, "Dados").click();
-    const panel = page.getByRole("tabpanel");
-    await expect(panel).toContainText("50% · Atleta");
-    await expect(panel).toContainText("R$ 150,00");
-  });
-
-  test("bolsista integral sem plano: selo 'Bolsista integral'", async ({ page }) => {
-    await seedProfile(page, (t) => {
-      t.clients[0].planId = undefined;
-      t.clients[0].discount = { type: "percentage", value: 100, scholarship: true };
-    });
-    await page.goto(PROFILE);
-    await expect(page.locator("h1").locator("../..")).toContainText("Bolsista integral");
-  });
-
-  test("sem plano, pacote ou curso: selo 'Sem mensalidade'", async ({ page }) => {
-    await seedProfile(page, (t) => {
-      t.clients[0].planId = undefined;
-    });
-    await page.goto(PROFILE);
-    await expect(page.locator("h1").locator("../..")).toContainText("Sem mensalidade");
-    await expect(kpi(page, "Em aberto")).toContainText("Nada em aberto");
-  });
-
-  test("pacote em uso: selo no topo e card 'Pacote' com o saldo", async ({ page }) => {
-    await seedProfile(page, (t) => {
-      t.clients[0].planId = undefined;
-      t.studentPackages = [studentPackage("sp-1", { lessonsUsed: 2, usages: usages(2) })];
-    });
-    await page.goto(PROFILE);
-    const header = page.locator("h1").locator("../..");
-    await expect(header).toContainText("Pacote 8 de 10");
-    await expect(header).not.toContainText("Sem mensalidade");
-    const card = kpi(page, "Pacote");
-    await expect(card).toContainText("8 aulas");
-    await expect(card).toContainText("Pacote 10 aulas · vale até 30/11/2026");
-  });
+/** Cobranca da aluna gravada direto no mundo (padrao: R$ 250,00 pendente, vence 25/09). */
+const charge = (id: string, over: Record<string, unknown>) => ({
+  id,
+  organizationId: "org-academia-x",
+  unitId: "unit-academia-x",
+  studentId: "c-a",
+  dueDate: "2026-09-25",
+  amountCents: 25000,
+  status: "pending",
+  createdAt: TS,
+  updatedAt: TS,
+  ...over,
 });
 
 /** Pacote de 10 aulas do catalogo e a compra da aluna. */
@@ -281,7 +136,279 @@ function studentPackage(id: string, over: Record<string, unknown> = {}) {
   };
 }
 
-test.describe("Editar e Mais ações", () => {
+const moreAction = (page: Page, item: string) => pageAction(page, "Mais ações do aluno", item);
+
+test.describe("por onde se chega na ficha", () => {
+  test("Alunos: nome, linha, 'Abrir ficha', card e o link de volta", async ({ page }) => {
+    await seedProfile(page);
+    await skipClientsCoachmark(page);
+    await page.goto("/clients");
+
+    await page.getByRole("link", { name: NAME }).click();
+    await expect(page).toHaveURL(PROFILE);
+    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
+    // "Voltar" volta para a tela anterior do app (aqui, a lista de Alunos).
+    await page.getByRole("link", { name: "Voltar", exact: true }).click();
+    await expect(page).toHaveURL("/clients");
+
+    // Clicar na linha (fora do nome e do menu) tambem abre.
+    await rowOf(page, NAME).getByText("(11) 97777-0000").click();
+    await expect(page).toHaveURL(PROFILE);
+    await page.goBack();
+
+    await page.getByRole("button", { name: `Ações de ${NAME}`, exact: true }).click();
+    await page.getByRole("menuitem", { name: "Abrir ficha" }).click();
+    await expect(page).toHaveURL(PROFILE);
+    await page.goBack();
+
+    await page.getByRole("radio", { name: "Visualização em cartões" }).or(page.getByRole("button", { name: "Visualização em cartões" })).click();
+    await page.getByRole("link", { name: NAME }).click();
+    await expect(page).toHaveURL(PROFILE);
+    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
+  });
+
+  test("turma (linha), chamada (menu do aluno) e Cobranças (nome) levam à ficha", async ({ page }) => {
+    await seedProfile(page);
+    await page.goto("/classes/cg-1");
+    // Na turma o nome nao e link: tocar na linha abre a ficha.
+    const classRow = page.getByRole("main").getByText(NAME, { exact: true });
+    await expect(classRow).toBeVisible();
+    await expect(page.getByRole("link", { name: NAME })).toHaveCount(0);
+    await classRow.click();
+    await expect(page).toHaveURL(PROFILE);
+
+    // Na chamada tocar na linha marca presenca: a ficha fica no menu do aluno.
+    await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
+    const sessionMenu = page.getByRole("button", { name: `Ações de ${NAME}`, exact: true });
+    await expect(sessionMenu).toBeVisible();
+    await expect(page.getByRole("link", { name: NAME })).toHaveCount(0);
+    await sessionMenu.click();
+    await page.getByRole("menuitem", { name: "Abrir ficha", exact: true }).click();
+    await expect(page).toHaveURL(PROFILE);
+
+    await page.goto("/classes/billing");
+    await page.getByRole("link", { name: NAME }).click();
+    await expect(page).toHaveURL(PROFILE);
+    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
+  });
+
+  test("link de aluno inexistente mostra 'Aluno não encontrado'", async ({ page }) => {
+    await seedProfile(page);
+    await page.goto("/clients/xyz");
+    await expect(page.getByText("Aluno não encontrado")).toBeVisible();
+    await expect(page.getByText("O cadastro pode ter sido removido ou o link está incorreto.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tentar novamente" })).toHaveCount(0);
+    await page.getByRole("main").getByRole("link", { name: "Alunos" }).click();
+    await expect(page).toHaveURL("/clients");
+  });
+});
+
+test.describe("topo e resumos das seções", () => {
+  test("topo só com nome e situação; contato, idade e 'Aluno desde' no resumo do Cadastro", async ({ page }) => {
+    await seedProfile(page);
+    await page.goto(PROFILE);
+    await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
+    await expect(page.locator("h1").locator("..")).toContainText("Ativo");
+
+    // Tudo fechado, cada linha com o resumo dela. Sem pacote ativo, sem "Pacotes".
+    for (const title of ["Turmas", "Cobranças", "Evolução", "Mensagens", "Cadastro"] as const) {
+      await expect(profileSection(page, title)).toHaveAttribute("aria-expanded", "false");
+    }
+    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+    await expect(profileSection(page, "Turmas")).toContainText("1 turma · próxima hoje, 17:00");
+    // Mensalidade proporcional de 20 a 30/09 (R$ 55,00), vencida em 20/09.
+    await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 55,00 · 1 atrasada");
+    await expect(profileSection(page, "Evolução")).toContainText("Faixa Branca");
+    await expect(profileSection(page, "Mensagens")).toContainText("Nenhuma mensagem");
+    await expect(profileSection(page, "Cadastro")).toContainText("(11) 97777-0000 · 35 anos · Aluno desde 01/09/2026");
+
+    // Aniversario daqui a 2 dias nao vira aviso (so hoje ou amanha).
+    await expect(page.getByText(/^Faz aniversário/)).toHaveCount(0);
+
+    // A mensalidade do plano fica no Cadastro.
+    const data = await openProfileSection(page, "Cadastro");
+    await expect(data).toContainText("Mensal Jiu-Jitsu");
+    await expect(data).toContainText("R$ 150,00/mês");
+  });
+
+  test("Turmas: atalho 'Próxima aula' para a chamada e a presença na linha da turma", async ({ page }) => {
+    await seedProfile(page);
+    await page.goto(PROFILE);
+    const classes = await openProfileSection(page, "Turmas");
+    // A secao abre ali mesmo: a URL nao muda.
+    await expect(page).toHaveURL(PROFILE);
+    const row = classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" });
+    // 3 presencas e 1 falta: 75%.
+    await expect(row).toContainText("75%");
+    await expect(row).toContainText("Carlos Silva");
+
+    const next = classes.getByRole("link", { name: /^Próxima aula/ });
+    await expect(next).toContainText("Hoje, 17:00 · Jiu-Jitsu Adulto");
+    await next.click();
+    await expect(page).toHaveURL(/\/classes\/sessions\/cg-1~2026-09-22~17(%3A|:)00$/);
+  });
+
+  test("Pilates: nível em palavras de níveis; sem chamada, sem presença na linha", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.categories = [modality("m-pil", "Pilates", 0, { progressionTrack: LEVELS_TRACK })];
+      t.classGroups = [classGroup("cg-1", "Pilates Manhã", { modalityId: "m-pil" })];
+      t.attendances = [];
+      t.clients[0].progressions = { "m-pil": progression("m-pil", "Pilates", "lvl-gen-int", "Intermediário") };
+    });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Evolução")).toContainText("Intermediário");
+
+    const classes = await openProfileSection(page, "Turmas");
+    const row = classes.getByRole("button", { name: "Abrir turma Pilates Manhã" });
+    await expect(row).toContainText("Carlos Silva");
+    await expect(row).not.toContainText("%");
+    await expect(row).not.toContainText("Presença baixa");
+
+    // O card da modalidade fala em "Níveis", nao em "Graduação".
+    const evolution = await openProfileSection(page, "Evolução");
+    const card = evolution.locator("section").filter({ has: page.getByRole("heading", { name: "Pilates" }) });
+    await expect(card).toContainText("Intermediário");
+    await expect(card.getByRole("button", { name: "Níveis" })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Graduação" })).toHaveCount(0);
+  });
+
+  test("bolsa parcial e mensalidade trancada no Cadastro, matrícula 'Trancada' em Turmas", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].discount = { type: "percentage", value: 50, scholarship: true, reason: "Atleta" };
+      t.clients[0].membershipStatus = "paused";
+      t.enrollments = [{ ...enrollment("e-1", "cg-1", "c-a"), status: "paused" }];
+    });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Turmas")).toContainText("Nenhuma turma ativa");
+    const classes = await openProfileSection(page, "Turmas");
+    // Trancada segue em andamento (na lista, sem "Mostrar encerradas").
+    await expect(classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Trancada");
+
+    const data = await openProfileSection(page, "Cadastro");
+    await expect(data).toContainText("50% · Atleta");
+    await expect(data).toContainText("R$ 75,00/mês");
+    // Preco de tabela riscado ao lado.
+    await expect(data).toContainText("R$ 150,00");
+    await expect(data).toContainText("Trancada");
+  });
+
+  test("bolsista integral sem plano: bolsa 'Integral' no Cadastro", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].planId = undefined;
+      t.clients[0].discount = { type: "percentage", value: 100, scholarship: true };
+    });
+    await page.goto(PROFILE);
+    const data = await openProfileSection(page, "Cadastro");
+    await expect(data).toContainText("Sem mensalidade");
+    await expect(data).toContainText("Integral");
+  });
+
+  test("sem plano, pacote ou curso: 'Sem mensalidade' no Cadastro e nada em aberto", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].planId = undefined;
+    });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
+    // Sem cobranca, sem aviso de atraso.
+    await expect(page.getByText(/atrasadas?$/)).toHaveCount(0);
+    const data = await openProfileSection(page, "Cadastro");
+    await expect(data).toContainText("Sem mensalidade");
+  });
+
+  test("pacote em uso: seção Pacotes com o saldo no resumo", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].planId = undefined;
+      t.studentPackages = [studentPackage("sp-1", { lessonsUsed: 2, usages: usages(2) })];
+    });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 8 aulas restantes");
+    const packages = await openProfileSection(page, "Pacotes");
+    await expect(packages).toContainText("2 de 10 aulas usadas");
+    await expect(packages).toContainText("vale até 30/11/26");
+  });
+});
+
+test.describe("avisos do topo", () => {
+  test("atraso único: o aviso diz o que é, 'Cobrar' abre o WhatsApp e 'Marcar pago' tira o aviso", async ({ page }) => {
+    await seedProfile(page);
+    await page.goto(PROFILE);
+    const overdue = profileAlert(page, "Mensalidade de setembro atrasada");
+    await expect(overdue).toContainText("R$ 55,00 · venceu 20/09");
+
+    const link = await openedWhatsApp(page, () => overdue.getByRole("button", { name: "Cobrar" }).click());
+    expect(link.phone).toBe("5511977770000");
+    expect(link.text).not.toContain("{");
+
+    await overdue.getByRole("button", { name: "Marcar pago" }).click();
+    const pay = page.getByRole("dialog", { name: "Registrar pagamento" });
+    await pay.getByRole("radio", { name: "Pix" }).click();
+    await pay.getByRole("button", { name: "Registrar pagamento" }).click();
+    await expect(page.getByText("Pagamento registrado (Pix).")).toBeVisible();
+    await expect(overdue).toHaveCount(0);
+    await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
+  });
+
+  test("várias atrasadas: um aviso só, 'Ver cobranças' abre a seção Cobranças", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.charges = [charge("ch-kimono", { kind: "extra", description: "Kimono", competence: "2026-09", dueDate: "2026-09-15" })];
+    });
+    await page.goto(PROFILE);
+    const overdue = profileAlert(page, "2 cobranças atrasadas");
+    await expect(overdue).toContainText("R$ 305,00 · a mais antiga venceu 15/09");
+    await expect(overdue.getByRole("button", { name: "Marcar pago" })).toHaveCount(0);
+    await expect(profileSection(page, "Cobranças")).toContainText("2 em aberto · R$ 305,00 · 2 atrasadas");
+
+    await overdue.getByRole("button", { name: "Ver cobranças" }).click();
+    await expect(profileSection(page, "Cobranças")).toHaveAttribute("aria-expanded", "true");
+    await expect(rowOf(page, "Kimono")).toContainText("Atrasado");
+  });
+
+  test("faltas seguidas e aniversário amanhã: avisos com a mensagem pronta", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].birthDate = "1990-09-23";
+      t.attendances = [
+        present("cg-1~2026-09-14~17:00"),
+        present("cg-1~2026-09-15~17:00", "absent"),
+        present("cg-1~2026-09-16~17:00", "absent"),
+        present("cg-1~2026-09-21~17:00", "absent"),
+      ];
+    });
+    await page.goto(PROFILE);
+    const absence = profileAlert(page, "Faltou nas últimas 3 aulas");
+    await expect(absence).toContainText("Desde 15/09 · Jiu-Jitsu Adulto");
+    await expect(absence.getByRole("button", { name: "Mandar mensagem" })).toBeVisible();
+
+    const birthday = profileAlert(page, "Faz aniversário amanhã");
+    await expect(birthday).toContainText("36 anos em 23/09");
+    await expect(birthday.getByRole("button", { name: "Mandar parabéns" })).toBeVisible();
+
+    // 1 presenca em 4 chamadas: a linha da turma avisa.
+    const classes = await openProfileSection(page, "Turmas");
+    await expect(classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Presença baixa");
+  });
+
+  test("pacote na última aula: aviso com 'Avisar' e 'Vender pacote' já com o pacote", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.clients[0].planId = undefined;
+      t.lessonPackages = [lessonPackage];
+      t.studentPackages = [studentPackage("sp-1", { lessonsUsed: 9 })];
+    });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 1 aula restante");
+    const ending = profileAlert(page, "Pacote Pacote 10 aulas");
+    await expect(ending).toContainText("Resta 1 aula");
+    await expect(ending.getByRole("button", { name: "Avisar" })).toBeVisible();
+
+    await ending.getByRole("button", { name: "Vender pacote" }).click();
+    const sell = page.getByRole("dialog", { name: "Vender pacote" });
+    await expect(sell).toContainText(`Pacote de aulas para ${NAME}.`);
+    await expect(sell.getByRole("combobox", { name: "Pacote" })).toContainText("Pacote 10 aulas");
+    await sell.getByRole("button", { name: "Cancelar" }).click();
+    await expect(sell).toHaveCount(0);
+  });
+});
+
+test.describe("Editar e o menu ⋮ do aluno", () => {
   test("Editar salva e a ficha mostra o nome novo", async ({ page }) => {
     await seedProfile(page);
     await page.goto(PROFILE);
@@ -294,7 +421,7 @@ test.describe("Editar e Mais ações", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Aluna Ficha Editada" })).toBeVisible();
   });
 
-  test("Nova cobrança com a aluna fixa entra no extrato e no 'Em aberto'", async ({ page }) => {
+  test("Nova cobrança com a aluna fixa entra no extrato e no resumo de Cobranças", async ({ page }) => {
     await seedProfile(page);
     await page.goto(`${PROFILE}?tab=charges`);
     await moreAction(page, "Nova cobrança");
@@ -307,16 +434,18 @@ test.describe("Editar e Mais ações", () => {
     await expect(page.getByText("Cobrança lançada.")).toBeVisible();
 
     await expect(rowOf(page, "Exame de faixa")).toContainText("R$ 80,00");
-    await expect(kpi(page, "Em aberto")).toContainText("R$ 135,00");
-    await expect(kpi(page, "Em aberto")).toContainText("R$ 55,00 em atraso");
+    await expect(profileSection(page, "Cobranças")).toContainText("2 em aberto · R$ 135,00 · 1 atrasada");
+    // A nova nao esta atrasada: o aviso segue so com a mensalidade.
+    await expect(profileAlert(page, "Mensalidade de setembro atrasada")).toContainText("R$ 55,00");
   });
 
-  test("Vender pacote: o pacote aparece na aba Pacotes, no topo e no card", async ({ page }) => {
+  test("Vender pacote pelo menu: a seção Pacotes aparece com o pacote", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.lessonPackages = [lessonPackage];
     });
-    await page.goto(`${PROFILE}?tab=packages`);
-    await expect(page.getByText("Nenhum pacote ainda.")).toBeVisible();
+    await page.goto(PROFILE);
+    // Sem pacote ativo, sem a secao.
+    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
     await moreAction(page, "Vender pacote");
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await expect(dialog).toContainText(`Pacote de aulas para ${NAME}.`);
@@ -326,9 +455,10 @@ test.describe("Editar e Mais ações", () => {
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
 
+    await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 10 aulas restantes");
+    await expect(profileSection(page, "Cobranças")).toContainText("R$ 455,00");
+    await openProfileSection(page, "Pacotes");
     await expect(rowOf(page, "Pacote 10 aulas")).toContainText("0 de 10 aulas usadas");
-    await expect(kpi(page, "Pacote")).toContainText("10 aulas");
-    await expect(page.locator("h1").locator("../..")).toContainText("Pacote 10 de 10");
   });
 
   test("Inativar com mensalidade em aberto: cancelar a cobrança e depois reativar", async ({ page }) => {
@@ -343,11 +473,12 @@ test.describe("Editar e Mais ações", () => {
     await confirm.getByRole("button", { name: "Inativar" }).click();
     await expect(page.getByText("Aluno inativado.")).toBeVisible();
 
-    const header = page.locator("h1").locator("../..");
+    const header = page.locator("h1").locator("..");
     await expect(header).toContainText("Inativo");
-    await expect(kpi(page, "Em aberto")).toContainText("Nada em aberto");
-    // Inativo: sem cobrar nem vender pelo topo.
-    await page.getByRole("button", { name: "Mais ações" }).click();
+    await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
+    await expect(profileAlert(page, "Mensalidade de setembro atrasada")).toHaveCount(0);
+    // Inativo: sem cobrar nem vender pelo menu do topo.
+    await page.getByRole("button", { name: "Mais ações do aluno", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toHaveCount(0);
     await page.getByRole("menuitem", { name: "Reativar" }).click();
@@ -358,7 +489,7 @@ test.describe("Editar e Mais ações", () => {
     await expect(header).toContainText("Ativo");
 
     // A mensalidade cancelada fica no extrato como cancelada (reabrivel).
-    await tab(page, "Cobranças").click();
+    await openProfileSection(page, "Cobranças");
     await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
     await page.getByRole("combobox", { name: "Filtrar por situação" }).click();
     await page.getByRole("option", { name: /Canceladas/ }).click();
@@ -368,37 +499,52 @@ test.describe("Editar e Mais ações", () => {
   });
 });
 
-test.describe("abas", () => {
-  test("a aba fica na URL; a primeira sai dela; ?tab= abre direto", async ({ page }) => {
-    await seedProfile(page);
+test.describe("seções", () => {
+  test("sanfona: tudo fechado, abre e fecha ali mesmo; ?tab= abre uma seção", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.lessonPackages = [lessonPackage];
+      t.studentPackages = [studentPackage("sp-1")];
+    });
     await page.goto(PROFILE);
-    const names = ["Turmas e cursos", "Cobranças", "Pacotes", "Evolução", "Mensagens", "Dados"];
-    for (const name of names) await expect(tab(page, name)).toBeVisible();
-    await expect(tab(page, "Turmas e cursos")).toHaveAttribute("aria-selected", "true");
+    const titles: ProfileSectionTitle[] = ["Turmas", "Cobranças", "Pacotes", "Evolução", "Mensagens", "Cadastro"];
+    for (const title of titles) await expect(profileSection(page, title)).toHaveAttribute("aria-expanded", "false");
+    const expanded = page.getByRole("main").getByRole("button", { expanded: true });
 
-    const expected: Record<string, string> = {
-      Cobranças: "charges",
-      Pacotes: "packages",
-      Evolução: "evolution",
-      Mensagens: "messages",
-      Dados: "data",
-    };
-    for (const [name, value] of Object.entries(expected)) {
-      await tab(page, name).click();
-      await expect(page).toHaveURL(`${PROFILE}?tab=${value}`);
-      await expect(tab(page, name)).toHaveAttribute("aria-selected", "true");
-    }
-    await tab(page, "Turmas e cursos").click();
+    // Abre mais de uma ao mesmo tempo, sem mexer na URL.
+    const charges = await openProfileSection(page, "Cobranças");
+    await expect(charges.getByLabel("Buscar cobrança")).toBeVisible();
+    const data = await openProfileSection(page, "Cadastro");
+    await expect(data).toContainText("aluna@ficha.com");
+    await expect(expanded).toHaveCount(2);
     await expect(page).toHaveURL(PROFILE);
 
-    await page.goto(`${PROFILE}?tab=evolution`);
-    await expect(tab(page, "Evolução")).toHaveAttribute("aria-selected", "true");
-    // Aba desconhecida cai na primeira.
+    // Tocar de novo fecha.
+    await profileSection(page, "Cobranças").click();
+    await expect(profileSection(page, "Cobranças")).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByLabel("Buscar cobrança")).toHaveCount(0);
+    await expect(page).toHaveURL(PROFILE);
+
+    // `?tab=` (links antigos e de outras telas) abre so aquela secao.
+    const ids: [ProfileSectionTitle, string][] = [
+      ["Turmas", "classes"],
+      ["Cobranças", "charges"],
+      ["Pacotes", "packages"],
+      ["Evolução", "evolution"],
+      ["Mensagens", "messages"],
+      ["Cadastro", "data"],
+    ];
+    for (const [title, id] of ids) {
+      await page.goto(`${PROFILE}?tab=${id}`);
+      await expect(profileSection(page, title)).toHaveAttribute("aria-expanded", "true");
+      await expect(expanded).toHaveCount(1);
+    }
+    // Secao desconhecida: tudo fechado.
     await page.goto(`${PROFILE}?tab=xyz`);
-    await expect(tab(page, "Turmas e cursos")).toHaveAttribute("aria-selected", "true");
+    await expect(profileSection(page, "Turmas")).toHaveAttribute("aria-expanded", "false");
+    await expect(expanded).toHaveCount(0);
   });
 
-  test("Turmas e cursos: situações, curso concluído com certificado, busca e filtro", async ({ page }) => {
+  test("Turmas: em andamento na lista, encerradas atrás de 'Mostrar encerradas', certificado do curso", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.classGroups = [
         classGroup("cg-1", "Jiu-Jitsu Adulto"),
@@ -420,19 +566,26 @@ test.describe("abas", () => {
       ];
     });
     await page.goto(PROFILE);
-    await expect(page.getByText("3 matrículas")).toBeVisible();
+    // O resumo conta so as ativas.
+    await expect(profileSection(page, "Turmas")).toContainText("1 turma · próxima hoje, 17:00");
+    await openProfileSection(page, "Turmas");
     const active = page.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" });
-    await expect(active).toContainText("Ativa");
-    await expect(active).toContainText("Jiu-Jitsu · com Carlos Silva · desde 01/09/2026 · frequência 75%");
     const done = page.getByRole("button", { name: "Abrir turma Defesa Pessoal" });
-    await expect(done).toContainText("Concluído");
-    await expect(done).toContainText("Curso");
-    await expect(done).toContainText("R$ 300,00 em 3x · 0 de 3 parcelas pagas");
     const canceled = page.getByRole("button", { name: "Abrir turma Jiu-Jitsu Kids" });
-    await expect(canceled).toContainText("Cancelada");
-    await expect(canceled).toContainText("saiu em 05/09/2026");
+    // Modalidade no nome da turma: a linha diz so o professor.
+    await expect(active).toContainText("Carlos Silva");
+    await expect(active).not.toContainText("Jiu-Jitsu ·");
+    await expect(active).toContainText("75%");
+    await expect(done).toHaveCount(0);
+    await expect(canceled).toHaveCount(0);
 
-    // Concluído: "Certificado" no menu, com o aviso do Plano Pro no grátis (como na turma).
+    // Concluidas e canceladas atras do botao.
+    await page.getByRole("button", { name: "Mostrar encerradas (2)" }).click();
+    await expect(done).toContainText("Jiu-Jitsu · Carlos Silva · Curso até 10/09");
+    await expect(done).toContainText("Concluído");
+    await expect(canceled).toContainText("Saiu em 05/09");
+
+    // Concluido: "Certificado" no menu, com o aviso do Plano Pro no gratis (como na turma).
     await page.getByRole("button", { name: "Ações da matrícula em Defesa Pessoal", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Certificado (Plano Pro)" })).toBeVisible();
     await page.keyboard.press("Escape");
@@ -440,44 +593,37 @@ test.describe("abas", () => {
     await expect(page.getByRole("menuitem", { name: /Certificado/ })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
-    await page.getByRole("combobox", { name: "Filtrar por situação" }).click();
-    await page.getByRole("option", { name: "Concluídas" }).click();
-    await expect(page.getByText("1 matrícula")).toBeVisible();
-    await expect(done).toBeVisible();
-    await expect(active).toHaveCount(0);
-    await page.getByRole("button", { name: "Limpar filtros" }).first().click();
-    await page.getByLabel("Buscar turma").fill("kids");
-    await expect(canceled).toBeVisible();
-    await expect(page.getByText("1 matrícula")).toBeVisible();
-    await page.getByLabel("Buscar turma").fill("natação");
-    await expect(page.getByText("Nenhuma turma para esta busca.")).toBeVisible();
+    await page.getByRole("button", { name: "Ocultar encerradas" }).click();
+    await expect(done).toHaveCount(0);
+    await expect(canceled).toHaveCount(0);
 
     // Clicar na linha abre a turma.
-    await page.getByLabel("Buscar turma").fill("");
     await active.click();
     await expect(page).toHaveURL("/classes/cg-1");
 
-    // O item do certificado leva a tela bloqueada do grátis.
+    // O item do certificado leva a tela bloqueada do gratis.
     await page.goBack();
+    await openProfileSection(page, "Turmas");
+    await page.getByRole("button", { name: /^Mostrar encerradas/ }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Defesa Pessoal", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
     await expect(page).toHaveURL("/classes/cg-course/certificate/e-course");
     await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
   });
 
-  test("Cobranças: extrato de todos os tipos, filtros, busca e substituídas com 'Mostrar'", async ({ page }) => {
-    const charge = (id: string, over: Record<string, unknown>) => ({
-      id,
-      organizationId: "org-academia-x",
-      unitId: "unit-academia-x",
-      studentId: "c-a",
-      dueDate: "2026-09-25",
-      amountCents: 25000,
-      status: "pending",
-      createdAt: TS,
-      updatedAt: TS,
-      ...over,
+  test("Turmas: só encerradas mostra 'Nenhuma turma em andamento.'", async ({ page }) => {
+    await seedProfile(page, (t) => {
+      t.enrollments = [{ ...enrollment("e-1", "cg-1", "c-a"), status: "canceled", canceledAt: "2026-09-05T12:00:00.000Z" }];
     });
+    await page.goto(PROFILE);
+    await expect(profileSection(page, "Turmas")).toContainText("Nenhuma turma ativa");
+    const classes = await openProfileSection(page, "Turmas");
+    await expect(classes.getByText("Nenhuma turma em andamento.")).toBeVisible();
+    await classes.getByRole("button", { name: "Mostrar encerradas (1)" }).click();
+    await expect(classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Saiu em 05/09");
+  });
+
+  test("Cobranças: extrato de todos os tipos, filtros, busca e substituídas com 'Mostrar'", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.charges = [
         charge("ch-kimono", { kind: "extra", description: "Kimono", competence: "2026-09" }),
@@ -578,35 +724,38 @@ test.describe("abas", () => {
       t.clients[0].planId = undefined;
       t.lessonPackages = [lessonPackage];
     });
-    // Vende pela ficha (gera a cobranca do pacote) e cancela em seguida.
-    await page.goto(`${PROFILE}?tab=packages`);
-    await page.getByRole("button", { name: "Vender pacote" }).click();
+    // Vende pelo menu da ficha (gera a cobranca do pacote) e cancela em seguida.
+    await page.goto(PROFILE);
+    await moreAction(page, "Vender pacote");
     const sell = page.getByRole("dialog", { name: "Vender pacote" });
     await sell.getByRole("combobox", { name: "Pacote" }).click();
     await page.getByRole("option", { name: /Pacote 10 aulas/ }).click();
     await sell.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
-    await expect(kpi(page, "Em aberto")).toContainText("R$ 400,00");
+    await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 400,00");
 
+    await openProfileSection(page, "Pacotes");
     await page.getByRole("button", { name: "Ações do pacote Pacote 10 aulas", exact: true }).click();
     await page.getByRole("menuitem", { name: "Cancelar pacote" }).click();
     const confirm = page.getByRole("alertdialog");
     await expect(confirm).toContainText("O pacote Pacote 10 aulas é cancelado.");
     await confirm.getByRole("button", { name: "Cancelar pacote" }).click();
     await expect(page.getByText("Pacote cancelado.")).toBeVisible();
-    await expect(page.getByText("Cancelado", { exact: true })).toBeVisible();
-    await expect(kpi(page, "Em aberto")).toContainText("Nada em aberto");
-    await expect(kpi(page, "Pacote")).toHaveCount(0);
+    await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
+    // Sem pacote ativo, a secao Pacotes sai da ficha.
+    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
 
-    // Cancelado nao trava: o botao da aba continua e vende outro pacote.
-    await page.getByRole("button", { name: "Vender pacote" }).click();
+    // Cancelado nao trava: vende outro pelo menu e a secao volta com os dois.
+    await moreAction(page, "Vender pacote");
     const again = page.getByRole("dialog", { name: "Vender pacote" });
     await again.getByRole("combobox", { name: "Pacote" }).click();
     await page.getByRole("option", { name: /Pacote 10 aulas/ }).click();
     await again.getByRole("button", { name: "Adicionar" }).click();
     await expect(again).toHaveCount(0);
-    await expect(page.getByText("2 pacotes", { exact: true })).toBeVisible();
-    await expect(kpi(page, "Em aberto")).toContainText("R$ 400,00");
+    const packages = await openProfileSection(page, "Pacotes");
+    await expect(packages.getByText("2 pacotes", { exact: true })).toBeVisible();
+    await expect(packages.getByText("Cancelado", { exact: true })).toBeVisible();
+    await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 400,00");
   });
 
   test("Evolução: um card por modalidade; Notas só na modalidade com avaliações", async ({ page }) => {
@@ -628,6 +777,8 @@ test.describe("abas", () => {
       t.assessments = [assessment("as-1", "cg-ing", "m-ing", "Prova oral", { grades: [grade("c-a", 8.5)] })];
     });
     await page.goto(`${PROFILE}?tab=evolution`);
+    // Resumo: o nivel da primeira modalidade, quantas mais e o ultimo registro.
+    await expect(profileSection(page, "Evolução")).toContainText("Faixa Branca · +1 · último registro 21/09");
     const jj = page.locator("section").filter({ has: page.getByRole("heading", { name: "Jiu-Jitsu" }) });
     const ing = page.locator("section").filter({ has: page.getByRole("heading", { name: "Inglês" }) });
     await expect(jj).toContainText("Faixa Branca");
@@ -663,9 +814,8 @@ test.describe("abas", () => {
     });
     await page.goto(`${PROFILE}?tab=evolution`);
     await expect(page.getByText("Sem trilha de evolução ainda.")).toBeVisible();
-    // Sem nivel, sem o card de nivel no topo.
-    await expect(page.getByText("Nível atual", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Faixa atual", { exact: true })).toHaveCount(0);
+    // O resumo da secao diz o mesmo.
+    await expect(profileSection(page, "Evolução")).toContainText("Sem trilha de evolução");
   });
 
   test("Mensagens: 'Nova mensagem' com a aluna fixa entra no histórico da ficha", async ({ page }) => {
@@ -686,6 +836,8 @@ test.describe("abas", () => {
     await expect(row).toContainText("Mensagem avulsa");
     await expect(row).toContainText("Hoje às");
     await expect(page.getByText("1 mensagem", { exact: true })).toBeVisible();
+    // O resumo da secao passa a mostrar a ultima.
+    await expect(profileSection(page, "Mensagens")).toContainText("Última em 22/09/2026");
     await row.click();
     await expect(page.getByRole("dialog")).toContainText("Aula extra no sábado 🥋");
     await page.keyboard.press("Escape");
@@ -707,12 +859,12 @@ test.describe("abas", () => {
     await expect(dialog.getByRole("button", { name: "Abrir no WhatsApp" })).toBeDisabled();
   });
 
-  test("Dados: cadastro, mensalidade e responsáveis; 'Editar' abre o formulário", async ({ page }) => {
+  test("Cadastro: dados, mensalidade e responsáveis; 'Editar' abre o formulário", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.clients[0].guardians = [{ name: "Maria Ficha", relationship: "Mãe", phone: "11966660000" }];
     });
     await page.goto(`${PROFILE}?tab=data`);
-    const panel = page.getByRole("tabpanel");
+    const panel = await openProfileSection(page, "Cadastro");
     await expect(panel).toContainText("aluna@ficha.com");
     await expect(panel).toContainText("24/09/1990 · 35 anos");
     await expect(panel).toContainText("Prefere a turma da noite");
@@ -760,22 +912,7 @@ test.describe("comunicação", () => {
     page,
   }) => {
     await seedProfile(page, (t) => {
-      t.charges = [
-        {
-          id: "ch-kimono",
-          organizationId: "org-academia-x",
-          unitId: "unit-academia-x",
-          studentId: "c-a",
-          kind: "extra",
-          description: "Kimono",
-          competence: "2026-09",
-          dueDate: "2026-09-25",
-          amountCents: 25000,
-          status: "pending",
-          createdAt: TS,
-          updatedAt: TS,
-        },
-      ];
+      t.charges = [charge("ch-kimono", { kind: "extra", description: "Kimono", competence: "2026-09" })];
     });
     await page.goto(`${PROFILE}?tab=charges`);
     const link = await openedWhatsApp(page, async () => {
@@ -787,14 +924,14 @@ test.describe("comunicação", () => {
     expect(link.text).not.toContain("{");
 
     await waitForStore(page, (raw) => raw.includes("charge_reminder"));
-    await tab(page, "Mensagens").click();
-    const row = page.getByRole("button", { name: /^Mensagem de / });
+    const messages = await openProfileSection(page, "Mensagens");
+    const row = messages.getByRole("button", { name: /^Mensagem de / });
     await expect(row).toContainText("Lembrete de cobrança");
     await expect(row).toContainText("Aberto no WhatsApp");
-    await page.getByRole("combobox", { name: "Status" }).click();
+    await messages.getByRole("combobox", { name: "Status" }).click();
     await page.getByRole("option", { name: "Lida" }).click();
-    await expect(page.getByText("Nenhum resultado para os filtros aplicados.")).toBeVisible();
-    await page.getByRole("button", { name: "Limpar filtros" }).click();
+    await expect(messages.getByText("Nenhum resultado para os filtros aplicados.")).toBeVisible();
+    await messages.getByRole("button", { name: "Limpar filtros" }).click();
     await expect(row).toBeVisible();
   });
 });

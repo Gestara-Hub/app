@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
+import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
@@ -50,6 +51,7 @@ export default async function AppLayout({
       <ViewModeProvider initialModes={initialViewModes}>
         <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>
           <AppSidebar />
+          <NavigationTracker />
           {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
           <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
             <AppTopbar />

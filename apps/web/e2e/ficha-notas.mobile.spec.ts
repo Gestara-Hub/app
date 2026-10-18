@@ -1,5 +1,15 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  classGroup,
+  enrollment,
+  expect,
+  openProfileSection,
+  pageAction,
+  profileSection,
+  seedAcademy,
+  student,
+  test,
+} from "./fixtures";
 import {
   ADULT,
   MODULES_TRACK,
@@ -11,9 +21,10 @@ import {
 } from "./ficha-notas-fixtures";
 
 /**
- * Ficha do aluno e notas no celular (375px): abas que rolam, sem rolagem
- * lateral da pagina, campos de nota com 16px (sem zoom do iOS) e teclado
- * numerico, e dialogos que cabem na tela. Hoje e terca 22/09/2026.
+ * Ficha do aluno e notas no celular (375px): secoes da ficha em sanfona sem
+ * rolagem lateral da pagina, "Editar" no menu ⋮, campos de nota com 16px (sem
+ * zoom do iOS) e teclado numerico, e dialogos que cabem na tela. Hoje e terca
+ * 22/09/2026.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -68,42 +79,32 @@ async function expectDialogFits(page: Page, dialog: Locator) {
   expect(inner).toBeLessThanOrEqual(0);
 }
 
-test("ficha no celular: abas rolam de lado, a página não", async ({ page }) => {
+test("ficha no celular: seções abrem ali mesmo, a página não rola de lado; Editar no menu ⋮", async ({ page }) => {
   await seed(page);
   await page.goto("/clients/c-a");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Aluna Com Nome Bem Comprido da Silva");
   await expectNoPageOverflow(page);
 
-  const tablist = page.getByRole("tablist", { name: "Seções da ficha" });
-  const sizes = await tablist.evaluate((el) => ({
-    scroll: el.scrollWidth,
-    client: el.clientWidth,
-    overflowX: getComputedStyle(el).overflowX,
-    right: el.getBoundingClientRect().right,
-  }));
-  // As seis abas nao cabem: a faixa rola por dentro, sem sair da tela.
-  expect(sizes.scroll).toBeGreaterThan(sizes.client);
-  expect(sizes.overflowX).toBe("auto");
-  expect(sizes.right).toBeLessThanOrEqual(375);
+  // No celular o "Editar" sai do topo: fica no menu ⋮ como "Editar cadastro".
+  await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Mais ações do aluno", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await pageAction(page, "Mais ações do aluno", "Editar cadastro");
+  const edit = page.getByRole("dialog", { name: "Editar aluno" });
+  await expect(edit).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(edit).toBeHidden();
 
-  const data = page.getByRole("tab", { name: "Dados" });
-  await data.scrollIntoViewIfNeeded();
-  await data.click();
-  await expect(page).toHaveURL("/clients/c-a?tab=data");
-  await expect(page.getByRole("tabpanel")).toContainText("aluna.com.nome.comprido@exemplo.com.br");
+  // Cada secao abre embaixo do titulo, sem sair da tela (sem pacote, sem "Pacotes").
+  await expect(profileSection(page, "Pacotes")).toHaveCount(0);
+  const data = await openProfileSection(page, "Cadastro");
+  await expect(data).toContainText("aluna.com.nome.comprido@exemplo.com.br");
   await expectNoPageOverflow(page);
-
-  for (const tab of ["Cobranças", "Pacotes", "Evolução", "Mensagens", "Turmas e cursos"]) {
-    const el = page.getByRole("tab", { name: tab, exact: true });
-    await el.scrollIntoViewIfNeeded();
-    await el.click();
-    await expect(el).toHaveAttribute("aria-selected", "true");
+  for (const title of ["Cobranças", "Evolução", "Mensagens", "Turmas"] as const) {
+    await openProfileSection(page, title);
     await expectNoPageOverflow(page);
   }
-
-  // "Mais ações" vira so o icone, com o nome acessivel.
-  await page.getByRole("button", { name: "Mais ações" }).click();
-  await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toBeVisible();
 });
 
 test("lançar notas no celular: 16px, teclado decimal e o diálogo cabe", async ({ page }) => {

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, editWorld, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, editWorld, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
 import { loginAsUser, user } from "./ficha-notas-fixtures";
 import { waitWorld, type Tenant } from "./geral-fixtures";
 
@@ -220,9 +220,9 @@ test.describe("menu e rotas por perfil (academia)", () => {
     }
     // Pode marcar presenca na propria turma.
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
-    const present = page.getByRole("button", { name: "Presente: Aluno A20" });
-    await present.click();
-    await expect(present).toHaveAttribute("aria-pressed", "true");
+    const row = rollCallRow(page, "Aluno A20");
+    await row.click();
+    await expect(row).toHaveAccessibleName("Aluno A20: Presente");
   });
 });
 

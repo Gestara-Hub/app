@@ -89,8 +89,10 @@ test.describe("modalidade", () => {
         t.categories[1].assessments = undefined;
       },
     });
+    // Sem avaliacoes (e sem lista de espera) a turma nao tem abas: so a lista de alunos.
     await page.goto(CLASS_URL);
-    await expect(page.getByRole("tab", { name: /^Matriculados/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Seções da turma" })).toHaveCount(0);
     await expect(assessmentsTab(page)).toHaveCount(0);
 
     await page.goto("/classes/modalities");
@@ -140,8 +142,8 @@ test.describe("modalidade", () => {
     await expect(page.getByText("0 a 10 · Mínima 7,5 · Média da turma")).toBeVisible();
     // A turma de Jiu-Jitsu (sem avaliacoes) segue sem a aba.
     await page.goto("/classes/cg-jj");
-    await expect(page.getByRole("tab", { name: /^Matriculados/ })).toBeVisible();
-    await expect(assessmentsTab(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist", { name: "Seções da turma" })).toHaveCount(0);
   });
 
   test("nova modalidade em escola de idiomas já vem com avaliações ligadas", async ({ page }) => {
@@ -168,7 +170,7 @@ test.describe("modalidade", () => {
     await expect(page.getByText("Modalidade atualizada com sucesso.")).toBeVisible();
 
     await page.goto(CLASS_URL);
-    await expect(page.getByRole("tab", { name: /^Matriculados/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toBeVisible();
     await expect(assessmentsTab(page)).toHaveCount(0);
     await skipClientsCoachmark(page);
     await page.goto("/clients");

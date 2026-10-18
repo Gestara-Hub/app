@@ -4,18 +4,21 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
   Award,
+  CalendarDays,
   ChevronLeft,
+  ChevronRight,
   ClipboardList,
   GraduationCap,
+  ListChecks,
   Lock,
   MessageSquarePlus,
   Package,
   Pencil,
-  Search,
   UserCheck,
   UserPlus,
   UserX,
@@ -32,14 +35,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/layout/page-header";
 import { ListItemCard } from "@/components/shared/list-item-card";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { ListContainer, ListRow, SearchInput } from "@/components/shared/list";
+import { PageActionsMenu } from "@/components/shared/page-actions-menu";
+import { BackLink } from "@/components/shared/back-link";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -52,15 +55,13 @@ import { ageAt, currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "
 import { cn } from "@/lib/utils";
 import { useModalityVocabulary } from "@/features/settings";
 import { normalizeText } from "@/lib/text";
-import { userInitials } from "@/lib/session";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import { todayISO } from "@gestarahub/core/date";
-import { formatCents, formatPhone, plural, pluralWord } from "@gestarahub/core/format";
+import { nowTime, todayISO } from "@gestarahub/core/date";
+import { plural, pluralWord } from "@gestarahub/core/format";
 import { classBillingMode } from "@gestarahub/core/billing";
-import { pickPackageFor } from "@gestarahub/core/packages";
+import { packageState, pickPackageFor } from "@gestarahub/core/packages";
 import {
   isApiError,
-  type ClassGroupView,
   type Client,
   type EnrollmentView,
   type Id,
@@ -78,10 +79,13 @@ import {
   usePromoteWaitlist,
   useRemoveFromWaitlist,
   useSetEnrollmentPayment,
+  useClassSessions,
   useWaitlist,
 } from "../hooks/use-turmas";
+import { useCharges } from "../hooks/use-billing";
+import { pickNextSession } from "../next-session";
 import { useStudentPackages } from "../hooks/use-packages";
-import { EndedBadge, slotsSummary } from "./turmas-view";
+import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { TurmaFormDialog } from "./turma-form-dialog";
@@ -90,26 +94,12 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 type Tab = "enrolled" | "waitlist" | "assessments";
 
-const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
+/** Busca so a partir de 9 alunos; abaixo disso ela so ocupa espaco. */
+const SEARCH_MIN_STUDENTS = 8;
+/** Abaixo de 75% de presenca a linha avisa "Presença baixa". */
+const LOW_ATTENDANCE = 0.75;
 
-/**
- * "Curso · R$ 800,00 em até 4x · termina 30/11", "Pacote de aulas" ou "Sem
- * cobrança"; mensalidade nao mostra nada.
- */
-export function classBillingSummary(turma: ClassGroupView): string | null {
-  const mode = classBillingMode(turma);
-  if (mode === "free") return "Sem cobrança";
-  if (mode === "package") return "Pacote de aulas";
-  if (mode !== "course") return null;
-  const max = turma.courseMaxInstallments ?? 1;
-  return [
-    "Curso",
-    `${formatCents(turma.coursePriceCents ?? 0)}${max > 1 ? ` em até ${max}x` : " à vista"}`,
-    turma.endDate ? `${turma.isEnded ? "terminou" : "termina"} ${ddmm(turma.endDate)}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
+const ddmm = (iso: string) => format(parseISO(iso), "dd/MM");
 
 /** Texto do cancelamento da matricula: no curso, explica o que acontece com as parcelas (decisao 1). */
 function cancelEnrollmentText(e: EnrollmentView): string {
@@ -137,69 +127,6 @@ function cancelEnrollmentText(e: EnrollmentView): string {
 
 function isApiNotFound(error: unknown): boolean {
   return isApiError(error) && error.code === "NOT_FOUND";
-}
-
-/** Badge de frequencia do aluno (informativo; destaque quando < 75%). */
-function FreqBadge({
-  rate,
-  present,
-  absent,
-}: {
-  rate: number | null;
-  present: number;
-  absent: number;
-}) {
-  if (rate === null) {
-    return <span className="text-xs text-muted-foreground">sem presença</span>;
-  }
-  const pct = Math.round(rate * 100);
-  const low = rate < 0.75;
-  return (
-    <span
-      title={`${plural(present, "presença", "presenças")} · ${plural(absent, "falta", "faltas")}`}
-      className={
-        "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums " +
-        (low
-          ? "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
-          : "border-border bg-muted/40 text-muted-foreground")
-      }
-    >
-      {pct}%
-    </span>
-  );
-}
-
-/** Ocupacao da turma: barra + contagem. Ambar quando lotada/acima. */
-function CapacityBar({
-  enrolled,
-  capacity,
-}: {
-  enrolled: number;
-  capacity: number;
-}) {
-  const pct =
-    capacity > 0 ? Math.min(100, Math.round((enrolled / capacity) * 100)) : 0;
-  const full = enrolled >= capacity;
-  const free = Math.max(capacity - enrolled, 0);
-  return (
-    <div className="mb-6 flex items-center gap-3">
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            "h-full rounded-full transition-[width]",
-            full ? "bg-amber-500" : "bg-primary",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="shrink-0 text-sm text-muted-foreground">
-        {enrolled} de {capacity} vagas ·{" "}
-        <span className="font-medium text-foreground">
-          {full ? "turma lotada" : `${free} ${free === 1 ? "livre" : "livres"}`}
-        </span>
-      </p>
-    </div>
-  );
 }
 
 function TabButton({
@@ -232,6 +159,41 @@ function TabButton({
   );
 }
 
+/** Atalho para a aula de hoje (ou a proxima): o caminho mais usado a partir da turma. */
+function NextSessionLink({ classGroupId, canMark }: { classGroupId: Id; canMark: boolean }) {
+  const today = todayISO();
+  const { data: sessions } = useClassSessions({
+    classGroupId,
+    dateFrom: today,
+    dateTo: format(addDays(parseISO(today), 13), "yyyy-MM-dd"),
+  });
+  const next = pickNextSession(sessions ?? [], today, nowTime());
+  if (!next) return null;
+  const isToday = next.date === today;
+  const day = format(parseISO(next.date), "EEE, dd/MM", { locale: ptBR }).replace(".", "");
+  return (
+    <Link
+      href={`/classes/sessions/${encodeURIComponent(next.id)}`}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm transition-colors hover:bg-muted/60"
+    >
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {isToday ? (
+          <span className="rounded-md bg-primary px-1.5 py-0.5 text-xs font-medium text-primary-foreground">Hoje</span>
+        ) : (
+          <span className="text-muted-foreground">Próxima aula</span>
+        )}
+        <span className="tabular-nums text-foreground">
+          {isToday ? next.start : `${day.charAt(0).toUpperCase()}${day.slice(1)}, ${next.start}`}
+        </span>
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-foreground">
+        {isToday && canMark ? "Fazer chamada" : "Ver aula"}
+        <ChevronRight className="size-4" />
+      </span>
+    </Link>
+  );
+}
+
 export function TurmaDetailView({
   id,
   enrollCompletesSetup = false,
@@ -258,6 +220,13 @@ export function TurmaDetailView({
   // Certificado de conclusao: Plano Pro; no gratis o item abre o upsell.
   const hasCertificates = useHasFeature()("certificates");
   const canEditTurma = can("classes:manage");
+  const canMark = can("attendance:mark");
+  // "Pagamento atrasado" na linha so para quem ve cobrancas.
+  const { data: overdueCharges } = useCharges({ status: "overdue" }, can("billing:view"));
+  const overdueStudentIds = useMemo(
+    () => new Set((overdueCharges ?? []).map((c) => c.studentId)),
+    [overdueCharges],
+  );
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -274,6 +243,8 @@ export function TurmaDetailView({
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [promoteCourseEntry, setPromoteCourseEntry] = useState<WaitlistEntryView | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
+  // Selecao em lote: so quando pedida em "Selecionar alunos" (menu do cabecalho).
+  const [selecting, setSelecting] = useState(false);
 
   const handleEnrollOpenChange = (open: boolean) => {
     setEnrollOpen(open);
@@ -285,7 +256,8 @@ export function TurmaDetailView({
   const rows = useMemo(() => {
     const term = normalizeText(search);
     const list = enrollments ?? [];
-    if (!term) return list;
+    // Sem a busca na tela (turma pequena), um texto antigo nao pode seguir filtrando.
+    if (!term || list.length <= SEARCH_MIN_STUDENTS) return list;
     return list.filter((e) => normalizeText(e.studentName).includes(term));
   }, [enrollments, search]);
 
@@ -293,7 +265,6 @@ export function TurmaDetailView({
     () => new Map((clients ?? []).map((c) => [c.id, c])),
     [clients],
   );
-  const phoneOf = (studentId: Id) => clientById.get(studentId)?.phone;
 
   const modalityTrack = useMemo(() => {
     if (!turma) return null;
@@ -312,22 +283,26 @@ export function TurmaDetailView({
   const { data: assessmentsView } = useClassAssessments(id, hasAssessments);
 
   // Turma de mensalidade: alunos com pacote da modalidade podem pagar com ele.
+  // Turma de pacote (ou quem paga com ele): avisos de ultima aula e sem pacote.
   const isMembership = turma ? classBillingMode(turma) === "membership" : false;
+  const isPackageClass = turma ? classBillingMode(turma) === "package" : false;
   const { data: activePackages } = useStudentPackages(
     { status: "active" },
-    isMembership && canManage,
+    (isMembership || isPackageClass) && canManage,
   );
-  const packageStudentIds = useMemo(() => {
-    const byStudent = new Map<Id, StudentPackageView[]>();
+  // Pacote valido hoje na modalidade da turma, por aluno.
+  const packageByStudent = useMemo(() => {
+    const owned = new Map<Id, StudentPackageView[]>();
     for (const p of activePackages ?? []) {
-      byStudent.set(p.studentId, [...(byStudent.get(p.studentId) ?? []), p]);
+      owned.set(p.studentId, [...(owned.get(p.studentId) ?? []), p]);
     }
     const today = todayISO();
-    const ids = new Set<Id>();
-    for (const [studentId, owned] of byStudent) {
-      if (pickPackageFor(owned, { modalityId: turma?.modalityId, date: today })) ids.add(studentId);
+    const picked = new Map<Id, StudentPackageView>();
+    for (const [studentId, list] of owned) {
+      const pkg = pickPackageFor(list, { modalityId: turma?.modalityId, date: today });
+      if (pkg) picked.set(studentId, pkg);
     }
-    return ids;
+    return picked;
   }, [activePackages, turma?.modalityId]);
 
   if (isLoading) {
@@ -463,6 +438,7 @@ export function TurmaDetailView({
       );
     }
     const failed = batch.length - done.size;
+    if (failed === 0) setSelecting(false);
     if (failed > 0) {
       toast.error(
         `${plural(failed, "matrícula não foi cancelada", "matrículas não foram canceladas")}. ${getErrorMessage(lastError, "Tente novamente.")}`,
@@ -473,51 +449,108 @@ export function TurmaDetailView({
   const isCourse = classBillingMode(turma) === "course";
   // Curso terminado nao recebe matricula nova (o servico tambem recusa).
   const canEnroll = canManage && !(isCourse && turma.isEnded);
-  const billingSummary = classBillingSummary(turma);
   const selectedHasCourse = selectedRows.some((e) => e.course && !e.isCompleted);
 
+  // Uma linha de informacao; preco e regras do curso ficam em "Editar turma".
+  const billingShort = (() => {
+    const mode = classBillingMode(turma);
+    if (mode === "course") {
+      if (!turma.endDate) return "Curso";
+      return `${turma.isEnded ? "Curso encerrado em" : "Curso até"} ${ddmm(turma.endDate)}`;
+    }
+    if (mode === "package") return "Pacote de aulas";
+    if (mode === "free") return "Sem cobrança";
+    return turma.planName ? `Plano ${turma.planName}` : null;
+  })();
+  const isFull = turma.enrolledCount >= turma.capacity;
+  const modalityInName = normalizeText(turma.name).includes(normalizeText(turma.modalityName ?? ""));
   const meta = [
-    turma.modalityName,
-    `Instrutor: ${turma.instructorName}`,
-    turma.planName ? `Plano: ${turma.planName}` : null,
-    slotsSummary(turma.meetingSlots),
+    modalityInName ? null : turma.modalityName,
+    slotsSummary(turma.meetingSlots) || null,
+    turma.instructorName,
+    billingShort,
+    isFull ? "Turma lotada" : `${turma.enrolledCount} de ${turma.capacity} vagas`,
   ]
     .filter(Boolean)
     .join(" · ");
 
+  const enrolledCount = (enrollments ?? []).length;
+  const waitlistCount = (waitlist ?? []).length;
+  // Sem abas quando so ha a lista de alunos: espera e avaliacoes aparecem quando tem algo.
+  const showTabs = waitlistCount > 0 || hasAssessments;
+  const activeTab: Tab = !showTabs || (tab === "waitlist" && waitlistCount === 0) ? "enrolled" : tab;
+  const showSearch = enrolledCount > SEARCH_MIN_STUDENTS;
+
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
+
+  const pageActions: ListItemAction[] = [
+    ...(canEditTurma
+      ? [{ key: "edit", label: "Editar turma", icon: <Pencil className="size-4" />, onSelect: () => setEditOpen(true) }]
+      : []),
+    ...(canManage && enrolledCount > 0
+      ? [
+          {
+            key: "select",
+            label: "Selecionar alunos",
+            icon: <ListChecks className="size-4" />,
+            onSelect: () => {
+              setTab("enrolled");
+              setSelecting(true);
+            },
+          },
+        ]
+      : []),
+    {
+      key: "calendar",
+      label: "Ver aulas no calendário",
+      icon: <CalendarDays className="size-4" />,
+      onSelect: () => router.push("/classes/calendar"),
+    },
+  ];
+
+  // Alerta de pacote de quem paga a aula com ele (turma de pacote ou mensalidade com pacote).
+  const packageAlertOf = (e: EnrollmentView): string | null => {
+    if (!(isPackageClass || (isMembership && e.paysWithPackage))) return null;
+    const pkg = packageByStudent.get(e.studentId);
+    if (!pkg) return "Sem pacote";
+    return packageState(pkg, todayISO()).isLastLesson ? "Última aula do pacote" : null;
+  };
+
   return (
     <>
       {confirmDialog}
-      <Button asChild variant="ghost" className="mb-2 -ml-2">
-        <Link href="/classes">
-          <ChevronLeft className="size-4" />
-          Turmas
-        </Link>
-      </Button>
+      <BackLink fallbackHref="/classes" />
 
-      <PageHeader title={turma.name} description={meta}>
-        {canEditTurma ? (
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" />
-            Editar
-          </Button>
-        ) : null}
+      {/* Cabecalho: nome e uma linha de informacao; o resto no menu */}
+      <div className="mb-6 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">{turma.name}</h1>
+            <p className="text-sm text-muted-foreground" data-testid="class-billing-summary">
+              {meta}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <PageActionsMenu label="Mais ações da turma" actions={pageActions} />
+            {canEnroll ? (
+              <Button className="hidden sm:inline-flex" onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
+                <UserPlus className="size-4" />
+                Matricular alunos
+              </Button>
+            ) : null}
+          </div>
+        </div>
         {canEnroll ? (
-          <Button onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
+          <Button className="w-full sm:hidden" onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
             <UserPlus className="size-4" />
             Matricular alunos
           </Button>
         ) : null}
-      </PageHeader>
-
-      {billingSummary ? (
-        <p className="-mt-2 mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground" data-testid="class-billing-summary">
-          <span>{billingSummary}</span>
-          {isCourse && turma.isEnded ? <EndedBadge /> : null}
-        </p>
-      ) : null}
-
-      <CapacityBar enrolled={turma.enrolledCount} capacity={turma.capacity} />
+        <NextSessionLink classGroupId={turma.id} canMark={canMark} />
+      </div>
 
       <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
       <PromoteToCourseDialog
@@ -548,36 +581,46 @@ export function TurmaDetailView({
         }}
       />
 
-      <div
-        role="tablist"
-        aria-label="Seções da turma"
-        className="mb-4 inline-flex gap-1 rounded-lg border bg-muted/40 p-1"
-      >
-        <TabButton
-          active={tab === "enrolled"}
-          count={(enrollments ?? []).length}
-          label="Matriculados"
-          onClick={() => setTab("enrolled")}
-        />
-        <TabButton
-          active={tab === "waitlist"}
-          count={(waitlist ?? []).length}
-          label="Lista de espera"
-          onClick={() => setTab("waitlist")}
-        />
-        {hasAssessments ? (
+      {showTabs ? (
+        <div
+          role="tablist"
+          aria-label="Seções da turma"
+          className="mb-4 inline-flex gap-1 rounded-lg border bg-muted/40 p-1"
+        >
           <TabButton
-            active={tab === "assessments"}
-            count={(assessmentsView?.assessments ?? []).length}
-            label="Avaliações"
-            onClick={() => setTab("assessments")}
+            active={activeTab === "enrolled"}
+            count={enrolledCount}
+            label="Alunos"
+            onClick={() => setTab("enrolled")}
           />
-        ) : null}
-      </div>
+          {waitlistCount > 0 ? (
+            <TabButton
+              active={activeTab === "waitlist"}
+              count={waitlistCount}
+              label="Lista de espera"
+              onClick={() => {
+                stopSelecting();
+                setTab("waitlist");
+              }}
+            />
+          ) : null}
+          {hasAssessments ? (
+            <TabButton
+              active={activeTab === "assessments"}
+              count={(assessmentsView?.assessments ?? []).length}
+              label="Avaliações"
+              onClick={() => {
+                stopSelecting();
+                setTab("assessments");
+              }}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
-      {tab === "enrolled" ? (
-        <section role="tabpanel" className="space-y-3">
-          {(enrollments ?? []).length === 0 ? (
+      {activeTab === "enrolled" ? (
+        <section role={showTabs ? "tabpanel" : undefined} className="space-y-3">
+          {enrolledCount === 0 ? (
             <div className="rounded-lg border">
               <ModuleEmptyGuide
                 icon={<GraduationCap className="size-8" />}
@@ -589,58 +632,15 @@ export function TurmaDetailView({
             </div>
           ) : (
             <>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
+              {/* Busca so com turma grande: com poucos alunos ela so ocupa espaco */}
+              {showSearch ? (
+                <SearchInput
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Buscar aluno matriculado..."
-                  className="px-8"
-                  autoComplete="off"
+                  onChange={setSearch}
+                  onClear={() => setSearch("")}
+                  placeholder="Buscar aluno..."
                   aria-label="Buscar aluno matriculado"
                 />
-                {search ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    aria-label="Limpar busca"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="size-4" />
-                  </button>
-                ) : null}
-              </div>
-
-              {canManage && selectedRows.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
-                  <span className="text-sm text-muted-foreground">
-                    {plural(selectedRows.length, "selecionado", "selecionados")}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => setConfirmBulk(true)}
-                  >
-                    <UserX className="size-4" />
-                    Cancelar matrícula
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setSelected(new Set())}
-                  >
-                    Limpar seleção
-                  </Button>
-                </div>
-              ) : null}
-
-              {canManage && rows.length > 0 ? (
-                <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-                  <Checkbox
-                    checked={allShownSelected}
-                    onCheckedChange={toggleAll}
-                    aria-label="Selecionar todos"
-                  />
-                  Selecionar todos ({rows.length})
-                </label>
               ) : null}
 
               {rows.length === 0 ? (
@@ -648,10 +648,9 @@ export function TurmaDetailView({
                   Nenhum aluno encontrado para &quot;{search}&quot;.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <ListContainer>
                   {rows.map((e) => {
                     const student = clientById.get(e.studentId);
-                    const phone = phoneOf(e.studentId);
                     const prog =
                       turma.modalityId && student
                         ? student.progressions?.[turma.modalityId]
@@ -660,6 +659,7 @@ export function TurmaDetailView({
                       ? (currentLevelOf(modalityTrack, prog, ageAt(student?.birthDate, todayISO())) ?? null)
                       : null;
                     const currentSub = prog?.subLevel ?? 0;
+                    const isBelt = resolveTrackStyle(modalityTrack ?? undefined) === "belt";
 
                     const certificate: ListItemAction[] = e.isCompleted
                       ? [
@@ -695,7 +695,7 @@ export function TurmaDetailView({
                               onSelect: () => changePayment(e, false),
                             },
                           ]
-                        : packageStudentIds.has(e.studentId)
+                        : packageByStudent.has(e.studentId)
                           ? [
                               {
                                 key: "pay-package",
@@ -735,46 +735,79 @@ export function TurmaDetailView({
                           },
                         ]
                       : [...certificate, ...grades];
-                    const card = (
-                      <ListItemCard key={e.id} disableHover>
+
+                    // So o que pede atencao aparece na linha.
+                    const alerts = [
+                      e.attendanceRate !== null && e.attendanceRate < LOW_ATTENDANCE
+                        ? { label: "Presença baixa", warn: false }
+                        : null,
+                      overdueStudentIds.has(e.studentId) ? { label: "Pagamento atrasado", warn: false } : null,
+                      ((label) => (label ? { label, warn: true } : null))(packageAlertOf(e)),
+                    ].filter((a): a is { label: string; warn: boolean } => a !== null);
+
+                    const row = (
+                      <ListRow
+                        key={e.id}
+                        onClick={
+                          selecting
+                            ? () => toggleRow(e.id)
+                            : canOpenProfile
+                              ? () => router.push(`/clients/${e.studentId}`)
+                              : undefined
+                        }
+                        aria-label={
+                          selecting
+                            ? `Selecionar ${e.studentName}`
+                            : canOpenProfile
+                              ? `Abrir ficha de ${e.studentName}`
+                              : undefined
+                        }
+                        actions={
+                          selecting || actions.length === 0 ? undefined : (
+                            <ListItemActionsMenu
+                              title="Mais opções"
+                              ariaLabel={`Ações de ${e.studentName}`}
+                              variant="ghost"
+                              actions={actions}
+                            />
+                          )
+                        }
+                      >
                         <div className="flex items-center gap-3">
-                          {canManage ? (
+                          {selecting ? (
                             <Checkbox
                               checked={selected.has(e.id)}
                               onCheckedChange={() => toggleRow(e.id)}
+                              onClick={(event) => event.stopPropagation()}
                               aria-label={`Selecionar ${e.studentName}`}
                             />
                           ) : null}
-                          <Avatar className="size-8">
-                            <AvatarFallback className="bg-secondary text-xs">
-                              {userInitials(e.studentName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            {/* Linha 1: nome e o que pede atencao */}
-                            <div className="flex flex-wrap items-center gap-2">
-                              {canOpenProfile ? (
-                                <Link
-                                  href={`/clients/${e.studentId}`}
-                                  className="truncate text-sm font-medium hover:text-primary hover:underline"
-                                >
-                                  {e.studentName}
-                                </Link>
-                              ) : (
-                                <span className="truncate text-sm font-medium">{e.studentName}</span>
-                              )}
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-sm font-medium text-foreground">{e.studentName}</p>
+                            {/* Nivel em texto (faixa mantem a cor) e o que foge do padrao */}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              {currentLvl ? (
+                                isBelt ? (
+                                  <BeltBadge
+                                    name={currentLvl.name}
+                                    color={currentLvl.color}
+                                    variant="belt"
+                                    subLevel={currentSub}
+                                    maxSubLevels={currentLvl.maxSubLevels}
+                                    size="xs"
+                                  />
+                                ) : (
+                                  <span>
+                                    {currentLvl.name}
+                                    {currentSub > 0 ? ` · ${currentSub}ª etapa` : ""}
+                                  </span>
+                                )
+                              ) : null}
                               {isMembership && e.paysWithPackage ? (
-                                <span
-                                  title="Cada presença gasta uma aula do pacote"
-                                  className="inline-flex items-center rounded-full border bg-muted px-2 py-0.5 text-[11px] font-medium leading-none text-muted-foreground"
-                                >
-                                  Pacote
-                                </span>
+                                <span title="Cada presença gasta uma aula do pacote">Pacote</span>
                               ) : null}
                               {e.isCompleted ? (
-                                <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium leading-none text-emerald-700 dark:text-emerald-400">
-                                  Concluído
-                                </span>
+                                <span className="font-medium text-emerald-600 dark:text-emerald-400">Concluído</span>
                               ) : null}
                               <BirthdayBadge birthDate={student?.birthDate} showUpcoming compact />
                               <LevelChangeBadge
@@ -783,63 +816,68 @@ export function TurmaDetailView({
                                 levelWord={vocabulary.level}
                               />
                             </div>
-                            {/* Linha 2: faixa/nivel sempre no mesmo lugar, depois contato */}
-                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                              {currentLvl && student ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setGraduationClient(student)}
-                                  title={`Abrir ${vocabulary.levelsTitle.toLowerCase()}`}
-                                >
-                                  <BeltBadge
-                                    name={currentLvl.name}
-                                    color={currentLvl.color}
-                                    variant={resolveTrackStyle(modalityTrack ?? undefined)}
-                                    subLevel={currentSub}
-                                    maxSubLevels={currentLvl.maxSubLevels}
-                                    size="xs"
-                                  />
-                                </button>
-                              ) : null}
-                              <span className="truncate text-xs text-muted-foreground">
-                                {[
-                                  phone ? formatPhone(phone) : null,
-                                  `desde ${format(parseISO(e.enrolledAt), "dd/MM/yy")}`,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </span>
-                            </div>
+                            {alerts.length > 0 ? (
+                              <p className="flex flex-wrap gap-x-2 pt-0.5 text-xs font-medium">
+                                {alerts.map((a) => (
+                                  <span
+                                    key={a.label}
+                                    className={
+                                      a.warn ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                                    }
+                                  >
+                                    {a.label}
+                                  </span>
+                                ))}
+                              </p>
+                            ) : null}
                           </div>
-                          <FreqBadge
-                            rate={e.attendanceRate}
-                            present={e.presentCount}
-                            absent={e.absentCount}
-                          />
-                          {actions.length > 0 ? (
-                            <ListItemActionsMenu
-                              actions={actions}
-                              title={`Ações de ${e.studentName}`}
-                            />
-                          ) : null}
                         </div>
-                      </ListItemCard>
+                      </ListRow>
                     );
-                    if (actions.length === 0) return card;
+                    if (selecting || actions.length === 0) return row;
                     return (
                       <ListItemContextMenu key={e.id} actions={actions}>
-                        {card}
+                        {row}
                       </ListItemContextMenu>
                     );
                   })}
-                </div>
+                </ListContainer>
               )}
+
+              {/* Selecao em lote so quando pedida no menu */}
+              {selecting ? (
+                <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 shadow-md">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {selectedRows.length === 0
+                        ? "Toque nos alunos"
+                        : plural(selectedRows.length, "selecionado", "selecionados")}
+                    </span>
+                    <Button variant="ghost" onClick={toggleAll}>
+                      {allShownSelected ? "Limpar" : "Todos"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" onClick={stopSelecting}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={selectedRows.length === 0}
+                      onClick={() => setConfirmBulk(true)}
+                    >
+                      <UserX className="size-4" />
+                      Cancelar matrícula
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
         </section>
       ) : null}
 
-      {tab === "waitlist" ? (
+      {activeTab === "waitlist" ? (
         <section role="tabpanel" className="space-y-2">
           {(waitlist ?? []).length === 0 ? (
             <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
@@ -913,7 +951,7 @@ export function TurmaDetailView({
         </section>
       ) : null}
 
-      {tab === "assessments" && hasAssessments ? (
+      {activeTab === "assessments" && hasAssessments ? (
         <ClassAssessmentsTab turma={turma} track={modalityTrack} />
       ) : null}
 

@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, pageAction, rollCallRow, seedAcademy, student, test } from "./fixtures";
 import { TS } from "./geral-fixtures";
 
 /**
@@ -166,19 +166,24 @@ test("detalhe da turma e matrícula cabem", async ({ page }) => {
   await expectMobileInputs(dialog);
 });
 
-test("chamada da aula: botões de presença cabem e marcam", async ({ page }) => {
+test("chamada da aula: linhas, menu do aluno e barra de baixo cabem e marcam", async ({ page }) => {
   await seedMoney(page);
   await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-21~17:00")}`);
-  const present = page.getByRole("button", { name: "Presente: Aluno Com Nome Bem Comprido da Silva" });
-  await expect(present).toBeVisible();
+  const row = rollCallRow(page, "Aluno Com Nome Bem Comprido da Silva");
+  await expect(row).toBeVisible();
   await expectNoHorizontalScroll(page);
-  for (const name of ["Presente", "Faltou", "Justificada"]) {
-    const box = await page.getByRole("button", { name: `${name}: Bruna Lima` }).boundingBox();
-    expect(box && box.x >= 0 && box.x + box.width <= 375, `${name} dentro da tela`).toBe(true);
+  for (const [label, button] of [
+    ["menu do aluno", page.getByRole("button", { name: "Ações de Bruna Lima", exact: true })],
+    ["Todos vieram", page.getByRole("button", { name: "Todos vieram" })],
+    ["Concluir chamada", page.getByRole("button", { name: "Concluir chamada" })],
+  ] as const) {
+    const box = await button.boundingBox();
+    expect(box && box.x >= 0 && box.x + box.width <= 375, `${label} dentro da tela`).toBe(true);
   }
-  await present.click();
-  await expect(present).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+  // Tocar na linha marca presente.
+  await row.click();
+  await expect(row).toHaveAccessibleName("Aluno Com Nome Bem Comprido da Silva: Presente");
+  await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
   await expectDialogFits(page);
   await expectNoHorizontalScroll(page);
 });

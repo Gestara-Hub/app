@@ -229,7 +229,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 2. **Matricular alunos** — selecao multipla; se lotada, "Pôr na lista de espera" ou "Matricular mesmo assim (N)".
 3. **Adicionar avulso/experimental numa aula** — avulso gera cobranca avulsa; experimental e cortesia.
 4. **Trocar instrutor de uma aula** — substituto com motivo opcional; restaurar titular.
-5. **Fazer a chamada** — Presente / Faltou / Justificada, no dia da aula ou depois.
+5. **Fazer a chamada** — tocar em quem veio e "Concluir chamada" (quem não foi marcado vira falta); falta e justificada também pelo menu ⋮ do aluno. No dia da aula ou depois.
 6. **Promover da lista de espera** — manual, com confirmacao.
 7. **Mensalidades** — cadastrar aluno com plano (1a cobranca), gerar competencia, registrar pagamento, desfazer/cancelar/reabrir, resetar competencia. Ver doc 15 e [09-fluxos-principais.md](09-fluxos-principais.md) (Fluxos 12 a 16).
 8. **Cancelar matricula** — com confirmacao; libera vaga; nao mexe na mensalidade.
@@ -238,9 +238,9 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 ## Telas
 
 - **Turmas** (`/classes`) — lista com busca e filtro de status; Nova/Editar turma; desativar/reativar.
-- **Detalhe da turma** (`/classes/[id]`) — abas Matriculados (com frequencia) e Lista de espera; acoes matricular, cancelar matricula, promover/remover da espera.
+- **Detalhe da turma** (`/classes/[id]`) — uma linha de informacao, atalho para a aula de hoje ou a proxima, lista de alunos com alertas; abas so quando ha lista de espera ou avaliacoes; matricular, cancelar matricula (uma ou em lote), promover/remover da espera. Ver "Telas de turma e de aula (18/10/2026)".
 - **Calendario** (`/classes/calendar`) — aulas da semana (grade ou lista), filtros de modalidade e instrutor; clique abre a aula.
-- **Detalhe da aula** (`/classes/sessions/[sessionId]`) — roster + chamada; adicionar avulso/experimental; remover da aula; trocar instrutor.
+- **Detalhe da aula** (`/classes/sessions/[sessionId]`) — chamada por toque e "Concluir chamada"; adicionar avulso/experimental, trocar instrutor e abrir a turma no menu ⋮ do cabeçalho; remover da aula no ⋮ do aluno.
 - **Modalidades**, **Planos** (CRUD simples) e **Mensalidades** (lista por competencia, totais, gerar, pagar, desfazer, cancelar, reabrir, resetar).
 - **Alunos** — o cadastro de Cliente com a secao de plano e assinatura.
 - **Ainda nao implementado:** perfil do aluno com turmas, frequencia e mensalidades num so lugar; a lista de espera so existe dentro do detalhe da turma.
@@ -323,14 +323,14 @@ O antigo modal único "Evolução e graduação" virou **dois modais**, porque g
   - **Linha do tempo** com os registros, do mais novo ao mais antigo (10 por vez), mostrando turma, autor, anotação da turma, metas avançadas e o lembrete.
 - **Metas substituem "Pontos a melhorar".** Meta sem quantidade funciona como um foco que o professor marca como feito. Os pontos a melhorar já salvos viraram metas sem quantidade (migração v29).
 - **Lembrete "Para hoje":** o "Para a próxima aula" do registro mais recente **anterior** à data da aula aparece na chamada, abaixo do aluno, e no topo da caixa de registro.
-- **Registrar a aula (turma inteira):** na chamada, com presentes e trilha na modalidade, o botão "Registrar a aula" abre a lista dos presentes.
+- **Registrar a aula (turma inteira):** com a chamada concluída, presentes e trilha na modalidade, a barra de baixo da chamada mostra "Registrar a aula", que abre a lista dos presentes.
   - Um toque no tom de quem se destacou e anotação só para quem precisar.
   - A "Anotação da turma" entra no registro de **todos** os presentes.
   - Cada marcação vira um registro na ficha do aluno, já com aula, data e turma.
   - É um atalho a mais; o registro individual continua no modal do aluno.
 - **Entradas:**
   - Alunos: clicar na linha abre Registros de aula; o selo da faixa abre Graduação; o menu ⋮ tem os dois. Aluno sem faixa mostra "Definir faixa".
-  - Turma e chamada: menu ⋮ com os dois; o selo da faixa abre Graduação. Na chamada, o ícone ao lado do aluno abre Registros de aula já com a aula escolhida.
+  - Turma e chamada: menu ⋮ do aluno com os dois (na chamada, "Registrar aula", já com a aula escolhida). Na turma, tocar no aluno abre a ficha; na chamada, marca a presença.
 - **Autor do registro:** quem está logado (carimbado pelo service, nunca enviado pela tela).
 - Código: `StudentGraduationDialog`, `StudentRecordsDialog`, `ClassRecordsDialog`; service `clientsService.addClassRecord`, `addClassRecords`, `updateStrengths`, `addGoal`, `setGoalCompleted`, `removeGoal`; contrato `StudentGoal`, `CreateStudentClassRecord`, `CreateClassRecordsBatch`.
 
@@ -359,8 +359,26 @@ Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 
 - **Turma "Pacote de aulas"** (`billingMode: "package"`): o formulário mostra a dica "Cada aula dada usa uma aula do pacote do aluno."; a lista de turmas mostra o selo **"Pacote"** e o detalhe, "Pacote de aulas". O matriculado gasta uma aula do pacote a cada chamada.
 - **Vínculo "package" na aula:** "Adicionar aluno nesta aula" oferece **"Pacote"** ("Usa 1 aula do pacote") quando há aluno ativo com pacote válido para a modalidade e a data; a lista mostra só esses alunos, com o saldo. Escolher um deles com "Aula avulsa" marcado troca para "Pacote". Vale em qualquer turma da modalidade, mesmo sem avulso (como o avulso, sem checar lotação), e não gera cobrança. O serviço recusa sem pacote válido: "Ana não tem pacote com aulas para esta modalidade.". Remover da aula devolve a aula, se já tinha gastado.
-- **Chamada:** selo do saldo em quem paga com pacote: "7 de 10" (restam 7 de 10), **"Última aula"** e **"Sem pacote"** (âmbar, sem pacote válido com saldo; a presença é marcada e nada é gasto). Avulso e experimental numa turma de pacote não gastam o pacote.
-- **Desmarcar presença:** tocar de novo no botão marcado desmarca (volta a "a marcar") e devolve a aula do pacote, se tinha gastado (`turmasService.clearAttendance`). Vale para qualquer turma.
+- **Chamada:** saldo em texto em quem paga com pacote: "7 de 10 aulas" (restam 7 de 10), **"Última aula do pacote"** e **"Sem pacote"** (âmbar, sem pacote válido com saldo; a presença é marcada e nada é gasto). Na turma, os mesmos avisos aparecem na linha do aluno. Avulso e experimental numa turma de pacote não gastam o pacote.
+- **Desmarcar presença:** "Desmarcar" no menu ⋮ do aluno (ou tocar de novo no presente enquanto a chamada está aberta) volta a "sem marcação" e devolve a aula do pacote, se tinha gastado (`turmasService.clearAttendance`). Vale para qualquer turma.
+
+## Telas de turma e de aula (18/10/2026)
+
+Menos informação por vez: na tela fica o que se usa toda vez; o resto vai para o menu ⋮ do cabeçalho (`PageActionsMenu`) ou do aluno.
+
+**Aula (chamada)**
+- Cabeçalho: "Hoje, 08:00 · Profissional 1" (outro dia: "Segunda-feira, 20 de outubro, 08:00"). Substituto: "(substituto)" e a linha "Substitui {titular} · {motivo}". Menu ⋮: "Adicionar aluno nesta aula" (sem ninguém para adicionar, avisa "Todos os alunos ativos já estão nesta aula."), "Trocar instrutor" / "Alterar substituto", "Restaurar titular" e "Abrir a turma".
+- **Chamada por toque:** a linha do aluno é o botão. Toque marca presente (círculo verde). Com alguém ainda sem marcação, tocar no presente desmarca; com todos marcados, vira falta. Falta e justificada voltam a presente no toque. No ⋮ do aluno: "Marcar falta", "Justificar falta", "Desmarcar", "Registrar aula", nível, "Notas", "Abrir ficha" e, para avulso, experimental e pacote, "Remover da aula".
+- **Concluir chamada:** barra fixa embaixo com "{N} de {total} presentes", "Todos vieram" (enquanto ninguém foi marcado presente) e "Concluir chamada", que marca **falta** em quem não foi marcado ("Chamada concluída. 2 faltas marcadas."). Essas faltas contam nas faltas seguidas ("Sentimos sua falta"). Concluída, a barra mostra "Chamada concluída." e "Registrar a aula".
+- Ao lado de "Chamada": "Toque em quem veio" enquanto aberta, o resumo ("3 presentes · 2 faltas") quando concluída e "A chamada abre em 20/10" em aula futura (sem toque).
+- Linha: nome, nível em texto (faixa mantém o selo colorido), "Experimental" / "Avulso" / "Pacote", saldo do pacote, aniversário, troca de nível pela idade e o lembrete "Para hoje". Saíram avatar, vagas ocupadas e o quadro de contadores.
+
+**Turma**
+- Cabeçalho: uma linha (modalidade quando o nome da turma não a contém, horários, instrutor, cobrança curta e vagas): "Seg 08:00 · Profissional 1 · Curso até 18/12 · 4 de 10 vagas" ("Turma lotada" quando cheia; "Curso encerrado em 18/12"; "Pacote de aulas"; "Plano {nome}"). Preço e parcelas ficam em "Editar turma".
+- Menu ⋮: "Editar turma", "Selecionar alunos" (liga a seleção em lote, com barra fixa "Todos", "Cancelar" e "Cancelar matrícula") e "Ver aulas no calendário". "Matricular alunos" segue como botão principal (largura toda no celular).
+- **Atalho da aula:** "Hoje 08:00 · Fazer chamada ›" (sem permissão de chamada: "Ver aula"); sem aula hoje, "Próxima aula Seg, 20/10, 08:00 · Ver aula ›". Hoje com mais de uma aula: a que já começou mais recente, senão a primeira (`pickNextSession`, `features/turmas/next-session.ts`). Aula cancelada não conta; procura nos próximos 14 dias.
+- Abas só quando há lista de espera (a aba aparece com alguém nela) ou avaliações; "Matriculados" virou "Alunos". Busca a partir de 9 alunos.
+- Linha: nome e nível em texto; **alertas só quando pedem atenção**: "Presença baixa" (abaixo de 75%), "Pagamento atrasado" (com `billing:view`), "Última aula do pacote" e "Sem pacote"; mais "Pacote" (mensalidade paga com pacote) e "Concluído". Tocar abre a ficha (com `clients:view`). Saíram avatar, telefone, "desde", o percentual de presença e a caixa "Selecionar todos".
 
 ## Notas: avaliações da turma (14/10/2026)
 

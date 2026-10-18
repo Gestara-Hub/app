@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import {
+  classGroup,
+  enrollment,
+  expect,
+  openProfileSection,
+  profileAlert,
+  profileSection,
+  seedAcademy,
+  student,
+  test,
+} from "./fixtures";
 import {
   ADULT,
   MODULES_TRACK,
@@ -146,15 +156,22 @@ test.describe("professor", () => {
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova Carlos");
   });
 
-  test("sem acesso a Alunos: o nome do aluno na turma não é link para a ficha", async ({ page }) => {
+  test("sem acesso a Alunos: a turma e a chamada não abrem a ficha do aluno", async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, PROF, PROF_LINK);
     await page.goto("/classes/cg-own");
     await expect(page.getByText("Aluno Alfa", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Aluno Alfa" })).toHaveCount(0);
+    // A linha da turma so e clicavel (abre a ficha) com acesso a Alunos.
+    await expect(page.getByRole("button", { name: /^Aluno Alfa/ })).toHaveCount(0);
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-own~2026-09-21~17:00")}`);
     await expect(page.getByText("Aluno Alfa", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Aluno Alfa" })).toHaveCount(0);
+    // Na chamada, o menu do aluno fica sem "Abrir ficha".
+    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    await expect(page.getByRole("menuitem").first()).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Abrir ficha" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
     // Abrir a ficha pelo endereco volta para a primeira tela do perfil.
     await page.goto("/clients/c-a");
     await expect.poll(() => new URL(page.url()).pathname).not.toBe("/clients/c-a");
@@ -184,23 +201,27 @@ test.describe("atendente", () => {
     await loginAsUser(page, ATTENDANT);
     await page.goto("/clients/c-a");
     await expect(page.getByRole("heading", { level: 1, name: "Aluno Alfa" })).toBeVisible();
-    await expect(page.getByText("Em aberto", { exact: true })).toBeVisible();
+    // Ve o que esta em aberto (resumo de Cobranças e aviso de atraso), sem "Marcar pago".
+    await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 55,00 · 1 atrasada");
+    await expect(profileAlert(page, "Mensalidade de setembro atrasada")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Marcar pago" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Mais ações" }).click();
+    await page.getByRole("button", { name: "Mais ações do aluno", exact: true }).click();
+    await expect(page.getByRole("menuitem", { name: "Editar cadastro" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Inativar" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toHaveCount(0);
     await page.keyboard.press("Escape");
 
-    await page.getByRole("tab", { name: "Cobranças" }).click();
+    const charges = await openProfileSection(page, "Cobranças");
     await expect(rowOf(page, "Mensalidade")).toContainText("Atrasado");
-    await expect(page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toHaveCount(0);
+    await expect(charges.getByRole("button", { name: "Ações de Aluno Alfa", exact: true })).toHaveCount(0);
 
-    await page.getByRole("tab", { name: "Pacotes" }).click();
-    await expect(page.getByText("Nenhum pacote ainda.")).toBeVisible();
+    // Sem pacote ativo, sem a secao Pacotes (e nada de vender).
+    await expect(profileSection(page, "Pacotes")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Vender pacote" })).toHaveCount(0);
 
-    await page.getByRole("tab", { name: "Evolução" }).click();
+    await openProfileSection(page, "Evolução");
     await expect(page.getByRole("button", { name: "Notas" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Registros de aula" })).toBeVisible();
   });
@@ -220,7 +241,7 @@ test.describe("gerente", () => {
     await expect(rowOf(page, "Prova Paula")).toContainText("6");
 
     await page.goto("/clients/c-b");
-    await page.getByRole("button", { name: "Mais ações" }).click();
+    await page.getByRole("button", { name: "Mais ações do aluno", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Nova cobrança" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toBeVisible();
   });
@@ -230,6 +251,9 @@ test.describe("Plano Pro", () => {
   test("grátis: certificado com cadeado na ficha e cobrar online bloqueado", async ({ page }) => {
     await seedSchool(page);
     await page.goto("/clients/c-a");
+    // O curso concluido fica nas encerradas da secao Turmas.
+    await openProfileSection(page, "Turmas");
+    await page.getByRole("button", { name: "Mostrar encerradas (1)" }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Inglês Intensivo", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
     await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
@@ -245,6 +269,8 @@ test.describe("Plano Pro", () => {
       t.organization.subscription = { tier: "pro" };
     });
     await page.goto("/clients/c-a");
+    await openProfileSection(page, "Turmas");
+    await page.getByRole("button", { name: "Mostrar encerradas (1)" }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Inglês Intensivo", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado", exact: true }).click();
     await expect(page).toHaveURL("/classes/cg-course/certificate/e-course");

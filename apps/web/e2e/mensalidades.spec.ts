@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, editWorld, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, editWorld, enrollment, expect, pageAction, seedAcademy, student, test } from "./fixtures";
 
 /** A linha inteira (texto + valor + acoes) de um aluno na lista de Cobranças. */
 const rowOf = (page: Page, name: string) => page.locator("div.group").filter({ hasText: name });
@@ -113,7 +113,7 @@ test("filtro de tipo separa aulas avulsas das mensalidades", async ({ page }) =>
   });
   // Aula avulsa gera uma cobranca de R$ 40 em setembro.
   await page.goto("/classes/sessions/cg-1~2026-09-21~17%3A00");
-  await page.getByRole("button", { name: "Adicionar aluno nesta aula" }).click();
+  await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
   const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name: "Aluno Avulso" }).click();

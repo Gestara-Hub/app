@@ -56,6 +56,25 @@ Toda aba ou tela de listagem deve conter:
 - Exceções, só por variante e nunca por `className`: `size="icon-sm"` (32px) nas ações dentro de linhas e cards (o `⋮`, desfazer pagamento, remover item de uma lista) e `size="icon-xs"` (24px) no "x" de remover dentro de chips, arquivos e anexos.
 - Campo ao lado de um botão segue a altura padrão do campo (sem `h-*`), para os dois ficarem alinhados.
 
+### 1.6. Exceção: telas de turma e de aula (18/10/2026)
+As telas de detalhe da turma (`/classes/[id]`) e da aula (`/classes/sessions/[id]`) seguem uma versão mínima, aprovada para não pesar no celular (regras de produto no doc [11](../product/11-modelo-3-turmas.md), "Telas de turma e de aula"):
+- **Sem avatar** nas linhas de aluno; nível em texto (faixa mantém o selo colorido).
+- **Busca só a partir de 9 alunos** e **sem `ListSummaryBar`**: o cabeçalho já diz as vagas.
+- **Ações raras no menu ⋮ do cabeçalho** (`PageActionsMenu`, `@/components/shared/page-actions-menu`, botão `size="icon"` ao lado do principal); seleção em lote só quando pedida nesse menu, com barra fixa embaixo.
+- **Chamada por toque na linha** (sem os três botões Presente / Faltou / Justificada) e uma ação por vez numa barra fixa embaixo ("Concluir chamada", depois "Registrar a aula").
+- Linha mostra só o que pede atenção (alertas), não dados de cadastro (telefone, data de matrícula).
+
+### 1.7. "‹ Voltar" nas telas de detalhe (18/10/2026)
+- Ficha do aluno, turma e aula usam **`BackLink`** (`@/components/shared/back-link`): o texto é sempre **"Voltar"** e ele volta para a tela anterior do app (ex.: da aula para a ficha e de volta para a aula). Aberta direto ou recarregada, vai para o destino padrão da tela (`fallbackHref`: lista de alunos, turmas, calendário da semana da aula).
+- As rotas visitadas ficam em `lib/navigation-history` (anotadas pelo `NavigationTracker` no layout do app). Ctrl/Cmd/Shift abre o destino padrão em outra aba.
+- O link fica dentro de um `<nav>`: o Next foca o primeiro elemento da página ao navegar, e assim o link não aparece com a moldura de foco. Tela nova de detalhe usa o mesmo componente.
+
+### 1.8. Ficha do aluno: avisos e sanfona (18/10/2026)
+Layout aprovado na prévia ("B refinado", versão Sanfona) para a ficha (`/clients/[id]`, `student-profile-view.tsx`):
+- **Topo só com nome e situação** (avatar, nome, selo). Contato, idade, plano e "aluno desde" ficam no **Cadastro**, sem repetir no topo. "Editar" (escondido no celular) e o ⋮ (`PageActionsMenu`) com "Editar cadastro", "Enviar WhatsApp", "Nova cobrança", "Vender pacote", "Inativar"/"Reativar".
+- **Avisos** (`student-profile-alerts.tsx`): um cartão por assunto, só quando há algo a fazer; o atraso em vermelho (`border-red-500/30 bg-red-500/5`), os outros neutros. Sem bolinhas nem pontos de alerta nas seções.
+- **Sanfona em vez de abas**: uma lista com borda, uma linha por seção (título + resumo de uma linha + seta), fechadas por padrão; `?tab=<id>` abre uma. Cada seção abre o painel completo que já existia. Sem cartões de KPI: os números viram os resumos ("3 em aberto · R$ 270,00 · 1 atrasada").
+
 ---
 
 ## 2. Anatomia Padrão de Modais de Formulário (`Dialog`)

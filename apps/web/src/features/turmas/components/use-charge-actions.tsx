@@ -217,7 +217,6 @@ export function useChargeActions() {
   // Acoes da linha (compact = sub-parcela dentro do painel expandido).
   const renderActions = (c: ChargeView, compact: boolean): ReactNode => {
     if (!canManage) return null;
-    const btnSize = compact ? "xs" : "sm";
     const iconCls = compact ? "size-3.5" : "size-4";
 
     // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
@@ -229,7 +228,7 @@ export function useChargeActions() {
     if (c.status === "canceled") {
       return isSystemCanceled(c) ? (
         <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
-          <Button variant="outline" size={btnSize} disabled>
+          <Button variant="outline" disabled>
             <RotateCcw className={iconCls} />
             Reverter
           </Button>
@@ -237,7 +236,6 @@ export function useChargeActions() {
       ) : (
         <Button
           variant="outline"
-          size={btnSize}
           disabled={revertMut.isPending}
           onClick={() => revertCancel(c)}
           title="Reverter cancelamento"
