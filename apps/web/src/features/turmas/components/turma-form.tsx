@@ -973,6 +973,24 @@ export function TurmaForm({
     label: p.name,
     value: p.id,
   }));
+  // Modalidade ou professor da turma que foi inativado: aparece marcado (antes
+  // o campo ficava vazio e salvava mantendo). TUR-20.
+  const inactiveModality =
+    turma?.modalityId &&
+    categories &&
+    !categories.some((c) => c.id === turma.modalityId) &&
+    modalityId === turma.modalityId;
+  if (inactiveModality && turma?.modalityId) {
+    categoryOptions.push({ label: `${turma.modalityName ?? "Modalidade"} (inativa)`, value: turma.modalityId });
+  }
+  const inactiveInstructor =
+    turma &&
+    professionals &&
+    !professionals.some((p) => p.id === turma.instructorId) &&
+    instructorId === turma.instructorId;
+  if (inactiveInstructor) {
+    instructorOptions.push({ label: `${turma.instructorName} (inativo)`, value: turma.instructorId });
+  }
   return (
     <FormProvider {...form}>
       {confirmDialog}
@@ -1001,6 +1019,7 @@ export function TurmaForm({
             options={categoryOptions}
             required
             disabled={pending}
+            hint={inactiveModality ? "Modalidade inativa. Reative ou escolha outra." : undefined}
           />
           <ComboboxField<TurmaFormValues>
             name="instructorId"
@@ -1017,6 +1036,7 @@ export function TurmaForm({
             options={instructorOptions}
             required
             disabled={pending || !modalityId || instructorOptions.length === 0}
+            hint={inactiveInstructor ? "Professor inativo. Escolha outro para as próximas aulas." : undefined}
           />
         </div>
 

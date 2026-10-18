@@ -6,6 +6,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { Category } from "@gestarahub/contracts";
 import { useInactivateCategory } from "@/features/categories";
+import { useClassGroups } from "../hooks/use-turmas";
 
 interface InactivateModalityDialogProps {
   modality: Category | null;
@@ -19,6 +20,9 @@ export function InactivateModalityDialog({
   // Conteudo com o ultimo registro: nao some durante a animacao de saida.
   const shown = useRetainedValue(modality);
   const inactivateMut = useInactivateCategory();
+  // Turmas ativas da modalidade: o aviso diz que continuam (TUR-20).
+  const { data: activeGroups } = useClassGroups({ status: "active" });
+  const inUse = (activeGroups ?? []).filter((g) => shown && g.modalityId === shown.id).length;
 
   async function handleConfirm() {
     if (!modality) return;
@@ -44,7 +48,10 @@ export function InactivateModalityDialog({
         shown ? (
           <>
             “{shown.name}” deixará de aparecer em novas turmas e no
-            cadastro de instrutores. Você pode reativá-la depois.
+            cadastro de instrutores.
+            {inUse === 1 ? " A turma dela continua como está." : ""}
+            {inUse > 1 ? ` As ${inUse} turmas dela continuam como estão.` : ""}{" "}
+            Você pode reativá-la depois.
           </>
         ) : null
       }

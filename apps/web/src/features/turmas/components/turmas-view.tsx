@@ -70,6 +70,17 @@ export function EndedBadge() {
 }
 
 /** Selos de cobranca/fim da turma: "Curso", "Pacote" e "Encerrado". */
+
+/**
+ * Ocupacao da turma: "3 de 10 alunos"; acima da capacidade, "3 alunos
+ * (capacidade 1)"; curso encerrado, so os alunos (vaga nao importa). TUR-26.
+ */
+function occupancyLabel(turma: Pick<ClassGroupView, "enrolledCount" | "capacity" | "isEnded">): string {
+  const students = turma.enrolledCount === 1 ? "1 aluno" : `${turma.enrolledCount} alunos`;
+  if (turma.isEnded) return students;
+  if (turma.enrolledCount > turma.capacity) return `${students} (capacidade ${turma.capacity})`;
+  return `${turma.enrolledCount} de ${turma.capacity} alunos`;
+}
 function ClassTags({ turma }: { turma: ClassGroupView }) {
   const mode = classBillingMode(turma);
   return (
@@ -159,9 +170,9 @@ function TurmaRow({
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >
-          {turma.enrolledCount} de {turma.capacity} alunos
+          {occupancyLabel(turma)}
         </span>
-        <RecordStatusBadge status={turma.status} />
+        {turma.status !== "active" ? <RecordStatusBadge status={turma.status} /> : null}
       </div>
 
       <div className="mt-1 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">
@@ -171,12 +182,10 @@ function TurmaRow({
             <span>{turma.instructorName}</span>
           </span>
         ) : null}
-        {turma.meetingSlots.length > 0 ? (
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="size-3 text-muted-foreground/60" />
-            <span>{slotsSummary(turma.meetingSlots)}</span>
-          </span>
-        ) : null}
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="size-3 text-muted-foreground/60" />
+          <span>{slotsSummary(turma.meetingSlots) || "Sem horário"}</span>
+        </span>
       </div>
     </ListRow>
   );
@@ -254,7 +263,7 @@ function TurmaCard({
                 </span>
               ) : null}
               <ClassTags turma={turma} />
-              <RecordStatusBadge status={turma.status} />
+              {turma.status !== "active" ? <RecordStatusBadge status={turma.status} /> : null}
             </div>
           </div>
 
@@ -279,12 +288,10 @@ function TurmaCard({
               <span className="min-w-0 break-words">{turma.instructorName}</span>
             </div>
           ) : null}
-          {turma.meetingSlots.length > 0 ? (
-            <div className="flex min-w-0 items-center gap-1.5">
-              <Clock className="size-3.5 shrink-0 text-muted-foreground/60" />
-              <span className="min-w-0 break-words">{slotsSummary(turma.meetingSlots)}</span>
-            </div>
-          ) : null}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Clock className="size-3.5 shrink-0 text-muted-foreground/60" />
+            <span className="min-w-0 break-words">{slotsSummary(turma.meetingSlots) || "Sem horário"}</span>
+          </div>
         </div>
       </div>
 
@@ -297,7 +304,7 @@ function TurmaCard({
               : "border-border/60 bg-muted/50 text-muted-foreground",
           )}
         >
-          {turma.enrolledCount} de {turma.capacity} alunos
+          {occupancyLabel(turma)}
         </span>
 
         {turma.allowDropin && turma.sessionPriceCents ? (

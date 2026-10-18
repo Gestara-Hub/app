@@ -63,6 +63,7 @@ import { classBillingMode } from "@gestarahub/core/billing";
 import { packageState, usablePackagesFor } from "@gestarahub/core/packages";
 import {
   isApiError,
+  type ChargeView,
   type Client,
   type EnrollmentView,
   type Id,
@@ -231,10 +232,21 @@ export function TurmaDetailView({
   const canMark = can("attendance:mark");
   // "Pagamento atrasado" na linha so para quem ve cobrancas.
   const { data: overdueCharges } = useCharges({ status: "overdue" }, can("billing:view"));
-  const overdueStudentIds = useMemo(
-    () => new Set((overdueCharges ?? []).map((c) => c.studentId)),
-    [overdueCharges],
-  );
+  // So o atraso do que esta turma cobra (antes "Pagamento atrasado" aparecia
+  // em turma sem cobranca por causa de outra cobranca). TUR-26.
+  const overdueStudentIds = useMemo(() => {
+    if (!turma) return new Set<string>();
+    const mode = classBillingMode(turma);
+    const counts = (c: ChargeView) =>
+      mode === "course"
+        ? c.kind === "course" && c.classGroupId === turma.id
+        : mode === "package"
+          ? c.kind === "package"
+          : mode === "membership"
+            ? c.kind === "membership"
+            : false;
+    return new Set((overdueCharges ?? []).filter(counts).map((c) => c.studentId));
+  }, [overdueCharges, turma]);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -477,7 +489,9 @@ export function TurmaDetailView({
   const modalityInName = normalizeText(turma.name).includes(normalizeText(turma.modalityName ?? ""));
   const meta = [
     modalityInName ? null : turma.modalityName,
-    slotsSummary(turma.meetingSlots) || null,
+    // Sem encontros diz "Sem horário"; antes de comecar, quando comeca (TUR-28).
+    slotsSummary(turma.meetingSlots) || "Sem horário",
+    turma.startDate > todayISO() ? `Começa em ${ddmm(turma.startDate)}` : null,
     turma.instructorName,
     billingShort,
     isFull ? "Turma lotada" : `${turma.enrolledCount} de ${turma.capacity} alunos`,
@@ -781,7 +795,8 @@ export function TurmaDetailView({
 
                     // So o que pede atencao aparece na linha.
                     const alerts = [
-                      e.attendanceRate !== null && e.attendanceRate < LOW_ATTENDANCE
+                      // Curso encerrado nao pede acao pela presenca.
+                      e.attendanceRate !== null && e.attendanceRate < LOW_ATTENDANCE && !(isCourse && turma.isEnded)
                         ? { label: "Presença baixa", warn: false }
                         : null,
                       overdueStudentIds.has(e.studentId) ? { label: "Pagamento atrasado", warn: false } : null,
