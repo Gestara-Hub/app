@@ -254,6 +254,10 @@ export const communicationService = {
         if (!payload.content.trim()) {
           throw validationError([{ field: "content", message: "Escreva o texto da mensagem." }]);
         }
+        // Folga para os nomes: a mensagem enviada aceita ate 1000 caracteres.
+        if (payload.content.trim().length > 900) {
+          throw validationError([{ field: "content", message: "Use no máximo 900 caracteres." }]);
+        }
         template.content = payload.content.trim();
       }
       if (payload.enabled !== undefined) template.enabled = payload.enabled;

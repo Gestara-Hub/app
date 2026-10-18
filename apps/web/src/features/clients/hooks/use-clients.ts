@@ -20,10 +20,11 @@ import type {
   UpdateClient,
 } from "@gestarahub/contracts";
 
-export function useClients(filter?: ClientFilter) {
+export function useClients(filter?: ClientFilter, enabled = true) {
   return useQuery({
     queryKey: queryKeys.clients.list(filter),
     queryFn: () => clientsService.list(filter),
+    enabled,
   });
 }
 

@@ -8,6 +8,7 @@ import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub
 import { todayISO } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
+import { nextBirthdayLabel } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
@@ -198,15 +199,16 @@ export function StudentProfileAlerts({
     });
   }
 
-  // Aniversario hoje ou amanha.
+  // Aniversario hoje ou amanha. Os parabens so no dia (a mensagem diz "seu dia").
   const days = summary.daysToBirthday;
   if (student.birthDate && days !== null && days <= 1) {
     const turning = days === 0 ? summary.age : summary.age === null ? null : summary.age + 1;
+    const when = nextBirthdayLabel(student.birthDate, today);
     alerts.push({
       key: "birthday",
       title: days === 0 ? "Faz aniversário hoje" : "Faz aniversário amanhã",
-      detail: turning === null ? ddmm(student.birthDate) : `${turning} anos em ${ddmm(student.birthDate)}`,
-      actions: whatsAppAction(
+      detail: turning === null ? when : `${turning} anos em ${when}`,
+      actions: days !== 0 ? null : whatsAppAction(
         "birthday_greeting",
         <Button variant="outline" onClick={() => whatsapp.send({ trigger: "birthday_greeting", recipient })}>
           <Cake className="size-4" />

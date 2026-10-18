@@ -67,7 +67,10 @@ import {
   useStudentPackages,
 } from "@/features/turmas";
 import { useBusinessSegment, useOrganization } from "@/features/settings";
-import { useCreateClient, useUpdateClient } from "../hooks/use-clients";
+import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clients";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { normalizeText } from "@/lib/text";
+import { whatsappDigits } from "@gestarahub/core/phone";
 import { clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
@@ -220,6 +223,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   // comeca em "Não paga mensalidade".
   const areaBillingMode = useBusinessSegment().defaultBillingMode;
   const createMut = useCreateClient();
+  // Cadastro novo com o telefone de alguem ja cadastrado pergunta antes (duplicado).
+  const { data: existingClients } = useClients(undefined, !isEdit);
+  const { confirm: confirmDuplicate, dialog: duplicateDialog } = useConfirmAction();
   // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
   const whatsapp = useWhatsAppSend();
   const updateMut = useUpdateClient();
@@ -705,6 +711,26 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   }, []);
 
   const onSubmit = async (values: ClientFormValues) => {
+    if (!isEdit) {
+      const phone = whatsappDigits(values.phone) ?? values.phone.replace(/\D/g, "");
+      const same = (existingClients ?? []).find(
+        (c) => phone && (whatsappDigits(c.phone) ?? c.phone.replace(/\D/g, "")) === phone,
+      );
+      if (same) {
+        const sameName = normalizeText(same.name) === normalizeText(values.name);
+        const ok = await confirmDuplicate({
+          title: sameName ? "Cadastro repetido?" : "Telefone já cadastrado",
+          description: sameName
+            ? `${same.name} já está cadastrado com este telefone.`
+            : `O telefone já é de ${same.name}. Cadastrar mesmo assim?`,
+          confirmLabel: "Cadastrar mesmo assim",
+          cancelLabel: "Voltar",
+          variant: "default",
+          highlightAction: "cancel",
+        });
+        if (!ok) return;
+      }
+    }
     const hasAddr =
       values.address &&
       (Boolean(values.address.street) ||
@@ -924,6 +950,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
 
   return (
     <FormProvider {...form}>
+      {duplicateDialog}
       <form
         id={formId}
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}

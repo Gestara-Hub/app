@@ -151,3 +151,14 @@ describe("upcomingBirthdaysNextMonths", () => {
     expect(upcomingBirthdaysNextMonths([{ birthDate: "2000-02-29" }], "2027-02-27")).toEqual([]);
   });
 });
+
+describe("29/02 fora do ano bissexto (rodada de 18/10/2026)", () => {
+  it("o aniversário cai em 28/02, com a idade nova nesse dia", async () => {
+    const { ageAt } = await import("@/lib/progression-tracks");
+    const { nextBirthdayLabel } = await import("@/lib/birthdays");
+    expect(nextBirthdayLabel("2000-02-29", "2026-02-27")).toBe("28/02");
+    expect(nextBirthdayLabel("2000-02-29", "2028-02-27")).toBe("29/02");
+    expect(ageAt("2000-02-29", "2026-02-27")).toBe(25);
+    expect(ageAt("2000-02-29", "2026-02-28")).toBe(26);
+  });
+});

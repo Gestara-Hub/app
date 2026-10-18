@@ -24,6 +24,9 @@ import { useUpdateTemplate } from "../hooks/use-communication";
 import { TRIGGER_META, automationTiming, sampleValues } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
+/** Texto do modelo: ate 900 caracteres, com folga para os nomes (o envio aceita 1000). */
+const TEMPLATE_MAX_LENGTH = 900;
+
 /** Nome amigavel de cada variavel (o texto usa a forma {chave}). */
 const VARIABLE_LABELS: Record<string, string> = {
   "{aluno}": "Nome do aluno",
@@ -73,6 +76,10 @@ function EditTemplateForm({
   async function save() {
     if (!content.trim()) {
       toast.error("Escreva o texto da mensagem.");
+      return;
+    }
+    if (content.length > TEMPLATE_MAX_LENGTH) {
+      toast.error(`Use no máximo ${TEMPLATE_MAX_LENGTH} caracteres.`);
       return;
     }
     try {
@@ -125,8 +132,13 @@ function EditTemplateForm({
             rows={5}
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            maxLength={TEMPLATE_MAX_LENGTH}
             className="text-base leading-relaxed md:text-sm"
           />
+          {/* Limite com folga para os nomes: o envio aceita ate 1000 caracteres. */}
+          <p className="text-right text-[11px] tabular-nums text-muted-foreground">
+            {content.length} de {TEMPLATE_MAX_LENGTH}
+          </p>
           <div className="flex flex-wrap gap-1">
             {template.availableVariables.map((v) => (
               <button

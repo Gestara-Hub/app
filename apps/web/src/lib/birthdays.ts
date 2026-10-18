@@ -14,6 +14,14 @@ function birthdayMonthDay(birthDate: string, year: number): string {
   return md === "02-29" && !isLeapYear(year) ? "02-28" : md;
 }
 
+/** "28/02": dia e mes do proximo aniversario (29/02 vira 28/02 fora do bissexto). */
+export function nextBirthdayLabel(birthDate: string, today: string): string {
+  const year = Number(today.slice(0, 4));
+  const thisYear = birthdayMonthDay(birthDate, year);
+  const md = thisYear >= today.slice(5, 10) ? thisYear : birthdayMonthDay(birthDate, year + 1);
+  return `${md.slice(3, 5)}/${md.slice(0, 2)}`;
+}
+
 /** Faz aniversario hoje? `today` em `YYYY-MM-DD`. */
 export function isBirthdayToday(birthDate: string | undefined, today: string): boolean {
   if (!birthDate || birthDate.length < 10) return false;
