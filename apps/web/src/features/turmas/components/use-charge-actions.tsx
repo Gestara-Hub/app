@@ -3,7 +3,7 @@
 import { useState, type ReactElement, type ReactNode } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Ban, CheckCircle2, Info, Lock, MessageCircle, QrCode, RotateCcw } from "lucide-react";
+import { Ban, CheckCircle2, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
 import {
   ConfirmActionDialog,
   useConfirmAction,
@@ -20,10 +20,11 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
-import type { ChargeView, PaymentMethod } from "@gestarahub/contracts";
+import type { ChargeView } from "@gestarahub/contracts";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { chargeReminder, useWhatsAppSend } from "@/features/communication";
+import { competenceLabel, openFileAttachment } from "@/features/finance";
 import {
   useActiveRecurringAuthorizations,
   useCancelCharge,
@@ -31,6 +32,7 @@ import {
   useMarkChargePending,
   useRevertCharge,
 } from "../hooks/use-billing";
+import type { PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { RegisterPaymentDialog } from "./register-payment-dialog";
 import { OnlineChargeDialog } from "./online-charge-dialog";
 import {
@@ -90,9 +92,9 @@ export function useChargeActions() {
     return limit !== undefined && c.amountCents > limit ? limit : undefined;
   };
 
-  const pay = (c: ChargeView, method: PaymentMethod) =>
+  const pay = (c: ChargeView, { method, paidOn, receipts }: PaymentDialogResult) =>
     paidMut.mutate(
-      { id: c.id, method },
+      { id: c.id, method, paidOn, receipts },
       {
         onSuccess: () => {
           toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
@@ -105,7 +107,7 @@ export function useChargeActions() {
   const undoPayment = async (c: ChargeView) => {
     const ok = await confirmAction({
       title: "Desfazer pagamento?",
-      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a ficar em aberto${c.method ? ` e o registro via ${paymentMethodLabel(c.method)} é apagado` : ""}.`,
+      description: `A cobrança de ${c.studentName} (${formatCents(c.amountCents)}) volta a ficar em aberto${c.method ? ` e o registro via ${paymentMethodLabel(c.method)} é apagado` : ""}.${c.teacherPayClosedIn ? ` Ela já entrou no pagamento do professor de ${competenceLabel(c.teacherPayClosedIn)}, que está fechado: o valor fechado não muda.` : ""}`,
       confirmLabel: "Desfazer pagamento",
       variant: "destructive",
     });
@@ -174,6 +176,20 @@ export function useChargeActions() {
     },
   ];
 
+  // Comprovantes anexados ao registrar o pagamento.
+  const receiptActions = (c: ChargeView): ListItemAction[] => {
+    const files = c.attachments ?? [];
+    return files.map((file, i) => ({
+      key: `receipt-${file.id}`,
+      label: files.length > 1 ? `Ver comprovante ${i + 1}` : "Ver comprovante",
+      icon: <Paperclip className="size-4" />,
+      onSelect: () =>
+        void openFileAttachment(file.id).then((ok) => {
+          if (!ok) toast.error("Não foi possível abrir o arquivo.");
+        }),
+    }));
+  };
+
   // Clique direito: espelha o que a linha oferece (menu, desfazer ou reverter).
   const contextActions = (c: ChargeView): ListItemAction[] => {
     if (!canManage || c.status === "waived" || isReplaced(c)) return [];
@@ -192,6 +208,7 @@ export function useChargeActions() {
     if (c.status === "paid") {
       if (isPaidOnline(c)) return [];
       return [
+        ...receiptActions(c),
         {
           key: "undo-payment",
           label: "Desfazer pagamento",
@@ -263,6 +280,16 @@ export function useChargeActions() {
           </span>
         );
       }
+      if (c.attachments?.length) {
+        return (
+          <ListItemActionsMenu
+            title="Mais opções"
+            ariaLabel={`Ações de ${c.studentName}`}
+            variant="ghost"
+            actions={contextActions(c)}
+          />
+        );
+      }
       return (
         <Button
           variant="ghost"
@@ -300,7 +327,7 @@ export function useChargeActions() {
         onOpenChange={(open) => {
           if (!open) setChargeToPay(null);
         }}
-        onConfirm={(method) => chargeToPay && pay(chargeToPay, method)}
+        onConfirm={(payment) => chargeToPay && pay(chargeToPay, payment)}
       />
 
       {/* Confirmação de cancelamento da cobrança */}

@@ -29,7 +29,6 @@ import type {
   FinancialEntryDisplayStatus,
   FinancialEntryFilter,
   FinancialEntryType,
-  PaymentMethod,
 } from "@gestarahub/contracts";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -46,6 +45,7 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import type { PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import {
@@ -229,9 +229,9 @@ export function FinanceEntriesTab({
 
   // --- Acoes (todas com dinheiro confirmam) -------------------------------
 
-  const pay = (row: FinanceEntryView, method: PaymentMethod, receipts: File[]) =>
+  const pay = (row: FinanceEntryView, { method, paidOn, receipts }: PaymentDialogResult) =>
     paidMut.mutate(
-      { id: row.id, method, receipts },
+      { id: row.id, method, paidOn, receipts },
       {
         onSuccess: () => {
           toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
@@ -678,7 +678,7 @@ export function FinanceEntriesTab({
         onOpenChange={(open) => {
           if (!open) setPaying(null);
         }}
-        onConfirm={(method, receipts) => paying && pay(paying, method, receipts)}
+        onConfirm={(payment) => paying && pay(paying, payment)}
       />
       <FinancialCategoryManagerDialog
         type={categoryType}

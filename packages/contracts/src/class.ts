@@ -122,11 +122,14 @@ export interface Enrollment {
 
 /**
  * `course` e obrigatorio quando a turma e um curso (ignorado nas demais).
- * `paysWithPackage` so vale em turma de mensalidade.
+ * `paysWithPackage` so vale em turma de mensalidade. Na rematricula do curso,
+ * `cancelOpenCourseCharges` cancela as parcelas em aberto (vencidas ou nao) das
+ * matriculas anteriores no mesmo curso.
  */
 export type CreateEnrollment = Pick<Enrollment, "classGroupId" | "studentId"> & {
   course?: EnrollmentCourseChoice;
   paysWithPackage?: boolean;
+  cancelOpenCourseCharges?: boolean;
 };
 
 /** Parcelas do curso da matricula por situacao (cancelar matricula mostra as futuras). */

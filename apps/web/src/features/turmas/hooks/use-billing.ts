@@ -7,12 +7,14 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { attachmentsService } from "@/services/attachmentsService";
 import { billingService } from "@/services/billingService";
 import { onlinePaymentsService } from "@/services/onlinePaymentsService";
 import type {
   ChargeFilter,
   CreateExtraCharge,
   CreatePlan,
+  DateISO,
   Id,
   OnlinePaymentMethod,
   PaymentMethod,
@@ -101,8 +103,22 @@ export function useCreateExtraCharge() {
 export function useMarkChargePaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, method }: { id: Id; method?: PaymentMethod }) =>
-      billingService.markPaid(id, method),
+    mutationFn: async ({
+      id,
+      method,
+      paidOn,
+      receipts = [],
+    }: {
+      id: Id;
+      method?: PaymentMethod;
+      paidOn?: DateISO;
+      /** Comprovantes escolhidos no diálogo; sobem antes de registrar. */
+      receipts?: File[];
+    }) =>
+      billingService.markPaid(id, method, {
+        paidOn,
+        receipts: receipts.length > 0 ? await attachmentsService.upload(receipts) : undefined,
+      }),
     onSuccess: () => invalidateMoney(qc),
   });
 }

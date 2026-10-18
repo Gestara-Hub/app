@@ -21,7 +21,7 @@ import type {
   UpdateClient,
 } from "@gestarahub/contracts";
 import { chargesDueIn } from "@gestarahub/core/billing";
-import { plural } from "@gestarahub/core/format";
+import { formatCents, plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
 import { getCurrentActor } from "@/mocks/currentActor";
@@ -295,6 +295,18 @@ function validateClient(
   if (d?.scholarship && !planId && !(d.type === "percentage" && d.value >= 100)) {
     fields.push({ field: "planId", message: "Bolsa parcial precisa de um plano." });
   }
+  // Desconto nunca passa do plano (o valor todo vira isento, nunca negativo).
+  if (d && !d.scholarship) {
+    const plan = planId ? store.plans.find((p) => p.id === planId) : undefined;
+    if (d.value < 0 || (d.type === "percentage" && d.value > 100)) {
+      fields.push({ field: "discountValue", message: "Informe um desconto entre 0% e 100%." });
+    } else if (d.type === "fixed" && plan && d.value > plan.priceCents) {
+      fields.push({
+        field: "discountValue",
+        message: `O desconto passa do valor do plano (${formatCents(plan.priceCents)}).`,
+      });
+    }
+  }
 
   if (fields.length > 0) throw validationError(fields);
 }
@@ -381,13 +393,39 @@ export const clientsService = {
         ...payload,
         updatedAt: ts,
       };
+      // Volta do aluno (reativado ou assinatura retomada): a cobranca recomeca
+      // na data da volta, pela regra dele (proporcional ou mes cheio). O tempo
+      // parado nao e cobrado e o que ja foi cobrado nao se repete.
+      const stopped = (c: Client) =>
+        c.status !== "active" || c.membershipStatus === "paused" || c.membershipStatus === "canceled";
+      const resumed = stopped(current) && !stopped(updated);
+      const today = todayISO();
+      if (
+        resumed &&
+        updated.planId &&
+        (payload.planStartDate === undefined || payload.planStartDate === current.planStartDate) &&
+        (updated.planStartDate ?? "") < today
+      ) {
+        updated.planStartDate = today;
+      }
       store.clients[idx] = updated;
+
+      // Pausa ou cancelamento da assinatura: periodos que ainda nao comecaram
+      // deixam de valer (como na inativacao); o que ja foi usado segue em aberto.
+      if (!stopped(current) && stopped(updated) && updated.status === "active") {
+        // "Depois do uso": o periodo em uso vira cobranca agora.
+        const pausedPlan = current.planId ? store.plans.find((p) => p.id === current.planId) : undefined;
+        if (pausedPlan && studentMembershipTerms(current, pausedPlan).timing === "postpaid") {
+          chargeStartedMembershipPeriods(current, today);
+        }
+        cancelOpenMembershipCharges(updated.id, today, "Cancelada na pausa da assinatura");
+      }
 
       // Troca de plano ou de data de inicio: as mensalidades em aberto do
       // arranjo anterior a partir da nova vigencia deixam de valer.
       const planChanged =
         Boolean(updated.planId) &&
-        (current.planId !== updated.planId || current.planStartDate !== updated.planStartDate);
+        (current.planId !== updated.planId || (!resumed && current.planStartDate !== updated.planStartDate));
       if (planChanged && current.planId && updated.planStartDate) {
         cancelOpenMembershipCharges(updated.id, updated.planStartDate, "Substituída pela troca de plano", {
           inclusive: true,

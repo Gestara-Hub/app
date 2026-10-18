@@ -13,10 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { normalizeText } from "@/lib/text";
-import { formatPhone, plural } from "@gestarahub/core/format";
+import { formatCents, formatPhone, plural } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { classBillingMode } from "@gestarahub/core/billing";
 import { todayISO } from "@gestarahub/core/date";
@@ -24,6 +25,7 @@ import { pickPackageFor } from "@gestarahub/core/packages";
 import type { ClassGroupView, Client, EnrollmentCourseChoice, Id, StudentPackageView } from "@gestarahub/contracts";
 import { useClients } from "@/features/clients";
 import { useAddToWaitlist, useEnroll } from "../hooks/use-turmas";
+import { useCharges } from "../hooks/use-billing";
 import { useStudentPackages } from "../hooks/use-packages";
 import {
   applyCourseErrors,
@@ -83,6 +85,9 @@ export function EnrollStudentsDialog({
     }
     return ids;
   }, [activePackages, turma.modalityId]);
+  // Rematricula: parcelas em aberto de matriculas anteriores neste curso.
+  const { data: courseCharges } = useCharges({ kind: "course" }, open && isCourse);
+  const [cancelPrevious, setCancelPrevious] = useState(true);
   const [paymentChoice, setPaymentChoice] = useState<Map<Id, boolean>>(new Map());
   // Padrao: com pacote e sem plano, paga com pacote; com plano, mensalidade.
   const paysWithPackageOf = (c: Client) =>
@@ -182,6 +187,19 @@ export function EnrollStudentsDialog({
     (c) => !paysWithPackageOf(c) && !c.planId && !c.discount?.scholarship,
   );
 
+  const previousDebts = isCourse
+    ? selectedList.flatMap((c) => {
+        const unpaid = (courseCharges ?? []).filter(
+          (charge) =>
+            charge.studentId === c.id &&
+            charge.classGroupId === turma.id &&
+            (charge.status === "pending" || charge.status === "overdue"),
+        );
+        const cents = unpaid.reduce((sum, charge) => sum + charge.amountCents, 0);
+        return unpaid.length > 0 ? [{ name: c.name, cents }] : [];
+      })
+    : [];
+
   const remaining = Math.max(turma.availableSpots, 0);
   const isFull = remaining <= 0;
   const overCapacity = selected.size > remaining;
@@ -207,6 +225,7 @@ export function EnrollStudentsDialog({
     setSearch("");
     setSelected(new Set());
     setPaymentChoice(new Map());
+    setCancelPrevious(true);
     courseForm.reset(coursePaymentDefaults(turma));
   };
 
@@ -235,6 +254,7 @@ export function EnrollStudentsDialog({
             studentId: student.id,
             course,
             paysWithPackage: isMembership ? paysWithPackageOf(student) : undefined,
+            cancelOpenCourseCharges: isCourse && previousDebts.length > 0 ? cancelPrevious : undefined,
           },
           allowOverCapacity: true,
         });
@@ -494,6 +514,26 @@ export function EnrollStudentsDialog({
             disabled={pending}
             appliesToMany={selected.size > 1}
           />
+        ) : null}
+
+        {previousDebts.length > 0 ? (
+          <div className="space-y-2 rounded-md border border-amber-300/70 bg-amber-50/60 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
+            <p className="text-sm text-amber-800 dark:text-amber-400">
+              {previousDebts.length === 1
+                ? `${previousDebts[0].name} tem ${formatCents(previousDebts[0].cents)} em aberto da matrícula anterior neste curso.`
+                : `Em aberto de matrículas anteriores neste curso: ${previousDebts
+                    .map((d) => `${d.name} (${formatCents(d.cents)})`)
+                    .join(", ")}.`}
+            </p>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox
+                checked={cancelPrevious}
+                onCheckedChange={(checked) => setCancelPrevious(checked === true)}
+                disabled={pending}
+              />
+              Cancelar as parcelas anteriores
+            </label>
+          </div>
         ) : null}
 
         {withPackage.length > 0 ? (

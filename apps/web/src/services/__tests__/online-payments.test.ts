@@ -233,7 +233,7 @@ describe("Pix Automático", () => {
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
       .map((c) => `${c.dueDate} ${c.status}${c.paidVia ? ` ${c.paidVia}` : ""}`);
 
-  it("autorizar paga as mensalidades vencidas dentro do limite; acima do limite e futuras ficam abertas", async () => {
+  it("autorizar não quita o que venceu antes; debita o que vence depois, dentro do limite", async () => {
     const within = await studentWithThreeCharges("Dentro", 15000);
     const above = await studentWithThreeCharges("Acima", 30000);
     for (const s of [within, above]) {
@@ -241,14 +241,15 @@ describe("Pix Automático", () => {
       expect(auth.status).toBe("pending");
       await onlinePaymentsService.simulateAuthorize(auth.id);
     }
-    expect(chargesOf(within.id)).toEqual([
-      "2026-08-01 paid recurring",
-      "2026-09-01 paid recurring",
-      "2026-10-01 pending",
-    ]);
+    // Agosto e setembro venceram antes da autorização: seguem em aberto.
+    expect(chargesOf(within.id)).toEqual(["2026-08-01 pending", "2026-09-01 pending", "2026-10-01 pending"]);
+
+    vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+    applyRecurringAutoPayments();
+    expect(chargesOf(within.id)).toEqual(["2026-08-01 pending", "2026-09-01 pending", "2026-10-01 paid recurring"]);
     expect(store.charges.filter((c) => c.studentId === within.id && c.status === "paid").every((c) => c.method === "pix")).toBe(true);
     expect(chargesOf(above.id)).toEqual(["2026-08-01 pending", "2026-09-01 pending", "2026-10-01 pending"]);
-    expect(store.auditLog.filter((l) => l.summary.includes("débito do Pix Automático"))).toHaveLength(2);
+    expect(store.auditLog.filter((l) => l.summary.includes("débito do Pix Automático"))).toHaveLength(1);
   });
 
   it("é idempotente: ler de novo não paga nem audita outra vez", async () => {
@@ -332,10 +333,13 @@ describe("Pix Automático", () => {
 
   it("Pix Automático cancela o código online em aberto da mensalidade que debita", async () => {
     const s = await studentWithThreeCharges("Aluno", 15000);
-    const sep = store.charges.find((c) => c.studentId === s.id && c.dueDate === "2026-09-01")!;
-    const pix = await onlinePaymentsService.createForCharge(sep.id, "pix");
+    const oct = store.charges.find((c) => c.studentId === s.id && c.dueDate === "2026-10-01")!;
+    const pix = await onlinePaymentsService.createForCharge(oct.id, "pix");
     const auth = await onlinePaymentsService.requestRecurring(s.id, 20000);
     await onlinePaymentsService.simulateAuthorize(auth.id);
+    expect(paymentById(pix.id).status).not.toBe("canceled");
+    vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+    applyRecurringAutoPayments();
     expect(paymentById(pix.id).status).toBe("canceled");
   });
 });

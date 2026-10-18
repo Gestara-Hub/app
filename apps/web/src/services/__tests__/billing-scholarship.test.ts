@@ -138,7 +138,7 @@ describe("bolsa integral com plano", () => {
     const refused = {
       code: "VALIDATION",
       httpStatus: 409,
-      message: "Mensalidade isenta por bolsa. Para cobrar, ajuste a bolsa no cadastro do aluno.",
+      message: "Mensalidade isenta. Para cobrar, ajuste a bolsa ou o desconto no cadastro do aluno.",
     };
     await expect(billingService.markPaid(charge.id, "pix")).rejects.toMatchObject(refused);
     await expect(billingService.markPending(charge.id)).rejects.toMatchObject(refused);

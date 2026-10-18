@@ -10,7 +10,7 @@ import type {
 } from "@gestarahub/contracts";
 import { describeCharge } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   apiError,
   newId,
@@ -175,7 +175,8 @@ function activeAuthorizationOf(
 
 /**
  * Pix Automatico: com autorizacao ATIVA, as mensalidades em aberto do aluno com
- * vencimento ate hoje (data local) e valor dentro do limite sao pagas com
+ * vencimento entre a data da autorizacao e hoje (data local) e valor dentro do
+ * limite sao pagas com
  * `paidVia = "recurring"` e `method = "pix"`. Acima do limite ficam em aberto
  * (a tela mostra o aviso). Chamado no inicio das leituras de cobranca
  * (Cobrancas e Financeiro). Idempotente; persiste quando muda algo.
@@ -188,15 +189,24 @@ export function applyRecurringAutoPayments(): number {
     (a) => a.status === "active",
   );
   if (active.length === 0) return 0;
-  const limitByStudent = new Map(
-    active.map((a) => [a.studentId, a.maxAmountCents]),
+  // Debita so o que vence a partir da autorizacao: o atraso de antes dela
+  // continua em aberto (o aluno nao autorizou pagar o passado).
+  const byStudent = new Map(
+    active.map((a) => [
+      a.studentId,
+      {
+        limit: a.maxAmountCents,
+        since: a.authorizedAt ? format(parseISO(a.authorizedAt), "yyyy-MM-dd") : undefined,
+      },
+    ]),
   );
   const today = todayISO();
   let paid = 0;
   for (const c of store.charges) {
     if (c.kind !== "membership" || !isOpen(c) || c.dueDate > today) continue;
-    const limit = limitByStudent.get(c.studentId);
-    if (limit === undefined || c.amountCents > limit) continue;
+    const auth = byStudent.get(c.studentId);
+    if (!auth || c.amountCents > auth.limit) continue;
+    if (auth.since && c.dueDate < auth.since) continue;
     const ts = nowIso();
     c.status = "paid";
     c.paidAt = ts;

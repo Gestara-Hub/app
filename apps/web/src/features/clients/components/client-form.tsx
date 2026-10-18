@@ -501,6 +501,22 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     return `Plano ${formatCents(price)} → paga ${formatCents(pay)} (bolsa de ${pct}%)`;
   }, [isScholarship, isFullScholarship, selectedPlan, effectiveDiscount]);
 
+  // Conta ao vivo do desconto: "Plano R$ 150,00 → paga R$ 120,00". Valor todo
+  // vira isento; acima do plano, o erro do campo explica ao salvar.
+  const discountSummary = useMemo(() => {
+    if (isScholarship || paymentMode !== "membership" || !hasDiscount) return null;
+    if (!selectedPlan || !effectiveDiscount) return null;
+    const price = selectedPlan.priceCents;
+    const off =
+      effectiveDiscount.type === "percentage"
+        ? Math.round((price * effectiveDiscount.value) / 100)
+        : Math.round(effectiveDiscount.value);
+    if (off > price) return null;
+    return off === price
+      ? `Plano ${formatCents(price)} → isento (desconto do valor todo)`
+      : `Plano ${formatCents(price)} → paga ${formatCents(price - off)}`;
+  }, [isScholarship, paymentMode, hasDiscount, selectedPlan, effectiveDiscount]);
+
   const basePriceCents = useMemo(() => {
     if (!selectedPlan) return 0;
     let price = selectedPlan.priceCents;
@@ -720,6 +736,15 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       if (pay >= plan.priceCents) {
         form.setError("scholarshipPayCents", {
           message: `Use um valor menor que o do plano (${formatCents(plan.priceCents)}).`,
+        });
+        return;
+      }
+    }
+
+    if (mode === "membership" && values.hasDiscount && values.discountType !== "percentage" && plan) {
+      if (Math.round(values.discountValue ?? 0) > plan.priceCents) {
+        form.setError("discountValue", {
+          message: `O desconto passa do valor do plano (${formatCents(plan.priceCents)}).`,
         });
         return;
       }
@@ -1281,6 +1306,9 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                           />
                         )}
                       </div>
+                      {discountSummary ? (
+                        <p className="text-xs text-muted-foreground">{discountSummary}</p>
+                      ) : null}
                       <InputText<ClientFormValues>
                         name="discountReason"
                         label="Motivo do desconto"

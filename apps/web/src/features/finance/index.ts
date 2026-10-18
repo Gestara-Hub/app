@@ -5,6 +5,7 @@ export { FinanceEntriesTab } from "./components/finance-entries-tab";
 export { TeacherPayTab } from "./components/teacher-pay-tab";
 export { CompetencePicker } from "./components/competence-picker";
 export { useFinanceUrlState } from "./hooks/use-finance-url-state";
+export { openFileAttachment } from "./hooks/use-finance";
 export {
   DEFAULT_FINANCE_TAB,
   FINANCE_TABS,

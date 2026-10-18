@@ -953,7 +953,30 @@ export const turmasService = {
           httpStatus: 409,
         });
       }
+      // Rematricula no curso: as parcelas em aberto das matriculas anteriores
+      // saem quando o usuario escolhe (senao seguem como divida).
+      let canceledPrevious = 0;
+      if (course && payload.cancelOpenCourseCharges) {
+        const ts = nowIso();
+        for (const c of store.charges) {
+          if (c.kind !== "course" || c.studentId !== student.id || c.classGroupId !== g.id) continue;
+          if (c.status !== "pending" && c.status !== "overdue") continue;
+          c.status = "canceled";
+          c.canceledBy = "user";
+          c.cancelReason = "Rematrícula no curso";
+          c.updatedAt = ts;
+          cancelOnlinePaymentsForCharge(c.id);
+          canceledPrevious += 1;
+        }
+      }
       const enrollment = createEnrollment(g, student.id, course, withPackage);
+      if (canceledPrevious > 0) {
+        auditLogService.record({
+          action: "cancelled",
+          target: { type: "enrollment", id: enrollment.id, label: `${student.name} em ${g.name}` },
+          predicate: `cancelou ${plural(canceledPrevious, "parcela em aberto", "parcelas em aberto")} da matrícula anterior de ${student.name} no curso ${g.name}`,
+        });
+      }
       return clone(toEnrollmentView(enrollment));
     });
   },

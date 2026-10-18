@@ -1,8 +1,10 @@
 import type {
   ApiErrorField,
+  Charge,
   ClassGroup,
   DateISO,
   Id,
+  ManualPaymentDetails,
   PaymentMethod,
   RecordStatus,
   SaveTeacherPayRule,
@@ -20,6 +22,7 @@ import {
   DEFAULT_TEACHER_PAYMENT_DAY,
   competenceOf,
   computeTeacherPayout,
+  percentPayoutLines,
   describeTeacherPayRule,
   firstDayOfCompetence,
   isRuleEffective,
@@ -37,7 +40,7 @@ import { valuePackageLessons } from "@gestarahub/core/packages";
 import { isPastSlot } from "@gestarahub/core/date";
 import { weekdayOf } from "@gestarahub/core/scheduling";
 import { formatCents, pluralWord } from "@gestarahub/core/format";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, addMonths, format, parseISO } from "date-fns";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import {
   apiError,
@@ -50,6 +53,7 @@ import {
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
+import { paidAtFromDate, paidOnNote } from "./payment-date";
 
 /**
  * Pagamento dos professores (Financeiro basico, gratis). Regra por professor,
@@ -352,8 +356,126 @@ function buildFacts(competence: string): CompetenceFacts {
   };
 }
 
+/** Meses fechados ou pagos do professor. */
+function closedPayoutsOf(professionalId: Id): TeacherPayout[] {
+  return store.teacherPayouts.filter((p) => p.professionalId === professionalId && p.status !== "open");
+}
+
+/**
+ * Fatos do mes para o professor: sem as cobrancas que ja entraram num mes
+ * fechado dele (paga atrasada contada em outro mes nao conta de novo).
+ */
 function factsFor(professionalId: Id, facts: CompetenceFacts): TeacherPayFacts {
-  return { ...facts.base, professionalId };
+  const counted = new Set(closedPayoutsOf(professionalId).flatMap((p) => p.countedChargeIds ?? []));
+  if (counted.size === 0) return { ...facts.base, professionalId };
+  return {
+    ...facts.base,
+    professionalId,
+    paidMemberships: facts.base.paidMemberships.filter((m) => !counted.has(m.chargeId)),
+    paidCourseInstallments: facts.base.paidCourseInstallments?.filter((c) => !counted.has(c.chargeId)),
+  };
+}
+
+/** Cobrancas que entram no % do mes (mensalidades e parcelas de curso pagas). */
+function percentChargeIds(facts: TeacherPayFacts): Id[] {
+  return [
+    ...facts.paidMemberships.map((m) => m.chargeId),
+    ...(facts.paidCourseInstallments ?? []).map((c) => c.chargeId),
+  ];
+}
+
+function nextCompetence(competence: string): string {
+  return format(addMonths(parseISO(`${competence}-01`), 1), "yyyy-MM");
+}
+
+/**
+ * Cobranca de um mes ja fechado que ficou fora do fechamento (paga depois
+ * dele). Fechamento antigo, sem a lista, compara a data do pagamento.
+ */
+function missedByClosure(c: Charge, record: TeacherPayout, counted: Set<Id>): boolean {
+  if (counted.has(c.id)) return false;
+  if (record.countedChargeIds) return true;
+  return Boolean(c.paidAt && record.closedAt && c.paidAt > record.closedAt);
+}
+
+/**
+ * Pagas depois do fechamento: mensalidade ou parcela de curso de um mes ja
+ * fechado do professor conta uma vez, no primeiro mes aberto dele a partir do
+ * pagamento, com a atribuicao (turmas e titulares) do mes de origem.
+ */
+function latePaymentShare(
+  professionalId: Id,
+  rule: TeacherPayRule,
+  competence: string,
+): { lines: TeacherPayoutLine[]; chargeIds: Id[] } {
+  const out = { lines: [] as TeacherPayoutLine[], chargeIds: [] as Id[] };
+  const percentComponents = rule.components.filter((c) => c.kind === "percent_of_memberships");
+  const closed = closedPayoutsOf(professionalId).sort((a, b) => a.competence.localeCompare(b.competence));
+  if (percentComponents.length === 0 || closed.length === 0) return out;
+  const closedCompetences = new Set(closed.map((p) => p.competence));
+  const counted = new Set(closed.flatMap((p) => p.countedChargeIds ?? []));
+  const firstOpenFrom = (from: string) => {
+    let c = from;
+    while (closedCompetences.has(c)) c = nextCompetence(c);
+    return c;
+  };
+  for (const record of closed) {
+    if (record.competence >= competence) continue;
+    const afterRecord = nextCompetence(record.competence);
+    const late = new Set(
+      store.charges
+        .filter(
+          (c) =>
+            (c.kind === "membership" || c.kind === "course") &&
+            c.status === "paid" &&
+            chargeCompetence(c) === record.competence &&
+            missedByClosure(c, record, counted),
+        )
+        .filter((c) => {
+          const paidIn = c.paidAt ? competenceOf(localDateOf(c.paidAt)) : competence;
+          return firstOpenFrom(paidIn > afterRecord ? paidIn : afterRecord) === competence;
+        })
+        .map((c) => c.id),
+    );
+    if (late.size === 0) continue;
+    const base = percentFactsOf(record.competence);
+    const facts: TeacherPayFacts = {
+      ...base,
+      professionalId,
+      paidMemberships: paidMembershipsIn(record.competence).filter((m) => late.has(m.chargeId)),
+      paidCourseInstallments: paidCourseInstallmentsIn(record.competence).filter((c) => late.has(c.chargeId)),
+    };
+    for (const component of percentComponents) {
+      for (const line of percentPayoutLines(component, facts)) {
+        if (!line.baseCents) continue;
+        out.lines.push({ ...line, label: `Pagos com atraso de ${competenceLabel(record.competence)}: ${line.label}` });
+      }
+    }
+    out.chargeIds.push(...late);
+  }
+  return out;
+}
+
+/** Fatos do % de um mes (matriculas e turmas), sem aulas nem cobrancas. */
+function percentFactsOf(competence: string): Omit<TeacherPayFacts, "professionalId"> {
+  const activeEnrollments = enrollmentsActiveOn(lastDayOfCompetence(competence));
+  const withActive = new Set(activeEnrollments.map((e) => e.studentId));
+  return {
+    classGroups: store.classGroups.map((g) => ({
+      id: g.id,
+      instructorId: g.instructorId,
+      billingMode: g.billingMode,
+    })),
+    sessionsDone: [],
+    activeEnrollments,
+    paidMemberships: [],
+    membershipEnrollments: [
+      ...activeEnrollments,
+      ...enrollmentsDuring(competence).filter((e) => !withActive.has(e.studentId)),
+    ],
+    paidCourseInstallments: [],
+    packageLessons: [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -401,6 +523,7 @@ function buildView(
   if (!rule || !isRuleEffective(rule, competence)) return undefined;
   const lines = [
     ...computeTeacherPayout(rule, factsFor(professionalId, facts), competence),
+    ...latePaymentShare(professionalId, rule, competence).lines,
     ...adjustmentLines(record),
   ];
   return {
@@ -799,11 +922,9 @@ export const teacherPayService = {
         throw conflict("Este mês já está fechado.");
       }
 
-      const computed = computeTeacherPayout(
-        rule,
-        factsFor(professionalId, buildFacts(competence)),
-        competence,
-      );
+      const ownFacts = factsFor(professionalId, buildFacts(competence));
+      const late = latePaymentShare(professionalId, rule, competence);
+      const computed = [...computeTeacherPayout(rule, ownFacts, competence), ...late.lines];
       // Sem ajustes na chamada, valem os ja salvos no mes em aberto.
       const adjustmentLinesList = adjustments
         ? normalizeAdjustments(adjustments)
@@ -825,6 +946,8 @@ export const teacherPayService = {
         closedAt: ts,
         paidAt: undefined,
         method: undefined,
+        attachments: undefined,
+        countedChargeIds: [...percentChargeIds(ownFacts), ...late.chargeIds],
         updatedAt: ts,
       };
       let payout: TeacherPayout;
@@ -873,8 +996,11 @@ export const teacherPayService = {
     });
   },
 
-  /** Paga o mes fechado: entra no caixa como saida "Professores" em `paidAt`. */
-  markPayoutPaid(id: Id, method: PaymentMethod): Promise<TeacherPayout> {
+  /**
+   * Paga o mes fechado no dia informado (padrao hoje): entra no caixa como
+   * saida "Professores" em `paidAt`, com os comprovantes.
+   */
+  markPayoutPaid(id: Id, method: PaymentMethod, details: ManualPaymentDetails = {}): Promise<TeacherPayout> {
     return simulateWrite(() => {
       const payout = findPayout(id);
       if (payout.status !== "closed") {
@@ -885,15 +1011,15 @@ export const teacherPayService = {
       if (!PAYMENT_METHODS.includes(method)) {
         throw validationError([{ field: "method", message: "Selecione a forma de pagamento." }]);
       }
-      const ts = nowIso();
       payout.status = "paid";
-      payout.paidAt = ts;
+      payout.paidAt = paidAtFromDate(details.paidOn);
       payout.method = method;
-      payout.updatedAt = ts;
+      if (details.receipts?.length) payout.attachments = details.receipts;
+      payout.updatedAt = nowIso();
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id, label: payoutLabel(payout.professionalId, payout.competence) },
-        predicate: `registrou o pagamento de ${professionalName(payout.professionalId)} de ${competenceLabel(payout.competence)} (${formatCents(payout.totalCents)} via ${paymentMethodLabel(method)})`,
+        predicate: `registrou${paidOnNote(details.paidOn)} o pagamento de ${professionalName(payout.professionalId)} de ${competenceLabel(payout.competence)} (${formatCents(payout.totalCents)} via ${paymentMethodLabel(method)})`,
       });
       return clone(payout);
     });
@@ -907,6 +1033,7 @@ export const teacherPayService = {
       payout.status = "closed";
       payout.paidAt = undefined;
       payout.method = undefined;
+      payout.attachments = undefined;
       payout.updatedAt = nowIso();
       auditLogService.record({
         action: "status_changed",

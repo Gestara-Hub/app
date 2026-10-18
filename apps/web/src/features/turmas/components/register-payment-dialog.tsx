@@ -1,9 +1,9 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import type { ChargeView, PaymentMethod } from "@gestarahub/contracts";
+import type { ChargeView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { PaymentDialog } from "@/components/shared/payment-dialog";
+import { PaymentDialog, type PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
@@ -12,7 +12,7 @@ interface RegisterPaymentDialogProps {
   charge: ChargeView | null;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (method: PaymentMethod, receipts: File[]) => void;
+  onConfirm: (payment: PaymentDialogResult) => void;
 }
 
 /**

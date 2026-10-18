@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
-  PaymentMethod,
   TeacherPayoutAdjustment,
   TeacherPayoutStatus,
 } from "@gestarahub/contracts";
@@ -67,6 +66,7 @@ import {
   signedAdjustment,
   type AdjustmentFormValues,
 } from "../teacher-pay-schema";
+import type { PaymentDialogResult } from "@/components/shared/payment-dialog";
 import { TeacherPayoutPayDialog } from "./teacher-payout-pay-dialog";
 import {
   TeacherPayoutStatusBadge,
@@ -286,10 +286,10 @@ function DetailContent({
     }
   };
 
-  const pay = async (method: PaymentMethod) => {
+  const pay = async ({ method, paidOn, receipts }: PaymentDialogResult) => {
     if (!data.payout) return;
     try {
-      await paidMut.mutateAsync({ id: data.payout.id, method });
+      await paidMut.mutateAsync({ id: data.payout.id, method, paidOn, receipts });
       toast.success(`Pagamento registrado (${paymentMethodLabel(method)}).`);
       setPayOpen(false);
     } catch (error) {
@@ -540,7 +540,7 @@ function DetailContent({
         totalCents={data.totalCents}
         isPending={paidMut.isPending}
         onOpenChange={setPayOpen}
-        onConfirm={(method) => void pay(method)}
+        onConfirm={(payment) => void pay(payment)}
       />
     </>
   );

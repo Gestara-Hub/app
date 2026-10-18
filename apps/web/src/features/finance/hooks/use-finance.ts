@@ -8,6 +8,7 @@ import type {
   FinancialEntryFilter,
   FinancialEntryType,
   FinancialEntryUpdateScope,
+  DateISO,
   Id,
   PaymentMethod,
   UpdateFinancialCategory,
@@ -130,8 +131,17 @@ export function useUpdateFinanceEntry() {
 export function useMarkFinanceEntryPaid() {
   const invalidate = useInvalidateFinance();
   return useMutation({
-    mutationFn: async ({ id, method, receipts = [] }: { id: Id; method: PaymentMethod; receipts?: File[] }) =>
-      financeService.markEntryPaid(id, method, await uploadEntryFiles(receipts)),
+    mutationFn: async ({
+      id,
+      method,
+      paidOn,
+      receipts = [],
+    }: {
+      id: Id;
+      method: PaymentMethod;
+      paidOn?: DateISO;
+      receipts?: File[];
+    }) => financeService.markEntryPaid(id, method, await uploadEntryFiles(receipts), paidOn),
     onSuccess: invalidate,
   });
 }

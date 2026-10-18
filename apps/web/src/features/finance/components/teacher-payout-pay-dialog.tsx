@@ -1,8 +1,7 @@
 "use client";
 
-import type { PaymentMethod } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { PaymentDialog } from "@/components/shared/payment-dialog";
+import { PaymentDialog, type PaymentDialogResult } from "@/components/shared/payment-dialog";
 
 interface TeacherPayoutPayDialogProps {
   open: boolean;
@@ -11,7 +10,7 @@ interface TeacherPayoutPayDialogProps {
   totalCents: number;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (method: PaymentMethod, receipts: File[]) => void;
+  onConfirm: (payment: PaymentDialogResult) => void;
 }
 
 /**

@@ -5,6 +5,7 @@ import type {
   ChargeKind,
   CreateFinancialCategory,
   CreateFinancialEntry,
+  DateISO,
   FinanceCategoryTotal,
   FinanceEntryView,
   FinanceMonthPoint,
@@ -60,6 +61,7 @@ import { persist, store } from "@/mocks/store";
 import { systemFinancialCategoryId } from "@/mocks/seed";
 import { auditLogService } from "./auditLogService";
 import { autoGenerateMembershipCharges } from "./billingService";
+import { paidAtFromDate, paidOnNote } from "./payment-date";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
 
@@ -877,8 +879,16 @@ export const financeService = {
     });
   },
 
-  /** Marca como pago agora (exige forma de pagamento); comprovantes somam aos anexos. */
-  markEntryPaid(id: Id, method: PaymentMethod, receipts: FileAttachment[] = []): Promise<FinancialEntry> {
+  /**
+   * Marca como pago (exige forma de pagamento) no dia informado (padrao hoje);
+   * comprovantes somam aos anexos.
+   */
+  markEntryPaid(
+    id: Id,
+    method: PaymentMethod,
+    receipts: FileAttachment[] = [],
+    paidOn?: DateISO,
+  ): Promise<FinancialEntry> {
     return simulateWrite(() => {
       const entry = findEntry(id);
       if (!isPaymentMethod(method)) {
@@ -890,16 +900,16 @@ export const financeService = {
       const fields: ApiErrorField[] = [];
       validateAttachments(attachments, fields);
       if (fields.length > 0) throw validationError(fields);
-      const ts = nowIso();
+      const paidAt = paidAtFromDate(paidOn);
       entry.status = "paid";
-      entry.paidAt = ts;
+      entry.paidAt = paidAt;
       entry.method = method;
       if (receipts.length > 0) entry.attachments = attachments;
-      entry.updatedAt = ts;
+      entry.updatedAt = nowIso();
       recordEntry(
         entry,
         "status_changed",
-        `registrou o pagamento da ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}, via ${paymentMethodLabel(method)}${attachmentsNote(receipts.length)})`,
+        `registrou${paidOnNote(paidOn)} o pagamento da ${entryLabel(entry)} ${entryFacts(entry).slice(0, -1)}, via ${paymentMethodLabel(method)}${attachmentsNote(receipts.length)})`,
         [{ field: "status", label: "Status", before: "Pendente", after: PAID_STATUS_LABEL }],
       );
       return clone(entry);

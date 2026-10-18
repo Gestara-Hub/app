@@ -1,3 +1,4 @@
+import type { FileAttachment } from "./attachment";
 import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 import type { ChargePaidVia } from "./finance";
 
@@ -70,6 +71,8 @@ export interface Charge {
   method?: PaymentMethod;
   /** Como foi paga (ausente em dados antigos = manual). */
   paidVia?: ChargePaidVia;
+  /** Comprovantes anexados ao registrar o pagamento manual. */
+  attachments?: FileAttachment[];
   canceledBy?: ChargeCanceledBy; // so quando status = "canceled"; ausente em dados antigos
   /** Motivo do cancelamento manual (texto livre, ex.: "Plano errado"). */
   cancelReason?: string;
@@ -102,6 +105,15 @@ export interface Charge {
 }
 
 /**
+ * Pagamento registrado a mao (cobranca, lancamento, professor): o dia em que o
+ * dinheiro entrou (data local; ausente = hoje, nunca no futuro) e os comprovantes.
+ */
+export interface ManualPaymentDetails {
+  paidOn?: DateISO;
+  receipts?: FileAttachment[];
+}
+
+/**
  * New extra charge (cobranca avulsa). `totalCents` is split into
  * `installments` monthly charges (1 to 12) starting at `firstDueDate`.
  * Tenant fields are stamped by the service.
@@ -123,6 +135,11 @@ export interface ChargeFilter {
 
 export interface ChargeView extends Charge {
   studentName: string;
+  /**
+   * Paga e ja contada no pagamento fechado de um professor: competencia
+   * ("YYYY-MM") desse fechamento. Desfazer o pagamento nao muda o valor fechado.
+   */
+  teacherPayClosedIn?: string;
   /** Telefone do aluno (lembrete pelo WhatsApp). */
   studentPhone?: string;
   planName?: string;

@@ -2,12 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type {
+  DateISO,
   Id,
   PaymentMethod,
   SaveTeacherPayRule,
   TeacherPayoutAdjustment,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
+import { attachmentsService } from "@/services/attachmentsService";
 import { teacherPayService } from "@/services/teacherPayService";
 
 // Chave local da lista de professores da aba (sem entrada propria em queryKeys).
@@ -95,8 +97,21 @@ export function useReopenTeacherPayout() {
 export function useMarkTeacherPayoutPaid() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, method }: { id: Id; method: PaymentMethod }) =>
-      teacherPayService.markPayoutPaid(id, method),
+    mutationFn: async ({
+      id,
+      method,
+      paidOn,
+      receipts = [],
+    }: {
+      id: Id;
+      method: PaymentMethod;
+      paidOn?: DateISO;
+      receipts?: File[];
+    }) =>
+      teacherPayService.markPayoutPaid(id, method, {
+        paidOn,
+        receipts: receipts.length > 0 ? await attachmentsService.upload(receipts) : undefined,
+      }),
     onSuccess: () => invalidateTeacherPay(qc),
   });
 }

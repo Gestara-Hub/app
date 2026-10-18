@@ -193,6 +193,14 @@ export interface TeacherPayout {
   closedAt?: DateTimeISO;
   paidAt?: DateTimeISO;
   method?: PaymentMethod;
+  /** Comprovantes anexados ao registrar o pagamento. */
+  attachments?: FileAttachment[];
+  /**
+   * Mensalidades e parcelas de curso que entraram no % deste fechamento. Paga
+   * depois do fechamento conta uma vez, no proximo mes aberto do professor.
+   * Ausente em fechamentos antigos (compara `paidAt` com `closedAt`).
+   */
+  countedChargeIds?: Id[];
   notes?: string;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;

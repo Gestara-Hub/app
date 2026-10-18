@@ -8,6 +8,7 @@ import type {
   CreateExtraCharge,
   CreatePlan,
   Id,
+  ManualPaymentDetails,
   PaymentMethod,
   Plan,
   PlanFilter,
@@ -38,6 +39,7 @@ import {
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { applyRecurringAutoPayments, cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import { paidAtFromDate, paidOnNote } from "./payment-date";
 
 /**
  * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem
@@ -81,9 +83,27 @@ function effectiveStatus(c: Charge): ChargeStatus {
   return c.status;
 }
 
+/**
+ * Fechamento de professor em que a cobranca paga ja entrou no % (competencia).
+ * Fechamento antigo, sem a lista, vale pelo mes do periodo e pela data.
+ */
+function teacherPayClosedIn(c: Charge): string | undefined {
+  if (c.status !== "paid" || (c.kind !== "membership" && c.kind !== "course")) return undefined;
+  const competence = (c.periodStart ?? c.competence ?? "").slice(0, 7);
+  const payout = (store.teacherPayouts ?? []).find(
+    (p) =>
+      p.status !== "open" &&
+      (p.countedChargeIds
+        ? p.countedChargeIds.includes(c.id)
+        : p.competence === competence && Boolean(c.paidAt && p.closedAt && c.paidAt <= p.closedAt)),
+  );
+  return payout?.competence;
+}
+
 function toChargeView(c: Charge): ChargeView {
   return {
     ...c,
+    teacherPayClosedIn: teacherPayClosedIn(c),
     status: effectiveStatus(c),
     cycleIndex: c.cycleIndex ?? 1,
     cycleTotal: c.cycleTotal ?? 1,
@@ -237,7 +257,9 @@ export function scholarshipChargeFields(
   planned: Pick<ScheduledCharge, "amountCents" | "discountApplied" | "listAmountCents">,
 ): Pick<Charge, "status" | "scholarshipPercent" | "listAmountCents"> {
   const discount = student?.discount;
-  if (!discount?.scholarship || !planned.discountApplied) return { status: "pending" };
+  if (!discount || !planned.discountApplied) return { status: "pending" };
+  // Desconto do valor todo (100% ou o preco do plano) e isento, nunca R$ 0 a cobrar.
+  if (!discount.scholarship) return { status: planned.amountCents === 0 ? "waived" : "pending" };
   // Bolsa por "valor a pagar" e guardada como valor fixo: a % sai da conta.
   const percent =
     discount.type === "percentage"
@@ -257,7 +279,7 @@ function assertNotWaived(c: Charge): void {
   if (c.status === "waived") {
     throw apiError(
       "VALIDATION",
-      "Mensalidade isenta por bolsa. Para cobrar, ajuste a bolsa no cadastro do aluno.",
+      "Mensalidade isenta. Para cobrar, ajuste a bolsa ou o desconto no cadastro do aluno.",
       { httpStatus: 409 },
     );
   }
@@ -280,7 +302,7 @@ export function planlessScholarCharges(student: Client, competence: string): num
     {
       period: "monthly",
       planPriceCents: 0,
-      startDate: student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd"),
+      startDate: membershipStartDate(student),
       strategy: student.billingStrategy,
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
@@ -335,13 +357,18 @@ function membershipCharge(
   };
 }
 
+/** Inicio da vigencia de cobranca do aluno (data local, nao UTC). */
+function membershipStartDate(student: Client): string {
+  return student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd");
+}
+
 /** Termos de cobranca do aluno: a regra dele prevalece sobre a da academia. */
 export function studentMembershipTerms(student: Client, plan: Plan) {
   return resolveMembershipTerms(
     {
       period: plan.period,
       planPriceCents: plan.priceCents,
-      startDate: student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd"), // data local, nao UTC
+      startDate: membershipStartDate(student),
       strategy: student.billingStrategy,
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
@@ -458,15 +485,27 @@ function generateMembershipChargesFor(competence: string): number {
 }
 
 /**
- * Geracao automatica na leitura: o mes atual e o mes consultado, se ja chegou
- * (ex.: o calendario virou e as parcelas da semana nova aparecem sozinhas).
- * Meses futuros aparecem quando chegarem. Sem auditoria (e o sistema).
+ * Geracao automatica na leitura: todo mes desde o inicio da vigencia mais
+ * antiga ate o atual (mes em que ninguem abriu o app tambem gera, e o atraso
+ * nao muda com a navegacao) e o mes consultado, se ja chegou. Meses futuros
+ * aparecem quando chegarem. Idempotente. Sem auditoria (e o sistema).
  */
 export function autoGenerateMembershipCharges(...competences: (string | undefined)[]): number {
   const current = todayISO().slice(0, 7);
+  const wanted = new Set(competences.filter((c): c is string => Boolean(c) && c! <= current));
+  let from = current;
+  for (const student of store.clients) {
+    if (student.status !== "active") continue;
+    const start = membershipStartDate(student).slice(0, 7);
+    if (start < from) from = start;
+  }
+  for (let month = parseISO(`${from}-01`); ; month = addMonths(month, 1)) {
+    const competence = format(month, "yyyy-MM");
+    if (competence > current) break;
+    wanted.add(competence);
+  }
   let created = 0;
-  for (const competence of new Set([current, ...competences.filter((c): c is string => Boolean(c))])) {
-    if (competence > current) continue;
+  for (const competence of [...wanted].sort()) {
     created += generateMembershipChargesFor(competence);
   }
   if (created > 0) persist();
@@ -657,7 +696,8 @@ export const billingService = {
     });
   },
 
-  markPaid(id: Id, method?: PaymentMethod): Promise<ChargeView> {
+  /** Registra o pagamento manual: dia do pagamento (padrao hoje) e comprovantes. */
+  markPaid(id: Id, method?: PaymentMethod, details: ManualPaymentDetails = {}): Promise<ChargeView> {
     return simulateWrite(() => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
@@ -666,14 +706,16 @@ export const billingService = {
       if (c.status === "paid") {
         throw apiError("VALIDATION", "Esta cobrança já está paga.", { httpStatus: 409 });
       }
+      const paidAt = paidAtFromDate(details.paidOn);
       c.status = "paid";
-      c.paidAt = nowIso();
+      c.paidAt = paidAt;
       c.method = method;
       c.paidVia = "manual";
+      if (details.receipts?.length) c.attachments = [...(c.attachments ?? []), ...details.receipts];
       c.updatedAt = nowIso();
       // Pago na mao: o Pix/link em aberto nao vale mais.
       cancelOnlinePaymentsForCharge(c.id);
-      recordChargeEvent(c, "status_changed", "registrou o pagamento da");
+      recordChargeEvent(c, "status_changed", `registrou${paidOnNote(details.paidOn)} o pagamento da`);
       return clone(toChargeView(c));
     });
   },
@@ -689,6 +731,7 @@ export const billingService = {
       c.paidAt = undefined;
       c.method = undefined;
       c.paidVia = undefined;
+      c.attachments = undefined;
       c.updatedAt = nowIso();
       recordChargeEvent(c, "status_changed", "desfez o pagamento da");
       return clone(toChargeView(c));

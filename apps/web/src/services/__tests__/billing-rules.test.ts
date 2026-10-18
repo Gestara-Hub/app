@@ -59,17 +59,32 @@ function switchPlan(student: Client, plan: Plan, startDate: string): Promise<Cli
 describe("geração automática de mensalidades na leitura", () => {
   beforeEach(() => resetAcademy());
 
-  it("gera o mês atual ao listar, sem auditoria", async () => {
+  it("gera todo mês desde o início da vigência até o atual ao listar, sem auditoria", async () => {
     const plan = await createPlan("monthly", 15000);
     const s = await planStudent(plan, "2026-08-01");
     const auditBefore = store.auditLog.length;
 
     const list = await billingService.listCharges({ studentId: s.id });
 
-    expect(list.map((c) => `${c.competence} ${c.dueDate} ${c.amountCents}`)).toEqual(["2026-09 2026-09-10 15000"]);
-    // Agosto (mes passado nao consultado) nao nasce sozinho.
-    expect(chargesOf(s.id)).toEqual(["2026-09-10 15000"]);
+    expect(list.map((c) => `${c.competence} ${c.dueDate} ${c.amountCents}`).sort()).toEqual([
+      "2026-08 2026-08-01 15000",
+      "2026-09 2026-09-10 15000",
+    ]);
+    // Agosto nasce mesmo sem ninguem abrir o mes: o atraso nao depende da navegacao.
+    expect(chargesOf(s.id)).toEqual(["2026-08-01 15000", "2026-09-10 15000"]);
     expect(store.auditLog.length).toBe(auditBefore);
+  });
+
+  it("meses pulados entram todos, e o atraso é o mesmo em qualquer tela", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await planStudent(plan, "2026-06-01");
+    await billingService.listCharges({ competence: "2026-09" });
+    expect(chargesOf(s.id)).toEqual([
+      "2026-06-01 15000",
+      "2026-07-10 15000",
+      "2026-08-10 15000",
+      "2026-09-10 15000",
+    ]);
   });
 
   it("é idempotente entre leituras e com a geração manual", async () => {
@@ -78,7 +93,7 @@ describe("geração automática de mensalidades na leitura", () => {
     await billingService.listCharges();
     await billingService.listCharges();
     await billingService.listCharges({ competence: "2026-09" });
-    expect(chargesOf(s.id)).toEqual(["2026-09-10 15000"]);
+    expect(chargesOf(s.id)).toEqual(["2026-08-01 15000", "2026-09-10 15000"]);
     expect((await billingService.generateCharges("2026-09")).created).toBe(0);
   });
 
@@ -90,7 +105,7 @@ describe("geração automática de mensalidades na leitura", () => {
     expect(membershipsOf(s.id).some((c) => c.competence === "2026-10")).toBe(false);
 
     expect((await billingService.generateCharges("2026-10")).created).toBe(1);
-    expect(chargesOf(s.id)).toEqual(["2026-09-10 15000", "2026-10-10 15000"]);
+    expect(chargesOf(s.id)).toEqual(["2026-08-01 15000", "2026-09-10 15000", "2026-10-10 15000"]);
   });
 
   it("mês passado consultado é gerado junto com o atual", async () => {
@@ -104,16 +119,16 @@ describe("geração automática de mensalidades na leitura", () => {
   it("cancelada pelo usuário não volta na leitura; cancelada pelo sistema libera o período", async () => {
     const plan = await createPlan("monthly", 15000);
     const s = await planStudent(plan, "2026-08-01");
-    const [sept] = await billingService.listCharges({ studentId: s.id });
+    const sept = (await billingService.listCharges({ studentId: s.id })).find((c) => c.competence === "2026-09")!;
     await billingService.cancelCharge(sept.id);
 
     await billingService.listCharges({ studentId: s.id });
-    expect(membershipsOf(s.id)).toHaveLength(1);
+    expect(membershipsOf(s.id)).toHaveLength(2);
 
     byId(sept.id).canceledBy = "system";
     await billingService.listCharges({ studentId: s.id });
-    expect(chargesOf(s.id)).toEqual(["2026-09-10 15000"]);
-    expect(membershipsOf(s.id)).toHaveLength(2);
+    expect(chargesOf(s.id)).toEqual(["2026-08-01 15000", "2026-09-10 15000"]);
+    expect(membershipsOf(s.id)).toHaveLength(3);
   });
 });
 

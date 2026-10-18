@@ -3,8 +3,9 @@
 import { useEffect, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { PaymentMethod } from "@gestarahub/contracts";
-import { FileDropField, PaymentMethodField } from "@/components/form";
+import { format } from "date-fns";
+import type { DateISO, PaymentMethod } from "@gestarahub/contracts";
+import { DateField, FileDropField, PaymentMethodField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +19,15 @@ import {
 import { RECEIPT_FILE_RULES } from "@/lib/files";
 import { paymentFormSchema, type PaymentFormValues } from "@/lib/payment-form";
 
-const DEFAULTS: Partial<PaymentFormValues> = { method: undefined, receipts: [] };
+const todayISO = () => format(new Date(), "yyyy-MM-dd");
+const defaults = (): Partial<PaymentFormValues> => ({ method: undefined, paidOn: todayISO(), receipts: [] });
+
+/** O que o diálogo devolve: forma, dia do pagamento e comprovantes. */
+export interface PaymentDialogResult {
+  method: PaymentMethod;
+  paidOn: DateISO;
+  receipts: File[];
+}
 
 interface PaymentDialogProps {
   open: boolean;
@@ -29,14 +38,14 @@ interface PaymentDialogProps {
   confirmLabel: string;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
-  /** `receipts`: so o lancamento guarda hoje; mensalidade e professor ignoram. */
-  onConfirm: (method: PaymentMethod, receipts: File[]) => void;
+  onConfirm: (payment: PaymentDialogResult) => void;
 }
 
 /**
- * Registrar pagamento (RHF + Zod): resumo, forma de pagamento obrigatoria e
- * comprovantes opcionais (imagem ou PDF). O proprio modal e a confirmacao da
- * acao com dinheiro. Usado por Cobrancas, Lancamentos e Professores.
+ * Registrar pagamento (RHF + Zod): resumo, forma de pagamento obrigatoria, dia
+ * do pagamento (padrao hoje) e comprovantes opcionais (imagem ou PDF). O
+ * proprio modal e a confirmacao da acao com dinheiro. Usado por Cobrancas,
+ * Lancamentos e Professores.
  */
 export function PaymentDialog({
   open,
@@ -52,18 +61,20 @@ export function PaymentDialog({
     resolver: zodResolver(paymentFormSchema),
     mode: "onSubmit",
     reValidateMode: "onChange",
-    defaultValues: DEFAULTS,
+    defaultValues: defaults(),
   });
 
-  // Cada abertura comeca limpa (forma e comprovantes do pagamento anterior somem).
+  // Cada abertura comeca limpa (forma, data e comprovantes do pagamento anterior somem).
   useEffect(() => {
-    if (open) form.reset(DEFAULTS);
+    if (open) form.reset(defaults());
   }, [open, form]);
 
   // Sem forma escolhida o botao fica desabilitado (evita baixa por clique acidental).
   const method = useWatch({ control: form.control, name: "method" });
 
-  const submit = form.handleSubmit((values) => onConfirm(values.method, values.receipts));
+  const submit = form.handleSubmit((values) =>
+    onConfirm({ method: values.method, paidOn: values.paidOn, receipts: values.receipts }),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,6 +89,12 @@ export function PaymentDialog({
             <DialogBody className="space-y-4">
               {summary}
               <PaymentMethodField<PaymentFormValues> name="method" disabled={isPending} />
+              <DateField<PaymentFormValues>
+                name="paidOn"
+                label="Pago em"
+                max={todayISO()}
+                disabled={isPending}
+              />
               <FileDropField<PaymentFormValues>
                 name="receipts"
                 label="Comprovante (opcional)"
@@ -90,7 +107,7 @@ export function PaymentDialog({
               {/* DialogClose (e nao onOpenChange direto): passa pelo "Descartar alterações?". */}
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={isPending}>
-                  Voltar
+                  Cancelar
                 </Button>
               </DialogClose>
               <Button type="submit" disabled={isPending || !method}>
