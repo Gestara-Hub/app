@@ -255,7 +255,7 @@ export function AuditLogDetailDialog({
 
         {/* Rodapé */}
         <div className="flex flex-col-reverse gap-2 border-t p-4 sm:flex-row sm:justify-between">
-          <Button variant="outline" size="sm" onClick={copyRecord}>
+          <Button variant="outline" onClick={copyRecord}>
             <Copy className="size-4" />
             Copiar registro (JSON)
           </Button>

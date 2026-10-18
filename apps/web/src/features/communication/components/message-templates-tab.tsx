@@ -71,7 +71,7 @@ function TemplateCard({
       <MessageBubble text={preview} />
       {canManage ? (
         <div className="flex justify-end">
-          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={onEdit}>
+          <Button type="button" variant="ghost" className="gap-1.5 text-xs" onClick={onEdit}>
             <Pencil className="size-3" />
             Editar texto
           </Button>

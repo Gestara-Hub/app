@@ -114,7 +114,6 @@ export function OnlinePaymentsSettingsCard({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => void orgQuery.refetch()}
           >
             Tentar novamente

@@ -220,7 +220,6 @@ export function RecurringAuthorizationSection({
           <Button
             type="button"
             variant="outline"
-            size="xs"
             onClick={() => void query.refetch()}
           >
             Tentar novamente
@@ -292,7 +291,6 @@ export function RecurringAuthorizationSection({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() => setRequesting(false)}
                     disabled={requestMut.isPending}
                   >
@@ -300,7 +298,6 @@ export function RecurringAuthorizationSection({
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
                     onClick={sendRequest}
                     disabled={requestMut.isPending}
                   >
@@ -324,7 +321,6 @@ export function RecurringAuthorizationSection({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={startRequest}
                       disabled={!enabled}
                     >
@@ -335,7 +331,6 @@ export function RecurringAuthorizationSection({
                 {status === "pending" ? (
                   <Button
                     type="button"
-                    size="sm"
                     variant="outline"
                     className="border-dashed border-primary/50 text-primary"
                     onClick={() => void simulateAuthorize()}
@@ -348,7 +343,6 @@ export function RecurringAuthorizationSection({
                 {status === "pending" || status === "active" ? (
                   <Button
                     type="button"
-                    size="sm"
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
                     onClick={() => void revoke()}

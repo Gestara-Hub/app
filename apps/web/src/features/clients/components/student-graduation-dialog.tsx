@@ -182,7 +182,7 @@ function CurrentLevelDetails({
             </span>
           ) : null}
         </span>
-        <Button type="button" size="sm" className="gap-1.5" onClick={onGraduate}>
+        <Button type="button" className="gap-1.5" onClick={onGraduate}>
           <Award className="size-4" />
           {vocabulary.promoteVerb}
         </Button>

@@ -225,7 +225,6 @@ function RowEditor<T extends ManagedEntity>({
         <Button
           type="button"
           size="icon-sm"
-          className="size-8"
           title="Salvar"
           aria-label="Salvar"
           disabled={pending}
@@ -237,7 +236,6 @@ function RowEditor<T extends ManagedEntity>({
           type="button"
           variant="outline"
           size="icon-sm"
-          className="size-8"
           title="Cancelar"
           aria-label="Cancelar"
           disabled={pending}
@@ -394,7 +392,7 @@ function EntityList<T extends ManagedEntity>({
       <div className="flex flex-col items-center gap-3 py-10 text-center">
         <AlertTriangle className="size-7 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{labels.loadError}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

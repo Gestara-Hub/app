@@ -223,7 +223,6 @@ export function OnlineChargeDialog({
               </p>
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => void checkout.refetch()}
               >
                 <RotateCw className="size-4" />
@@ -321,7 +320,6 @@ export function OnlineChargeDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() =>
                       void copyText(
                         (awaiting.method === "pix"
@@ -353,7 +351,6 @@ export function OnlineChargeDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     disabled={!phone}
                     onClick={() => sendWhatsapp(awaiting)}
                   >
@@ -364,7 +361,6 @@ export function OnlineChargeDialog({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   onClick={() => setChoosing(true)}
                 >
                   <RotateCw className="size-4" />
@@ -383,7 +379,6 @@ export function OnlineChargeDialog({
                 </p>
                 <Button
                   type="button"
-                  size="sm"
                   disabled={paidMut.isPending}
                   onClick={() => void simulatePaid(awaiting)}
                 >

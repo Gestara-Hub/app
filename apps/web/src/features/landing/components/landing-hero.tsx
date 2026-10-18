@@ -46,8 +46,7 @@ export function LandingHero() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button
               asChild
-              size="lg"
-              className="h-12 w-full sm:w-auto px-8 text-sm font-semibold shadow-md gap-2"
+              className="w-full sm:w-auto px-8 text-sm font-semibold shadow-md gap-2"
             >
               <a href="#cadastro">
                 <span>Criar conta grátis</span>
@@ -57,8 +56,7 @@ export function LandingHero() {
             <Button
               asChild
               variant="outline"
-              size="lg"
-              className="h-12 w-full sm:w-auto px-6 text-sm font-medium"
+              className="w-full sm:w-auto px-6 text-sm font-medium"
             >
               <a href="#o-sistema">Ver o sistema</a>
             </Button>

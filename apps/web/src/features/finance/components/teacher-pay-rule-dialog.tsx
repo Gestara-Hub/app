@@ -247,7 +247,6 @@ function TeacherPayRuleForm({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               disabled={pending}
               onClick={() => append(emptyComponent("per_session"))}
             >

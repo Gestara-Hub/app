@@ -268,8 +268,7 @@ export function useChargeActions() {
       return (
         <Button
           variant="ghost"
-          size={compact ? "icon-xs" : "icon-sm"}
-          className={compact ? "size-7" : "size-8"}
+          size="icon-sm"
           title="Desfazer pagamento"
           onClick={() => undoPayment(c)}
         >

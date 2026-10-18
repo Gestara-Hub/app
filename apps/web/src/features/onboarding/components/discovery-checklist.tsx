@@ -69,9 +69,8 @@ export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: Class
         </div>
         <Button
           variant="ghost"
-          size="sm"
           onClick={dismiss}
-          className="-mr-2 -mt-1 h-8 shrink-0 gap-1.5 text-xs text-muted-foreground"
+          className="-mr-2 -mt-1 shrink-0 gap-1.5 text-xs text-muted-foreground"
         >
           <X className="size-3.5" />
           Fechar

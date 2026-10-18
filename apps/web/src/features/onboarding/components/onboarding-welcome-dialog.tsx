@@ -169,8 +169,7 @@ export function OnboardingWelcomeDialog({
           </p>
           <Button
             variant="ghost"
-            size="sm"
-            className="text-xs text-muted-foreground hover:text-foreground h-8"
+            className="text-xs text-muted-foreground hover:text-foreground"
             onClick={() => onOpenChange(false)}
           >
             Explorar por conta própria

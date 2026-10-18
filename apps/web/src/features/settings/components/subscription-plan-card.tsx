@@ -54,7 +54,7 @@ export function SubscriptionPlanCard() {
       <Card>
         <CardContent className="flex flex-col items-start gap-3 py-6">
           <p className="text-sm text-muted-foreground">Não foi possível carregar o plano.</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>
             Tentar novamente
           </Button>
         </CardContent>

@@ -119,7 +119,7 @@ export function SchedulingDashboardView() {
           <p className="text-sm text-muted-foreground">
             Não foi possível carregar o dashboard. Tente novamente.
           </p>
-          <Button variant="outline" size="sm" onClick={() => appointmentsQuery.refetch()}>
+          <Button variant="outline" onClick={() => appointmentsQuery.refetch()}>
             <RotateCw className="size-4" />
             Tentar novamente
           </Button>
@@ -163,7 +163,7 @@ export function SchedulingDashboardView() {
             <Card className="lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Próximos agendamentos</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" asChild>
                   <Link href="/schedule">Ver agenda</Link>
                 </Button>
               </CardHeader>

@@ -27,7 +27,7 @@ export function ModuleEmptyGuide({
         ) : null}
       </div>
       {actionLabel && onAction ? (
-        <Button type="button" size="sm" onClick={onAction}>
+        <Button type="button" onClick={onAction}>
           {actionLabel}
         </Button>
       ) : null}

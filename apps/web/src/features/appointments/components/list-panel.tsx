@@ -121,7 +121,7 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar os agendamentos. Tente novamente.
         </p>
-        <Button variant="outline" size="sm" onClick={() => query.refetch()}>
+        <Button variant="outline" onClick={() => query.refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>
@@ -160,11 +160,11 @@ export function ListPanel({ onSelectAppointment, onCreate }: ListPanelProps) {
                 : "Nenhum agendamento neste período."}
             </p>
             {hasFilters ? (
-              <Button variant="outline" size="sm" onClick={clearAll}>
+              <Button variant="outline" onClick={clearAll}>
                 Limpar filtros
               </Button>
             ) : canCreate ? (
-              <Button size="sm" onClick={onCreate}>
+              <Button onClick={onCreate}>
                 <Plus className="size-4" />
                 Novo agendamento
               </Button>

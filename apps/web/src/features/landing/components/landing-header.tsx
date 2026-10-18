@@ -78,7 +78,7 @@ export function LandingHeader() {
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 rounded-full text-muted-foreground hover:text-foreground"
+            className="rounded-full text-muted-foreground hover:text-foreground"
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
             aria-label="Alternar tema"
           >
@@ -90,7 +90,7 @@ export function LandingHeader() {
             <Link href="/login">Entrar</Link>
           </Button>
 
-          <Button asChild size="sm" className="gap-1.5 px-4 font-semibold shadow-xs">
+          <Button asChild className="gap-1.5 px-4 font-semibold shadow-xs">
             <Link href="/#cadastro">
               <span>Criar conta grátis</span>
               <ArrowRight className="size-3.5" />

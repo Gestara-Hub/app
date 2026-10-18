@@ -111,7 +111,7 @@ export function ThemeCustomizer() {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-9 text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground"
           aria-label="Personalizador de Tema"
           title="Personalizador de Tema"
         >
@@ -163,7 +163,6 @@ export function ThemeCustomizer() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={handleCopyCss}
               className="gap-1.5 text-xs font-medium"
             >
@@ -173,7 +172,6 @@ export function ThemeCustomizer() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={undo}
               disabled={!canUndo}
               className="gap-1.5 text-xs font-medium"
@@ -184,7 +182,6 @@ export function ThemeCustomizer() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={redo}
               disabled={!canRedo}
               className="gap-1.5 text-xs font-medium"
@@ -361,9 +358,8 @@ export function ThemeCustomizer() {
                 <Button
                   type="button"
                   variant="outline"
-                  size="xs"
                   onClick={handleRandomize}
-                  className="gap-1 text-[11px] h-7 px-2 font-medium"
+                  className="gap-1 text-[11px] px-2 font-medium"
                 >
                   <Dices className="size-3 text-primary" />
                   Aleatório

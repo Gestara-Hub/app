@@ -50,6 +50,12 @@ Toda aba ou tela de listagem deve conter:
   2. `"Editar"` (ícone `Pencil`).
   3. Ações de ciclo de vida separadas por `separator: true`: `"Inativar"` / `"Reativar"` (`Power`) ou `"Cancelar"` / `"Excluir"` (`Trash2`, `variant: "destructive"`).
 
+### 1.5. Altura dos Botões: uma só (17/10/2026)
+- **Botão com texto usa sempre a altura padrão do `Button` (36px).** Não passe `size="sm"`, `size="xs"` nem `size="lg"`, e não coloque altura no `className` (`h-*`, `min-h-*`, `py-*`). Vale para o app inteiro, a landing page, o banner de cookies e os diálogos.
+- **Botão só de ícone** usa `size="icon"` (os mesmos 36px), principalmente ao lado de botões com texto (setas do calendário e do mês, alternar tema, menu lateral).
+- Exceções, só por variante e nunca por `className`: `size="icon-sm"` (32px) nas ações dentro de linhas e cards (o `⋮`, desfazer pagamento, remover item de uma lista) e `size="icon-xs"` (24px) no "x" de remover dentro de chips, arquivos e anexos.
+- Campo ao lado de um botão segue a altura padrão do campo (sem `h-*`), para os dois ficarem alinhados.
+
 ---
 
 ## 2. Anatomia Padrão de Modais de Formulário (`Dialog`)

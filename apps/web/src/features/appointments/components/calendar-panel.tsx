@@ -204,18 +204,17 @@ export function CalendarPanel({
     <>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button variant="outline" size="icon-sm" aria-label="Anterior" onClick={() => shift(-1)}>
+          <Button variant="outline" size="icon" aria-label="Anterior" onClick={() => shift(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
           <Button
             variant={date === today ? "default" : "outline"}
-            size="sm"
             onClick={() => setDate(today)}
             className={cn(date === today && "shadow-xs")}
           >
             Hoje
           </Button>
-          <Button variant="outline" size="icon-sm" aria-label="Próximo" onClick={() => shift(1)}>
+          <Button variant="outline" size="icon" aria-label="Próximo" onClick={() => shift(1)}>
             <ChevronRight className="size-4" />
           </Button>
           <p className="ml-2 text-sm font-medium">{formatRangeLabel(date, mode)}</p>
@@ -267,7 +266,6 @@ export function CalendarPanel({
           </p>
           <Button
             variant="outline"
-            size="sm"
             onClick={() => {
               unitQuery.refetch();
               appointmentsQuery.refetch();
@@ -306,7 +304,7 @@ export function CalendarPanel({
                 Configure os dias e horários de funcionamento da unidade para
                 abrir a grade visual da agenda.
               </p>
-              <Button asChild size="sm" variant="outline" className="mt-2">
+              <Button asChild variant="outline" className="mt-2">
                 <Link href="/settings?tab=horarios">Configurar horários</Link>
               </Button>
             </div>

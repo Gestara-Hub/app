@@ -376,7 +376,7 @@ export function FinanceEntriesTab({
     if (row.source === "charge" && row.chargeCounts) {
       meta = <span>{chargeCountsLabel(row.chargeCounts)}</span>;
       trailing = (
-        <Button asChild variant="ghost" size="sm" className="text-xs">
+        <Button asChild variant="ghost" className="text-xs">
           <Link href={billingHref(competence, { kind: chargeKindOf(row) })}>
             Ver em Cobranças
             <ChevronRight className="size-3.5" />
@@ -392,7 +392,7 @@ export function FinanceEntriesTab({
         </>
       );
       trailing = (
-        <Button asChild variant="ghost" size="sm" className="text-xs">
+        <Button asChild variant="ghost" className="text-xs">
           <Link href={financeHref("professores", competence)}>
             <Users className="size-3.5" />
             Ver professores
@@ -502,7 +502,7 @@ export function FinanceEntriesTab({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertTriangle className="size-7 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Não foi possível carregar os lançamentos.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

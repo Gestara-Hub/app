@@ -102,7 +102,7 @@ export function TeacherPayTab({ competence }: { competence: string }) {
             <p className="text-sm text-muted-foreground">
               Não foi possível carregar o pagamento dos professores. Tente novamente.
             </p>
-            <Button variant="outline" size="sm" onClick={retry}>
+            <Button variant="outline" onClick={retry}>
               <RotateCw className="size-4" />
               Tentar novamente
             </Button>
@@ -200,7 +200,7 @@ export function TeacherPayTab({ competence }: { competence: string }) {
                 key={t.professionalId}
                 actions={
                   canManage ? (
-                    <Button variant="outline" size="sm" onClick={() => setConfiguring(t)}>
+                    <Button variant="outline" onClick={() => setConfiguring(t)}>
                       <Settings2 className="size-4" />
                       {t.rule ? "Editar pagamento" : "Configurar pagamento"}
                     </Button>

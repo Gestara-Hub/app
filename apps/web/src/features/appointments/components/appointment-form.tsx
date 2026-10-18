@@ -280,7 +280,6 @@ export function AppointmentForm({
                     key={prereq.key}
                     type="button"
                     variant="outline"
-                    size="sm"
                     asChild
                   >
                     <Link href={prereq.href}>

@@ -198,18 +198,18 @@ export function TurmasCalendarView() {
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             aria-label="Semana anterior"
             onClick={() => shiftWeek(-1)}
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setAnchor(new Date())}>
+          <Button variant="outline" onClick={() => setAnchor(new Date())}>
             Hoje
           </Button>
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             aria-label="Próxima semana"
             onClick={() => shiftWeek(1)}
           >

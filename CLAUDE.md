@@ -80,6 +80,7 @@ Read **[`docs/frontend/07-padroes-telas-e-ux.md`](docs/frontend/07-padroes-telas
   - Top KPI summary grid has a **maximum of 4 cards** (`lg:grid-cols-4`). Group secondary metrics as `sub` text rather than adding a 5th/6th card. Never `truncate` monetary values or category names.
   - Every list screen/tab must render `SearchInput` + filters + `ListSummaryBar` (with `isLoading={isPending}`) above `ListContainer`.
   - Every row/card must wrap with `ListItemContextMenu` (right-click) and render `ListItemActionsMenu` (`⋮`) on the right.
+  - **Button height**: one height (36px). Text buttons never get `size` or height classes (`h-*`, `py-*`); icon-only buttons use `size="icon"`; `icon-sm`/`icon-xs` only for row actions and remove buttons inside chips/files (doc 07 §1.5).
 - **Modal Form Structure (`Dialog` + `DialogBody` + `DialogFormFooter`)**:
   - Header (`DialogHeader shrink-0`) and Footer (`DialogFormFooter shrink-0`) are fixed; fields scroll inside `<DialogBody className="space-y-4">`.
   - **Footer Button Labels (STRICT)**:

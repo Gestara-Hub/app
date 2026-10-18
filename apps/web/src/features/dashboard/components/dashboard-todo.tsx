@@ -77,7 +77,7 @@ function TodoRow({
           <p className="text-xs text-muted-foreground">{detail}</p>
         </div>
         {href ? (
-          <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 text-xs" asChild>
+          <Button variant="outline" className="shrink-0 gap-1 text-xs" asChild>
             <Link href={href}>
               {action}
               <ArrowUpRight className="size-3.5" />
@@ -87,8 +87,7 @@ function TodoRow({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-8 shrink-0 gap-1 text-xs"
+            className="shrink-0 gap-1 text-xs"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
@@ -262,8 +261,7 @@ export function DashboardTodo({ today }: { today: string }) {
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="h-7 shrink-0 text-xs"
+                          className="shrink-0 text-xs"
                           onClick={() => setSelling({ id: pkg.studentId, name: pkg.studentName })}
                         >
                           Vender pacote
@@ -361,8 +359,7 @@ export function DashboardTodo({ today }: { today: string }) {
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
-                      className="h-7 shrink-0 text-xs"
+                      className="shrink-0 text-xs"
                       onClick={() => setGraduating({ client: p.client, modalityId: p.modalityId })}
                     >
                       {vocabularyForTrack(p.track, areaVocabulary).promoteVerb}

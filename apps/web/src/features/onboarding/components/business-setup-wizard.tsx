@@ -367,7 +367,7 @@ export function BusinessSetupWizard() {
                   onClick={() => setShowUnitField(true)}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline cursor-pointer"
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-4" />
                   <span>Tenho mais de um endereço</span>
                 </button>
               )}
@@ -568,7 +568,7 @@ export function BusinessSetupWizard() {
                             className="ml-0.5 opacity-70 hover:opacity-100"
                             title="Remover"
                           >
-                            <X className="size-3" />
+                            <X className="size-3.5" />
                           </span>
                         )}
                       </button>
@@ -601,14 +601,14 @@ export function BusinessSetupWizard() {
                       }
                     }}
                     placeholder="Informe o nome da aula"
-                    className="h-10 bg-background"
+                    className="bg-background"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleAddCustomModality}
                     disabled={!newModalityInput.trim()}
-                    className="h-10 px-4 gap-1.5 shrink-0"
+                    className="px-4 gap-1.5 shrink-0"
                   >
                     <Plus className="size-4" />
                     <span>Adicionar</span>

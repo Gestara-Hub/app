@@ -70,7 +70,6 @@ export function ModalitiesReviewNotice() {
       <Button
         type="button"
         variant="outline"
-        size="sm"
         className="shrink-0"
         disabled={markMut.isPending}
         onClick={markReviewed}

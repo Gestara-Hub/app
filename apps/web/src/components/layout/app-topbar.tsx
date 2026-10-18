@@ -54,7 +54,6 @@ export function AppTopbar() {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-9"
           aria-label="Alternar modo claro/escuro"
           title="Alternar modo claro/escuro"
           onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
@@ -64,7 +63,7 @@ export function AppTopbar() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2 px-1.5 sm:px-2">
+            <Button variant="ghost" className="gap-2 px-1.5 sm:px-2">
               <Avatar className="size-6">
                 <AvatarFallback className="bg-secondary text-xs">
                   {userInitials(user.name)}

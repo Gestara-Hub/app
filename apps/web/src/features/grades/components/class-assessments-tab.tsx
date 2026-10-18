@@ -88,7 +88,7 @@ export function ClassAssessmentsTab({
           aria-label="Buscar avaliação"
         />
         {canManage ? (
-          <Button size="sm" className="shrink-0" onClick={openNew}>
+          <Button className="shrink-0" onClick={openNew}>
             <Plus className="size-4" />
             Nova avaliação
           </Button>

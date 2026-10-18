@@ -80,11 +80,11 @@ function ModeBanner({
         </div>
       </div>
       {connection.canUseOfficial ? (
-        <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={onConnect}>
+        <Button type="button" variant="outline" className="shrink-0" onClick={onConnect}>
           Conectar WhatsApp oficial
         </Button>
       ) : (
-        <Button type="button" size="sm" variant="outline" className="shrink-0" asChild>
+        <Button type="button" variant="outline" className="shrink-0" asChild>
           <Link href={PLAN_SETTINGS_HREF}>Envio automático no Pro</Link>
         </Button>
       )}

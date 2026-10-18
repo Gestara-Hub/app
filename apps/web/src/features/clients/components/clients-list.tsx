@@ -950,7 +950,7 @@ export function ClientsList({
             ? "Não foi possível carregar os alunos. Tente novamente."
             : "Não foi possível carregar os clientes. Tente novamente."}
         </p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

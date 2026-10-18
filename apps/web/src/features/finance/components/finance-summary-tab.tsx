@@ -56,7 +56,7 @@ function RetryBlock({ message, onRetry }: { message: string; onRetry: () => void
     <div className="flex flex-col items-center gap-3 py-8 text-center">
       <AlertTriangle className="size-7 text-muted-foreground" />
       <p className="text-sm text-muted-foreground">{message}</p>
-      <Button variant="outline" size="sm" onClick={onRetry}>
+      <Button variant="outline" onClick={onRetry}>
         <RotateCw className="size-4" />
         Tentar novamente
       </Button>
@@ -391,26 +391,25 @@ function VariantSimplified({
           {onCreateEntry ? (
             <Button
               variant="outline"
-              size="sm"
-              className="h-8 text-xs cursor-pointer"
+              className="text-xs cursor-pointer"
               onClick={onCreateEntry}
             >
               Registrar Lançamento
             </Button>
           ) : (
             <Link href={financeHref("lancamentos", competence)}>
-              <Button variant="outline" size="sm" className="h-8 text-xs cursor-pointer">
+              <Button variant="outline" className="text-xs cursor-pointer">
                 Registrar Lançamento
               </Button>
             </Link>
           )}
           <Link href={billingHref(competence)}>
-            <Button variant="outline" size="sm" className="h-8 text-xs cursor-pointer">
+            <Button variant="outline" className="text-xs cursor-pointer">
               Gerenciar Cobranças
             </Button>
           </Link>
           <Link href={financeHref("professores", competence)}>
-            <Button variant="outline" size="sm" className="h-8 text-xs cursor-pointer">
+            <Button variant="outline" className="text-xs cursor-pointer">
               Folha dos Professores
             </Button>
           </Link>
@@ -716,7 +715,7 @@ function VariantExecutive({
                 <Button
                   variant={overdueCents > 0 ? "default" : "outline"}
                   className={cn(
-                    "w-full h-7 text-xs font-medium gap-1 cursor-pointer",
+                    "w-full text-xs font-medium gap-1 cursor-pointer",
                     overdueCents > 0
                       ? "bg-amber-600 hover:bg-amber-700 text-white shadow-2xs"
                       : "text-muted-foreground",
@@ -1014,7 +1013,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
                     {formatCents(item.amountCents)}
                   </span>
                   <Link href={actionHref}>
-                    <Button variant="outline" size="sm" className="h-7 text-xs px-2.5 cursor-pointer">
+                    <Button variant="outline" className="text-xs px-2.5 cursor-pointer">
                       {actionLabel}
                     </Button>
                   </Link>

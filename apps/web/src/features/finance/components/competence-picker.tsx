@@ -44,7 +44,7 @@ export function CompetencePicker({
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {!isCurrent ? (
-        <Button variant="ghost" size="sm" onClick={() => onChange(current)}>
+        <Button variant="ghost" onClick={() => onChange(current)}>
           <CalendarCheck className="size-4" />
           Hoje
         </Button>
@@ -53,8 +53,8 @@ export function CompetencePicker({
       <div className="inline-flex items-center rounded-md border border-border/70 bg-background">
         <Button
           variant="ghost"
-          size="icon-sm"
-          className="size-9 rounded-r-none"
+          size="icon"
+          className="rounded-r-none"
           aria-label="Mês anterior"
           onClick={() => onChange(addCompetence(competence, -1))}
         >
@@ -126,7 +126,7 @@ export function CompetencePicker({
               })}
             </div>
             <div className="mt-3 flex justify-end border-t pt-3">
-              <Button variant="outline" size="sm" disabled={isCurrent} onClick={() => pick(current)}>
+              <Button variant="outline" disabled={isCurrent} onClick={() => pick(current)}>
                 <CalendarCheck className="size-4" />
                 Hoje
               </Button>
@@ -135,8 +135,8 @@ export function CompetencePicker({
         </Popover>
         <Button
           variant="ghost"
-          size="icon-sm"
-          className="size-9 rounded-l-none"
+          size="icon"
+          className="rounded-l-none"
           aria-label="Próximo mês"
           onClick={() => onChange(addCompetence(competence, 1))}
         >

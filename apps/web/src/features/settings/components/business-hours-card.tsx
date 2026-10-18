@@ -260,7 +260,6 @@ function DayShiftsDialog({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               disabled={noRoom}
               aria-label={`Adicionar turno em ${label}`}
               onClick={() => {
@@ -563,11 +562,10 @@ function BusinessHoursEditor({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   disabled={pending}
                   aria-label={`Editar horários de ${label}`}
                   onClick={() => setEditing({ weekday: day.weekday, showErrors: false })}
-                  className="ml-auto h-8 text-muted-foreground hover:text-foreground"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
                 >
                   <Pencil className="size-3.5" />
                   Editar

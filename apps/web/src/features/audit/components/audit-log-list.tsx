@@ -178,7 +178,7 @@ export function AuditLogList() {
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar o log de auditoria. Tente novamente.
         </p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

@@ -233,7 +233,6 @@ export function ConnectionSettingsTab() {
           <Button
             type="button"
             variant="outline"
-            size="sm"
             disabled={!canManage || disconnectMut.isPending}
             onClick={() => void disconnect()}
           >

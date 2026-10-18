@@ -536,13 +536,12 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() => {
                       setIsCustomizePulsing(false);
                       setShowLevelsEditor((prev) => !prev);
                     }}
                     className={cn(
-                      "h-8 w-full px-2 text-[11px] font-semibold border-primary/35 text-primary hover:bg-primary/10 hover:text-primary shrink-0 sm:h-7 sm:w-auto",
+                      "w-full px-2 text-[11px] font-semibold border-primary/35 text-primary hover:bg-primary/10 hover:text-primary shrink-0 sm:w-auto",
                       !showLevelsEditor &&
                         isCustomizePulsing &&
                         "motion-safe:animate-attention-ring",
@@ -736,9 +735,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
                           onClick={addStep}
-                          className="h-6 px-2 text-[11px]"
+                          className="px-2 text-[11px]"
                         >
                           <Plus className="size-3" />
                           Adicionar {levelWord.toLowerCase()}
@@ -1061,8 +1059,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
-                            className="size-6 shrink-0 text-destructive/80 hover:text-destructive"
+                            size="icon-xs"
+                            className="shrink-0 text-destructive/80 hover:text-destructive"
                             disabled={track.levels.length <= 1}
                             onClick={() => removeStep(index)}
                             aria-label={`Remover ${levelWord.toLowerCase()}`}

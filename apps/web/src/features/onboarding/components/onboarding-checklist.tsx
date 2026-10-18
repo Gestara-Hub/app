@@ -222,9 +222,8 @@ export function OnboardingChecklist({
 
           <Button
             variant="outline"
-            size="sm"
             onClick={onStartTour}
-            className="h-8 gap-1.5 text-xs self-start sm:self-center shrink-0"
+            className="gap-1.5 text-xs self-start sm:self-center shrink-0"
           >
             <Compass className="size-3.5" />
             Fazer tour guiado
@@ -385,7 +384,6 @@ export function OnboardingChecklist({
                             </span>
                           ) : active ? (
                             <Button
-                              size="sm"
                               className={cn(
                                 "gap-1.5 font-semibold text-xs shadow-xs",
                                 nextStepAttention.attention &&

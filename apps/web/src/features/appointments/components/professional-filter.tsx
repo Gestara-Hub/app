@@ -67,7 +67,6 @@ export function ProfessionalFilter({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
           aria-label="Filtrar profissionais"
           className="justify-between gap-2 sm:w-56"
         >

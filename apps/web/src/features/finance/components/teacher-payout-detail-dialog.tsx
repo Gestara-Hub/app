@@ -702,7 +702,7 @@ function AdjustmentForm({
 
   if (!open) {
     return (
-      <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => setOpen(true)}>
+      <Button type="button" variant="outline" disabled={disabled} onClick={() => setOpen(true)}>
         <Plus className="size-4" />
         Adicionar ajuste
       </Button>
@@ -756,7 +756,6 @@ function AdjustmentForm({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
             disabled={disabled}
             onClick={() => {
               form.reset();
@@ -765,7 +764,7 @@ function AdjustmentForm({
           >
             Cancelar
           </Button>
-          <Button type="submit" size="sm" disabled={disabled || form.formState.isSubmitting}>
+          <Button type="submit" disabled={disabled || form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Salvando..." : "Adicionar"}
           </Button>
         </div>

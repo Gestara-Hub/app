@@ -70,18 +70,18 @@ export function StudentEvolutionTab({
             {canManage || (onOpenGrades && gradedModalityIds?.has(level.modalityId)) ? (
               <div className="flex flex-wrap gap-2">
                 {onOpenGrades && gradedModalityIds?.has(level.modalityId) ? (
-                  <Button variant="outline" size="sm" onClick={() => onOpenGrades(level.modalityId)}>
+                  <Button variant="outline" onClick={() => onOpenGrades(level.modalityId)}>
                     <ClipboardCheck className="size-4" />
                     Notas
                   </Button>
                 ) : null}
                 {canManage ? (
                   <>
-                    <Button variant="outline" size="sm" onClick={() => onOpenRecords(level.modalityId)}>
+                    <Button variant="outline" onClick={() => onOpenRecords(level.modalityId)}>
                       <MessageSquarePlus className="size-4" />
                       Registros de aula
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => onOpenLevels(level.modalityId)}>
+                    <Button variant="outline" onClick={() => onOpenLevels(level.modalityId)}>
                       <GraduationCap className="size-4" />
                       {level.words.levelsTitle}
                     </Button>

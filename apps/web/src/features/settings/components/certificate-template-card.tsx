@@ -128,7 +128,7 @@ export function CertificateTemplateCard({
       <Card>
         <CardContent className="flex flex-col items-start gap-3 py-6">
           <p className="text-sm text-muted-foreground">Não foi possível carregar o modelo.</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => void query.refetch()}>
+          <Button type="button" variant="outline" onClick={() => void query.refetch()}>
             Tentar novamente
           </Button>
         </CardContent>
@@ -398,7 +398,6 @@ function CertificateTemplateForm({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     className="gap-1.5"
                     disabled={pending}
                     onClick={() => signatures.append({ name: "", role: "" })}
@@ -427,7 +426,6 @@ function CertificateTemplateForm({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
                       className="gap-1.5"
                       disabled={pending}
                       onClick={() => form.setValue("keepLogo", false, { shouldDirty: true })}

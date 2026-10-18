@@ -533,7 +533,7 @@ export function EnrollStudentsDialog({
           </p>
         ) : null}
 
-        <Button asChild variant="ghost" size="sm" className="-ml-2 self-start">
+        <Button asChild variant="ghost" className="-ml-2 self-start">
           <Link href="/clients">
             <UserPlus className="size-4" />
             Cadastrar novo aluno

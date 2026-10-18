@@ -94,11 +94,11 @@ export function SetupCompleteDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button ref={enrollRef} className="h-10 w-full gap-1.5" onClick={onPrimary}>
+            <Button ref={enrollRef} className="w-full gap-1.5" onClick={onPrimary}>
               {enrolled ? "Ver as cobranças" : "Matricular alunos agora"}
               <ArrowRight className="size-4" />
             </Button>
-            <AlertDialogCancel className="h-9 w-full">
+            <AlertDialogCancel className="w-full">
               Agora não
             </AlertDialogCancel>
           </div>

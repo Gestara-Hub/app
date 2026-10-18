@@ -657,7 +657,7 @@ export function BillingView() {
                   <p className="text-sm text-muted-foreground">
                     Não foi possível carregar as cobranças. Tente novamente.
                   </p>
-                  <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  <Button variant="outline" onClick={() => refetch()}>
                     <RotateCw className="size-4" />
                     Tentar novamente
                   </Button>
@@ -685,7 +685,7 @@ export function BillingView() {
                                 : "Nenhuma mensalidade neste mês."
                         : "Nenhuma cobrança com esta situação no mês."}
                   </p>
-                  <Button variant="outline" size="sm" onClick={clearListFilters}>
+                  <Button variant="outline" onClick={clearListFilters}>
                     Limpar filtros
                   </Button>
                 </div>
@@ -828,7 +828,6 @@ export function BillingView() {
 
                             <Button
                               variant="outline"
-                              size="sm"
                               className="gap-1 text-xs font-medium"
                               onClick={(e) => {
                                 e.stopPropagation();

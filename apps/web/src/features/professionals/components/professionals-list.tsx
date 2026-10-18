@@ -374,7 +374,7 @@ export function ProfessionalsList({
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar a equipe. Tente novamente.
         </p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

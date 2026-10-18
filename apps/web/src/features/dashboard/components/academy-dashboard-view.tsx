@@ -259,7 +259,7 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
             Grade e lista de presença das turmas com encontro hoje
           </p>
         </div>
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" asChild>
           <Link href="/classes/calendar">
             Ver grade completa
             <ArrowUpRight className="size-3.5" />
@@ -274,7 +274,7 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
             <p className="text-xs text-muted-foreground max-w-sm">
               Confira a grade semanal no calendário ou adicione novos horários às suas turmas.
             </p>
-            <Button variant="outline" size="sm" className="mt-2" asChild>
+            <Button variant="outline" className="mt-2" asChild>
               <Link href="/classes/calendar">Ir para o calendário</Link>
             </Button>
           </div>
@@ -339,7 +339,7 @@ function TodaySessionsCard({ d, className }: { d: DashboardData; className?: str
                         Agendada
                       </Badge>
                     )}
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" asChild>
                       <Link href={`/classes/sessions/${s.id}`}>
                         <ClipboardCheck className="size-3.5" />
                         Lista de chamada
@@ -427,7 +427,7 @@ function OccupancyCard({
     <Card className={cn("flex flex-col gap-0", className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <CardTitle className="text-base font-semibold">Ocupação das turmas</CardTitle>
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" asChild>
           <Link href="/classes">
             Ver turmas
             <ArrowUpRight className="size-3.5" />
@@ -484,7 +484,7 @@ function AcademyDashboardBody() {
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar as informações do dashboard. Tente novamente.
         </p>
-        <Button variant="outline" size="sm" onClick={d.refetch}>
+        <Button variant="outline" onClick={d.refetch}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>
@@ -533,13 +533,13 @@ export function AcademyDashboardView() {
             description={isClient ? `Visão geral das turmas · ${todayLabel}` : "Visão geral das turmas"}
           />
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" asChild>
               <Link href="/classes/calendar">
                 <CalendarCheck className="size-4" />
                 Ver calendário
               </Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button asChild>
               <Link href="/classes">
                 <Plus className="size-4" />
                 Nova turma

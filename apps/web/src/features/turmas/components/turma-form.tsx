@@ -600,7 +600,6 @@ function MeetingSlotsEditor({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={addBlock}
             disabled={disabled}
             className="w-full border-dashed text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground"

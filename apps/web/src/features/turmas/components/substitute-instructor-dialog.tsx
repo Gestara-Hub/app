@@ -189,7 +189,6 @@ function SubstituteInstructorForm({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={handleRestore}
               disabled={isPending}
               className="gap-1.5 text-muted-foreground hover:text-foreground"

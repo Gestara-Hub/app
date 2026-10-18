@@ -331,7 +331,6 @@ export function OnboardingTopBanner() {
                   </span>
                   <Button
                     type="button"
-                    size="sm"
                     className={cn(
                       CTA_CLASS,
                       reviewAttention.attention && "motion-safe:animate-attention-loop-infinite",
@@ -355,7 +354,6 @@ export function OnboardingTopBanner() {
                 <Button
                   key={nextStep.id}
                   asChild
-                  size="sm"
                   className={cn(
                     CTA_CLASS,
                     continueAttention.attention &&
@@ -376,7 +374,7 @@ export function OnboardingTopBanner() {
                 </Button>
               )
             ) : (
-              <Button asChild size="sm" variant="outline" className={CTA_CLASS}>
+              <Button asChild variant="outline" className={CTA_CLASS}>
                 <Link href="/dashboard">Concluir na Dashboard</Link>
               </Button>
             )}

@@ -62,7 +62,6 @@ export function ReportsView({
         <div className="space-y-6">
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setSelectedReport(null)}
             className="text-xs"
           >
@@ -93,7 +92,7 @@ export function ReportsView({
       ) : (
         <div className="p-8 text-center text-sm text-muted-foreground space-y-3">
           <p>Não foi possível carregar os dados deste relatório.</p>
-          <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)}>
+          <Button variant="outline" onClick={() => setSelectedReport(null)}>
             Voltar ao Catálogo
           </Button>
         </div>

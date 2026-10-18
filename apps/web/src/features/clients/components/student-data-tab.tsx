@@ -53,7 +53,7 @@ export function StudentDataTab({
   const guardians = student.guardians ?? [];
   const address = addressText(student.address);
   const editButton = onEdit ? (
-    <Button variant="outline" size="sm" onClick={onEdit}>
+    <Button variant="outline" onClick={onEdit}>
       <Pencil className="size-4" />
       Editar
     </Button>

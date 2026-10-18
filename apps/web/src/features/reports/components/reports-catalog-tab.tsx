@@ -117,32 +117,28 @@ export function ReportsCatalogTab({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <Button
           variant={categoryFilter === "all" ? "default" : "outline"}
-          size="sm"
-          className="h-7 text-xs"
+          className="text-xs"
           onClick={() => setCategoryFilter("all")}
         >
           Todos os Relatórios ({catalog.length})
         </Button>
         <Button
           variant={categoryFilter === "operational" ? "default" : "outline"}
-          size="sm"
-          className="h-7 text-xs"
+          className="text-xs"
           onClick={() => setCategoryFilter("operational")}
         >
           Operacionais (Grátis)
         </Button>
         <Button
           variant={categoryFilter === "financial" ? "default" : "outline"}
-          size="sm"
-          className="h-7 text-xs"
+          className="text-xs"
           onClick={() => setCategoryFilter("financial")}
         >
           Financeiros (DRE)
         </Button>
         <Button
           variant={categoryFilter === "retention" ? "default" : "outline"}
-          size="sm"
-          className="h-7 text-xs"
+          className="text-xs"
           onClick={() => setCategoryFilter("retention")}
         >
           Retenção & Churn

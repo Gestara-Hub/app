@@ -16,7 +16,7 @@ export const CERTIFICATE_LOCKED_HINT = "Certificado de conclusão no Plano Pro."
 
 function BackLink({ classGroupId }: { classGroupId: string }) {
   return (
-    <Button variant="ghost" size="sm" className="-ml-2 gap-1" asChild>
+    <Button variant="ghost" className="-ml-2 gap-1" asChild>
       <Link href={`/classes/${classGroupId}`}>
         <ChevronLeft className="size-4" />
         Voltar à turma

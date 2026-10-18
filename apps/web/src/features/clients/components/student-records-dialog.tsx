@@ -350,7 +350,7 @@ function Composer({
         <button type="button" onClick={() => setMore((v) => !v)} className="text-[11px] font-medium text-primary hover:underline">
           {more ? "Menos opções" : openGoals.length > 0 ? "+ Metas e próxima aula" : "+ Próxima aula"}
         </button>
-        <Button type="button" size="sm" disabled={!canSave || addMut.isPending} onClick={() => void save()}>
+        <Button type="button" disabled={!canSave || addMut.isPending} onClick={() => void save()}>
           {addMut.isPending ? "Salvando..." : "Registrar"}
         </Button>
       </div>
@@ -538,7 +538,6 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     className="w-full text-xs"
                     onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
                   >

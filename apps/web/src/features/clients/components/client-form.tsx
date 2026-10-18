@@ -1000,7 +1000,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={() => setSellPackageOpen(true)}
                       disabled={pending}
                     >
@@ -1419,8 +1418,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-destructive"
                     onClick={() => removeGuardian(index)}
                     disabled={pending}
                     aria-label={`Remover responsável ${index + 1}`}
@@ -1478,7 +1477,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => appendGuardian({ name: "", relationship: "", phone: "", email: "" })}
               disabled={pending}
             >

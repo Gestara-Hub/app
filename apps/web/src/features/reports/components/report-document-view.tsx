@@ -142,7 +142,6 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
       <div className="print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border bg-muted/30 p-4">
         <Button
           variant="outline"
-          size="sm"
           onClick={onBack}
           className="gap-2 text-xs w-fit"
         >
@@ -154,7 +153,6 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="sm"
             onClick={handleExportCsv}
             className="gap-1.5 text-xs"
           >
@@ -163,7 +161,6 @@ export function ReportDocumentView({ report, onBack }: ReportDocumentViewProps) 
           </Button>
 
           <Button
-            size="sm"
             onClick={handlePrint}
             className="gap-1.5 text-xs shadow-xs"
           >

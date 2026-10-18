@@ -246,12 +246,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           {notFound ? null : (
-            <Button size="sm" onClick={() => void refetch()}>
+            <Button onClick={() => void refetch()}>
               <RotateCcw className="size-4" />
               Tentar novamente
             </Button>
           )}
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline">
             <Link href="/classes/calendar">
               <ChevronLeft className="size-4" />
               Calendário
@@ -408,7 +408,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           </p>
         </div>
         {canManage ? (
-          <Button variant="outline" size="sm" onClick={() => setSubstituteOpen(true)}>
+          <Button variant="outline" onClick={() => setSubstituteOpen(true)}>
             <UserCheck className="size-4" />
             {session.isSubstitute ? "Alterar substituto" : "Trocar instrutor"}
           </Button>
@@ -437,7 +437,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {canManage && (
             <Button
               variant="outline"
-              size="xs"
               onClick={async () => {
                 try {
                   await restoreMut.mutateAsync(session.id);
@@ -481,7 +480,6 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
         {canAddStudent ? (
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <Button
-              size="sm"
               variant="outline"
               onClick={() => {
                 setAddKey((k) => k + 1);
@@ -524,14 +522,13 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {canMark && recordSession && presentStudents.length > 0 ? (
-              <Button size="sm" variant="outline" onClick={() => setClassRecordsOpen(true)}>
+              <Button variant="outline" onClick={() => setClassRecordsOpen(true)}>
                 <MessageSquarePlus className="size-4" />
                 Registrar a aula
               </Button>
             ) : null}
             {canMark && counts.pending > 0 ? (
               <Button
-                size="sm"
                 onClick={markAllPresent}
                 disabled={bulkPending || markMut.isPending}
               >

@@ -106,13 +106,12 @@ export function ProgressionTermsEditor({
                   add(draft);
                 }
               }}
-              className="h-8 text-base md:text-xs"
+              className="text-base md:text-xs"
             />
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              className="h-8 px-2.5"
+              size="icon"
               aria-label={`Adicionar em ${title}`}
               disabled={disabled}
               onClick={() => add(draft)}

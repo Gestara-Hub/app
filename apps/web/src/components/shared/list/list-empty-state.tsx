@@ -28,7 +28,7 @@ export function ListEmptyState({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Search className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{searchEmptyMessage}</p>
-        <Button variant="outline" size="sm" onClick={onClearSearch}>
+        <Button variant="outline" onClick={onClearSearch}>
           Limpar busca
         </Button>
       </div>
@@ -40,7 +40,7 @@ export function ListEmptyState({
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <Search className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">{filtersEmptyMessage}</p>
-        <Button variant="outline" size="sm" onClick={onClearFilters}>
+        <Button variant="outline" onClick={onClearFilters}>
           Limpar filtros
         </Button>
       </div>

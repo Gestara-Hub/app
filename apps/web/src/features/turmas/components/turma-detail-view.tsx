@@ -350,7 +350,7 @@ export function TurmaDetailView({
           onAction={notFound || !isError ? undefined : () => void refetch()}
         />
         <div className="flex justify-center pb-6">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline">
             <Link href="/classes">
               <ChevronLeft className="size-4" />
               Turmas
@@ -488,7 +488,7 @@ export function TurmaDetailView({
   return (
     <>
       {confirmDialog}
-      <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
+      <Button asChild variant="ghost" className="mb-2 -ml-2">
         <Link href="/classes">
           <ChevronLeft className="size-4" />
           Turmas
@@ -497,13 +497,13 @@ export function TurmaDetailView({
 
       <PageHeader title={turma.name} description={meta}>
         {canEditTurma ? (
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Button variant="outline" onClick={() => setEditOpen(true)}>
             <Pencil className="size-4" />
             Editar
           </Button>
         ) : null}
         {canEnroll ? (
-          <Button size="sm" onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
+          <Button onClick={() => setEnrollOpen(true)} data-onboarding-cta="enroll">
             <UserPlus className="size-4" />
             Matricular alunos
           </Button>
@@ -618,7 +618,6 @@ export function TurmaDetailView({
                   </span>
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => setConfirmBulk(true)}
                   >
                     <UserX className="size-4" />
@@ -626,7 +625,6 @@ export function TurmaDetailView({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={() => setSelected(new Set())}
                   >
                     Limpar seleção
@@ -858,7 +856,6 @@ export function TurmaDetailView({
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        size="sm"
                         disabled={promoteMut.isPending}
                         onClick={async () => {
                           if (promoteMut.isPending) return;

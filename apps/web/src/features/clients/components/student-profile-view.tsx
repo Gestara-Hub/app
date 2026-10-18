@@ -224,7 +224,7 @@ export function StudentProfileView({ id }: { id: Id }) {
   const listLabel = isClasses ? "Alunos" : "Clientes";
 
   const backLink = (
-    <Button asChild variant="ghost" size="sm" className="mb-2 -ml-2">
+    <Button asChild variant="ghost" className="mb-2 -ml-2">
       <Link href="/clients">
         <ChevronLeft className="size-4" />
         {listLabel}
@@ -264,7 +264,7 @@ export function StudentProfileView({ id }: { id: Id }) {
           onAction={notFound ? undefined : () => void refetch()}
         />
         <div className="flex justify-center pb-6">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline">
             <Link href="/clients">
               <ChevronLeft className="size-4" />
               {listLabel}

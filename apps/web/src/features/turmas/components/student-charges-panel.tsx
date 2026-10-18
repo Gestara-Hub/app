@@ -78,7 +78,7 @@ export function StudentChargesPanel({ studentId }: { studentId: Id }) {
       <div className="flex flex-col items-center gap-3 py-12 text-center">
         <AlertCircle className="size-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">Não foi possível carregar as cobranças.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RotateCw className="size-4" />
           Tentar novamente
         </Button>

@@ -52,7 +52,7 @@ export function FinanceView() {
           <div className="flex flex-wrap items-center gap-2">
             <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
             {canManage ? (
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Button onClick={() => setCreateOpen(true)}>
                 <Plus className="size-4" />
                 Novo lançamento
               </Button>

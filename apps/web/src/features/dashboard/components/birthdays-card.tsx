@@ -158,7 +158,7 @@ export function BirthdaysCard({
             </span>
           ) : null}
         </CardTitle>
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" asChild>
           <Link href="/reports">
             Relatório
             <ArrowUpRight className="size-3.5" />

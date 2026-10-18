@@ -23,7 +23,7 @@ export function LandingSignupSection() {
               <SignupForm idPrefix="signup" />
             </div>
             <SignupLoginLink className="mt-5 text-center" />
-        </div>
+          </div>
         </ScrollReveal>
       </div>
     </section>

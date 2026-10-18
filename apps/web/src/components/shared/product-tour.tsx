@@ -294,14 +294,12 @@ export function ProductTour({
           {index > 0 ? (
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
             >
               Voltar
             </Button>
           ) : null}
           <Button
-            size="sm"
             onClick={() =>
               isLast ? handleClose() : setIndex((i) => i + 1)
             }
