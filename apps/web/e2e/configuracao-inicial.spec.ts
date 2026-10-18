@@ -37,24 +37,27 @@ test("configuração inicial orienta cada passo e aceita uma área fora da lista
   await page.getByLabel("Unidade ou filial (opcional)").fill("Centro");
   await page.getByRole("button", { name: "Continuar" }).click();
 
-  // Passo 2: nada marcado; a confirmacao muda conforme a area.
+  // Passo 2: area padrao avanca no clique; a confirmacao (no passo 3) muda conforme a area.
   await expect(page.getByRole("heading", { name: "O que você ensina?" })).toBeVisible();
-  const next = page.getByRole("button", { name: "Continuar" });
-  await expect(next).toBeDisabled();
   const status = page.getByRole("status");
+  const back = page.getByRole("button", { name: "Voltar" });
 
   await page.getByRole("radio", { name: /^Lutas/ }).click();
   await expect(status).toHaveText("Seus alunos avançam por faixas e graus. Dá para trocar depois.");
+  await back.click();
   await page.getByRole("radio", { name: /^Música/ }).click();
   await expect(status).toHaveText("Seus alunos avançam por módulos. Dá para trocar depois.");
+  await back.click();
   await page.getByRole("radio", { name: /^Pilates e yoga/ }).click();
   await expect(status).toHaveText("Sem etapas de evolução por enquanto. Dá para ligar depois.");
-  await expect(next).toBeEnabled();
+  await back.click();
 
   // Outra area: nome obrigatorio (chip preenche) e como os alunos avancam.
   await page.getByRole("radio", { name: /^Outra área/ }).click();
   await expect(status).toHaveCount(0);
-  await expect(next).toBeDisabled();
+  const next = page.getByRole("button", { name: "Continuar" });
+  await next.click();
+  await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
   await expect(page.getByRole("radio", { name: "Não avançam", exact: true })).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Xadrez" }).click();
   await expect(page.getByLabel("O que você ensina?")).toHaveValue("Xadrez");
@@ -68,7 +71,7 @@ test("configuração inicial orienta cada passo e aceita uma área fora da lista
   await page.getByLabel("Não encontrou sua aula? Adicione abaixo:").fill("Xadrez Iniciante");
   await page.getByRole("button", { name: "Adicionar" }).click();
   await expect(page.getByText("1 selecionada")).toBeVisible();
-  await page.getByRole("button", { name: "Concluir e Começar" }).click();
+  await page.getByRole("button", { name: "Concluir" }).click();
   await page.waitForURL("**/dashboard");
 
   const saved = await savedAcademy(page);
@@ -92,11 +95,10 @@ test("área da lista cria as modalidades marcadas com a trilha da área", async 
 
   await page.getByRole("radio", { name: /^Gastronomia/ }).click();
   await expect(page.getByRole("status")).toHaveText("Seus alunos avançam por módulos. Dá para trocar depois.");
-  await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByText("Aulas de Gastronomia")).toBeVisible();
   await expect(page.getByText("2 selecionadas")).toBeVisible();
-  await page.getByRole("button", { name: "Concluir e Começar" }).click();
+  await page.getByRole("button", { name: "Concluir" }).click();
   await page.waitForURL("**/dashboard");
 
   const saved = await savedAcademy(page);

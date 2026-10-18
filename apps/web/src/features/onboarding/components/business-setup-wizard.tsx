@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  CircleCheck,
+  CornerDownLeft,
   Lightbulb,
   Loader2,
   Plus,
@@ -45,7 +45,7 @@ import type {
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 
-/** As 10 areas do passo 2; "Outra área" vem separada, em largura total. */
+/** As 10 areas do passo 2; "Outra área" fecha a lista. */
 const STANDARD_PRESETS = getAllSegmentPresets().filter((p) => p.id !== "custom");
 
 const CustomAreaIcon = SEGMENT_ICONS.custom;
@@ -88,21 +88,36 @@ export function BusinessSetupWizard() {
   const [customAddedModalities, setCustomAddedModalities] = useState<string[]>([]);
   const [newModalityInput, setNewModalityInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const unitInputRef = useRef<HTMLInputElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+  const customFormRef = useRef<HTMLFormElement>(null);
 
   // Foco so com teclado fisico: no celular, o teclado cobriria a orientacao.
   useEffect(() => {
     if (step === 1 && !isTouchDevice()) nameInputRef.current?.focus();
   }, [step]);
+  // Cada passo comeca do topo (a lista de areas e longa e a pagina pode estar rolada).
+  const firstRenderRef = useRef(true);
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0 });
+  }, [step]);
   useEffect(() => {
     if (showUnitField && !isTouchDevice()) unitInputRef.current?.focus();
   }, [showUnitField]);
   useEffect(() => {
-    if (selectedSegment === "custom" && !isTouchDevice()) customInputRef.current?.focus();
-  }, [selectedSegment]);
+    if (selectedSegment !== "custom" || step !== 2) return;
+    // A lista de areas e longa: leva os campos da "Outra área" para a tela.
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    customFormRef.current?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+    if (!isTouchDevice()) customInputRef.current?.focus({ preventScroll: true });
+  }, [selectedSegment, step]);
 
   const isCustom = selectedSegment === "custom";
   // Preset efetivo: na "Outra área", trilha, palavras e cobranca seguem a escolha do dono.
@@ -112,7 +127,6 @@ export function BusinessSetupWizard() {
     customBilling,
   );
   const previewName = businessName.trim() || "Seu espaço";
-  const canLeaveStep2 = selectedSegment !== null && (!isCustom || Boolean(customSegmentName.trim()));
   const areaLabel = isCustom ? customSegmentName.trim() || activePreset.label : activePreset.label;
 
   const handleSelectSegment = (segId: ClassesBusinessSegment) => {
@@ -209,94 +223,133 @@ export function BusinessSetupWizard() {
     }
   };
 
+  const goBack = () => {
+    setError(null);
+    if (step > 1) setStep((step - 1) as 1 | 2 | 3);
+  };
+
+  // Passo 1: nome obrigatorio (Enter no nome ou na unidade tambem avanca).
+  const submitStepOne = () => {
+    if (!businessName.trim()) {
+      setError("Informe o nome do espaço.");
+      nameInputRef.current?.focus();
+      return;
+    }
+    setError(null);
+    setStep(2);
+  };
+
+  // Passo 2: area padrao avanca no clique; "Outra área" abre os campos e usa o botao.
+  const handlePickArea = (segId: ClassesBusinessSegment) => {
+    setError(null);
+    handleSelectSegment(segId);
+    if (segId !== "custom") setStep(3);
+  };
+
+  const submitCustomArea = () => {
+    if (!customSegmentName.trim()) {
+      setError("Informe o que você ensina.");
+      customInputRef.current?.focus();
+      return;
+    }
+    setError(null);
+    setStep(3);
+  };
+
+  const copy = STEP_COPY[step];
+
   return (
-    <div className="relative min-h-screen w-full bg-background flex flex-col justify-between pt-6 sm:pt-8 pb-6 px-4 sm:px-6 lg:px-8 overflow-x-clip">
-      {/* Ambient background glow */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[480px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 left-1/2 -z-10 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-primary/3 blur-3xl" />
+    <div className="min-h-screen w-full bg-background flex flex-col">
+      {/* Progresso: barra fina no topo */}
+      <div
+        role="progressbar"
+        aria-label="Progresso da configuração inicial"
+        aria-valuemin={1}
+        aria-valuemax={3}
+        aria-valuenow={step}
+        className="h-1 w-full bg-muted"
+      >
+        <div className="h-1 bg-primary transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }} />
+      </div>
 
-      {/* Top Header com margem superior confortável */}
-      <header className="mx-auto w-full max-w-4xl flex items-center pb-5 border-b border-border/40">
-        <div className="flex items-center gap-3">
-          <Image
-            src={logoLightImage}
-            alt="GestaraHub"
-            className="h-8 sm:h-9 w-auto dark:hidden"
-            priority
-          />
-          <Image
-            src={logoDarkImage}
-            alt="GestaraHub"
-            className="hidden h-8 sm:h-9 w-auto dark:block"
-            priority
-          />
-        </div>
-
+      <header className="mx-auto w-full max-w-xl px-4 pt-6 sm:pt-8">
+        <Image src={logoLightImage} alt="GestaraHub" className="h-8 sm:h-9 w-auto dark:hidden" priority />
+        <Image src={logoDarkImage} alt="GestaraHub" className="hidden h-8 sm:h-9 w-auto dark:block" priority />
       </header>
 
-      {/* Main Content Area */}
-      <main className="mx-auto w-full max-w-4xl flex-1 flex flex-col justify-center py-6 sm:py-8">
-        {/* Passos logo acima do formulario: circulos ligados por linha, largura do form. */}
-        <SetupStepper
-          step={step}
-          onGoTo={(target) => {
-            if (target === 1 && step > 1) setStep(1);
-            if (target === 2 && step > 2 && businessName.trim()) setStep(2);
-          }}
-        />
-        {/* STEP 1: IDENTIFICAÇÃO DO ESPAÇO */}
-        {step === 1 && (
-          <div className="mx-auto w-full max-w-lg space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-                Como se chama o seu espaço?
-              </h1>
-              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                É o nome que você e seus alunos vão ver.
-              </p>
-            </div>
+      <main className="mx-auto w-full max-w-xl flex-1 px-4 py-10 sm:py-14">
+        <div className="mb-8 flex items-center justify-between text-sm text-muted-foreground">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-md hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ArrowLeft className="size-4" />
+              Voltar
+            </button>
+          ) : (
+            <span />
+          )}
+          <span>{step} de 3</span>
+        </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-8 shadow-sm space-y-5">
+        <div key={step} className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{copy.title}</h1>
+          <p className="mt-2 text-muted-foreground">{copy.subtitle}</p>
+
+          {/* PASSO 1: NOME DO ESPACO */}
+          {step === 1 && (
+            <form
+              className="mt-8 space-y-6"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitStepOne();
+              }}
+            >
               <div className="space-y-2">
-                <Label htmlFor="business-name" className="inline-block text-sm font-semibold text-foreground">
-                  Nome<span className="text-primary ml-0.5">*</span>
+                <Label htmlFor="business-name" className="inline-block text-base font-semibold text-foreground">
+                  Nome<span className="text-destructive ml-0.5">*</span>
                 </Label>
                 <Input
                   ref={nameInputRef}
                   id="business-name"
                   value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && businessName.trim()) {
-                      e.preventDefault();
-                      setStep(2);
-                    }
+                  onChange={(e) => {
+                    setBusinessName(e.target.value);
+                    if (error) setError(null);
                   }}
                   placeholder="Nome da escola, estúdio ou o seu"
-                  aria-describedby="business-name-hint"
-                  className="h-12 text-base bg-background"
+                  aria-describedby={error ? "business-name-error" : "business-name-hint"}
+                  aria-invalid={error ? true : undefined}
+                  className="bg-background"
                 />
-                <p
-                  id="business-name-hint"
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                >
-                  <Lightbulb className="size-3.5 shrink-0 text-amber-500" />
-                  <span>Dá aula sozinho? Pode usar o seu nome.</span>
-                </p>
+                {/* Erro no lugar da dica, logo abaixo do campo (padrao do FieldShell). */}
+                {error ? (
+                  <p id="business-name-error" role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                ) : (
+                  <p id="business-name-hint" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Lightbulb className="size-3.5 shrink-0 text-amber-500" />
+                    <span>Dá aula sozinho? Pode usar o seu nome.</span>
+                  </p>
+                )}
               </div>
 
               {/* Previa ao vivo: o mesmo nome que aparece no topo do painel. */}
-              <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-3.5 py-3">
+              <div className="flex items-center gap-3">
                 <InitialsAvatar name={previewName} />
                 <p className="min-w-0 text-sm text-muted-foreground break-words">
-                  Assim aparece no topo:{" "}
-                  <span className="font-semibold text-foreground">{previewName}</span>
+                  Assim aparece no topo: <span className="font-semibold text-foreground">{previewName}</span>
                 </p>
               </div>
 
               {showUnitField ? (
                 <div className="space-y-2 animate-in fade-in-50 duration-200">
-                  <Label htmlFor="unit-city" className="text-xs font-medium text-muted-foreground">
+                  <Label htmlFor="unit-city" className="text-sm font-medium text-foreground">
                     Unidade ou filial (opcional)
                   </Label>
                   <Input
@@ -304,325 +357,178 @@ export function BusinessSetupWizard() {
                     id="unit-city"
                     value={unitCity}
                     onChange={(e) => setUnitCity(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && businessName.trim()) {
-                        e.preventDefault();
-                        setStep(2);
-                      }
-                    }}
                     placeholder="Nome da unidade"
-                    className="h-12 text-base bg-background"
+                    className="bg-background"
                   />
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowUnitField(true)}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline cursor-pointer"
                 >
                   <Plus className="size-3.5" />
                   <span>Tenho mais de um endereço</span>
                 </button>
               )}
 
-              <div className="pt-1">
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!businessName.trim()}
-                  className="w-full h-11 font-semibold gap-2 shadow-sm transition-all"
-                >
-                  <span>Continuar</span>
-                  <ArrowRight className="size-4" />
+              <div className="flex items-center gap-4 pt-2">
+                <Button type="submit" className="gap-1.5 font-semibold text-xs shadow-xs">
+                  Continuar
+                  <ArrowRight className="size-3.5" />
                 </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: ÁREA DO ESPAÇO */}
-        {step === 2 && (
-          <div className="mx-auto w-full max-w-3xl space-y-5 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-            <div className="text-center space-y-2 max-w-md mx-auto">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-                O que você ensina?
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Ajustamos turmas, evolução e textos para a sua área.
-              </p>
-            </div>
-
-            {/* 10 areas em cards compactos: icone, nome e uma linha de exemplos. */}
-            <div
-              role="radiogroup"
-              aria-label="Área do espaço"
-              className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3"
-            >
-              {STANDARD_PRESETS.map((preset) => {
-                const Icon = SEGMENT_ICONS[preset.id];
-                const isSelected = selectedSegment === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => handleSelectSegment(preset.id)}
-                    className={cn(
-                      "group relative flex flex-col gap-2 rounded-2xl border p-3.5 sm:p-4 text-left transition-all duration-200 cursor-pointer",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isSelected
-                        ? "border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20"
-                        : "border-border/80 bg-card hover:border-primary/40 hover:bg-muted/30",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div
-                        className={cn(
-                          "size-8 sm:size-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                          isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        <Icon className="size-4 sm:size-4.5" />
-                      </div>
-                      {isSelected && (
-                        <div className="size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                          <Check className="size-3 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="block text-sm font-bold text-foreground leading-snug">
-                        {preset.label}
-                      </span>
-                      <span className="block text-xs text-muted-foreground leading-snug">
-                        {preset.examples}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {/* "Outra área", tracejada, em 2 colunas: largura total no celular e, a
-                  partir de sm, fecha a ultima linha (10 areas em 3 colunas sobram 2 vagas). */}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={isCustom}
-                onClick={() => handleSelectSegment("custom")}
-                className={cn(
-                  "col-span-2 flex items-center justify-between gap-3 rounded-2xl border p-3.5 sm:p-4 text-left transition-all duration-200 cursor-pointer",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  isCustom
-                    ? "border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20"
-                    : "border-dashed border-border/90 bg-muted/20 hover:border-primary/40 hover:bg-muted/30",
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={cn(
-                      "size-8 sm:size-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                      isCustom ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
-                    )}
-                  >
-                    <CustomAreaIcon className="size-4 sm:size-4.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-sm font-bold text-foreground leading-snug">Outra área</span>
-                    <span className="block text-xs text-muted-foreground leading-snug">
-                      Escolha se não achou a sua
-                    </span>
-                  </div>
-                </div>
-                {isCustom && (
-                  <div className="size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                    <Check className="size-3 stroke-[3]" />
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Confirmacao da area escolhida: o que muda, sem tour. */}
-            {selectedSegment && !isCustom && (
-              <p
-                role="status"
-                className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-800 dark:text-emerald-300 animate-in fade-in-50 duration-200"
-              >
-                <CircleCheck className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{progressionConfirmation(activePreset)}</span>
-              </p>
-            )}
-
-            {/* "Outra área": nome da area, como os alunos avancam e como cobra. */}
-            {isCustom && (
-              <div className="p-4 sm:p-5 rounded-2xl border border-primary/25 bg-card space-y-4 animate-in fade-in-50 duration-200">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="custom-segment-input"
-                    className="inline-block text-sm font-semibold text-foreground"
-                  >
-                    O que você ensina?<span className="text-primary ml-0.5">*</span>
-                  </Label>
-                  <Input
-                    ref={customInputRef}
-                    id="custom-segment-input"
-                    value={customSegmentName}
-                    onChange={(e) => setCustomSegmentName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && customSegmentName.trim()) {
-                        e.preventDefault();
-                        setStep(3);
-                      }
-                    }}
-                    placeholder="Nome da sua área ou atividade"
-                    className="h-11 bg-background"
-                  />
-                  <div className="flex flex-wrap gap-1.5">
-                    {CUSTOM_AREA_SUGGESTIONS.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => setCustomSegmentName(suggestion)}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                          customSegmentName.trim() === suggestion
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border/80 text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                        )}
-                      >
-                        <Plus className="size-3" />
-                        <span>{suggestion}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p id="custom-progression-label" className="text-sm font-semibold text-foreground">
-                    Como seus alunos avançam?
-                  </p>
-                  <div
-                    role="radiogroup"
-                    aria-labelledby="custom-progression-label"
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-1 rounded-lg border border-border/60 bg-muted/40 p-1"
-                  >
-                    {CUSTOM_PROGRESSION_OPTIONS.map((option) => {
-                      const selected = customProgression === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          onClick={() => setCustomProgression(option.value)}
-                          className={cn(
-                            "rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                            selected
-                              ? "bg-background text-foreground shadow-xs ring-1 ring-border"
-                              : "text-muted-foreground hover:bg-background/50",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Na dúvida, escolha “Não avançam”. Dá para mudar depois.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p id="custom-billing-label" className="text-sm font-semibold text-foreground">
-                    Como você cobra?
-                  </p>
-                  <div
-                    role="radiogroup"
-                    aria-labelledby="custom-billing-label"
-                    className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/40 p-1"
-                  >
-                    {CUSTOM_BILLING_OPTIONS.map((option) => {
-                      const selected = customBilling === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={selected}
-                          onClick={() => setCustomBilling(option.value)}
-                          className={cn(
-                            "rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                            selected
-                              ? "bg-background text-foreground shadow-xs ring-1 ring-border"
-                              : "text-muted-foreground hover:bg-background/50",
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    É só o padrão: cada turma pode cobrar diferente.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Ações Step 2 */}
-            <div className="pt-1 flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={() => setStep(1)}
-                className="h-11 px-5 gap-2"
-              >
-                <ArrowLeft className="size-4" />
-                <span>Voltar</span>
-              </Button>
-
-              <Button
-                onClick={() => setStep(3)}
-                disabled={!canLeaveStep2}
-                className="h-11 px-6 font-semibold gap-2 shadow-sm"
-              >
-                <span>Continuar</span>
-                <ArrowRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: PRÉ-CRIAÇÃO DE MODALIDADES (Sem redundâncias) */}
-        {step === 3 && (
-          <div className="mx-auto w-full max-w-xl space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-            <div className="text-center space-y-2 max-w-md mx-auto">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-                Quais aulas você oferece?
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Selecione as modalidades para criar suas primeiras turmas.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm space-y-6">
-              {/* Header das modalidades com contagem */}
-              <div className="flex items-center justify-between pb-3 border-b border-border/40">
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-foreground">
-                    Aulas de {areaLabel}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Clique nas pílulas para ativar ou desativar o que você ensina:
-                  </p>
-                </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary shrink-0">
-                  {selectedModalities.length} {selectedModalities.length === 1 ? "selecionada" : "selecionadas"}
+                <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex">
+                  ou pressione Enter <CornerDownLeft className="size-3" />
                 </span>
               </div>
+            </form>
+          )}
 
-              {/* Lista Unificada de Pílulas Interativas */}
-              <div className="space-y-2">
+          {/* PASSO 2: AREA (uma lista; a area padrao avanca no clique) */}
+          {step === 2 && (
+            <div className="mt-8 space-y-5">
+              <div
+                role="radiogroup"
+                aria-label="Área do espaço"
+                className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+              >
+                {STANDARD_PRESETS.map((preset) => {
+                  const Icon = SEGMENT_ICONS[preset.id];
+                  const isSelected = selectedSegment === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => handlePickArea(preset.id)}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer",
+                        "focus-visible:outline-none focus-visible:bg-muted/60",
+                        isSelected ? "bg-primary/5" : "hover:bg-muted/50",
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{preset.label}</span>
+                      {isSelected ? (
+                        <Check className="size-4 shrink-0 text-primary" />
+                      ) : (
+                        <ArrowRight className="size-4 shrink-0 text-muted-foreground/60" />
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isCustom}
+                  onClick={() => handlePickArea("custom")}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer",
+                    "focus-visible:outline-none focus-visible:bg-muted/60",
+                    isCustom ? "bg-primary/5" : "hover:bg-muted/50",
+                  )}
+                >
+                  <CustomAreaIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">Outra área</span>
+                  {isCustom ? <Check className="size-4 shrink-0 text-primary" /> : null}
+                </button>
+              </div>
+
+              {/* "Outra área": nome da area, como os alunos avancam e como cobra. */}
+              {isCustom && (
+                <form
+                  ref={customFormRef}
+                  noValidate
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submitCustomArea();
+                  }}
+                  className="space-y-5 animate-in fade-in-50 duration-200"
+                >
+                  <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-segment-input" className="inline-block text-sm font-semibold text-foreground">
+                        O que você ensina?<span className="text-destructive ml-0.5">*</span>
+                      </Label>
+                      <Input
+                        ref={customInputRef}
+                        id="custom-segment-input"
+                        value={customSegmentName}
+                        onChange={(e) => {
+                          setCustomSegmentName(e.target.value);
+                          if (error) setError(null);
+                        }}
+                        placeholder="Nome da sua área ou atividade"
+                        aria-invalid={error ? true : undefined}
+                        aria-describedby={error ? "custom-segment-error" : undefined}
+                        className="bg-background"
+                      />
+                      {error ? (
+                        <p id="custom-segment-error" role="alert" className="text-sm text-destructive">
+                          {error}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-1.5">
+                        {CUSTOM_AREA_SUGGESTIONS.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => {
+                              setCustomSegmentName(suggestion);
+                              setError(null);
+                            }}
+                            className={cn(
+                              "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors cursor-pointer",
+                              customSegmentName.trim() === suggestion
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background text-muted-foreground hover:text-foreground",
+                            )}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <ChoiceGroup
+                      id="custom-progression"
+                      label="Como seus alunos avançam?"
+                      hint="Na dúvida, escolha “Não avançam”. Dá para mudar depois."
+                      options={CUSTOM_PROGRESSION_OPTIONS}
+                      value={customProgression}
+                      onChange={setCustomProgression}
+                    />
+                    <ChoiceGroup
+                      id="custom-billing"
+                      label="Como você cobra?"
+                      hint="É só o padrão: cada turma pode cobrar diferente."
+                      options={CUSTOM_BILLING_OPTIONS}
+                      value={customBilling}
+                      onChange={setCustomBilling}
+                    />
+                  </div>
+
+                  <Button type="submit" className="gap-1.5 font-semibold text-xs shadow-xs">
+                    Continuar
+                    <ArrowRight className="size-3.5" />
+                  </Button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* PASSO 3: AULAS (modalidades criadas com a trilha da area) */}
+          {step === 3 && (
+            <div className="mt-8 space-y-6">
+              {/* A area escolhida e como os alunos avancam (confirmacao, sem tour). */}
+              <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Aulas de {areaLabel}</span>
+                {" · "}
+                <span role="status">{progressionConfirmation(activePreset)}</span>
+              </p>
+
+              <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {allAvailableModalities.map((mod) => {
                     const isMarked = selectedModalities.includes(mod);
@@ -631,22 +537,16 @@ export function BusinessSetupWizard() {
                       <button
                         key={mod}
                         type="button"
+                        aria-pressed={isMarked}
                         onClick={() => handleToggleModality(mod)}
                         className={cn(
-                          "group inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+                          "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-sm font-medium transition-colors cursor-pointer",
                           isMarked
-                            ? "border-primary bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
-                            : "border-border/80 bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground hover:bg-muted/40",
+                            ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                            : "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground",
                         )}
                       >
-                        <span
-                          className={cn(
-                            "size-4 rounded-full flex items-center justify-center text-[10px] shrink-0 font-bold",
-                            isMarked
-                              ? "bg-primary-foreground text-primary"
-                              : "border border-muted-foreground/40 text-muted-foreground",
-                          )}
-                        >
+                        <span aria-hidden className="w-3 text-center text-xs font-bold">
                           {isMarked ? "✓" : "+"}
                         </span>
                         <span>{mod}</span>
@@ -658,7 +558,14 @@ export function BusinessSetupWizard() {
                               e.stopPropagation();
                               handleRemoveCustomModality(mod);
                             }}
-                            className="opacity-70 hover:opacity-100 hover:text-destructive ml-0.5"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRemoveCustomModality(mod);
+                              }
+                            }}
+                            className="ml-0.5 opacity-70 hover:opacity-100"
                             title="Remover"
                           >
                             <X className="size-3" />
@@ -668,20 +575,18 @@ export function BusinessSetupWizard() {
                     );
                   })}
                 </div>
-
+                <p className="text-xs text-muted-foreground">
+                  {selectedModalities.length} {selectedModalities.length === 1 ? "selecionada" : "selecionadas"}
+                </p>
                 {selectedModalities.length === 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1">
+                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
                     Nenhuma modalidade selecionada. Você poderá cadastrar turmas depois no painel.
                   </p>
                 )}
               </div>
 
-              {/* Adicionar outra modalidade com placeholder contextual */}
-              <div className="space-y-2 pt-3 border-t border-border/40">
-                <Label
-                  htmlFor="add-modality"
-                  className="text-xs font-semibold text-muted-foreground"
-                >
+              <div className="space-y-2">
+                <Label htmlFor="add-modality" className="text-sm font-medium text-foreground">
                   Não encontrou sua aula? Adicione abaixo:
                 </Label>
                 <div className="flex items-center gap-2">
@@ -711,115 +616,84 @@ export function BusinessSetupWizard() {
                 </div>
               </div>
 
-              {/* Ações Finais */}
-              <div className="pt-4 border-t border-border/40 flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(2)}
-                  disabled={isSubmitting}
-                  className="h-11 px-5 gap-2"
-                >
-                  <ArrowLeft className="size-4" />
-                  <span>Voltar</span>
-                </Button>
-
-                <Button
-                  onClick={handleFinishSetup}
-                  disabled={isSubmitting}
-                  className="h-11 px-7 font-semibold gap-2 shadow-sm"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      <span>Configurando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Concluir e Começar</span>
-                      <ArrowRight className="size-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={handleFinishSetup}
+                disabled={isSubmitting}
+                className="gap-1.5 font-semibold text-xs shadow-xs"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Configurando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Concluir</span>
+                    <ArrowRight className="size-3.5" />
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </div>
 
-      {/* Footer */}
-      <footer className="mx-auto w-full max-w-4xl pt-5 border-t border-border/40 text-center text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
-        <p>Configuração inicial • GestaraHub Sistema Gratuito</p>
-        <p>Você poderá alterar essas informações em Configurações.</p>
-      </footer>
+        <p className="mt-12 text-xs text-muted-foreground">Tudo pode ser mudado depois em Configurações.</p>
+      </main>
     </div>
   );
 }
 
-const SETUP_STEPS = ["Espaço", "Área", "Modalidades"] as const;
+const STEP_COPY = {
+  1: { title: "Como se chama o seu espaço?", subtitle: "É o nome que você e seus alunos vão ver." },
+  2: { title: "O que você ensina?", subtitle: "Ajustamos turmas, evolução e textos para a sua área." },
+  3: { title: "Quais aulas você oferece?", subtitle: "Marque as aulas que você dá. Dá para mudar depois." },
+} as const;
 
-/**
- * Indicador dos 3 passos: numero em circulo + nome, ligados por uma linha.
- * Atual em destaque, concluido com check (clicavel para voltar), proximo em
- * cinza. Mesma largura do formulario do passo 1.
- */
-function SetupStepper({ step, onGoTo }: { step: number; onGoTo: (step: number) => void }) {
+/** Escolha unica em grade (2 colunas), com dica abaixo. */
+function ChoiceGroup<T extends string>({
+  id,
+  label,
+  hint,
+  options,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
   return (
-    <nav aria-label="Progresso do cadastro" className="mx-auto mb-8 w-full max-w-lg sm:mb-10">
-      <ol className="flex items-center">
-        {SETUP_STEPS.map((label, index) => {
-          const number = index + 1;
-          const done = number < step;
-          const current = number === step;
-          const content = (
-            <>
-              <span
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                  current && "bg-primary text-primary-foreground shadow-xs",
-                  done && "bg-primary/10 text-primary",
-                  !current && !done && "border border-border bg-background text-muted-foreground",
-                )}
-              >
-                {done ? <Check className="size-3.5" strokeWidth={3} /> : number}
-              </span>
-              <span
-                className={cn(
-                  "text-sm whitespace-nowrap",
-                  // Celular estreito: so o nome do passo atual (os outros ficam no numero).
-                  !current && "hidden min-[400px]:inline",
-                  current ? "font-semibold text-foreground" : done ? "font-medium text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </span>
-            </>
-          );
+    <div className="space-y-2">
+      <p id={`${id}-label`} className="text-sm font-semibold text-foreground">
+        {label}
+      </p>
+      <div role="radiogroup" aria-labelledby={`${id}-label`} className="grid grid-cols-2 gap-2">
+        {options.map((option) => {
+          const selected = value === option.value;
           return (
-            <li key={label} className={cn("flex items-center", index < SETUP_STEPS.length - 1 && "flex-1")}>
-              {done ? (
-                <button
-                  type="button"
-                  onClick={() => onGoTo(number)}
-                  className="flex items-center gap-2 rounded-full pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Voltar para ${label}`}
-                >
-                  {content}
-                </button>
-              ) : (
-                <span className="flex items-center gap-2" aria-current={current ? "step" : undefined}>
-                  {content}
-                </span>
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-left text-sm transition-colors cursor-pointer select-none",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                  ? "border-primary bg-background font-medium text-foreground ring-1 ring-primary"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground",
               )}
-              {index < SETUP_STEPS.length - 1 ? (
-                <span
-                  aria-hidden
-                  className={cn("mx-3 h-px flex-1 sm:mx-4", done ? "bg-primary/40" : "bg-border")}
-                />
-              ) : null}
-            </li>
+            >
+              {option.label}
+            </button>
           );
         })}
-      </ol>
-    </nav>
+      </div>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+    </div>
   );
 }

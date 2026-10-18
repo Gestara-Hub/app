@@ -170,47 +170,43 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 
 Localização: `apps/web/src/features/onboarding/components/business-setup-wizard.tsx` e `apps/web/src/app/(setup)/setup/page.tsx`.
 
-### 4.1. Estrutura do Stepper Superior
-- Cabeçalho com espaçamento superior generoso (`pt-6 sm:pt-8`) para não cortar em nenhum monitor.
-- Stepper de 3 etapas com feedback de progresso: `1 Espaço → 2 Área → 3 Modalidades` ("Segmento" virou "Área" em 14/10/2026).
-- Permite navegação direta clicando nos passos já concluídos.
-- Sem badges repetitivos de passo embaixo do título.
+### 4.1. Formato: uma pergunta por tela (17/10/2026)
+- Escolhido entre 3 opções comparadas numa página de prévia temporária (refino do formato antigo, painel lateral com resumo ao vivo e uma pergunta por tela); a prévia foi removida.
+- **Sem cards e sem stepper**: barra de progresso fina no topo da página (`role="progressbar"`), logo, e uma coluna estreita (`max-w-xl`) igual nos 3 passos (antes a largura mudava a cada passo e a tela "pulava"). Acima da pergunta: **"Voltar"** (do passo 2 em diante) e **"{n} de 3"**.
+- Pergunta grande (`text-3xl`/`4xl`) alinhada à esquerda, subtítulo de uma linha e o conteúdo logo abaixo. No rodapé: *"Tudo pode ser mudado depois em Configurações."*
+- **Botões no padrão do projeto** (17/10/2026): "Continuar" e "Concluir" iguais ao "Continuar" dos primeiros passos do Dashboard (`size="sm"`, `text-xs`, `font-semibold`, seta de 14px).
+- **Botões sempre ativos**: antes o "Continuar" ficava cinza e desabilitado (parecia quebrado). Agora avançar sem o obrigatório mostra o erro **logo abaixo do campo**, no lugar da dica (padrão do `FieldShell`; `role="alert"`, `aria-invalid` e `aria-describedby` no campo): *"Informe o nome do espaço."* / *"Informe o que você ensina."*
+- Saíram o stepper de círculos, os brilhos de fundo e o rodapé "Configuração inicial • GestaraHub Sistema Gratuito".
 
 ### 4.2. Passo 1 — Identificação do Espaço
 - Título: **Como se chama o seu espaço?**
 - Subtítulo: *É o nome que você e seus alunos vão ver.*
-- Campo: **`Nome*`**, placeholder *"Nome da escola, estúdio ou o seu"*. Dica abaixo, com ícone de lâmpada: *"Dá aula sozinho? Pode usar o seu nome."* (professor autônomo não tem "escola" e travava aqui).
-- Prévia ao vivo: avatar com as iniciais + *"Assim aparece no topo: {nome}"* (sem nome: "Seu espaço").
+- Campo **`Nome*`** igual aos outros campos do assistente (`h-10` e a fonte padrão do `Input`, como "Informe o nome da aula" no passo 3; 17/10/2026, antes `h-14` destoava), assim como a unidade e o "O que você ensina?" da Outra área:, placeholder *"Nome da escola, estúdio ou o seu"*. Dica abaixo, com ícone de lâmpada: *"Dá aula sozinho? Pode usar o seu nome."* (professor autônomo não tem "escola" e travava aqui).
+- Prévia ao vivo, sem caixa: avatar com as iniciais + *"Assim aparece no topo: {nome}"* (sem nome: "Seu espaço").
 - **Unidade ou filial** fica escondida atrás do link *"+ Tenho mais de um endereço"*: a maioria tem um endereço só. Clicar mostra o campo opcional (grava no nome da unidade, como antes).
 - Foco automático no nome só com teclado físico; no celular (`pointer: coarse`) o teclado não abre sozinho.
-- Botão: **`Continuar →`**.
+- **`Continuar →`** + *"ou pressione Enter ↵"* (desktop). Enter no nome ou na unidade avança.
 
 ### 4.3. Passo 2 — Área
 - Título: **O que você ensina?**
 - Subtítulo: *Ajustamos turmas, evolução e textos para a sua área.*
-- Nenhuma área vem marcada: `Continuar` só libera depois da escolha.
-- Grade compacta de 10 cards (2 colunas no celular, 3 a partir de `sm`): ícone, nome e uma linha de exemplos. Saíram o selo e a descrição dos cards antigos.
-- **"Outra área"**: card tracejado em 2 colunas, *"Escolha se não achou a sua"*. No celular ocupa a largura toda; a partir de `sm` fecha a última linha (10 áreas em 3 colunas deixariam um card sozinho).
-- **Confirmação ao escolher** (faixa verde, `role="status"`): *"Seus alunos avançam por {faixas e graus | níveis | módulos | fases}. Dá para trocar depois."*; área sem trilha: *"Sem etapas de evolução por enquanto. Dá para ligar depois."* Texto vem de `segmentProgressionSummary(preset)`.
-- **Outra área** abre: `O que você ensina?*` (placeholder *"Nome da sua área ou atividade"*), chips que preenchem o campo (*Teatro, Xadrez, Fotografia, Autoescola*) e **"Como seus alunos avançam?"** com 4 opções: *Faixas, Níveis, Módulos, Não avançam* (padrão *Não avançam*), com a dica *"Na dúvida, escolha “Não avançam”. Dá para mudar depois."*. `Continuar` só libera com o nome. Grava `customSegmentName` e `customSegmentProgression`.
-- **"Como você cobra?"** (14/10/2026, abaixo de "Como seus alunos avançam?"): 4 opções em grade 2 x 2, *Mensalidade, Curso com valor fechado, Pacote de aulas, Não cobro* (padrão *Mensalidade*), com a dica *"É só o padrão: cada turma pode cobrar diferente."*. Grava `Organization.customSegmentBilling` (`ClassBillingMode`). Opções em `CUSTOM_BILLING_OPTIONS` (`business-segment-presets.ts`).
+- **Lista** (`radiogroup` "Área do espaço") com as 10 áreas e, por último, **"Outra área"**: **só ícone e nome** (17/10/2026: os exemplos de cada área saíram da lista, o dono pediu só os títulos; continuam nos cards da landing), seta à direita (a escolhida mostra ✓). Nenhuma vem marcada.
+- **Escolher uma das 10 já avança** para o passo 3 (sem "Continuar"). Voltar mostra a escolha marcada; escolher a mesma de novo mantém as aulas marcadas, escolher outra troca as sugestões.
+- A **confirmação** da área (*"Seus alunos avançam por {faixas e graus | níveis | módulos | fases}. Dá para trocar depois."*; sem trilha: *"Sem etapas de evolução por enquanto. Dá para ligar depois."*, de `segmentProgressionSummary`) passou para o topo do passo 3, junto de *"Aulas de {área}"* (`role="status"` só na frase).
+- **Outra área** abre abaixo da lista (a página rola até os campos): `O que você ensina?*` (placeholder *"Nome da sua área ou atividade"*), chips que preenchem o campo (*Teatro, Xadrez, Fotografia, Autoescola*), **"Como seus alunos avançam?"** (*Faixas, Níveis, Módulos, Não avançam*; padrão *Não avançam*; dica *"Na dúvida, escolha “Não avançam”. Dá para mudar depois."*) e **"Como você cobra?"** (*Mensalidade, Curso com valor fechado, Pacote de aulas, Não cobro*; padrão *Mensalidade*; dica *"É só o padrão: cada turma pode cobrar diferente."*), ambos em grade 2 x 2. Aqui há **`Continuar`** (Enter no nome também avança). Grava `customSegmentName`, `customSegmentProgression` e `customSegmentBilling` (`CUSTOM_BILLING_OPTIONS` em `business-segment-presets.ts`).
 
 #### Por que orientação embutida e não tour (14/10/2026)
 - O setup tem 3 telas curtas; um tour (balões apontando campos) cobriria justamente o que a pessoa precisa ler e teria de ser fechado antes de usar.
 - A dúvida aparece no momento da decisão ("uso meu nome?", "minha área não está aqui", "o que muda?"). Por isso cada resposta fica no próprio passo: dica sob o campo, prévia ao vivo, confirmação ao escolher a área e a opção "Não avançam" como saída segura.
 - Tudo o que o setup grava pode ser trocado em Configurações; as frases dizem isso ("Dá para trocar depois") para tirar o peso da escolha.
 
-### 4.4. Passo 3 — Modalidades Oferecidas
+### 4.4. Passo 3 — Aulas
 - Título: **Quais aulas você oferece?**
-- Subtítulo: *Selecione as modalidades para criar suas primeiras turmas.*
-- **Pílulas Interativas Unificadas**:
-  - Uma única lista de pílulas. Clicar alterna entre selecionado (`✓`, fundo primário) e desmarcado (`+`).
-  - Contador no cabeçalho: `2 selecionadas`.
-  - **Eliminada a caixa secundária redundante** de "Modalidades selecionadas".
-- **Campo de Adição**:
-  - Placeholder único *"Informe o nome da aula"* (14/10/2026: os placeholders "Ex.: ..." por área saíram, regra do doc 07, seção 2.3). As sugestões da área já aparecem como pílulas.
-  - Título do bloco: *"Aulas de {área}"*; na Outra área, usa o nome digitado.
-  - Ao adicionar, a nova aula entra direto como uma pílula ativa com ícone de exclusão `x`.
+- Subtítulo: *Marque as aulas que você dá. Dá para mudar depois.*
+- No topo: *"Aulas de {área}"* · a confirmação de como os alunos avançam (ver 4.3). Na Outra área, usa o nome digitado.
+- **Chips** (arredondados): clicar alterna entre marcado (`✓`, fundo primário) e desmarcado (`+`). As 2 primeiras sugestões da área já vêm marcadas. Contador abaixo: *"2 selecionadas"*; sem nenhuma: *"Nenhuma modalidade selecionada. Você poderá cadastrar turmas depois no painel."*
+- **Adicionar**: *"Não encontrou sua aula? Adicione abaixo:"*, placeholder *"Informe o nome da aula"* (sem "Ex.:", regra do doc 07, seção 2.3). A nova aula entra marcada, com o `x` para remover.
+- Botão **"Concluir"** (antes "Concluir e Começar"; *"Configurando..."* enquanto salva).
 - **Finalização**: Salva dados da organização (incluindo `classSegment`) e unidade, pré-cria as modalidades marcadas com a trilha padrão da área e redireciona para `/dashboard`.
 - **Revisão das modalidades do setup** (11/10/2026): quando o setup cria modalidades, grava `settings.modalitiesReviewed = false`. O passo "Cadastrar modalidades" do passo a passo fica em **"Falta revisar"** (selo âmbar, botão "Revisar"): não conta como concluído, mas já libera os passos que dependem dele. A tela de Modalidades mostra um aviso explicando a trilha de evolução, com "Está tudo certo". Clicar no aviso ou salvar uma modalidade (nome ou trilha) fecha a revisão. Sem modalidades no setup, nada muda. O setup não cria modalidade que não foi marcada (nem o nome da "Outra área", nem "Turma Geral"). **Onde confirmar (15/10/2026):** o aviso amarelo sozinho travava quem não percebia o botão (o aviso de primeiros passos do topo não tinha ação nessa tela). Agora, para o dono, o "Está tudo certo" fica no aviso de primeiros passos do topo, pulsando até o clique, com "Confira as modalidades e confirme."; o aviso amarelo fica só com a explicação e a linha "Quando estiver tudo certo, confirme em “Está tudo certo” no aviso acima.". Outros perfis (que não veem o aviso de primeiros passos) continuam com o botão no aviso amarelo.
 

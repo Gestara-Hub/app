@@ -67,10 +67,12 @@ async function fillStepOne(page: Page, name: string) {
   await expect(page.getByText("Dá aula sozinho? Pode usar o seu nome.")).toBeVisible();
   const preview = page.getByText("Assim aparece no topo:");
   await expect(preview).toContainText("Seu espaço");
-  await expect(page.getByRole("button", { name: "Continuar" })).toBeDisabled();
   await expect(page.getByLabel("Unidade ou filial (opcional)")).toHaveCount(0);
   // Desktop (teclado fisico): o nome ja vem com foco.
   await expect(page.getByLabel("Nome")).toBeFocused();
+  // Botao sempre ativo: sem nome, avisa e nao avanca.
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Informe o nome do espaço.");
   await page.getByLabel("Nome").fill(name);
   await expect(preview).toContainText(name);
   await page.getByRole("button", { name: "Tenho mais de um endereço" }).click();
@@ -82,7 +84,7 @@ async function fillStepOne(page: Page, name: string) {
 }
 
 async function finishSetup(page: Page) {
-  await page.getByRole("button", { name: "Concluir e Começar" }).click();
+  await page.getByRole("button", { name: "Concluir" }).click();
   await page.waitForURL("**/dashboard");
 }
 
@@ -158,16 +160,12 @@ test.describe("configuração inicial por área", () => {
       const group = page.getByRole("radiogroup", { name: "Área do espaço" });
       await expect(group.getByRole("radio")).toHaveCount(11);
       await expect(group.getByRole("radio", { checked: true })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Continuar" })).toBeDisabled();
-      const radio = group.getByRole("radio", { name: startsWith(area.label) });
-      await radio.click();
-      await expect(radio).toHaveAttribute("aria-checked", "true");
-      await expect(group.getByRole("radio", { checked: true })).toHaveCount(1);
-      await expect(page.getByRole("status")).toHaveText(area.confirmation);
-      await page.getByRole("button", { name: "Continuar" }).click();
+      // Area padrao: o clique ja avanca.
+      await group.getByRole("radio", { name: startsWith(area.label) }).click();
 
-      // Passo 3: todas as aulas da area; as 2 primeiras ja marcadas.
+      // Passo 3: a confirmacao da area e todas as aulas dela; as 2 primeiras ja marcadas.
       await expect(page.getByRole("heading", { name: "Quais aulas você oferece?" })).toBeVisible();
+      await expect(page.getByRole("status")).toHaveText(area.confirmation);
       await expect(page.getByText(`Aulas de ${area.label}`)).toBeVisible();
       await expect(page.getByText("2 selecionadas")).toBeVisible();
       for (const [i, name] of area.modalities.entries()) {
@@ -219,7 +217,6 @@ test.describe("configuração inicial por área", () => {
     // Enter no nome avanca.
     await page.getByLabel("Nome").press("Enter");
     await page.getByRole("radio", { name: /^Lutas/ }).click();
-    await page.getByRole("button", { name: "Continuar" }).click();
     await expect(page.getByText("Aulas de Lutas")).toBeVisible();
     await pill(page, "Boxe").click();
     await expect(page.getByText("3 selecionadas")).toBeVisible();
@@ -227,7 +224,6 @@ test.describe("configuração inicial por área", () => {
     await page.getByRole("button", { name: "Voltar" }).click();
     await expect(page.getByRole("radio", { name: /^Lutas/ })).toHaveAttribute("aria-checked", "true");
     await page.getByRole("radio", { name: /^Música/ }).click();
-    await page.getByRole("button", { name: "Continuar" }).click();
     await expect(page.getByText("Aulas de Música")).toBeVisible();
     await expect(page.getByText("2 selecionadas")).toBeVisible();
     await expect(pill(page, "Boxe")).toHaveCount(0);
@@ -243,7 +239,6 @@ test.describe("configuração inicial por área", () => {
     await page.getByLabel("Nome").fill("Estúdio Vazio");
     await page.getByRole("button", { name: "Continuar" }).click();
     await page.getByRole("radio", { name: /^Dança/ }).click();
-    await page.getByRole("button", { name: "Continuar" }).click();
     await pill(page, "Ballet Clássico").click();
     await pill(page, "Dança de Salão").click();
     await expect(page.getByText("0 selecionadas")).toBeVisible();
@@ -273,11 +268,13 @@ test.describe("configuração inicial: Outra área", () => {
     const next = page.getByRole("button", { name: "Continuar" });
     await expect(page.getByRole("status")).toHaveCount(0);
     await expect(name).toBeFocused();
-    await expect(next).toBeDisabled();
+    // Botao sempre ativo: sem o nome da area, avisa e nao avanca.
+    await next.click();
+    await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
     // So espacos nao vale.
     await name.fill("   ");
-    await expect(next).toBeDisabled();
     await name.press("Enter");
+    await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
     await expect(page.getByRole("heading", { name: "O que você ensina?" })).toBeVisible();
 
     for (const suggestion of ["Teatro", "Xadrez", "Fotografia", "Autoescola"]) {

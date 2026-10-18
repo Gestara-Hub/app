@@ -28,8 +28,8 @@ Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/front
   - A página só promete o que o produto faz (sem "reposição", que o modelo de turmas não tem).
   - Efeito scroll fluido contínuo com `ScrollReveal` (`once: false`, aceleração GPU) + barra de progresso no topo.
 - **Setup Inicial (`/setup` & `BusinessSetupWizard`)**:
-  - Wizard em 3 passos (`1 Espaço → 2 Área → 3 Modalidades`), com orientação embutida e sem tour.
-  - Passo 1: `Nome*` + dica, prévia ao vivo e "Tenho mais de um endereço" (unidade opcional).
+  - Uma pergunta por tela (3 passos: Espaço, Área, Aulas), barra de progresso fina, coluna estreita igual nos 3 passos, sem cards nem stepper; botões sempre ativos (erro do passo ao avançar sem o obrigatório).
+  - Passo 1: `Nome*` grande + dica, prévia ao vivo, "Tenho mais de um endereço"; Enter avança.
   - Passo 2: lista das 10 áreas + "Outra área"; escolher uma área já avança (Outra área abre nome, "Como seus alunos avançam?", "Como você cobra?" e usa "Continuar").
   - Passo 3: "Aulas de {área}" + confirmação de como os alunos avançam, chips `✓`/`+`, contador e "Concluir".
 

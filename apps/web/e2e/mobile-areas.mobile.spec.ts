@@ -28,14 +28,15 @@ async function expectInsideViewport(page: Page, items: Locator) {
 async function expectMobileInput(input: Locator) {
   await expect(input).toBeVisible();
   await expect(input).not.toBeFocused();
-  expect(await input.evaluate((el) => getComputedStyle(el).fontSize)).toBe("16px");
+  // iOS so da zoom abaixo de 16px.
+  expect(parseFloat(await input.evaluate((el) => getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16);
 }
 
 const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 test.describe("configuração inicial no celular", () => {
   for (const area of [...AREAS.map((a) => ({ label: a.label, custom: false })), { label: "Outra área", custom: true }]) {
-    test(`${area.label}: três passos sem rolagem lateral, 16 px e sem foco automático`, async ({ page }) => {
+    test(`${area.label}: três passos sem rolagem lateral, 16 px ou mais e sem foco automático`, async ({ page }) => {
       await freshTenant(page);
 
       // Passo 1
@@ -47,21 +48,21 @@ test.describe("configuração inicial no celular", () => {
       await expectInsideViewport(page, page.getByRole("button", { name: "Continuar" }));
       await page.getByRole("button", { name: "Continuar" }).click();
 
-      // Passo 2
+      // Passo 2: area padrao avanca no clique; "Outra área" abre os campos e usa o botao.
       const group = page.getByRole("radiogroup", { name: "Área do espaço" });
-      await group.getByRole("radio", { name: new RegExp(`^${escapeRe(area.label)}`) }).click();
       await expectInsideViewport(page, group.getByRole("radio"));
+      await expectNoHorizontalScroll(page);
+      await group.getByRole("radio", { name: new RegExp(`^${escapeRe(area.label)}`) }).click();
       if (area.custom) {
         await expectMobileInput(page.getByLabel("O que você ensina?"));
         await page.getByRole("button", { name: "Autoescola", exact: true }).click();
         await expectInsideViewport(page, page.getByRole("radiogroup", { name: "Como seus alunos avançam?" }).getByRole("radio"));
         await expectInsideViewport(page, page.getByRole("radiogroup", { name: "Como você cobra?" }).getByRole("radio"));
-      } else {
-        await expectInsideViewport(page, page.getByRole("status"));
+        await expectNoHorizontalScroll(page);
+        await expectInsideViewport(page, page.getByRole("button", { name: "Continuar" }));
+        await page.getByRole("button", { name: "Continuar" }).click();
       }
-      await expectNoHorizontalScroll(page);
-      await expectInsideViewport(page, page.getByRole("button", { name: "Continuar" }));
-      await page.getByRole("button", { name: "Continuar" }).click();
+      await expectInsideViewport(page, page.getByRole("status"));
 
       // Passo 3
       await expect(page.getByRole("heading", { name: "Quais aulas você oferece?" })).toBeVisible();
@@ -70,10 +71,10 @@ test.describe("configuração inicial no celular", () => {
       await add.fill("Aula com nome comprido para testar a pílula");
       await page.getByRole("button", { name: "Adicionar" }).click();
       await expectNoHorizontalScroll(page);
-      await expectInsideViewport(page, page.getByRole("button", { name: "Concluir e Começar" }));
+      await expectInsideViewport(page, page.getByRole("button", { name: "Concluir" }));
       await expectInsideViewport(page, page.getByRole("button", { name: "Voltar" }));
 
-      await page.getByRole("button", { name: "Concluir e Começar" }).click();
+      await page.getByRole("button", { name: "Concluir" }).click();
       await page.waitForURL("**/dashboard");
       const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
       await expect(welcome).toBeVisible();
