@@ -87,7 +87,7 @@ test("configuração inicial em 375px: sem teclado automático, cards e opções
 test("landing page em 375px: os 11 cards de áreas cabem sem rolagem lateral", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
-  const section = page.locator("#modalidades");
+  const section = page.locator("#areas");
   await section.scrollIntoViewIfNeeded();
   await expect(section.getByRole("heading", { level: 3 })).toHaveCount(11);
   await expect(section.getByText("Sua área não está aqui?")).toBeVisible();

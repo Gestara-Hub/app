@@ -66,8 +66,10 @@ Pode:
 - Consultar servicos e equipe (somente leitura).
 - Turmas: ver turmas, matricular/cancelar matricula e marcar presenca (sem criar/editar turmas nem modalidades).
 - Ver planos e mensalidades (sem gerenciar).
+- Mandar mensagens aos alunos pelo WhatsApp e ver o historico (`communication:view`; decisao de 18/10/2026). Conectar o WhatsApp e mudar os modelos fica com a gestao.
+- Relatorios operacionais e o de cobrancas; DRE, churn, previsao e repasse pedem `finance:view` (nao aparecem para ela).
 
-Nao pode: bloquear horarios, gerenciar equipe/servicos/turmas, ver dashboard, usuarios, auditoria ou configuracoes.
+Nao pode: bloquear horarios, gerenciar equipe/servicos/turmas, graduar ou registrar a evolucao dos alunos, ver dashboard, financeiro, usuarios, auditoria ou configuracoes.
 
 ### Profissional
 
@@ -76,11 +78,9 @@ Perfil focado no proprio trabalho.
 Pode:
 
 - Ver a propria agenda (Modelo 1, escopada ao seu `professionalId`) e avancar o status dos atendimentos (confirmar, iniciar, concluir, nao compareceu).
-- Ver turmas e aulas e marcar presenca (Modelo 3).
+- Modelo 3 (decisao de 18/10/2026): ve e age (chamada, registros de aula, graduacao, notas) **so nas turmas em que e o titular** e **nas aulas em que foi posto como substituto** ("Trocar instrutor", que vale para uma aula, nao para a turma). Lista de turmas, calendario e detalhe mostram so isso; chamada e evolucao fora do escopo sao recusadas com `FORBIDDEN` (`services/teacherScope.ts`). Graduar, metas e pontos fortes: so em aluno das turmas dele. Sem vinculo com a equipe, nao ve nenhuma turma.
 
 Nao pode: criar/editar/cancelar/remarcar agendamentos, bloquear horarios, criar series, ver clientes, equipe ou servicos, gerenciar cadastros, ver dashboard, financeiro, usuarios, auditoria ou configuracoes.
-
-Ainda nao implementado: **instrutor ver so as proprias turmas** (hoje o Profissional ve todas as turmas e aulas do tenant).
 
 Antes: o Profissional tinha leitura de clientes, servicos e equipe e uma permissao `appointments:view`; hoje nenhuma das duas existe para ele (a `appointments:view` nao existe no contrato).
 
@@ -110,10 +110,14 @@ As acoes do sistema sao `capability keys` no formato `entidade:acao`, com fonte 
 | enrollment:manage | ✓ | ✓ | ✓ | |
 | attendance:mark | ✓ | ✓ | ✓ | ✓ |
 | grades:manage | ✓ | ✓ | | ✓ (so nas proprias turmas) |
+| progression:manage | ✓ | ✓ | | ✓ (so alunos das proprias turmas) |
 | billing:view | ✓ | ✓ | ✓ | |
 | billing:manage | ✓ | ✓ | | |
 | finance:view | ✓ | ✓ | | |
 | finance:manage | ✓ | ✓ | | |
+| communication:view | ✓ | ✓ | ✓ (ve e manda mensagens) | |
+| communication:manage | ✓ | ✓ | | |
+| reports:view | ✓ | ✓ | ✓ (sem os financeiros) | |
 | subscription:manage | ✓ | | | |
 | settings:view | ✓ | | | |
 | users:view / users:manage | ✓ | ✓ (so Atendente/Profissional) | | |
@@ -130,6 +134,8 @@ Regras especificas:
 - **Avancar status** (`appointments:status`): todos os perfis; o Profissional so enxerga (e portanto so opera) os proprios atendimentos.
 - **Notas** (`grades:manage`): Proprietario e Gerente em todas as turmas; o Profissional so nas turmas em que e o instrutor titular (o `gradesService` recusa as demais com `FORBIDDEN`). O Atendente ve as avaliacoes e o boletim (`classes:view`), mas nao lanca.
 - **Modalidades** exigem `classes:manage`; **Planos** e **Mensalidades** aparecem com `billing:view`, e as acoes de gestao exigem `billing:manage`.
+- **Evolucao** (`progression:manage`, 18/10/2026): graduar, registrar a aula, metas e pontos fortes. Proprietario e Gerente em todos os alunos; o Profissional so nos alunos das turmas dele (o registro da aula tambem vale na aula em que substitui). O Atendente nao tem: a ficha mostra a evolucao sem os botoes.
+- **Relatorios**: alem de `reports:view`, os de cobranca (cobrancas, cursos, pacotes) pedem `billing:view` e os financeiros (DRE, churn, previsao, repasse) pedem `finance:view`. Sem a permissao, o relatorio nao aparece no catalogo e o service recusa.
 
 ## Gestao de usuarios (`/users`)
 
@@ -167,4 +173,4 @@ Regras especificas:
 ## Pendencias
 
 - Ao integrar a API: transformar `PROFILE_PERMISSIONS` em policies/scopes reais e aplicar o enforcement tambem no servidor, incluindo `manageableProfiles`, o escopo do Profissional e a visibilidade da auditoria.
-- Decidir se o instrutor deve ver so as proprias turmas.
+- Decidido em 18/10/2026: o instrutor ve so as proprias turmas e as aulas em que substitui (feito no mock; repetir no backend).

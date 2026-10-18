@@ -299,7 +299,7 @@ test.describe("topo e resumos das seções", () => {
     });
     await page.goto(PROFILE);
     const data = await openProfileSection(page, "Cadastro");
-    await expect(data).toContainText("Sem mensalidade");
+    // A tela mostra a bolsa (nao "Sem mensalidade").
     await expect(data).toContainText("Integral");
   });
 

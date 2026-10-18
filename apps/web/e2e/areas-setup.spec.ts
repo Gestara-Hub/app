@@ -44,7 +44,8 @@ function endTime(minutes: number): string {
 }
 
 /** Pilula do passo 3 (texto "✓ Nome" ou "+ Nome"). */
-const pill = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^[✓+]\\s*${escapeRe(name)}$`) });
+// O "✓"/"+" do chip e aria-hidden: o nome acessivel e so o da aula.
+const pill = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 
 type Category = Tenant;
 
@@ -72,7 +73,8 @@ async function fillStepOne(page: Page, name: string) {
   await expect(page.getByLabel("Nome")).toBeFocused();
   // Botao sempre ativo: sem nome, avisa e nao avanca.
   await page.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Informe o nome do espaço.");
+  // Erro pelo id do campo (o anuncio de rota do Next tambem e role=alert).
+  await expect(page.locator("#business-name-error")).toHaveText("Informe o nome do espaço.");
   await page.getByLabel("Nome").fill(name);
   await expect(preview).toContainText(name);
   await page.getByRole("button", { name: "Tenho mais de um endereço" }).click();
@@ -270,11 +272,11 @@ test.describe("configuração inicial: Outra área", () => {
     await expect(name).toBeFocused();
     // Botao sempre ativo: sem o nome da area, avisa e nao avanca.
     await next.click();
-    await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
+    await expect(page.locator("#custom-segment-error")).toHaveText("Informe o que você ensina.");
     // So espacos nao vale.
     await name.fill("   ");
     await name.press("Enter");
-    await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
+    await expect(page.locator("#custom-segment-error")).toHaveText("Informe o que você ensina.");
     await expect(page.getByRole("heading", { name: "O que você ensina?" })).toBeVisible();
 
     for (const suggestion of ["Teatro", "Xadrez", "Fotografia", "Autoescola"]) {

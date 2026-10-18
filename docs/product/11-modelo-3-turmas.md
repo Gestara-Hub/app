@@ -390,3 +390,18 @@ Fase 1 das notas (detalhe e decisões em [21-ideias-certificados-e-notas.md](21-
 - **Boletim "Notas"** ao lado de Graduação e Registros de aula (lista de alunos, lista da turma e chamada).
 - **RBAC:** `grades:manage` (dono, gerente, professor). O professor só lança nas turmas em que é o instrutor titular, regra aplicada no `gradesService` (primeiro escopo de turma do professor feito no serviço; a chamada segue sem escopo). Ver é `classes:view`.
 - Regras puras (escala, validação, média ponderada, arredondamento) em `@gestarahub/core/grades`.
+
+
+## Correções da rodada de testes (18/10/2026)
+
+Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md).
+
+- **Chamada otimista:** o toque aparece na hora e cada aluno tem uma fila de gravação na ordem dos toques; toque rápido não se perde. Quando a fila do aluno esvazia, a aula é relida e vale o que veio do serviço (erro volta ao estado real). "Todos vieram" e "Concluir chamada" esperam as filas antes.
+- **Remover da aula** apaga a presença: voltar para a aula começa sem marcação e gasta o pacote de novo.
+- **Aula que existe:** data real, entre o início e o fim da turma, no dia da semana e no horário da grade daquela data; em turma desativada, só as que já passaram. Senão, "Aula não encontrada" no detalhe e na chamada (data inválida na URL não derruba mais a tela).
+- **Mudar o horário** vale daqui para frente: a grade antiga fica em `ClassGroup.scheduleHistory` até ontem (ou até hoje, se a chamada de hoje já foi feita), e as aulas passadas, a frequência e o calendário seguem no horário delas (`meetingSlotsOn`).
+- **Avulso ou experimental que se matricula depois** segue como reserva nas aulas de antes da matrícula (não vira matriculado no passado nem gasta pacote ao remarcar).
+- **Conflito de horário** (professor e aluno) só com turma que tenha dias em comum daqui para frente: curso encerrado não bloqueia o próximo curso no mesmo horário nem a matrícula do aluno (`periodsOverlap`).
+- **Turma desativada:** selo "Inativo" com "Reativar turma" no menu, sem "Matricular alunos" nem próxima aula; o serviço recusa a matrícula ("Turma desativada. Reative para matricular.") e, ao desativar, cancela as reservas futuras e as avulsas em aberto delas.
+- **Professor:** vê e age só nas turmas em que é o titular e nas aulas em que substitui (doc 06).
+- **Duas abas abertas:** cada leitura e gravação relê o banco salvo se outra aba gravou, e a tela da outra aba se atualiza sozinha (mock; some com o backend).

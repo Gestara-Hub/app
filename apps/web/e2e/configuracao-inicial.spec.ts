@@ -57,7 +57,7 @@ test("configuração inicial orienta cada passo e aceita uma área fora da lista
   await expect(status).toHaveCount(0);
   const next = page.getByRole("button", { name: "Continuar" });
   await next.click();
-  await expect(page.getByRole("alert")).toHaveText("Informe o que você ensina.");
+  await expect(page.locator("#custom-segment-error")).toHaveText("Informe o que você ensina.");
   await expect(page.getByRole("radio", { name: "Não avançam", exact: true })).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Xadrez" }).click();
   await expect(page.getByLabel("O que você ensina?")).toHaveValue("Xadrez");

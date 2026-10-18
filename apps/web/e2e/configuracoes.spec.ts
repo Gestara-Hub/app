@@ -38,13 +38,15 @@ test("prévia das regras da mensalidade mostra as 4 combinações", async ({ pag
   await expectRow("20/10", "R$ 150,00", "20/09 a 19/10");
 });
 
-test("dia de vencimento aceita só de 1 a 28", async ({ page }) => {
+test("dia de vencimento aceita de 1 a 31 (29 a 31 no último dia dos meses curtos)", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings#billing-rules");
   await openBillingRules(page);
+  await page.locator("input[name=defaultDueDay]").fill("31");
+  await expect(page.getByText("Nos meses mais curtos, vence no último dia.")).toBeVisible();
   await page.locator("input[name=defaultDueDay]").fill("35");
   await page.getByRole("button", { name: "Salvar configurações" }).click();
-  await expect(page.getByText("Use um dia de 1 a 28.")).toBeVisible();
+  await expect(page.getByText("Use um dia de 1 a 31.")).toBeVisible();
 });
 
 test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
@@ -105,10 +107,11 @@ test("configuração inicial: o Continuar leva ao passo e às Regras da mensalid
   await banner.getByRole("link", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/tab=geral#billing-rules$/);
   await expect(page.getByRole("button", { name: /Regras da mensalidade/ })).toHaveAttribute("aria-expanded", "true");
-  const billingCard = page.locator("#billing-rules");
-  await expect(billingCard).toHaveClass(/animate-attention-ring/);
-  await page.getByRole("radio", { name: /^Depois do uso/ }).click();
-  await expect(billingCard).not.toHaveClass(/animate-attention-ring/);
+  // O botao de confirmar treme ate o clique (o destaque saiu do cartao).
+  const confirm = page.getByRole("button", { name: /Confirmar regras/ });
+  await expect(confirm).toHaveClass(/animate-attention/);
+  await confirm.click();
+  await expect(page.getByText("● Falta confirmar")).toHaveCount(0);
 });
 
 test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard", async ({ page }) => {

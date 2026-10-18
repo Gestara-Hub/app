@@ -154,7 +154,7 @@ function PhoneControl({
         disabled={disabled}
       >
         <SelectTrigger
-          aria-label={`País do telefone: ${phoneCountryName(current.country)}`}
+          aria-label={`País: ${phoneCountryName(current.country)} (+${callingCodeOf(current.country)})`}
           className="w-[104px] shrink-0"
         >
           <SelectValue>

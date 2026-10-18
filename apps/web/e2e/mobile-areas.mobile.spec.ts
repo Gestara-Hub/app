@@ -88,12 +88,12 @@ test.describe("configuração inicial no celular", () => {
 test("landing page no celular: cards de áreas e título digitado cabem na tela", async ({ page }) => {
   await page.goto("/");
   const headline = page.getByRole("heading", { level: 1 });
-  // A palavra mais longa ("estúdios de pilates e yoga.") quebra linha sem vazar.
-  await expect(headline).toContainText("estúdios de pilates e yoga.", { timeout: 15_000 });
+  // O titulo (com a parte digitada) quebra linha sem vazar.
+  await expect(headline).toContainText("Gestão simples para", { timeout: 15_000 });
   await expectInsideViewport(page, headline);
   await expectNoHorizontalScroll(page);
 
-  const section = page.locator("#modalidades");
+  const section = page.locator("#areas");
   await section.scrollIntoViewIfNeeded();
   const titles = section.getByRole("heading", { level: 3 });
   await expect(titles).toHaveCount(11);

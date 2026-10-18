@@ -37,6 +37,8 @@ Nenhum achado bloqueante: todos os fluxos planejados puderam ser testados. Junta
 
 Corrigir primeiro. Cada item junta os achados repetidos entre frentes.
 
+**Situação (18/10/2026): os 26 itens foram corrigidos**, com as decisões de produto abaixo. Regras nas docs 06, 11 e 15; testes de serviço novos em `money-rules`, `permissions-scope`, `packages` e `migrations`. Os testes de navegador desatualizados (lista acima) foram ajustados, mas a suíte e2e ainda não rodou de novo.
+
 ### Dinheiro
 1. **Mensalidades de meses não visitados nunca nascem** (COB-01). O atraso total muda conforme os meses que alguém abre (R$ 300, R$ 450; dívida real R$ 750). Gerar na leitura todos os períodos desde a última gerada até hoje.
 2. **Pix Automático quita mensalidades antigas** (COB-04). Autorizar paga na hora julho, agosto e setembro vencidos. Só vencimentos a partir da autorização.

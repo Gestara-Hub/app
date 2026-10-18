@@ -415,7 +415,7 @@ test.describe("dialog: saída sem piscar", () => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
     const confirm = await openInactivateClient(page);
     await recordDialogFrames(page, "alertdialog", "Inativar aluno?");
-    await confirm.getByRole("button", { name: "Voltar" }).click();
+    await confirm.getByRole("button", { name: "Cancelar" }).click();
     await expect(confirm).toBeHidden();
     await expectStableFrames(page, INACTIVATE_TEXT);
 
@@ -467,24 +467,24 @@ test.describe("dialog: saída sem piscar", () => {
     const pay = await openMarkPaid(page, "Kimonos para revenda");
     await expect(pay).toContainText("Kimonos para revenda");
     await recordDialogFrames(page, "dialog", "Registrar pagamento");
-    await pay.getByRole("button", { name: "Voltar" }).click();
+    await pay.getByRole("button", { name: "Cancelar" }).click();
     await expect(pay).toBeHidden();
     await expectStableFrames(page, ["Registrar pagamento", "Kimonos para revenda", "R$ 320,00"]);
   });
 
-  test("registrar pagamento: Voltar com forma escolhida pede para descartar", async ({ page }) => {
+  test("registrar pagamento: Cancelar com forma escolhida pede para descartar", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.financialEntries = [entry("fe-kimonos", "Kimonos para revenda")]) });
     await page.goto("/finance?tab=lancamentos");
     const pay = await openMarkPaid(page, "Kimonos para revenda");
     const discard = page.getByRole("alertdialog", { name: "Descartar alterações?" });
 
     await pay.getByRole("radio", { name: "Pix" }).click();
-    await pay.getByRole("button", { name: "Voltar" }).click();
+    await pay.getByRole("button", { name: "Cancelar" }).click();
     await expect(discard).toBeVisible();
     await discard.getByRole("button", { name: "Continuar editando" }).click();
     await expect(pay.getByRole("radio", { name: "Pix" })).toBeChecked();
 
-    await pay.getByRole("button", { name: "Voltar" }).click();
+    await pay.getByRole("button", { name: "Cancelar" }).click();
     await discard.getByRole("button", { name: "Descartar" }).click();
     await expect(pay).toBeHidden();
   });
