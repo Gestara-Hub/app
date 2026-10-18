@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 
+// Com "/" na frente, os links tambem funcionam nas paginas de Termos e Privacidade.
+export const LANDING_NAV_LINKS = [
+  { href: "/#parte-chata", label: "Parte chata" },
+  { href: "/#o-sistema", label: "O sistema" },
+  { href: "/#areas", label: "Áreas" },
+  { href: "/#recursos", label: "Recursos" },
+  { href: "/#faq", label: "Dúvidas" },
+];
+
 export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -52,35 +61,20 @@ export function LandingHeader() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
-          <a
-            href="#como-funciona"
-            className="transition-colors hover:text-foreground"
-          >
-            Como funciona
-          </a>
-          <a
-            href="#modalidades"
-            className="transition-colors hover:text-foreground"
-          >
-            Modalidades
-          </a>
-          <a
-            href="#recursos"
-            className="transition-colors hover:text-foreground"
-          >
-            Recursos
-          </a>
-          <a
-            href="#faq"
-            className="transition-colors hover:text-foreground"
-          >
-            Dúvidas
-          </a>
+        <nav className="hidden items-center gap-7 text-sm font-medium text-muted-foreground lg:flex">
+          {LANDING_NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="whitespace-nowrap transition-colors hover:text-foreground"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Right Actions */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <Button
             variant="ghost"
             size="icon"
@@ -97,30 +91,28 @@ export function LandingHeader() {
           </Button>
 
           <Button asChild size="sm" className="gap-1.5 px-4 font-semibold shadow-xs">
-            <a href="#cadastro">
-              <span>Começar grátis</span>
+            <Link href="/#cadastro">
+              <span>Criar conta grátis</span>
               <ArrowRight className="size-3.5" />
-            </a>
+            </Link>
           </Button>
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="flex items-center gap-2 md:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 text-muted-foreground"
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            aria-label="Alternar tema"
-          >
-            <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        {/* No celular o botao de criar conta fica sempre a vista; o tema vai para o menu. */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <Button asChild className="px-3 font-semibold">
+            <Link href="/#cadastro" onClick={() => setMobileMenuOpen(false)}>
+              Criar conta
+            </Link>
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Abrir menu"
+            aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="landing-mobile-menu"
           >
             {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </Button>
@@ -129,36 +121,21 @@ export function LandingHeader() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="border-b border-border/40 bg-background/95 px-4 pt-2 pb-6 backdrop-blur-md md:hidden space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div
+          id="landing-mobile-menu"
+          className="border-b border-border/40 bg-background/95 px-4 pt-2 pb-6 backdrop-blur-md lg:hidden space-y-4 animate-in slide-in-from-top-2 duration-200"
+        >
           <nav className="flex flex-col space-y-3 pt-2 text-sm font-medium">
-            <a
-              href="#como-funciona"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Como funciona
-            </a>
-            <a
-              href="#modalidades"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Modalidades
-            </a>
-            <a
-              href="#recursos"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Recursos
-            </a>
-            <a
-              href="#faq"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Dúvidas
-            </a>
+            {LANDING_NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
           <div className="flex flex-col gap-2 pt-2 border-t border-border/40">
             <Button variant="outline" asChild className="w-full justify-center">
@@ -166,11 +143,13 @@ export function LandingHeader() {
                 Entrar
               </Link>
             </Button>
-            <Button asChild className="w-full justify-center gap-1.5 font-semibold">
-              <a href="#cadastro" onClick={() => setMobileMenuOpen(false)}>
-                <span>Criar conta grátis</span>
-                <ArrowRight className="size-3.5" />
-              </a>
+            <Button
+              variant="ghost"
+              className="w-full justify-center gap-2 text-muted-foreground"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            >
+              {resolvedTheme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              {resolvedTheme === "dark" ? "Tema claro" : "Tema escuro"}
             </Button>
           </div>
         </div>

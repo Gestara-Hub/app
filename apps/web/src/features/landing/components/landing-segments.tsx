@@ -36,14 +36,14 @@ const SEGMENT_CARDS: SegmentCard[] = [
 
 export function LandingSegments() {
   return (
-    <section id="modalidades" className="py-20 border-t border-border/40">
+    <section id="areas" className="scroll-mt-16 py-20 border-t border-border/40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
         <ScrollReveal direction="up" distancePx={16} durationMs={450}>
           <div className="text-center max-w-2xl mx-auto space-y-2.5">
             <span className="text-xs font-semibold uppercase tracking-wider text-primary">
               Em grupo ou individual
             </span>
-            <h2 className="text-3xl font-extrabold sm:text-4xl text-foreground tracking-tight">
+            <h2 className="text-3xl font-extrabold sm:text-4xl text-foreground tracking-tight text-balance">
               Para quem ensina, em qualquer área
             </h2>
             <p className="text-muted-foreground text-sm sm:text-base">
@@ -87,7 +87,7 @@ export function LandingSegments() {
                       href="#cadastro"
                       className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0"
                     >
-                      <span>Criar conta gratuita</span>
+                      <span>Criar conta grátis</span>
                       <span>&rarr;</span>
                     </a>
                   ) : null}

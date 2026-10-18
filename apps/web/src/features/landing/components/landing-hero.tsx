@@ -25,15 +25,17 @@ export function LandingHero() {
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl text-foreground leading-[1.15]">
             <span className="block">Chega de caderno e planilha.</span>
             <span className="block">Gestão simples para</span>
-            <span className="block text-primary min-h-[1.2em]">
+            <span className="sr-only">quem ensina.</span>
+            <span aria-hidden="true" className="block text-primary">
               <TypewriterText
                 words={[
                   "academias de luta.",
-                  "estúdios de pilates e yoga.",
+                  "estúdios de pilates.",
+                  "aulas particulares.",
                   "escolas de música.",
                   "escolas de idiomas.",
                   "escolas de dança.",
-                  "escolas de confeitaria.",
+                  "cursos de confeitaria.",
                   "cursos livres.",
                 ]}
               />
@@ -48,7 +50,7 @@ export function LandingHero() {
               className="h-12 w-full sm:w-auto px-8 text-sm font-semibold shadow-md gap-2"
             >
               <a href="#cadastro">
-                <span>Criar conta gratuita agora</span>
+                <span>Criar conta grátis</span>
                 <ArrowRight className="size-4" />
               </a>
             </Button>
@@ -58,7 +60,7 @@ export function LandingHero() {
               size="lg"
               className="h-12 w-full sm:w-auto px-6 text-sm font-medium"
             >
-              <a href="#como-funciona">Ver como funciona</a>
+              <a href="#o-sistema">Ver o sistema</a>
             </Button>
           </div>
 

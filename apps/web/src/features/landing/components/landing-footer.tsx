@@ -4,13 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
+import { SUPPORT_EMAIL } from "@/config/site";
+import { LANDING_NAV_LINKS } from "./landing-header";
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="border-t border-border/40 bg-card/40 py-10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <Image
             src={logoLightImage}
@@ -27,23 +29,27 @@ export function LandingFooter() {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6 text-xs text-muted-foreground font-medium">
-          <a href="#como-funciona" className="hover:text-foreground transition-colors">
-            Como funciona
-          </a>
-          <a href="#modalidades" className="hover:text-foreground transition-colors">
-            Modalidades
-          </a>
-          <a href="#recursos" className="hover:text-foreground transition-colors">
-            Recursos
-          </a>
-          <a href="#faq" className="hover:text-foreground transition-colors">
-            Dúvidas
-          </a>
-          <Link href="/login" className="hover:text-foreground transition-colors">
-            Acessar Plataforma
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-muted-foreground font-medium">
+          {LANDING_NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-foreground transition-colors">
+              {link.label}
+            </Link>
+          ))}
+          <Link href="/terms" className="hover:text-foreground transition-colors">
+            Termos de uso
           </Link>
-        </div>
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
+            Privacidade
+          </Link>
+          {SUPPORT_EMAIL ? (
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-foreground transition-colors">
+              Contato
+            </a>
+          ) : null}
+          <Link href="/login" className="hover:text-foreground transition-colors">
+            Entrar
+          </Link>
+        </nav>
       </div>
     </footer>
   );

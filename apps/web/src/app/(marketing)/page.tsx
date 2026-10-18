@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
 import { LandingView } from "@/features/landing";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/config/site";
+
+const title = `${SITE_NAME} | ${SITE_TAGLINE}`;
 
 export const metadata: Metadata = {
-  title: "GestaraHub | Gestão simples para quem ensina",
-  description:
-    "Turmas, chamada no celular, mensalidades e evolução dos alunos em um só lugar. Para quem dá aula em grupo ou particular: lutas, pilates, dança, música, idiomas, confeitaria, artesanato e cursos livres. Plano grátis, sem cartão de crédito.",
+  title,
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: SITE_NAME,
+    title,
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+  twitter: { card: "summary_large_image", title, description: SITE_DESCRIPTION },
 };
 
 export default function LandingPage() {

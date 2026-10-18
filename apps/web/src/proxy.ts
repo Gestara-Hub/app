@@ -7,10 +7,13 @@ import { SESSION_COOKIE } from "@/lib/session";
  * `/login` guardando o destino em `?from=`. Estando logado, `/login` redireciona
  * para o Dashboard. Como e mock, mantemos simples.
  */
-const PUBLIC_PATHS = ["/login", "/"];
+// Landing e paginas legais sao publicas.
+const PUBLIC_PATHS = ["/login", "/", "/terms", "/privacy"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;
+  // Previa do link: o grupo (marketing) gera "/opengraph-image-<hash>".
+  if (pathname.startsWith("/opengraph-image")) return true;
   return PUBLIC_PATHS.some(
     (path) => path !== "/" && (pathname === path || pathname.startsWith(`${path}/`)),
   );

@@ -1,9 +1,12 @@
 export { LandingView } from "./components/landing-view";
 export { LandingHeader } from "./components/landing-header";
 export { LandingHero } from "./components/landing-hero";
-export { LandingProblems } from "./components/landing-problems";
+export { LandingChores } from "./components/landing-chores";
+export { LandingShowcase } from "./components/landing-showcase";
 export { LandingSegments } from "./components/landing-segments";
 export { LandingFeatures } from "./components/landing-features";
+export { LandingPlans } from "./components/landing-plans";
+export { TermsOfUse, PrivacyPolicy } from "./components/legal-documents";
 export { LandingFaq } from "./components/landing-faq";
 export { LandingFooter } from "./components/landing-footer";
 export { TypewriterText } from "./components/typewriter-text";

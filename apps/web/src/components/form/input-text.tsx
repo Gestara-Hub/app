@@ -18,6 +18,8 @@ interface InputTextProps<T extends FieldValues> {
   disabled?: boolean;
   type?: "text" | "email" | "tel" | "url" | "password";
   id?: string;
+  /** Preenchimento automatico do navegador (ex.: "name", "email"). */
+  autoComplete?: string;
 }
 
 export function InputText<T extends FieldValues>({
@@ -29,6 +31,7 @@ export function InputText<T extends FieldValues>({
   disabled,
   type = "text",
   id,
+  autoComplete,
 }: InputTextProps<T>) {
   const { control } = useFormContext<T>();
   const fieldId = id ?? String(name);
@@ -49,6 +52,7 @@ export function InputText<T extends FieldValues>({
             id={fieldId}
             type={type}
             placeholder={placeholder}
+            autoComplete={autoComplete}
             disabled={disabled}
             value={(field.value as string | undefined) ?? ""}
             onChange={(event) => field.onChange(event.target.value)}

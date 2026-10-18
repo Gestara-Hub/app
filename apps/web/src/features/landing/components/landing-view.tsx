@@ -2,7 +2,8 @@
 
 import { LandingHeader } from "./landing-header";
 import { LandingHero } from "./landing-hero";
-import { LandingProblems } from "./landing-problems";
+import { LandingChores } from "./landing-chores";
+import { LandingShowcase } from "./landing-showcase";
 import { LandingSegments } from "./landing-segments";
 import { LandingFeatures } from "./landing-features";
 import { LandingSignupSection } from "./landing-signup-section";
@@ -15,11 +16,12 @@ export function LandingView() {
       <LandingHeader />
       <main className="flex-1">
         <LandingHero />
-        <LandingProblems />
+        <LandingChores />
+        <LandingShowcase />
         <LandingSegments />
         <LandingFeatures />
-        <LandingSignupSection />
         <LandingFaq />
+        <LandingSignupSection />
       </main>
       <LandingFooter />
     </div>

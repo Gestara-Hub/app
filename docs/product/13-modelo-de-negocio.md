@@ -2,6 +2,7 @@
 
 > **Status:** Atualizado em 03/10/2026. Reflete o modelo freemium com monetização em fintech, automação de WhatsApp e inteligência analítica.
 > **13/10/2026:** WhatsApp sempre com o número do próprio espaço; envio assistido no grátis e API oficial no Pro (seção 5). Pagamentos (assinatura, custo das mensagens e mensalidade online com split): levantamento em [19-levantamento-pagamentos.md](19-levantamento-pagamentos.md); integração real do WhatsApp: [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
+> **Em aberto (17/10/2026):** preço do Pro e forma de cobrar dois fluxos, ainda a validar. **Envio automático do WhatsApp:** o custo das mensagens provavelmente fica com o espaço. **Pagamento online:** pode valer também no grátis, com taxa por cobrança automática, em vez de ser só do Pro. Até decidir, a landing page não mostra planos nem cita o Pro (doc 08, seção 3.5). As seções 2 e 3 abaixo seguem como estavam.
 
 ## 1. Decisão Estratégica
 

@@ -5,6 +5,7 @@ import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsConsentBanner } from "@/components/shared/analytics-consent-banner";
 import appIcon from "@/assets/icon.png";
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/config/site";
 import { PRE_PAINT_VIEW_MODE_SCRIPT } from "@/components/shared/list/view-mode-script";
 
 const geistSans = Geist({
@@ -18,8 +19,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GestaraHub",
-  description: "Plataforma de gestão — agenda, clientes, equipe e serviços.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: `${SITE_TAGLINE}: turmas, chamada, mensalidades e evolução dos alunos.`,
   icons: { icon: appIcon.src, shortcut: appIcon.src, apple: appIcon.src },
 };
 

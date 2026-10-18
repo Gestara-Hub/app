@@ -21,15 +21,17 @@ Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/front
   - Proibido duplicar listas de seleção na mesma tela.
   - Labels de formulário limpas (ex.: `Nome*` colado com tipografia inline, sem gap de flexbox).
 - **Landing Page (`features/landing`)**:
-  - Antes vs. Depois com 3 dores reais (sem blocos redundantes de passos ou métricas).
+  - "A parte chata, a gente resolve": 6 cards de tarefa chata ➔ solução (substituiu o Antes vs. Depois; sem blocos de passos ou métricas).
   - 11 cards de áreas (`LandingSegments`): ícone, nome e exemplos, vindos dos presets.
   - 4 Pilares da gestão (`LandingFeatures`).
+  - Dúvidas, cadastro no fim e páginas `/terms` e `/privacy`. Sem Planos e sem citar o Pro até definir o preço e a cobrança do WhatsApp e do pagamento online (`LandingPlans` pronto, fora da página).
+  - A página só promete o que o produto faz (sem "reposição", que o modelo de turmas não tem).
   - Efeito scroll fluido contínuo com `ScrollReveal` (`once: false`, aceleração GPU) + barra de progresso no topo.
 - **Setup Inicial (`/setup` & `BusinessSetupWizard`)**:
   - Wizard em 3 passos (`1 Espaço → 2 Área → 3 Modalidades`), com orientação embutida e sem tour.
   - Passo 1: `Nome*` + dica, prévia ao vivo e "Tenho mais de um endereço" (unidade opcional).
-  - Passo 2: 10 cards compactos + "Outra área" (nome, chips, "Como seus alunos avançam?") e linha de confirmação.
-  - Passo 3: Pílulas interativas unificadas com check `✓` e contador dinâmico.
+  - Passo 2: lista das 10 áreas + "Outra área"; escolher uma área já avança (Outra área abre nome, "Como seus alunos avançam?", "Como você cobra?" e usa "Continuar").
+  - Passo 3: "Aulas de {área}" + confirmação de como os alunos avançam, chips `✓`/`+`, contador e "Concluir".
 
 ---
 

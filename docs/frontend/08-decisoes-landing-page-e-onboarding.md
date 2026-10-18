@@ -52,54 +52,117 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 
 ## 3. Decisões da Landing Page (`apps/web/src/features/landing/`)
 
-### 3.1. Hero (`landing-hero.tsx`)
-- **Pill superior**: *"Plano grátis • Sem cartão de crédito"*. Trocado em 14/10/2026: "grátis para sempre" dava a impressão de que tudo é grátis, e o plano Pro (cobrança online, WhatsApp automático) é pago. A página não promete "para sempre" em nenhum lugar; o FAQ explica o que o grátis cobre e o que fica no Pro.
-- **Título** (11/10/2026, opção escolhida entre 4): *"Chega de caderno e planilha. Gestão simples para"* + digitação com o tipo de negócio, sempre fechando a frase: *"academias de luta."*, *"estúdios de pilates e yoga."*, *"escolas de música."*, *"escolas de idiomas."*, *"escolas de dança."*, *"escolas de confeitaria."*, *"cursos livres."* (14/10/2026: saiu "boxes e funcional." para mostrar o público mais amplo).
-- **Sem subtítulo**: os botões vêm logo após o título.
-- **Badges de confiança**: *"Em grupo ou aulas particulares"*, *"Sem limite de alunos ou horários"*, *"Chamada direta no celular"*.
-- **Metadados (título e descrição da página)**: sem "teste de 14 dias"; reforçam "plano grátis, sem cartão de crédito". A descrição fala em "quem dá aula em grupo ou particular" e cita lutas, pilates, dança, música, idiomas, confeitaria, artesanato e cursos livres.
+### 3.0. Ordem e navegação (17/10/2026)
+- Ordem: Hero → A parte chata → O sistema → Áreas → Recursos → Dúvidas → Cadastro → Rodapé (Planos fora por enquanto, seção 3.5). O cadastro passou para o fim: quem lê as dúvidas encontra o formulário logo abaixo, sem rolar de volta.
+- Menu (topo e rodapé, mesma lista `LANDING_NAV_LINKS` em `landing-header.tsx`): *Parte chata* (`#parte-chata`), *O sistema* (`#o-sistema`), *Áreas* (`#areas`), *Recursos* (`#recursos`), *Dúvidas* (`#faq`). Os links levam `/` na frente para funcionar também em Termos e Privacidade. "Modalidades" saiu do menu: no sistema, modalidade é outra coisa.
+- O menu completo aparece a partir de `lg` (1024px); abaixo disso, menu do celular (com `aria-expanded` e rótulo "Abrir/Fechar menu"). Em 768px os 5 links não cabiam.
+- **Topo no celular** (17/10/2026): botão **"Criar conta"** sempre à vista ao lado do menu (antes ficava escondido dentro do menu); o botão de tema passou para dentro do menu ("Tema escuro" / "Tema claro"), junto do "Entrar".
+- Um só texto de botão para criar conta em toda a página: **"Criar conta grátis"**. Entrar é sempre **"Entrar"** (o rodapé dizia "Acessar Plataforma").
+- Títulos com só a primeira letra maiúscula ("Perguntas frequentes", "Financeiro") e `text-balance` para não sobrar uma palavra sozinha na última linha.
 
-### 3.2. Antes vs. Depois (`landing-problems.tsx`)
-- **Título & Subtítulo**:
-  - Overline: `MENOS DOR DE CABEÇA, MAIS TEMPO PARA ENSINAR`
-  - Título: **A rotina desgastante de hoje vs. Com o GestaraHub**
-  - Subtítulo: *Veja as dores reais do seu dia a dia que você elimina da sua rotina:*
-- **Contraste em 3 Linhas Limpas**:
-  1. *Negócio espalhado em vários sistemas, cadernos e planilhas* ➔ **Tudo em um só lugar: financeiro, comunicação e gerenciamento de turmas**
-  2. *Perder tempo com prancheta de papel e mensagens no WhatsApp* ➔ **Chamada em 3 segundos no celular e turmas organizadas**
-  3. *Mensalidades atrasadas e contas manuais para pagar professores* ➔ **Visão clara de quem pagou e repasse calculado em 1 clique**
-- **O que foi removido**: Os blocos de "Passo a passo em 3 etapas" e a caixa de métricas genéricas (`+15h`, `0 listas`, `R$ 0`) foram eliminados por poluir a página e duplicar o que os 4 Pilares já explicam.
+### 3.1. Hero (`landing-hero.tsx`)
+- **Pill superior**: *"Plano grátis • Sem cartão de crédito"*. Trocado em 14/10/2026: "grátis para sempre" dava a impressão de que tudo é grátis, e o plano Pro (cobrança online, WhatsApp automático) é pago. A página não promete "para sempre" em nenhum lugar; o FAQ explica o que o grátis cobre. Desde 17/10/2026 a página não cita o Pro (seção 3.5).
+- **Título** (11/10/2026, opção escolhida entre 4): *"Chega de caderno e planilha. Gestão simples para"* + digitação, sempre fechando a frase. Palavras (17/10/2026): *"academias de luta."*, *"estúdios de pilates."*, *"aulas particulares."*, *"escolas de música."*, *"escolas de idiomas."*, *"escolas de dança."*, *"cursos de confeitaria."*, *"cursos livres."*. Entrou "aulas particulares." (o professor autônomo não aparecia); "estúdios de pilates e yoga." e "escolas de confeitaria." encurtaram para caber em uma linha no celular.
+- **Altura fixa** (17/10/2026): `TypewriterText` empilha todas as palavras invisíveis na mesma célula da grade e reserva a altura da mais longa. Antes, no celular, a palavra que quebrava linha empurrava os botões a cada troca.
+- **Acessibilidade**: o leitor de tela ouve *"Gestão simples para quem ensina."* (`sr-only`); a digitação fica com `aria-hidden`. Com movimento reduzido, mostra a primeira palavra parada e sem cursor.
+- **Sem subtítulo**: os botões vêm logo após o título. Botões: *"Criar conta grátis"* (`#cadastro`) e *"Ver o sistema"* (`#o-sistema`, antes "Ver recursos").
+- **Badges de confiança**: *"Em grupo ou aulas particulares"*, *"Sem limite de alunos ou horários"*, *"Chamada direta no celular"*.
+- **Metadados**: título, descrição e frase vêm de `config/site.ts`. Sem "teste de 14 dias"; reforçam "plano grátis, sem cartão de crédito".
+
+### 3.2. A parte chata (`landing-chores.tsx`, 17/10/2026)
+- Substituiu o "Antes e depois" (3 linhas de dor ➔ solução). As duas seções contariam a mesma história, então ficou uma só, mais completa.
+- Overline: `MENOS DOR DE CABEÇA, MAIS TEMPO PARA ENSINAR`. Título: **A parte chata, a gente resolve**, sem subtítulo.
+- **6 cards** (1 coluna no celular, 2 em `sm`, 3 em `lg`): ícone, a tarefa chata em negrito e a solução em uma linha.
+  1. **Cobrar aluno atrasado**: *Lembrete pronto no WhatsApp, você só envia.*
+  2. **Saber quem já pagou**: *Mensalidades lançadas sozinhas. Quem atrasou aparece em vermelho.*
+  3. **Calcular o pagamento**: *O sistema faz a conta pela regra de cada professor.*
+  4. **Perceber aluno sumindo**: *O painel avisa quem faltou várias aulas seguidas.*
+  5. **Controlar pacotes de aulas**: *A chamada desconta cada aula do pacote.*
+  6. **Saber quem sobe de nível**: *O sistema conta as presenças e avisa.*
+- **Textos revistos (17/10/2026)** por clareza: "Lembrar quem pagou" (ninguém lembra, quer saber) e "atrasadas em destaque" (vago); "repasse" (jargão); "saldo do pacote" (só faz sentido para quem já vende pacote) e "desconta a aula sozinha" (ambíguo); "graduar" (palavra de luta, a página fala com todas as áreas). Títulos curtos o bastante para caber em uma linha nas 3 colunas.
+- Todos são do plano grátis e existem no produto. Outras tarefas que o sistema resolve e podem trocar de lugar com estas: conferir Pix no extrato (Pro, baixa automática), bolsa e desconto, contas fixas (despesa recorrente), troca de faixa pela idade, lista de espera, aniversariantes, certificado (Pro). **Fora até existir**: reposição de aula, contrato assinado e nota fiscal.
+- Âncora: `#parte-chata`; no menu, *"Parte chata"*.
+- **O que foi removido antes**: os blocos de "Passo a passo em 3 etapas" e a caixa de métricas genéricas (`+15h`, `0 listas`, `R$ 0`), por poluir a página e duplicar o que os 4 pilares já explicam.
 
 ### 3.3. Áreas (`landing-segments.tsx`)
 - 14/10/2026: **11 cards** (10 áreas + "Outra área"), só ícone, nome e uma linha de exemplos. Saíram a tag e a frase de cada card: com 10 áreas, viravam ruído.
 - Nome, exemplos e ícone vêm da mesma fonte do setup (`business-segment-presets.ts` e `business-segment-icons.ts`, em `lib`), então LP e setup nunca divergem.
-- Último card, tracejado e em 2 colunas: **"Sua área não está aqui?"** + *"Também serve: teatro, xadrez, autoescola"* + link *"Criar conta gratuita →"*. Com 2 colunas, a grade fecha sem buraco em 2, 3 ou 4 colunas.
+- Último card, tracejado e em 2 colunas: **"Sua área não está aqui?"** + *"Também serve: teatro, xadrez, autoescola"* + link *"Criar conta grátis →"*. Com 2 colunas, a grade fecha sem buraco em 2, 3 ou 4 colunas.
 - Título: *"Para quem ensina, em qualquer área"*. Overline e subtítulo mantidos (*"Turmas coletivas ou aulas particulares (1 a 1) no mesmo sistema."*).
-- Âncora de navegação: `#modalidades`.
+- Âncora: `#areas` (antes `#modalidades`).
 
-### 3.4. Recursos & 4 Pilares (`landing-features.tsx`)
-- 4 pilares limpos em 4 cards:
-  1. **Gestão Financeira**: Mensalidades, controle de pagamentos e repasse de professores sem calculadora. Primeiro ponto (14/10/2026): *"Mensalidade, curso fechado ou pacote de aulas"*.
-  2. **Turmas & Aulas Particulares**: Grade coletiva ou VIP, chamada em 3 segundos e limite de vagas.
-  3. **Controle de Progresso**: Trilha configurável (faixas, níveis ou fases) com avanço por presença/tempo.
-  4. **Comunicação & Vagas**: Reposições na grade, aula experimental e avisos sem bagunça no WhatsApp.
+### 3.4. Recursos e 4 pilares (`landing-features.tsx`)
+- Overline *"Recursos"*, título *"Os 4 pilares da gestão do seu espaço"*, sem subtítulo. Cada card: ícone colorido, título, **uma linha** de descrição e **chips neutros** (borda fina, texto discreto, sem ícone) logo abaixo, sem divisor.
+- **Chips em vez de checks** (17/10/2026): os 12 checks verdes poluíam os cards, a lista era alinhada ao fundo (o divisor ficava em alturas diferentes) e o primeiro ponto do Financeiro quebrava em 2 linhas. Os chips quebram linha sem cortar palavra. Opções avaliadas: chips, linha com separadores (" · ") e lista simples com marcador; ficou chips.
+- **Sem repetir**: os chips não repetem a descrição nem a seção "A parte chata" (saíram repasse calculado e aviso de quem pode avançar).
+  1. **Financeiro**: *"Entradas, saídas e o resultado do mês."* Chips: Mensalidade, Curso fechado, Pacote de aulas, Despesas fixas.
+  2. **Turmas e aulas particulares**: *"Grade da semana, em grupo ou 1 a 1."* Chips: Chamada no celular, Limite de vagas, Aula experimental, Lista de espera.
+  3. **Evolução dos alunos**: *"Faixas, níveis, módulos ou fases, do seu jeito."* Chips: Trilha por modalidade, Graduação, Registro de aula, Metas.
+  4. **Comunicação**: *"Mensagens prontas, enviadas do seu número."* Chips: Cobrança, Lembrete, Aniversário. (Antes "Comunicação e vagas": experimental e lista de espera foram para Turmas.)
+- **A página só promete o que o produto faz** (17/10/2026): saiu "reposição de aula" (pilar 4 e dois itens do FAQ): o modelo de turmas não tem reposição, só aluno avulso, experimental e lista de espera. Saiu também "sem a bagunça do WhatsApp", que contradizia o produto (o lembrete sai pelo WhatsApp do próprio espaço).
 - Âncora: `#recursos`.
 
-### 3.5. Cadastro Rápido (`landing-signup-section.tsx`)
-- Formulário minimalista de 30 segundos solicitando apenas **Nome** e **E-mail**.
-- Cria a conta, define o tenant ativo e redireciona imediatamente para o fluxo `/setup`.
-- Âncora: `#cadastro`.
+### 3.5. Planos (`landing-plans.tsx`, 17/10/2026): fora da página por enquanto
+- **Decisão do dono (17/10/2026):** a seção saiu da página, junto com o item "Planos" do menu e toda menção ao Pro (FAQ, Termos, Privacidade). O preço do Pro e a forma de cobrar o envio do WhatsApp e o pagamento online ainda não foram definidos: o custo das mensagens provavelmente fica com o espaço, e o pagamento online pode valer também no grátis, com taxa por cobrança automática (doc 13, "Em aberto"). Os dois fluxos ainda precisam ser validados.
+- O componente fica pronto em `landing-plans.tsx`, fora da `LandingView`. **Quando a cobrança for definida**: revisar os itens dos dois cards (o pagamento online pode sair do Pro), pôr o preço no topo do card do Pro e devolver a seção e o item do menu.
+- Como estava quando saiu:
+- Overline *"Planos"*, título *"Grátis para o dia a dia"*, subtítulo *"Pague só se quiser automatizar."*.
+- Dois cards, conteúdo do doc 13 (2.1 e 2.2):
+  - **Grátis**, *R$ 0 por mês*: alunos e turmas sem limite; chamada no celular e evolução; mensalidade, curso e pacote de aulas; financeiro e repasse dos professores; lembrete no WhatsApp, enviado por você. Botão *"Criar conta grátis"*.
+  - **Pro**, selo *"Opcional"*: **Tudo do Grátis** (em negrito, primeiro item: o Pro soma, não substitui); pagamento online com baixa automática; lembretes automáticos no WhatsApp; relatórios avançados; certificado de conclusão de curso. Na base, faixa tracejada *"Ative quando precisar, dentro do sistema."*, da altura do botão do Grátis.
+- **Equilíbrio**: lado a lado (a partir de `md`), o topo dos dois cards tem a mesma altura mínima, então as listas começam na mesma linha; os cards fecham na mesma base (botão e faixa). Os dois sobem e ganham sombra no hover, como nas outras seções.
+- **Sem preço do Pro**: ainda não foi definido; quando for, entra no espaço do topo do card. Scale (multiunidade) fica fora da página por enquanto.
 
-### 3.6. Dúvidas Frequentes (`landing-faq.tsx`)
-- Perguntas e respostas objetivas reforçando gratuidade permanente sem cartão de crédito, suporte a aulas 1 a 1 particulares e turmas em grupo, música/idiomas, chamada no celular, trilhas de evolução e repasses a professores.
-- 14/10/2026: *"Dá para vender curso com valor fechado ou pacote de aulas?"*, com resposta de 2 frases (curso em parcelas; pacote com saldo de aulas descontado na chamada), antes da pergunta do repasse.
+### 3.6. Dúvidas frequentes (`landing-faq.tsx`)
+- Título *"Perguntas frequentes"*, sem subtítulo. Respostas de 1 ou 2 frases, sem exclamação (17/10/2026).
+- Perguntas: gratuidade e limites (*"Sim. O dia a dia é grátis, sem limite de alunos ou turmas: grade, chamada, evolução, mensalidades e financeiro básico."*, sem citar o Pro); aulas particulares ou turmas; música e idiomas; chamada no celular (aluno avulso ou experimental entra na hora); evolução dos alunos; curso com valor fechado ou pacote de aulas; repasse dos professores; cartão de crédito.
+- **Professores e alunos** (17/10/2026): *"Meus professores podem usar?"* ➔ *"Sim. Cada professor entra pelo mesmo link, com o próprio acesso: vê as turmas e faz a chamada, sem ver o financeiro."* (perfil Profissional: `classes:view`, `attendance:mark`, `grades:manage`). *"Meus alunos precisam baixar algum app?"* ➔ *"Não. Os avisos chegam pelo seu WhatsApp, sem instalar nada."* A resposta não promete "vê só as turmas dele": esse recorte só existe na Agenda (modelo de agendamentos). **Direção do dono**: aluno e professor vão entrar pelo mesmo link, cada um com um layout próprio (o atual é do dono); quando existir, as duas respostas citam isso.
+- **Repasse** (17/10/2026): as 4 formas reais da regra do professor: valor fixo no mês, por aula dada, por aluno ativo ou percentual do que os alunos pagaram (o texto antigo citava "percentual por aluno", que não existe).
 
-### 3.7. Fluidez no Scroll & Animações
-- Componente nativo [`ScrollReveal`](file:///Users/mhmj/workspace/gestarahub/apps/web/src/features/landing/components/scroll-reveal.tsx):
+### 3.7. Cadastro rápido (`landing-signup-section.tsx`)
+- Formulário só com **Nome** e **E-mail**. Cria a conta, define o tenant ativo e redireciona para `/setup`. Âncora: `#cadastro`, último bloco antes do rodapé.
+- **Layout (17/10/2026)**: **card estreito e centralizado** (`max-w-md`), só o essencial. Acima do card, o título *"Comece a organizar suas aulas hoje"* e o subtítulo *"Grátis, sem cartão e sem limite de alunos."*; no card, os campos empilhados, o botão *"Criar conta grátis"* de largura toda (*"Criando sua conta…"* enquanto envia) e o aceite dos Termos e da Privacidade; abaixo do card, *"Já tem conta? Entrar"*.
+  - **Como chegou aqui:** o primeiro redesenho (painel na cor primária à esquerda e formulário à direita) ficou agressivo, com o bloco preto no claro e o branco no escuro. Foram comparadas 5 versões numa página de prévia temporária (atual, card central, duas colunas sem bloco de cor, faixa com os campos em linha e painel suave) e o dono escolheu o **card central**. A prévia e as outras versões foram removidas.
+  - Saíram também o selo *"Crie sua conta em 30 segundos"* (com estrelinhas, soava como truque), o brilho cinza no topo e os ícones dentro dos campos.
+  - Formulário em `components/signup-form.tsx` (`SignupForm` + `SignupLoginLink`); a seção só monta o layout.
+- **Validação**: React Hook Form + Zod (`features/landing/signup-schema.ts`) com o `InputText` compartilhado: erro em cada campo (*"Informe seu nome."*, *"Informe seu e-mail."*, *"Informe um e-mail válido."*, mesma regra do cadastro de usuários), `aria-invalid` no campo. O botão fica **sempre ativo** (antes ficava cinza e desabilitado até preencher, parecendo quebrado); a validação acontece ao enviar.
+- Labels **`Nome*`** e **`E-mail*`** com o asterisco colado (padrão do `FieldShell`); placeholders *"Informe seu nome"* / *"Informe seu e-mail"*; preenchimento automático do navegador (`autoComplete` name/email, nova prop do `InputText`).
+- Campos em `16px` no celular (o `Input` já é `text-base md:text-sm`).
+
+### 3.8. Termos de uso e Política de privacidade (17/10/2026)
+- Rotas públicas `/terms` e `/privacy` (`app/(marketing)`), com o mesmo topo e rodapé da landing (`LandingLegalPage`); textos em `legal-documents.tsx`.
+- **Primeira versão**, curta e fiel ao produto: dados da conta, do espaço e dos alunos; o espaço é o controlador dos dados dos alunos e o GestaraHub, o operador (LGPD); um cookie de sessão e preferências no navegador, sem cookies de publicidade. **Revisar com apoio jurídico antes de abrir o cadastro de verdade.**
+- **E-mail de contato pendente**: `SUPPORT_EMAIL` em `config/site.ts` está vazio. Preenchido, aparece a seção "Contato" nas duas páginas e o link "Contato" no rodapé.
+- Rodapé: links do menu + *Termos de uso*, *Privacidade*, *Entrar*.
+- A Privacidade cita a análise de uso (PostHog, seção 3.12): páginas, cliques e gravações, sem o que se digita e com os textos da área logada ocultos.
+
+### 3.9. Prévia do link (17/10/2026)
+- `app/(marketing)/opengraph-image.tsx` gera a imagem de 1200 x 630 (logo, *"Gestão simples para quem ensina"* e o selo do plano grátis) que aparece ao compartilhar o link no WhatsApp e nas redes.
+- `metadataBase` vem de `NEXT_PUBLIC_SITE_URL` (sem ela, `http://localhost:3000`): **definir em produção**, senão a prévia aponta para o localhost.
+- O grupo de rotas gera a imagem em `/opengraph-image-<hash>`; o `proxy.ts` libera esse caminho sem sessão, junto com `/terms` e `/privacy`.
+- A descrição padrão do site (`app/layout.tsx`) deixou de citar "agenda, clientes, equipe e serviços" (modelo antigo).
+
+### 3.10. Fluidez no scroll e animações
+- Componente nativo [`ScrollReveal`](../../apps/web/src/features/landing/components/scroll-reveal.tsx):
   - Baseado em `IntersectionObserver` do browser + aceleração de hardware pela GPU (`translate3d` e `opacity`).
   - Suporte a `prefers-reduced-motion`.
-  - **Bidirecional contínuo (`once: false`)**: Reanima suavemente em cascata (*stagger*) tanto na descida quanto na subida da página, com reset instantâneo ao sair do viewport.
-- **Barra de Progresso**: Linha de 2px na cor primária na base do `LandingHeader` fixo que acompanha a porcentagem da página (0% a 100%).
+  - **Bidirecional contínuo (`once: false`)**: reanima suavemente em cascata (*stagger*) tanto na descida quanto na subida da página, com reset instantâneo ao sair do viewport.
+- **Barra de progresso**: linha de 2px na cor primária na base do `LandingHeader` fixo que acompanha a porcentagem da página (0% a 100%).
+- Seções com `scroll-mt-16`: o topo fixo não cobre o título ao clicar no menu.
+
+### 3.11. O sistema (`landing-showcase.tsx`, 17/10/2026)
+- Overline *"O sistema"*, título *"Veja o sistema por dentro"*. Logo depois de "A parte chata": a página mostra a dor e em seguida o sistema resolvendo.
+- Três abas (botões com `role="tab"`): **Chamada** (*"Presença em um toque, direto no celular."*, em moldura de celular), **Cobranças** (*"Quem pagou e quem atrasou, mês a mês."*) e **Ficha do aluno** (*"Faixa, frequência e pagamentos num lugar só."*), as duas em moldura de navegador.
+- **Telas reais, não mockups** (a regra da seção 2 proíbe mockup falso): capturas do próprio app com dados de demonstração, em `src/assets/landing/` (`*-light.png` e `*-dark.png`). A página mostra a do tema atual (`dark:hidden` / `hidden dark:block`).
+- **Recapturar** quando as telas mudarem (o app no ar em `:3000`), a partir de `apps/web`: `npx playwright test --config=scripts/landing-screenshots/playwright.config.ts`. O roteiro cria o "Espaço Movimento" pelo assistente (Lutas, com a trilha de faixas), grava alunos, turmas (Jiu-Jitsu, Muay Thai, Yoga), presenças e mensalidades em volta da data de hoje e captura as 3 telas nos 2 temas. Usa o relógio real: com o relógio congelado do e2e, servidor e navegador discordam da data, a hidratação falha e o menu lateral perde a cor.
+- As datas aparecem nas imagens (mês da competência, "Hoje"): recapturar de tempos em tempos.
+
+### 3.12. Análise de uso (17/10/2026)
+- PostHog na landing e no sistema (páginas, cliques, mapa de calor, gravação e funis). Detalhes, privacidade e variáveis: [../technical/09-analise-de-uso.md](../technical/09-analise-de-uso.md). Sem `NEXT_PUBLIC_POSTHOG_KEY`, nada é enviado.
+- **Aviso de cookies** (LGPD): só depois de "Aceitar" o PostHog liga; "Recusar" tem o mesmo peso; a escolha pode ser revista na Política de privacidade. Detalhes no doc técnico 09.
+
+### 3.13. Próximo passo: páginas por área
+- Ideia aprovada pelo dono (17/10/2026), a refinar depois dos itens acima: páginas como `/lutas` e `/pilates`, cada uma com a língua da área (faixas e graus, níveis, módulos), reaproveitando `business-segment-presets.ts`, para busca e anúncios. Os cards da seção Áreas passariam a levar para elas.
 
 ---
 

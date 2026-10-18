@@ -12,27 +12,36 @@ const FAQS = [
   {
     question: "O GestaraHub é realmente gratuito? Tem limite de alunos ou turmas?",
     answer:
-      "Sim. O plano grátis cobre a gestão do dia a dia: alunos e turmas sem limite, horários particulares, grade semanal, chamada pelo celular, evolução dos alunos, mensalidades e financeiro básico. Recursos de automação, como cobrança online e lembretes automáticos pelo WhatsApp, ficam no plano Pro, que é opcional.",
+      "Sim. O dia a dia é grátis, sem limite de alunos ou turmas: grade, chamada, evolução, mensalidades e financeiro básico.",
   },
   {
-    question: "Funciona para aulas individuais (particulares) ou só turmas em grupo?",
+    question: "Funciona para aulas particulares ou só para turmas?",
     answer:
-      "Funciona perfeitamente para ambos! Você pode gerenciar turmas coletivas ou agendar aulas particulares (individuais / 1 a 1) — como aulas VIP de idiomas, instrumentos musicais ou sessões particulares. Você define o limite de vagas de cada horário como 1 aluno ou turmas completas.",
+      "Para os dois. Cada horário tem o limite de vagas que você quiser: 1 aluno na aula particular ou a turma inteira.",
   },
   {
-    question: "Posso usar em aulas de música, instrumentos ou escolas de línguas (idiomas)?",
+    question: "Serve para aulas de música ou de idiomas?",
     answer:
-      "Com certeza! O sistema é ideal para aulas de inglês, espanhol, violão, piano, teclado, técnica vocal e canto. Você consegue organizar turmas por níveis ou módulos, controlar reposições de aulas sem bagunça no WhatsApp e acompanhar o pagamento das mensalidades.",
+      "Sim. Organize por níveis ou módulos, em grupo ou 1 a 1, e acompanhe as mensalidades.",
   },
   {
-    question: "O professor consegue fazer a lista de chamada pelo celular?",
+    question: "O professor faz a chamada pelo celular?",
     answer:
-      "Sim! O GestaraHub é 100% otimizado para celulares e tablets. O professor abre o horário da aula, registra presenças com 1 toque, marca faltas e adiciona reposições ou alunos de aula experimental em poucos segundos.",
+      "Sim. Ele abre a aula no celular e marca presença com um toque. Aluno avulso ou experimental entra na hora.",
   },
   {
-    question: "Como funciona o controle de evolução e trilhas de progresso?",
+    question: "Meus professores podem usar?",
     answer:
-      "Você configura a trilha de evolução de acordo com a sua modalidade — seja por faixas e graus em lutas, níveis na dança e nos idiomas, módulos em cursos como música e confeitaria ou fases na natação. O sistema contabiliza as aulas de cada aluno e avisa automaticamente quando ele cumpre os critérios para avançar.",
+      "Sim. Cada professor entra pelo mesmo link, com o próprio acesso: vê as turmas e faz a chamada, sem ver o financeiro.",
+  },
+  {
+    question: "Meus alunos precisam baixar algum app?",
+    answer: "Não. Os avisos chegam pelo seu WhatsApp, sem instalar nada.",
+  },
+  {
+    question: "Como funciona a evolução dos alunos?",
+    answer:
+      "Você escolhe a trilha de cada modalidade: faixas, níveis, módulos ou fases. O sistema conta as aulas e avisa quem já pode avançar.",
   },
   {
     question: "Dá para vender curso com valor fechado ou pacote de aulas?",
@@ -40,20 +49,20 @@ const FAQS = [
       "Sim. O curso tem valor fechado e pode ser dividido em parcelas. O pacote tem um número de aulas, e a chamada desconta do saldo do aluno.",
   },
   {
-    question: "Como funciona o cálculo de comissão e repasse de professores?",
+    question: "Como funciona o repasse dos professores?",
     answer:
-      "Você configura a regra de remuneração de cada instrutor (valor por aula ministrada, percentual por aluno ou valor fixo mensal). O sistema consolida as aulas dadas no mês e gera o fechamento financeiro pronto para quitação em 1 clique.",
+      "Você define a regra de cada professor: valor fixo no mês, por aula dada, por aluno ativo ou percentual do que os alunos pagaram. No fim do mês, o fechamento sai pronto.",
   },
   {
-    question: "Preciso cadastrar cartão de crédito para criar minha conta?",
+    question: "Preciso cadastrar cartão de crédito?",
     answer:
-      "Não! Você cria sua conta em menos de 30 segundos apenas com seu nome e e-mail. Não solicitamos dados de cartão de crédito nem geramos nenhuma cobrança automática.",
+      "Não. Você cria a conta com nome e e-mail, sem cartão e sem cobrança automática.",
   },
 ];
 
 export function LandingFaq() {
   return (
-    <section id="faq" className="py-20">
+    <section id="faq" className="scroll-mt-16 py-20">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-12">
         <ScrollReveal direction="up" distancePx={16} durationMs={450}>
           <div className="text-center space-y-3">
@@ -61,11 +70,8 @@ export function LandingFaq() {
               Tire suas dúvidas
             </span>
             <h2 className="text-3xl font-extrabold sm:text-4xl text-foreground">
-              Perguntas Frequentes sobre o GestaraHub
+              Perguntas frequentes
             </h2>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Tudo o que você precisa saber sobre a gestão das suas aulas antes de começar.
-            </p>
           </div>
         </ScrollReveal>
 
