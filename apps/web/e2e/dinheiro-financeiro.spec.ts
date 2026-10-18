@@ -101,8 +101,8 @@ test("Resumo: o que entrou no mês soma todos os tipos pelo dia do pagamento", a
   await seedAcademy(page, { extra: septemberMoney });
   await page.goto("/finance");
   const card = (title: string) => page.locator("div.rounded-2xl").filter({ has: page.getByText(title, { exact: true }) });
-  await expect(card("Total Entrou")).toContainText("R$ 1.140,00");
-  await expect(card("Saldo do Mês")).toContainText("R$ 1.140,00");
+  await expect(card("Entrou")).toContainText("R$ 1.140,00");
+  await expect(card("Saldo do mês")).toContainText("R$ 1.140,00");
 });
 
 test.describe("DRE (Pro)", () => {

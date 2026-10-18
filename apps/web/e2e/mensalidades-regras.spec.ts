@@ -38,7 +38,7 @@ test("cancelar com motivo sugerido mostra o motivo na linha; reabrir limpa", asy
   await expect(row).toContainText("Atrasado");
 
   await rowAction(page, "Aluno A20", "Cancelar cobrança");
-  const confirm = page.getByRole("alertdialog", { name: "Cancelar cobrança" });
+  const confirm = page.getByRole("alertdialog", { name: "Cancelar a cobrança?" });
   await confirm.getByRole("button", { name: "+ Plano errado" }).click();
   await expect(confirm.getByLabel("Motivo (opcional)")).toHaveValue("Plano errado");
   await confirm.getByRole("button", { name: "Cancelar cobrança" }).click();

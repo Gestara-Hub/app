@@ -154,7 +154,7 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const confirm = page.getByRole("alertdialog", { name: "Cancelar matrícula?" });
   await expect(confirm).toContainText(
-    "Aluna Meio sai do curso. As parcelas pagas ficam. As 2 parcelas futuras serão canceladas. A parcela vencida continua para receber.",
+    "Aluna Meio sai do curso. As parcelas pagas ficam. As 2 parcelas futuras serão canceladas. A parcela que vence até hoje continua para receber.",
   );
   await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
@@ -221,7 +221,7 @@ test("curso terminado no grátis: Concluído, sem matrícula nova e certificado 
   await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
   await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
-  await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
+  await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
   await page.getByRole("link", { name: "Voltar à turma" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old$/);

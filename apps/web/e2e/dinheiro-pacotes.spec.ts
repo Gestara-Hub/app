@@ -194,7 +194,7 @@ test.describe("venda", () => {
     await expect(dialog).toBeHidden();
     // Quem so tem pacote nao mostra "Sem mensalidade".
     const row = page.locator("div.group").filter({ hasText: "Aluna Pacote" });
-    await expect(row.first()).toContainText("Pacote 10 de 10");
+    await expect(row.first()).toContainText("Restam 10 de 10");
     await expect(row.first()).not.toContainText("Sem mensalidade");
     await waitForTenant(page, (t) => t.charges.filter((c: { kind: string }) => c.kind === "package").length === 3);
 
@@ -221,7 +221,7 @@ test.describe("venda", () => {
     await expect(cancel).toContainText("O pacote 10 aulas de Aluna Pacote é cancelado. As cobranças em aberto dele também; as pagas ficam.");
     await cancel.getByRole("button", { name: "Cancelar pacote" }).click();
     await expect(page.getByText("Pacote cancelado.")).toBeVisible();
-    await expect(row.first()).not.toContainText("Pacote 10 de 10");
+    await expect(row.first()).not.toContainText("Restam 10 de 10");
     await waitForTenant(page, (t) => t.studentPackages[0]?.status === "canceled");
 
     await page.goto("/classes/billing?kind=package");
@@ -256,7 +256,7 @@ test.describe("venda", () => {
     });
     await openClients(page);
     const row = page.locator("div.group").filter({ hasText: "Aluno Renova" }).first();
-    await expect(row).toContainText("Pacote 3 de 10");
+    await expect(row).toContainText("Restam 3 de 10");
     // Com aula usada, o pacote nao cancela (o item nem aparece).
     await page.getByRole("button", { name: "Ações de Aluno Renova", exact: true }).last().click();
     await expect(page.getByRole("menuitem", { name: "Vender pacote" })).toBeVisible();
@@ -268,7 +268,7 @@ test.describe("venda", () => {
     await expect(dialog.getByText("O saldo de 3 aulas do pacote atual passa para este.")).toBeVisible();
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
-    await expect(row).toContainText("Pacote 13 de 13");
+    await expect(row).toContainText("Restam 13 de 13");
     await waitForTenant(page, (t) => t.studentPackages.some((p: { status: string }) => p.status === "renewed"));
 
     // Ficha > Pacotes: o novo em uso, o antigo renovado, com as aulas usadas.
@@ -291,7 +291,7 @@ test.describe("venda", () => {
 
     // O antigo volta a valer com o saldo dele.
     await openClients(page);
-    await expect(row).toContainText("Pacote 3 de 10");
+    await expect(row).toContainText("Restam 3 de 10");
   });
 });
 
@@ -443,7 +443,7 @@ test.describe("chamada", () => {
     await expect(page.getByRole("option", { name: /Aluno Vencido/ })).toHaveCount(0);
     await expect(page.getByRole("option", { name: /Aluno Sem Pacote/ })).toHaveCount(0);
     await page.getByRole("option", { name: "Aluna Com Pacote · 10 aulas no pacote" }).click();
-    await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("Aluno inscrito pelo pacote.")).toBeVisible();
 
     const row = rosterRow(page, "Aluna Com Pacote");
@@ -487,7 +487,7 @@ test.describe("chamada", () => {
     await expect(dialog.getByRole("button", { name: /Pacote/ })).toBeVisible();
     await expect(dialog.getByRole("button", { name: /Experimental/ })).toBeVisible();
     await pickCombobox(page, dialog, "Aluno", "Aluna Com Pacote · 1 aula no pacote");
-    await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("Aluno inscrito pelo pacote.")).toBeVisible();
     await expect(rosterRow(page, "Aluna Com Pacote")).toContainText("Última aula");
   });

@@ -68,7 +68,7 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name: "Aluno Avulso" }).click();
-  await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+  await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
   // Remover fica no menu ⋮ do aluno na chamada.
@@ -96,7 +96,7 @@ test("cancelar matrícula individual pede confirmação", async ({ page }) => {
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar matrícula" }).click();
   const confirm = page.getByRole("alertdialog");
-  await expect(confirm).toContainText("A mensalidade do aluno não muda.");
+  await expect(confirm).toContainText("As cobranças do aluno não mudam.");
   await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
 });
@@ -147,7 +147,7 @@ async function addToSession(page: Page, name: string) {
   const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name }).click();
-  await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+  await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(dialog).toBeHidden();
 }
 

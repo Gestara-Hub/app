@@ -117,7 +117,7 @@ test("filtro de tipo separa aulas avulsas das mensalidades", async ({ page }) =>
   const dialog = page.getByRole("dialog", { name: "Adicionar aluno nesta aula" });
   await dialog.getByRole("combobox", { name: "Aluno" }).click();
   await page.getByRole("option", { name: "Aluno Avulso" }).click();
-  await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+  await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
   await page.goto("/classes/billing");

@@ -145,7 +145,7 @@ async function openInactivateClient(page: Page, navigate = true) {
 async function openCancelCharge(page: Page) {
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar cobrança" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Cancelar cobrança" });
+  const confirm = page.getByRole("alertdialog", { name: "Cancelar a cobrança?" });
   await expect(confirm).toContainText("cancelar a cobrança de Aluno A20");
   return confirm;
 }
@@ -193,7 +193,7 @@ test.describe("configurações: alterações não salvas", () => {
   test("Geral: trocar de aba com edição pede confirmação e mantém o rascunho", async ({ page }) => {
     await seedAcademy(page);
     await page.goto("/settings");
-    const name = page.getByLabel("Nome da organização");
+    const name = page.getByLabel("Nome do espaço");
     await name.fill("Academia Rascunho");
     await expect(page.locator("#settings-panel-geral").getByText("● Alterações não salvas")).toBeVisible();
     await expect(page.getByRole("tab", { name: /Geral/ })).toHaveAccessibleName(/alterações não salvas/);
@@ -217,7 +217,7 @@ test.describe("configurações: alterações não salvas", () => {
     const { seen, state } = trackDialogs(page);
     await page.goto("/settings");
     const panel = page.locator("#settings-panel-geral");
-    const name = page.getByLabel("Nome da organização");
+    const name = page.getByLabel("Nome do espaço");
     const original = await name.inputValue();
 
     // Editou e desfez: o formulario volta a ficar limpo e recarrega sem aviso.
@@ -328,7 +328,7 @@ test.describe("dialog: descartar alterações", () => {
     const description = dialog.getByLabel("Descrição");
     await description.fill("Conta de água");
 
-    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Fechar" }).click();
     await expect(discard).toContainText("O que você preencheu neste formulário será perdido.");
     await discard.getByRole("button", { name: "Continuar editando" }).click();
     await expect(discard).toBeHidden();
@@ -348,7 +348,7 @@ test.describe("dialog: descartar alterações", () => {
     // Reabre limpo.
     dialog = await openNewEntry(page);
     await expect(dialog.getByLabel("Descrição")).toHaveValue("");
-    await dialog.getByRole("button", { name: "Close" }).click();
+    await dialog.getByRole("button", { name: "Fechar" }).click();
     await expect(dialog).toBeHidden();
     await expect(discard).toHaveCount(0);
   });
@@ -431,13 +431,13 @@ test.describe("dialog: saída sem piscar", () => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
     await page.goto("/classes/billing");
     const confirm = await openCancelCharge(page);
-    await recordDialogFrames(page, "alertdialog", "Cancelar cobrança");
+    await recordDialogFrames(page, "alertdialog", "Cancelar a cobrança?");
     await confirm.getByRole("button", { name: "Voltar" }).click();
     await expect(confirm).toBeHidden();
     await expectStableFrames(page, CANCEL_TEXT);
 
     await openCancelCharge(page);
-    await recordDialogFrames(page, "alertdialog", "Cancelar cobrança");
+    await recordDialogFrames(page, "alertdialog", "Cancelar a cobrança?");
     await confirm.getByRole("button", { name: "Cancelar cobrança" }).click();
     await expect(page.getByText("Cobrança cancelada com sucesso.")).toBeVisible();
     await expect(confirm).toBeHidden();
@@ -600,7 +600,7 @@ test.describe("anexos", () => {
     await expect(attached(pay).getByRole("listitem")).toHaveCount(2);
 
     // Com comprovante escolhido, o X pede para descartar.
-    await pay.getByRole("button", { name: "Close" }).click();
+    await pay.getByRole("button", { name: "Fechar" }).click();
     const discard = page.getByRole("alertdialog", { name: "Descartar alterações?" });
     await discard.getByRole("button", { name: "Descartar" }).click();
     await expect(pay).toBeHidden();

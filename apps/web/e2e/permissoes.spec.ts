@@ -256,7 +256,7 @@ test.describe("Plano Pro", () => {
     await page.getByRole("button", { name: "Mostrar encerradas (1)" }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Inglês Intensivo", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
-    await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
+    await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
 
     await page.goto("/clients/c-a?tab=charges");

@@ -275,7 +275,7 @@ test.describe("aula", () => {
     await page.getByRole("option", { name: "Carla Souza" }).click();
     await dialog.getByRole("button", { name: /Experimental/ }).click();
     await expect(dialog.getByText("Valor da cobrança")).toHaveCount(0);
-    await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("Aluno inscrito como experimental.")).toBeVisible();
     await expect(page.getByRole("main")).toContainText("Experimental");
 
@@ -285,7 +285,7 @@ test.describe("aula", () => {
     await page.getByRole("option", { name: "Bruno Lima" }).click();
     await expect(dialog.getByRole("button", { name: /Aula avulsa/ })).toHaveAttribute("aria-pressed", "true");
     await expect(dialog.getByText("Valor da cobrança")).toBeVisible();
-    await dialog.getByRole("button", { name: "Confirmar inscrição" }).click();
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
     // Os tres na chamada (a aula nao mostra mais as vagas).
     await expect(page.getByRole("button", { name: /: sem marcação$/ })).toHaveCount(3);

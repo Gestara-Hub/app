@@ -608,7 +608,7 @@ test.describe("seções", () => {
     await page.getByRole("button", { name: "Ações da matrícula em Defesa Pessoal", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
     await expect(page).toHaveURL("/classes/cg-course/certificate/e-course");
-    await expect(page.getByText("Certificado de conclusão no Plano Pro.")).toBeVisible();
+    await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
   });
 
   test("Turmas: só encerradas mostra 'Nenhuma turma em andamento.'", async ({ page }) => {

@@ -205,7 +205,7 @@ test("Regras da mensalidade: valem só para mensalidade e as dicas acompanham a 
   await seedAcademy(page);
   await page.goto("/settings");
   const trigger = page.getByRole("button", { name: /Regras da mensalidade/ });
-  await expect(trigger).toContainText("Antecipado • Proporcional • Vence todo dia 10");
+  await expect(trigger).toContainText("Antecipado · Proporcional · Vence todo dia 10");
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
   const card = page.locator("#billing-rules");
   await expect(
@@ -219,7 +219,7 @@ test("Regras da mensalidade: valem só para mensalidade e as dicas acompanham a 
   await expect(card.getByText("O vencimento ocorre mensalmente na mesma data em que a matrícula foi realizada.")).toBeVisible();
   await expect(card.getByText("Automático (dia da matrícula)")).toBeVisible();
   await card.getByRole("radio", { name: /^Depois do uso/ }).click();
-  await expect(trigger).toContainText("Depois do uso • Mês cheio • Vence no dia da entrada");
+  await expect(trigger).toContainText("Depois do uso · Mês cheio · Vence no dia da entrada");
   await saveSettings(page);
   await waitForStore(page, (t) => t.organization.settings.billingTiming === "postpaid");
   expect((await readTenant(page)).organization.settings.midMonthStrategy).toBe("full_cycle");

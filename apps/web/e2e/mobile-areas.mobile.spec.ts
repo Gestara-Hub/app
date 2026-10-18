@@ -79,7 +79,7 @@ test.describe("configuração inicial no celular", () => {
       const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
       await expect(welcome).toBeVisible();
       await welcome.getByRole("button", { name: /Ir para os primeiros passos/ }).click();
-      await expect(page.getByRole("heading", { name: "Primeiros passos da sua unidade" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
       await expectNoHorizontalScroll(page);
     });
   }

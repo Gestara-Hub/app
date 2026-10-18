@@ -120,7 +120,7 @@ test("boas-vindas: \"Ir para os primeiros passos\" mostra o roteiro no Dashboard
   const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
   await welcome.getByRole("button", { name: /Ir para os primeiros passos/ }).click();
   await expect(welcome).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Primeiros passos da sua unidade" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
 });
 
 test("hash repetido na URL ainda abre as Regras da mensalidade", async ({ page }) => {

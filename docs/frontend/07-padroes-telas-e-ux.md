@@ -221,3 +221,20 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Aniversário:** "Mandar parabéns" só no dia; antes dele, a ficha mostra a data (dd/MM). Quem nasceu em 29/02 faz aniversário em 28/02 nos anos não bissextos, com a idade certa.
 - **Voltar** desempilha só quando o navegador volta de verdade (ir para a frente não tira da pilha).
 - **Matricular com turma lotada no celular:** os botões do rodapé ficam um embaixo do outro.
+
+## Ajustes da Prioridade 3 (18/10/2026)
+
+- **Nada de reticências em nome ou valor:** `truncate` saiu das listas, cartões e diálogos do modelo de turmas; o texto quebra a linha (`min-w-0 break-words`, e-mail com `break-all`). As notas do aluno saíram da linha da lista (ficam na ficha).
+- **Campos de seleção crescem:** `SelectField` e `Combobox` usam `min-h-9` e quebram o valor longo em duas linhas. Filtros com `Select` usam `sm:w-auto sm:min-w-*` (o rótulo cabe inteiro).
+- **Abas segmentadas quebram a linha** (Financeiro, Configurações, Planos, Comunicação), sem rolagem lateral escondida.
+- **`PageHeader`:** no desktop as ações ficam numa linha só (`sm:shrink-0`); quem quebra é a descrição.
+- **Valores do Financeiro** diminuem com a largura (`text-2xl sm:text-3xl lg:text-2xl xl:text-3xl`) e os cartões têm `min-w-0`.
+- **Simulação das regras da mensalidade** vira um bloco por cobrança no celular (a tabela fica do `sm` para cima).
+- **Celular:** atalhos de linha viram só ícone (`Ver em Cobranças`, `Ver professores`, `Configurar pagamento`); o cabeçalho de cartão com botão quebra a linha; pedaços curtos do cabeçalho da turma e da aula não quebram no meio.
+- **Rodapé de diálogo:** sempre `DialogFooter`/`DialogFormFooter` (duas colunas no celular). "Adicionar aluno nesta aula" segue o padrão, com "Adicionar".
+- **Foco:** ação do menu ⋮ que abre diálogo deixa o foco no diálogo (`keepFocusInOpenDialog`).
+- **Rótulos acessíveis em português:** "Fechar", "Mais", "Abrir ou fechar o menu".
+- **Contraste:** selos em verde, âmbar, azul e vermelho usam o tom 700 no claro; `--success`, `--warning` e `--info` ficam mais claros no escuro. A impressão sai sempre clara.
+- **Balão do destaque** ("Comece por aqui.") vai para baixo da seção quando não cabe acima da barra do topo; cor primária.
+- **Textos:** sem "&" nem "Ex.:"; títulos só com a primeira maiúscula; separador "·"; ocupação "3 de 10 alunos"; "Dashboard" virou "Painel"; nome com o tipo não repete ("Pacote Pacote", `withKind`); selo do pacote "Restam 7 de 10"; relatórios com títulos curtos e mês em português (`CompetencePicker`).
+- **Pequenas UX:** seleção em lote com "Sair da seleção"; "Ver aulas no calendário" abre só a turma (`?class=`); "Sem pacote" só depois de carregar os pacotes; Mensagens da ficha sem busca nem filtro quando não há mensagem; Histórico com o filtro "Avisos"; grupos de Comunicação em sanfona (no celular só o primeiro abre); menu do celular da landing fecha com Esc e toque fora.

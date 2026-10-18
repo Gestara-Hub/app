@@ -308,10 +308,10 @@ test("Resumo: o que entrou, o que saiu e as bolsas concedidas na visão avançad
   await page.goto("/finance");
   const card = (title: string) =>
     page.locator("div.rounded-2xl").filter({ has: page.getByText(title, { exact: true }) });
-  await expect(card("Saldo do Mês")).toContainText("R$ 290,00");
-  await expect(card("Total Entrou")).toContainText("R$ 500,00");
-  await expect(card("Total Entrou")).toContainText("Todas as mensalidades recebidas");
-  await expect(card("Total Saiu")).toContainText("R$ 210,00");
+  await expect(card("Saldo do mês")).toContainText("R$ 290,00");
+  await expect(card("Entrou")).toContainText("R$ 500,00");
+  await expect(card("Entrou")).toContainText("Todas as mensalidades recebidas");
+  await expect(card("Saiu")).toContainText("R$ 210,00");
 
   await page.getByRole("button", { name: "Avançada" }).click();
   await expect(page.getByText("Bolsas concedidas:").locator("..")).toContainText("R$ 150,00");

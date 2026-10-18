@@ -244,3 +244,9 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md), co
 - **Mudar o valor do plano (COB-12):** com alunos ativos no plano, o formulário confirma antes ("Mudar o valor do plano?"): vale para os alunos do plano a partir da próxima mensalidade, e as já geradas ficam como estão.
 - **Resumo e Lançamentos batem (COB-15):** a prévia do pagamento do professor (mês ainda não fechado) aparece também em Lançamentos, como "Pagamento de Carlos (agosto, prévia)", pendente ou atrasada, com "Ver professores". O cartão do Resumo virou "Contas a pagar: atrasadas e próximos 7 dias".
 - **Vencimento no passado (COB-16):** cobrança avulsa, venda de pacote e cobrança do curso avisam "Data que já passou: a cobrança entra atrasada."; a avulsa e o pacote confirmam antes de lançar. Não bloqueia (lançar atraso antigo é legítimo).
+
+### Prioridade 3 (18/10/2026)
+
+- Lembrete de atraso de 10 dias com o valor e o fecho; a migração v38 troca o texto só de quem não mudou o padrão.
+- Datas de vencimento de outro ano aparecem com o ano ("10/12/2025").
+- Na Auditoria a entidade é "Cobrança" (não "Mensalidade" para todas).

@@ -163,7 +163,7 @@ test.describe("cadastro de usuários (proprietário)", () => {
 
 test.describe("menu e rotas por perfil (academia)", () => {
   const ALL_CLASSES = [
-    "Dashboard",
+    "Painel",
     "Calendário",
     "Turmas",
     "Alunos",
@@ -321,7 +321,7 @@ test.describe("sessão", () => {
     await expect(menu).toContainText("Trocar usuário / organização (demo)");
     await menu.getByRole("menuitem", { name: /Bia Recepção/ }).click();
     await expect(page.locator("header").getByRole("button", { name: /Bia Recepção/ })).toBeVisible({ timeout: 15_000 });
-    await expect.poll(() => navLinks(page)).not.toContain("Dashboard");
+    await expect.poll(() => navLinks(page)).not.toContain("Painel");
   });
 });
 

@@ -98,14 +98,14 @@ async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modal
   await expect(welcome).toBeHidden();
 
   const checklist = page.locator("[data-tour=onboarding-checklist]");
-  await expect(checklist.getByRole("heading", { name: "Primeiros passos da sua unidade" })).toBeVisible();
+  await expect(checklist.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
   const { steps, absent, phase1 } = CHECKLIST[billing];
   await expect(checklist).toContainText(`0 de ${steps.length} concluídos`);
   await expect(checklist).toContainText(phase1);
   for (const label of steps) await expect(checklist.getByText(label, { exact: true })).toBeVisible();
   for (const label of absent) await expect(checklist.getByText(label, { exact: true })).toHaveCount(0);
   await expect(checklist.getByText("Falta revisar")).toHaveCount(modalitiesNeedReview ? 1 : 0);
-  await expect(checklist).toContainText(billing === "course" ? "Fase 3: Cursos & Matrículas" : "Fase 3: Turmas & Matrículas");
+  await expect(checklist).toContainText(billing === "course" ? "Fase 3: Cursos e matrículas" : "Fase 3: Turmas e matrículas");
 }
 
 /** Padroes da nova turma (cobranca, vagas, duracao) e do novo aluno. */
@@ -241,7 +241,7 @@ test.describe("configuração inicial por área", () => {
     await page.getByLabel("Nome").fill("Estúdio Vazio");
     await page.getByRole("button", { name: "Continuar" }).click();
     await page.getByRole("radio", { name: /^Dança/ }).click();
-    await pill(page, "Ballet Clássico").click();
+    await pill(page, "Balé clássico").click();
     await pill(page, "Dança de Salão").click();
     await expect(page.getByText("0 selecionadas")).toBeVisible();
     await expect(page.getByText("Nenhuma modalidade selecionada. Você poderá cadastrar turmas depois no painel.")).toBeVisible();
