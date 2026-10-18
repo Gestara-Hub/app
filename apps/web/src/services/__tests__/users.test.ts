@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import { usersService } from "@/services/usersService";
-import { resetAcademy } from "@/test/academy";
+import { createInstructor, resetAcademy } from "@/test/academy";
 
 const SELF_MESSAGE = "Você não pode alterar o seu próprio perfil ou status.";
 
@@ -46,5 +46,32 @@ describe("usuário não altera o próprio perfil nem o próprio status", () => {
     await usersService.update(other.id, { profile: "manager" });
     await usersService.remove(other.id);
     expect(store.users.find((u) => u.id === other.id)).toMatchObject({ profile: "manager", status: "inactive" });
+  });
+});
+
+describe("um usuário ativo por profissional (ACE-08)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("recusa ligar um segundo usuário ao mesmo profissional; inativo libera", async () => {
+    const teacher = await createInstructor("Carlos");
+    const carlos = await usersService.create({
+      name: "Carlos",
+      email: "carlos@academiax.com",
+      profile: "professional",
+      professionalId: teacher.id,
+      status: "active",
+    });
+    const second = { name: "Carlos 2", email: "carlos2@academiax.com", profile: "professional" as const, professionalId: teacher.id, status: "active" as const };
+    await expect(usersService.create(second)).rejects.toMatchObject({
+      fields: [{ field: "professionalId", message: "Este profissional já está ligado ao usuário Carlos." }],
+    });
+
+    await usersService.update(carlos.id, { status: "inactive" });
+    const other = await usersService.create(second);
+    expect(other.professionalId).toBe(teacher.id);
+    // Reativar o antigo agora esbarra no novo.
+    await expect(usersService.update(carlos.id, { status: "active" })).rejects.toMatchObject({
+      fields: [{ field: "professionalId" }],
+    });
   });
 });

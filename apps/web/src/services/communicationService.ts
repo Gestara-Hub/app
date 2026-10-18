@@ -303,6 +303,12 @@ export const communicationService = {
       validateMessage(payload);
       const log = newLog(payload, "opened");
       ensureLogs().unshift(log);
+      // Envio assistido: so da para saber que abriu o WhatsApp com o texto.
+      auditLogService.record({
+        action: "created",
+        target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
+        predicate: `abriu no WhatsApp uma mensagem para ${log.recipientName}`,
+      });
       return { ...log };
     });
   },
@@ -323,7 +329,7 @@ export const communicationService = {
       connection.monthlyQuota.used += 1;
       auditLogService.record({
         action: "created",
-        target: { type: "message_log", label: `Mensagem para ${log.recipientName}` },
+        target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
         predicate: `enviou mensagem de WhatsApp para ${log.recipientName}`,
       });
       return { ...log };
@@ -343,6 +349,11 @@ export const communicationService = {
       log.status = "delivered";
       delete log.errorReason;
       log.sentAt = nowIso();
+      auditLogService.record({
+        action: "updated",
+        target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
+        predicate: `reenviou a mensagem de WhatsApp para ${log.recipientName}`,
+      });
       return { ...log };
     });
   },

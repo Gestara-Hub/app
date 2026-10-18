@@ -5,7 +5,7 @@ import { categoriesService } from "@/services/categoriesService";
 import { clientsService } from "@/services/clientsService";
 import { professionalsService } from "@/services/professionalsService";
 import { turmasService } from "@/services/turmasService";
-import { ACADEMY_UNIT, resetAcademy } from "@/test/academy";
+import { ACADEMY_UNIT, createClass, createInstructor, resetAcademy, sessionIdOf } from "@/test/academy";
 
 const sessionId = (g: ClassGroupView, date: string) => `${g.id}~${date}~17:00`;
 
@@ -106,5 +106,20 @@ describe("aulas e chamada", () => {
     expect(charge).toMatchObject({ amountCents: 4000, unitId: ACADEMY_UNIT, status: "pending" });
     await turmasService.cancelReservation({ sessionId: sid, studentId: a.id });
     expect(store.charges.find((c) => c.id === charge.id)?.status).toBe("canceled");
+  });
+});
+
+describe("troca de instrutor na Auditoria (ACE-18)", () => {
+  beforeEach(() => resetAcademy());
+
+  it("registra o substituto e a volta do titular", async () => {
+    const carlos = await createInstructor("Carlos");
+    const bia = await createInstructor("Bia");
+    const g = await createClass({ name: "Adulto", instructorId: carlos.id, slots: [{ weekday: 1, start: "18:00", end: "19:00" }] });
+    const session = sessionIdOf(g.id, "2026-09-28", "18:00");
+    await turmasService.substituteInstructor(session, { instructorId: bia.id });
+    expect(store.auditLog.at(-1)?.summary).toContain("colocou Bia no lugar de Carlos na aula de 28/09 da turma Adulto");
+    await turmasService.restorePrimaryInstructor(session);
+    expect(store.auditLog.at(-1)?.summary).toContain("voltou Carlos para a aula de 28/09 da turma Adulto");
   });
 });

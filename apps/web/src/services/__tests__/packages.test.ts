@@ -1004,3 +1004,28 @@ describe("turma desativada", () => {
     });
   });
 });
+
+describe("chamada que mexe no pacote vai para a Auditoria (ACE-18)", () => {
+  it("desconta, devolve na justificada e na chamada desfeita; turma sem pacote não registra", async () => {
+    const g = await teacherClass();
+    const pkg = await newPackage();
+    const ana = await createStudent("Ana");
+    await sell({ studentId: ana.id, packageId: pkg.id });
+    await turmasService.enroll({ classGroupId: g.id, studentId: ana.id });
+    const session = sessionOf(g);
+
+    await turmasService.markAttendance({ sessionId: session, studentId: ana.id, status: "present" });
+    expect(lastAudit()).toContain("descontou 1 aula do pacote de Ana (presença em Pilates manhã, 21/09)");
+    await turmasService.markAttendance({ sessionId: session, studentId: ana.id, status: "justified" });
+    expect(lastAudit()).toContain("devolveu 1 aula ao pacote de Ana (falta justificada em Pilates manhã, 21/09)");
+    await turmasService.markAttendance({ sessionId: session, studentId: ana.id, status: "present" });
+    await turmasService.clearAttendance({ sessionId: session, studentId: ana.id });
+    expect(lastAudit()).toContain("devolveu 1 aula ao pacote de Ana (chamada desfeita em Pilates manhã, 21/09)");
+
+    const monthly = await teacherClass({ name: "Mensal", billingMode: "membership" });
+    await turmasService.enroll({ classGroupId: monthly.id, studentId: ana.id });
+    const before = store.auditLog.length;
+    await turmasService.markAttendance({ sessionId: sessionOf(monthly), studentId: ana.id, status: "present" });
+    expect(store.auditLog.length).toBe(before);
+  });
+});

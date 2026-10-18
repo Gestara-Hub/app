@@ -310,6 +310,7 @@ describe("envio assistido", () => {
     });
     expect(store.messageLogs[0].id).toBe(log.id);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
+    expect(lastAudit()).toContain("abriu no WhatsApp uma mensagem para Maria");
   });
 
   it("funciona no gratis e tambem no Pro conectado, sem gastar franquia", async () => {

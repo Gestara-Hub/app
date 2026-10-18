@@ -26,7 +26,7 @@ import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals";
 import { useCurrentUser } from "@/features/auth";
-import { useCreateUser, useUpdateUser } from "../hooks/use-users";
+import { useCreateUser, useUpdateUser, useUsers } from "../hooks/use-users";
 import { userFormSchema, type UserFormValues } from "../user-schema";
 
 const PROFILE_ORDER: UserProfile[] = [
@@ -59,6 +59,11 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
   const pending = createMut.isPending || updateMut.isPending;
 
   const { data: professionals } = useProfessionals({ status: "active" });
+  // Profissional ja ligado a outro usuario ativo nao aparece (um usuario por profissional).
+  const { data: activeUsers } = useUsers({ status: "active" });
+  const takenIds = new Set(
+    (activeUsers ?? []).filter((u) => u.id !== user?.id && u.professionalId).map((u) => u.professionalId),
+  );
 
   // Um usuario so pode atribuir perfis que ele mesmo pode gerenciar (Gerente:
   // Atendente/Profissional). Ao editar, preserva o perfil atual do usuario mesmo
@@ -81,7 +86,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
   // Opcoes do vinculo: profissionais ativos + o vinculado atual (mesmo inativo),
   // para nao sumir do combobox ao editar.
   const professionalOptions: { id: string; name: string; roleName?: string }[] =
-    (professionals ?? []).map((p) => ({
+    (professionals ?? []).filter((p) => !takenIds.has(p.id)).map((p) => ({
       id: p.id,
       name: p.name,
       roleName: p.role?.name,

@@ -99,6 +99,26 @@ function ensureEmailUnique(email: string, exceptId?: Id): void {
   }
 }
 
+/**
+ * Um profissional da equipe tem um usuario ativo so (antes dava para ligar
+ * dois e o escopo do professor ficava ambiguo). Usuario inativo libera.
+ */
+function ensureProfessionalFree(
+  professionalId: Id | undefined,
+  status: User["status"],
+  exceptId?: Id,
+): void {
+  if (!professionalId || status !== "active") return;
+  const clash = store.users.find(
+    (u) => u.id !== exceptId && u.status === "active" && u.professionalId === professionalId,
+  );
+  if (clash) {
+    throw validationError([
+      { field: "professionalId", message: `Este profissional já está ligado ao usuário ${clash.name}.` },
+    ]);
+  }
+}
+
 function activeOwnerCount(): number {
   return store.users.filter((u) => u.profile === "owner" && u.status === "active")
     .length;
@@ -203,6 +223,7 @@ export const usersService = {
     return simulateWrite(() => {
       validateUser(payload, { partial: false });
       ensureEmailUnique(payload.email);
+      ensureProfessionalFree(payload.professionalId || undefined, payload.status ?? "active");
       const ts = nowIso();
       const user: User = {
         id: newId(),
@@ -248,6 +269,7 @@ export const usersService = {
           : current.professionalId,
         updatedAt: nowIso(),
       };
+      ensureProfessionalFree(updated.professionalId, updated.status, id);
       store.users[idx] = updated;
       const changes: AuditChange[] = [];
       if (updated.profile !== current.profile) {

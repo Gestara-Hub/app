@@ -705,6 +705,37 @@ function syncAttendanceUsage(sessionId: Id, studentId: Id, status?: AttendanceSt
   });
 }
 
+const ATTENDANCE_WORD: Record<AttendanceStatus, string> = {
+  present: "presença",
+  absent: "falta",
+  justified: "falta justificada",
+};
+
+/**
+ * Chamada so entra na Auditoria quando mexe no pacote (gasta ou devolve
+ * aula): marcar presenca o dia todo encheria o registro.
+ */
+function auditPackageUsage(
+  usage: ReturnType<typeof syncAttendanceUsage>,
+  g: ClassGroup,
+  date: DateISO,
+  studentId: Id,
+  status?: AttendanceStatus,
+) {
+  if (usage !== "added" && usage !== "reverted") return;
+  const name = studentName(studentId);
+  const mark = status ? ATTENDANCE_WORD[status] : "chamada desfeita";
+  const when = `${mark} em ${g.name}, ${format(parseISO(date), "dd/MM")}`;
+  auditLogService.record({
+    action: "updated",
+    target: { type: "client", id: studentId, label: name },
+    predicate:
+      usage === "added"
+        ? `descontou 1 aula do pacote de ${name} (${when})`
+        : `devolveu 1 aula ao pacote de ${name} (${when})`,
+  });
+}
+
 /** Aula do calendario com a ocupacao da data (matriculados vigentes + avulsos/experimentais). */
 export type ClassSessionListItem = ClassSessionView & {
   capacity: number;
@@ -1251,18 +1282,21 @@ export const turmasService = {
         });
       }
       // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
-      syncAttendanceUsage(input.sessionId, input.studentId, input.status);
+      const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
+      auditPackageUsage(usage, g, date, input.studentId, input.status);
     });
   },
 
   /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
   clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
     return simulateWrite(() => {
-      assertTeacherSession(resolveSession(input.sessionId).g, input.sessionId);
+      const { g, date } = resolveSession(input.sessionId);
+      assertTeacherSession(g, input.sessionId);
       store.attendances = store.attendances.filter(
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
-      syncAttendanceUsage(input.sessionId, input.studentId);
+      const usage = syncAttendanceUsage(input.sessionId, input.studentId);
+      auditPackageUsage(usage, g, date, input.studentId);
     });
   },
 
@@ -1360,7 +1394,7 @@ export const turmasService = {
     payload: SubstituteInstructorPayload,
   ): Promise<ClassSessionDetail> {
     return simulateWrite(() => {
-      const { date, slot } = resolveSession(sessionId);
+      const { g, date, slot } = resolveSession(sessionId);
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
       if (!instructor) throw notFoundError("Instrutor não encontrado.");
@@ -1392,6 +1426,11 @@ export const turmasService = {
           updatedAt: ts,
         });
       }
+      auditLogService.record({
+        action: "updated",
+        target: { type: "class_group", id: g.id, label: g.name },
+        predicate: `colocou ${instructor.name} no lugar de ${instructorName(g.instructorId) || "o instrutor"} na aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
+      });
 
       return clone(buildSessionDetail(sessionId));
     });
@@ -1405,6 +1444,12 @@ export const turmasService = {
         );
         if (idx !== -1) {
           store.sessionOverrides.splice(idx, 1);
+          const { g, date } = resolveSession(sessionId);
+          auditLogService.record({
+            action: "updated",
+            target: { type: "class_group", id: g.id, label: g.name },
+            predicate: `voltou ${instructorName(g.instructorId) || "o instrutor"} para a aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
+          });
         }
       }
       return clone(buildSessionDetail(sessionId));
