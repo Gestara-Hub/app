@@ -397,22 +397,32 @@ export function StudentProfileView({ id }: { id: Id }) {
         ]
       : []),
     ...(canSeeBilling && summary.packages.length > 0
-      ? [
-          {
-            id: "packages" as const,
-            title: "Pacotes",
-            summary: pkg
-              ? `${pkg.name} · ${plural(pkg.remaining, "aula restante", "aulas restantes")}`
-              : plural(summary.packages.length, "pacote", "pacotes"),
-            content: (
-              <StudentPackagesPanel
-                studentId={student.id}
-                canManage={canCharge}
-                onSell={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
-              />
-            ),
-          },
-        ]
+      ? (() => {
+          const usablePackages = summary.packages.filter(
+            (p) => p.status === "active" && !p.isExpired && p.remaining > 0,
+          );
+          const totalRemaining = usablePackages.reduce((sum, p) => sum + p.remaining, 0);
+          const packagesSummary =
+            usablePackages.length > 1
+              ? `${usablePackages.length} pacotes em uso · ${plural(totalRemaining, "aula restante", "aulas restantes")}`
+              : pkg
+                ? `${pkg.name} · ${plural(pkg.remaining, "aula restante", "aulas restantes")}`
+                : plural(summary.packages.length, "pacote", "pacotes");
+          return [
+            {
+              id: "packages" as const,
+              title: "Pacotes",
+              summary: packagesSummary,
+              content: (
+                <StudentPackagesPanel
+                  studentId={student.id}
+                  canManage={canCharge}
+                  onSell={moneyActions ? (packageId) => setSellState({ open: true, packageId }) : undefined}
+                />
+              ),
+            },
+          ];
+        })()
       : []),
     ...(isClasses
       ? [

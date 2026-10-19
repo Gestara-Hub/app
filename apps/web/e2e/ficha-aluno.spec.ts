@@ -323,7 +323,7 @@ test.describe("topo e resumos das seções", () => {
     await page.goto(PROFILE);
     await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 8 aulas restantes");
     const packages = await openProfileSection(page, "Pacotes");
-    await expect(packages).toContainText("2 de 10 aulas usadas");
+    await expect(packages).toContainText("Restam 8 de 10");
     await expect(packages).toContainText("vale até 30/11/26");
   });
 });
@@ -458,7 +458,7 @@ test.describe("Editar e o menu ⋮ do aluno", () => {
     await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 10 aulas restantes");
     await expect(profileSection(page, "Cobranças")).toContainText("R$ 455,00");
     await openProfileSection(page, "Pacotes");
-    await expect(rowOf(page, "Pacote 10 aulas")).toContainText("0 de 10 aulas usadas");
+    await expect(rowOf(page, "Pacote 10 aulas")).toContainText("Restam 10 de 10");
   });
 
   test("Inativar com mensalidade em aberto: cancelar a cobrança e depois reativar", async ({ page }) => {
@@ -691,8 +691,8 @@ test.describe("seções", () => {
     });
     await page.goto(`${PROFILE}?tab=packages`);
     await expect(page.getByText("2 pacotes")).toBeVisible();
-    const used = page.locator("div.group").filter({ hasText: "2 de 10 aulas usadas" });
-    await expect(used).toContainText("comprado 01/09/26 · vale até 30/11/26 · todas as modalidades");
+    const used = page.locator("div.group").filter({ hasText: "Restam 8 de 10" });
+    await expect(used).toContainText("comprado 01/09/26 · vale até 30/11/26 · todas as turmas");
     await expect(page.getByText("Renovado")).toBeVisible();
 
     // Clicar na linha mostra as aulas usadas.
@@ -709,7 +709,7 @@ test.describe("seções", () => {
     await page.getByRole("menuitem", { name: "Renovar" }).click();
     const sell = page.getByRole("dialog", { name: "Vender pacote" });
     await expect(sell.getByRole("combobox", { name: "Pacote" })).toContainText("Pacote 10 aulas");
-    await expect(sell).toContainText("O saldo de 8 aulas do pacote atual passa para este.");
+    await expect(sell).toContainText("saldo de 8 aulas será somado a este novo pacote (total de 18 aulas)");
     await sell.getByRole("button", { name: "Cancelar" }).click();
 
     await page.getByRole("combobox", { name: "Filtrar por situação" }).click();

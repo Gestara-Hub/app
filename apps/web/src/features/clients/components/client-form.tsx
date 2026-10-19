@@ -417,11 +417,68 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
   const watchedDueDay = useWatch({ control: form.control, name: "dueDay" });
   const biweeklyDueDay = Math.min(Math.max(Number(watchedDueDay) || 1, 1), 15);
 
+  // Desconto acima do plano ou de 100%: avisa na hora (sem esperar salvar) e
+  // nao zera a previa da 1a cobranca como se o desconto valesse.
+  const discountOverflowError = useMemo(() => {
+    if (paymentMode !== "membership" || !hasDiscount) return null;
+    const val = Number(discountValue) || 0;
+    if (val <= 0) return null;
+    if (discountType === "percentage") {
+      return val > 100 ? "O desconto percentual não pode ser superior a 100%." : null;
+    }
+    if (selectedPlan && Math.round(val) > selectedPlan.priceCents) {
+      return `O desconto passa do valor do plano (${formatCents(selectedPlan.priceCents)}).`;
+    }
+    return null;
+  }, [paymentMode, hasDiscount, discountValue, discountType, selectedPlan]);
+
+  useEffect(() => {
+    if (discountOverflowError) {
+      form.setError("discountValue", { type: "manual", message: discountOverflowError });
+    } else if (form.getFieldState("discountValue").error?.type === "manual") {
+      form.clearErrors("discountValue");
+    }
+  }, [discountOverflowError, form]);
+
+  const scholarshipOverflowError = useMemo(() => {
+    if (!isScholarship || isFullScholarship) return null;
+    if (scholarshipBy === "amount") {
+      const pay = Math.round(Number(scholarshipPayCents) || 0);
+      if (selectedPlan && pay >= selectedPlan.priceCents) {
+        return `Use um valor menor que o do plano (${formatCents(selectedPlan.priceCents)}).`;
+      }
+      return null;
+    }
+    const pct = Number(scholarshipPercentValue) || 0;
+    return pct >= 100 ? "Use de 1% a 99%. Para 100%, escolha bolsa integral." : null;
+  }, [
+    isScholarship,
+    isFullScholarship,
+    scholarshipBy,
+    scholarshipPayCents,
+    selectedPlan,
+    scholarshipPercentValue,
+  ]);
+
+  useEffect(() => {
+    const fieldName = scholarshipBy === "amount" ? "scholarshipPayCents" : "scholarshipPercent";
+    const otherField = scholarshipBy === "amount" ? "scholarshipPercent" : "scholarshipPayCents";
+    if (form.getFieldState(otherField).error?.type === "manual") {
+      form.clearErrors(otherField);
+    }
+    if (scholarshipOverflowError) {
+      form.setError(fieldName, { type: "manual", message: scholarshipOverflowError });
+    } else if (form.getFieldState(fieldName).error?.type === "manual") {
+      form.clearErrors(fieldName);
+    }
+  }, [scholarshipOverflowError, scholarshipBy, form]);
+
   // Desconto efetivo do modo escolhido. Bolsa por "valor a pagar" vira desconto
   // fixo (preco do plano - valor pago); integral = 100%.
   const effectiveDiscount = useMemo(() => {
     if (isScholarship) {
       if (isFullScholarship) return { type: "percentage" as const, value: 100 };
+      if (scholarshipOverflowError) return null;
       if (scholarshipBy === "amount") {
         const pay = Number(scholarshipPayCents) || 0;
         const price = selectedPlan?.priceCents ?? 0;
@@ -430,18 +487,20 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       const pct = Number(scholarshipPercentValue) || 0;
       return pct > 0 ? { type: "percentage" as const, value: Math.min(pct, 100) } : null;
     }
-    if (paymentMode !== "membership" || !hasDiscount) return null;
+    if (paymentMode !== "membership" || !hasDiscount || discountOverflowError) return null;
     const value = Number(discountValue);
     return value > 0 ? { type: discountType ?? "fixed", value } : null;
   }, [
     isScholarship,
     isFullScholarship,
+    scholarshipOverflowError,
     scholarshipBy,
     scholarshipPayCents,
     scholarshipPercentValue,
     selectedPlan,
     paymentMode,
     hasDiscount,
+    discountOverflowError,
     discountType,
     discountValue,
   ]);
@@ -1014,17 +1073,6 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
               required
               disabled={pending}
             />
-            <InputText<ClientFormValues>
-              name="email"
-              type="email"
-              label="E-mail"
-              placeholder={
-                isClasses
-                  ? "aluno@email.com (opcional)"
-                  : "cliente@email.com (opcional)"
-              }
-              disabled={pending}
-            />
             <DateField<ClientFormValues>
               name="birthDate"
               label="Data de nascimento"
@@ -1033,6 +1081,18 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
               disabled={pending}
             />
           </div>
+
+          <InputText<ClientFormValues>
+            name="email"
+            type="email"
+            label="E-mail"
+            placeholder={
+              isClasses
+                ? "aluno@email.com (opcional)"
+                : "cliente@email.com (opcional)"
+            }
+            disabled={pending}
+          />
         </div>
 
         {/* Bloco 2: Plano e mensalidade (específico de classes/academia) */}
@@ -1378,6 +1438,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                             name="discountValue"
                             label="Valor do desconto (R$)"
                             placeholder="0,00"
+                            hint={selectedPlan ? `Máximo: ${formatCents(selectedPlan.priceCents)}.` : undefined}
                             disabled={pending}
                           />
                         )}
@@ -1535,50 +1596,52 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
                     <Trash2 className="size-3.5" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <InputText<ClientFormValues>
-                    name={`guardians.${index}.name`}
-                    label="Nome"
-                    placeholder="Informe o nome do responsável"
-                    required
-                    disabled={pending}
-                  />
-                  <InputText<ClientFormValues>
-                    name={`guardians.${index}.relationship`}
-                    label="Parentesco"
-                    placeholder="Informe o parentesco (opcional)"
-                    disabled={pending}
-                  />
-                  <InputPhone<ClientFormValues>
-                    name={`guardians.${index}.phone`}
-                    label="Telefone (WhatsApp)"
-                    disabled={pending}
-                  />
-                  <InputText<ClientFormValues>
-                    name={`guardians.${index}.email`}
-                    type="email"
-                    label="E-mail"
-                    placeholder="Informe o e-mail (opcional)"
-                    disabled={pending}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {GUARDIAN_RELATIONSHIPS.map((relationship) => (
-                    <button
-                      key={relationship}
-                      type="button"
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <InputText<ClientFormValues>
+                      name={`guardians.${index}.name`}
+                      label="Nome"
+                      placeholder="Informe o nome do responsável"
+                      required
                       disabled={pending}
-                      onClick={() =>
-                        form.setValue(`guardians.${index}.relationship`, relationship, {
-                          shouldDirty: true,
-                        })
-                      }
-                      className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      + {relationship}
-                    </button>
-                  ))}
+                    />
+                    <InputText<ClientFormValues>
+                      name={`guardians.${index}.relationship`}
+                      label="Parentesco"
+                      placeholder="Informe o parentesco (opcional)"
+                      disabled={pending}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {GUARDIAN_RELATIONSHIPS.map((relationship) => (
+                      <button
+                        key={relationship}
+                        type="button"
+                        disabled={pending}
+                        onClick={() =>
+                          form.setValue(`guardians.${index}.relationship`, relationship, {
+                            shouldDirty: true,
+                          })
+                        }
+                        className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        + {relationship}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                <InputPhone<ClientFormValues>
+                  name={`guardians.${index}.phone`}
+                  label="Telefone (WhatsApp)"
+                  disabled={pending}
+                />
+                <InputText<ClientFormValues>
+                  name={`guardians.${index}.email`}
+                  type="email"
+                  label="E-mail"
+                  placeholder="Informe o e-mail (opcional)"
+                  disabled={pending}
+                />
               </div>
             ))}
 

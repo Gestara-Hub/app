@@ -83,10 +83,11 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
   await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
   await page.getByRole("option", { name: "Aulas avulsas" }).click();
   const row = page.locator("div.group").filter({ hasText: "Aluno Avulso" });
-  await expect(row).toContainText("Cancelado");
-  // Cancelada pelo sistema (saida da aula): nao reabre, e o motivo fica no tooltip.
+  await expect(row).toContainText("Encerrado");
+  await expect(row).toContainText("Saiu da aula");
+  // Encerrada pelo sistema (saida da aula): nao reabre, e o motivo fica no tooltip.
   await expect(row.getByRole("button", { name: "Reverter" })).toBeDisabled();
-  await expect(row.locator("span[title^='Cancelada automaticamente pelo sistema']")).toHaveCount(1);
+  await expect(row.locator("span[title^='Encerrada automaticamente pelo sistema']")).toHaveCount(1);
 });
 
 test("cancelar matrícula individual pede confirmação", async ({ page }) => {

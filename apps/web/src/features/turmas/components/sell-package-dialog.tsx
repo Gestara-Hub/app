@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { AlertTriangle, Info } from "lucide-react";
 import type { Client, LessonPackage } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
@@ -202,18 +203,31 @@ function SellPackageForm({
             </p>
           ) : null}
 
-          {carried > 0 ? (
-            <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-foreground">
-              O saldo de {plural(carried, "aula", "aulas")} do {withKind("pacote", chosen?.name ?? "")} que o aluno já tem passa para este.
-            </p>
+          {carried > 0 && chosen ? (
+            <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-amber-800 dark:text-amber-300">
+                  Atenção: renovação de pacote em andamento
+                </p>
+                <p className="leading-relaxed">
+                  O {withKind("pacote", chosen.name)} atual será encerrado como <strong>Renovado</strong> e o saldo de{" "}
+                  <strong>{plural(carried, "aula", "aulas")}</strong> será somado a este novo pacote (total de{" "}
+                  <strong>{plural(carried + chosen.lessons, "aula", "aulas")}</strong>).
+                </p>
+              </div>
+            </div>
           ) : null}
           {keptApart.length > 0 ? (
-            <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-              {keptApart.length === 1
-                ? `O ${withKind("pacote", keptApart[0].name)} continua valendo.`
-                : `Os pacotes ${keptApart.map((p) => p.name).join(" e ")} continuam valendo.`}{" "}
-              A aula usa o que vence primeiro.
-            </p>
+            <div className="flex items-start gap-2.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3.5 py-2.5 text-xs text-sky-900 dark:border-sky-500/25 dark:bg-sky-950/30 dark:text-sky-200">
+              <Info className="mt-0.5 size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+              <p className="leading-relaxed">
+                {keptApart.length === 1
+                  ? `O ${withKind("pacote", keptApart[0].name)} atual continua ativo separadamente.`
+                  : `Os pacotes ${keptApart.map((p) => p.name).join(" e ")} atuais continuam ativos separadamente.`}{" "}
+                Na chamada, o sistema desconta primeiro do pacote que vence antes.
+              </p>
+            </div>
           ) : null}
         </DialogBody>
         <DialogFormFooter

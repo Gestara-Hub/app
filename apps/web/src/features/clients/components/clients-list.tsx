@@ -69,7 +69,7 @@ import {
   StudentPackageBadge,
   canSellPackageTo,
   cancelablePackage,
-  displayPackage,
+  displayPackages,
   useEnrolledModalities,
   usePlans,
   useStudentPackages,
@@ -328,12 +328,12 @@ function ClientBillingBadges({
   plan?: Plan;
   packages: StudentPackageView[];
 }) {
-  const pkg = displayPackage(packages);
+  const shownPackages = displayPackages(packages);
   const hasMembership = Boolean(activeScholarship(client) || (client.planId && plan));
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
-      {hasMembership || !pkg ? <ClientPlanBadge client={client} plan={plan} /> : null}
-      {pkg ? <StudentPackageBadge pkg={pkg} /> : null}
+      {hasMembership || shownPackages.length === 0 ? <ClientPlanBadge client={client} plan={plan} /> : null}
+      {shownPackages.length > 0 ? <StudentPackageBadge packages={shownPackages} /> : null}
     </span>
   );
 }

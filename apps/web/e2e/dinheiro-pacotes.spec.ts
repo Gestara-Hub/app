@@ -227,11 +227,11 @@ test.describe("venda", () => {
     await page.goto("/classes/billing?kind=package");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Pago");
     await stepMonth(page, "next", "2026-10");
-    await expect(rowOf(page, "Aluna Pacote")).toContainText("Cancelado");
+    await expect(rowOf(page, "Aluna Pacote")).toContainText("Encerrado");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Pacote cancelado");
     await expect(rowOf(page, "Aluna Pacote").getByRole("button", { name: "Reverter" })).toBeDisabled();
     await stepMonth(page, "next", "2026-11");
-    await expect(rowOf(page, "Aluna Pacote")).toContainText("Cancelado");
+    await expect(rowOf(page, "Aluna Pacote")).toContainText("Encerrado");
     await stepMonth(page, "next", "2026-12");
     await expect(page.getByText("Nenhum pacote neste mês.")).toBeVisible();
   });
@@ -265,7 +265,7 @@ test.describe("venda", () => {
 
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await pickCombobox(page, dialog, "Pacote", "10 aulas");
-    await expect(dialog.getByText("O saldo de 3 aulas do pacote atual passa para este.")).toBeVisible();
+    await expect(dialog).toContainText("saldo de 3 aulas será somado a este novo pacote (total de 13 aulas)");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
     await expect(row).toContainText("Restam 13 de 13");
@@ -597,7 +597,7 @@ test.describe("Dashboard: pacotes acabando", () => {
     const dialog = page.getByRole("dialog", { name: "Vender pacote" });
     await expect(dialog).toContainText("Pacote de aulas para Aluno Vence.");
     await pickCombobox(page, dialog, "Pacote", "10 aulas");
-    await expect(dialog.getByText("O saldo de 4 aulas do pacote atual passa para este.")).toBeVisible();
+    await expect(dialog).toContainText("saldo de 4 aulas será somado a este novo pacote (total de 14 aulas)");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Pacote vendido.")).toBeVisible();
     await expect(todoCard(page)).toContainText("3 pacotes acabando");

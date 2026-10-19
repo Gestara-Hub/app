@@ -63,10 +63,13 @@ function EndedBadge({ status }: { status: Exclude<StudentPackageStatus, "active"
   );
 }
 
-/** "3 de 10 aulas usadas · comprado 01/09/26 · vale até 30/10/26 · Pilates". */
+/** "comprado 01/09/26 · vale até 30/10/26 · todas as turmas" (ou "3 de 10 aulas usadas · ..." quando encerrado/vencido). */
 function packageFacts(pkg: StudentPackageView): string {
+  const showUsed = pkg.status !== "active" || pkg.isExpired;
   return [
-    `${pkg.lessonsUsed} de ${pkg.lessonsTotal} ${pkg.lessonsTotal === 1 ? "aula usada" : "aulas usadas"}`,
+    showUsed
+      ? `${pkg.lessonsUsed} de ${pkg.lessonsTotal} ${pkg.lessonsTotal === 1 ? "aula usada" : "aulas usadas"}`
+      : null,
     `comprado ${ddmmyy(pkg.purchasedAt)}`,
     pkg.expiresAt ? `${pkg.isExpired ? "venceu" : "vale até"} ${ddmmyy(pkg.expiresAt)}` : "sem validade",
     pkg.classNames.length > 0

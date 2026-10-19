@@ -173,14 +173,14 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await stepMonth(page, "next", "2026-09");
   await stepMonth(page, "next", "2026-10");
   const october = rowOf(page, "Aluna Meio");
-  await expect(october).toContainText("Cancelado");
+  await expect(october).toContainText("Encerrado");
   await expect(october).toContainText("Matrícula cancelada");
   // Cancelada pelo sistema: nao reabre (botao travado, sem menu de clique direito).
   await expect(october.getByRole("button", { name: "Reverter" })).toBeDisabled();
   await october.click({ button: "right" });
   await expect(page.getByRole("menu")).toHaveCount(0);
   await stepMonth(page, "next", "2026-11");
-  await expect(rowOf(page, "Aluna Meio")).toContainText("Cancelado");
+  await expect(rowOf(page, "Aluna Meio")).toContainText("Encerrado");
   // Canceladas pelo sistema entram em "Canceladas" (nao sao substituidas).
   await pickSelect(page, "Filtrar por situação", /Canceladas/);
   await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();

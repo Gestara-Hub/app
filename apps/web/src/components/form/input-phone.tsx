@@ -1,20 +1,28 @@
 "use client";
 
-import { useMemo, useState, type Ref } from "react";
+import { useId, useMemo, useState, type Ref } from "react";
 import {
   Controller,
   useFormContext,
   type FieldValues,
   type Path,
 } from "react-hook-form";
+import { Check, ChevronsUpDown } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   callingCodeOf,
   countryFlag,
@@ -42,6 +50,10 @@ interface InputPhoneProps<T extends FieldValues> {
 
 /** E.164 vai ate 15 digitos com o DDI. */
 const MAX_DIGITS = 15;
+
+function stripAccents(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
 
 /**
  * Campo de telefone com seletor de pais (Brasil +55 por padrao) e a mascara
@@ -117,12 +129,31 @@ function PhoneControl({
     digits: nationalDigitsOf(value),
     value,
   }));
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const countryListId = useId();
+
   let current = state;
   if (value !== state.value) {
     current = { country: phoneCountryOf(value), digits: nationalDigitsOf(value), value };
     setState(current);
   }
-  const countries = useMemo(() => phoneCountries(), []);
+  const countries = useMemo(
+    () =>
+      phoneCountries().map((country) => {
+        const namePt = phoneCountryName(country);
+        const code = callingCodeOf(country);
+        const flag = countryFlag(country);
+        return {
+          country,
+          namePt,
+          code,
+          flag,
+          searchValue: `${namePt} ${stripAccents(namePt)} +${code} ${code} ${country}`,
+        };
+      }),
+    [],
+  );
   const display = formatAsYouType(current.country, current.digits);
 
   const commit = (country: PhoneCountry, digits: string) => {
@@ -146,29 +177,90 @@ function PhoneControl({
     commit(current.country, digits);
   };
 
+  const handleCountryOpenChange = (nextOpen: boolean) => {
+    setCountryOpen(nextOpen);
+    if (!nextOpen) {
+      setCountrySearch("");
+    }
+  };
+
   return (
-    <div className="flex gap-2">
-      <Select
-        value={current.country}
-        onValueChange={(next) => commit(next as PhoneCountry, current.digits)}
-        disabled={disabled}
-      >
-        <SelectTrigger
-          aria-label={`País: ${phoneCountryName(current.country)} (+${callingCodeOf(current.country)})`}
-          className="w-[104px] shrink-0"
+    <div className="flex gap-1.5">
+      <Popover modal={true} open={countryOpen} onOpenChange={handleCountryOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            role="combobox"
+            aria-expanded={countryOpen}
+            aria-controls={countryListId}
+            aria-label={`País: ${phoneCountryName(current.country)} (+${callingCodeOf(current.country)})`}
+            disabled={disabled}
+            className={cn(
+              "flex h-9 shrink-0 items-center justify-between gap-1 rounded-md border border-input bg-transparent px-2.5 py-1.5 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] dark:bg-input/30",
+              "focus:border-ring focus:ring-[3px] focus:ring-ring/50",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <span className="whitespace-nowrap">
+              {countryFlag(current.country)} +{callingCodeOf(current.country)}
+            </span>
+            <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={8}
+          onOpenAutoFocus={(event) => {
+            if (
+              typeof window !== "undefined" &&
+              window.matchMedia("(pointer: coarse)").matches
+            ) {
+              event.preventDefault();
+            }
+          }}
+          className="w-72 p-0"
         >
-          <SelectValue>
-            {countryFlag(current.country)} +{callingCodeOf(current.country)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="max-h-72">
-          {countries.map((country) => (
-            <SelectItem key={country} value={country}>
-              {countryFlag(country)} {phoneCountryName(country)} +{callingCodeOf(country)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <Command>
+            <CommandInput
+              placeholder="Buscar país ou DDI..."
+              value={countrySearch}
+              onValueChange={setCountrySearch}
+            />
+            <CommandList
+              id={countryListId}
+              className="max-h-[min(16rem,var(--radix-popover-content-available-height))]"
+            >
+              <CommandEmpty>Nenhum país encontrado.</CommandEmpty>
+              <CommandGroup>
+                {countries.map((item) => (
+                  <CommandItem
+                    key={item.country}
+                    value={item.searchValue}
+                    onSelect={() => {
+                      commit(item.country, current.digits);
+                      setCountrySearch("");
+                      setCountryOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "size-4",
+                        item.country === current.country ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 break-words">
+                      {item.flag} {item.namePt}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      +{item.code}
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
       <Input
         id={id}
         type="tel"

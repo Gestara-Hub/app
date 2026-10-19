@@ -11,7 +11,7 @@ export { NewExtraChargeDialog } from "./components/new-extra-charge-dialog";
 export { SellPackageDialog } from "./components/sell-package-dialog";
 export { paymentSummary } from "./installments-summary";
 export { canSellPackageTo, canCancelPackage, canRenewPackage, cancelablePackage } from "./package-actions";
-export { StudentPackageBadge, displayPackage } from "./components/student-package-badge";
+export { StudentPackageBadge, displayPackage, displayPackages } from "./components/student-package-badge";
 export { StudentChargesPanel } from "./components/student-charges-panel";
 export { StudentPackagesPanel } from "./components/student-packages-panel";
 export { ModalitiesView } from "./components/modalities-view";
