@@ -33,7 +33,7 @@ function digits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-function emptyStore(organization: Organization, unit: Unit, users: User[]): MockStore {
+export function emptyStore(organization: Organization, unit: Unit, users: User[]): MockStore {
   return {
     organization,
     unit,

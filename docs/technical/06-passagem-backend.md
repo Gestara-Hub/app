@@ -5,8 +5,7 @@
 
 ## 1. Direção
 
-- **Decidido em 14/10/2026: Supabase** para banco, login, regras de negócio (Edge Functions com Hono), tarefas agendadas (Supabase Cron) e comprovantes (Storage). Ver [08-backend-supabase.md](08-backend-supabase.md). Frontend web segue na Vercel por enquanto.
-- **Código:** funções e migrações do banco no monorepo (pasta `supabase/`), reaproveitando `packages/contracts` (formato da API) e `packages/core` (regras puras: motor de cobrança, financeiro, agenda, datas). Apps em React Native para aluno e professor usam o mesmo Supabase.
+- **Código:** banco no monorepo (pasta `apps/supabase/`), reaproveitando `packages/contracts` (formato da API) e `packages/core` (regras puras: motor de cobrança, financeiro, agenda, datas). Portais de aluno e professor unificados no mesmo monólito Next.js distribuídos via PWA ([10-monolito-frontend-pwa.md](10-monolito-frontend-pwa.md)).
 - **Tabela original (13/10/2026), já resolvida pelo 08:**
 
 | Decisão | Sugestão | Por quê |

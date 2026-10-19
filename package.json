@@ -9,6 +9,11 @@
     "lint": "pnpm --filter @gestarahub/web lint",
     "typecheck": "pnpm --filter @gestarahub/web typecheck",
     "test": "pnpm --filter @gestarahub/core test && pnpm --filter @gestarahub/web test",
-    "e2e": "pnpm --filter @gestarahub/web e2e"
+    "e2e": "pnpm --filter @gestarahub/web e2e",
+    "supabase:start": "supabase start --workdir apps",
+    "supabase:stop": "supabase stop --workdir apps",
+    "supabase:status": "supabase status --workdir apps",
+    "supabase:reset": "supabase db reset --workdir apps",
+    "supabase:functions": "supabase functions serve --workdir apps --import-map apps/supabase/functions/deno.json"
   }
 }

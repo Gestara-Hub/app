@@ -22,7 +22,7 @@ import { createQueryClient } from "@/lib/providers";
 import { useRefetchOnStoreChange } from "@/lib/use-refetch-on-store-change";
 import { queryKeys } from "@/lib/queryKeys";
 import { setCurrentActor } from "@/mocks/currentActor";
-import { setActiveOrganization } from "@/mocks/store";
+import { ensureUserTenant, setActiveOrganization } from "@/mocks/store";
 import { usersService } from "@/services/usersService";
 import { settingsService } from "@/services/settingsService";
 import { refreshSession, signOut, syncSubscriptionTier } from "@/app/(auth)/actions";
@@ -69,6 +69,7 @@ export function SessionProvider({
 }) {
   // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
   if (typeof window !== "undefined") {
+    ensureUserTenant(user);
     setActiveOrganization(user.organizationId);
   }
 

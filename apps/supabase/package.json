@@ -1,0 +1,12 @@
+{
+  "name": "@gestarahub/supabase",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "supabase start --workdir ..",
+    "stop": "supabase stop --workdir ..",
+    "status": "supabase status --workdir ..",
+    "reset": "supabase db reset --workdir ..",
+    "functions": "supabase functions serve --workdir .. --import-map ./functions/deno.json"
+  }
+}

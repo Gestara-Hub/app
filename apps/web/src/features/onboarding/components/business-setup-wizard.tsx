@@ -24,6 +24,7 @@ import { normalizeText } from "@/lib/text";
 import { queryKeys } from "@/lib/queryKeys";
 import { settingsService } from "@/services/settingsService";
 import { categoriesService } from "@/services/categoriesService";
+import { persistSetupToBackendAction } from "@/app/(auth)/signup-actions";
 import { useOrganization } from "@/features/settings";
 import { useOnboardingState } from "../hooks/use-onboarding-state";
 import {
@@ -313,7 +314,7 @@ export function BusinessSetupWizard() {
       const finalName = businessName.trim() || organization?.name || "Meu espaço";
 
       // 1. Atualiza dados da organização
-      await settingsService.updateOrganization({
+      const updatedOrganization = await settingsService.updateOrganization({
         name: finalName,
         segment: areaLabel,
         model: "classes",
@@ -332,7 +333,7 @@ export function BusinessSetupWizard() {
       });
 
       // 2. Atualiza dados da unidade com os dados do setup
-      await settingsService.updateUnit({
+      const updatedUnit = await settingsService.updateUnit({
         name: unitCity.trim(),
         address: undefined,
         phone: undefined,
@@ -358,6 +359,14 @@ export function BusinessSetupWizard() {
       if (failed.length > 0) {
         toast.error(`Não deu para criar: ${failed.join(", ")}. Cadastre em Modalidades.`);
       }
+
+      // 3.1 Sincroniza as escolhas do setup no Postgres (Supabase) quando for conta real
+      const allCategories = await categoriesService.list();
+      await persistSetupToBackendAction({
+        organization: updatedOrganization,
+        unit: updatedUnit,
+        categories: allCategories,
+      });
 
       // 4. Garante que as boas-vindas apareçam no Dashboard e invalida queries
       updateOnboardingState({ seen: false });

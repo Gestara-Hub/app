@@ -90,8 +90,16 @@ export async function syncSubscriptionTier(
   });
 }
 
-/** Logout mockado: limpa o cookie de sessao e volta para o login. */
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+/** Logout: encerra a sessao do Supabase Auth, limpa o cookie de sessao e volta para o login. */
 export async function signOut(): Promise<void> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+  } catch {
+    // Segue limpando os cookies locais
+  }
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE);
   cookieStore.delete(SUBSCRIPTION_COOKIE);

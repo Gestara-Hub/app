@@ -47,6 +47,7 @@ import {
   defaultMessageTemplates,
   defaultSystemFinancialCategory,
   defaultWhatsAppConnection,
+  emptyStore,
 } from "./seed";
 
 /**
@@ -637,7 +638,7 @@ export function allTenants(): MockStore[] {
 export function organizationModelById(
   organizationId: Id,
 ): OperationalModel | undefined {
-  return world.tenants[organizationId]?.organization.model;
+  return world.tenants[organizationId]?.organization.model ?? "classes";
 }
 
 /**
@@ -649,6 +650,91 @@ export function organizationTierById(organizationId: Id): SubscriptionTier | und
   const org = world.tenants[organizationId]?.organization;
   if (!org) return undefined;
   return org.subscription?.tier ?? "free";
+}
+
+/**
+ * Garante que o tenant de um usuario autenticado pelo backend exista no mundo
+ * local do navegador (e que o proprio usuario esteja em `store.users`), evitando
+ * que `SessionSync` deslogue usuarios reais recem-criados no Supabase.
+ */
+export function ensureUserTenant(user: User): void {
+  let tenant = world.tenants[user.organizationId];
+  if (!tenant) {
+    const now = new Date().toISOString();
+    const organization: Organization = {
+      id: user.organizationId,
+      name: "Meu espaço",
+      segment: "Academia",
+      model: "classes",
+      settings: { defaultDueDay: 10 },
+      subscription: { tier: "free" },
+      status: "active",
+    };
+    const unit: Unit = {
+      id: `unit-${user.organizationId}`,
+      organizationId: user.organizationId,
+      name: "",
+      status: "active",
+      businessHours: [],
+    };
+    const normalizedUser: User = {
+      ...user,
+      createdAt: user.createdAt || now,
+      updatedAt: user.updatedAt || now,
+    };
+    tenant = {
+      ...emptyStore(organization, unit, [normalizedUser]),
+      financialCategories: defaultFinancialCategories(user.organizationId),
+    };
+    world.tenants[user.organizationId] = tenant;
+    if (canPersist()) saveToStorage(world);
+  } else if (!tenant.users.some((u) => u.id === user.id)) {
+    const now = new Date().toISOString();
+    tenant.users.push({
+      ...user,
+      createdAt: user.createdAt || now,
+      updatedAt: user.updatedAt || now,
+    });
+    if (canPersist()) saveToStorage(world);
+  }
+}
+
+/**
+ * Hidrata ou atualiza no mundo local do navegador os dados vindos do Supabase
+ * (organizacao, unidade, usuario logado e modalidades) e ativa esse tenant.
+ */
+export function hydrateTenantStore(input: {
+  organization: Organization;
+  unit: Unit;
+  user: User;
+  categories?: Category[];
+}): void {
+  const orgId = input.organization.id;
+  const existing = world.tenants[orgId];
+  if (!existing) {
+    world.tenants[orgId] = {
+      ...emptyStore(input.organization, input.unit, [input.user]),
+      categories: input.categories ?? [],
+      financialCategories: defaultFinancialCategories(orgId),
+    };
+  } else {
+    existing.organization = input.organization;
+    existing.unit = input.unit;
+    const userIdx = existing.users.findIndex((u) => u.id === input.user.id);
+    if (userIdx >= 0) {
+      existing.users[userIdx] = input.user;
+    } else {
+      existing.users.push(input.user);
+    }
+    if (input.categories && input.categories.length > 0) {
+      existing.categories = input.categories;
+    }
+    if (!existing.financialCategories || existing.financialCategories.length === 0) {
+      existing.financialCategories = defaultFinancialCategories(orgId);
+    }
+  }
+  world.activeOrganizationId = orgId;
+  if (canPersist()) saveToStorage(world);
 }
 
 /**

@@ -1,0 +1,2 @@
+-- Initial seed for local Supabase development.
+-- Populated as domain tables are added in migrations.

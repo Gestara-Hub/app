@@ -1,12 +1,14 @@
 import type {
   Address,
   BusinessHoursDay,
+  Category,
   ClassesBusinessSegment,
   Id,
   Organization,
   Unit,
+  User,
 } from "@gestarahub/contracts";
-import { setActiveOrganization, store } from "@/mocks/store";
+import { hydrateTenantStore, setActiveOrganization, store } from "@/mocks/store";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
@@ -64,6 +66,15 @@ export const settingsService = {
     return simulateWrite(() => {
       setActiveOrganization(organizationId);
     });
+  },
+
+  hydrateTenant(input: {
+    organization: Organization;
+    unit: Unit;
+    user: User;
+    categories?: Category[];
+  }): void {
+    hydrateTenantStore(input);
   },
 
   getOrganization(): Promise<Organization> {

@@ -43,6 +43,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/07-integracao-whatsapp.md](technical/07-integracao-whatsapp.md) — Checklist da integração real com a API oficial do WhatsApp (conexão de cada espaço, modelos aprovados, avisos da Meta, consentimento, limites).
 - [technical/08-backend-supabase.md](technical/08-backend-supabase.md) — **Decisão do backend:** Supabase (banco, login, Edge Functions com Hono, Cron, Storage), custo por fase e o que validar na primeira fatia.
 - [technical/09-analise-de-uso.md](technical/09-analise-de-uso.md) — **Análise de uso:** PostHog (páginas, cliques, mapa de calor, gravação com textos ocultos na área logada), variáveis de ambiente e o que falta decidir (aviso de cookies).
+- [technical/10-monolito-frontend-pwa.md](technical/10-monolito-frontend-pwa.md) — **Monólito Frontend com PWA:** visão unificada de gestor, professor e aluno em `apps/web` com distribuição PWA no celular (substitui React Native).
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

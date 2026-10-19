@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@gestarahub/contracts": "../../../packages/contracts/src/index.ts",
+    "@gestarahub/core": "../../../packages/core/src/index.ts",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}

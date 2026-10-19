@@ -15,6 +15,7 @@ Decisoes registradas em documentos proprios (ADRs). Onde contradizem este docume
 - [`03-multi-tenant-e-escopo.md`](03-multi-tenant-e-escopo.md) — mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor, sessao.
 - [`04-estrategia-de-testes.md`](04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
 - [`08-backend-supabase.md`](08-backend-supabase.md) — backend no Supabase (banco, login, Edge Functions com Hono, Cron, Storage), menor custo por fase; frontend segue na Vercel por enquanto.
+- [`10-monolito-frontend-pwa.md`](10-monolito-frontend-pwa.md) — monólito frontend no Next.js com PWA (gestor, professor e aluno unificados; substitui React Native).
 - [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md) — regras de produto das mensalidades.
 - [`../frontend/06-decisoes-de-interface.md`](../frontend/06-decisoes-de-interface.md) — confirmacoes, tema com sidebar escura, agenda feita a mao, mobile.
 
@@ -193,7 +194,7 @@ O detalhamento desta camada (estrutura de services, store, seed, simulacao de la
 
 ## Backend (fase 3)
 
-- **Decidido em 14/10/2026: backend no Supabase**, ver [`08-backend-supabase.md`](08-backend-supabase.md). Banco Postgres com RLS, Supabase Auth, regras de negocio em Edge Functions (serverless) com Hono, tarefas no Supabase Cron e comprovantes no Supabase Storage. Substitui o NestJS e a direcao "funcoes da Vercel" registrados abaixo. Vao existir apps em React Native para aluno e professor.
+- **Decidido em 14/10/2026 e atualizado em 19/10/2026: backend no Supabase e Monólito Frontend PWA no Next.js**, ver [`08-backend-supabase.md`](08-backend-supabase.md) e [`10-monolito-frontend-pwa.md`](10-monolito-frontend-pwa.md). Banco Postgres com RLS, Supabase Auth, regras de negócio e orquestração via Server Actions no Next.js (Vercel) e Supabase Storage. A ideia de apps em React Native foi substituída por monólito Next.js distribuído como PWA para gestor, professor e aluno.
 - A camada de servico mockada do frontend ja imita o contrato da API: na fase 3, troca-se apenas a implementacao dos services (de store em memoria para Supabase e Edge Functions), mantendo assinaturas e tipos. Os contratos (`packages/contracts`) e a logica pura (`packages/core`, incluindo o motor de cobranca) ja estao em `packages/` para serem compartilhados com `apps/api`.
 - Ate la, nenhum endpoint real e usado; a persistencia e mockada (localStorage no cliente) e a autenticacao tambem (cookie de sessao mockado).
 - **WhatsApp (13/10/2026):** sempre com o numero do proprio espaco; envio assistido (`wa.me`) no plano gratuito e API oficial da Meta no Pro, que funciona por avisos (webhooks). A sessao por QR code simulada hoje no mock foi descartada e nao deve ser implementada. Nada na comunicacao exige servidor sempre ligado. Ver `docs/product/13-modelo-de-negocio.md`, secao 5.
