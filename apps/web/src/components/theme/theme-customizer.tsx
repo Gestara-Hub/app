@@ -99,6 +99,7 @@ export function ThemeCustomizer() {
 
   function handleReset() {
     resetTheme();
+    setTheme("dark");
     toast.success("Tema redefinido para o padrão.");
   }
 

@@ -150,11 +150,11 @@ test.describe("landing page", () => {
     const showcase = page.locator("#o-sistema");
     await showcase.scrollIntoViewIfNeeded();
     const tabs = showcase.getByRole("tab");
-    await expect(tabs).toHaveText(["Chamada", "Cobranças", "Ficha do aluno"]);
+    await expect(tabs).toHaveText(["Painel", "Cobranças", "Chamada", "Ficha do aluno", "Financeiro", "Calendário"]);
     await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
-    await expect(showcase.getByRole("img", { name: /Lista de chamada/ }).first()).toBeVisible();
+    await expect(showcase.getByRole("img", { name: /Painel inicial/ }).first()).toBeVisible();
     await showcase.getByRole("tab", { name: "Cobranças" }).click();
-    await expect(showcase.getByText("Quem pagou e quem atrasou, mês a mês.")).toBeVisible();
+    await expect(showcase.getByText("Quem pagou e quem atrasou, agrupado por aluno.")).toBeVisible();
     await expect(showcase.getByRole("img", { name: /Tela de cobranças/ }).first()).toBeVisible();
     // O hero leva para esta secao.
     await expect(page.getByRole("link", { name: "Ver o sistema" })).toHaveAttribute("href", "#o-sistema");

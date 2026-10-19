@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import Image, { type StaticImageData } from "next/image";
+import dashboardLight from "@/assets/landing/dashboard-light.png";
+import dashboardDark from "@/assets/landing/dashboard-dark.png";
 import attendanceLight from "@/assets/landing/attendance-light.png";
 import attendanceDark from "@/assets/landing/attendance-dark.png";
+import calendarLight from "@/assets/landing/calendar-light.png";
+import calendarDark from "@/assets/landing/calendar-dark.png";
 import billingLight from "@/assets/landing/billing-light.png";
 import billingDark from "@/assets/landing/billing-dark.png";
+import financeLight from "@/assets/landing/finance-light.png";
+import financeDark from "@/assets/landing/finance-dark.png";
 import studentLight from "@/assets/landing/student-light.png";
 import studentDark from "@/assets/landing/student-dark.png";
 import { cn } from "@/lib/utils";
@@ -25,6 +31,24 @@ interface Screen {
 // recapturar: scripts/landing-screenshots (doc 08, secao 3.11).
 const SCREENS: Screen[] = [
   {
+    key: "dashboard",
+    label: "Painel",
+    caption: "Aulas do dia, alunos sumindo e cobranças em atraso num só lugar.",
+    alt: "Painel inicial com as aulas de hoje, presenças, mensalidades recebidas e avisos do dia",
+    device: "desktop",
+    light: dashboardLight,
+    dark: dashboardDark,
+  },
+  {
+    key: "billing",
+    label: "Cobranças",
+    caption: "Quem pagou e quem atrasou, agrupado por aluno.",
+    alt: "Tela de cobranças do mês com o total recebido, os valores em atraso e a lista agrupada por aluno",
+    device: "desktop",
+    light: billingLight,
+    dark: billingDark,
+  },
+  {
     key: "attendance",
     label: "Chamada",
     caption: "Presença em um toque, direto no celular.",
@@ -34,15 +58,6 @@ const SCREENS: Screen[] = [
     dark: attendanceDark,
   },
   {
-    key: "billing",
-    label: "Cobranças",
-    caption: "Quem pagou e quem atrasou, mês a mês.",
-    alt: "Tela de cobranças do mês com o total recebido, os valores em atraso e a lista de mensalidades",
-    device: "desktop",
-    light: billingLight,
-    dark: billingDark,
-  },
-  {
     key: "student",
     label: "Ficha do aluno",
     caption: "Faixa, frequência e pagamentos num lugar só.",
@@ -50,6 +65,24 @@ const SCREENS: Screen[] = [
     device: "desktop",
     light: studentLight,
     dark: studentDark,
+  },
+  {
+    key: "finance",
+    label: "Financeiro",
+    caption: "Entradas, despesas e o pagamento de cada professor calculado.",
+    alt: "Tela do financeiro com o saldo do mês, entradas, saídas e contas a pagar dos professores",
+    device: "desktop",
+    light: financeLight,
+    dark: financeDark,
+  },
+  {
+    key: "calendar",
+    label: "Calendário",
+    caption: "Horários da semana, vagas e instrutores num quadro só.",
+    alt: "Calendário semanal de turmas com aulas de Jiu-Jitsu, Muay Thai e Yoga distribuídas pelos dias da semana",
+    device: "desktop",
+    light: calendarLight,
+    dark: calendarDark,
   },
 ];
 

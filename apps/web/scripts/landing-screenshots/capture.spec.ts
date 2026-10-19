@@ -86,9 +86,9 @@ async function buildDemo(page: Page) {
     t.plans = plans.map(([id, name, priceCents]) => ({ ...base, id, name, priceCents, period: "monthly" }));
     const slots = (days: number[], start: string, end: string) => days.map((weekday) => ({ weekday, start, end }));
     t.classGroups = [
-      { id: "cg-jj", name: "Jiu-Jitsu Adulto", modalityId: jj, instructorId: "pr-1", capacity: 20, meetingSlots: slots(JJ_DAYS, START, END) },
-      { id: "cg-mt", name: "Muay Thai", modalityId: mt, instructorId: "pr-2", capacity: 15, meetingSlots: slots([1, 3], "18:00", "19:00") },
-      { id: "cg-yg", name: "Yoga Manhã", modalityId: "m-yg", instructorId: "pr-3", capacity: 10, meetingSlots: slots([2, 4], "07:00", "08:00") },
+      { id: "cg-jj", name: "Jiu-Jitsu Adulto", modalityId: jj, instructorId: "pr-1", capacity: 20, meetingSlots: slots([...new Set([...JJ_DAYS, 5])], START, END) },
+      { id: "cg-mt", name: "Muay Thai", modalityId: mt, instructorId: "pr-2", capacity: 15, meetingSlots: slots([1, 3, 5], "18:00", "19:00") },
+      { id: "cg-yg", name: "Yoga Manhã", modalityId: "m-yg", instructorId: "pr-3", capacity: 10, meetingSlots: slots([2, 4, 6], "07:00", "08:00") },
     ].map((g) => ({ ...base, unitId: UNIT, allowDropin: true, sessionPriceCents: 4000, startDate: "2026-03-02", billingMode: "membership", ...g }));
     t.clients = STUDENTS.map(([id, name, cg, dueDay], i) => ({
       ...base,
@@ -152,7 +152,7 @@ async function buildDemo(page: Page) {
         kind: "membership",
         planId,
         competence: MONTH,
-        dueDate: `${MONTH}-${dueDay}`,
+        dueDate: `${MONTH}-${pad(dueDay)}`,
         periodStart: `${MONTH}-01`,
         periodEnd: lastDay,
         amountCents,
@@ -162,12 +162,114 @@ async function buildDemo(page: Page) {
         updatedAt: TS,
       };
     });
-    // Lucas vem a todas; os outros faltam de vez em quando. Hoje: 5 presentes, 2 a marcar.
+    // Segunda cobranca para Gustavo e Beatriz (mostra o agrupamento por aluno em Cobrancas).
+    t.charges.push(
+      {
+        id: "ch-extra-gustavo",
+        organizationId: ORG,
+        unitId: UNIT,
+        studentId: "s-gustavo",
+        kind: "package",
+        description: "Pacote 8 aulas · Muay Thai",
+        competence: MONTH,
+        dueDate: `${MONTH}-25`,
+        amountCents: 18000,
+        status: "pending",
+        createdAt: TS,
+        updatedAt: TS,
+      },
+      {
+        id: "ch-extra-beatriz",
+        organizationId: ORG,
+        unitId: UNIT,
+        studentId: "s-beatriz",
+        kind: "extra",
+        description: "Kimono trançado azul",
+        competence: MONTH,
+        dueDate: `${MONTH}-25`,
+        amountCents: 22000,
+        status: "pending",
+        createdAt: TS,
+        updatedAt: TS,
+      },
+    );
+    // Financeiro: categorias de despesa, lancamentos do mes e regras dos professores.
+    t.financialCategories.push(
+      { ...base, id: "fc-rent", type: "expense", name: "Aluguel e estrutura" },
+      { ...base, id: "fc-util", type: "expense", name: "Contas e internet" },
+      { ...base, id: "fc-equip", type: "expense", name: " Tatame e equipamentos" },
+    );
+    t.financialEntries = [
+      {
+        ...base,
+        id: "fe-1",
+        unitId: UNIT,
+        type: "expense",
+        categoryId: "fc-rent",
+        description: "Aluguel do espaço",
+        amountCents: 18000,
+        dueDate: `${MONTH}-05`,
+        status: "paid",
+        paidAt: `${MONTH}-05T10:00:00.000Z`,
+        method: "pix",
+      },
+      {
+        ...base,
+        id: "fe-2",
+        unitId: UNIT,
+        type: "expense",
+        categoryId: "fc-util",
+        description: "Energia elétrica e internet fibra",
+        amountCents: 6500,
+        dueDate: `${MONTH}-10`,
+        status: "paid",
+        paidAt: `${MONTH}-09T15:00:00.000Z`,
+        method: "pix",
+      },
+      {
+        ...base,
+        id: "fe-3",
+        unitId: UNIT,
+        type: "expense",
+        categoryId: "fc-equip",
+        description: "Higienização e manutenção do tatame",
+        amountCents: 4500,
+        dueDate: `${MONTH}-25`,
+        status: "pending",
+      },
+    ];
+    t.teacherPayRules = [
+      {
+        ...base,
+        id: "tpr-1",
+        professionalId: "pr-1",
+        components: [{ kind: "percent_of_memberships", percent: 40 }],
+        paymentDay: 5,
+        startCompetence: "2026-01",
+      },
+      {
+        ...base,
+        id: "tpr-2",
+        professionalId: "pr-2",
+        components: [{ kind: "per_session", amountCents: 5000 }],
+        paymentDay: 5,
+        startCompetence: "2026-01",
+      },
+      {
+        ...base,
+        id: "tpr-3",
+        professionalId: "pr-3",
+        components: [{ kind: "fixed_monthly", amountCents: 15000 }],
+        paymentDay: 5,
+        startCompetence: "2026-01",
+      },
+    ];
+    // Lucas vem a todas; Gustavo faltou nas ultimas (aparece em Alunos sumindo no Painel). Hoje: 5 presentes, 2 a marcar.
     const jjStudents = STUDENTS.filter(([, , cg]) => cg === "cg-jj").map(([id]) => id);
     t.attendances = [];
     PAST.forEach((date, k) => {
       jjStudents.forEach((sid, i) => {
-        const absent = sid !== "s-lucas" && (i + k) % 4 === 3;
+        const absent = sid === "s-gustavo" || (sid !== "s-lucas" && (i + k) % 4 === 3);
         t.attendances.push({ id: `a-${date}-${sid}`, sessionId: `cg-jj~${date}~${START}`, studentId: sid, status: absent ? "absent" : "present", markedAt: `${date}T22:00:00.000Z` });
       });
     });
@@ -181,7 +283,13 @@ async function buildDemo(page: Page) {
 // SHOTS=attendance,student refaz so esses (padrao: todos).
 const ONLY = process.env.SHOTS?.split(",").map((s) => s.trim());
 
-async function shoot(page: Page, name: string, url: string, size: { width: number; height: number }) {
+async function shoot(
+  page: Page,
+  name: string,
+  url: string,
+  size: { width: number; height: number },
+  beforeShot?: (page: Page) => Promise<void>,
+) {
   if (ONLY && !ONLY.includes(name)) return;
   await page.setViewportSize(size);
   for (const theme of ["light", "dark"]) {
@@ -190,7 +298,11 @@ async function shoot(page: Page, name: string, url: string, size: { width: numbe
     await page.waitForLoadState("networkidle");
     // Some o selo de desenvolvimento do Next.
     await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1200);
+    if (beforeShot) {
+      await beforeShot(page);
+      await page.waitForTimeout(400);
+    }
     await page.screenshot({ path: `${OUT}/${name}-${theme}.png` });
   }
 }
@@ -204,8 +316,30 @@ test("telas da landing", async ({ page }) => {
     localStorage.setItem("gestarahub_tour_plans_tabs", "1");
   });
   await buildDemo(page);
+  await shoot(
+    page,
+    "dashboard",
+    "/dashboard",
+    { width: 1280, height: 800 },
+    async (p) => {
+      const closeBtn = p.getByRole("button", { name: "Fechar", exact: true });
+      if (await closeBtn.isVisible()) await closeBtn.click();
+    },
+  );
   await shoot(page, "attendance", `/classes/sessions/${encodeURIComponent(`cg-jj~${TODAY}~${START}`)}`, { width: 390, height: 844 });
-  await shoot(page, "billing", "/classes/billing", { width: 1280, height: 800 });
+  await shoot(page, "calendar", "/classes/calendar", { width: 1280, height: 800 });
+  await shoot(
+    page,
+    "billing",
+    "/classes/billing",
+    { width: 1280, height: 800 },
+    async (p) => {
+      // Expande o Gustavo para mostrar o agrupamento de cobrancas por aluno aberto.
+      const btn = p.getByRole("button", { name: "Ver cobranças" }).first();
+      if (await btn.isVisible()) await btn.click();
+    },
+  );
+  await shoot(page, "finance", "/finance", { width: 1280, height: 800 });
   // Ficha em sanfona: abre a evolucao (faixa, graus e pontos fortes).
   await shoot(page, "student", "/clients/s-lucas?tab=evolution", { width: 1280, height: 800 });
 });

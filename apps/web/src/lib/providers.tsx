@@ -95,8 +95,8 @@ export function createQueryClient(): QueryClient {
  *   de modulo, para nao compartilhar cache entre requisicoes. As telas logadas
  *   usam um QueryClient proprio por sessao (ver `SessionProvider`); este atende
  *   o que fica fora do app shell (login).
- * - ThemeProvider (next-themes): modo claro e o padrao do MVP; o escuro fica
- *   preparado pelas variaveis `.dark` do globals.css.
+ * - ThemeProvider (next-themes): modo escuro e o padrao do sistema; o claro
+ *   continua disponivel no seletor de tema.
  */
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
@@ -110,7 +110,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="light"
+        defaultTheme="dark"
         storageKey="gestarahub:theme"
         enableSystem={false}
         disableTransitionOnChange
