@@ -1,8 +1,10 @@
 import type {
   ApiErrorField,
+  Attendance,
   AttendanceStatus,
   AttendanceSummary,
   AbsenceStreakView,
+  Category,
   Charge,
   ClassGroup,
   Client,
@@ -11,6 +13,7 @@ import type {
   ClassMeetingSlot,
   ClassReservation,
   ClassSessionDetail,
+  ClassSessionOverride,
   ClassSessionView,
   CourseCertificateDocument,
   CreateClassGroup,
@@ -21,6 +24,7 @@ import type {
   EnrollmentCourseInstallments,
   EnrollmentView,
   Id,
+  Professional,
   ReservationKind,
   ReservationView,
   SessionRosterEntry,
@@ -76,6 +80,114 @@ import {
   textIncludes,
   validationError,
 } from "@/mocks/helpers";
+import { isSupabaseOrganization } from "@/lib/session";
+import { listProfessionalsFromDb } from "./professionalsBackend";
+import { listCategoriesFromDb } from "./categoriesBackend";
+import {
+  addToWaitlistInDb,
+  cancelEnrollmentInDb,
+  cancelReservationBySessionStudentInDb,
+  createClassGroupInDb,
+  createEnrollmentInDb,
+  createReservationInDb,
+  deleteAttendanceInDb,
+  deleteSessionOverrideInDb,
+  listAttendancesFromDb,
+  listClassGroupsFromDb,
+  listEnrollmentsFromDb,
+  listReservationsFromDb,
+  listSessionOverridesFromDb,
+  listWaitlistFromDb,
+  reorderWaitlistInDb,
+  setClassGroupStatusInDb,
+  updateClassGroupInDb,
+  updateEnrollmentInDb,
+  updateWaitlistStatusInDb,
+  upsertAttendanceInDb,
+  upsertSessionOverrideInDb,
+} from "./turmasBackend";
+
+async function syncTurmasFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  try {
+    const promises: [
+      Promise<ClassGroup[]>,
+      Promise<Enrollment[]>,
+      Promise<Attendance[]>,
+      Promise<WaitlistEntry[]>,
+      Promise<ClassReservation[]>,
+      Promise<ClassSessionOverride[]>,
+      Promise<Professional[] | null>,
+      Promise<Category[] | null>,
+    ] = [
+      listClassGroupsFromDb(organizationId),
+      listEnrollmentsFromDb(organizationId),
+      listAttendancesFromDb(organizationId),
+      listWaitlistFromDb(organizationId),
+      listReservationsFromDb(organizationId),
+      listSessionOverridesFromDb(organizationId),
+      store.professionals.some((p) => p.organizationId === organizationId)
+        ? Promise.resolve(null)
+        : listProfessionalsFromDb(organizationId),
+      store.categories.some((c) => c.organizationId === organizationId)
+        ? Promise.resolve(null)
+        : listCategoriesFromDb(organizationId),
+    ];
+
+    const [groups, enrollments, attendances, waitlist, reservations, overrides, profs, cats] =
+      await Promise.all(promises);
+
+    const groupIds = new Set(groups.map((g) => g.id));
+    store.classGroups = [
+      ...store.classGroups.filter((g) => g.organizationId === organizationId ? !groupIds.has(g.id) : true),
+      ...groups,
+    ];
+
+    const enrollIds = new Set(enrollments.map((e) => e.id));
+    store.enrollments = [
+      ...store.enrollments.filter((e) => !enrollIds.has(e.id)),
+      ...enrollments,
+    ];
+
+    const attIds = new Set(attendances.map((a) => a.id));
+    store.attendances = [
+      ...store.attendances.filter((a) => !attIds.has(a.id)),
+      ...attendances,
+    ];
+
+    const waitIds = new Set(waitlist.map((w) => w.id));
+    store.waitlist = [
+      ...store.waitlist.filter((w) => !waitIds.has(w.id)),
+      ...waitlist,
+    ];
+
+    const resIds = new Set(reservations.map((r) => r.id));
+    store.reservations = [
+      ...store.reservations.filter((r) => !resIds.has(r.id)),
+      ...reservations,
+    ];
+
+    store.sessionOverrides = overrides;
+
+    if (profs) {
+      const profIds = new Set(profs.map((p) => p.id));
+      store.professionals = [
+        ...store.professionals.filter((p) => p.organizationId === organizationId ? !profIds.has(p.id) : true),
+        ...profs,
+      ];
+    }
+
+    if (cats) {
+      const catIds = new Set(cats.map((c) => c.id));
+      store.categories = [
+        ...store.categories.filter((c) => c.organizationId === organizationId ? !catIds.has(c.id) : true),
+        ...cats,
+      ];
+    }
+  } catch (err) {
+    console.error("[turmasService] Erro ao sincronizar dados do Supabase:", err);
+  }
+}
 
 /**
  * Modelo 3 (turmas) — Fatia 1. Sessoes/aulas sao GERADAS on-the-fly a partir dos
@@ -490,12 +602,12 @@ function resolveCourseChoice(g: ClassGroup, choice?: EnrollmentCourseChoice): En
  * Matricula ativa + parcelas do curso (se for curso), com auditoria. Unica
  * escrita de matricula: matricular e promover da lista de espera passam aqui.
  */
-function createEnrollment(
+async function createEnrollment(
   g: ClassGroup,
   studentId: Id,
   course?: EnrollmentCourseChoice,
   paysWithPackage?: boolean,
-): Enrollment {
+): Promise<Enrollment> {
   const ts = nowIso();
   const enrollment: Enrollment = {
     id: newId(),
@@ -533,6 +645,9 @@ function createEnrollment(
         }),
       ),
     );
+  }
+  if (isSupabaseOrganization(store.organization.id)) {
+    await createEnrollmentInDb(enrollment, store.organization.id);
   }
   store.enrollments.push(enrollment);
   auditLogService.record({
@@ -795,13 +910,18 @@ function buildSessionDetail(id: Id): ClassSessionDetail {
 }
 
 // Renumera a fila (1..n) de quem ainda espera, na ordem atual.
-function renumberWaitlist(classGroupId: Id): void {
-  store.waitlist
+async function renumberWaitlist(classGroupId: Id): Promise<void> {
+  const waiting = store.waitlist
     .filter((w) => w.classGroupId === classGroupId && w.status === "waiting")
-    .sort((a, b) => a.position - b.position)
-    .forEach((w, i) => {
-      w.position = i + 1;
-    });
+    .sort((a, b) => a.position - b.position);
+
+  waiting.forEach((w, i) => {
+    w.position = i + 1;
+  });
+
+  if (isSupabaseOrganization(store.organization.id)) {
+    await reorderWaitlistInDb(classGroupId, waiting.map((w) => w.id), store.organization.id);
+  }
 }
 
 // Aulas que o instrutor da de fato numa data: as turmas dele (sem override para
@@ -854,7 +974,8 @@ function validateSubstituteConflict(
 
 export const turmasService = {
   list(filter?: ClassGroupFilter): Promise<ClassGroupView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       let result = store.classGroups;
       if (filter?.search) {
         const term = filter.search;
@@ -881,7 +1002,8 @@ export const turmasService = {
   },
 
   getById(id: Id): Promise<ClassGroupView> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const g = store.classGroups.find((x) => x.id === id);
       if (!g || !teacherSeesClass(g)) throw notFoundError("Turma não encontrada.");
       return clone(toGroupView(g));
@@ -889,7 +1011,7 @@ export const turmasService = {
   },
 
   create(input: CreateClassGroup): Promise<ClassGroupView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const payload = normalizeBilling(input);
       validateGroup(payload, undefined);
       const ts = nowIso();
@@ -901,6 +1023,11 @@ export const turmasService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createClassGroupInDb(g);
+      }
+
       store.classGroups.push(g);
       auditLogService.record({
         action: "created",
@@ -912,7 +1039,7 @@ export const turmasService = {
   },
 
   update(id: Id, payload: UpdateClassGroup): Promise<ClassGroupView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       // Mudar a forma ou o valor nao mexe nas parcelas das matriculas ja feitas.
@@ -932,6 +1059,13 @@ export const turmasService = {
           next.scheduleHistory = [...history, { until, meetingSlots: current.meetingSlots }];
         }
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateClassGroupInDb(id, payload, store.organization.id, {
+          scheduleHistory: next.scheduleHistory,
+        });
+      }
+
       store.classGroups[idx] = {
         ...next,
         updatedAt: nowIso(),
@@ -947,7 +1081,7 @@ export const turmasService = {
 
   // Desativa uma turma (soft delete): preserva histórico, impede novas sessões.
   deactivate(id: Id): Promise<ClassGroupView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const g = store.classGroups[idx];
@@ -956,6 +1090,11 @@ export const turmasService = {
           { field: "status", message: "Turma já foi desativada." },
         ]);
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await setClassGroupStatusInDb(id, "inactive", store.organization.id);
+      }
+
       store.classGroups[idx] = {
         ...g,
         status: "inactive",
@@ -991,7 +1130,7 @@ export const turmasService = {
 
   // Reativa uma turma desativada.
   reactivate(id: Id): Promise<ClassGroupView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const g = store.classGroups[idx];
@@ -1010,6 +1149,11 @@ export const turmasService = {
           { httpStatus: 409 },
         );
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await setClassGroupStatusInDb(id, "active", store.organization.id);
+      }
+
       store.classGroups[idx] = {
         ...g,
         status: "active",
@@ -1026,7 +1170,8 @@ export const turmasService = {
 
   // --- Matriculas ---------------------------------------------------------
   listEnrollments(classGroupId: Id): Promise<EnrollmentView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const rows = store.enrollments.filter(
         (e) => e.classGroupId === classGroupId && e.status !== "canceled",
       );
@@ -1082,7 +1227,7 @@ export const turmasService = {
     payload: CreateEnrollment,
     opts: { allowOverCapacity?: boolean } = {},
   ): Promise<EnrollmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const g = store.classGroups.find((x) => x.id === payload.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
       if (g.status !== "active") {
@@ -1127,7 +1272,7 @@ export const turmasService = {
           canceledPrevious += 1;
         }
       }
-      const enrollment = createEnrollment(g, student.id, course, withPackage);
+      const enrollment = await createEnrollment(g, student.id, course, withPackage);
       if (canceledPrevious > 0) {
         auditLogService.record({
           action: "cancelled",
@@ -1144,7 +1289,7 @@ export const turmasService = {
    * daqui em diante gasta uma aula) ou pela mensalidade. Aulas ja gastas ficam.
    */
   setEnrollmentPayment(id: Id, paysWithPackage: boolean): Promise<EnrollmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
@@ -1161,6 +1306,11 @@ export const turmasService = {
       } else {
         delete e.paysWithPackage;
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateEnrollmentInDb(id, { paysWithPackage: Boolean(e.paysWithPackage) }, store.organization.id);
+      }
+
       const name = studentName(e.studentId);
       auditLogService.record({
         action: "updated",
@@ -1174,7 +1324,7 @@ export const turmasService = {
   },
 
   cancelEnrollment(id: Id, reason?: string): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e) throw notFoundError("Matrícula não encontrada.");
       if (e.status === "canceled") {
@@ -1183,6 +1333,11 @@ export const turmasService = {
       e.status = "canceled";
       e.canceledAt = nowIso();
       e.cancellationReason = reason?.trim() || undefined;
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await cancelEnrollmentInDb(id, e.cancellationReason, e.canceledAt, store.organization.id);
+      }
+
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
       const turma = g?.name ?? "";
       // Curso (decisao 1 do doc 20): pagas ficam, as futuras saem e as que ja
@@ -1217,7 +1372,8 @@ export const turmasService = {
     dateFrom: DateISO;
     dateTo: DateISO;
   }): Promise<ClassSessionListItem[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const groups = store.classGroups.filter(
         (g) =>
           g.status === "active" &&
@@ -1252,7 +1408,8 @@ export const turmasService = {
   },
 
   getSession(id: Id): Promise<ClassSessionDetail> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const { g } = resolveSession(id);
       if (!teacherSeesSession(g, id)) throw notFoundError("Aula não encontrada.");
       return clone(buildSessionDetail(id));
@@ -1264,7 +1421,7 @@ export const turmasService = {
     studentId: Id;
     status: AttendanceStatus;
   }): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const { g, date } = resolveSession(input.sessionId);
       assertTeacherSession(g, input.sessionId);
       if (date > todayISO()) {
@@ -1275,18 +1432,26 @@ export const turmasService = {
       const existing = store.attendances.find(
         (a) => a.sessionId === input.sessionId && a.studentId === input.studentId,
       );
+      let attendanceRecord: Attendance;
       if (existing) {
         existing.status = input.status;
         existing.markedAt = nowIso();
+        attendanceRecord = existing;
       } else {
-        store.attendances.push({
+        attendanceRecord = {
           id: newId(),
           sessionId: input.sessionId,
           studentId: input.studentId,
           status: input.status,
           markedAt: nowIso(),
-        });
+        };
+        store.attendances.push(attendanceRecord);
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await upsertAttendanceInDb(attendanceRecord, store.organization.id);
+      }
+
       // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
       const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
       auditPackageUsage(usage, g, date, input.studentId, input.status);
@@ -1295,9 +1460,14 @@ export const turmasService = {
 
   /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
   clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const { g, date } = resolveSession(input.sessionId);
       assertTeacherSession(g, input.sessionId);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await deleteAttendanceInDb(input.sessionId, input.studentId, store.organization.id);
+      }
+
       store.attendances = store.attendances.filter(
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
@@ -1307,7 +1477,8 @@ export const turmasService = {
   },
 
   getAttendanceSummary(date: DateISO): Promise<AttendanceSummary> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       let present = 0;
       let absent = 0;
       let justified = 0;
@@ -1351,7 +1522,8 @@ export const turmasService = {
    * justificada encerram a sequencia. Mais faltas primeiro.
    */
   listAbsenceStreaks(minStreak = 3): Promise<AbsenceStreakView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const groupsByStudent = new Map<Id, Set<Id>>();
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;
@@ -1399,7 +1571,7 @@ export const turmasService = {
     sessionId: Id,
     payload: SubstituteInstructorPayload,
   ): Promise<ClassSessionDetail> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const { g, date, slot } = resolveSession(sessionId);
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
@@ -1415,22 +1587,22 @@ export const turmasService = {
       );
       const ts = nowIso();
 
+      const overrideRecord: ClassSessionOverride = {
+        sessionId,
+        instructorId: payload.instructorId,
+        reason: payload.reason?.trim() || undefined,
+        createdAt: existingIndex !== -1 ? store.sessionOverrides[existingIndex].createdAt : ts,
+        updatedAt: ts,
+      };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await upsertSessionOverrideInDb(overrideRecord, store.organization.id);
+      }
+
       if (existingIndex !== -1) {
-        store.sessionOverrides[existingIndex] = {
-          sessionId,
-          instructorId: payload.instructorId,
-          reason: payload.reason?.trim() || undefined,
-          createdAt: store.sessionOverrides[existingIndex].createdAt,
-          updatedAt: ts,
-        };
+        store.sessionOverrides[existingIndex] = overrideRecord;
       } else {
-        store.sessionOverrides.push({
-          sessionId,
-          instructorId: payload.instructorId,
-          reason: payload.reason?.trim() || undefined,
-          createdAt: ts,
-          updatedAt: ts,
-        });
+        store.sessionOverrides.push(overrideRecord);
       }
       auditLogService.record({
         action: "updated",
@@ -1443,7 +1615,11 @@ export const turmasService = {
   },
 
   restorePrimaryInstructor(sessionId: Id): Promise<ClassSessionDetail> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        await deleteSessionOverrideInDb(sessionId, store.organization.id);
+      }
+
       if (store.sessionOverrides) {
         const idx = store.sessionOverrides.findIndex(
           (o) => o.sessionId === sessionId,
@@ -1464,7 +1640,8 @@ export const turmasService = {
 
   // --- Lista de espera ----------------------------------------------------
   listWaitlist(classGroupId: Id): Promise<WaitlistEntryView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTurmasFromDb(store.organization.id);
       const rows = store.waitlist.filter(
         (w) => w.classGroupId === classGroupId && w.status === "waiting",
       );
@@ -1480,7 +1657,7 @@ export const turmasService = {
     classGroupId: Id;
     studentId: Id;
   }): Promise<WaitlistEntryView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const g = store.classGroups.find((x) => x.id === input.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
       const already = store.waitlist.find(
@@ -1507,6 +1684,11 @@ export const turmasService = {
         status: "waiting",
         createdAt: nowIso(),
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await addToWaitlistInDb(entry, store.organization.id);
+      }
+
       store.waitlist.push(entry);
       return clone({ ...entry, studentName: studentName(input.studentId) });
     });
@@ -1515,7 +1697,7 @@ export const turmasService = {
   // Promove o aluno da espera para matricula (decisao manual; permite exceder a
   // capacidade, pois e uma acao consciente). Curso exige o pagamento escolhido.
   promoteFromWaitlist(id: Id, course?: EnrollmentCourseChoice): Promise<EnrollmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
       // Guarda contra clique duplo: so promove quem ainda esta esperando.
@@ -1541,19 +1723,29 @@ export const turmasService = {
       }
       validateStudentScheduleConflict(w.studentId, g.id);
       const choice = resolveCourseChoice(g, course);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateWaitlistStatusInDb(id, "promoted", store.organization.id);
+      }
+
       w.status = "promoted";
-      renumberWaitlist(g.id);
-      const enrollment = createEnrollment(g, student.id, choice, defaultPaysWithPackage(g, student));
+      await renumberWaitlist(g.id);
+      const enrollment = await createEnrollment(g, student.id, choice, defaultPaysWithPackage(g, student));
       return clone(toEnrollmentView(enrollment));
     });
   },
 
   removeFromWaitlist(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateWaitlistStatusInDb(id, "canceled", store.organization.id);
+      }
+
       w.status = "canceled";
-      renumberWaitlist(w.classGroupId);
+      await renumberWaitlist(w.classGroupId);
     });
   },
 
@@ -1565,7 +1757,7 @@ export const turmasService = {
     kind?: ReservationKind;
     amountCents?: number;
   }): Promise<ReservationView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const { g } = resolveSession(input.sessionId);
       if (g.id !== input.classGroupId) throw notFoundError("Aula não encontrada.");
       const already = store.reservations.find(
@@ -1667,6 +1859,11 @@ export const turmasService = {
         status: "reserved",
         reservedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createReservationInDb(reservation, store.organization.id);
+      }
+
       store.reservations.push(reservation);
       auditLogService.record({
         action: "created",
@@ -1682,7 +1879,7 @@ export const turmasService = {
   },
 
   cancelReservation(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const r = store.reservations.find(
         (x) =>
           x.sessionId === input.sessionId &&
@@ -1696,6 +1893,11 @@ export const turmasService = {
       store.attendances = store.attendances.filter(
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await cancelReservationBySessionStudentInDb(input.sessionId, input.studentId, store.organization.id);
+      }
+
       r.status = "canceled";
       // Cancela a cobranca avulsa vinculada (por chargeId ou busca), se ainda nao paga.
       const targetChargeId = r.chargeId || r.cobrancaId;

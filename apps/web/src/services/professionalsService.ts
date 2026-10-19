@@ -18,6 +18,14 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createProfessionalInDb,
+  getProfessionalFromDb,
+  inactivateProfessionalInDb,
+  listProfessionalsFromDb,
+  updateProfessionalInDb,
+} from "./professionalsBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -80,7 +88,21 @@ function validateProfessional(
 
 export const professionalsService = {
   list(filter?: ProfessionalFilter): Promise<ProfessionalView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbProfessionals = await listProfessionalsFromDb(store.organization.id, filter);
+        const dbIds = new Set(dbProfessionals.map((p) => p.id));
+        store.professionals = [
+          ...store.professionals.filter((p) => p.organizationId === store.organization.id ? !dbIds.has(p.id) : true),
+          ...dbProfessionals,
+        ];
+        return clone(
+          [...dbProfessionals]
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+            .map(toView),
+        );
+      }
+
       let result = store.professionals;
       if (filter?.search) {
         const term = filter.search;
@@ -105,7 +127,16 @@ export const professionalsService = {
   },
 
   getById(id: Id): Promise<ProfessionalView> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbProf = await getProfessionalFromDb(id, store.organization.id);
+        if (dbProf) {
+          const idx = store.professionals.findIndex((p) => p.id === id);
+          if (idx !== -1) store.professionals[idx] = dbProf;
+          else store.professionals.push(dbProf);
+          return clone(toView(dbProf));
+        }
+      }
       const found = store.professionals.find((p) => p.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(toView(found));
@@ -113,7 +144,7 @@ export const professionalsService = {
   },
 
   create(payload: CreateProfessional): Promise<ProfessionalView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateProfessional(payload, { partial: false });
       const ts = nowIso();
       const professional: Professional = {
@@ -134,6 +165,18 @@ export const professionalsService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const created = await createProfessionalInDb(professional);
+        store.professionals.push(created);
+        auditLogService.record({
+          action: "created",
+          target: { type: "professional", id: created.id, label: created.name },
+          predicate: `criou o profissional ${created.name}`,
+        });
+        return clone(toView(created));
+      }
+
       store.professionals.push(professional);
       auditLogService.record({
         action: "created",
@@ -145,19 +188,35 @@ export const professionalsService = {
   },
 
   update(id: Id, payload: UpdateProfessional): Promise<ProfessionalView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.professionals.findIndex((p) => p.id === id);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
+      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
       validateProfessional(payload, { partial: true });
-      const current = store.professionals[idx];
-      const updated: Professional = {
-        ...current,
-        ...payload,
-        updatedAt: nowIso(),
-      };
-      store.professionals[idx] = updated;
+
+      let updated: Professional;
+      let currentStatus: string = "active";
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        if (idx !== -1) currentStatus = store.professionals[idx].status;
+        updated = await updateProfessionalInDb(id, payload, store.organization.id);
+        if (idx !== -1) {
+          store.professionals[idx] = updated;
+        } else {
+          store.professionals.push(updated);
+        }
+      } else {
+        const current = store.professionals[idx];
+        currentStatus = current.status;
+        updated = {
+          ...current,
+          ...payload,
+          updatedAt: nowIso(),
+        };
+        store.professionals[idx] = updated;
+      }
+
       // Reativacao (inativo -> ativo) e um evento proprio; senao, edicao comum.
-      const reactivated = current.status === "inactive" && updated.status === "active";
+      const reactivated = currentStatus === "inactive" && updated.status === "active";
       auditLogService.record({
         action: reactivated ? "activated" : "updated",
         target: { type: "professional", id: updated.id, label: updated.name },
@@ -171,15 +230,21 @@ export const professionalsService = {
 
   // remove = inativacao logica; inativo nao e sugerido em novos agendamentos.
   remove(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.professionals.findIndex((p) => p.id === id);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
-      const name = store.professionals[idx].name;
-      store.professionals[idx] = {
-        ...store.professionals[idx],
-        status: "inactive",
-        updatedAt: nowIso(),
-      };
+      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
+      const name = idx !== -1 ? store.professionals[idx].name : "profissional";
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await inactivateProfessionalInDb(id, store.organization.id);
+      }
+      if (idx !== -1) {
+        store.professionals[idx] = {
+          ...store.professionals[idx],
+          status: "inactive",
+          updatedAt: nowIso(),
+        };
+      }
       auditLogService.record({
         action: "inactivated",
         target: { type: "professional", id, label: name },

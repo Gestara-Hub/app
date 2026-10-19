@@ -28,6 +28,14 @@ import {
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { categoryNoun } from "./nouns";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createCategoryInDb,
+  getCategoryFromDb,
+  inactivateCategoryInDb,
+  listCategoriesFromDb,
+  updateCategoryInDb,
+} from "./categoriesBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -99,7 +107,17 @@ function sortCategories(list: Category[]): Category[] {
 
 export const categoriesService = {
   list(filter?: CategoryFilter): Promise<Category[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbCategories = await listCategoriesFromDb(store.organization.id, filter);
+        const dbIds = new Set(dbCategories.map((c) => c.id));
+        store.categories = [
+          ...store.categories.filter((c) => c.organizationId === store.organization.id ? !dbIds.has(c.id) : true),
+          ...dbCategories,
+        ];
+        return clone(sortCategories(dbCategories));
+      }
+
       let result = store.categories;
       if (filter?.search) {
         const term = filter.search;
@@ -113,7 +131,16 @@ export const categoriesService = {
   },
 
   getById(id: Id): Promise<Category> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbCat = await getCategoryFromDb(id, store.organization.id);
+        if (dbCat) {
+          const idx = store.categories.findIndex((c) => c.id === id);
+          if (idx !== -1) store.categories[idx] = dbCat;
+          else store.categories.push(dbCat);
+          return clone(dbCat);
+        }
+      }
       const found = store.categories.find((c) => c.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(found);
@@ -121,7 +148,7 @@ export const categoriesService = {
   },
 
   create(payload: CreateCategory): Promise<Category> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateCategory(payload, { partial: false });
       if (isDuplicateName(payload.name)) {
         throw validationError([
@@ -146,6 +173,18 @@ export const categoriesService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const created = await createCategoryInDb(category);
+        store.categories.push(created);
+        auditLogService.record({
+          action: "created",
+          target: { type: "category", id: created.id, label: created.name },
+          predicate: `criou a ${categoryNoun()} ${created.name}`,
+        });
+        return clone(created);
+      }
+
       store.categories.push(category);
       auditLogService.record({
         action: "created",
@@ -157,28 +196,37 @@ export const categoriesService = {
   },
 
   update(id: Id, payload: UpdateCategory): Promise<Category> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.categories.findIndex((c) => c.id === id);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
+      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
       validateCategory(payload, { partial: true });
       if (payload.name !== undefined && isDuplicateName(payload.name, id)) {
         throw validationError([
           { field: "name", message: `Já existe uma ${categoryNoun()} com esse nome.` },
         ]);
       }
-      const current = store.categories[idx];
-      const updated: Category = {
-        ...current,
-        ...payload,
-        name: payload.name !== undefined ? payload.name.trim() : current.name,
-        ...(payload.assessments !== undefined ? { assessments: normalizedAssessments(payload) } : {}),
-        updatedAt: nowIso(),
-      };
-      store.categories[idx] = updated;
-      // Trilha trocada: quem estava num nivel que nao existe mais volta ao 1o
-      // nivel da idade, sem grau (antes ficava "Iniciante • 2ª etapa").
+
+      let updated: Category;
+      if (isSupabaseOrganization(store.organization.id)) {
+        updated = await updateCategoryInDb(id, payload, store.organization.id);
+        if (idx !== -1) {
+          store.categories[idx] = updated;
+        } else {
+          store.categories.push(updated);
+        }
+      } else {
+        const current = store.categories[idx];
+        updated = {
+          ...current,
+          ...payload,
+          name: payload.name !== undefined ? payload.name.trim() : current.name,
+          ...(payload.assessments !== undefined ? { assessments: normalizedAssessments(payload) } : {}),
+          updatedAt: nowIso(),
+        };
+        store.categories[idx] = updated;
+      }
+
       const reset = payload.progressionTrack !== undefined ? resetMissingLevels(updated) : 0;
-      // Editar uma modalidade criada no setup conta como revisao (passo do onboarding).
       const settings = store.organization.settings;
       if (
         settings?.modalitiesReviewed === false &&
@@ -187,9 +235,9 @@ export const categoriesService = {
         store.organization.settings = { ...settings, modalitiesReviewed: true };
       }
       auditLogService.record({
-        action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
+        action: updated.status === "active" ? "updated" : "inactivated",
         target: { type: "category", id: updated.id, label: updated.name },
-        predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} a ${categoryNoun()} ${updated.name}${reset > 0 ? ` (${plural(reset, "aluno voltou", "alunos voltaram")} ao primeiro nível da nova trilha)` : ""}`,
+        predicate: `atualizou a ${categoryNoun()} ${updated.name}${reset > 0 ? ` (${plural(reset, "aluno voltou", "alunos voltaram")} ao primeiro nível da nova trilha)` : ""}`,
       });
       return clone(updated);
     });
@@ -197,15 +245,21 @@ export const categoriesService = {
 
   // remove = inativacao logica; categoria inativa nao e sugerida em novos servicos.
   remove(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.categories.findIndex((c) => c.id === id);
-      if (idx === -1) throw notFoundError(NOT_FOUND);
-      const name = store.categories[idx].name;
-      store.categories[idx] = {
-        ...store.categories[idx],
-        status: "inactive",
-        updatedAt: nowIso(),
-      };
+      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
+      const name = idx !== -1 ? store.categories[idx].name : "modalidade";
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await inactivateCategoryInDb(id, store.organization.id);
+      }
+      if (idx !== -1) {
+        store.categories[idx] = {
+          ...store.categories[idx],
+          status: "inactive",
+          updatedAt: nowIso(),
+        };
+      }
       auditLogService.record({
         action: "inactivated",
         target: { type: "category", id, label: name },
