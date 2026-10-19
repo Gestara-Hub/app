@@ -43,6 +43,14 @@ import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { auditLogService } from "./auditLogService";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createAssessmentInDb,
+  deleteAssessmentInDb,
+  listAssessmentsFromDb,
+  setGradesInDb,
+  updateAssessmentInDb,
+} from "./gradesBackend";
 
 /**
  * Notas dos alunos (doc 21 §2.1, fase 1): avaliacoes da turma, lancamento por
@@ -220,10 +228,29 @@ function className(classGroupId: Id): string {
   return store.classGroups.find((g) => g.id === classGroupId)?.name ?? "Turma";
 }
 
+export async function syncAssessmentsFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const dbAssessments = await listAssessmentsFromDb(organizationId);
+  const dbMap = new Map(dbAssessments.map((a) => [a.id, a]));
+  const list = assessmentsStore();
+  for (let i = 0; i < list.length; i++) {
+    const existing = list[i];
+    const fromDb = dbMap.get(existing.id);
+    if (fromDb) {
+      list[i] = fromDb;
+      dbMap.delete(existing.id);
+    }
+  }
+  for (const newAssessment of dbMap.values()) {
+    list.push(newAssessment);
+  }
+}
+
 export const gradesService = {
   /** Aba "Avaliações" da turma: avaliacoes (mais recente primeiro) e media da turma. */
   listClassAssessments(classGroupId: Id): Promise<ClassAssessmentsView> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncAssessmentsFromDb(store.organization.id);
       const group = findClass(classGroupId);
       const settings = enabledSettings(group.modalityId);
       const list = sortAssessments(assessmentsStore().filter((a) => a.classGroupId === classGroupId));
@@ -245,7 +272,8 @@ export const gradesService = {
 
   /** Tela "Lançar notas": uma linha por aluno matriculado hoje, em ordem alfabetica. */
   getSheet(assessmentId: Id): Promise<AssessmentSheet> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncAssessmentsFromDb(store.organization.id);
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
       const settings = requireSettings(group);
@@ -265,7 +293,7 @@ export const gradesService = {
   },
 
   create(payload: CreateAssessment): Promise<AssessmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const group = findClass(payload.classGroupId);
       assertCanManage(group);
       const settings = requireSettings(group);
@@ -290,6 +318,11 @@ export const gradesService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createAssessmentInDb(assessment);
+      }
+
       assessmentsStore().push(assessment);
       auditLogService.record({
         action: "created",
@@ -301,7 +334,7 @@ export const gradesService = {
   },
 
   update(id: Id, payload: UpdateAssessment): Promise<AssessmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
@@ -310,6 +343,10 @@ export const gradesService = {
       validateFields(payload, true, fields);
       if (payload.levelId) validateLevel(current.modalityId, payload.levelId, fields);
       if (fields.length > 0) throw validationError(fields);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateAssessmentInDb(id, payload, store.organization.id);
+      }
 
       if (payload.name !== undefined) current.name = payload.name.trim();
       if (payload.date !== undefined) current.date = payload.date;
@@ -328,10 +365,15 @@ export const gradesService = {
 
   /** Exclui a avaliacao e as notas dela (a tela confirma antes). */
   remove(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await deleteAssessmentInDb(id, store.organization.id);
+      }
+
       store.assessments = assessmentsStore().filter((a) => a.id !== id);
       auditLogService.record({
         action: "deleted",
@@ -347,7 +389,7 @@ export const gradesService = {
    * Alunos fora do lote ficam como estao.
    */
   setGrades(assessmentId: Id, entries: AssessmentGradeInput[]): Promise<AssessmentView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const current = findAssessment(assessmentId);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
@@ -397,6 +439,11 @@ export const gradesService = {
         });
       }
       current.updatedAt = ts;
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await setGradesInDb(assessmentId, current.grades, store.organization.id);
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "assessment", id: current.id, label: current.name },
@@ -412,7 +459,8 @@ export const gradesService = {
    * media por etapa da trilha e geral.
    */
   getReportCard(studentId: Id): Promise<StudentReportCard> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncAssessmentsFromDb(store.organization.id);
       const student = store.clients.find((c) => c.id === studentId);
       if (!student) throw notFoundError("Aluno não encontrado.");
       const activeClassIds = new Set(
