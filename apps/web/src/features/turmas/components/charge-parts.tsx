@@ -30,11 +30,18 @@ export const STATUS_CLASS: Record<ChargeStatus, string> = {
   waived: "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300",
 };
 
+/** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
+export const SYSTEM_CANCELED_HINT =
+  "Encerrada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
+export const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
+
 /** Substituida: cancelada pelo sistema porque outra cobranca tomou o lugar. */
 export const isReplaced = (c: ChargeView) => c.status === "canceled" && Boolean(c.replaced);
 export const REPLACED_CLASS = "border-border/60 bg-muted/40 text-muted-foreground";
-export const statusLabelOf = (c: ChargeView) => (isReplaced(c) ? "Substituída" : STATUS_LABEL[c.status]);
-export const statusClassOf = (c: ChargeView) => (isReplaced(c) ? REPLACED_CLASS : STATUS_CLASS[c.status]);
+export const statusLabelOf = (c: ChargeView) =>
+  isReplaced(c) ? "Substituída" : isSystemCanceled(c) ? "Encerrado" : STATUS_LABEL[c.status];
+export const statusClassOf = (c: ChargeView) =>
+  isReplaced(c) || isSystemCanceled(c) ? REPLACED_CLASS : STATUS_CLASS[c.status];
 
 export const PERIOD_UNIT: Record<PlanPeriod, string> = {
   monthly: "mês",
@@ -46,11 +53,6 @@ export const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 /** "dd/MM" no ano atual; de outro ano, "dd/MM/aaaa" (atrasos antigos). */
 const dueDateLabel = (iso: string) =>
   iso.slice(0, 4) === String(new Date().getFullYear()) ? shortDate(iso) : format(parseISO(iso), "dd/MM/yyyy");
-
-/** Cancelada pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre. */
-export const SYSTEM_CANCELED_HINT =
-  "Cancelada automaticamente pelo sistema (troca de plano ou de regra, inativação ou saída da aula). Não pode ser reaberta.";
-export const isSystemCanceled = (c: ChargeView) => c.canceledBy === "system";
 
 /** D8: pago online ou por Pix Automatico nao se desfaz (seria estorno). */
 export const isPaidOnline = (c: ChargeView) =>
@@ -175,7 +177,11 @@ export const EXTRA_CANCEL_REASON_SUGGESTIONS = ["Lançada por engano", "Cobranç
 /** Motivo exibido na linha cancelada: o informado pelo usuario ou a nota do sistema. */
 export function cancelReasonOf(c: ChargeView): string | undefined {
   if (c.status !== "canceled") return undefined;
-  return c.cancelReason ?? (c.canceledBy === "system" ? c.notes : undefined);
+  if (c.cancelReason) return c.cancelReason;
+  if (c.canceledBy === "system") {
+    return c.notes ?? (c.kind === "dropin" ? "Saiu da aula" : undefined);
+  }
+  return undefined;
 }
 
 export const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
@@ -187,34 +193,40 @@ export const KIND_FILTER_LABEL: Record<"all" | ChargeKind, string> = {
   package: "Pacotes",
 };
 
-/** Filtro de situacao da lista: os status + "Substituídas" (canceladas por troca). */
-export type StatusFilterValue = "all" | ChargeStatus | "replaced";
+/** Filtro de situacao da lista: "open" (A receber), status individuais, "other" (Isentas e encerradas) e "replaced". */
+export type StatusFilterValue = "open" | "all" | ChargeStatus | "other" | "replaced";
 
 export const STATUS_FILTERS: { value: StatusFilterValue; label: string }[] = [
+  { value: "open", label: "A receber" },
   { value: "all", label: "Todos os status" },
   { value: "pending", label: "Pendentes" },
   { value: "overdue", label: "Atrasadas" },
   { value: "paid", label: "Pagas" },
-  { value: "canceled", label: "Canceladas" },
+  { value: "other", label: "Isentas e encerradas" },
+  { value: "canceled", label: "Canceladas e encerradas" },
   { value: "waived", label: "Isentas" },
   { value: "replaced", label: "Substituídas" },
 ];
 
-export function isStatusFilterValue(value: string | null): value is Exclude<StatusFilterValue, "all"> {
+export function isStatusFilterValue(value: string | null): value is Exclude<StatusFilterValue, "open"> {
   return (
+    value === "all" ||
     value === "pending" ||
     value === "overdue" ||
     value === "paid" ||
     value === "canceled" ||
     value === "waived" ||
+    value === "other" ||
     value === "replaced"
   );
 }
 
-/** A cobranca entra no filtro? "Todos" esconde as substituidas (sao ruido). */
+/** A cobranca entra no filtro? "open" mostra so pendentes/atrasadas; "all" esconde as substituidas. */
 export function matchesStatusFilter(c: ChargeView, filter: StatusFilterValue): boolean {
   if (filter === "replaced") return isReplaced(c);
   if (isReplaced(c)) return false;
+  if (filter === "open") return c.status === "overdue" || c.status === "pending";
+  if (filter === "other") return c.status === "waived" || c.status === "canceled";
   return filter === "all" || c.status === filter;
 }
 
@@ -228,10 +240,11 @@ export function isChargeKind(value: string | null): value is ChargeKind {
   );
 }
 
-/** Selo de situacao da cobranca (com "Substituída" para as trocadas). */
+/** Selo de situacao da cobranca (com "Substituída" para as trocadas e "Encerrado" para sistema). */
 export function ChargeStatusBadge({ charge, size = "md" }: { charge: ChargeView; size?: "sm" | "md" }) {
   return (
     <span
+      title={isSystemCanceled(charge) && !isReplaced(charge) ? SYSTEM_CANCELED_HINT : undefined}
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-medium leading-none",
         size === "sm" ? "text-[10px]" : "text-[11px]",

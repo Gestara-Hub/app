@@ -603,6 +603,27 @@ export const billingService = {
       autoGenerateMembershipCharges(filter?.competence);
       // Pix Automatico: paga na leitura o que venceu dentro do limite.
       applyRecurringAutoPayments();
+      // Se um aluno saiu da aula avulsa e foi readicionado na mesma aula antes,
+      // remove a cobranca encerrada duplicada daquela sessao.
+      const activeDropinSessions = new Set(
+        store.charges
+          .filter((c) => c.kind === "dropin" && c.sessionId && c.status !== "canceled")
+          .map((c) => `${c.studentId}_${c.sessionId}`),
+      );
+      if (activeDropinSessions.size > 0) {
+        const beforeLen = store.charges.length;
+        store.charges = store.charges.filter(
+          (c) =>
+            !(
+              c.kind === "dropin" &&
+              c.sessionId &&
+              c.status === "canceled" &&
+              c.canceledBy === "system" &&
+              activeDropinSessions.has(`${c.studentId}_${c.sessionId}`)
+            ),
+        );
+        if (store.charges.length !== beforeLen) persist();
+      }
       let result = store.charges.map(toChargeView);
       if (filter?.competence) {
         result = result.filter((c) => c.competence === filter.competence);

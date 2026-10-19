@@ -975,6 +975,7 @@ export const turmasService = {
         if (charge && (charge.status === "pending" || charge.status === "overdue")) {
           charge.status = "canceled";
           charge.canceledBy = "system";
+          charge.notes = "Turma desativada";
           charge.updatedAt = nowIso();
           cancelOnlinePaymentsForCharge(charge.id);
         }
@@ -1610,26 +1611,49 @@ export const turmasService = {
       const ts = nowIso();
 
       let chargeId: Id | undefined;
-      // Cobranca avulsa apenas para aula paga (kind: "dropin")
+      // Cobranca avulsa apenas para aula paga (kind: "dropin"). Se o aluno tinha
+      // saido desta mesma aula sem pagar, reaproveita a cobranca encerrada pelo
+      // sistema para nao duplicar linha no historico.
       const price = input.amountCents ?? g.sessionPriceCents ?? 0;
       if (kind === "dropin" && price > 0) {
-        const charge: Charge = {
-          id: newId(),
-          organizationId: store.organization.id,
-          studentId: input.studentId,
-          kind: "dropin",
-          unitId: g.unitId,
-          classGroupId: g.id,
-          sessionId: input.sessionId,
-          competence: sessionDate.slice(0, 7),
-          dueDate: sessionDate,
-          amountCents: price,
-          status: "pending",
-          createdAt: ts,
-          updatedAt: ts,
-        };
-        store.charges.push(charge);
-        chargeId = charge.id;
+        const existingCanceled = store.charges.find(
+          (c) =>
+            c.kind === "dropin" &&
+            c.sessionId === input.sessionId &&
+            c.studentId === input.studentId &&
+            c.status === "canceled" &&
+            c.canceledBy === "system",
+        );
+        if (existingCanceled) {
+          existingCanceled.competence = sessionDate.slice(0, 7);
+          existingCanceled.dueDate = sessionDate;
+          existingCanceled.amountCents = price;
+          existingCanceled.status = "pending";
+          existingCanceled.canceledBy = undefined;
+          existingCanceled.cancelReason = undefined;
+          existingCanceled.replaced = undefined;
+          existingCanceled.notes = undefined;
+          existingCanceled.updatedAt = ts;
+          chargeId = existingCanceled.id;
+        } else {
+          const charge: Charge = {
+            id: newId(),
+            organizationId: store.organization.id,
+            studentId: input.studentId,
+            kind: "dropin",
+            unitId: g.unitId,
+            classGroupId: g.id,
+            sessionId: input.sessionId,
+            competence: sessionDate.slice(0, 7),
+            dueDate: sessionDate,
+            amountCents: price,
+            status: "pending",
+            createdAt: ts,
+            updatedAt: ts,
+          };
+          store.charges.push(charge);
+          chargeId = charge.id;
+        }
       }
 
       const reservation: ClassReservation = {
@@ -1690,6 +1714,7 @@ export const turmasService = {
         charge.status = "canceled";
         // Cancelada pelo sistema (aluno saiu da aula), nao por decisao do usuario.
         charge.canceledBy = "system";
+        charge.notes = "Saiu da aula";
         charge.updatedAt = nowIso();
       }
       auditLogService.record({

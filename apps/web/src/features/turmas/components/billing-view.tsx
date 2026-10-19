@@ -28,7 +28,7 @@ import { normalizeText } from "@/lib/text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
-import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
+import type { ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
 import { CompetencePicker } from "@/features/finance";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
@@ -36,117 +36,109 @@ import { useCharges } from "../hooks/use-billing";
 import { NewExtraChargeDialog } from "./new-extra-charge-dialog";
 import {
   ChargeAmount,
-  ChargeDetails,
   ChargeStatusBadge,
   KIND_FILTER_LABEL,
-  PERIOD_UNIT,
   PaidViaBadge,
+  REPLACED_CLASS,
   RecurringLimitBadge,
   STATUS_CLASS,
   STATUS_FILTERS,
   STATUS_LABEL,
   ScholarshipBadge,
+  cancelReasonOf,
+  chargeSubject,
   getCycleTitle,
+  installmentLabel,
   isChargeKind,
+  isInstallmentKind,
   isReplaced,
   isStatusFilterValue,
+  isSystemCanceled,
   matchesStatusFilter,
   shortDate,
   type StatusFilterValue,
 } from "./charge-parts";
 import { useChargeActions } from "./use-charge-actions";
 
-interface StudentBillingGroup {
-  key: string;
+interface StudentConsolidatedGroup {
   studentId: string;
   studentName: string;
-  kind: ChargeKind;
-  className?: string;
-  planName?: string;
-  isMultiCycle: boolean;
-  totalCycles: number;
-  periodLabel?: string;
-  planPeriod?: PlanPeriod;
-  unitPriceCents: number;
-  activeTotalCents: number;
-  paidCents: number;
-  overdueCents: number;
-  canceledCents: number;
-  activeCount: number;
-  paidCount: number;
-  overdueCount: number;
-  canceledCount: number;
   charges: ChargeView[];
+  activeTotalCents: number;
+  openCents: number;
+  overdueCents: number;
+  paidCents: number;
+  canceledCents: number;
+  overdueCount: number;
+  pendingCount: number;
+  paidCount: number;
+  waivedCount: number;
+  closedCount: number;
 }
 
 /**
- * Agrupa as parcelas do mes de um mesmo plano (semanal/quinzenal). `byCharge`:
- * uma linha por cobranca (atrasos de todos os meses: cada mes e uma divida).
+ * Agrupa as cobrancas visiveis por aluno (`studentId`) para que cada aluno
+ * apareca uma unica vez na lista, consolidando mensalidade, pacotes e avulsas.
  */
-function groupCharges(charges: ChargeView[], byCharge = false): StudentBillingGroup[] {
-  const map = new Map<string, StudentBillingGroup>();
+function groupByStudent(charges: ChargeView[]): StudentConsolidatedGroup[] {
+  const map = new Map<string, StudentConsolidatedGroup>();
 
   for (const c of charges) {
-    const isMembership = c.kind === "membership";
-    const key = isMembership && !byCharge ? `${c.studentId}_${c.planId ?? ""}` : c.id;
-
-    if (!map.has(key)) {
-      const isMulti = (c.cycleTotal ?? 1) > 1;
-      const periodLabel = c.planPeriod ? PERIOD_UNIT[c.planPeriod] : undefined;
-
-      map.set(key, {
-        key,
+    if (!map.has(c.studentId)) {
+      map.set(c.studentId, {
         studentId: c.studentId,
         studentName: c.studentName,
-        kind: c.kind,
-        className: c.className,
-        planName: c.planName,
-        isMultiCycle: isMulti,
-        totalCycles: c.cycleTotal ?? 1,
-        periodLabel,
-        planPeriod: c.planPeriod,
-        unitPriceCents: c.amountCents,
-        activeTotalCents: 0,
-        paidCents: 0,
-        overdueCents: 0,
-        canceledCents: 0,
-        activeCount: 0,
-        paidCount: 0,
-        overdueCount: 0,
-        canceledCount: 0,
         charges: [],
+        activeTotalCents: 0,
+        openCents: 0,
+        overdueCents: 0,
+        paidCents: 0,
+        canceledCents: 0,
+        overdueCount: 0,
+        pendingCount: 0,
+        paidCount: 0,
+        waivedCount: 0,
+        closedCount: 0,
       });
     }
-
-    const group = map.get(key)!;
-    group.charges.push(c);
-    // Valor de referencia do plano: a maior parcela (a 1a pode ser proporcional).
-    group.unitPriceCents = Math.max(group.unitPriceCents, c.amountCents);
-
-    if (group.charges.length > 1) {
-      group.isMultiCycle = true;
-    }
+    const g = map.get(c.studentId)!;
+    g.charges.push(c);
 
     if (c.status === "canceled") {
-      group.canceledCents += c.amountCents;
-      group.canceledCount += 1;
+      g.canceledCents += c.amountCents;
+      g.closedCount += 1;
+    } else if (c.status === "waived") {
+      g.waivedCount += 1;
     } else {
-      group.activeTotalCents += c.amountCents;
-      group.activeCount += 1;
-
-      if (c.status === "paid") {
-        group.paidCents += c.amountCents;
-        group.paidCount += 1;
-      } else if (c.status === "overdue") {
-        group.overdueCents += c.amountCents;
-        group.overdueCount += 1;
+      g.activeTotalCents += c.amountCents;
+      if (c.status === "overdue") {
+        g.overdueCents += c.amountCents;
+        g.openCents += c.amountCents;
+        g.overdueCount += 1;
+      } else if (c.status === "pending") {
+        g.openCents += c.amountCents;
+        g.pendingCount += 1;
+      } else if (c.status === "paid") {
+        g.paidCents += c.amountCents;
+        g.paidCount += 1;
       }
     }
   }
 
-  // Ordena as sub-cobranças por ciclo e vencimento
-  for (const group of map.values()) {
-    group.charges.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const statusOrder: Record<ChargeStatus, number> = {
+    overdue: 0,
+    pending: 1,
+    paid: 2,
+    waived: 3,
+    canceled: 4,
+  };
+
+  for (const g of map.values()) {
+    g.charges.sort(
+      (a, b) =>
+        statusOrder[a.status] - statusOrder[b.status] ||
+        a.dueDate.localeCompare(b.dueDate),
+    );
   }
 
   return Array.from(map.values()).sort((a, b) =>
@@ -154,35 +146,130 @@ function groupCharges(charges: ChargeView[], byCharge = false): StudentBillingGr
   );
 }
 
-/**
- * Status do grupo de parcelas do mes (semanal/quinzenal), no padrao das linhas
- * simples: atraso primeiro, depois pago, parcial ("2 de 4") e pendente.
- */
-function groupStatusOf(group: StudentBillingGroup): { status: ChargeStatus; label: string } {
-  if (group.activeCount === 0) return { status: "canceled", label: STATUS_LABEL.canceled };
-  if (group.overdueCount > 0) return { status: "overdue", label: STATUS_LABEL.overdue };
-  if (group.paidCount === group.activeCount) return { status: "paid", label: STATUS_LABEL.paid };
-  if (group.paidCount > 0) {
-    return { status: "pending", label: `Parcial · ${group.paidCount} de ${group.activeCount}` };
+function studentGroupBadge(g: StudentConsolidatedGroup): {
+  label: string;
+  className: string;
+} {
+  const activeCount = g.overdueCount + g.pendingCount + g.paidCount;
+  if (activeCount === 0) {
+    if (g.waivedCount > 0 && g.closedCount === 0) {
+      return { label: "Bolsista", className: STATUS_CLASS.waived };
+    }
+    const allSystem = g.charges.every((c) => isSystemCanceled(c) || isReplaced(c));
+    return {
+      label: allSystem ? "Encerrado" : STATUS_LABEL.canceled,
+      className: allSystem ? REPLACED_CLASS : STATUS_CLASS.canceled,
+    };
   }
-  return { status: "pending", label: STATUS_LABEL.pending };
+  if (g.overdueCount > 0) {
+    return {
+      label:
+        g.charges.length > 1 && g.overdueCount < activeCount
+          ? `${g.overdueCount} em atraso`
+          : STATUS_LABEL.overdue,
+      className: STATUS_CLASS.overdue,
+    };
+  }
+  if (g.pendingCount > 0 && g.paidCount > 0) {
+    return {
+      label: `Parcial · ${g.paidCount} de ${activeCount}`,
+      className: STATUS_CLASS.pending,
+    };
+  }
+  if (g.pendingCount > 0) {
+    return { label: STATUS_LABEL.pending, className: STATUS_CLASS.pending };
+  }
+  return { label: STATUS_LABEL.paid, className: STATUS_CLASS.paid };
+}
+
+function cleanSingleSubtitle(c: ChargeView): string {
+  const parts: string[] = [];
+  if (c.kind === "dropin") {
+    parts.push(c.className ? `Aula avulsa · ${c.className}` : "Aula avulsa");
+    parts.push(`aula em ${shortDate(c.dueDate)}`);
+  } else if (isInstallmentKind(c)) {
+    const inst = installmentLabel(c);
+    parts.push(inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c));
+    parts.push(`vence ${shortDate(c.dueDate)}`);
+  } else {
+    if (c.className) parts.push(c.className);
+    if (c.planName) parts.push(c.planName);
+    parts.push(`vence ${shortDate(c.dueDate)}`);
+  }
+  const reason = cancelReasonOf(c);
+  if (reason) parts.push(reason);
+  if (c.status === "paid") {
+    const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
+    parts.push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
+  }
+  return parts.join(" · ");
+}
+
+function cleanGroupSubtitle(g: StudentConsolidatedGroup): string {
+  const countByKind = new Map<ChargeKind, number>();
+  for (const c of g.charges) {
+    countByKind.set(c.kind, (countByKind.get(c.kind) ?? 0) + 1);
+  }
+  const items: string[] = [];
+  const memberships = countByKind.get("membership") ?? 0;
+  if (memberships > 0) {
+    const planName = g.charges.find((c) => c.kind === "membership")?.planName;
+    items.push(planName ?? plural(memberships, "mensalidade", "mensalidades"));
+  }
+  const packages = countByKind.get("package") ?? 0;
+  if (packages > 0) items.push(plural(packages, "pacote", "pacotes"));
+  const dropins = countByKind.get("dropin") ?? 0;
+  if (dropins > 0) items.push(plural(dropins, "aula avulsa", "aulas avulsas"));
+  const courses = countByKind.get("course") ?? 0;
+  if (courses > 0) items.push(plural(courses, "curso", "cursos"));
+  const extras = countByKind.get("extra") ?? 0;
+  if (extras > 0) items.push(plural(extras, "cobrança avulsa", "cobranças avulsas"));
+
+  const dates = Array.from(
+    new Set(
+      g.charges
+        .filter((c) => c.status !== "canceled" && c.status !== "waived")
+        .map((c) => shortDate(c.dueDate)),
+    ),
+  );
+  const datePart =
+    dates.length === 1
+      ? `vence ${dates[0]}`
+      : dates.length === 2
+        ? `vence ${dates[0]} e ${dates[1]}`
+        : dates.length > 2
+          ? `vence ${dates[0]}, ${dates[1]} +${dates.length - 2}`
+          : null;
+
+  return [items.join(" + "), datePart].filter(Boolean).join(" · ");
+}
+
+function subItemTitle(c: ChargeView): string {
+  if (c.kind === "dropin") {
+    return `Aula avulsa${c.className ? ` · ${c.className}` : ""}`;
+  }
+  if (isInstallmentKind(c)) {
+    const inst = installmentLabel(c);
+    return inst ? `${chargeSubject(c)} (${inst})` : chargeSubject(c);
+  }
+  if ((c.cycleTotal ?? 1) > 1) {
+    return `${c.planName ?? "Plano"} · ${getCycleTitle(c)}`;
+  }
+  return c.planName ?? getCycleTitle(c);
 }
 
 const currentCompetence = () => format(new Date(), "yyyy-MM");
 
 /**
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
- * `?status=overdue|pending|paid|canceled` e `?kind=membership|dropin|extra|course|package`. Padroes
- * (mes atual, todos) ficam fora da URL. Mesmo padrao do calendario de turmas.
- * `?overdue=all`: atrasos de todos os meses (ignora mes e situacao).
+ * `?status=all|overdue|pending|paid|other|canceled|waived|replaced` e
+ * `?kind=membership|dropin|extra|course|package`.
+ * Padrao inicial sem `?status=` na URL: `"open"` (A receber: pendentes + em atraso).
  */
 function useBillingFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // Ultima URL pedida e ainda nao renderizada: o router.replace e assincrono,
-  // entao duas trocas rapidas (filtro e mes) partem dela, senao uma apaga a
-  // outra. Mesmo padrao do calendario de turmas.
   const queryString = searchParams.toString();
   const pendingQuery = useRef<string | null>(null);
   useEffect(() => {
@@ -193,14 +280,12 @@ function useBillingFilters() {
   const competence =
     monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam) ? monthParam : currentCompetence();
   const statusParam = searchParams.get("status");
-  const statusFilter: StatusFilterValue = isStatusFilterValue(statusParam) ? statusParam : "all";
+  const statusFilter: StatusFilterValue = isStatusFilterValue(statusParam) ? statusParam : "open";
   const kindParam = searchParams.get("kind");
   const kindFilter: "all" | ChargeKind = isChargeKind(kindParam) ? kindParam : "all";
   const allOverdue = searchParams.get("overdue") === "all";
 
   const update = (patch: Record<string, string | null>) => {
-    // Parte da ultima URL pedida (ou da atual): duas trocas seguidas antes do
-    // re-render nao se apagam.
     const params = new URLSearchParams(pendingQuery.current ?? window.location.search);
     for (const [key, value] of Object.entries(patch)) {
       if (value === null) params.delete(key);
@@ -213,14 +298,11 @@ function useBillingFilters() {
 
   const setCompetence = (next: string) =>
     update({ month: next === currentCompetence() ? null : next, overdue: null });
-  // Atrasos de todos os meses: o mes e a situacao nao valem nesse modo.
   const showAllOverdue = (on: boolean) =>
     update({ overdue: on ? "all" : null, month: null, status: null });
   const setStatusFilter = (next: StatusFilterValue) =>
-    update({ status: next === "all" ? null : next });
+    update({ status: next === "open" ? null : next });
   const setKindFilter = (next: "all" | ChargeKind) => update({ kind: next === "all" ? null : next });
-  // Uma unica troca de URL: duas seguidas (status e tipo) se sobrescreviam,
-  // porque o router.replace ainda nao tinha atualizado a URL na segunda.
   const clearFilters = () => update({ status: null, kind: null });
 
   return {
@@ -288,21 +370,18 @@ export function BillingView() {
     setStatusFilter,
     setKindFilter,
     clearFilters,
-  } =
-    useBillingFilters();
-  // Todos os atrasos: so cobrancas em atraso, de qualquer mes.
+  } = useBillingFilters();
   const statusFilter: StatusFilterValue = allOverdue ? "overdue" : monthStatusFilter;
   const [newChargeOpen, setNewChargeOpen] = useState(false);
   const [search, setSearch] = useState("");
-  // Abrir as parcelas de curso conclui "Ver as parcelas do curso" (Dashboard).
   const user = useCurrentUser();
   useEffect(() => {
     if (kindFilter === "course") markDiscoveryVisit(user, "course_billing");
   }, [kindFilter, user]);
-  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
+  const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
 
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleStudent = (studentId: string) => {
+    setExpandedStudents((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
   };
 
   const {
@@ -315,8 +394,6 @@ export function BillingView() {
       ? { status: "overdue", kind: kindFilter === "all" ? undefined : kindFilter }
       : { competence, kind: kindFilter === "all" ? undefined : kindFilter },
   );
-  // Faixa "em atraso de meses anteriores" (so no mes atual): a divida nao some
-  // na virada do mes.
   const isCurrentMonth = !allOverdue && competence === currentCompetence();
   const { data: allOverdueCharges } = useCharges({ status: "overdue" });
   const earlierOverdue = isCurrentMonth
@@ -329,26 +406,26 @@ export function BillingView() {
   const renderChargeActions = chargeActions.renderActions;
 
   const list = charges ?? [];
-  // Status e busca filtram so a lista; os cartoes seguem mostrando o mes inteiro.
   const query = normalizeText(search);
-  const filteredList = list.filter(
+  const searchMatchedList = list.filter(
     (c) =>
-      matchesStatusFilter(c, statusFilter) &&
-      (query === "" ||
-        normalizeText(c.studentName).includes(query) ||
-        (c.description !== undefined && normalizeText(c.description).includes(query))),
+      query === "" ||
+      normalizeText(c.studentName).includes(query) ||
+      (c.description !== undefined && normalizeText(c.description).includes(query)),
   );
-  const groups = groupCharges(filteredList, allOverdue);
+  const filteredList = searchMatchedList.filter((c) => matchesStatusFilter(c, statusFilter));
+  const studentGroups = groupByStudent(filteredList);
+
   const hasListFilters = allOverdue
     ? kindFilter !== "all" || query !== ""
-    : statusFilter !== "all" || kindFilter !== "all" || query !== "";
+    : statusFilter !== "open" || kindFilter !== "all" || query !== "";
   const clearListFilters = () => {
     setSearch("");
     if (allOverdue) setKindFilter("all");
     else clearFilters();
   };
 
-  // Isentas (bolsa integral) nao entram nos totais: R$ 0 e nada a receber.
+  // Totais dos cartoes de resumo do mes (sempre sobre o mes inteiro).
   const activeList = list.filter((c) => c.status !== "canceled" && c.status !== "waived");
   const activeTotalCents = activeList.reduce((s, c) => s + c.amountCents, 0);
 
@@ -360,12 +437,32 @@ export function BillingView() {
   const overdueList = list.filter((c) => c.status === "overdue");
   const overdueCents = overdueList.reduce((s, c) => s + c.amountCents, 0);
 
-  // So o que deixou de ser cobrado: substituida (troca de plano/regra/bolsa) nao e perda.
-  const canceledList = list.filter((c) => c.status === "canceled" && !isReplaced(c));
+  // So o que deixou de ser cobrado por decisao do usuario: substituida (troca de
+  // plano/regra/bolsa) e encerrada pelo sistema (saida da aula, futuro nao iniciado) nao sao perda.
+  const canceledList = list.filter((c) => c.status === "canceled" && !isReplaced(c) && !isSystemCanceled(c));
   const replacedCount = list.filter(isReplaced).length;
   const canceledCents = canceledList.reduce((s, c) => s + c.amountCents, 0);
 
-  // Mensalidades nascem sozinhas no mes atual; meses futuros aparecem quando chegarem.
+  // Contadores das abas rapidas (respeitam a busca por nome e o tipo selecionado).
+  const openTabCount = searchMatchedList.filter((c) => matchesStatusFilter(c, "open")).length;
+  const overdueTabCount = searchMatchedList.filter((c) => matchesStatusFilter(c, "overdue")).length;
+  const paidTabCount = searchMatchedList.filter((c) => matchesStatusFilter(c, "paid")).length;
+  const otherTabCount = searchMatchedList.filter((c) => matchesStatusFilter(c, "other")).length;
+
+  const quickTabs: { id: StatusFilterValue; label: string; count: number; alert?: boolean }[] = [
+    { id: "open", label: "A receber", count: openTabCount },
+    {
+      id: "overdue",
+      label: "Em atraso",
+      count: overdueTabCount,
+      alert: overdueTabCount > 0,
+    },
+    { id: "paid", label: "Pagas", count: paidTabCount },
+    ...(otherTabCount > 0 || statusFilter === "other"
+      ? [{ id: "other" as const, label: "Isentas e encerradas", count: otherTabCount }]
+      : []),
+  ];
+
   const isFutureCompetence = competence > format(new Date(), "yyyy-MM");
 
   return (
@@ -384,7 +481,6 @@ export function BillingView() {
             Ver por mês
           </Button>
         ) : (
-          // Mesmo seletor de mes do Financeiro (com "Atual" e grade de meses)
           <CompetencePicker competence={competence} onChange={setCompetence} />
         )}
         {canManage ? (
@@ -402,157 +498,157 @@ export function BillingView() {
           {allOverdue ? (
             <AllOverdueSummary charges={list} isLoading={isLoading} />
           ) : (
-          /* KPI Summary Cards */
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {/* Total Ativo */}
-            <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Total ativo
-                </span>
-                <div className="flex size-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Wallet className="size-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                {isLoading ? (
-                  <Skeleton className="h-7 w-24" />
-                ) : (
-                  <div className="text-xl font-bold tabular-nums text-foreground sm:text-2xl">
-                    {formatCents(activeTotalCents)}
-                  </div>
-                )}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading
-                    ? "—"
-                    : waivedCount > 0
-                      ? `${plural(activeList.length, "ativa", "ativas")} · ${plural(waivedCount, "isenta", "isentas")}`
-                      : plural(activeList.length, "ativa", "ativas")}
-                </p>
-              </div>
-            </div>
-
-            {/* Recebido */}
-            <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Recebido
-                </span>
-                <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="size-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                {isLoading ? (
-                  <Skeleton className="h-7 w-24" />
-                ) : (
-                  <div className="text-xl font-bold tabular-nums text-emerald-600 sm:text-2xl dark:text-emerald-400">
-                    {formatCents(paidCents)}
-                  </div>
-                )}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : plural(paidList.length, "paga", "pagas")}
-                </p>
-              </div>
-            </div>
-
-            {/* Em atraso */}
-            <div
-              className={cn(
-                "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
-                !isLoading && overdueList.length > 0
-                  ? "border-red-500/30 bg-red-500/5 dark:bg-red-950/10"
-                  : "border-border/70 bg-card",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Em atraso
-                </span>
-                <div
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-md",
-                    !isLoading && overdueList.length > 0
-                      ? "bg-red-500/15 text-red-600 dark:text-red-400"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  <AlertCircle className="size-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                {isLoading ? (
-                  <Skeleton className="h-7 w-24" />
-                ) : (
-                  <div
-                    className={cn(
-                      "text-xl font-bold tabular-nums sm:text-2xl",
-                      overdueList.length > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-foreground",
-                    )}
-                  >
-                    {formatCents(overdueCents)}
-                  </div>
-                )}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : `${overdueList.length} em atraso`}
-                </p>
-              </div>
-            </div>
-
-            {/* Cancelado */}
-            <div
-              className={cn(
-                "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
-                !isLoading && canceledList.length > 0
-                  ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20"
-                  : "border-border/70 bg-card",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
+            /* KPI Summary Cards */
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {/* Total Ativo */}
+              <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-muted-foreground">
-                    Cancelado
+                    Total ativo
                   </span>
-                  {!isLoading && canceledList.length > 0 ? (
-                    <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">
-                      Não cobrado
-                    </span>
-                  ) : null}
+                  <div className="flex size-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Wallet className="size-4" />
+                  </div>
                 </div>
-                <div
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-md",
-                    !isLoading && canceledList.length > 0
-                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                      : "bg-muted text-muted-foreground",
+                <div className="mt-2">
+                  {isLoading ? (
+                    <Skeleton className="h-7 w-24" />
+                  ) : (
+                    <div className="text-xl font-bold tabular-nums text-foreground sm:text-2xl">
+                      {formatCents(activeTotalCents)}
+                    </div>
                   )}
-                >
-                  <Ban className="size-4" />
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {isLoading
+                      ? "—"
+                      : waivedCount > 0
+                        ? `${plural(activeList.length, "ativa", "ativas")} · ${plural(waivedCount, "isenta", "isentas")}`
+                        : plural(activeList.length, "ativa", "ativas")}
+                  </p>
                 </div>
               </div>
-              <div className="mt-2">
-                {isLoading ? (
-                  <Skeleton className="h-7 w-24" />
-                ) : (
+
+              {/* Recebido */}
+              <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Recebido
+                  </span>
+                  <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="size-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  {isLoading ? (
+                    <Skeleton className="h-7 w-24" />
+                  ) : (
+                    <div className="text-xl font-bold tabular-nums text-emerald-600 sm:text-2xl dark:text-emerald-400">
+                      {formatCents(paidCents)}
+                    </div>
+                  )}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {isLoading ? "—" : plural(paidList.length, "paga", "pagas")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Em atraso */}
+              <div
+                className={cn(
+                  "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
+                  !isLoading && overdueList.length > 0
+                    ? "border-red-500/30 bg-red-500/5 dark:bg-red-950/10"
+                    : "border-border/70 bg-card",
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Em atraso
+                  </span>
                   <div
                     className={cn(
-                      "text-xl font-bold tabular-nums sm:text-2xl",
-                      canceledList.length > 0
-                        ? "text-amber-700 dark:text-amber-400"
-                        : "text-muted-foreground",
+                      "flex size-7 items-center justify-center rounded-md",
+                      !isLoading && overdueList.length > 0
+                        ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {formatCents(canceledCents)}
+                    <AlertCircle className="size-4" />
                   </div>
+                </div>
+                <div className="mt-2">
+                  {isLoading ? (
+                    <Skeleton className="h-7 w-24" />
+                  ) : (
+                    <div
+                      className={cn(
+                        "text-xl font-bold tabular-nums sm:text-2xl",
+                        overdueList.length > 0
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-foreground",
+                      )}
+                    >
+                      {formatCents(overdueCents)}
+                    </div>
+                  )}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {isLoading ? "—" : `${overdueList.length} em atraso`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Cancelado */}
+              <div
+                className={cn(
+                  "flex flex-col justify-between rounded-xl border p-4 shadow-2xs transition-colors",
+                  !isLoading && canceledList.length > 0
+                    ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20"
+                    : "border-border/70 bg-card",
                 )}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isLoading ? "—" : plural(canceledList.length, "cancelada", "canceladas")}
-                </p>
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Cancelado
+                    </span>
+                    {!isLoading && canceledList.length > 0 ? (
+                      <span className="hidden items-center rounded-md bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 sm:inline-flex">
+                        Não cobrado
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    className={cn(
+                      "flex size-7 items-center justify-center rounded-md",
+                      !isLoading && canceledList.length > 0
+                        ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Ban className="size-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  {isLoading ? (
+                    <Skeleton className="h-7 w-24" />
+                  ) : (
+                    <div
+                      className={cn(
+                        "text-xl font-bold tabular-nums sm:text-2xl",
+                        canceledList.length > 0
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {formatCents(canceledCents)}
+                    </div>
+                  )}
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {isLoading ? "—" : plural(canceledList.length, "cancelada", "canceladas")}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
           )}
 
           {earlierOverdue.length > 0 ? (
@@ -572,7 +668,7 @@ export function BillingView() {
             </div>
           ) : null}
 
-          {/* Busca + filtros (padrao das listas: busca e selects lado a lado) */}
+          {/* Busca + filtros */}
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
             <SearchInput
               value={search}
@@ -597,42 +693,94 @@ export function BillingView() {
                 </SelectContent>
               </Select>
               {allOverdue ? null : (
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
-              >
-                <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por situação">
-                  <SelectValue>
-                    {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTERS.map((f) => {
-                    // Quantas ha no mes (com o tipo escolhido), para achar rapido.
-                    const count = list.filter((c) => matchesStatusFilter(c, f.value)).length;
-                    return (
-                      <SelectItem key={f.value} value={f.value}>
-                        <span className="flex w-full items-center justify-between gap-3">
-                          {f.label}
-                          <span className="tabular-nums text-muted-foreground">{count}</span>
-                        </span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as StatusFilterValue)}
+                >
+                  <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por situação">
+                    <SelectValue>
+                      {STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_FILTERS.map((f) => {
+                      const count = list.filter((c) => matchesStatusFilter(c, f.value)).length;
+                      return (
+                        <SelectItem key={f.value} value={f.value}>
+                          <span className="flex w-full items-center justify-between gap-3">
+                            {f.label}
+                            <span className="tabular-nums text-muted-foreground">{count}</span>
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </div>
 
-          <ListSummaryBar
-            count={filteredList.length}
-            singularLabel="cobrança"
-            pluralLabel="cobranças"
-            isLoading={isLoading}
-            hasFilters={hasListFilters}
-            onClearFilters={clearListFilters}
-          />
+          {/* Abas rápidas de foco (A receber | Em atraso | Pagas | Isentas e encerradas) */}
+          {!allOverdue && !isLoading && !isError && list.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border/70 bg-muted/30 p-1">
+                {quickTabs.map((tab) => {
+                  const active = statusFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setStatusFilter(tab.id)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                        active
+                          ? "bg-background text-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span>{tab.label}</span>
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.2 text-[10px] font-semibold tabular-nums",
+                          tab.alert
+                            ? "bg-red-500/15 text-red-700 dark:text-red-300"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>
+                  {plural(studentGroups.length, "aluno", "alunos")} ·{" "}
+                  {plural(filteredList.length, "cobrança", "cobranças")}
+                </span>
+                {hasListFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearListFilters}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Limpar filtros
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <ListSummaryBar
+              count={filteredList.length}
+              singularLabel="cobrança"
+              pluralLabel="cobranças"
+              isLoading={isLoading}
+              hasFilters={hasListFilters}
+              onClearFilters={clearListFilters}
+            />
+          )}
+
           {statusFilter === "all" && replacedCount > 0 ? (
             <p className="-mt-2 text-xs text-muted-foreground">
               {replacedCount === 1
@@ -662,9 +810,7 @@ export function BillingView() {
                     Tentar novamente
                   </Button>
                 </div>
-              ) : !isLoading && groups.length === 0 && (list.length > 0 || kindFilter !== "all") ? (
-                // O tipo filtra na consulta: lista vazia com tipo escolhido
-                // ainda e "filtro sem resultado", nao mes sem cobranca.
+              ) : !isLoading && studentGroups.length === 0 && (list.length > 0 || kindFilter !== "all") ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <p className="text-sm text-muted-foreground">
                     {allOverdue
@@ -672,24 +818,32 @@ export function BillingView() {
                         ? `Nenhum atraso de “${search.trim()}” com estes filtros.`
                         : "Nenhum atraso deste tipo."
                       : query !== ""
-                      ? `Nenhuma cobrança de “${search.trim()}” com estes filtros no mês.`
-                      : list.length === 0
-                        ? kindFilter === "dropin"
-                          ? "Nenhuma aula avulsa neste mês."
-                          : kindFilter === "extra"
-                            ? "Nenhuma cobrança avulsa neste mês."
-                            : kindFilter === "course"
-                              ? "Nenhuma parcela de curso neste mês."
-                              : kindFilter === "package"
-                                ? "Nenhum pacote neste mês."
-                                : "Nenhuma mensalidade neste mês."
-                        : "Nenhuma cobrança com esta situação no mês."}
+                        ? `Nenhuma cobrança de “${search.trim()}” com estes filtros no mês.`
+                        : list.length === 0
+                          ? kindFilter === "dropin"
+                            ? "Nenhuma aula avulsa neste mês."
+                            : kindFilter === "extra"
+                              ? "Nenhuma cobrança avulsa neste mês."
+                              : kindFilter === "course"
+                                ? "Nenhuma parcela de curso neste mês."
+                                : kindFilter === "package"
+                                  ? "Nenhum pacote neste mês."
+                                  : "Nenhuma mensalidade neste mês."
+                          : statusFilter === "open"
+                            ? "Nenhuma cobrança a receber neste mês."
+                            : "Nenhuma cobrança com esta situação no mês."}
                   </p>
-                  <Button variant="outline" onClick={clearListFilters}>
-                    Limpar filtros
-                  </Button>
+                  {hasListFilters ? (
+                    <Button variant="outline" onClick={clearListFilters}>
+                      Limpar filtros
+                    </Button>
+                  ) : list.length > 0 && statusFilter === "open" ? (
+                    <Button variant="outline" onClick={() => setStatusFilter("all")}>
+                      Ver todas do mês
+                    </Button>
+                  ) : null}
                 </div>
-              ) : !isLoading && groups.length === 0 && allOverdue ? (
+              ) : !isLoading && studentGroups.length === 0 && allOverdue ? (
                 <div className="py-6">
                   <ModuleEmptyGuide
                     icon={<CheckCircle2 className="size-8" />}
@@ -697,7 +851,7 @@ export function BillingView() {
                     description="Todos os alunos estão em dia."
                   />
                 </div>
-              ) : !isLoading && groups.length === 0 ? (
+              ) : !isLoading && studentGroups.length === 0 ? (
                 <div className="py-6">
                   <ModuleEmptyGuide
                     icon={<Wallet className="size-8" />}
@@ -729,156 +883,178 @@ export function BillingView() {
                 </div>
               ))
             ) : (
-              groups.map((group) => {
-                // Caso 1: Multi-ciclo (Semanal ou Quinzenal) com 2+ parcelas no mes.
-                // Com uma parcela so, cai na linha simples (status e menu diretos).
-                if (group.isMultiCycle && group.charges.length > 1) {
-                  const isExpanded = Boolean(expandedKeys[group.key]);
-
-                  return (
-                    <div
-                      key={group.key}
-                      className="border-b border-border/60 transition-colors last:border-b-0"
-                    >
-                      {/* Linha Consolidada do Aluno (clique direito: abre ou fecha as parcelas) */}
-                      <ListItemContextMenu
-                        actions={[
-                          {
-                            key: "toggle",
-                            label: isExpanded ? "Ocultar parcelas" : "Ver parcelas",
-                            icon: <ChevronDown className="size-4" />,
-                            onSelect: () => toggleExpand(group.key),
-                          },
-                        ]}
-                      >
-                        <div
-                          onClick={() => toggleExpand(group.key)}
-                          className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap sm:px-5"
-                        >
-                          <div className="flex min-w-0 flex-1 basis-full items-center gap-3.5 sm:basis-0">
-                            <InitialsAvatar name={group.studentName} />
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Link
-                                  href={`/clients/${group.studentId}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
-                                >
-                                  {group.studentName}
-                                </Link>
-                                {/* Status do mes, no mesmo padrao das linhas simples */}
-                                {(() => {
-                                  const groupStatus = groupStatusOf(group);
-                                  return (
-                                    <span
-                                      className={cn(
-                                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none shrink-0",
-                                        STATUS_CLASS[groupStatus.status],
-                                      )}
-                                    >
-                                      {groupStatus.label}
-                                    </span>
-                                  );
-                                })()}
-                              </div>
-
-                              <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-                                {group.className ? (
-                                  <span>{group.className}</span>
-                                ) : null}
-                                {group.className && group.planName ? (
-                                  <span>·</span>
-                                ) : null}
-                                {group.planName ? (
-                                  <span>{group.planName}</span>
-                                ) : null}
-                                <span>·</span>
-                                <span>
-                                  {formatCents(group.unitPriceCents)}
-                                  {group.periodLabel
-                                    ? `/${group.periodLabel}`
-                                    : ""}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Totais do Aluno e Botão de Expandir */}
-                          <div className="ml-auto flex items-center gap-3">
-                            <div className="text-right">
-                              <span
-                                className={cn(
-                                  "text-sm font-semibold tabular-nums",
-                                  group.activeCount === 0
-                                    ? "text-muted-foreground/60 line-through"
-                                    : "text-foreground",
-                                )}
-                              >
-                                {formatCents(
-                                  group.activeCount === 0
-                                    ? group.canceledCents
-                                    : group.activeTotalCents,
-                                )}
-                              </span>
-                              <p className="text-[11px] text-muted-foreground">
-                                {plural(group.charges.length, "parcela", "parcelas")}
-                              </p>
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              className="gap-1 text-xs font-medium"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpand(group.key);
-                              }}
-                            >
-                              <span>
-                                {isExpanded ? "Ocultar" : "Ver parcelas"}
-                              </span>
-                              <ChevronDown
-                                className={cn(
-                                  "size-3.5 transition-transform duration-200",
-                                  isExpanded && "rotate-180",
-                                )}
-                              />
-                            </Button>
+              studentGroups.map((group) => {
+                // Caso 1: Aluno com 1 única cobrança na visão atual -> linha direta e limpa
+                if (group.charges.length === 1) {
+                  const c = group.charges[0]!;
+                  return withChargeContextMenu(
+                    c,
+                    <ListRow
+                      key={c.id}
+                      className="flex-wrap gap-y-2 sm:flex-nowrap [&>div:first-child]:basis-full sm:[&>div:first-child]:basis-0 [&>div:last-child]:ml-auto"
+                      actions={
+                        <div className="flex items-center gap-2.5">
+                          <ChargeAmount charge={c} className="text-sm font-semibold tabular-nums" />
+                          <div className="flex size-8 items-center justify-center">
+                            {renderChargeActions(c, false)}
                           </div>
                         </div>
-                      </ListItemContextMenu>
+                      }
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                        <InitialsAvatar name={c.studentName} />
 
-                      {/* Painel Expandido: Sub-parcelas das semanas/quinzenas */}
-                      {isExpanded ? (
-                        <div className="space-y-1.5 border-t border-border/50 bg-muted/20 px-4 py-2.5 sm:px-6">
-                          <p className="text-[11px] font-medium text-muted-foreground">
-                            {plural(group.charges.length, "cobrança", "cobranças")} no mês
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/clients/${c.studentId}`}
+                              className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
+                            >
+                              {c.studentName}
+                            </Link>
+                            {c.status === "waived" ? null : <ChargeStatusBadge charge={c} />}
+                            <PaidViaBadge charge={c} />
+                            <ScholarshipBadge charge={c} />
+                            <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
+                          </div>
+
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {cleanSingleSubtitle(c)}
                           </p>
+                        </div>
+                      </div>
+                    </ListRow>,
+                  );
+                }
 
-                          <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-card">
-                            {group.charges.map((c) => withChargeContextMenu(
+                // Caso 2: Aluno com 2+ cobranças na visão atual -> linha consolidada por aluno
+                const isExpanded = Boolean(expandedStudents[group.studentId]);
+                const badge = studentGroupBadge(group);
+                const displayTotal =
+                  group.activeTotalCents > 0 ? group.activeTotalCents : group.canceledCents;
+                const hasPartialOverdue =
+                  group.overdueCount > 0 && group.overdueCents < group.activeTotalCents;
+
+                return (
+                  <div
+                    key={group.studentId}
+                    className="border-b border-border/60 transition-colors last:border-b-0"
+                  >
+                    <ListItemContextMenu
+                      actions={[
+                        {
+                          key: "toggle",
+                          label: isExpanded ? "Ocultar cobranças" : "Ver cobranças",
+                          icon: <ChevronDown className="size-4" />,
+                          onSelect: () => toggleStudent(group.studentId),
+                        },
+                      ]}
+                    >
+                      <div
+                        onClick={() => toggleStudent(group.studentId)}
+                        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap sm:px-5"
+                      >
+                        <div className="flex min-w-0 flex-1 basis-full items-center gap-3.5 sm:basis-0">
+                          <InitialsAvatar name={group.studentName} />
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                href={`/clients/${group.studentId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
+                              >
+                                {group.studentName}
+                              </Link>
+                              <span
+                                className={cn(
+                                  "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none",
+                                  badge.className,
+                                )}
+                              >
+                                {badge.label}
+                              </span>
+                            </div>
+
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {cleanGroupSubtitle(group)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="ml-auto flex items-center gap-2.5">
+                          <div className="text-right">
+                            <span
+                              className={cn(
+                                "text-sm font-semibold tabular-nums",
+                                group.activeTotalCents === 0
+                                  ? "text-muted-foreground/60 line-through"
+                                  : "text-foreground",
+                              )}
+                            >
+                              {formatCents(displayTotal)}
+                            </span>
+                            <p className="text-[11px] text-muted-foreground">
+                              {hasPartialOverdue ? (
+                                <>
+                                  <span className="font-medium text-red-600 dark:text-red-400">
+                                    {formatCents(group.overdueCents)} vencido
+                                  </span>
+                                  {" · "}
+                                  {plural(group.charges.length, "cobrança", "cobranças")}
+                                </>
+                              ) : (
+                                plural(group.charges.length, "cobrança", "cobranças")
+                              )}
+                            </p>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-8 text-muted-foreground hover:text-foreground"
+                            aria-label={isExpanded ? "Ocultar cobranças" : "Ver cobranças"}
+                            title={isExpanded ? "Ocultar cobranças" : "Ver cobranças"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleStudent(group.studentId);
+                            }}
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "size-4 transition-transform duration-200",
+                                isExpanded && "rotate-180",
+                              )}
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                    </ListItemContextMenu>
+
+                    {isExpanded ? (
+                      <div className="border-t border-border/50 bg-muted/20 px-4 py-2.5 sm:px-6">
+                        <div className="divide-y divide-border/40 rounded-lg border border-border/50 bg-card">
+                          {group.charges.map((c) =>
+                            withChargeContextMenu(
                               c,
                               <div
                                 key={c.id}
                                 className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-3.5 py-2.5 sm:flex-nowrap sm:px-4"
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <span className="text-xs font-semibold text-foreground">
-                                    {getCycleTitle(c)}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    ·
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    vence {shortDate(c.dueDate)}
-                                    {c.status === "paid" && c.method
-                                      ? ` · ${paymentMethodLabel(c.method)}`
-                                      : ""}
-                                  </span>
-                                  <ChargeStatusBadge charge={c} size="sm" />
-                                  <PaidViaBadge charge={c} />
-                                  <ScholarshipBadge charge={c} />
-                                  <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-medium text-foreground">
+                                      {subItemTitle(c)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      · {c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `vence ${shortDate(c.dueDate)}`}
+                                      {c.status === "paid" && c.method ? ` · ${paymentMethodLabel(c.method)}` : ""}
+                                    </span>
+                                    {c.status === "waived" ? null : <ChargeStatusBadge charge={c} size="sm" />}
+                                    <PaidViaBadge charge={c} />
+                                    <ScholarshipBadge charge={c} />
+                                    <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
+                                  </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -886,63 +1062,17 @@ export function BillingView() {
                                     charge={c}
                                     className="text-xs font-semibold tabular-nums sm:text-sm"
                                   />
-
-                                  {renderChargeActions(c, true)}
+                                  <div className="flex size-7 items-center justify-center">
+                                    {renderChargeActions(c, true)}
+                                  </div>
                                 </div>
                               </div>,
-                            ))}
-                          </div>
+                            ),
+                          )}
                         </div>
-                      ) : null}
-                    </div>
-                  );
-                }
-
-                // Caso 2: Linha Simples (Mensalidade Única ou Aula Avulsa)
-                const c = group.charges[0];
-                if (!c) return null;
-
-                return withChargeContextMenu(
-                  c,
-                  <ListRow
-                    key={group.key}
-                    // No celular, valor e ações descem para baixo do texto.
-                    className="flex-wrap gap-y-2 sm:flex-nowrap [&>div:first-child]:basis-full sm:[&>div:first-child]:basis-0 [&>div:last-child]:ml-auto"
-                    actions={
-                      <div className="flex items-center gap-2">
-                        <ChargeAmount charge={c} className="text-sm font-medium tabular-nums" />
-
-                        {renderChargeActions(c, false)}
                       </div>
-                    }
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                      <InitialsAvatar name={c.studentName} />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={`/clients/${c.studentId}`}
-                            className="min-w-0 break-words text-sm font-medium text-foreground hover:text-primary hover:underline"
-                          >
-                            {c.studentName}
-                          </Link>
-                          {/* So a aula avulsa tem selo de tipo; mensalidade e o padrao da tela. */}
-                          {c.kind === "dropin" ? (
-                            <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                              Aula Avulsa
-                            </span>
-                          ) : null}
-                          {c.status === "waived" ? null : <ChargeStatusBadge charge={c} />}
-                          <PaidViaBadge charge={c} />
-                          <ScholarshipBadge charge={c} />
-                          <RecurringLimitBadge limitCents={overRecurringLimit(c)} />
-                        </div>
-
-                        <ChargeDetails charge={c} />
-                      </div>
-                    </div>
-                  </ListRow>,
+                    ) : null}
+                  </div>
                 );
               })
             )}
@@ -955,7 +1085,6 @@ export function BillingView() {
         open={newChargeOpen}
         onOpenChange={setNewChargeOpen}
         onCreated={(created) => {
-          // Vencimento em outro mes: abre o mes da primeira parcela, onde ela aparece.
           const first = created[0]?.competence;
           if (first && first !== competence) setCompetence(first);
         }}

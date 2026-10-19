@@ -41,7 +41,6 @@ import {
   EXTRA_CANCEL_REASON_SUGGESTIONS,
   PAID_ONLINE_HINT,
   PAID_RECURRING_HINT,
-  SYSTEM_CANCELED_HINT,
   getCycleTitle,
   isInstallmentKind,
   isPaidOnline,
@@ -241,18 +240,11 @@ export function useChargeActions() {
     // Isento (bolsa integral): nada a pagar, cobrar ou cancelar.
     if (c.status === "waived") return null;
 
-    // Substituida: outra cobranca ja cobre o periodo; nada a fazer nela.
-    if (isReplaced(c)) return null;
+    // Substituida ou encerrada pelo sistema: nao reabre; nada a fazer nela.
+    if (isReplaced(c) || (c.status === "canceled" && isSystemCanceled(c))) return null;
 
     if (c.status === "canceled") {
-      return isSystemCanceled(c) ? (
-        <span title={SYSTEM_CANCELED_HINT} className="inline-flex">
-          <Button variant="outline" disabled>
-            <RotateCcw className={iconCls} />
-            Reverter
-          </Button>
-        </span>
-      ) : (
+      return (
         <Button
           variant="outline"
           disabled={revertMut.isPending}

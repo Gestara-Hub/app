@@ -78,14 +78,27 @@ describe("aula avulsa e experimental", () => {
     expect(store.charges).toHaveLength(0);
   });
 
-  it("remover o avulso da aula cancela a cobrança como sistema (e ela não reabre)", async () => {
+  it("remover o avulso da aula encerra a cobrança como sistema (e readicionar na mesma aula reaproveita a cobrança)", async () => {
     const g = await createClass({ instructorId: (await createInstructor("Carlos")).id, slots: [MON] });
     const s = await createStudent("Avulso");
     const sid = sessionIdOf(g.id, "2026-09-28", "17:00");
     const r = await turmasService.reserveSession({ classGroupId: g.id, sessionId: sid, studentId: s.id, kind: "dropin" });
     await turmasService.cancelReservation({ sessionId: sid, studentId: s.id });
-    expect(store.charges.find((c) => c.id === r.chargeId)).toMatchObject({ status: "canceled", canceledBy: "system" });
+    expect(store.charges.find((c) => c.id === r.chargeId)).toMatchObject({
+      status: "canceled",
+      canceledBy: "system",
+      notes: "Saiu da aula",
+    });
     await expect(billingService.reopenCharge(r.chargeId!)).rejects.toMatchObject({ code: "VALIDATION" });
+
+    const r2 = await turmasService.reserveSession({ classGroupId: g.id, sessionId: sid, studentId: s.id, kind: "dropin" });
+    expect(r2.chargeId).toBe(r.chargeId);
+    expect(store.charges.filter((c) => c.studentId === s.id && c.kind === "dropin")).toHaveLength(1);
+    expect(store.charges.find((c) => c.id === r2.chargeId)).toMatchObject({
+      status: "pending",
+      canceledBy: undefined,
+      notes: undefined,
+    });
   });
 });
 
