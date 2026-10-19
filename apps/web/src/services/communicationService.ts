@@ -28,6 +28,66 @@ import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/mocks/seed
 import { persist, store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createMessageLogInDb,
+  getWhatsAppConnectionFromDb,
+  insertMessageTemplatesBatchInDb,
+  listMessageLogsFromDb,
+  listMessageTemplatesFromDb,
+  saveWhatsAppConnectionInDb,
+  updateMessageLogInDb,
+  updateMessageTemplateInDb,
+} from "./communicationBackend";
+
+export async function syncCommunicationFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const [connection, templates, logs] = await Promise.all([
+    getWhatsAppConnectionFromDb(organizationId),
+    listMessageTemplatesFromDb(organizationId),
+    listMessageLogsFromDb(organizationId),
+  ]);
+
+  if (connection) {
+    store.whatsAppConnection = connection;
+  } else {
+    const defaultConn = defaultWhatsAppConnection(organizationId);
+    store.whatsAppConnection = defaultConn;
+    try {
+      await saveWhatsAppConnectionInDb(defaultConn);
+    } catch (err) {
+      console.error("[communicationService] Erro ao salvar conexão padrão no banco:", err);
+    }
+  }
+
+  if (templates.length > 0) {
+    store.messageTemplates = templates;
+  } else {
+    const defaultTemplates = defaultMessageTemplates(organizationId, store.organization.classSegment);
+    store.messageTemplates = defaultTemplates;
+    try {
+      await insertMessageTemplatesBatchInDb(defaultTemplates);
+    } catch (err) {
+      console.error("[communicationService] Erro ao semear templates no banco:", err);
+    }
+  }
+
+  const logMap = new Map(logs.map((l) => [l.id, l]));
+  for (let i = 0; i < (store.messageLogs || []).length; i++) {
+    const existing = store.messageLogs[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = logMap.get(existing.id);
+      if (fromDb) {
+        store.messageLogs[i] = fromDb;
+        logMap.delete(existing.id);
+      }
+    }
+  }
+  if (!store.messageLogs) store.messageLogs = [];
+  for (const l of logMap.values()) {
+    store.messageLogs.push(l);
+  }
+}
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -147,28 +207,42 @@ function runBirthdayGreetings(): number {
         format(parseISO(log.sentAt), "yyyy-MM-dd") === today,
     );
     if (alreadySent) continue;
-    logs.unshift(
-      newLog(
-        {
-          recipientName: client.name,
-          recipientPhone: client.phone ?? "",
-          trigger: "birthday_greeting",
-          clientId: client.id,
-          content: fillMessage(template.content, { aluno: client.name, empresa: store.organization.name }),
-        },
-        "delivered",
-      ),
+    const log = newLog(
+      {
+        recipientName: client.name,
+        recipientPhone: client.phone ?? "",
+        trigger: "birthday_greeting",
+        clientId: client.id,
+        content: fillMessage(template.content, { aluno: client.name, empresa: store.organization.name }),
+      },
+      "delivered",
     );
+    logs.unshift(log);
     connection.monthlyQuota.used += 1;
     sent += 1;
+    if (isSupabaseOrganization(store.organization.id)) {
+      void createMessageLogInDb(log).catch((err) =>
+        console.error("[communicationService] Erro ao salvar parabéns no banco:", err),
+      );
+    }
   }
-  if (sent > 0) persist();
+  if (sent > 0) {
+    persist();
+    if (isSupabaseOrganization(store.organization.id)) {
+      void saveWhatsAppConnectionInDb(connection).catch((err) =>
+        console.error("[communicationService] Erro ao atualizar quota no banco:", err),
+      );
+    }
+  }
   return sent;
 }
 
 export const communicationService = {
   getConnection(): Promise<WhatsAppConnectionView> {
-    return simulateRead(() => connectionView());
+    return simulateRead(async () => {
+      await syncCommunicationFromDb(store.organization.id);
+      return connectionView();
+    });
   },
 
   /**
@@ -176,7 +250,7 @@ export const communicationService = {
    * da Meta e simulado e ja volta conectado com o telefone da unidade.
    */
   connectOfficial(): Promise<WhatsAppConnectionView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       const phone = whatsappNumber(store.unit.phone);
@@ -189,6 +263,11 @@ export const communicationService = {
       connection.phoneNumber = phone;
       connection.displayName = store.organization.name;
       connection.connectedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveWhatsAppConnectionInDb(connection);
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "communication_session", label: "WhatsApp oficial" },
@@ -199,13 +278,18 @@ export const communicationService = {
   },
 
   disconnectOfficial(): Promise<WhatsAppConnectionView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       connection.officialStatus = "not_connected";
       delete connection.phoneNumber;
       delete connection.displayName;
       delete connection.connectedAt;
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveWhatsAppConnectionInDb(connection);
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "communication_session", label: "WhatsApp oficial" },
@@ -216,7 +300,7 @@ export const communicationService = {
   },
 
   updateConnectionSettings(payload: UpdateConnectionSettingsPayload): Promise<WhatsAppConnectionView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       if (payload.allowedSendHours) {
@@ -226,12 +310,20 @@ export const communicationService = {
         }
         connection.allowedSendHours = { start, end };
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveWhatsAppConnectionInDb(connection);
+      }
+
       return connectionView();
     });
   },
 
   listTemplates(): Promise<MessageTemplate[]> {
-    return simulateRead(() => [...ensureTemplates()].sort((a, b) => a.daysOffset - b.daysOffset));
+    return simulateRead(async () => {
+      await syncCommunicationFromDb(store.organization.id);
+      return [...ensureTemplates()].sort((a, b) => a.daysOffset - b.daysOffset);
+    });
   },
 
   /**
@@ -239,7 +331,7 @@ export const communicationService = {
    * textos). Envio automatico, horario e prazo sao do Pro.
    */
   updateTemplate(payload: UpdateTemplatePayload): Promise<MessageTemplate> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const template = ensureTemplates().find((t) => t.id === payload.id);
       if (!template) {
         throw apiError("NOT_FOUND", "Modelo de mensagem não encontrado.", { httpStatus: 404 });
@@ -269,6 +361,11 @@ export const communicationService = {
       if (payload.sendHour !== undefined) template.sendHour = payload.sendHour;
       if (payload.daysOffset !== undefined) template.daysOffset = payload.daysOffset;
       template.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateMessageTemplateInDb(template.id, payload, store.organization.id);
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "message_template", label: template.title },
@@ -279,7 +376,8 @@ export const communicationService = {
   },
 
   listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncCommunicationFromDb(store.organization.id);
       runBirthdayGreetings();
       let logs = [...ensureLogs()];
       // Ficha do aluno: so as mensagens dele.
@@ -304,10 +402,15 @@ export const communicationService = {
    * "Aberto no WhatsApp" (o envio em si nao e confirmado). Nao gasta franquia.
    */
   registerAssistedMessage(payload: SendMessagePayload): Promise<MessageLog> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateMessage(payload);
       const log = newLog(payload, "opened");
       ensureLogs().unshift(log);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createMessageLogInDb(log);
+      }
+
       // Envio assistido: so da para saber que abriu o WhatsApp com o texto.
       auditLogService.record({
         action: "created",
@@ -320,7 +423,7 @@ export const communicationService = {
 
   /** Envio automatico pela API oficial (Pro e conectado). */
   sendMessage(payload: SendMessagePayload): Promise<MessageLog> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("messaging");
       if (connectionView().mode !== "official") {
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para enviar automaticamente.", {
@@ -332,6 +435,14 @@ export const communicationService = {
       const log = newLog(payload, "delivered");
       ensureLogs().unshift(log);
       connection.monthlyQuota.used += 1;
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await Promise.all([
+          createMessageLogInDb(log),
+          saveWhatsAppConnectionInDb(connection),
+        ]);
+      }
+
       auditLogService.record({
         action: "created",
         target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
@@ -342,7 +453,7 @@ export const communicationService = {
   },
 
   retryFailedMessage(id: Id): Promise<MessageLog> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("messaging");
       if (connectionView().mode !== "official") {
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para reenviar.", {
@@ -354,6 +465,11 @@ export const communicationService = {
       log.status = "delivered";
       delete log.errorReason;
       log.sentAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateMessageLogInDb(log);
+      }
+
       auditLogService.record({
         action: "updated",
         target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
@@ -364,7 +480,8 @@ export const communicationService = {
   },
 
   getMetrics(): Promise<CommunicationMetrics> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncCommunicationFromDb(store.organization.id);
       runBirthdayGreetings();
       const view = connectionView();
       const month = format(new Date(), "yyyy-MM");
