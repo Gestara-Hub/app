@@ -1,0 +1,128 @@
+"use server";
+
+import type { FileAttachment, Id } from "@gestarahub/contracts";
+import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export interface AttachmentRecord {
+  id: Id;
+  organizationId: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  storagePath: string;
+  uploadedAt: string;
+}
+
+export async function saveAttachmentInStorage(
+  file: {
+    name: string;
+    type: string;
+    size: number;
+    buffer: Buffer;
+  },
+  organizationId: string,
+): Promise<FileAttachment> {
+  const client = await getClientForTenant();
+  const id = crypto.randomUUID();
+  const safeFilename = encodeURIComponent(file.name.replace(/[^a-zA-Z0-9._-]/g, "_"));
+  const storagePath = `${organizationId}/${id}/${safeFilename}`;
+  const uploadedAt = new Date().toISOString();
+
+  // 1. Upload to Supabase Storage bucket 'attachments'
+  const { error: uploadError } = await client.storage
+    .from("attachments")
+    .upload(storagePath, file.buffer, {
+      contentType: file.type || "application/octet-stream",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("[attachmentsBackend] Erro ao fazer upload no Supabase Storage:", uploadError);
+    throw new Error(`Falha no upload do arquivo para o storage: ${uploadError.message}`);
+  }
+
+  // 2. Persist metadata in public.attachments
+  const { error: dbError } = await client.from("attachments").insert({
+    id,
+    organization_id: organizationId,
+    name: file.name,
+    content_type: file.type || "application/octet-stream",
+    size_bytes: file.size,
+    storage_path: storagePath,
+    uploaded_at: uploadedAt,
+  });
+
+  if (dbError) {
+    console.error("[attachmentsBackend] Erro ao salvar metadados do anexo:", dbError);
+    // Cleanup orphaned storage object
+    await client.storage.from("attachments").remove([storagePath]);
+    throw new Error("Falha ao registrar metadados do anexo no banco de dados.");
+  }
+
+  return {
+    id,
+    name: file.name,
+    contentType: file.type || "application/octet-stream",
+    sizeBytes: file.size,
+    uploadedAt,
+  };
+}
+
+export async function getAttachmentRecord(
+  id: Id,
+  organizationId?: string,
+): Promise<AttachmentRecord | null> {
+  const client = await getClientForTenant();
+  let query = client.from("attachments").select("*").eq("id", id);
+  if (organizationId) {
+    query = query.eq("organization_id", organizationId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    id: String(data.id),
+    organizationId: String(data.organization_id),
+    name: String(data.name),
+    contentType: String(data.content_type),
+    sizeBytes: Number(data.size_bytes),
+    storagePath: String(data.storage_path),
+    uploadedAt: new Date(String(data.uploaded_at)).toISOString(),
+  };
+}
+
+export async function downloadAttachmentFromStorage(
+  storagePath: string,
+): Promise<{ blob: Blob; contentType?: string } | null> {
+  const client = createSupabaseAdminClient();
+  const { data, error } = await client.storage.from("attachments").download(storagePath);
+  if (error || !data) {
+    console.error("[attachmentsBackend] Erro ao baixar arquivo do storage:", error);
+    return null;
+  }
+  return { blob: data, contentType: data.type };
+}
+
+export async function getAttachmentSignedUrl(
+  id: Id,
+  organizationId?: string,
+): Promise<string | null> {
+  const record = await getAttachmentRecord(id, organizationId);
+  if (!record) return null;
+
+  const client = await getClientForTenant();
+  const { data, error } = await client.storage
+    .from("attachments")
+    .createSignedUrl(record.storagePath, 300); // 5 minutes
+
+  if (error || !data?.signedUrl) {
+    console.error("[attachmentsBackend] Erro ao gerar URL assinada:", error);
+    return null;
+  }
+
+  return data.signedUrl;
+}

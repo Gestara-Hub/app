@@ -1,12 +1,15 @@
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
+import { isSupabaseOrganization } from "@/lib/session";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
 import { newId, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
+import { store } from "@/mocks/store";
 
 /**
- * Envio e leitura de anexos (comprovantes, notas, boletos). O envio devolve os
- * metadados que o registro guarda (`FileAttachment`); o conteudo fica no
- * armazenamento de arquivos. Imita o futuro `POST /attachments`.
+ * Envio e leitura de anexos (comprovantes, notas, boletos, logos).
+ * No tenant Supabase: envia via HTTP multipart para /api/attachments (Supabase Storage bucket 'attachments')
+ * e serve via endpoint autenticado /api/attachments/[id].
+ * No tenant mock: guarda no IndexedDB do navegador (mocks/file-blobs.ts).
  */
 export const attachmentsService = {
   async upload(
@@ -18,6 +21,35 @@ export const attachmentsService = {
     if (invalid) {
       throw validationError([{ field, message: `“${invalid.name}”: ${fileIssue(invalid, rules)}` }]);
     }
+
+    if (typeof window !== "undefined" && isSupabaseOrganization(store.organization.id)) {
+      try {
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append("files", file);
+        }
+
+        const res = await fetch("/api/attachments", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "Falha no upload para o storage.");
+        }
+
+        const data = (await res.json()) as { attachments: FileAttachment[] };
+        // Cache local no IndexedDB por conveniência
+        await Promise.all(
+          data.attachments.map((a, i) => putFileBlob(a.id, files[i]).catch(() => {})),
+        );
+        return data.attachments;
+      } catch (err) {
+        console.error("[attachmentsService] Erro no upload via storage, caindo no fallback local:", err);
+      }
+    }
+
     const uploadedAt = nowIso();
     const attachments = files.map<FileAttachment>((file) => ({
       id: newId(),
@@ -31,10 +63,14 @@ export const attachmentsService = {
   },
 
   /**
-   * Endereco temporario para abrir o arquivo (object URL; quem abre revoga).
-   * `null` quando o conteudo nao esta disponivel neste navegador.
+   * Endereço para abrir ou exibir o arquivo.
+   * No Supabase, retorna o endpoint autenticado /api/attachments/[id].
+   * No mock, retorna o object URL temporário do IndexedDB.
    */
   async openUrl(id: Id): Promise<string | null> {
+    if (isSupabaseOrganization(store.organization.id)) {
+      return `/api/attachments/${id}`;
+    }
     const blob = await getFileBlob(id);
     return blob ? URL.createObjectURL(blob) : null;
   },
