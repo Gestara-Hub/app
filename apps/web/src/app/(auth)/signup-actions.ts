@@ -18,6 +18,7 @@ import type {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendSignupLinkEmail } from "@/lib/email/mailersend";
+import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/security/rate-limit";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
@@ -86,6 +87,31 @@ export async function requestSignupLink(input: {
 
   if (!trimmedName || !normalizedEmail) {
     return { status: "error", message: "Informe seu nome e um e-mail válido." };
+  }
+
+  const clientIp = await getClientIp();
+  const allowedIp = await checkRateLimit({
+    key: `signup_ip:${clientIp}`,
+    maxRequests: 5,
+    windowSeconds: 600, // 10 minutes
+  });
+  if (!allowedIp) {
+    return {
+      status: "error",
+      message: "Muitas tentativas a partir desta conexão. Por favor, aguarde alguns minutos.",
+    };
+  }
+
+  const allowedEmail = await checkRateLimit({
+    key: `signup_email:${normalizedEmail}`,
+    maxRequests: 3,
+    windowSeconds: 900, // 15 minutes
+  });
+  if (!allowedEmail) {
+    return {
+      status: "error",
+      message: "Muitas solicitações para este e-mail. Por favor, aguarde alguns minutos antes de tentar novamente.",
+    };
   }
 
   try {
@@ -355,6 +381,20 @@ export async function completeSignupWithPassword(input: {
     };
   }
 
+  const clientIp = await getClientIp();
+  const allowed = await checkRateLimit({
+    key: `complete_signup:${clientIp}`,
+    maxRequests: 5,
+    windowSeconds: 300, // 5 minutes
+  });
+  if (!allowed) {
+    return {
+      ok: false,
+      code: "error",
+      message: "Muitas tentativas a partir desta conexão. Por favor, aguarde alguns minutos.",
+    };
+  }
+
   try {
     const admin = createSupabaseAdminClient();
     const normalizedEmail = validation.email.trim().toLowerCase();
@@ -464,6 +504,7 @@ export async function completeSignupWithPassword(input: {
 
     const { error: userInsertErr } = await admin.from("users").upsert({
       id: authUserId,
+      auth_user_id: authUserId,
       organization_id: orgId,
       name: userName,
       email: normalizedEmail,
@@ -545,6 +586,20 @@ export async function signInWithPasswordAction(input: {
   const normalizedEmail = input.email.trim().toLowerCase();
   if (!normalizedEmail || !input.password) {
     return { ok: false, message: "Informe seu e-mail e sua senha." };
+  }
+
+  const clientIp = await getClientIp();
+  const rateLimitKey = `login:${clientIp}:${normalizedEmail}`;
+  const allowed = await checkRateLimit({
+    key: rateLimitKey,
+    maxRequests: 5,
+    windowSeconds: 60, // 1 minute
+  });
+  if (!allowed) {
+    return {
+      ok: false,
+      message: "Muitas tentativas de login incorretas. Aguarde 1 minuto antes de tentar novamente.",
+    };
   }
 
   try {
@@ -667,6 +722,8 @@ export async function signInWithPasswordAction(input: {
       : safeFrom && canAccessRoute(userView, safeFrom, organization.model)
         ? safeFrom
         : firstAllowedRoute(userView, organization.model);
+
+    await resetRateLimit(rateLimitKey);
 
     return {
       ok: true,

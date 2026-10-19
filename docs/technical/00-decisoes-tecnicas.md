@@ -16,6 +16,7 @@ Decisoes registradas em documentos proprios (ADRs). Onde contradizem este docume
 - [`04-estrategia-de-testes.md`](04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
 - [`08-backend-supabase.md`](08-backend-supabase.md) — backend no Supabase (banco, login, Edge Functions com Hono, Cron, Storage), menor custo por fase; frontend segue na Vercel por enquanto.
 - [`10-monolito-frontend-pwa.md`](10-monolito-frontend-pwa.md) — monólito frontend no Next.js com PWA (gestor, professor e aluno unificados; substitui React Native).
+- [`11-identidade-global-e-multi-membership.md`](11-identidade-global-e-multi-membership.md) — um único e-mail com múltiplos vínculos/organizações (Workspace Selector na visão PWA).
 - [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md) — regras de produto das mensalidades.
 - [`../frontend/06-decisoes-de-interface.md`](../frontend/06-decisoes-de-interface.md) — confirmacoes, tema com sidebar escura, agenda feita a mao, mobile.
 

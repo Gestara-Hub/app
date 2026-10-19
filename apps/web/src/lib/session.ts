@@ -74,3 +74,9 @@ export function safeRedirectPath(from: unknown): string | undefined {
     return undefined;
   }
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isSupabaseOrganization(organizationId: string | undefined): boolean {
+  return Boolean(organizationId && UUID_RE.test(organizationId));
+}

@@ -166,7 +166,7 @@ SET search_path = public
 AS $$
   SELECT organization_id
   FROM public.users
-  WHERE auth_user_id = auth.uid()
+  WHERE (auth_user_id = auth.uid() OR id = auth.uid()::text)
     AND status = 'active'
   LIMIT 1;
 $$;
@@ -181,7 +181,7 @@ SET search_path = public
 AS $$
   SELECT profile
   FROM public.users
-  WHERE auth_user_id = auth.uid()
+  WHERE (auth_user_id = auth.uid() OR id = auth.uid()::text)
     AND status = 'active'
   LIMIT 1;
 $$;

@@ -67,7 +67,7 @@ export function validationError(fields: ApiErrorField[]): ApiError {
 // --- Simulacao de latencia e erro de leitura -------------------------------
 
 /** Leitura simulada: latencia + chance de erro de rede (readErrorRate). */
-export async function simulateRead<T>(produce: () => T): Promise<T> {
+export async function simulateRead<T>(produce: () => T | Promise<T>): Promise<T> {
   await sleep(mockConfig.latencyMs);
   syncFromStorage();
   if (
@@ -76,18 +76,18 @@ export async function simulateRead<T>(produce: () => T): Promise<T> {
   ) {
     throw networkError();
   }
-  return produce();
+  return await produce();
 }
 
 /**
  * Escrita simulada: latencia (erros de negocio/validacao vem das regras) e,
  * apos a mutacao, persiste o store (no-op no server/Node).
  */
-export async function simulateWrite<T>(produce: () => T): Promise<T> {
+export async function simulateWrite<T>(produce: () => T | Promise<T>): Promise<T> {
   await sleep(mockConfig.latencyMs);
   // Grava por cima do que esta salvo agora (outra aba pode ter gravado).
   syncFromStorage();
-  const result = produce();
+  const result = await produce();
   persist();
   return result;
 }

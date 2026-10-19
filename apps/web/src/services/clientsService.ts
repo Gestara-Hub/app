@@ -47,9 +47,22 @@ import {
   scholarshipChargeFields,
   studentMembershipTerms,
 } from "./billingService";
+import { isSupabaseOrganization } from "@/lib/session";
 import { clientNoun } from "./nouns";
-import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import {
+  cancelOnlinePaymentsForCharge,
+} from "./onlinePaymentsService";
 import { assertCanManageProgression } from "./teacherScope";
+import {
+  createClientInDb,
+  getClientFromDb,
+  inactivateClientInDb,
+  listClientsFromDb,
+  promoteStudentInDb,
+  saveModalityProgressionInDb,
+  updateClientInDb,
+  updateStudentProgressionInDb,
+} from "./clientsBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -199,23 +212,40 @@ function progressionOf(client: Client, modalityId: Id, date: DateISO): StudentMo
 }
 
 /** Grava o progresso da modalidade no aluno (substitui o registro do indice). */
-function writeProgression(idx: number, progression: StudentModalityProgression): Client {
+async function writeProgression(idx: number, progression: StudentModalityProgression): Promise<Client> {
   const current = store.clients[idx];
   const ts = nowIso();
+  const nextProgression = { ...progression, updatedAt: ts };
   const updated: Client = {
     ...current,
     progressions: {
       ...(current.progressions ?? {}),
-      [progression.modalityId]: { ...progression, updatedAt: ts },
+      [progression.modalityId]: nextProgression,
     },
     updatedAt: ts,
   };
   store.clients[idx] = updated;
+
+  if (isSupabaseOrganization(store.organization.id)) {
+    try {
+      await updateStudentProgressionInDb(store.organization.id, current.id, nextProgression);
+    } catch (err) {
+      console.error("[clientsService] Erro ao sincronizar progressão no Supabase:", err);
+    }
+  }
+
   return updated;
 }
 
-function clientIndex(id: Id): number {
-  const idx = store.clients.findIndex((c) => c.id === id);
+async function ensureClientInStore(id: Id): Promise<number> {
+  let idx = store.clients.findIndex((c) => c.id === id);
+  if (idx === -1 && isSupabaseOrganization(store.organization.id)) {
+    const dbClient = await getClientFromDb(store.organization.id, id);
+    if (dbClient) {
+      store.clients.push(dbClient);
+      idx = store.clients.length - 1;
+    }
+  }
   if (idx === -1) throw notFoundError(NOT_FOUND);
   return idx;
 }
@@ -378,7 +408,17 @@ function endStudentEnrollments(studentId: Id): number {
 
 export const clientsService = {
   list(filter?: ClientFilter): Promise<Client[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbClients = await listClientsFromDb(store.organization.id, filter);
+        const dbIds = new Set(dbClients.map((c) => c.id));
+        store.clients = [
+          ...store.clients.filter((c) => c.organizationId === store.organization.id ? !dbIds.has(c.id) : true),
+          ...dbClients,
+        ];
+        return clone(dbClients);
+      }
+
       let result = store.clients;
       if (filter?.search) {
         const term = filter.search;
@@ -396,7 +436,19 @@ export const clientsService = {
   },
 
   getById(id: Id): Promise<Client> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbClient = await getClientFromDb(store.organization.id, id);
+        if (!dbClient) throw notFoundError(NOT_FOUND);
+        const idx = store.clients.findIndex((c) => c.id === id);
+        if (idx !== -1) {
+          store.clients[idx] = dbClient;
+        } else {
+          store.clients.push(dbClient);
+        }
+        return clone(dbClient);
+      }
+
       const found = store.clients.find((c) => c.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(found);
@@ -404,8 +456,26 @@ export const clientsService = {
   },
 
   create(payload: CreateClient): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateClient(payload, { partial: false });
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const client = await createClientInDb(store.organization.id, payload);
+        store.clients.push(client);
+
+        if (client.planId && payload.initialCharge && (payload.initialCharge.amountCents > 0 || client.discount?.scholarship)) {
+          store.charges.push(initialMembershipCharge(client, payload.initialCharge));
+        }
+        ensurePlanlessScholarCharges(client);
+
+        auditLogService.record({
+          action: "created",
+          target: { type: "client", id: client.id, label: client.name },
+          predicate: `criou o ${clientNoun()} ${client.name}`,
+        });
+        return clone(client);
+      }
+
       const ts = nowIso();
       const client: Client = {
         id: newId(),
@@ -447,10 +517,35 @@ export const clientsService = {
   },
 
   update(id: Id, payload: UpdateClient): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      let current = store.clients.find((c) => c.id === id);
+      if (isSupabaseOrganization(store.organization.id)) {
+        if (!current) {
+          const fetched = await getClientFromDb(store.organization.id, id);
+          if (fetched) {
+            store.clients.push(fetched);
+            current = fetched;
+          }
+        }
+        if (!current) throw notFoundError(NOT_FOUND);
+        validateClient(payload, { partial: true, current });
+
+        const updated = await updateClientInDb(store.organization.id, id, payload);
+        const idx = store.clients.findIndex((c) => c.id === id);
+        if (idx !== -1) store.clients[idx] = updated;
+        else store.clients.push(updated);
+
+        auditLogService.record({
+          action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
+          target: { type: "client", id: updated.id, label: updated.name },
+          predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} o ${clientNoun()} ${updated.name}`,
+        });
+        return clone(updated);
+      }
+
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      const current = store.clients[idx];
+      current = store.clients[idx];
       validateClient(payload, { partial: true, current });
       const ts = nowIso();
       const updated: Client = {
@@ -570,10 +665,38 @@ export const clientsService = {
    * como nao cobradas e podem ser reabertas.
    */
   remove(id: Id, opts: { cancelOpenCharges?: boolean } = {}): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      let before = store.clients.find((c) => c.id === id);
+      if (isSupabaseOrganization(store.organization.id)) {
+        if (!before) {
+          const fetched = await getClientFromDb(store.organization.id, id);
+          if (fetched) {
+            store.clients.push(fetched);
+            before = fetched;
+          }
+        }
+        if (!before) throw notFoundError(NOT_FOUND);
+
+        await inactivateClientInDb(store.organization.id, id);
+
+        const idx = store.clients.findIndex((c) => c.id === id);
+        if (idx !== -1) {
+          store.clients[idx] = { ...store.clients[idx], status: "inactive", updatedAt: nowIso() };
+        }
+        const ended = endStudentEnrollments(id);
+        const canceled = cancelOpenMembershipCharges(id, todayISO(), "Cancelada na inativação do aluno");
+
+        auditLogService.record({
+          action: "inactivated",
+          target: { type: "client", id, label: before.name },
+          predicate: `inativou o ${clientNoun()} ${before.name}${ended > 0 ? `, encerrou ${plural(ended, "matrícula", "matrículas")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}`,
+        });
+        return;
+      }
+
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      const before = store.clients[idx];
+      before = store.clients[idx];
       const name = before.name;
       // "Depois do uso": o periodo em uso (ou ja usado e ainda nao gerado) vira
       // cobranca agora, senao se perderia com a geracao pulando inativos.
@@ -614,8 +737,15 @@ export const clientsService = {
   },
 
   getProgressionOverview(studentId: Id): Promise<StudentProgressionOverview> {
-    return simulateRead(() => {
-      const client = store.clients.find((c) => c.id === studentId);
+    return simulateRead(async () => {
+      let client = store.clients.find((c) => c.id === studentId);
+      if (isSupabaseOrganization(store.organization.id) && !client) {
+        const dbClient = await getClientFromDb(store.organization.id, studentId);
+        if (dbClient) {
+          store.clients.push(dbClient);
+          client = dbClient;
+        }
+      }
       if (!client) throw notFoundError(NOT_FOUND);
 
       const activeEnrollments = store.enrollments.filter(
@@ -714,8 +844,23 @@ export const clientsService = {
     studentId: Id,
     progression: Omit<StudentModalityProgression, "updatedAt">,
   ): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId: progression.modalityId });
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const updated = await saveModalityProgressionInDb(store.organization.id, studentId, progression);
+        const idx = store.clients.findIndex((c) => c.id === studentId);
+        if (idx !== -1) store.clients[idx] = updated;
+        else store.clients.push(updated);
+
+        auditLogService.record({
+          action: "updated",
+          target: { type: "client", id: updated.id, label: updated.name },
+          predicate: `atualizou o progresso de ${updated.name} (${progression.levelName})`,
+        });
+        return clone(updated);
+      }
+
       const idx = store.clients.findIndex((c) => c.id === studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];
@@ -758,11 +903,26 @@ export const clientsService = {
     notes?: string;
     examiner?: string;
   }): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
       if (payload.date > todayISO()) {
         throw validationError([{ field: "date", message: "A data não pode ser futura." }]);
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const updated = await promoteStudentInDb(store.organization.id, payload);
+        const idx = store.clients.findIndex((c) => c.id === payload.studentId);
+        if (idx !== -1) store.clients[idx] = updated;
+        else store.clients.push(updated);
+
+        auditLogService.record({
+          action: "updated",
+          target: { type: "client", id: updated.id, label: updated.name },
+          predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
+        });
+        return clone(updated);
+      }
+
       const idx = store.clients.findIndex((c) => c.id === payload.studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];
@@ -826,7 +986,7 @@ export const clientsService = {
 
   /** Registro de aula de um aluno: anotacao, avanco de metas e lembrete. */
   addClassRecord(payload: CreateStudentClassRecord): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertRecordDate(payload.date);
       assertCanManageProgression(payload.studentId, {
         modalityId: payload.modalityId,
@@ -839,7 +999,7 @@ export const clientsService = {
       if (!note && !nextClassNote && !hasGoals) {
         throw validationError([{ field: "note", message: "Escreva uma anotação ou avance uma meta." }]);
       }
-      const idx = clientIndex(payload.studentId);
+      const idx = await ensureClientInStore(payload.studentId);
       const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
       const goalProgress = applyGoalProgress(progression, payload.goalProgress, payload.date);
       const record = newClassRecord({
@@ -853,7 +1013,7 @@ export const clientsService = {
         ...(goalProgress.length ? { goalProgress } : {}),
       });
       progression.evaluations = [record, ...progression.evaluations];
-      const updated = writeProgression(idx, progression);
+      const updated = await writeProgression(idx, progression);
       auditLogService.record({
         action: "updated",
         target: { type: "client", id: updated.id, label: updated.name },
@@ -869,7 +1029,7 @@ export const clientsService = {
    * Devolve quantos registros criou.
    */
   addClassRecords(payload: CreateClassRecordsBatch): Promise<number> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertRecordDate(payload.date);
       for (const entry of payload.entries) {
         assertCanManageProgression(entry.studentId, {
@@ -883,7 +1043,14 @@ export const clientsService = {
       let removed = 0;
       for (const entry of payload.entries) {
         const note = entry.note?.trim() ?? "";
-        const idx = store.clients.findIndex((c) => c.id === entry.studentId);
+        let idx = store.clients.findIndex((c) => c.id === entry.studentId);
+        if (idx === -1 && isSupabaseOrganization(store.organization.id)) {
+          const dbClient = await getClientFromDb(store.organization.id, entry.studentId);
+          if (dbClient) {
+            store.clients.push(dbClient);
+            idx = store.clients.length - 1;
+          }
+        }
         if (idx === -1) continue;
         // Um registro por aluno e aula: registrar de novo troca o anterior.
         const current = store.clients[idx].progressions?.[payload.modalityId];
@@ -892,7 +1059,7 @@ export const clientsService = {
           if (hadRecord && current) {
             const progression = progressionOf(store.clients[idx], payload.modalityId, payload.date);
             progression.evaluations = progression.evaluations.filter((e) => e.sessionId !== payload.sessionId);
-            writeProgression(idx, progression);
+            await writeProgression(idx, progression);
             removed += 1;
           }
           continue;
@@ -910,7 +1077,7 @@ export const clientsService = {
           }),
           ...progression.evaluations.filter((e) => e.sessionId !== payload.sessionId),
         ];
-        writeProgression(idx, progression);
+        await writeProgression(idx, progression);
         created += 1;
       }
       if (created === 0 && removed === 0) {
@@ -927,17 +1094,18 @@ export const clientsService = {
 
   /** Pontos fortes do aluno na modalidade. */
   updateStrengths(studentId: Id, modalityId: Id, strengths: string[]): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId });
-      const idx = clientIndex(studentId);
+      const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       progression.strengths = [...new Set(strengths.map((t) => t.trim()).filter(Boolean))];
-      return clone(writeProgression(idx, progression));
+      const updated = await writeProgression(idx, progression);
+      return clone(updated);
     });
   },
 
   addGoal(studentId: Id, modalityId: Id, input: { title: string; target?: number }): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId });
       const title = input.title.trim();
       const fields: ApiErrorField[] = [];
@@ -947,7 +1115,7 @@ export const clientsService = {
         fields.push({ field: "target", message: "Informe uma quantidade maior que zero." });
       }
       if (fields.length > 0) throw validationError(fields);
-      const idx = clientIndex(studentId);
+      const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       progression.goals = [
         ...progression.goals,
@@ -959,15 +1127,16 @@ export const clientsService = {
           createdAt: nowIso(),
         },
       ];
-      return clone(writeProgression(idx, progression));
+      const updated = await writeProgression(idx, progression);
+      return clone(updated);
     });
   },
 
   /** Marca a meta como feita ou reabre. */
   setGoalCompleted(studentId: Id, modalityId: Id, goalId: Id, completed: boolean): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId });
-      const idx = clientIndex(studentId);
+      const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       const goal = findGoal(progression, goalId);
       if (completed) {
@@ -977,18 +1146,20 @@ export const clientsService = {
         delete goal.completedAt;
         if (goal.target && goal.progress >= goal.target) goal.progress = goal.target - 1;
       }
-      return clone(writeProgression(idx, progression));
+      const updated = await writeProgression(idx, progression);
+      return clone(updated);
     });
   },
 
   removeGoal(studentId: Id, modalityId: Id, goalId: Id): Promise<Client> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId });
-      const idx = clientIndex(studentId);
+      const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       findGoal(progression, goalId);
       progression.goals = progression.goals.filter((g) => g.id !== goalId);
-      return clone(writeProgression(idx, progression));
+      const updated = await writeProgression(idx, progression);
+      return clone(updated);
     });
   },
 };

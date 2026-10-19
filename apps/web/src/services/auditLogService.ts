@@ -9,6 +9,8 @@ import type {
 import { getCurrentActor } from "@/mocks/currentActor";
 import { newId, nowIso, simulateRead, textIncludes } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
+import { isSupabaseOrganization } from "@/lib/session";
+import { listAuditLogsFromDb, recordAuditLogInDb } from "./auditLogBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -69,6 +71,12 @@ export const auditLogService = {
         security: input.security ?? false,
       };
       store.auditLog.push(entry);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        recordAuditLogInDb(entry).catch((err) => {
+          console.error("[auditLogService] Erro ao persistir log:", err);
+        });
+      }
     } catch {
       // Auditoria nunca propaga erro para a operacao de negocio.
     }
@@ -76,7 +84,13 @@ export const auditLogService = {
 
   /** Lista o log visivel para o `viewer`, mais recente primeiro. */
   list(filter: AuditLogFilter | undefined, viewer: UserProfile): Promise<AuditLogEntry[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbLogs = await listAuditLogsFromDb(store.organization.id, filter);
+        const filtered = dbLogs.filter((e) => canView(e, viewer));
+        return clone(filtered);
+      }
+
       let result = store.auditLog.filter((e) => canView(e, viewer));
       if (filter?.entityType) {
         result = result.filter((e) => e.target.type === filter.entityType);
