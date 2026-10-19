@@ -10,6 +10,7 @@ import type {
   CreateStudentClassRecord,
   DateISO,
   Id,
+  PaginatedResult,
   ProgressionBeltColor,
   ProgressionTermSuggestions,
   StudentEvaluationEntry,
@@ -20,6 +21,7 @@ import type {
   StudentProgressionOverview,
   UpdateClient,
 } from "@gestarahub/contracts";
+import { paginateArray } from "@gestarahub/contracts";
 import { chargesDueIn, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { format, parseISO } from "date-fns";
@@ -58,6 +60,7 @@ import {
   getClientFromDb,
   inactivateClientInDb,
   listClientsFromDb,
+  listClientsPaginatedFromDb,
   promoteStudentInDb,
   saveModalityProgressionInDb,
   updateClientInDb,
@@ -433,6 +436,40 @@ export const clientsService = {
       return clone(
         [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
       );
+    });
+  },
+
+  listPaginated(filter?: ClientFilter): Promise<PaginatedResult<Client>> {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const paginated = await listClientsPaginatedFromDb(store.organization.id, filter);
+        const dbIds = new Set(paginated.items.map((c) => c.id));
+        store.clients = [
+          ...store.clients.filter((c) => c.organizationId === store.organization.id ? !dbIds.has(c.id) : true),
+          ...paginated.items,
+        ];
+        return clone(paginated);
+      }
+
+      let result = store.clients;
+      if (filter?.search) {
+        const term = filter.search;
+        result = result.filter(
+          (c) => textIncludes(c.name, term) || phoneIncludes(c.phone, term),
+        );
+      }
+      if (filter?.status) {
+        result = result.filter((c) => c.status === filter.status);
+      }
+      if (filter?.planId) {
+        result = result.filter((c) => c.planId === filter.planId);
+      }
+      if (filter?.membershipStatus) {
+        result = result.filter((c) => c.membershipStatus === filter.membershipStatus);
+      }
+
+      const sorted = [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+      return clone(paginateArray(sorted, filter?.page, filter?.pageSize));
     });
   },
 

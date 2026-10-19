@@ -28,6 +28,14 @@ export function useClients(filter?: ClientFilter, enabled = true) {
   });
 }
 
+export function usePaginatedClients(filter?: ClientFilter, enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.clients.list(filter), "paginated", filter?.page ?? 1, filter?.pageSize ?? 20],
+    queryFn: () => clientsService.listPaginated(filter),
+    enabled,
+  });
+}
+
 export function useClient(id: Id) {
   return useQuery({
     queryKey: queryKeys.clients.detail(id),

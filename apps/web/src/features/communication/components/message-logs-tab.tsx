@@ -13,6 +13,7 @@ import {
   ListEmptyState,
   ListRow,
   ListSummaryBar,
+  PaginationBar,
   SearchInput,
 } from "@/components/shared/list";
 import {
@@ -89,11 +90,18 @@ export function MessageLogsTab() {
     if (kind === "notices") return log.category === "administrative" && log.trigger !== "manual_broadcast";
     return true;
   });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
   const hasSearch = search.trim().length > 0;
   const hasFilters = status !== "all" || kind !== "all";
   const clearFilters = () => {
     setStatus("all");
     setKind("all");
+    setPage(1);
   };
 
   function retry(log: MessageLog) {
@@ -117,12 +125,21 @@ export function MessageLogsTab() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={(val) => {
+            setSearch(val);
+            setPage(1);
+          }}
           placeholder="Buscar por aluno, telefone ou texto..."
           className="sm:max-w-sm"
         />
         <div className="flex gap-2">
-          <Select value={status} onValueChange={(v) => setStatus(v as "all" | MessageLogStatus)}>
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as "all" | MessageLogStatus);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-auto sm:min-w-48" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
@@ -134,7 +151,13 @@ export function MessageLogsTab() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={kind} onValueChange={(v) => setKind(v as KindFilter)}>
+          <Select
+            value={kind}
+            onValueChange={(v) => {
+              setKind(v as KindFilter);
+              setPage(1);
+            }}
+          >
             <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Tipo">
               <SelectValue />
             </SelectTrigger>
@@ -164,7 +187,10 @@ export function MessageLogsTab() {
             <ListEmptyState
               hasSearch={hasSearch}
               hasFilters={hasFilters}
-              onClearSearch={() => setSearch("")}
+              onClearSearch={() => {
+                setSearch("");
+                setPage(1);
+              }}
               onClearFilters={clearFilters}
               emptyGuide={
                 <ModuleEmptyGuide
@@ -177,7 +203,7 @@ export function MessageLogsTab() {
           ) : undefined
         }
       >
-        {rows.map((log) => {
+        {paginatedRows.map((log) => {
           const actions = actionsFor(log);
           return (
             <ListItemContextMenu key={log.id} actions={actions}>
@@ -211,6 +237,21 @@ export function MessageLogsTab() {
           );
         })}
       </ListContainer>
+
+      {!isPending && rows.length > 0 && (
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={rows.length}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          itemLabel="mensagens"
+        />
+      )}
 
       <MessageDetailDialog message={selected} onOpenChange={(open) => (!open ? setSelected(null) : undefined)} />
     </div>

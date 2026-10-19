@@ -4,8 +4,10 @@ import type {
   Id,
   MessageCategory,
   MessageLog,
+  MessageLogFilter,
   MessageTemplate,
   MessageTrigger,
+  PaginatedResult,
   UpdateTemplatePayload,
   WhatsAppConnection,
 } from "@gestarahub/contracts";
@@ -290,6 +292,58 @@ export async function listMessageLogsFromDb(
   }
 
   return (data || []).map(mapRowToLog);
+}
+
+export async function listMessageLogsPaginatedFromDb(
+  organizationId: string,
+  filter?: MessageLogFilter,
+): Promise<PaginatedResult<MessageLog>> {
+  const page = Math.max(1, filter?.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, filter?.pageSize ?? 20));
+  const offset = (page - 1) * pageSize;
+
+  const client = await getClientForTenant();
+  let query = client
+    .from("message_logs")
+    .select("*", { count: "exact" })
+    .eq("organization_id", organizationId)
+    .order("sent_at", { ascending: false });
+
+  if (filter?.clientId) {
+    query = query.eq("client_id", filter.clientId);
+  }
+  if (filter?.trigger && filter.trigger !== "all") {
+    query = query.eq("trigger", filter.trigger);
+  }
+  if (filter?.status && filter.status !== "all") {
+    query = query.eq("status", filter.status);
+  }
+  if (filter?.search?.trim()) {
+    const term = `%${filter.search.trim()}%`;
+    query = query.or(`recipient_name.ilike.${term},recipient_phone.ilike.${term},content.ilike.${term}`);
+  }
+
+  query = query.range(offset, offset + pageSize - 1);
+
+  const { data, error, count } = await query;
+  if (error) {
+    console.error("[communicationBackend] Erro ao listar logs de mensagem:", error);
+    throw new Error("Erro ao consultar histórico de mensagens no banco de dados.");
+  }
+
+  const items = (data || []).map(mapRowToLog);
+  const total = count ?? items.length;
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    hasMore: page < totalPages,
+  };
 }
 
 export async function createMessageLogInDb(

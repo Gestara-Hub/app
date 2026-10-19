@@ -1,6 +1,7 @@
 import type { FileAttachment } from "./attachment";
 import type { PaymentMethod } from "./billing";
 import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
+import type { PaginationParams } from "./pagination";
 
 /**
  * Financeiro do negocio (plano pago). Nao duplica as cobrancas dos alunos
@@ -111,7 +112,7 @@ export type UpdateFinancialEntry = Partial<
 /** Escopo da edicao de um lancamento de serie. */
 export type FinancialEntryUpdateScope = "single" | "following";
 
-export interface FinancialEntryFilter {
+export interface FinancialEntryFilter extends PaginationParams {
   competence?: string; // "YYYY-MM" do vencimento
   type?: FinancialEntryType;
   status?: FinancialEntryDisplayStatus;

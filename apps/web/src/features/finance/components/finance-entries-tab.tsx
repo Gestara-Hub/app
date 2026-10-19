@@ -37,6 +37,7 @@ import {
   ListEmptyState,
   ListRow,
   ListSummaryBar,
+  PaginationBar,
   SearchInput,
 } from "@/components/shared/list";
 import {
@@ -196,6 +197,19 @@ export function FinanceEntriesTab({
   const endMut = useEndFinanceRecurrence();
 
   const rows = data ?? [];
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const filterKey = `${competence}:${typeFilter}:${statusFilter}:${categoryFilter}:${search}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
   const hasSearch = search.trim().length > 0;
   const hasFilters = typeFilter !== "all" || statusFilter !== "all" || categoryFilter !== "all";
   const clearFilters = () => {
@@ -660,8 +674,23 @@ export function FinanceEntriesTab({
       </div>
 
       <ListContainer emptyState={emptyState}>
-        {isPending ? <EntriesSkeleton /> : rows.map(renderRow)}
+        {isPending ? <EntriesSkeleton /> : paginatedRows.map(renderRow)}
       </ListContainer>
+
+      {!isPending && rows.length > 0 && (
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={rows.length}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          itemLabel="lançamentos"
+        />
+      )}
 
       <FinanceEntryFormDialog
         open={formOpen}

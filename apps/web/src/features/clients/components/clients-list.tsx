@@ -32,6 +32,7 @@ import {
   ListEmptyState,
   ListRow,
   ListSummaryBar,
+  PaginationBar,
   RecordStatusBadge,
   SearchInput,
   StatusFilterSelect,
@@ -74,7 +75,7 @@ import {
   usePlans,
   useStudentPackages,
 } from "@/features/turmas";
-import { useClients } from "../hooks/use-clients";
+import { usePaginatedClients } from "../hooks/use-clients";
 
 const PERIOD_SHORT: Record<PlanPeriod, string> = {
   monthly: "mês",
@@ -900,17 +901,24 @@ export function ClientsList({
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("clients", "list");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const filter: ClientFilter = {
     search: search.trim() || undefined,
     status: status === "all" ? undefined : status,
+    page,
+    pageSize,
   };
 
-  const { data, isPending, isError, refetch } = useClients(filter);
+  const { data: paginatedData, isPending, isError, refetch } = usePaginatedClients(filter);
   const { data: plans } = usePlans();
   const { data: categories } = useCategories();
   const { data: studentPackages } = useStudentPackages(undefined, isClasses);
-  const clients = data ?? [];
+  const clients = paginatedData?.items ?? [];
+  const total = paginatedData?.total ?? 0;
+  const totalPages = paginatedData?.totalPages ?? 1;
+
   const packagesByStudent = useMemo(() => {
     const map = new Map<string, StudentPackageView[]>();
     for (const p of studentPackages ?? []) {
@@ -936,10 +944,14 @@ export function ClientsList({
   // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
   const hasFilters = status !== DEFAULT_STATUS;
 
-  const clearSearch = () => setSearch("");
+  const clearSearch = () => {
+    setSearch("");
+    setPage(1);
+  };
   const clearAll = () => {
     setSearch("");
     setStatus(DEFAULT_STATUS);
+    setPage(1);
   };
 
   let items: ReactNode[] = [];
@@ -1022,13 +1034,22 @@ export function ClientsList({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={(val) => {
+            setSearch(val);
+            setPage(1);
+          }}
           onClear={clearSearch}
           placeholder="Buscar por nome ou telefone..."
           aria-label={isClasses ? "Buscar aluno" : "Buscar cliente"}
         />
         <div className="flex items-center gap-2">
-          <StatusFilterSelect value={status} onChange={setStatus} />
+          <StatusFilterSelect
+            value={status}
+            onChange={(val) => {
+              setStatus(val);
+              setPage(1);
+            }}
+          />
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </div>
       </div>
@@ -1037,7 +1058,7 @@ export function ClientsList({
       {!isError ? (
         <ListSummaryBar
           isLoading={isPending}
-          count={clients.length}
+          count={total}
           singularLabel={isClasses ? "aluno cadastrado" : "cliente cadastrado"}
           pluralLabel={isClasses ? "alunos cadastrados" : "clientes cadastrados"}
           hasFilters={hasSearch || hasFilters}
@@ -1089,6 +1110,22 @@ export function ClientsList({
       ) : (
         <ListContainer emptyState={emptyState}>{items}</ListContainer>
       )}
+
+      {/* Paginação */}
+      {!isError && total > 0 ? (
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          itemLabel={isClasses ? "alunos" : "clientes"}
+        />
+      ) : null}
     </div>
   );
 }

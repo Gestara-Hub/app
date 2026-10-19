@@ -1,4 +1,5 @@
 import type { DateTimeISO, Id } from "./common";
+import type { PaginationParams } from "./pagination";
 
 /**
  * WhatsApp sempre com o numero do proprio espaco (docs/product/13, secao 5).
@@ -135,4 +136,11 @@ export interface UpdateConnectionSettingsPayload {
     start: string;
     end: string;
   };
+}
+
+export interface MessageLogFilter extends PaginationParams {
+  trigger?: string;
+  status?: string;
+  search?: string;
+  clientId?: Id;
 }

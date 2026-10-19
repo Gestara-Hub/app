@@ -9,11 +9,13 @@ import type {
   CreatePlan,
   Id,
   ManualPaymentDetails,
+  PaginatedResult,
   PaymentMethod,
   Plan,
   PlanFilter,
   UpdatePlan,
 } from "@gestarahub/contracts";
+import { paginateArray } from "@gestarahub/contracts";
 import {
   chargesDueIn,
   classBillingMode,
@@ -46,6 +48,7 @@ import {
   deleteChargesByIdsInDb,
   insertChargesInDb,
   listChargesFromDb,
+  listChargesPaginatedFromDb,
   listPlansFromDb,
   updateChargeInDb,
   updatePlanInDb,
@@ -703,6 +706,53 @@ export const billingService = {
             a.dueDate.localeCompare(b.dueDate),
         ),
       );
+    });
+  },
+
+  listChargesPaginated(filter?: ChargeFilter): Promise<PaginatedResult<ChargeView>> {
+    return simulateRead(async () => {
+      await syncChargesFromDb(store.organization.id);
+      const countBefore = store.charges.length;
+      autoGenerateMembershipCharges(filter?.competence);
+      const newCharges = store.charges.slice(countBefore);
+      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
+        await insertChargesInDb(newCharges);
+      }
+      applyRecurringAutoPayments();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const paginated = await listChargesPaginatedFromDb(store.organization.id, filter);
+        const views = paginated.items.map(toChargeView);
+        return clone({
+          items: views.sort(
+            (a, b) =>
+              a.studentName.localeCompare(b.studentName, "pt-BR") ||
+              a.dueDate.localeCompare(b.dueDate),
+          ),
+          total: paginated.total,
+          page: paginated.page,
+          pageSize: paginated.pageSize,
+          totalPages: paginated.totalPages,
+          hasMore: paginated.hasMore,
+        });
+      }
+
+      let result = store.charges.map(toChargeView);
+      if (filter?.competence) {
+        result = result.filter((c) => c.competence === filter.competence);
+      }
+      if (filter?.kind) result = result.filter((c) => c.kind === filter.kind);
+      if (filter?.status) result = result.filter((c) => c.status === filter.status);
+      if (filter?.studentId) {
+        result = result.filter((c) => c.studentId === filter.studentId);
+      }
+
+      const sorted = result.sort(
+        (a, b) =>
+          a.studentName.localeCompare(b.studentName, "pt-BR") ||
+          a.dueDate.localeCompare(b.dueDate),
+      );
+      return clone(paginateArray(sorted, filter?.page, filter?.pageSize));
     });
   },
 

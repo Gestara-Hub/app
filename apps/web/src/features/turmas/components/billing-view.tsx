@@ -11,6 +11,7 @@ import {
   ListContainer,
   ListRow,
   ListSummaryBar,
+  PaginationBar,
   SearchInput,
 } from "@/components/shared/list";
 import { ListItemContextMenu } from "@/components/shared/list-item-actions-menu";
@@ -379,6 +380,8 @@ export function BillingView() {
     if (kindFilter === "course") markDiscoveryVisit(user, "course_billing");
   }, [kindFilter, user]);
   const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const toggleStudent = (studentId: string) => {
     setExpandedStudents((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
@@ -414,7 +417,17 @@ export function BillingView() {
       (c.description !== undefined && normalizeText(c.description).includes(query)),
   );
   const filteredList = searchMatchedList.filter((c) => matchesStatusFilter(c, statusFilter));
+  const filterKey = `${search}:${kindFilter}:${statusFilter}:${competence}:${allOverdue}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
+
   const studentGroups = groupByStudent(filteredList);
+  const totalGroups = studentGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalGroups / pageSize));
+  const paginatedStudentGroups = studentGroups.slice((page - 1) * pageSize, page * pageSize);
 
   const hasListFilters = allOverdue
     ? kindFilter !== "all" || query !== ""
@@ -883,7 +896,7 @@ export function BillingView() {
                 </div>
               ))
             ) : (
-              studentGroups.map((group) => {
+              paginatedStudentGroups.map((group) => {
                 // Caso 1: Aluno com 1 única cobrança na visão atual -> linha direta e limpa
                 if (group.charges.length === 1) {
                   const c = group.charges[0]!;
@@ -1077,6 +1090,21 @@ export function BillingView() {
               })
             )}
           </ListContainer>
+
+          {!isLoading && studentGroups.length > 0 ? (
+            <PaginationBar
+              page={page}
+              pageSize={pageSize}
+              total={totalGroups}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              itemLabel="alunos com cobranças"
+            />
+          ) : null}
         </div>
       )}
 

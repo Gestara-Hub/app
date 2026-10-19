@@ -23,3 +23,4 @@ export * from "./communication";
 export * from "./report";
 export * from "./student-summary";
 export * from "./onboarding";
+export * from "./pagination";

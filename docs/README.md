@@ -44,6 +44,8 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/08-backend-supabase.md](technical/08-backend-supabase.md) — **Decisão do backend:** Supabase (banco, login, Edge Functions com Hono, Cron, Storage), custo por fase e o que validar na primeira fatia.
 - [technical/09-analise-de-uso.md](technical/09-analise-de-uso.md) — **Análise de uso:** PostHog (páginas, cliques, mapa de calor, gravação com textos ocultos na área logada), variáveis de ambiente e o que falta decidir (aviso de cookies).
 - [technical/10-monolito-frontend-pwa.md](technical/10-monolito-frontend-pwa.md) — **Monólito Frontend com PWA:** visão unificada de gestor, professor e aluno em `apps/web` com distribuição PWA no celular (substitui React Native).
+- [technical/11-identidade-global-e-multi-membership.md](technical/11-identidade-global-e-multi-membership.md) — **Identidade Global e Multi-Membership:** conta única global com múltiplos vínculos por espaço.
+- [technical/12-modularizacao-da-camada-de-servicos.md](technical/12-modularizacao-da-camada-de-servicos.md) — **Modularização de Services:** fatiamento de arquivos gigantes (+1.000 linhas) em subdomínios com fachada retrocompatível.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

@@ -4,14 +4,17 @@ import type {
   Id,
   MessageCategory,
   MessageLog,
+  MessageLogFilter,
   MessageTemplate,
   MessageTrigger,
+  PaginatedResult,
   SendMessagePayload,
   UpdateConnectionSettingsPayload,
   UpdateTemplatePayload,
   WhatsAppConnection,
   WhatsAppConnectionView,
 } from "@gestarahub/contracts";
+import { paginateArray } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
 import { MESSAGE_MAX_LENGTH, TEMPLATE_MAX_LENGTH, fillMessage, isManualTrigger, whatsappNumber } from "@/lib/whatsapp";
@@ -34,6 +37,7 @@ import {
   getWhatsAppConnectionFromDb,
   insertMessageTemplatesBatchInDb,
   listMessageLogsFromDb,
+  listMessageLogsPaginatedFromDb,
   listMessageTemplatesFromDb,
   saveWhatsAppConnectionInDb,
   updateMessageLogInDb,
@@ -394,6 +398,16 @@ export const communicationService = {
         );
       }
       return logs.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+    });
+  },
+
+  listLogsPaginated(filter?: MessageLogFilter): Promise<PaginatedResult<MessageLog>> {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        return listMessageLogsPaginatedFromDb(store.organization.id, filter);
+      }
+      const all = await communicationService.listLogs(filter);
+      return paginateArray(all, filter?.page, filter?.pageSize);
     });
   },
 

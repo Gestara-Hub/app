@@ -1,6 +1,7 @@
 import type { FileAttachment } from "./attachment";
 import type { DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 import type { ChargePaidVia } from "./finance";
+import type { PaginationParams } from "./pagination";
 
 /**
  * Billing & plans (financial). Record/status only, no payment gateway.
@@ -126,7 +127,7 @@ export interface CreateExtraCharge {
   installments: number;
 }
 
-export interface ChargeFilter {
+export interface ChargeFilter extends PaginationParams {
   competence?: string;
   kind?: ChargeKind;
   status?: ChargeStatus;

@@ -1,5 +1,6 @@
 import type { Address, DateISO, DateTimeISO, Id, RecordStatus, TenantScopeFields } from "./common";
 import type { Category, ProgressionBeltColor } from "./category";
+import type { PaginationParams } from "./pagination";
 
 export type DiscountType = "percentage" | "fixed";
 
@@ -214,7 +215,7 @@ export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt" | Tenan
 };
 export type UpdateClient = Partial<CreateClient>;
 
-export interface ClientFilter {
+export interface ClientFilter extends PaginationParams {
   search?: string; // nome ou telefone
   status?: RecordStatus;
   planId?: Id;

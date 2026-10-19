@@ -6,6 +6,7 @@ import type {
   CreateClient,
   DateISO,
   Id,
+  PaginatedResult,
   ProgressionBeltColor,
   StudentModalityProgression,
   StudentPromotionHistoryEntry,
@@ -91,6 +92,21 @@ export async function listClientsFromDb(
   if (filter?.status) {
     query = query.eq("status", filter.status);
   }
+  if (filter?.planId) {
+    query = query.eq("plan_id", filter.planId);
+  }
+  if (filter?.membershipStatus) {
+    query = query.eq("membership_status", filter.membershipStatus);
+  }
+  if (filter?.search?.trim()) {
+    const term = filter.search.trim();
+    const digits = term.replace(/\D/g, "");
+    if (digits.length >= 3) {
+      query = query.or(`name.ilike.%${term}%,phone.ilike.%${digits}%`);
+    } else {
+      query = query.ilike("name", `%${term}%`);
+    }
+  }
 
   const { data, error } = await query;
   if (error) {
@@ -98,19 +114,64 @@ export async function listClientsFromDb(
     throw new Error("Erro ao consultar alunos no banco de dados.");
   }
 
-  let clients = (data ?? []).map((row) => mapRowToClient(row as Record<string, unknown>));
+  return (data ?? []).map((row) => mapRowToClient(row as Record<string, unknown>));
+}
 
-  if (filter?.search) {
-    const term = filter.search.toLowerCase();
-    const digitsOnly = filter.search.replace(/\D/g, "");
-    clients = clients.filter((c) => {
-      const matchName = c.name.toLowerCase().includes(term);
-      const matchPhone = digitsOnly.length > 0 && c.phone.replace(/\D/g, "").includes(digitsOnly);
-      return matchName || matchPhone;
-    });
+export async function listClientsPaginatedFromDb(
+  organizationId: string,
+  filter?: ClientFilter,
+): Promise<PaginatedResult<Client>> {
+  const client = await getClientForTenant();
+  const page = Math.max(1, filter?.page ?? 1);
+  const pageSize = Math.max(1, Math.min(100, filter?.pageSize ?? 20));
+  const offset = (page - 1) * pageSize;
+
+  let query = client
+    .from("clients")
+    .select("*", { count: "exact" })
+    .eq("organization_id", organizationId);
+
+  if (filter?.status) {
+    query = query.eq("status", filter.status);
+  }
+  if (filter?.planId) {
+    query = query.eq("plan_id", filter.planId);
+  }
+  if (filter?.membershipStatus) {
+    query = query.eq("membership_status", filter.membershipStatus);
+  }
+  if (filter?.search?.trim()) {
+    const term = filter.search.trim();
+    const digits = term.replace(/\D/g, "");
+    if (digits.length >= 3) {
+      query = query.or(`name.ilike.%${term}%,phone.ilike.%${digits}%`);
+    } else {
+      query = query.ilike("name", `%${term}%`);
+    }
   }
 
-  return clients;
+  query = query
+    .order("name", { ascending: true })
+    .range(offset, offset + pageSize - 1);
+
+  const { data, count, error } = await query;
+  if (error) {
+    console.error("[clientsBackend] Erro ao listar clients paginados:", error);
+    throw new Error("Erro ao consultar alunos no banco de dados.");
+  }
+
+  const total = count ?? 0;
+  const items = (data ?? []).map((row) => mapRowToClient(row as Record<string, unknown>));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    hasMore: page < totalPages,
+  };
 }
 
 export async function getClientFromDb(

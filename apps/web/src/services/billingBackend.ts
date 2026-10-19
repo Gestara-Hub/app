@@ -5,6 +5,7 @@ import type {
   ChargeFilter,
   FileAttachment,
   Id,
+  PaginatedResult,
   Plan,
   PlanFilter,
   UpdatePlan,
@@ -198,6 +199,49 @@ export async function listChargesFromDb(
   }
 
   return (data || []).map(mapRowToCharge);
+}
+
+export async function listChargesPaginatedFromDb(
+  organizationId: string,
+  filter?: ChargeFilter,
+): Promise<PaginatedResult<Charge>> {
+  const client = await getClientForTenant();
+  const page = Math.max(1, filter?.page ?? 1);
+  const pageSize = Math.max(1, Math.min(100, filter?.pageSize ?? 20));
+  const offset = (page - 1) * pageSize;
+
+  let query = client
+    .from("charges")
+    .select("*", { count: "exact" })
+    .eq("organization_id", organizationId);
+
+  if (filter?.competence) query = query.eq("competence", filter.competence);
+  if (filter?.kind) query = query.eq("kind", filter.kind);
+  if (filter?.status) query = query.eq("status", filter.status);
+  if (filter?.studentId) query = query.eq("student_id", filter.studentId);
+
+  query = query
+    .order("due_date", { ascending: true })
+    .range(offset, offset + pageSize - 1);
+
+  const { data, count, error } = await query;
+  if (error) {
+    console.error("[billingBackend] Erro ao listar cobranças paginadas:", error);
+    throw new Error("Erro ao consultar cobranças no banco de dados.");
+  }
+
+  const total = count ?? 0;
+  const items = (data || []).map(mapRowToCharge);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    hasMore: page < totalPages,
+  };
 }
 
 export async function getChargeFromDb(
