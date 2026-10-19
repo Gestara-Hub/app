@@ -40,6 +40,16 @@ import {
 import { auditLogService } from "./auditLogService";
 import { applyRecurringAutoPayments, cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createPlanInDb,
+  deleteChargesByIdsInDb,
+  insertChargesInDb,
+  listChargesFromDb,
+  listPlansFromDb,
+  updateChargeInDb,
+  updatePlanInDb,
+} from "./billingBackend";
 
 /**
  * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem
@@ -512,10 +522,45 @@ export function autoGenerateMembershipCharges(...competences: (string | undefine
   return created;
 }
 
+export async function syncPlansFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const dbPlans = await listPlansFromDb(organizationId);
+  const dbMap = new Map(dbPlans.map((p) => [p.id, p]));
+  for (let i = 0; i < store.plans.length; i++) {
+    const existing = store.plans[i];
+    const fromDb = dbMap.get(existing.id);
+    if (fromDb) {
+      store.plans[i] = fromDb;
+      dbMap.delete(existing.id);
+    }
+  }
+  for (const newPlan of dbMap.values()) {
+    store.plans.push(newPlan);
+  }
+}
+
+export async function syncChargesFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const dbCharges = await listChargesFromDb(organizationId);
+  const dbMap = new Map(dbCharges.map((c) => [c.id, c]));
+  for (let i = 0; i < store.charges.length; i++) {
+    const existing = store.charges[i];
+    const fromDb = dbMap.get(existing.id);
+    if (fromDb) {
+      store.charges[i] = fromDb;
+      dbMap.delete(existing.id);
+    }
+  }
+  for (const newCharge of dbMap.values()) {
+    store.charges.push(newCharge);
+  }
+}
+
 export const billingService = {
   // --- Planos -------------------------------------------------------------
   listPlans(filter?: PlanFilter): Promise<Plan[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncPlansFromDb(store.organization.id);
       let result = store.plans;
       if (filter?.search) {
         const term = filter.search;
@@ -530,7 +575,7 @@ export const billingService = {
   },
 
   createPlan(payload: CreatePlan): Promise<Plan> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validatePlan(payload);
       const ts = nowIso();
       const plan: Plan = {
@@ -541,6 +586,9 @@ export const billingService = {
         createdAt: ts,
         updatedAt: ts,
       };
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createPlanInDb(plan);
+      }
       store.plans.push(plan);
       auditLogService.record({
         action: "created",
@@ -552,7 +600,7 @@ export const billingService = {
   },
 
   updatePlan(id: Id, payload: UpdatePlan): Promise<Plan> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.plans.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Plano não encontrado.");
       const before = store.plans[idx];
@@ -566,6 +614,9 @@ export const billingService = {
               "Não é possível mudar a periodicidade de um plano com alunos ativos. Crie um novo plano.",
           },
         ]);
+      }
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updatePlanInDb(id, payload, store.organization.id);
       }
       store.plans[idx] = {
         ...before,
@@ -598,9 +649,15 @@ export const billingService = {
 
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncChargesFromDb(store.organization.id);
       // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas.
+      const countBefore = store.charges.length;
       autoGenerateMembershipCharges(filter?.competence);
+      const newCharges = store.charges.slice(countBefore);
+      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
+        await insertChargesInDb(newCharges);
+      }
       // Pix Automatico: paga na leitura o que venceu dentro do limite.
       applyRecurringAutoPayments();
       // Se um aluno saiu da aula avulsa e foi readicionado na mesma aula antes,
@@ -612,17 +669,23 @@ export const billingService = {
       );
       if (activeDropinSessions.size > 0) {
         const beforeLen = store.charges.length;
-        store.charges = store.charges.filter(
-          (c) =>
-            !(
-              c.kind === "dropin" &&
-              c.sessionId &&
-              c.status === "canceled" &&
-              c.canceledBy === "system" &&
-              activeDropinSessions.has(`${c.studentId}_${c.sessionId}`)
-            ),
-        );
-        if (store.charges.length !== beforeLen) persist();
+        const toDelete: Id[] = [];
+        store.charges = store.charges.filter((c) => {
+          const dropinDup =
+            c.kind === "dropin" &&
+            c.sessionId &&
+            c.status === "canceled" &&
+            c.canceledBy === "system" &&
+            activeDropinSessions.has(`${c.studentId}_${c.sessionId}`);
+          if (dropinDup) toDelete.push(c.id);
+          return !dropinDup;
+        });
+        if (store.charges.length !== beforeLen) {
+          persist();
+          if (toDelete.length > 0 && isSupabaseOrganization(store.organization.id)) {
+            await deleteChargesByIdsInDb(toDelete, store.organization.id);
+          }
+        }
       }
       let result = store.charges.map(toChargeView);
       if (filter?.competence) {
@@ -649,8 +712,13 @@ export const billingService = {
    * uso nunca gera duas cobrancas (inclusive a 1a, criada no cadastro).
    */
   generateCharges(competence: string): Promise<{ created: number }> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      const countBefore = store.charges.length;
       const created = generateMembershipChargesFor(competence);
+      const newCharges = store.charges.slice(countBefore);
+      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
+        await insertChargesInDb(newCharges);
+      }
 
       if (created > 0) {
         auditLogService.record({
@@ -670,7 +738,7 @@ export const billingService = {
    * `installmentGroupId`. Nao passa pelo motor de mensalidades.
    */
   createExtraCharge(payload: CreateExtraCharge): Promise<ChargeView[]> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateExtraCharge(payload);
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) {
@@ -703,6 +771,9 @@ export const billingService = {
         createdAt: ts,
         updatedAt: ts,
       }));
+      if (isSupabaseOrganization(store.organization.id)) {
+        await insertChargesInDb(created);
+      }
       store.charges.push(...created);
       auditLogService.record({
         action: "created",
@@ -719,7 +790,7 @@ export const billingService = {
 
   /** Registra o pagamento manual: dia do pagamento (padrao hoje) e comprovantes. */
   markPaid(id: Id, method?: PaymentMethod, details: ManualPaymentDetails = {}): Promise<ChargeView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -734,6 +805,15 @@ export const billingService = {
       c.paidVia = "manual";
       if (details.receipts?.length) c.attachments = [...(c.attachments ?? []), ...details.receipts];
       c.updatedAt = nowIso();
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateChargeInDb(c.id, {
+          status: "paid",
+          paidAt: c.paidAt,
+          method: c.method,
+          paidVia: c.paidVia,
+          attachments: c.attachments,
+        }, store.organization.id);
+      }
       // Pago na mao: o Pix/link em aberto nao vale mais.
       cancelOnlinePaymentsForCharge(c.id);
       recordChargeEvent(c, "status_changed", `registrou${paidOnNote(details.paidOn)} o pagamento da`);
@@ -743,7 +823,7 @@ export const billingService = {
 
   // Desfaz o pagamento (volta a ficar em aberto; o atraso e derivado na leitura).
   markPending(id: Id): Promise<ChargeView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -754,6 +834,15 @@ export const billingService = {
       c.paidVia = undefined;
       c.attachments = undefined;
       c.updatedAt = nowIso();
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateChargeInDb(c.id, {
+          status: "pending",
+          paidAt: undefined,
+          method: undefined,
+          paidVia: undefined,
+          attachments: [],
+        }, store.organization.id);
+      }
       recordChargeEvent(c, "status_changed", "desfez o pagamento da");
       return clone(toChargeView(c));
     });
@@ -761,7 +850,7 @@ export const billingService = {
 
   // Cancela a cobrança (mantém o título no histórico sem compor o total a receber).
   cancelCharge(id: Id, reason?: string): Promise<ChargeView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -774,6 +863,16 @@ export const billingService = {
       c.method = undefined;
       c.paidVia = undefined;
       c.updatedAt = nowIso();
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateChargeInDb(c.id, {
+          status: "canceled",
+          canceledBy: "user",
+          cancelReason: c.cancelReason,
+          paidAt: undefined,
+          method: undefined,
+          paidVia: undefined,
+        }, store.organization.id);
+      }
       cancelOnlinePaymentsForCharge(c.id);
       recordChargeEvent(c, "cancelled", "cancelou a", c.cancelReason);
       return clone(toChargeView(c));
@@ -784,7 +883,7 @@ export const billingService = {
   // pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre:
   // voltaria a cobrar um periodo que o novo arranjo ja cobre.
   reopenCharge(id: Id): Promise<ChargeView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       if (c.status !== "canceled") {
@@ -828,6 +927,13 @@ export const billingService = {
       c.canceledBy = undefined;
       c.cancelReason = undefined;
       c.updatedAt = nowIso();
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateChargeInDb(c.id, {
+          status: "pending",
+          canceledBy: undefined,
+          cancelReason: undefined,
+        }, store.organization.id);
+      }
       recordChargeEvent(c, "status_changed", "reabriu a");
       return clone(toChargeView(c));
     });
@@ -839,12 +945,15 @@ export const billingService = {
    * avulsas ficam (nao sao recriadas pela geracao).
    */
   clearCharges(competence: string): Promise<{ deleted: number; keptPaid: number }> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const inCompetence = store.charges.filter(
         (c) => c.kind === "membership" && c.competence === competence,
       );
       const keptPaid = inCompetence.filter((c) => c.status === "paid").length;
       const removed = new Set(inCompetence.filter((c) => c.status !== "paid").map((c) => c.id));
+      if (isSupabaseOrganization(store.organization.id) && removed.size > 0) {
+        await deleteChargesByIdsInDb(Array.from(removed), store.organization.id);
+      }
       store.charges = store.charges.filter((c) => !removed.has(c.id));
       const deleted = removed.size;
       if (deleted > 0) {
@@ -859,3 +968,4 @@ export const billingService = {
     });
   },
 };
+

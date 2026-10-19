@@ -29,6 +29,7 @@ import type {
   ReservationView,
   SessionRosterEntry,
   SessionRosterKind,
+  StudentPackage,
   SubstituteInstructorPayload,
   TimeISO,
   UpdateClassGroup,
@@ -106,6 +107,8 @@ import {
   upsertAttendanceInDb,
   upsertSessionOverrideInDb,
 } from "./turmasBackend";
+import { insertChargesInDb, updateChargeInDb } from "./billingBackend";
+import { listStudentPackagesFromDb, upsertMultipleStudentPackagesInDb } from "./packagesBackend";
 
 async function syncTurmasFromDb(organizationId: string): Promise<void> {
   if (!isSupabaseOrganization(organizationId)) return;
@@ -117,6 +120,7 @@ async function syncTurmasFromDb(organizationId: string): Promise<void> {
       Promise<WaitlistEntry[]>,
       Promise<ClassReservation[]>,
       Promise<ClassSessionOverride[]>,
+      Promise<StudentPackage[]>,
       Promise<Professional[] | null>,
       Promise<Category[] | null>,
     ] = [
@@ -126,6 +130,7 @@ async function syncTurmasFromDb(organizationId: string): Promise<void> {
       listWaitlistFromDb(organizationId),
       listReservationsFromDb(organizationId),
       listSessionOverridesFromDb(organizationId),
+      listStudentPackagesFromDb(organizationId),
       store.professionals.some((p) => p.organizationId === organizationId)
         ? Promise.resolve(null)
         : listProfessionalsFromDb(organizationId),
@@ -134,7 +139,7 @@ async function syncTurmasFromDb(organizationId: string): Promise<void> {
         : listCategoriesFromDb(organizationId),
     ];
 
-    const [groups, enrollments, attendances, waitlist, reservations, overrides, profs, cats] =
+    const [groups, enrollments, attendances, waitlist, reservations, overrides, pkgs, profs, cats] =
       await Promise.all(promises);
 
     const groupIds = new Set(groups.map((g) => g.id));
@@ -168,6 +173,12 @@ async function syncTurmasFromDb(organizationId: string): Promise<void> {
     ];
 
     store.sessionOverrides = overrides;
+
+    const pkgIds = new Set(pkgs.map((p) => p.id));
+    store.studentPackages = [
+      ...store.studentPackages.filter((p) => p.organizationId === organizationId ? !pkgIds.has(p.id) : true),
+      ...pkgs,
+    ];
 
     if (profs) {
       const profIds = new Set(profs.map((p) => p.id));
@@ -622,29 +633,31 @@ async function createEnrollment(
     const installmentGroupId = newId();
     enrollment.course = { ...course, installmentGroupId };
     const parts = splitInstallments(course.priceCents, course.installments, course.firstDueDate);
-    store.charges.push(
-      ...parts.map(
-        (part): Charge => ({
-          id: newId(),
-          organizationId: store.organization.id,
-          unitId: g.unitId,
-          studentId,
-          kind: "course",
-          classGroupId: g.id,
-          enrollmentId: enrollment.id,
-          description: g.name,
-          installmentGroupId,
-          competence: part.dueDate.slice(0, 7),
-          dueDate: part.dueDate,
-          amountCents: part.amountCents,
-          status: "pending",
-          cycleIndex: part.index,
-          cycleTotal: part.total,
-          createdAt: ts,
-          updatedAt: ts,
-        }),
-      ),
+    const courseCharges = parts.map(
+      (part): Charge => ({
+        id: newId(),
+        organizationId: store.organization.id,
+        unitId: g.unitId,
+        studentId,
+        kind: "course",
+        classGroupId: g.id,
+        enrollmentId: enrollment.id,
+        description: g.name,
+        installmentGroupId,
+        competence: part.dueDate.slice(0, 7),
+        dueDate: part.dueDate,
+        amountCents: part.amountCents,
+        status: "pending",
+        cycleIndex: part.index,
+        cycleTotal: part.total,
+        createdAt: ts,
+        updatedAt: ts,
+      }),
     );
+    store.charges.push(...courseCharges);
+    if (isSupabaseOrganization(store.organization.id)) {
+      await insertChargesInDb(courseCharges);
+    }
   }
   if (isSupabaseOrganization(store.organization.id)) {
     await createEnrollmentInDb(enrollment, store.organization.id);
@@ -1454,6 +1467,12 @@ export const turmasService = {
 
       // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
       const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
+      if (usage !== "none" && isSupabaseOrganization(store.organization.id)) {
+        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
+        if (pkgs.length > 0) {
+          await upsertMultipleStudentPackagesInDb(pkgs);
+        }
+      }
       auditPackageUsage(usage, g, date, input.studentId, input.status);
     });
   },
@@ -1472,6 +1491,12 @@ export const turmasService = {
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
       const usage = syncAttendanceUsage(input.sessionId, input.studentId);
+      if (usage !== "none" && isSupabaseOrganization(store.organization.id)) {
+        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
+        if (pkgs.length > 0) {
+          await upsertMultipleStudentPackagesInDb(pkgs);
+        }
+      }
       auditPackageUsage(usage, g, date, input.studentId);
     });
   },
@@ -1845,6 +1870,9 @@ export const turmasService = {
           };
           store.charges.push(charge);
           chargeId = charge.id;
+          if (isSupabaseOrganization(store.organization.id)) {
+            await insertChargesInDb([charge]);
+          }
         }
       }
 
@@ -1918,6 +1946,19 @@ export const turmasService = {
         charge.canceledBy = "system";
         charge.notes = "Saiu da aula";
         charge.updatedAt = nowIso();
+        if (isSupabaseOrganization(store.organization.id)) {
+          await updateChargeInDb(charge.id, {
+            status: "canceled",
+            canceledBy: "system",
+            notes: charge.notes,
+          }, store.organization.id);
+        }
+      }
+      if (returned && isSupabaseOrganization(store.organization.id)) {
+        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
+        if (pkgs.length > 0) {
+          await upsertMultipleStudentPackagesInDb(pkgs);
+        }
       }
       auditLogService.record({
         action: "cancelled",

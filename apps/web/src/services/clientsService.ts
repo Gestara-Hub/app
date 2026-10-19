@@ -63,6 +63,7 @@ import {
   updateClientInDb,
   updateStudentProgressionInDb,
 } from "./clientsBackend";
+import { insertChargesInDb } from "./billingBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -464,7 +465,9 @@ export const clientsService = {
         store.clients.push(client);
 
         if (client.planId && payload.initialCharge && (payload.initialCharge.amountCents > 0 || client.discount?.scholarship)) {
-          store.charges.push(initialMembershipCharge(client, payload.initialCharge));
+          const initialCharge = initialMembershipCharge(client, payload.initialCharge);
+          store.charges.push(initialCharge);
+          await insertChargesInDb([initialCharge]);
         }
         ensurePlanlessScholarCharges(client);
 

@@ -47,6 +47,17 @@ import {
 import { auditLogService } from "./auditLogService";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import { withKind } from "@/lib/text";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createLessonPackageInDb,
+  createStudentPackageInDb,
+  listLessonPackagesFromDb,
+  listStudentPackagesFromDb,
+  updateLessonPackageInDb,
+  updateStudentPackageInDb,
+  upsertMultipleStudentPackagesInDb,
+} from "./packagesBackend";
+import { insertChargesInDb } from "./billingBackend";
 
 /**
  * Pacote de aulas (doc 20, fase C). Catalogo do espaco (`LessonPackage`),
@@ -322,12 +333,49 @@ export function packageCandidatesFor(
   return out.sort((a, b) => a.studentName.localeCompare(b.studentName, "pt-BR"));
 }
 
+// --- Sync with DB -----------------------------------------------------------
+
+export async function syncLessonPackagesFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const dbPackages = await listLessonPackagesFromDb(organizationId);
+  const dbMap = new Map(dbPackages.map((p) => [p.id, p]));
+  for (let i = 0; i < store.lessonPackages.length; i++) {
+    const existing = store.lessonPackages[i];
+    const fromDb = dbMap.get(existing.id);
+    if (fromDb) {
+      store.lessonPackages[i] = fromDb;
+      dbMap.delete(existing.id);
+    }
+  }
+  for (const newPkg of dbMap.values()) {
+    store.lessonPackages.push(newPkg);
+  }
+}
+
+export async function syncStudentPackagesFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const dbPkgs = await listStudentPackagesFromDb(organizationId);
+  const dbMap = new Map(dbPkgs.map((p) => [p.id, p]));
+  for (let i = 0; i < store.studentPackages.length; i++) {
+    const existing = store.studentPackages[i];
+    const fromDb = dbMap.get(existing.id);
+    if (fromDb) {
+      store.studentPackages[i] = fromDb;
+      dbMap.delete(existing.id);
+    }
+  }
+  for (const newPkg of dbMap.values()) {
+    store.studentPackages.push(newPkg);
+  }
+}
+
 // --- Service -----------------------------------------------------------------
 
 export const packagesService = {
   // --- Catalogo ------------------------------------------------------------
   listPackages(filter?: LessonPackageFilter): Promise<LessonPackage[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncLessonPackagesFromDb(store.organization.id);
       let result = store.lessonPackages;
       if (filter?.search) {
         const term = filter.search;
@@ -339,7 +387,7 @@ export const packagesService = {
   },
 
   createPackage(input: CreateLessonPackage): Promise<LessonPackage> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const payload = normalizePackage(input);
       validatePackage(payload);
       const ts = nowIso();
@@ -352,6 +400,9 @@ export const packagesService = {
         createdAt: ts,
         updatedAt: ts,
       };
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createLessonPackageInDb(pkg);
+      }
       store.lessonPackages.push(pkg);
       auditLogService.record({
         action: "created",
@@ -364,12 +415,15 @@ export const packagesService = {
 
   /** Mudar o pacote vale para as proximas vendas; o que ja foi vendido fica como esta. */
   updatePackage(id: Id, payload: UpdateLessonPackage): Promise<LessonPackage> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.lessonPackages.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Pacote não encontrado.");
       const before = store.lessonPackages[idx];
       const next = normalizePackage({ ...before, ...payload });
       validatePackage(next);
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateLessonPackageInDb(id, payload, store.organization.id);
+      }
       store.lessonPackages[idx] = { ...before, ...next, name: next.name ?? before.name, updatedAt: nowIso() };
       const after = store.lessonPackages[idx];
       const statusChanged = before.status !== after.status;
@@ -397,7 +451,8 @@ export const packagesService = {
 
   // --- Pacotes dos alunos --------------------------------------------------
   listStudentPackages(filter?: StudentPackageFilter): Promise<StudentPackageView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncStudentPackagesFromDb(store.organization.id);
       let result = store.studentPackages;
       if (filter?.studentId) result = result.filter((p) => p.studentId === filter.studentId);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
@@ -416,7 +471,7 @@ export const packagesService = {
    * antigos ficam "Renovado".
    */
   sellPackage(payload: SellPackage): Promise<StudentPackageView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateSale(payload);
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) throw validationError([{ field: "studentId", message: "Aluno não encontrado." }]);
@@ -466,7 +521,6 @@ export const packagesService = {
         createdAt: ts,
         updatedAt: ts,
       }));
-      store.charges.push(...charges);
 
       const sold: StudentPackage = {
         id,
@@ -491,6 +545,16 @@ export const packagesService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createStudentPackageInDb(sold);
+        await insertChargesInDb(charges);
+        if (carry.sources.length > 0) {
+          await upsertMultipleStudentPackagesInDb(carry.sources);
+        }
+      }
+
+      store.charges.push(...charges);
       store.studentPackages.push(sold);
       auditLogService.record({
         action: "created",
@@ -508,7 +572,7 @@ export const packagesService = {
    * de outro, o anterior volta a valer.
    */
   cancelStudentPackage(id: Id): Promise<StudentPackageView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const pkg = store.studentPackages.find((p) => p.id === id);
       if (!pkg) throw notFoundError("Pacote não encontrado.");
       if (pkg.status === "canceled") {
@@ -524,6 +588,7 @@ export const packagesService = {
       pkg.status = "canceled";
       pkg.updatedAt = ts;
       let canceled = 0;
+      const canceledCharges: Charge[] = [];
       for (const c of store.charges) {
         if (!pkg.chargeIds.includes(c.id) || !ACTIVE_STATUSES.has(c.status)) continue;
         c.status = "canceled";
@@ -531,13 +596,25 @@ export const packagesService = {
         c.cancelReason = "Pacote cancelado";
         c.updatedAt = ts;
         cancelOnlinePaymentsForCharge(c.id);
+        canceledCharges.push(c);
         canceled += 1;
       }
+      const restoredSources: StudentPackage[] = [];
       for (const previous of store.studentPackages) {
         if (previous.renewedIntoId !== pkg.id || previous.status !== "renewed") continue;
         previous.status = "active";
         previous.renewedIntoId = undefined;
         previous.updatedAt = ts;
+        restoredSources.push(previous);
+      }
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateStudentPackageInDb(pkg.id, { status: "canceled" }, store.organization.id);
+        if (canceledCharges.length > 0) {
+          await insertChargesInDb(canceledCharges);
+        }
+        if (restoredSources.length > 0) {
+          await upsertMultipleStudentPackagesInDb(restoredSources);
+        }
       }
       const name = studentName(pkg.studentId);
       auditLogService.record({
