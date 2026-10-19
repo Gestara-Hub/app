@@ -16,13 +16,19 @@ Para o agente (Antigravity ou outro) que assume a partir daqui. Leia este arquiv
 
 O usuário vai rodar à mão os 5 roteiros desta pasta e, ao fim de cada um, mandar o JSON do espaço. O JSON sai pelo comando do [README](README.md).
 
-| Roteiro | Área | Cobre |
+Os roteiros são **completos** (18/10): juntos, passam por todos os fluxos do modelo de turmas. A tabela "Onde está cada fluxo" do README diz qual parte cobre o quê.
+
+| Roteiro | Área | Foco |
 |---|---|---|
-| [01](01-lutas.md) | Lutas | faixas por modalidade e por idade, graus, desconto, chamada, registro, graduação |
-| [02](02-pilates-e-yoga.md) | Pilates e yoga | sem trilha, "depois do uso", plano quinzenal, bolsa parcial |
-| [03](03-idiomas-e-reforco.md) | Idiomas e reforço | níveis, notas, responsável, mensagem com contador |
-| [04](04-gastronomia.md) | Gastronomia | curso com valor fechado, parcelas, vencimento no passado, cancelamento |
-| [05](05-outra-area-pacote.md) | Outra área | nome próprio, pacote de aulas (escopo, falta, justificativa), turma sem cobrança |
+| [01](01-lutas.md) | Lutas | configuração, equipe e perfis, turmas, matrícula, chamada, avulsa, graduação, troca de instrutor, auditoria |
+| [02](02-pilates-e-yoga.md) | Pilates e yoga | regras de cobrança, planos, descontos e bolsa, Cobranças, Financeiro, Plano Pro (pagamento online) |
+| [03](03-idiomas-e-reforco.md) | Idiomas e reforço | landing e cadastro, níveis, notas, ficha do aluno, Comunicação, relatórios, configurações |
+| [04](04-gastronomia.md) | Gastronomia | curso com parcelas, cancelamento, rematrícula, lista de espera, certificado |
+| [05](05-outra-area-pacote.md) | Outra área | área própria, pacote de aulas (venda, uso, renovação), "Pagar com pacote", repasse |
+
+O usuário pode mandar o JSON no fim de uma parte, não só do roteiro inteiro. Confira só o que aquela parte já fez.
+
+Alguns "Esperado" dos roteiros foram escritos a partir do código, sem rodar a tela. Se a tela mostrar outro texto com o mesmo sentido, corrija o roteiro, não o código.
 
 **Para cada JSON recebido:**
 

@@ -53,3 +53,15 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ## 5. Git Workflow (USER RULE)
 - **Never run `git commit` or `git push` on your own.** Only commit or push when the user explicitly asks for it, and only the action requested (a request to commit is NOT a request to push).
 - Leave changes in the working tree at the end of a task and tell the user what changed; the user decides when to commit and push.
+
+---
+
+## 6. Code Search & Performance Rule (USER RULE)
+- **NEVER search/grep across broad directories that contain build artifacts, caches, or binaries** (such as `apps/web/`, `.next/`, `.next-e2e/`, `node_modules/`, `dist/`, `test-results/`, `playwright-report/`).
+- When searching code with `grep` or `rg`, **always restrict the path to source directories only**:
+  - `apps/web/src/`
+  - `apps/web/e2e/`
+  - `packages/contracts/src/`
+  - `packages/core/src/`
+  - `docs/`
+
