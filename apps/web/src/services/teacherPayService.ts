@@ -54,6 +54,53 @@ import {
 import { store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  listTeacherPayoutsFromDb,
+  listTeacherPayRulesFromDb,
+  saveTeacherPayoutInDb,
+  saveTeacherPayRuleInDb,
+} from "./teacherPayBackend";
+
+export async function syncTeacherPayFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const [rules, payouts] = await Promise.all([
+    listTeacherPayRulesFromDb(organizationId),
+    listTeacherPayoutsFromDb(organizationId),
+  ]);
+
+  // Sync Rules
+  const ruleMap = new Map(rules.map((r) => [r.id, r]));
+  for (let i = 0; i < store.teacherPayRules.length; i++) {
+    const existing = store.teacherPayRules[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = ruleMap.get(existing.id);
+      if (fromDb) {
+        store.teacherPayRules[i] = fromDb;
+        ruleMap.delete(existing.id);
+      }
+    }
+  }
+  for (const r of ruleMap.values()) {
+    store.teacherPayRules.push(r);
+  }
+
+  // Sync Payouts
+  const payoutMap = new Map(payouts.map((p) => [p.id, p]));
+  for (let i = 0; i < store.teacherPayouts.length; i++) {
+    const existing = store.teacherPayouts[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = payoutMap.get(existing.id);
+      if (fromDb) {
+        store.teacherPayouts[i] = fromDb;
+        payoutMap.delete(existing.id);
+      }
+    }
+  }
+  for (const p of payoutMap.values()) {
+    store.teacherPayouts.push(p);
+  }
+}
 
 /**
  * Pagamento dos professores (Financeiro basico, gratis). Regra por professor,
@@ -702,7 +749,8 @@ export function openPayoutPreviews(competence: string): OpenPayoutPreview[] {
 export const teacherPayService = {
   /** Professores (ativos ou com regra) com as turmas em que sao titulares. */
   listTeachers(): Promise<TeacherPayTeacher[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTeacherPayFromDb(store.organization.id);
       const out: TeacherPayTeacher[] = store.professionals
         .filter((p) => p.status === "active" || ruleOf(p.id))
         .map((p) => {
@@ -724,12 +772,15 @@ export const teacherPayService = {
   },
 
   listRules(): Promise<TeacherPayRule[]> {
-    return simulateRead(() => clone(store.teacherPayRules));
+    return simulateRead(async () => {
+      await syncTeacherPayFromDb(store.organization.id);
+      return clone(store.teacherPayRules);
+    });
   },
 
   /** Cria ou substitui a regra do professor (uma por professor). */
   saveRule(professionalId: Id, payload: SaveTeacherPayRule): Promise<TeacherPayRule> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
       const components = normalizeComponents(professionalId, payload.components);
@@ -774,6 +825,11 @@ export const teacherPayService = {
           predicate: `configurou o pagamento de ${professional.name} (${describeTeacherPayRule(rule)})`,
         });
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayRuleInDb(rule);
+      }
+
       return clone(rule);
     });
   },
@@ -783,7 +839,8 @@ export const teacherPayService = {
    * com o mes ja fechado/pago (congelado, mesmo com o professor inativo).
    */
   listPayouts(competence: string): Promise<TeacherPayoutView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTeacherPayFromDb(store.organization.id);
       const facts = buildFacts(competence);
       const ids = new Set<Id>([
         ...store.teacherPayRules.map((r) => r.professionalId),
@@ -804,7 +861,8 @@ export const teacherPayService = {
 
   /** Detalhe do mes com as aulas contadas (inclui substituicoes). */
   getPayoutPreview(professionalId: Id, competence: string): Promise<TeacherPayoutDetail> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncTeacherPayFromDb(store.organization.id);
       const facts = buildFacts(competence);
       const view = buildView(professionalId, competence, facts);
       if (!view) {
@@ -837,7 +895,7 @@ export const teacherPayService = {
     competence: string,
     adjustments: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
@@ -887,6 +945,10 @@ export const teacherPayService = {
         store.teacherPayouts.push(payout);
       }
 
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayoutInDb(payout);
+      }
+
       const describe = (l: TeacherPayoutLine) => `"${l.label}" (${formatSignedCents(l.amountCents)})`;
       const added = lineDifference(lines, before).map(describe);
       const removed = lineDifference(before, lines).map(describe);
@@ -915,7 +977,7 @@ export const teacherPayService = {
     competence: string,
     adjustments?: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       if (competence > currentCompetence()) {
         throw conflict("Não é possível fechar um mês que ainda não começou.");
@@ -974,6 +1036,11 @@ export const teacherPayService = {
         };
         store.teacherPayouts.push(payout);
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayoutInDb(payout);
+      }
+
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id: payout.id, label: payoutLabel(professionalId, competence) },
@@ -986,7 +1053,7 @@ export const teacherPayService = {
 
   /** Reabre um mes fechado (volta a previa ao vivo; os ajustes ficam como rascunho). */
   reopenPayout(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const payout = findPayout(id);
       if (payout.status === "paid") {
         throw conflict("Desfaça o pagamento antes de reabrir o mês.");
@@ -997,6 +1064,11 @@ export const teacherPayService = {
       payout.totalCents = payoutTotalCents(payout.lines);
       payout.closedAt = undefined;
       payout.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayoutInDb(payout);
+      }
+
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id, label: payoutLabel(payout.professionalId, payout.competence) },
@@ -1010,7 +1082,7 @@ export const teacherPayService = {
    * saida "Professores" em `paidAt`, com os comprovantes.
    */
   markPayoutPaid(id: Id, method: PaymentMethod, details: ManualPaymentDetails = {}): Promise<TeacherPayout> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const payout = findPayout(id);
       if (payout.status !== "closed") {
         throw conflict(
@@ -1025,6 +1097,11 @@ export const teacherPayService = {
       payout.method = method;
       if (details.receipts?.length) payout.attachments = details.receipts;
       payout.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayoutInDb(payout);
+      }
+
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id, label: payoutLabel(payout.professionalId, payout.competence) },
@@ -1036,7 +1113,7 @@ export const teacherPayService = {
 
   /** Desfaz o pagamento: volta para fechado. */
   markPayoutUnpaid(id: Id): Promise<TeacherPayout> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const payout = findPayout(id);
       if (payout.status !== "paid") throw conflict("Este pagamento não está registrado como pago.");
       payout.status = "closed";
@@ -1044,6 +1121,11 @@ export const teacherPayService = {
       payout.method = undefined;
       payout.attachments = undefined;
       payout.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await saveTeacherPayoutInDb(payout);
+      }
+
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id, label: payoutLabel(payout.professionalId, payout.competence) },

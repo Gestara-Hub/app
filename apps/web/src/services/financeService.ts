@@ -64,6 +64,20 @@ import { autoGenerateMembershipCharges } from "./billingService";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  createFinancialCategoryInDb,
+  createFinancialEntryInDb,
+  createFinancialRecurrenceInDb,
+  deleteFinancialEntryInDb,
+  insertFinancialEntriesBatchInDb,
+  listFinancialCategoriesFromDb,
+  listFinancialEntriesFromDb,
+  listFinancialRecurrencesFromDb,
+  updateFinancialCategoryInDb,
+  updateFinancialEntryInDb,
+  updateFinancialRecurrenceInDb,
+} from "./financeBackend";
 
 /**
  * Financeiro do negocio (basico, gratis). Le as cobrancas dos alunos (Charge) e os
@@ -168,31 +182,100 @@ function recurrenceEntry(r: FinancialRecurrence, competence: string, ts: string)
   };
 }
 
-/** Cria os lancamentos que faltam de cada recorrencia ativa. Devolve quantos criou. */
-function materializeAll(): number {
-  const upTo = addCompetence(currentCompetence(), 1);
-  const ts = nowIso();
-  let created = 0;
-  for (const r of store.financialRecurrences) {
-    const existing = store.financialEntries
-      .filter((e) => e.recurrenceId === r.id && e.recurrenceCompetence)
-      .map((e) => e.recurrenceCompetence!);
-    for (const competence of materializeRecurrence(r, existing, upTo)) {
-      store.financialEntries.push(recurrenceEntry(r, competence, ts));
-      created += 1;
+export async function syncFinanceFromDb(organizationId: string): Promise<void> {
+  if (!isSupabaseOrganization(organizationId)) return;
+  const [categories, recurrences, entries] = await Promise.all([
+    listFinancialCategoriesFromDb(organizationId),
+    listFinancialRecurrencesFromDb(organizationId),
+    listFinancialEntriesFromDb(organizationId),
+  ]);
+
+  // Sync Categories
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+  for (let i = 0; i < store.financialCategories.length; i++) {
+    const existing = store.financialCategories[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = catMap.get(existing.id);
+      if (fromDb) {
+        store.financialCategories[i] = fromDb;
+        catMap.delete(existing.id);
+      }
     }
   }
-  return created;
+  for (const cat of catMap.values()) {
+    store.financialCategories.push(cat);
+  }
+
+  // Sync Recurrences
+  const recMap = new Map(recurrences.map((r) => [r.id, r]));
+  for (let i = 0; i < store.financialRecurrences.length; i++) {
+    const existing = store.financialRecurrences[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = recMap.get(existing.id);
+      if (fromDb) {
+        store.financialRecurrences[i] = fromDb;
+        recMap.delete(existing.id);
+      }
+    }
+  }
+  for (const rec of recMap.values()) {
+    store.financialRecurrences.push(rec);
+  }
+
+  // Sync Entries
+  const entryMap = new Map(entries.map((e) => [e.id, e]));
+  for (let i = 0; i < store.financialEntries.length; i++) {
+    const existing = store.financialEntries[i];
+    if (existing.organizationId === organizationId) {
+      const fromDb = entryMap.get(existing.id);
+      if (fromDb) {
+        store.financialEntries[i] = fromDb;
+        entryMap.delete(existing.id);
+      }
+    }
+  }
+  for (const entry of entryMap.values()) {
+    store.financialEntries.push(entry);
+  }
 }
 
+/** Cria os lancamentos que faltam de cada recorrencia ativa. Devolve quantos criou. */
+async function materializeAllAsync(): Promise<number> {
+  const upTo = addCompetence(currentCompetence(), 1);
+  const ts = nowIso();
+  const newEntries: FinancialEntry[] = [];
+  for (const r of store.financialRecurrences) {
+    if (r.organizationId !== store.organization.id) continue;
+    const existing = store.financialEntries
+      .filter((e) => e.organizationId === store.organization.id && e.recurrenceId === r.id && e.recurrenceCompetence)
+      .map((e) => e.recurrenceCompetence!);
+    for (const competence of materializeRecurrence(r, existing, upTo)) {
+      const entry = recurrenceEntry(r, competence, ts);
+      store.financialEntries.push(entry);
+      newEntries.push(entry);
+    }
+  }
+  if (newEntries.length > 0 && isSupabaseOrganization(store.organization.id)) {
+    try {
+      await insertFinancialEntriesBatchInDb(newEntries);
+    } catch (err) {
+      console.error("[financeService] Erro ao sincronizar lote de recorrências no banco:", err);
+    }
+  }
+  return newEntries.length;
+}
+
+
 /** Garante a materializacao numa leitura (persiste so se criou algo). */
-function ensureMaterialized(competence?: string): void {
+async function ensureMaterialized(competence?: string): Promise<void> {
+  await syncFinanceFromDb(store.organization.id);
   // Mensalidades do mes (e do mes consultado, se ja chegou) geradas na leitura,
   // sem depender de alguem abrir Cobrancas.
   autoGenerateMembershipCharges(competence);
   // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Cobrancas.
   applyRecurringAutoPayments();
-  if (materializeAll() > 0) persist();
+  const created = await materializeAllAsync();
+  if (created > 0) persist();
 }
 
 /** Competencias com previa de professor que ainda pode vencer: mes anterior e atual. */
@@ -581,8 +664,8 @@ function applyPatch(e: FinancialEntry, payload: UpdateFinancialEntry, ts: string
 export const financeService = {
   /** Cartoes do Resumo da competencia (fontes da secao 4.1; atrasado conforme secao 14). */
   getSummary(competence: string): Promise<FinanceSummary> {
-    return simulateRead(() => {
-      ensureMaterialized(competence);
+    return simulateRead(async () => {
+      await ensureMaterialized(competence);
       const items = cashFlowItems();
       const summary = summarizeCashFlow(items, competence, todayISO());
       // Bolsas: diferenca entre o valor do plano e o cobrado (inclui isentos).
@@ -611,16 +694,16 @@ export const financeService = {
 
   /** Entradas x saidas pagas nos ultimos `months` meses, terminando em `endCompetence`. */
   getMonthlySeries(months = 6, endCompetence: string = currentCompetence()): Promise<FinanceMonthPoint[]> {
-    return simulateRead(() => {
-      ensureMaterialized();
+    return simulateRead(async () => {
+      await ensureMaterialized();
       return summarizeMonthlySeries(cashFlowItems(), lastCompetences(endCompetence, months));
     });
   },
 
   /** Totais pagos por categoria na competencia, com percentual. */
   getByCategory(competence: string): Promise<FinanceCategoryTotal[]> {
-    return simulateRead(() => {
-      ensureMaterialized();
+    return simulateRead(async () => {
+      await ensureMaterialized();
       return summarizeByCategory(cashFlowItems(), store.financialCategories, competence);
     });
   },
@@ -630,8 +713,8 @@ export const financeService = {
    * ate `days` dias a partir de hoje. Inclui os ja vencidos em aberto (overdue).
    */
   getUpcoming(days = 7): Promise<FinanceUpcomingItem[]> {
-    return simulateRead(() => {
-      ensureMaterialized();
+    return simulateRead(async () => {
+      await ensureMaterialized();
       const today = todayISO();
       const limit = format(addDays(parseISO(today), days), "yyyy-MM-dd");
       const items: FinanceUpcomingItem[] = [];
@@ -677,8 +760,8 @@ export const financeService = {
    * kind, D7), pagamentos de professores fechados/pagos e lancamentos manuais.
    */
   listEntries(filter?: FinancialEntryFilter): Promise<FinanceEntryView[]> {
-    return simulateRead(() => {
-      ensureMaterialized(filter?.competence);
+    return simulateRead(async () => {
+      await ensureMaterialized(filter?.competence);
       const competence = filter?.competence ?? currentCompetence();
       const today = todayISO();
       const rows: FinanceEntryView[] = [];
@@ -757,7 +840,7 @@ export const financeService = {
    * seguintes (ate o mes seguinte ao atual). Devolve o primeiro lancamento.
    */
   createEntry(payload: CreateFinancialEntry): Promise<FinancialEntry> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateCreate(payload);
       const ts = nowIso();
       const organizationId = store.organization.id;
@@ -798,8 +881,16 @@ export const financeService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(organizationId)) {
+        if (recurrence) {
+          await createFinancialRecurrenceInDb(recurrence);
+        }
+        await createFinancialEntryInDb(entry);
+      }
+
       store.financialEntries.push(entry);
-      if (recurrence) materializeAll();
+      if (recurrence) await materializeAllAsync();
 
       const paidNote = payload.paidNow ? `, pago via ${paymentMethodLabel(payload.paidNow.method)}` : "";
       const repeatNote = recurrence ? ", com repetição mensal" : "";
@@ -825,7 +916,7 @@ export const financeService = {
     payload: UpdateFinancialEntry,
     scope: FinancialEntryUpdateScope = "single",
   ): Promise<FinancialEntry> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const entry = findEntry(id);
       if (entry.status === "canceled") {
         throw conflict("Lançamento cancelado não pode ser editado.");
@@ -835,6 +926,10 @@ export const financeService = {
       const before = clone(entry);
       applyPatch(entry, payload, ts);
       const changes = describeChanges(before, entry);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialEntryInDb(id, payload, store.organization.id);
+      }
 
       let following = 0;
       const recurrence =
@@ -847,6 +942,20 @@ export const financeService = {
         if (payload.amountCents !== undefined) recurrence.amountCents = payload.amountCents;
         if (payload.dueDate !== undefined) recurrence.dayOfMonth = Number(payload.dueDate.slice(8, 10));
         recurrence.updatedAt = ts;
+
+        if (isSupabaseOrganization(store.organization.id)) {
+          await updateFinancialRecurrenceInDb(
+            recurrence.id,
+            {
+              categoryId: payload.categoryId,
+              description: payload.description,
+              amountCents: payload.amountCents,
+              dayOfMonth: payload.dueDate !== undefined ? Number(payload.dueDate.slice(8, 10)) : undefined,
+            },
+            store.organization.id,
+          );
+        }
+
         const from = entry.recurrenceCompetence ?? competenceOf(entry.dueDate);
         for (const other of store.financialEntries) {
           if (
@@ -870,6 +979,18 @@ export const financeService = {
             },
             ts,
           );
+          if (isSupabaseOrganization(store.organization.id)) {
+            await updateFinancialEntryInDb(
+              other.id,
+              {
+                categoryId: other.categoryId,
+                description: other.description,
+                amountCents: other.amountCents,
+                dueDate: other.dueDate,
+              },
+              store.organization.id,
+            );
+          }
           following += 1;
         }
       }
@@ -893,7 +1014,7 @@ export const financeService = {
     receipts: FileAttachment[] = [],
     paidOn?: DateISO,
   ): Promise<FinancialEntry> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const entry = findEntry(id);
       if (!isPaymentMethod(method)) {
         throw validationError([{ field: "method", message: "Selecione a forma de pagamento." }]);
@@ -910,6 +1031,20 @@ export const financeService = {
       entry.method = method;
       if (receipts.length > 0) entry.attachments = attachments;
       entry.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialEntryInDb(
+          id,
+          {
+            status: "paid",
+            paidAt,
+            method,
+            attachments: entry.attachments,
+          },
+          store.organization.id,
+        );
+      }
+
       recordEntry(
         entry,
         "status_changed",
@@ -922,7 +1057,7 @@ export const financeService = {
 
   /** Desfaz o pagamento (volta a pendente; atraso derivado na leitura). */
   markEntryPending(id: Id): Promise<FinancialEntry> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const entry = findEntry(id);
       if (entry.status !== "paid") throw conflict("Só é possível desfazer um lançamento pago.");
       const method = entry.method;
@@ -930,6 +1065,19 @@ export const financeService = {
       entry.paidAt = undefined;
       entry.method = undefined;
       entry.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialEntryInDb(
+          id,
+          {
+            status: "pending",
+            paidAt: undefined,
+            method: undefined,
+          },
+          store.organization.id,
+        );
+      }
+
       recordEntry(
         entry,
         "status_changed",
@@ -949,7 +1097,7 @@ export const financeService = {
 
   /** Cancela (mantem no historico, sai dos totais). Pago precisa desfazer antes. */
   cancelEntry(id: Id): Promise<FinancialEntry> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const entry = findEntry(id);
       if (entry.status === "canceled") throw conflict("Este lançamento já está cancelado.");
       if (entry.status === "paid") {
@@ -957,6 +1105,11 @@ export const financeService = {
       }
       entry.status = "canceled";
       entry.updatedAt = nowIso();
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialEntryInDb(id, { status: "canceled" }, store.organization.id);
+      }
+
       recordEntry(entry, "cancelled", `cancelou a ${entryLabel(entry)} ${entryFacts(entry)}`);
       return clone(entry);
     });
@@ -967,7 +1120,7 @@ export const financeService = {
    * e excluido (a materializacao recriaria o mes): cancele ou encerre a repeticao.
    */
   deleteEntry(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const entry = findEntry(id);
       if (wasEverPaid(entry)) {
         throw conflict("Lançamento que já foi pago não pode ser excluído. Cancele em vez disso.");
@@ -975,6 +1128,11 @@ export const financeService = {
       if (entry.recurrenceId) {
         throw conflict("Lançamento de repetição não pode ser excluído. Cancele ou encerre a repetição.");
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await deleteFinancialEntryInDb(id, store.organization.id);
+      }
+
       store.financialEntries = store.financialEntries.filter((e) => e.id !== id);
       recordEntry(entry, "deleted", `excluiu a ${entryLabel(entry)} ${entryFacts(entry)}`);
     });
@@ -982,7 +1140,7 @@ export const financeService = {
 
   /** Encerra a repeticao: inativa e cancela os pendentes com vencimento de hoje em diante. */
   endRecurrence(recurrenceId: Id): Promise<{ canceled: number }> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const recurrence = store.financialRecurrences.find((r) => r.id === recurrenceId);
       if (!recurrence) throw notFoundError("Repetição não encontrada.");
       if (recurrence.status !== "active") throw conflict("Esta repetição já foi encerrada.");
@@ -991,13 +1149,26 @@ export const financeService = {
       recurrence.status = "inactive";
       recurrence.endCompetence = currentCompetence();
       recurrence.updatedAt = ts;
+
       let canceled = 0;
       for (const e of store.financialEntries) {
         if (e.recurrenceId !== recurrenceId || e.status !== "pending" || e.dueDate < today) continue;
         e.status = "canceled";
         e.updatedAt = ts;
         canceled += 1;
+        if (isSupabaseOrganization(store.organization.id)) {
+          await updateFinancialEntryInDb(e.id, { status: "canceled" }, store.organization.id);
+        }
       }
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialRecurrenceInDb(
+          recurrenceId,
+          { status: "inactive", endCompetence: recurrence.endCompetence },
+          store.organization.id,
+        );
+      }
+
       auditLogService.record({
         action: "inactivated",
         target: { type: "financial_entry", id: recurrence.id, label: recurrence.description },
@@ -1010,7 +1181,8 @@ export const financeService = {
   // --- Categorias -----------------------------------------------------------
 
   listCategories(filter?: FinancialCategoryFilter): Promise<FinancialCategory[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncFinanceFromDb(store.organization.id);
       let result = store.financialCategories;
       if (filter?.type) result = result.filter((c) => c.type === filter.type);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);
@@ -1020,7 +1192,7 @@ export const financeService = {
   },
 
   createCategory(payload: CreateFinancialCategory): Promise<FinancialCategory> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const fields: ApiErrorField[] = [];
       const name = typeof payload.name === "string" ? payload.name.trim() : "";
       if (!isEntryType(payload.type)) fields.push({ field: "type", message: "Escolha entre entrada e saída." });
@@ -1040,6 +1212,11 @@ export const financeService = {
         createdAt: ts,
         updatedAt: ts,
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await createFinancialCategoryInDb(category);
+      }
+
       store.financialCategories.push(category);
       auditLogService.record({
         action: "created",
@@ -1052,7 +1229,7 @@ export const financeService = {
 
   /** Renomeia, inativa ou reativa. Categorias de sistema ficam travadas. */
   updateCategory(id: Id, payload: UpdateFinancialCategory): Promise<FinancialCategory> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.financialCategories.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError("Categoria não encontrada.");
       const current = store.financialCategories[idx];
@@ -1079,6 +1256,11 @@ export const financeService = {
         status: payload.status ?? current.status,
         updatedAt: nowIso(),
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateFinancialCategoryInDb(id, payload, store.organization.id);
+      }
+
       store.financialCategories[idx] = updated;
       const reactivated = current.status !== "active" && updated.status === "active";
       const inactivated = current.status === "active" && updated.status !== "active";
