@@ -10,7 +10,7 @@ import type {
  * (`can`) E o recurso do plano (`hasFeature`). Ver docs/technical/05 (secao 3).
  */
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
-  free: [],
+  free: ["online_payments"],
   pro: ["online_payments", "messaging", "reports_advanced", "certificates"],
   scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
 };

@@ -251,8 +251,13 @@ export interface OnlinePayment {
   method: OnlinePaymentMethod;
   amountCents: number;
   status: OnlinePaymentStatus;
-  pixCopyPaste?: string; // "copia e cola" ficticio
-  linkUrl?: string; // link ficticio
+  pixCopyPaste?: string; // codigo copia e cola Pix
+  pixQrCodeBase64?: string; // imagem base64 do QR Code para exibicao direta
+  linkUrl?: string; // link de pagamento
+  gatewayProvider?: string; // ex: 'asaas', 'pagbank'
+  gatewayPaymentId?: string; // ID da transação no provedor ativo
+  splitAmountCents?: number; // valor do split do GestaraHub retido
+  netAmountCents?: number; // valor liquido que a academia recebe
   expiresAt: DateTimeISO;
   paidAt?: DateTimeISO;
   createdAt: DateTimeISO;
@@ -277,6 +282,10 @@ export interface OnlinePaymentSettings {
   enabled: boolean;
   pixKey?: string; // exibida como dado da academia (simulado)
   defaultExpiresInMinutes?: number; // padrao 1440 (24 h)
+  gatewayProvider?: string; // 'asaas' | 'pagbank' | ...
+  gatewayAccountId?: string; // subconta no provedor
+  gatewayWalletId?: string; // carteira no provedor
+  gatewayStatus?: "not_configured" | "pending" | "approved" | "rejected";
 }
 
 /** Como a cobranca do aluno foi paga. */

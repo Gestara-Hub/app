@@ -24,6 +24,11 @@ import { persist, store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { paymentGateway } from "./payments/paymentGateway";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
+import { isSupabaseOrganization } from "@/lib/session";
+import {
+  insertOnlinePaymentInDb,
+  listOnlinePaymentsForChargeFromDb,
+} from "./onlinePaymentsBackend";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de
@@ -319,11 +324,23 @@ export const onlinePaymentsService = {
 
   /** Dados do dialogo "Cobrar online": aluno, telefone e os pagamentos da cobranca. */
   getCheckout(chargeId: Id): Promise<OnlineChargeCheckout> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
       if (expireStale()) persist();
       const c = store.charges.find((x) => x.id === chargeId);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       const student = store.clients.find((s) => s.id === c.studentId);
+      let payments = paymentsOf(c.id);
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbPayments = await listOnlinePaymentsForChargeFromDb(
+          c.id,
+          store.organization.id,
+        );
+        if (dbPayments.length > 0) {
+          payments = dbPayments;
+        }
+      }
+
       return clone({
         chargeId: c.id,
         studentId: c.studentId,
@@ -331,7 +348,7 @@ export const onlinePaymentsService = {
         studentPhone: student?.phone || undefined,
         amountCents: c.amountCents,
         dueDate: c.dueDate,
-        payments: paymentsOf(c.id),
+        payments,
       });
     });
   },
@@ -348,6 +365,7 @@ export const onlinePaymentsService = {
     assertOnlineEnabled();
     const charge = findOpenCharge(chargeId);
     const settings = currentSettings();
+    const student = store.clients.find((s) => s.id === charge.studentId);
     const expiresInMinutes = settings.defaultExpiresInMinutes;
     const provided =
       method === "pix"
@@ -357,14 +375,23 @@ export const onlinePaymentsService = {
             expiresInMinutes,
             pixKey: settings.pixKey,
             merchantName: store.organization.name,
+            studentId: charge.studentId,
+            studentName: student?.name,
+            studentPhone: student?.phone,
+            studentEmail: student?.email,
           })
         : await paymentGateway.createLink({
             chargeId,
             amountCents: charge.amountCents,
             expiresInMinutes,
+            merchantName: store.organization.name,
+            studentId: charge.studentId,
+            studentName: student?.name,
+            studentPhone: student?.phone,
+            studentEmail: student?.email,
           });
 
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       // Revalida: a cobranca pode ter mudado durante a chamada ao provedor.
       const c = findOpenCharge(chargeId);
       cancelOnlinePaymentsForCharge(c.id);
@@ -375,13 +402,33 @@ export const onlinePaymentsService = {
         method,
         amountCents: c.amountCents,
         status: "awaiting",
+        gatewayProvider:
+          store.organization.settings?.onlinePayments?.gatewayProvider ?? "asaas",
+        gatewayPaymentId: provided.providerId,
+        splitAmountCents:
+          "splitAmountCents" in provided ? provided.splitAmountCents : undefined,
+        netAmountCents:
+          c.amountCents -
+          (("splitAmountCents" in provided ? provided.splitAmountCents : 0) ?? 0),
         ...("pixCopyPaste" in provided
-          ? { pixCopyPaste: provided.pixCopyPaste }
+          ? {
+              pixCopyPaste: provided.pixCopyPaste,
+              pixQrCodeBase64: provided.pixQrCodeBase64,
+            }
           : {}),
         ...("linkUrl" in provided ? { linkUrl: provided.linkUrl } : {}),
         expiresAt: provided.expiresAt,
         createdAt: nowIso(),
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        try {
+          await insertOnlinePaymentInDb(payment, c.studentId);
+        } catch (dbErr) {
+          console.error("[onlinePaymentsService] Erro ao salvar online_payment no banco:", dbErr);
+        }
+      }
+
       store.onlinePayments.push(payment);
       auditLogService.record({
         action: "created",

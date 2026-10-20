@@ -1,0 +1,217 @@
+import type {
+  AsaasAccountRequest,
+  AsaasAccountResponse,
+  AsaasCustomerRequest,
+  AsaasCustomerResponse,
+  AsaasPaymentRequest,
+  AsaasPaymentResponse,
+  AsaasPixQrCodeResponse,
+} from "./types";
+
+export interface AsaasConfig {
+  apiUrl: string;
+  masterApiKey: string;
+  masterWalletId?: string;
+}
+
+export function getAsaasConfig(): AsaasConfig {
+  const apiUrl =
+    process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3";
+  const masterApiKey = process.env.ASAAS_API_KEY || "";
+  const masterWalletId = process.env.ASAAS_MASTER_WALLET_ID;
+
+  if (!masterApiKey) {
+    console.warn(
+      "[Asaas] Atenção: ASAAS_API_KEY não configurada no ambiente.",
+    );
+  }
+
+  return {
+    apiUrl: apiUrl.replace(/\/$/, ""),
+    masterApiKey,
+    masterWalletId,
+  };
+}
+
+export class AsaasApiError extends Error {
+  code?: string;
+  status: number;
+  errors?: Array<{ code: string; description: string }>;
+
+  constructor(
+    message: string,
+    status: number,
+    errors?: Array<{ code: string; description: string }>,
+  ) {
+    super(message);
+    this.name = "AsaasApiError";
+    this.status = status;
+    this.errors = errors;
+    this.code = errors?.[0]?.code;
+  }
+}
+
+/**
+ * Função base para requisições à API do Asaas.
+ */
+async function asaasFetch<T>(
+  endpoint: string,
+  options: {
+    method?: "GET" | "POST" | "PUT" | "DELETE";
+    body?: unknown;
+    apiKey?: string;
+  } = {},
+): Promise<T> {
+  const config = getAsaasConfig();
+  const token = options.apiKey || config.masterApiKey;
+
+  if (!token) {
+    throw new AsaasApiError(
+      "Chave de API do Asaas não configurada.",
+      401,
+    );
+  }
+
+  const url = `${config.apiUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    access_token: token,
+  };
+
+  const response = await fetch(url, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorList = data?.errors as
+      | Array<{ code: string; description: string }>
+      | undefined;
+    const errorMsg =
+      errorList?.map((e) => e.description).join(" | ") ||
+      data?.message ||
+      `Erro na chamada ao Asaas (HTTP ${response.status})`;
+
+    console.error(`[Asaas] Erro em ${options.method || "GET"} ${endpoint}:`, {
+      status: response.status,
+      errors: errorList,
+    });
+
+    throw new AsaasApiError(errorMsg, response.status, errorList);
+  }
+
+  return data as T;
+}
+
+// ---------------------------------------------------------------------------
+// Métodos da API
+// ---------------------------------------------------------------------------
+
+/**
+ * Consulta os dados da conta (Master ou Subconta) vinculada à chave de API.
+ */
+export async function getAccountInfo(apiKey?: string): Promise<Record<string, unknown>> {
+  return asaasFetch<Record<string, unknown>>("/myAccount", { apiKey });
+}
+
+/**
+ * Cria uma subconta filha vinculada à conta Master do GestaraHub.
+ */
+export async function createSubAccount(
+  accountData: AsaasAccountRequest,
+): Promise<AsaasAccountResponse> {
+  return asaasFetch<AsaasAccountResponse>("/accounts", {
+    method: "POST",
+    body: accountData,
+  });
+}
+
+/**
+ * Cria ou busca um cliente (Aluno) no Asaas.
+ */
+export async function createOrFindCustomer(
+  customerData: AsaasCustomerRequest,
+  subaccountApiKey?: string,
+): Promise<AsaasCustomerResponse> {
+  // Se informou CPF/CNPJ, tenta buscar primeiro para não duplicar
+  if (customerData.cpfCnpj) {
+    const cleanCpf = customerData.cpfCnpj.replace(/\D/g, "");
+    try {
+      const searchRes = await asaasFetch<{
+        data: AsaasCustomerResponse[];
+      }>(`/customers?cpfCnpj=${cleanCpf}`, { apiKey: subaccountApiKey });
+
+      if (searchRes.data && searchRes.data.length > 0) {
+        return searchRes.data[0];
+      }
+    } catch {
+      // continua para a criação
+    }
+  }
+
+  return asaasFetch<AsaasCustomerResponse>("/customers", {
+    method: "POST",
+    body: customerData,
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
+ * Cria uma cobrança Pix com split automático na subconta.
+ */
+export async function createPixPayment(
+  paymentData: AsaasPaymentRequest,
+  subaccountApiKey?: string,
+): Promise<AsaasPaymentResponse> {
+  return asaasFetch<AsaasPaymentResponse>("/payments", {
+    method: "POST",
+    body: paymentData,
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
+ * Obtém a imagem do QR Code (Base64) e o código Pix Copia-e-Cola de uma cobrança.
+ */
+export async function getPixQrCode(
+  paymentId: string,
+  subaccountApiKey?: string,
+): Promise<AsaasPixQrCodeResponse> {
+  return asaasFetch<AsaasPixQrCodeResponse>(
+    `/payments/${paymentId}/pixQrCode`,
+    { apiKey: subaccountApiKey },
+  );
+}
+
+/**
+ * Consulta os detalhes de um pagamento pelo ID no Asaas.
+ */
+export async function getPayment(
+  paymentId: string,
+  subaccountApiKey?: string,
+): Promise<AsaasPaymentResponse> {
+  return asaasFetch<AsaasPaymentResponse>(`/payments/${paymentId}`, {
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
+ * Cancela/remove uma cobrança no Asaas.
+ */
+export async function deletePayment(
+  paymentId: string,
+  subaccountApiKey?: string,
+): Promise<{ deleted: boolean; id: string }> {
+  return asaasFetch<{ deleted: boolean; id: string }>(
+    `/payments/${paymentId}`,
+    {
+      method: "DELETE",
+      apiKey: subaccountApiKey,
+    },
+  );
+}

@@ -287,13 +287,24 @@ export function OnlineChargeDialog({
               {awaiting.method === "pix" ? (
                 <div className="flex flex-col items-center gap-2">
                   <div className="rounded-lg border bg-background p-2">
-                    <IllustrativeQr
-                      value={awaiting.pixCopyPaste ?? awaiting.id}
-                      className="size-40"
-                    />
+                    {awaiting.pixQrCodeBase64 ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`data:image/png;base64,${awaiting.pixQrCodeBase64}`}
+                        alt="QR Code do Pix"
+                        className="size-40 rounded object-contain"
+                      />
+                    ) : (
+                      <IllustrativeQr
+                        value={awaiting.pixCopyPaste ?? awaiting.id}
+                        className="size-40"
+                      />
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    QR Code ilustrativo, não é lido por apps de banco.
+                    {awaiting.pixQrCodeBase64
+                      ? "Escaneie o QR Code no app do seu banco para pagar."
+                      : "QR Code ilustrativo, não é lido por apps de banco."}
                   </p>
                 </div>
               ) : null}
