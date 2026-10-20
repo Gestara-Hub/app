@@ -108,6 +108,13 @@ export const clientFormSchema = z.object({
    */
   sellsPackage: z.boolean().optional(),
   packageId: z.string().optional(),
+  /** Consentimento LGPD para menor de 18 anos */
+  minorConsentStatus: z
+    .enum(["not_applicable", "pending", "confirmed_whatsapp", "confirmed_paper"])
+    .optional(),
+  minorConsentAt: z.string().optional(),
+  minorConsentBy: z.string().optional(),
+  hasPaperConsent: z.boolean().optional(),
   packagePriceCents: z.number({ error: "Informe o valor." }).nullish(),
   packageInstallments: z.string().optional(),
   packageFirstDueDate: z.string().optional(),

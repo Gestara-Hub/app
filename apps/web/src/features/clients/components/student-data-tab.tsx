@@ -1,10 +1,23 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Pencil, Users } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  FileText,
+  MessageCircle,
+  Pencil,
+  ShieldAlert,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
 import type { Client, StudentSummary } from "@gestarahub/contracts";
+import { useOrganization } from "@/features/settings";
+import { useConfirmPaperMinorConsent } from "../hooks/use-clients";
 import { brDate, PERIOD_SHORT, TIMING_LABEL } from "./student-profile-parts";
 import { ageLabel } from "@/lib/birthdays";
 
@@ -53,6 +66,55 @@ export function StudentDataTab({
   const { student, membership } = summary;
   const guardians = student.guardians ?? [];
   const address = addressText(student.address);
+  const { data: organization } = useOrganization();
+  const confirmPaperMutation = useConfirmPaperMinorConsent();
+
+  const handleCopyLink = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/consent/minor/${student.id}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      toast.success("Link de autorização copiado para a área de transferência.");
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/consent/minor/${student.id}`;
+    const primaryGuardian = guardians[0];
+    const targetPhone = primaryGuardian?.phone || student.phone;
+    const guardianGreeting = primaryGuardian?.name ? `, ${primaryGuardian.name}` : "";
+    const orgName = organization?.name || "nossa unidade";
+
+    const msg = `Olá${guardianGreeting}! Segue o link para conferência e autorização de matrícula e consentimento LGPD do aluno(a) ${student.name} na ${orgName}:\n\n${url}\n\nLeva menos de 1 minuto para confirmar no celular. Obrigado!`;
+
+    if (!targetPhone) {
+      handleCopyLink();
+      toast.info("Nenhum telefone de contato cadastrado. O link foi copiado para envio manual.");
+      return;
+    }
+
+    const cleanPhone = targetPhone.replace(/\D/g, "");
+    const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+    window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  const handleConfirmPaper = async () => {
+    try {
+      const res = await confirmPaperMutation.mutateAsync({
+        studentId: student.id,
+        guardianName: guardians[0]?.name,
+      });
+      if (res.success) {
+        toast.success("Termo físico registrado com sucesso.");
+      } else {
+        toast.error(res.error || "Não foi possível registrar o termo físico.");
+      }
+    } catch {
+      toast.error("Erro ao registrar termo físico.");
+    }
+  };
+
   const editButton = onEdit ? (
     <Button variant="outline" onClick={onEdit}>
       <Pencil className="size-4" />
@@ -122,26 +184,107 @@ export function StudentDataTab({
       ) : null}
 
       <Section title="Responsáveis">
-        {guardians.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="size-4 shrink-0" />
-            Nenhum responsável cadastrado.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border/50">
-            {guardians.map((g, i) => (
-              <li key={`${g.name}-${i}`} className="py-2 first:pt-0 last:pb-0">
-                <p className="text-sm font-medium text-foreground">
-                  {g.name}
-                  {g.relationship ? <span className="font-normal text-muted-foreground"> · {g.relationship}</span> : null}
+        <div className="space-y-4">
+          {summary.age !== null && summary.age < 18 ? (
+            <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <ShieldCheck className="size-4 text-primary" />
+                  <span>Consentimento LGPD (Art. 14)</span>
+                </div>
+                {student.minorConsentStatus === "confirmed_whatsapp" ? (
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 gap-1 text-[11px]">
+                    <CheckCircle2 className="size-3" />
+                    Autorizado via WhatsApp
+                  </Badge>
+                ) : student.minorConsentStatus === "confirmed_paper" ? (
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 gap-1 text-[11px]">
+                    <CheckCircle2 className="size-3" />
+                    Termo Físico Arquivado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 gap-1 text-[11px]">
+                    <ShieldAlert className="size-3" />
+                    Pendente de Autorização
+                  </Badge>
+                )}
+              </div>
+
+              {student.minorConsentStatus === "confirmed_whatsapp" ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Autorizado eletronicamente por <strong className="text-foreground">{student.minorConsentBy || "Responsável legal"}</strong>
+                  {student.minorConsentAt ? ` em ${brDate(student.minorConsentAt.slice(0, 10))}` : ""}. Registro probatório com carimbo temporal arquivado.
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {[g.phone ? formatPhone(g.phone) : null, g.email].filter(Boolean).join(" · ") || "Sem contato"}
+              ) : student.minorConsentStatus === "confirmed_paper" ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Termo impresso assinado presencialmente e arquivado na recepção
+                  {student.minorConsentAt ? ` em ${brDate(student.minorConsentAt.slice(0, 10))}` : ""}.
                 </p>
-              </li>
-            ))}
-          </ul>
-        )}
+              ) : (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  O consentimento de ao menos um dos pais ou responsável é orientado pela LGPD para o tratamento de dados de menores. A ausência de confirmação não impede o aluno de frequentar as aulas.
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendWhatsApp}
+                  className="h-8 gap-1.5 text-xs text-foreground"
+                >
+                  <MessageCircle className="size-3.5 text-emerald-600" />
+                  Enviar por WhatsApp
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Copy className="size-3.5" />
+                  Copiar link
+                </Button>
+                {student.minorConsentStatus === "pending" || !student.minorConsentStatus ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConfirmPaper}
+                    disabled={confirmPaperMutation.isPending}
+                    className="h-8 gap-1.5 text-xs text-foreground"
+                  >
+                    <FileText className="size-3.5" />
+                    Registrar termo impresso
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {guardians.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="size-4 shrink-0" />
+              Nenhum responsável cadastrado.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/50">
+              {guardians.map((g, i) => (
+                <li key={`${g.name}-${i}`} className="py-2 first:pt-0 last:pb-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {g.name}
+                    {g.relationship ? <span className="font-normal text-muted-foreground"> · {g.relationship}</span> : null}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {[g.phone ? formatPhone(g.phone) : null, g.email].filter(Boolean).join(" · ") || "Sem contato"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Section>
     </div>
   );

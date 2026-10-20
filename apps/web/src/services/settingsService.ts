@@ -99,6 +99,9 @@ export const settingsService = {
                 gatewayAccountId: remote.accountId ?? (remoteOnline.gatewayAccountId as string | undefined),
                 gatewayWalletId: remote.walletId ?? (remoteOnline.gatewayWalletId as string | undefined),
                 gatewayStatus: (remote.status as "approved" | "pending" | "rejected" | undefined) ?? (remoteOnline.gatewayStatus as "approved" | undefined),
+                passFeeToCustomer: currentOnline?.passFeeToCustomer ?? (remoteOnline.passFeeToCustomer !== undefined ? Boolean(remoteOnline.passFeeToCustomer) : false),
+                passFeePix: currentOnline?.passFeePix ?? (remoteOnline.passFeePix !== undefined ? Boolean(remoteOnline.passFeePix) : undefined),
+                passFeeCard: currentOnline?.passFeeCard ?? (remoteOnline.passFeeCard !== undefined ? Boolean(remoteOnline.passFeeCard) : undefined),
               },
             },
           };

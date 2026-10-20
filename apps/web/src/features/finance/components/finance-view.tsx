@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, LayoutDashboard, Lock, Plus, Settings2, Users } from "lucide-react";
+import { ArrowLeftRight, LayoutDashboard, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
-import { OnlinePaymentsSettingsCard } from "@/features/settings";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
 import { cn } from "@/lib/utils";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
@@ -20,8 +19,6 @@ const TABS: { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[]
   { value: "resumo", label: "Resumo", icon: LayoutDashboard },
   { value: "lancamentos", label: "Lançamentos", icon: ArrowLeftRight },
   { value: "professores", label: "Professores", icon: Users },
-  // Pagamento online tambem aqui: o gerente (finance:manage) nao abre /settings.
-  { value: "configuracoes", label: "Configurações", icon: Settings2 },
 ];
 
 /**
@@ -33,8 +30,6 @@ export function FinanceView() {
   const { tab, setTab, competence, setCompetence } = useFinanceUrlState();
   const can = useCan();
   const canManage = can("finance:manage");
-  const hasFeature = useHasFeature();
-  const hasOnlineFeature = hasFeature("online_payments");
   const [createOpen, setCreateOpen] = useState(false);
   // Abrir o Financeiro conclui "Ver o resultado do mês" (Dashboard).
   const user = useCurrentUser();
@@ -48,17 +43,15 @@ export function FinanceView() {
         title="Financeiro"
         description="Entradas, saídas, resultado do mês e pagamento dos professores."
       >
-        {tab !== "configuracoes" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
-            {canManage ? (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="size-4" />
-                Novo lançamento
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
+          {canManage ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Novo lançamento
+            </Button>
+          ) : null}
+        </div>
       </PageHeader>
 
       <div
@@ -87,9 +80,6 @@ export function FinanceView() {
             >
               <Icon className="size-4 shrink-0" />
               {t.label}
-              {t.value === "configuracoes" && !hasOnlineFeature ? (
-                <Lock className="size-3 text-muted-foreground/80 ml-0.5" aria-hidden />
-              ) : null}
             </button>
           );
         })}
@@ -114,7 +104,6 @@ export function FinanceView() {
           />
         ) : null}
         {tab === "professores" ? <TeacherPayTab competence={competence} /> : null}
-        {tab === "configuracoes" ? <OnlinePaymentsSettingsCard /> : null}
       </div>
 
       <FinanceEntryFormDialog

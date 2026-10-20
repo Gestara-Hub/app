@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Cake, MessageCircle } from "lucide-react";
+import { Cake, Copy, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub/contracts";
 import { todayISO } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
@@ -215,6 +216,57 @@ export function StudentProfileAlerts({
           <Cake className="size-4" />
           Mandar parabéns
         </Button>,
+      ),
+    });
+  }
+
+  // Autorização de menor pendente (Art. 14 LGPD): se menor de 18 anos e termo pendente.
+  if (
+    summary.age !== null &&
+    summary.age < 18 &&
+    (student.minorConsentStatus === "pending" || !student.minorConsentStatus)
+  ) {
+    const guardianWithPhone = student.guardians?.find((g) => Boolean(g.phone));
+    const targetPhone = guardianWithPhone?.phone || student.phone;
+    const targetName = guardianWithPhone?.name || "Responsável legal";
+
+    alerts.push({
+      key: "minor_consent",
+      title: "Autorização de menor pendente (LGPD)",
+      detail: "O consentimento dos pais ou responsável ainda não foi confirmado.",
+      actions: (
+        <>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const origin = typeof window !== "undefined" ? window.location.origin : "";
+              const url = `${origin}/consent/minor/${student.id}`;
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+                toast.success("Link copiado para a área de transferência.");
+              }
+            }}
+          >
+            <Copy className="size-4" />
+            Copiar link
+          </Button>
+          {targetPhone ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                const url = `${origin}/consent/minor/${student.id}`;
+                const msg = `Olá, ${targetName}! Segue o link de autorização de matrícula e LGPD do aluno(a) ${student.name}: ${url}\n\nPor favor, confirme no link acima.`;
+                const cleanPhone = targetPhone.replace(/\D/g, "");
+                const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+                window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+              }}
+            >
+              <MessageCircle className="size-4 text-emerald-600" />
+              Enviar por WhatsApp
+            </Button>
+          ) : null}
+        </>
       ),
     });
   }

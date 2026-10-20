@@ -18,9 +18,12 @@ import type {
   OnlinePayment,
   OnlinePaymentMethod,
 } from "@gestarahub/contracts";
+import { calculateChargeWithPassedFee } from "@gestarahub/core/billing";
 import { formatCents, formatDateTime } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +33,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { cn } from "@/lib/utils";
 import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
 import { useOrganization } from "@/features/settings";
@@ -121,18 +123,35 @@ export function OnlineChargeDialog({
   const paidMut = useSimulateOnlinePaid();
   const { data: org } = useOrganization();
   const whatsapp = useWhatsAppSend();
-  const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Forcar a escolha de novo metodo mesmo com um codigo valido em aberto.
   const [choosing, setChoosing] = useState(false);
   const [method, setMethod] = useState<OnlinePaymentMethod>("pix");
+  const [passFee, setPassFee] = useState<boolean | null>(null);
 
   const close = (next: boolean) => {
     if (!next) {
       setChoosing(false);
       setMethod("pix");
+      setPassFee(null);
     }
     onOpenChange(next);
   };
+
+  const onlineSettings = org?.settings?.onlinePayments;
+  const tier = org?.subscription?.tier;
+  const splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
+  const defaultPassFee =
+    method === "pix"
+      ? Boolean(onlineSettings?.passFeePix ?? onlineSettings?.passFeeToCustomer ?? false)
+      : Boolean(onlineSettings?.passFeeCard ?? onlineSettings?.passFeeToCustomer ?? false);
+  const activePassFee = passFee !== null ? passFee : defaultPassFee;
+
+  const feePreview = calculateChargeWithPassedFee({
+    amountCents: charge?.amountCents ?? 0,
+    method,
+    splitAmountCents,
+    passFee: activePassFee,
+  });
 
   const payments = checkout.data?.payments ?? [];
   const awaiting = payments.find((p) => p.status === "awaiting");
@@ -144,7 +163,7 @@ export function OnlineChargeDialog({
   const generate = () => {
     if (!charge) return;
     createMut.mutate(
-      { chargeId: charge.id, method },
+      { chargeId: charge.id, method, passFeeToCustomer: activePassFee },
       {
         onSuccess: () => {
           setChoosing(false);
@@ -160,22 +179,8 @@ export function OnlineChargeDialog({
     );
   };
 
-  const simulatePaid = async (payment: OnlinePayment) => {
+  const simulatePaid = (payment: OnlinePayment) => {
     if (!charge) return;
-    const isAsaas =
-      payment.gatewayProvider === "asaas" || Boolean(payment.pixQrCodeBase64);
-    const ok = await confirm({
-      title: isAsaas
-        ? "Simular liquidação no Sandbox?"
-        : "Simular pagamento?",
-      description: isAsaas
-        ? `Homologação: simula a confirmação imediata do pagamento de ${formatCents(payment.amountCents)} pelo Asaas Sandbox. A cobrança ficará com status "Pago online".`
-        : `Demonstração: faz de conta que ${charge.studentName} pagou ${formatCents(payment.amountCents)} ${payment.method === "pix" ? "pelo Pix" : "pelo link"}. A cobrança fica paga como "Pago online" e não pode ser desfeita.`,
-      confirmLabel: isAsaas
-        ? "Confirmar liquidação"
-        : "Simular pagamento",
-    });
-    if (!ok) return;
     paidMut.mutate(payment.id, {
       onSuccess: () => {
         toast.success("Pagamento online confirmado.");
@@ -183,7 +188,7 @@ export function OnlineChargeDialog({
       },
       onError: (err) =>
         toast.error(
-          getErrorMessage(err, "Não foi possível simular o pagamento."),
+          getErrorMessage(err, "Não foi possível confirmar o pagamento."),
         ),
     });
   };
@@ -290,6 +295,69 @@ export function OnlineChargeDialog({
                   );
                 })}
               </div>
+
+              {/* Repasse de taxa e prévia financeira */}
+              <div className="rounded-lg border border-border/80 bg-muted/20 p-3 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <label
+                      htmlFor="pass-fee-switch"
+                      className="text-xs font-semibold text-foreground cursor-pointer"
+                    >
+                      Repassar taxa ao aluno
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {method === "pix"
+                        ? `Acréscimo fixo da taxa (+ ${formatCents(splitAmountCents)})`
+                        : "Acréscimo calculado (+ 2,99% + taxa)"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="pass-fee-switch"
+                    checked={activePassFee}
+                    onCheckedChange={(checked) => setPassFee(checked)}
+                  />
+                </div>
+
+                <div className="rounded-md border border-border/60 bg-background/80 p-2.5 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Valor nominal da cobrança:</span>
+                    <span>{formatCents(charge?.amountCents ?? 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Taxa {activePassFee ? "(acrescida ao aluno)" : "(descontada de você)"}:</span>
+                    <span
+                      className={
+                        activePassFee
+                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                          : "text-amber-600 dark:text-amber-400 font-medium"
+                      }
+                    >
+                      {activePassFee
+                        ? `+ ${formatCents(feePreview.feeAmountCents)}`
+                        : `- ${formatCents(feePreview.feeAmountCents)}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border/50 pt-1 font-semibold">
+                    <span className="text-foreground">Aluno paga:</span>
+                    <span className="text-foreground text-sm font-bold">
+                      {formatCents(feePreview.chargedAmountCents)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Você recebe líquido:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatCents(feePreview.netAmountCents)}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-muted-foreground">
+                  {activePassFee
+                    ? "✓ Custo zero para sua academia. O valor líquido creditado será exatamente o valor original da mensalidade."
+                    : "• Você absorve a taxa e ela será descontada do saldo recebido na subconta."}
+                </p>
+              </div>
             </div>
           ) : awaiting ? (
             <div className="space-y-4">
@@ -317,6 +385,39 @@ export function OnlineChargeDialog({
                   </p>
                 </div>
               ) : null}
+
+              {/* Resumo da cobrança gerada */}
+              <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Valor a pagar:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-foreground">
+                      {formatCents(awaiting.amountCents)}
+                    </span>
+                    {awaiting.feePassedToCustomer ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-[9px] h-4 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      >
+                        Taxa repassada ao aluno
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="secondary"
+                        className="text-[9px] h-4 px-1.5 text-muted-foreground"
+                      >
+                        Taxa absorvida
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Líquido para sua conta:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatCents(awaiting.netAmountCents ?? awaiting.amountCents)}
+                  </span>
+                </div>
+              </div>
 
               <div className="space-y-1.5">
                 <p className="text-sm font-medium text-foreground">
@@ -402,11 +503,11 @@ export function OnlineChargeDialog({
                     variant="outline"
                     size="sm"
                     disabled={paidMut.isPending}
-                    onClick={() => void simulatePaid(awaiting)}
+                    onClick={() => simulatePaid(awaiting)}
                     className="gap-1.5 text-xs"
                   >
-                    <RotateCw className="size-3" />
-                    {paidMut.isPending ? "Confirmando..." : "Simular liquidação (Sandbox)"}
+                    <RotateCw className={cn("size-3", paidMut.isPending && "animate-spin")} />
+                    {paidMut.isPending ? "Confirmando liquidação..." : "Simular liquidação (Sandbox)"}
                   </Button>
                 </div>
               ) : (
@@ -459,7 +560,6 @@ export function OnlineChargeDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {confirmDialog}
     </>
   );
 }

@@ -258,6 +258,8 @@ export interface OnlinePayment {
   gatewayPaymentId?: string; // ID da transação no provedor ativo
   splitAmountCents?: number; // valor do split do GestaraHub retido
   netAmountCents?: number; // valor liquido que a academia recebe
+  feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
+  canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
   expiresAt: DateTimeISO;
   paidAt?: DateTimeISO;
   createdAt: DateTimeISO;
@@ -287,6 +289,9 @@ export interface OnlinePaymentSettings {
   gatewayWalletId?: string; // carteira no provedor
   gatewayApiKey?: string; // chave da subconta no provedor (armazenada de forma segura)
   gatewayStatus?: "not_configured" | "pending" | "approved" | "rejected";
+  passFeeToCustomer?: boolean; // repassar taxa da cobranca ao aluno por padrao
+  passFeePix?: boolean; // repassar taxa no Pix
+  passFeeCard?: boolean; // repassar taxa no Cartao
 }
 
 /** Como a cobranca do aluno foi paga. */

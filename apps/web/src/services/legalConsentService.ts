@@ -1,6 +1,10 @@
 import {
   checkUserLegalConsentAction,
   recordLegalConsentAction,
+  confirmMinorConsentAction,
+  confirmPaperMinorConsentAction,
+  getPublicMinorConsentDetailsAction,
+  type ConfirmMinorConsentInput,
 } from "./legalConsentBackend";
 import {
   CURRENT_PLATFORM_TERMS_VERSION,
@@ -23,6 +27,23 @@ export const legalConsentService = {
     input: RecordLegalConsentInput,
   ): Promise<LegalConsentResult> => {
     return recordLegalConsentAction(input);
+  },
+
+  confirmMinorConsent: async (
+    input: ConfirmMinorConsentInput,
+  ): Promise<{ success: boolean; error?: string }> => {
+    return confirmMinorConsentAction(input);
+  },
+
+  confirmPaperMinorConsent: async (
+    studentId: string,
+    guardianName?: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    return confirmPaperMinorConsentAction(studentId, guardianName);
+  },
+
+  getPublicMinorConsentDetails: async (studentId: string) => {
+    return getPublicMinorConsentDetailsAction(studentId);
   },
 
   CURRENT_PLATFORM_TERMS_VERSION,

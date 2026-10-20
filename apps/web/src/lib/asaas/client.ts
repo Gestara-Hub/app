@@ -231,6 +231,26 @@ export async function getSubaccountBalance(
 }
 
 /**
+ * Confirma recebimento manual/em dinheiro de uma cobrança no Asaas (útil para testes em homologação/Sandbox).
+ */
+export async function receiveInCash(
+  paymentId: string,
+  paymentDate: string,
+  value: number,
+  subaccountApiKey?: string,
+): Promise<AsaasPaymentResponse> {
+  return asaasFetch<AsaasPaymentResponse>(`/payments/${paymentId}/receiveInCash`, {
+    method: "POST",
+    body: {
+      paymentDate,
+      value,
+      notifyCustomer: false,
+    },
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
  * Realiza uma transferência / saque via Pix da subconta para a conta bancária do titular.
  */
 export async function createTransfer(

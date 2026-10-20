@@ -99,8 +99,14 @@ export const auditLogService = {
       if (filter?.security !== undefined) {
         result = result.filter((e) => e.security === filter.security);
       }
-      if (filter?.dateFrom) result = result.filter((e) => e.timestamp >= filter.dateFrom!);
-      if (filter?.dateTo) result = result.filter((e) => e.timestamp <= filter.dateTo!);
+      if (filter?.dateFrom) {
+        const fromISO = filter.dateFrom.length === 10 ? `${filter.dateFrom}T00:00:00.000Z` : filter.dateFrom;
+        result = result.filter((e) => e.timestamp >= fromISO);
+      }
+      if (filter?.dateTo) {
+        const toISO = filter.dateTo.length === 10 ? `${filter.dateTo}T23:59:59.999Z` : filter.dateTo;
+        result = result.filter((e) => e.timestamp <= toISO);
+      }
       if (filter?.search) {
         const term = filter.search;
         result = result.filter((e) => textIncludes(e.summary, term));

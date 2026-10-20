@@ -16,6 +16,7 @@ import {
   Power,
   PowerOff,
   Receipt,
+  ShieldCheck,
   Ticket,
 } from "lucide-react";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
@@ -42,6 +43,7 @@ import { useCan, useModel } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { SendMessageDialog, StudentMessagesPanel } from "@/features/communication";
 import { StudentGradesDialog } from "@/features/grades";
+import { useOrganization } from "@/features/settings";
 import {
   NewExtraChargeDialog,
   SellPackageDialog,
@@ -227,6 +229,7 @@ export function StudentProfileView({ id }: { id: Id }) {
     (categories ?? []).filter((c) => c.assessments?.enabled).map((c) => c.id),
   );
   const [recordsModality, setRecordsModality] = useState<Id | null>(null);
+  const { data: organization } = useOrganization();
   const updateMut = useUpdateClient();
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const listLabel = isClasses ? "Alunos" : "Clientes";
@@ -295,6 +298,30 @@ export function StudentProfileView({ id }: { id: Id }) {
   }
 
   const moneyActions = canCharge && isActive;
+  const isMinor =
+    (summary.age !== null && summary.age < 18) ||
+    student.minorConsentStatus === "pending";
+
+  const handleSendConsentWhatsApp = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/consent/minor/${student.id}`;
+    const guardian = student.guardians?.find((g) => Boolean(g.phone)) || student.guardians?.[0];
+    const targetPhone = guardian?.phone || student.phone;
+    const greeting = guardian?.name ? `, ${guardian.name}` : "";
+    const orgName = organization?.name || "nossa escola";
+    const msg = `Olá${greeting}! Segue o link de autorização de matrícula e LGPD do aluno(a) ${student.name} na ${orgName}:\n\n${url}\n\nPor favor, acesse o link para conferir e confirmar pelo celular. Obrigado!`;
+
+    if (targetPhone) {
+      const cleanPhone = targetPhone.replace(/\D/g, "");
+      const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+      window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+    } else {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url);
+        toast.info("Nenhum telefone de contato encontrado. Link copiado para a área de transferência.");
+      }
+    }
+  };
 
   const pageActions: ListItemAction[] = [
     ...(canManage
@@ -307,6 +334,16 @@ export function StudentProfileView({ id }: { id: Id }) {
             label: "Enviar WhatsApp",
             icon: <MessageCircle className="size-4" />,
             onSelect: () => setMessageOpen(true),
+          },
+        ]
+      : []),
+    ...(isMinor
+      ? [
+          {
+            key: "minor-consent",
+            label: "Enviar autorização (WhatsApp)",
+            icon: <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />,
+            onSelect: handleSendConsentWhatsApp,
           },
         ]
       : []),

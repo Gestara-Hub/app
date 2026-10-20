@@ -2,9 +2,9 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 /** Abas do Financeiro (valor do `?tab=`). */
-export type FinanceTab = "resumo" | "lancamentos" | "professores" | "configuracoes";
+export type FinanceTab = "resumo" | "lancamentos" | "professores";
 
-export const FINANCE_TABS: readonly FinanceTab[] = ["resumo", "lancamentos", "professores", "configuracoes"];
+export const FINANCE_TABS: readonly FinanceTab[] = ["resumo", "lancamentos", "professores"];
 
 export const DEFAULT_FINANCE_TAB: FinanceTab = "resumo";
 

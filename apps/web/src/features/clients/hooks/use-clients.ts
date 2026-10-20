@@ -8,6 +8,7 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 import { clientsService } from "@/services/clientsService";
 import { studentSummaryService } from "@/services/studentSummaryService";
+import { legalConsentService } from "@/services/legalConsentService";
 import type {
   ClientFilter,
   CreateClassRecordsBatch,
@@ -195,5 +196,16 @@ export function useRemoveGoal() {
     ({ studentId, modalityId, goalId }: { studentId: Id; modalityId: Id; goalId: Id }) =>
       clientsService.removeGoal(studentId, modalityId, goalId),
   );
+}
+
+export function useConfirmPaperMinorConsent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, guardianName }: { studentId: Id; guardianName?: string }) =>
+      legalConsentService.confirmPaperMinorConsent(studentId, guardianName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.clients.all });
+    },
+  });
 }
 

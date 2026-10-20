@@ -18,11 +18,13 @@ import {
   PowerOff,
   Receipt,
   RotateCw,
+  ShieldCheck,
   Ticket,
   UserRound,
   Users,
   Wallet,
 } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,6 +49,7 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
+import { MinorConsentBadge, isMinorConsentPending } from "@/components/shared/minor-consent-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
 import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
@@ -342,6 +345,34 @@ function ClientBillingBadges({
 
 const NO_PACKAGES: StudentPackageView[] = [];
 
+function minorConsentAction(client: Client): ListItemAction | null {
+  if (!isMinorConsentPending(client)) return null;
+
+  return {
+    key: "minor-consent",
+    label: "Enviar autorização (WhatsApp)",
+    icon: <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />,
+    onSelect: () => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const url = `${origin}/consent/minor/${client.id}`;
+      const guardian = client.guardians?.find((g) => Boolean(g.phone)) || client.guardians?.[0];
+      const targetPhone = guardian?.phone || client.phone;
+      const greeting = guardian?.name ? `, ${guardian.name}` : "";
+      const msg = `Olá${greeting}! Segue o link de autorização de matrícula e LGPD do aluno(a) ${client.name}:\n\n${url}\n\nPor favor, acesse o link para conferir e confirmar pelo celular. Obrigado!`;
+
+      if (targetPhone) {
+        const cleanPhone = targetPhone.replace(/\D/g, "");
+        const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+        window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`, "_blank");
+      } else {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url);
+          toast.info("Nenhum telefone de contato encontrado. Link copiado para a área de transferência.");
+        }
+      }
+    },
+  };
+}
 
 interface ClientsListProps {
   canManage: boolean;
@@ -421,6 +452,7 @@ function ClientRow({
               },
             ]
           : []),
+        ...(minorConsentAction(client) ? [minorConsentAction(client)!] : []),
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -534,6 +566,7 @@ function ClientRow({
               </Link>
               <RecordStatusBadge status={client.status} />
               <BirthdayBadge birthDate={client.birthDate} showUpcoming />
+              <MinorConsentBadge client={client} compact />
               {isClasses ? (
                 <ClientProgressionBadges
                   client={client}
@@ -638,6 +671,7 @@ function ClientCard({
               },
             ]
           : []),
+        ...(minorConsentAction(client) ? [minorConsentAction(client)!] : []),
         ...(isClasses && onOpenRecords
           ? [
               {
@@ -751,6 +785,7 @@ function ClientCard({
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <RecordStatusBadge status={client.status} />
                 <BirthdayBadge birthDate={client.birthDate} showUpcoming compact />
+                <MinorConsentBadge client={client} compact />
                 {isClasses ? (
                   <ClientProgressionBadges
                     client={client}

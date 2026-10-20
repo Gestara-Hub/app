@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import type { Id, OnlinePayment } from "@gestarahub/contracts";
+import type { Id, OnlinePayment, OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -17,15 +17,24 @@ import {
   getSubaccountBalance,
   createTransfer,
   listTransfers,
+  receiveInCash,
 } from "@/lib/asaas";
 
 function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
+  const expiresAt = row.expires_at
+    ? new Date(String(row.expires_at)).toISOString()
+    : new Date().toISOString();
+  let status = (row.status as OnlinePayment["status"]) || "awaiting";
+  if (status === "awaiting" && expiresAt <= new Date().toISOString()) {
+    status = "expired";
+  }
+
   return {
     id: String(row.id),
     organizationId: String(row.organization_id),
     chargeId: String(row.charge_id),
     method: (row.method as OnlinePayment["method"]) || "pix",
-    status: (row.status as OnlinePayment["status"]) || "awaiting",
+    status,
     amountCents: typeof row.amount_cents === "number" ? row.amount_cents : 0,
     splitAmountCents:
       typeof row.split_amount_cents === "number" ? row.split_amount_cents : 0,
@@ -42,9 +51,9 @@ function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
       ? String(row.pix_qr_code_base64)
       : undefined,
     linkUrl: row.link_url ? String(row.link_url) : undefined,
-    expiresAt: row.expires_at
-      ? new Date(String(row.expires_at)).toISOString()
-      : new Date().toISOString(),
+    feePassedToCustomer: Boolean(row.fee_passed_to_customer),
+    canceledReason: row.canceled_reason ? String(row.canceled_reason) : undefined,
+    expiresAt,
     paidAt: row.paid_at
       ? new Date(String(row.paid_at)).toISOString()
       : undefined,
@@ -76,6 +85,7 @@ export async function insertOnlinePaymentInDb(
       pix_copy_paste: payment.pixCopyPaste ?? null,
       pix_qr_code_base64: payment.pixQrCodeBase64 ?? null,
       link_url: payment.linkUrl ?? null,
+      fee_passed_to_customer: Boolean(payment.feePassedToCustomer),
       expires_at: payment.expiresAt,
       paid_at: payment.paidAt ?? null,
     })
@@ -194,6 +204,121 @@ export async function markOnlinePaymentPaidInDb(
   return { payment, chargeId: payment.chargeId };
 }
 
+/**
+ * Simula a liquidação de um pagamento online no Sandbox/banco local.
+ * Marca o online_payment e a cobrança correspondente como pagos no Supabase,
+ * e notifica o Asaas via receiveInCash caso esteja em ambiente de testes.
+ */
+export async function simulateOnlinePaidAction(
+  onlinePaymentId: string,
+): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
+  const adminClient = createSupabaseAdminClient();
+
+  // 1. Busca o pagamento online pelo ID
+  const { data: row, error: fetchErr } = await adminClient
+    .from("online_payments")
+    .select("*")
+    .eq("id", onlinePaymentId)
+    .maybeSingle();
+
+  if (fetchErr || !row) {
+    console.error(
+      "[simulateOnlinePaidAction] Pagamento online não encontrado:",
+      onlinePaymentId,
+      fetchErr,
+    );
+    return null;
+  }
+
+  const paidAtISO = new Date().toISOString();
+
+  // 2. Atualiza o status para pago
+  const { data: updatedPayment, error: paymentError } = await adminClient
+    .from("online_payments")
+    .update({
+      status: "paid",
+      paid_at: paidAtISO,
+    })
+    .eq("id", row.id)
+    .select()
+    .maybeSingle();
+
+  if (paymentError || !updatedPayment) {
+    console.error(
+      "[simulateOnlinePaidAction] Erro ao atualizar status do online_payment:",
+      paymentError,
+    );
+    return null;
+  }
+
+  // 3. Cancela outros pagamentos da mesma cobrança ainda em aberto
+  await adminClient
+    .from("online_payments")
+    .update({ status: "canceled", canceled_reason: "Pago por outro código" })
+    .eq("charge_id", row.charge_id)
+    .neq("id", row.id)
+    .eq("status", "awaiting");
+
+  // 4. Atualiza a cobrança para paga
+  const method = row.method === "link" ? "card" : "pix";
+  const { error: chargeError } = await adminClient
+    .from("charges")
+    .update({
+      status: "paid",
+      method,
+      paid_via: "online",
+      paid_at: paidAtISO,
+    })
+    .eq("id", row.charge_id);
+
+  if (chargeError) {
+    console.error(
+      "[simulateOnlinePaidAction] Erro ao atualizar charge após simulação:",
+      chargeError,
+    );
+  }
+
+  // 5. Se for Asaas Sandbox e tiver gateway_payment_id, liquida no gateway também
+  if (row.gateway_payment_id && row.gateway_provider === "asaas") {
+    try {
+      const { data: charge } = await adminClient
+        .from("charges")
+        .select("organization_id")
+        .eq("id", row.charge_id)
+        .maybeSingle();
+
+      let subaccountApiKey: string | undefined;
+      if (charge?.organization_id) {
+        const { data: org } = await adminClient
+          .from("organizations")
+          .select("gateway_api_key")
+          .eq("id", charge.organization_id)
+          .maybeSingle();
+        subaccountApiKey = org?.gateway_api_key;
+      }
+
+      const todayDate = paidAtISO.split("T")[0];
+      await receiveInCash(
+        String(row.gateway_payment_id),
+        todayDate,
+        (Number(row.amount_cents) || 0) / 100,
+        subaccountApiKey,
+      );
+      console.log(
+        `[simulateOnlinePaidAction] Baixa confirmada no Asaas Sandbox para o pagamento ${row.gateway_payment_id}!`,
+      );
+    } catch (asaasErr) {
+      console.warn(
+        "[simulateOnlinePaidAction] Não foi possível liquidar no Asaas Sandbox (ignorado):",
+        asaasErr,
+      );
+    }
+  }
+
+  const payment = mapRowToOnlinePayment(updatedPayment);
+  return { payment, chargeId: String(row.charge_id) };
+}
+
 export async function expireOnlinePaymentInDb(
   gatewayPaymentId: string,
   provider?: string,
@@ -216,11 +341,12 @@ export async function expireOnlinePaymentInDb(
 export async function cancelOnlinePaymentByGatewayIdInDb(
   gatewayPaymentId: string,
   provider?: string,
+  reason: string = "Cancelado no gateway",
 ): Promise<boolean> {
   const adminClient = createSupabaseAdminClient();
   let query = adminClient
     .from("online_payments")
-    .update({ status: "canceled" })
+    .update({ status: "canceled", canceled_reason: reason })
     .eq("gateway_payment_id", gatewayPaymentId)
     .eq("status", "awaiting");
 
@@ -235,11 +361,16 @@ export async function cancelOnlinePaymentByGatewayIdInDb(
 export async function cancelOnlinePaymentsForChargeInDb(
   chargeId: Id,
   organizationId: string,
+  reason?: string,
 ): Promise<void> {
   const client = await getClientForTenant();
+  const updatePayload: Record<string, unknown> = { status: "canceled" };
+  if (reason) {
+    updatePayload.canceled_reason = reason;
+  }
   await client
     .from("online_payments")
-    .update({ status: "canceled" })
+    .update(updatePayload)
     .eq("charge_id", chargeId)
     .eq("organization_id", organizationId)
     .eq("status", "awaiting");
@@ -433,6 +564,55 @@ export async function getOrganizationGatewayAction(organizationId: string) {
 }
 
 /**
+ * Atualiza as configurações de cobrança online da organização no Supabase.
+ */
+export async function updateOrganizationOnlineSettingsAction(
+  organizationId: string,
+  updates: Partial<OnlinePaymentSettings>,
+): Promise<boolean> {
+  try {
+    const adminClient = createSupabaseAdminClient();
+    const { data: orgData } = await adminClient
+      .from("organizations")
+      .select("settings")
+      .eq("id", organizationId)
+      .maybeSingle();
+
+    const currentSettings = (orgData?.settings as Record<string, unknown>) || {};
+    const currentOnline =
+      (currentSettings.onlinePayments as Record<string, unknown>) || {};
+
+    const { error } = await adminClient
+      .from("organizations")
+      .update({
+        settings: {
+          ...currentSettings,
+          onlinePayments: {
+            ...currentOnline,
+            ...updates,
+          },
+        },
+      })
+      .eq("id", organizationId);
+
+    if (error) {
+      console.error(
+        "[updateOrganizationOnlineSettingsAction] Erro ao atualizar settings:",
+        error,
+      );
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(
+      "[updateOrganizationOnlineSettingsAction] Exceção ao atualizar settings:",
+      err,
+    );
+    return false;
+  }
+}
+
+/**
  * Server Action agnóstica para criação de Pix online via gateway ativo.
  * Recupera de forma segura a subconta da organização e aplica a taxa de split correta.
  */
@@ -507,6 +687,7 @@ export async function createOnlineLinkPaymentAction(
 ): Promise<PaymentLinkPayment | null> {
   try {
     let subaccountApiKey = input.subaccountApiKey;
+    let splitAmountCents = input.splitAmountCents;
     let enrichedInput = { ...input };
 
     if (input.chargeId) {
@@ -530,12 +711,18 @@ export async function createOnlineLinkPaymentAction(
       if (charge?.organization_id) {
         const { data: org } = await adminClient
           .from("organizations")
-          .select("gateway_api_key")
+          .select("gateway_api_key, subscription")
           .eq("id", charge.organization_id)
           .maybeSingle();
 
         if (org?.gateway_api_key) {
           subaccountApiKey = org.gateway_api_key;
+        }
+
+        // Determina o valor do split com base no plano (Pro = R$ 1,29, Free = R$ 1,99)
+        if (splitAmountCents === undefined) {
+          const tier = (org?.subscription as Record<string, unknown>)?.tier;
+          splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
         }
       }
     }
@@ -544,6 +731,7 @@ export async function createOnlineLinkPaymentAction(
     return await gateway.createLink({
       ...enrichedInput,
       subaccountApiKey,
+      splitAmountCents: splitAmountCents ?? 199,
     });
   } catch (error) {
     console.error(
@@ -751,8 +939,10 @@ export interface SubaccountReceiptItem {
   amountCents: number;
   splitAmountCents: number;
   netAmountCents: number;
+  feePassedToCustomer?: boolean;
   paidAt?: string;
   createdAt: string;
+  canceledReason?: string;
 }
 
 /**
@@ -765,7 +955,12 @@ export async function listSubaccountReceiptsAction(
   const { data, error } = await adminClient
     .from("online_payments")
     .select(
-      "id, charge_id, method, status, amount_cents, split_amount_cents, net_amount_cents, paid_at, created_at",
+      `
+      id, charge_id, method, status, amount_cents, split_amount_cents, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
+      charges (
+        status, paid_via
+      )
+      `,
     )
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
@@ -775,16 +970,32 @@ export async function listSubaccountReceiptsAction(
     return [];
   }
 
-  return data.map((r) => ({
-    id: String(r.id),
-    chargeId: String(r.charge_id),
-    method: String(r.method),
-    status: String(r.status),
-    amountCents: Number(r.amount_cents) || 0,
-    splitAmountCents: Number(r.split_amount_cents) || 0,
-    netAmountCents: Number(r.net_amount_cents) || 0,
-    paidAt: r.paid_at ? String(r.paid_at) : undefined,
-    createdAt: String(r.created_at),
-  }));
+  return data.map((r) => {
+    const charge = Array.isArray(r.charges) ? r.charges[0] : (r.charges as { status?: string; paid_via?: string } | null);
+    let canceledReason = r.canceled_reason ? String(r.canceled_reason) : undefined;
+    if (String(r.status) === "canceled" && !canceledReason) {
+      if (charge?.status === "paid") {
+        canceledReason = charge.paid_via === "manual" ? "Baixa manual da cobrança" : "Pago por outro código";
+      } else if (charge?.status === "canceled") {
+        canceledReason = "Cobrança cancelada";
+      } else {
+        canceledReason = "Substituído por novo código";
+      }
+    }
+
+    return {
+      id: String(r.id),
+      chargeId: String(r.charge_id),
+      method: String(r.method),
+      status: String(r.status),
+      amountCents: Number(r.amount_cents) || 0,
+      splitAmountCents: Number(r.split_amount_cents) || 0,
+      netAmountCents: Number(r.net_amount_cents) || 0,
+      feePassedToCustomer: Boolean(r.fee_passed_to_customer),
+      paidAt: r.paid_at ? String(r.paid_at) : undefined,
+      createdAt: String(r.created_at),
+      canceledReason,
+    };
+  });
 }
 

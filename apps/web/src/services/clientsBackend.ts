@@ -50,6 +50,10 @@ function mapRowToClient(row: Record<string, unknown>): Client {
     discount: (row.discount as Client["discount"]) || undefined,
     membershipStatus: (row.membership_status as Client["membershipStatus"]) || "active",
     progressions: (row.progressions as Client["progressions"]) || {},
+    minorConsentStatus: (row.minor_consent_status as Client["minorConsentStatus"]) || "not_applicable",
+    minorConsentAt: row.minor_consent_at ? new Date(String(row.minor_consent_at)).toISOString() : undefined,
+    minorConsentBy: row.minor_consent_by ? String(row.minor_consent_by) : undefined,
+    minorConsentEvidence: (row.minor_consent_evidence as Record<string, unknown>) || undefined,
     status: (row.status as Client["status"]) || "active",
     createdAt: row.created_at ? new Date(String(row.created_at)).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(String(row.updated_at)).toISOString() : new Date().toISOString(),
@@ -74,6 +78,10 @@ function mapClientToRow(client: Partial<CreateClient | UpdateClient>, organizati
   if (client.dueDay !== undefined) row.due_day = client.dueDay;
   if (client.discount !== undefined) row.discount = client.discount || null;
   if (client.membershipStatus !== undefined) row.membership_status = client.membershipStatus;
+  if (client.minorConsentStatus !== undefined) row.minor_consent_status = client.minorConsentStatus;
+  if (client.minorConsentAt !== undefined) row.minor_consent_at = client.minorConsentAt || null;
+  if (client.minorConsentBy !== undefined) row.minor_consent_by = client.minorConsentBy || null;
+  if (client.minorConsentEvidence !== undefined) row.minor_consent_evidence = client.minorConsentEvidence || null;
   if (client.status !== undefined) row.status = client.status;
   return row;
 }

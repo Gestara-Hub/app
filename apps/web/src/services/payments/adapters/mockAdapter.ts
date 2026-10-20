@@ -92,6 +92,7 @@ export const mockPaymentGateway: PaymentGateway = {
       providerId: `link_${token}`,
       linkUrl: `https://pagar.gestarahub.demo/c/${token}`,
       expiresAt: addMinutes(input.expiresInMinutes),
+      splitAmountCents: input.splitAmountCents ?? 199,
     };
   },
 

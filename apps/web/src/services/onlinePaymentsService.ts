@@ -8,7 +8,7 @@ import type {
   PaymentMethod,
   RecurringAuthorization,
 } from "@gestarahub/contracts";
-import { describeCharge } from "@gestarahub/core/billing";
+import { calculateChargeWithPassedFee, describeCharge } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { format, parseISO } from "date-fns";
 import {
@@ -26,8 +26,11 @@ import { paymentGateway } from "./payments/paymentGateway";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
+  cancelOnlinePaymentsForChargeInDb,
   insertOnlinePaymentInDb,
   listOnlinePaymentsForChargeFromDb,
+  simulateOnlinePaidAction,
+  updateOrganizationOnlineSettingsAction,
 } from "./onlinePaymentsBackend";
 
 /**
@@ -159,11 +162,12 @@ function chargeMethodFor(method: OnlinePaymentMethod): PaymentMethod {
  * cobranca, gerar um novo codigo). Uso interno de services, dentro da escrita
  * deles. Retorna quantos cancelou.
  */
-export function cancelOnlinePaymentsForCharge(chargeId: Id): number {
+export function cancelOnlinePaymentsForCharge(chargeId: Id, reason?: string): number {
   let count = 0;
   for (const p of store.onlinePayments) {
     if (p.chargeId === chargeId && p.status === "awaiting") {
       p.status = "canceled";
+      if (reason) p.canceledReason = reason;
       count += 1;
     }
   }
@@ -296,7 +300,7 @@ export const onlinePaymentsService = {
   updateSettings(
     payload: UpdateOnlinePaymentSettings,
   ): Promise<OnlinePaymentSettings> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("online_payments");
       const before = currentSettings();
       const pixKey =
@@ -304,16 +308,48 @@ export const onlinePaymentsService = {
           ? payload.pixKey.trim() || undefined
           : before.pixKey;
       const next: OnlinePaymentSettings = {
+        ...before,
         enabled: payload.enabled ?? before.enabled,
-        ...(pixKey ? { pixKey } : {}),
+        pixKey,
         defaultExpiresInMinutes:
           payload.defaultExpiresInMinutes ?? before.defaultExpiresInMinutes,
+        passFeeToCustomer:
+          payload.passFeeToCustomer !== undefined
+            ? payload.passFeeToCustomer
+            : before.passFeeToCustomer,
+        passFeePix:
+          payload.passFeePix !== undefined
+            ? payload.passFeePix
+            : before.passFeePix,
+        passFeeCard:
+          payload.passFeeCard !== undefined
+            ? payload.passFeeCard
+            : before.passFeeCard,
       };
       validateSettings(next);
       store.organization = {
         ...store.organization,
         settings: { ...store.organization.settings, onlinePayments: next },
       };
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        try {
+          await updateOrganizationOnlineSettingsAction(store.organization.id, {
+            enabled: next.enabled,
+            pixKey: next.pixKey,
+            defaultExpiresInMinutes: next.defaultExpiresInMinutes,
+            passFeeToCustomer: next.passFeeToCustomer,
+            passFeePix: next.passFeePix,
+            passFeeCard: next.passFeeCard,
+          });
+        } catch (dbErr) {
+          console.error(
+            "[onlinePaymentsService] Erro ao sincronizar settings com Supabase:",
+            dbErr,
+          );
+        }
+      }
+
       const toggled = before.enabled !== next.enabled;
       auditLogService.record({
         action: "updated",
@@ -383,6 +419,7 @@ export const onlinePaymentsService = {
   async createForCharge(
     chargeId: Id,
     method: OnlinePaymentMethod,
+    passFeeOverride?: boolean,
   ): Promise<OnlinePayment> {
     assertFeature("online_payments");
     assertOnlineEnabled();
@@ -393,11 +430,32 @@ export const onlinePaymentsService = {
       ? store.plans.find((p) => p.id === charge.planId)
       : undefined;
     const expiresInMinutes = settings.defaultExpiresInMinutes || 1440;
+
+    // Determina se a taxa será repassada ao aluno
+    const passFee =
+      passFeeOverride !== undefined
+        ? passFeeOverride
+        : method === "pix"
+          ? Boolean(settings.passFeePix ?? settings.passFeeToCustomer ?? false)
+          : Boolean(settings.passFeeCard ?? settings.passFeeToCustomer ?? false);
+
+    // Determina o valor do split da plataforma (R$ 1,29 Pro / R$ 1,99 Free)
+    const tier = store.organization.subscription?.tier;
+    const splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
+
+    const { chargedAmountCents, netAmountCents } = calculateChargeWithPassedFee({
+      amountCents: charge.amountCents,
+      method,
+      splitAmountCents,
+      passFee,
+    });
+
     const provided =
       method === "pix"
         ? await paymentGateway.createPix({
             chargeId,
-            amountCents: charge.amountCents,
+            amountCents: chargedAmountCents,
+            splitAmountCents,
             expiresInMinutes,
             pixKey: settings.pixKey,
             merchantName: store.organization.name,
@@ -413,7 +471,8 @@ export const onlinePaymentsService = {
           })
         : await paymentGateway.createLink({
             chargeId,
-            amountCents: charge.amountCents,
+            amountCents: chargedAmountCents,
+            splitAmountCents,
             expiresInMinutes,
             merchantName: store.organization.name,
             studentId: charge.studentId,
@@ -430,22 +489,21 @@ export const onlinePaymentsService = {
     return simulateWrite(async () => {
       // Revalida: a cobranca pode ter mudado durante a chamada ao provedor.
       const c = findOpenCharge(chargeId);
-      cancelOnlinePaymentsForCharge(c.id);
+      cancelOnlinePaymentsForCharge(c.id, "Substituído por novo código");
       const payment: OnlinePayment = {
         id: newId(),
         organizationId: store.organization.id,
         chargeId: c.id,
         method,
-        amountCents: c.amountCents,
+        amountCents: chargedAmountCents,
         status: "awaiting",
         gatewayProvider:
           store.organization.settings?.onlinePayments?.gatewayProvider ?? "asaas",
         gatewayPaymentId: provided.providerId,
         splitAmountCents:
-          "splitAmountCents" in provided ? provided.splitAmountCents : undefined,
-        netAmountCents:
-          c.amountCents -
-          (("splitAmountCents" in provided ? provided.splitAmountCents : 0) ?? 0),
+          "splitAmountCents" in provided ? provided.splitAmountCents : splitAmountCents,
+        netAmountCents,
+        feePassedToCustomer: passFee,
         ...("pixCopyPaste" in provided
           ? {
               pixCopyPaste: provided.pixCopyPaste,
@@ -459,6 +517,11 @@ export const onlinePaymentsService = {
 
       if (isSupabaseOrganization(store.organization.id)) {
         try {
+          await cancelOnlinePaymentsForChargeInDb(
+            c.id,
+            store.organization.id,
+            "Substituído por novo código",
+          );
           await insertOnlinePaymentInDb(payment, c.studentId);
         } catch (dbErr) {
           console.error("[onlinePaymentsService] Erro ao salvar online_payment no banco:", dbErr);
@@ -484,8 +547,30 @@ export const onlinePaymentsService = {
    * pagos (`paidVia = "online"`); os demais codigos em aberto sao cancelados.
    */
   simulatePaid(onlinePaymentId: Id): Promise<OnlinePayment> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       assertFeature("online_payments");
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const result = await simulateOnlinePaidAction(onlinePaymentId);
+        if (!result) {
+          throw notFoundError("Pagamento online não encontrado no banco.");
+        }
+        // Sincroniza o store local para os seletores que dependem dele
+        const localPayment = store.onlinePayments.find((p) => p.id === onlinePaymentId);
+        if (localPayment) {
+          localPayment.status = "paid";
+          localPayment.paidAt = result.payment.paidAt;
+        }
+        const localCharge = store.charges.find((c) => c.id === result.chargeId);
+        if (localCharge) {
+          localCharge.status = "paid";
+          localCharge.paidAt = result.payment.paidAt;
+          localCharge.method = result.payment.method === "link" ? "card" : "pix";
+          localCharge.paidVia = "online";
+        }
+        return result.payment;
+      }
+
       expireStale();
       const payment = store.onlinePayments.find(
         (p) => p.id === onlinePaymentId,

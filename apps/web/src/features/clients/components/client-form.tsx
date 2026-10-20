@@ -14,10 +14,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CalendarClock,
   AlertTriangle,
+  CheckCircle2,
   FileText,
   MapPin,
   Percent,
   Plus,
+  ShieldCheck,
   SlidersHorizontal,
   Ticket,
   Trash2,
@@ -50,6 +52,7 @@ import type {
   Client,
   CreateClient,
   LessonPackage,
+  MinorConsentStatus,
   OrganizationSettings,
   PlanPeriod,
 } from "@gestarahub/contracts";
@@ -209,6 +212,10 @@ function toDefaults(
     // Valor a pagar: preenchido quando o plano carrega (precisa do preco).
     scholarshipPayCents: undefined,
     discountValidUntil: client?.discount?.validUntil ?? "",
+    minorConsentStatus: client?.minorConsentStatus ?? "not_applicable",
+    minorConsentAt: client?.minorConsentAt ?? "",
+    minorConsentBy: client?.minorConsentBy ?? "",
+    hasPaperConsent: client?.minorConsentStatus === "confirmed_paper",
   };
 }
 
@@ -402,8 +409,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     ),
   );
   const [notesOpen, setNotesOpen] = useState(Boolean(client?.notes?.trim()));
-  // Responsaveis: sempre comeca recolhido (o selo mostra quantos ha).
-  const [guardiansOpen, setGuardiansOpen] = useState(false);
+  const [guardiansUserToggled, setGuardiansUserToggled] = useState<boolean | null>(null);
 
   const selectedPlan = useMemo(
     () => plans?.find((p) => p.id === selectedPlanId),
@@ -753,6 +759,13 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) years -= 1;
     return years >= 0 ? years : null;
   }, [birthDate]);
+
+  const isMinor = age !== null && age < 18;
+  const guardiansOpen =
+    guardiansUserToggled !== null
+      ? guardiansUserToggled
+      : isMinor || (client?.guardians?.length ?? 0) > 0;
+
   const birthDateHint =
     age === null
       ? "Usada para lembrar os aniversariantes."
@@ -787,7 +800,7 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       setNotesOpen(true);
     }
     if (errors.guardians) {
-      setGuardiansOpen(true);
+      setGuardiansUserToggled(true);
     }
   }, []);
 
@@ -928,6 +941,26 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
       }
     }
 
+    const isMinor = age !== null && age < 18;
+    let minorConsentStatus: MinorConsentStatus = client?.minorConsentStatus || "not_applicable";
+    let minorConsentAt = client?.minorConsentAt;
+    let minorConsentBy = client?.minorConsentBy;
+    let minorConsentEvidence = client?.minorConsentEvidence;
+
+    if (isMinor) {
+      if (values.hasPaperConsent) {
+        minorConsentStatus = "confirmed_paper";
+        minorConsentAt = minorConsentAt || new Date().toISOString();
+        minorConsentBy =
+          values.guardians?.[0]?.name || client?.minorConsentBy || "Responsável legal (termo impresso)";
+        minorConsentEvidence = { method: "paper_form_declaration", recordedAt: new Date().toISOString() };
+      } else if (!client || !client.minorConsentStatus || client.minorConsentStatus === "not_applicable") {
+        minorConsentStatus = "pending";
+      }
+    } else {
+      minorConsentStatus = "not_applicable";
+    }
+
     // Sem status: ativar/inativar so pelo menu da linha (com confirmacao).
     const payload: Omit<CreateClient, "status"> = {
       name: values.name,
@@ -943,6 +976,10 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             email: g.email?.trim() || undefined,
           }))
         : undefined,
+      minorConsentStatus,
+      minorConsentAt,
+      minorConsentBy,
+      minorConsentEvidence,
       address: addressPayload,
       planId,
       // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
@@ -1559,21 +1596,73 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
           </CollapsibleSection>
         ) : null}
 
-        {/* Responsáveis (opcional, so turmas): recolhido por padrão */}
-        {isClasses ? (
+        {/* Responsáveis (opcional, só turmas ou menor de idade): recolhido por padrão */}
+        {isClasses || (age !== null && age < 18) ? (
           <CollapsibleSection
             title="Responsáveis (opcional)"
             icon={<Users className="h-4 w-4" />}
             badge={guardiansBadge}
             open={guardiansOpen}
-            onOpenChange={setGuardiansOpen}
+            onOpenChange={setGuardiansUserToggled}
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {age !== null && age < 18 ? (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-semibold text-foreground">
+                        Consentimento de Menor (Art. 14 da LGPD)
+                      </h4>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        Para alunos menores de 18 anos, a LGPD orienta a coleta de consentimento de ao menos um dos pais ou responsável legal. A ausência de aceite não impede a realização de aulas nem a emissão de cobranças.
+                      </p>
+                    </div>
+                  </div>
+
+                  {client?.minorConsentStatus === "confirmed_whatsapp" ? (
+                    <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <span>
+                        Autorizado eletronicamente pelo responsável via WhatsApp
+                        {client.minorConsentAt ? ` (${client.minorConsentAt.slice(0, 10).split("-").reverse().join("/")})` : ""}.
+                      </span>
+                    </div>
+                  ) : client?.minorConsentStatus === "confirmed_paper" ? (
+                    <div className="flex items-center gap-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <span>
+                        Termo físico presencial arquivado na unidade
+                        {client.minorConsentAt ? ` (${client.minorConsentAt.slice(0, 10).split("-").reverse().join("/")})` : ""}.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="pt-1">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          {...form.register("hasPaperConsent")}
+                          className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4"
+                        />
+                        <div className="text-xs">
+                          <span className="font-medium text-foreground">
+                            O responsável já assinou o termo físico presencialmente
+                          </span>
+                          <p className="text-muted-foreground text-[11px] leading-relaxed">
+                            Marque se você já coletou o termo impresso assinado. Caso contrário, você poderá enviar o link de autorização por WhatsApp pela ficha do aluno após salvar.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               {guardianFields.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Pais, avós ou outra pessoa para contato. Recomendado para menores de idade.
                 </p>
-        ) : null}
+              ) : null}
 
             {guardianFields.map((field, index) => (
               <div

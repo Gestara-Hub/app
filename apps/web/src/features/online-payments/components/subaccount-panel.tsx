@@ -33,6 +33,58 @@ interface SubaccountPanelProps {
   defaultPixKey?: string;
 }
 
+const RECEIPT_STATUS_MAP: Record<
+  string,
+  { label: string; className: string }
+> = {
+  paid: {
+    label: "Pago",
+    className:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  },
+  awaiting: {
+    label: "Aguardando",
+    className:
+      "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+  },
+  expired: {
+    label: "Expirado",
+    className:
+      "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  },
+  canceled: {
+    label: "Cancelado",
+    className:
+      "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+  },
+};
+
+const TRANSFER_STATUS_MAP: Record<
+  string,
+  { label: string; className: string }
+> = {
+  DONE: {
+    label: "Concluída",
+    className:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  },
+  BANK_PROCESSING: {
+    label: "Em processamento",
+    className:
+      "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400",
+  },
+  CANCELLED: {
+    label: "Cancelada",
+    className:
+      "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+  },
+  FAILED: {
+    label: "Falhou",
+    className:
+      "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400",
+  },
+};
+
 export function SubaccountPanel({
   organizationId,
   defaultPixKey = "",
@@ -222,27 +274,60 @@ export function SubaccountPanel({
                             </Badge>
                           </td>
                           <td className="px-3.5 py-2.5 font-medium text-foreground">
-                            {formatCents(r.amountCents)}
+                            <div className="flex items-center gap-1.5">
+                              <span>{formatCents(r.amountCents)}</span>
+                              {r.feePassedToCustomer ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="h-4 px-1 text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-normal"
+                                >
+                                  Repassada
+                                </Badge>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="px-3.5 py-2.5 text-muted-foreground">
                             - {formatCents(r.splitAmountCents)}
                           </td>
-                          <td className="px-3.5 py-2.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                          <td
+                            className={cn(
+                              "px-3.5 py-2.5 font-medium",
+                              r.status === "paid" && "font-semibold text-emerald-600 dark:text-emerald-400",
+                              r.status === "awaiting" && "text-foreground",
+                              (r.status === "canceled" || r.status === "expired") &&
+                                "text-muted-foreground line-through opacity-70",
+                            )}
+                          >
                             {formatCents(r.netAmountCents)}
                           </td>
                           <td className="px-3.5 py-2.5">
-                            <Badge
-                              variant={r.status === "paid" ? "default" : "secondary"}
-                              className="text-[10px]"
-                            >
-                              {r.status === "paid"
-                                ? "Pago"
-                                : r.status === "awaiting"
-                                  ? "Aguardando"
-                                  : r.status === "expired"
-                                    ? "Expirado"
-                                    : "Cancelado"}
-                            </Badge>
+                            {(() => {
+                              const badge = RECEIPT_STATUS_MAP[r.status] || {
+                                label: r.status,
+                                className: "border-border/60 bg-muted/50 text-muted-foreground",
+                              };
+                              return (
+                                <div className="flex flex-col items-start gap-1">
+                                  <span
+                                    title={r.canceledReason}
+                                    className={cn(
+                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shrink-0",
+                                      badge.className,
+                                    )}
+                                  >
+                                    {badge.label}
+                                  </span>
+                                  {r.canceledReason ? (
+                                    <span
+                                      title={r.canceledReason}
+                                      className="text-[10px] text-muted-foreground whitespace-normal leading-tight max-w-[150px]"
+                                    >
+                                      {r.canceledReason}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );
@@ -286,18 +371,22 @@ export function SubaccountPanel({
                             {formatCents(t.valueCents)}
                           </td>
                           <td className="px-3.5 py-2.5">
-                            <Badge
-                              variant={t.status === "DONE" ? "default" : "secondary"}
-                              className="text-[10px]"
-                            >
-                              {t.status === "DONE"
-                                ? "Concluída"
-                                : t.status === "BANK_PROCESSING"
-                                  ? "Em processamento"
-                                  : t.status === "CANCELLED"
-                                    ? "Cancelada"
-                                    : t.status}
-                            </Badge>
+                            {(() => {
+                              const badge = TRANSFER_STATUS_MAP[t.status] || {
+                                label: t.status,
+                                className: "border-border/60 bg-muted/50 text-muted-foreground",
+                              };
+                              return (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none shrink-0",
+                                    badge.className,
+                                  )}
+                                >
+                                  {badge.label}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-3.5 py-2.5 text-right">
                             {t.receiptUrl ? (

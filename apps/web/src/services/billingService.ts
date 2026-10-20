@@ -864,10 +864,14 @@ export const billingService = {
           paidVia: c.paidVia,
           attachments: c.attachments,
         }, store.organization.id);
-        await cancelOnlinePaymentsForChargeInDb(c.id, store.organization.id);
+        await cancelOnlinePaymentsForChargeInDb(
+          c.id,
+          store.organization.id,
+          "Baixa manual da cobrança",
+        );
       }
       // Pago na mao: o Pix/link em aberto nao vale mais.
-      cancelOnlinePaymentsForCharge(c.id);
+      cancelOnlinePaymentsForCharge(c.id, "Baixa manual da cobrança");
       recordChargeEvent(c, "status_changed", `registrou${paidOnNote(details.paidOn)} o pagamento da`);
       return clone(toChargeView(c));
     });
@@ -924,9 +928,13 @@ export const billingService = {
           method: undefined,
           paidVia: undefined,
         }, store.organization.id);
-        await cancelOnlinePaymentsForChargeInDb(c.id, store.organization.id);
+        await cancelOnlinePaymentsForChargeInDb(
+          c.id,
+          store.organization.id,
+          c.cancelReason || "Cobrança cancelada",
+        );
       }
-      cancelOnlinePaymentsForCharge(c.id);
+      cancelOnlinePaymentsForCharge(c.id, c.cancelReason || "Cobrança cancelada");
       recordChargeEvent(c, "cancelled", "cancelou a", c.cancelReason);
       return clone(toChargeView(c));
     });

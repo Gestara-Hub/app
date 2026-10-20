@@ -169,8 +169,15 @@ export function useOnlineCheckout(chargeId: Id | null) {
 export function useCreateOnlinePayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ chargeId, method }: { chargeId: Id; method: OnlinePaymentMethod }) =>
-      onlinePaymentsService.createForCharge(chargeId, method),
+    mutationFn: ({
+      chargeId,
+      method,
+      passFeeToCustomer,
+    }: {
+      chargeId: Id;
+      method: OnlinePaymentMethod;
+      passFeeToCustomer?: boolean;
+    }) => onlinePaymentsService.createForCharge(chargeId, method, passFeeToCustomer),
     onSuccess: () => invalidateMoney(qc),
   });
 }

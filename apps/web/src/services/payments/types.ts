@@ -18,6 +18,7 @@ export interface PaymentLinkPayment {
   providerId: string;
   linkUrl: string;
   expiresAt: DateTimeISO;
+  splitAmountCents?: number;
 }
 
 /** Autorização do Pix Automático devolvida pelo provedor (sem escopo do tenant). */
@@ -58,6 +59,7 @@ export interface CreateLinkInput {
   studentCpf?: string;
   studentEmail?: string;
   subaccountApiKey?: string;
+  splitAmountCents?: number;
   chargeDueDate?: string;
   competence?: string;
   planName?: string;

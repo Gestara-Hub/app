@@ -193,6 +193,18 @@ export const asaasPaymentGateway: PaymentGateway = {
     const dueDate = calculateAsaasDueDate(input.expiresInMinutes);
     const description = formatPaymentDescription(input);
 
+    // Split de pagamento do marketplace GestaraHub se houver Master Wallet configurada
+    const splitAmountCents = input.splitAmountCents ?? 199; // R$ 1,99 por padrão
+    const splitSettings =
+      config.masterWalletId && input.subaccountApiKey
+        ? [
+            {
+              walletId: config.masterWalletId,
+              fixedValue: splitAmountCents / 100,
+            },
+          ]
+        : undefined;
+
     const payment = await createPixPayment(
       {
         customer: customer.id,
@@ -201,6 +213,7 @@ export const asaasPaymentGateway: PaymentGateway = {
         dueDate,
         description,
         externalReference: input.chargeId,
+        split: splitSettings,
       },
       input.subaccountApiKey,
     );
@@ -209,6 +222,7 @@ export const asaasPaymentGateway: PaymentGateway = {
       providerId: payment.id,
       linkUrl: payment.invoiceUrl || `https://sandbox.asaas.com/i/${payment.id}`,
       expiresAt: addMinutes(input.expiresInMinutes || 1440),
+      splitAmountCents,
     };
   },
 

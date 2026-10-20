@@ -6,7 +6,8 @@ export const CURRENT_SUBACCOUNT_TERMS_VERSION = "subaccount-v1.0";
 export type ConsentType =
   | "platform_terms"
   | "privacy_policy"
-  | "subaccount_brokerage";
+  | "subaccount_brokerage"
+  | "minor_guardian";
 
 export interface LegalConsent {
   id: Id;

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  ChevronDown,
   RotateCw,
   ScrollText,
   ShieldAlert,
 } from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -30,8 +33,9 @@ import {
   userProfileLabel,
 } from "@/lib/labels";
 import { formatDateTime } from "@gestarahub/core/format";
-import type { AuditEntityType, AuditLogEntry, OperationalModel } from "@gestarahub/contracts";
+import type { AuditEntityType, AuditLogEntry, AuditLogFilter, OperationalModel } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
+import { useUsers } from "@/features/users";
 import { useAuditLog } from "../hooks/use-audit-log";
 import { AuditLogDetailDialog } from "./audit-log-detail-dialog";
 
@@ -143,28 +147,136 @@ function SkeletonRows() {
   ));
 }
 
+const BATCH_SIZE = 20;
+
+type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "custom";
+
 export function AuditLogList() {
   const model = useModel();
   const [search, setSearch] = useState("");
   const [entityType, setEntityType] = useState<"all" | AuditEntityType>("all");
+  const [actorId, setActorId] = useState<string>("all");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
 
-  const filter = {
-    search: search.trim() || undefined,
-    entityType: entityType === "all" ? undefined : entityType,
-  };
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+
+  // Calcula datas para o filtro
+  const { dateFrom, dateTo } = useMemo(() => {
+    const now = new Date();
+    if (datePreset === "today") {
+      const today = format(now, "yyyy-MM-dd");
+      return { dateFrom: today, dateTo: today };
+    }
+    if (datePreset === "7d") {
+      return {
+        dateFrom: format(subDays(now, 7), "yyyy-MM-dd"),
+        dateTo: format(now, "yyyy-MM-dd"),
+      };
+    }
+    if (datePreset === "30d") {
+      return {
+        dateFrom: format(subDays(now, 30), "yyyy-MM-dd"),
+        dateTo: format(now, "yyyy-MM-dd"),
+      };
+    }
+    if (datePreset === "month") {
+      return {
+        dateFrom: format(startOfMonth(now), "yyyy-MM-dd"),
+        dateTo: format(endOfMonth(now), "yyyy-MM-dd"),
+      };
+    }
+    if (datePreset === "custom") {
+      return {
+        dateFrom: customFrom || undefined,
+        dateTo: customTo || undefined,
+      };
+    }
+    return { dateFrom: undefined, dateTo: undefined };
+  }, [datePreset, customFrom, customTo]);
+
+  const filter: AuditLogFilter = useMemo(
+    () => ({
+      search: search.trim() || undefined,
+      entityType: entityType === "all" ? undefined : entityType,
+      actorId: actorId === "all" ? undefined : actorId,
+      dateFrom,
+      dateTo,
+    }),
+    [search, entityType, actorId, dateFrom, dateTo],
+  );
 
   const { data, isPending, isError, refetch } = useAuditLog(filter);
-  const entries = data ?? [];
+  const entries = useMemo(() => data ?? [], [data]);
+
+  // Busca lista de usuários para o filtro de responsáveis
+  const { data: usersData } = useUsers();
+  const actorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (usersData ?? []).forEach((u) => map.set(u.id, u.name));
+    (data ?? []).forEach((e) => {
+      if (e.actor?.userId && !map.has(e.actor.userId)) {
+        map.set(e.actor.userId, e.actor.name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [usersData, data]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setVisibleCount(BATCH_SIZE);
+  };
+  const handleEntityTypeChange = (val: "all" | AuditEntityType) => {
+    setEntityType(val);
+    setVisibleCount(BATCH_SIZE);
+  };
+  const handleActorIdChange = (val: string) => {
+    setActorId(val);
+    setVisibleCount(BATCH_SIZE);
+  };
+  const handleDatePresetChange = (val: DatePreset) => {
+    setDatePreset(val);
+    setVisibleCount(BATCH_SIZE);
+  };
+  const handleCustomFromChange = (val: string) => {
+    setCustomFrom(val);
+    setVisibleCount(BATCH_SIZE);
+  };
+  const handleCustomToChange = (val: string) => {
+    setCustomTo(val);
+    setVisibleCount(BATCH_SIZE);
+  };
 
   const hasSearch = Boolean(filter.search);
-  const hasFilters = Boolean(filter.search || filter.entityType);
+  const hasFilters = Boolean(
+    filter.search ||
+    filter.entityType ||
+    filter.actorId ||
+    datePreset !== "all"
+  );
 
-  const clearSearch = () => setSearch("");
+  const clearSearch = () => {
+    setSearch("");
+    setVisibleCount(BATCH_SIZE);
+  };
   const clearAll = () => {
     setSearch("");
     setEntityType("all");
+    setActorId("all");
+    setDatePreset("all");
+    setCustomFrom("");
+    setCustomTo("");
+    setVisibleCount(BATCH_SIZE);
   };
+
+  const totalCount = entries.length;
+  const visibleEntries = useMemo(
+    () => entries.slice(0, visibleCount),
+    [entries, visibleCount],
+  );
+  const hasMore = visibleCount < totalCount;
 
   let items: ReactNode[] = [];
   let emptyState: ReactNode = null;
@@ -188,20 +300,20 @@ export function AuditLogList() {
     emptyState = (
       <ListEmptyState
         hasSearch={hasSearch}
-        hasFilters={Boolean(filter.entityType)}
+        hasFilters={hasFilters}
         onClearSearch={clearSearch}
         onClearFilters={clearAll}
         emptyGuide={
           <ModuleEmptyGuide
             icon={<ScrollText className="size-8" />}
-            title="Nenhum evento registrado ainda."
-            description="Cadastros, cobranças e mudanças feitas no sistema aparecem aqui."
+            title="Nenhum evento registrado."
+            description="Tente ajustar os filtros ou o período para encontrar os eventos desejados."
           />
         }
       />
     );
   } else {
-    items = entries.map((entry) => (
+    items = visibleEntries.map((entry) => (
       <AuditRow key={entry.id} entry={entry} onSelect={setSelected} />
     ));
   }
@@ -209,24 +321,23 @@ export function AuditLogList() {
   return (
     <>
       <div className="space-y-4">
-        {/* Barra de Filtros */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Barra de Filtros Compostos */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SearchInput
             value={search}
-            onChange={setSearch}
+            onChange={handleSearchChange}
             onClear={clearSearch}
             placeholder="Buscar no histórico..."
             aria-label="Buscar no log de auditoria"
+            className="w-full"
           />
 
           <Select
             value={entityType}
-            onValueChange={(value) =>
-              setEntityType(value as "all" | AuditEntityType)
-            }
+            onValueChange={handleEntityTypeChange}
           >
-            <SelectTrigger className="sm:w-auto sm:min-w-44" aria-label="Filtrar por tipo">
-              <SelectValue placeholder="Tipo" />
+            <SelectTrigger className="w-full" aria-label="Filtrar por tipo">
+              <SelectValue placeholder="Tipo de registro" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tipos</SelectItem>
@@ -237,13 +348,74 @@ export function AuditLogList() {
               ))}
             </SelectContent>
           </Select>
+
+          <Select
+            value={actorId}
+            onValueChange={handleActorIdChange}
+          >
+            <SelectTrigger className="w-full" aria-label="Filtrar por responsável">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              {actorOptions.map((actor) => (
+                <SelectItem key={actor.id} value={actor.id}>
+                  {actor.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={datePreset}
+            onValueChange={(val) => handleDatePresetChange(val as DatePreset)}
+          >
+            <SelectTrigger className="w-full" aria-label="Filtrar por período">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Linha extra para Datas Personalizadas se selecionado */}
+        {datePreset === "custom" ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/20 p-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Intervalo personalizado:
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">De:</span>
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => handleCustomFromChange(e.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Até:</span>
+              <Input
+                type="date"
+                value={customTo}
+                onChange={(e) => handleCustomToChange(e.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+            </div>
+          </div>
+        ) : null}
 
         {/* Contador / Resumo */}
         {!isError ? (
           <ListSummaryBar
             isLoading={isPending}
-            count={entries.length}
+            count={totalCount}
             singularLabel="evento registrado"
             pluralLabel="eventos registrados"
             hasFilters={hasFilters}
@@ -255,6 +427,27 @@ export function AuditLogList() {
         <ListContainer emptyState={emptyState}>
           {items}
         </ListContainer>
+
+        {/* Botão Carregar Mais Eventos */}
+        {!isPending && !isError && entries.length > 0 ? (
+          hasMore ? (
+            <div className="flex flex-col items-center justify-center pt-2 pb-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setVisibleCount((prev) => prev + BATCH_SIZE)}
+                className="gap-2 text-xs font-medium"
+              >
+                <ChevronDown className="size-3.5" />
+                Carregar mais eventos ({visibleEntries.length} de {totalCount})
+              </Button>
+            </div>
+          ) : totalCount > BATCH_SIZE ? (
+            <p className="text-center text-xs text-muted-foreground pt-2 pb-4">
+              Você chegou ao fim dos eventos deste período ({totalCount} eventos).
+            </p>
+          ) : null
+        ) : null}
       </div>
 
       <AuditLogDetailDialog

@@ -411,3 +411,59 @@ export function isFutureOpenInstallment(
 ): boolean {
   return (charge.status === "pending" || charge.status === "overdue") && charge.dueDate > today;
 }
+
+// --- Repasse de Taxas de Cobrança Online -------------------------------------
+
+/**
+ * Taxa percentual padrão de cartão de crédito no gateway (2,99% = 0.0299).
+ */
+export const CARD_PERCENTUAL_FEE = 0.0299;
+
+/**
+ * Calcula o valor da cobrança e o valor líquido a receber pela academia
+ * quando a taxa de intermediação é repassada ou absorvida.
+ *
+ * - Pix: Acréscimo simples da taxa fixa (ex: R$ 150,00 + R$ 1,99 = R$ 151,99).
+ * - Cartão: Gross-up com a taxa percentual de 2,99% e taxa fixa para que o valor
+ *   líquido recebido pela academia seja exatamente o valor original da cobrança.
+ */
+export function calculateChargeWithPassedFee(params: {
+  amountCents: number;
+  method: "pix" | "link";
+  splitAmountCents: number;
+  passFee: boolean;
+}): {
+  chargedAmountCents: number;
+  feeAmountCents: number;
+  netAmountCents: number;
+} {
+  const { amountCents, method, splitAmountCents, passFee } = params;
+  if (!passFee || amountCents <= 0) {
+    return {
+      chargedAmountCents: amountCents,
+      feeAmountCents: splitAmountCents,
+      netAmountCents: Math.max(0, amountCents - splitAmountCents),
+    };
+  }
+
+  if (method === "pix") {
+    const charged = amountCents + splitAmountCents;
+    return {
+      chargedAmountCents: charged,
+      feeAmountCents: splitAmountCents,
+      netAmountCents: amountCents,
+    };
+  }
+
+  // Cartão (link): Gross-up com taxa percentual (2.99%) + taxa fixa
+  // Fórmula: ValorFinal = (ValorOriginal + TaxaFixa) / (1 - TaxaPercentual)
+  const grossedUpCents = Math.round(
+    (amountCents + splitAmountCents) / (1 - CARD_PERCENTUAL_FEE),
+  );
+  const totalFees = grossedUpCents - amountCents;
+  return {
+    chargedAmountCents: grossedUpCents,
+    feeAmountCents: totalFees,
+    netAmountCents: amountCents,
+  };
+}

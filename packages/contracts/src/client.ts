@@ -175,6 +175,12 @@ export interface StudentGuardian {
   email?: string;
 }
 
+export type MinorConsentStatus =
+  | "not_applicable"
+  | "pending"
+  | "confirmed_whatsapp"
+  | "confirmed_paper";
+
 export interface Client {
   id: Id;
   organizationId: Id;
@@ -196,6 +202,11 @@ export interface Client {
   discount?: StudentDiscount;
   membershipStatus?: MembershipStatus;
   progressions?: Record<Id, StudentModalityProgression>;
+  /** Consentimento LGPD para alunos menores de 18 anos (Art. 14 da Lei 13.709/2018). */
+  minorConsentStatus?: MinorConsentStatus;
+  minorConsentAt?: DateTimeISO;
+  minorConsentBy?: string;
+  minorConsentEvidence?: Record<string, unknown>;
   status: RecordStatus;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;

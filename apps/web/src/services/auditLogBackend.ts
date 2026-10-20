@@ -50,10 +50,12 @@ export async function listAuditLogsFromDb(
     query = query.eq("security", filter.security);
   }
   if (filter?.dateFrom) {
-    query = query.gte("timestamp", filter.dateFrom);
+    const fromISO = filter.dateFrom.length === 10 ? `${filter.dateFrom}T00:00:00.000Z` : filter.dateFrom;
+    query = query.gte("timestamp", fromISO);
   }
   if (filter?.dateTo) {
-    query = query.lte("timestamp", filter.dateTo);
+    const toISO = filter.dateTo.length === 10 ? `${filter.dateTo}T23:59:59.999Z` : filter.dateTo;
+    query = query.lte("timestamp", toISO);
   }
 
   const { data, error } = await query;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -50,6 +50,9 @@ const schema = z.object({
   enabled: z.boolean(),
   pixKey: z.string().trim().max(77, "A chave Pix tem no máximo 77 caracteres."),
   defaultExpiresInMinutes: z.string().min(1, "Escolha a validade."),
+  passFeeToCustomer: z.boolean(),
+  passFeePix: z.boolean(),
+  passFeeCard: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -61,6 +64,9 @@ function toValues(s?: OnlinePaymentSettings): Values {
     defaultExpiresInMinutes: EXPIRES_OPTIONS.some((o) => o.value === minutes)
       ? minutes
       : String(DEFAULT_EXPIRES),
+    passFeeToCustomer: Boolean(s?.passFeeToCustomer),
+    passFeePix: Boolean(s?.passFeePix ?? s?.passFeeToCustomer),
+    passFeeCard: Boolean(s?.passFeeCard ?? s?.passFeeToCustomer),
   };
 }
 
@@ -156,6 +162,10 @@ function OnlinePaymentsForm({
     reValidateMode: "onChange",
     defaultValues: toValues(settings),
   });
+  const passFeeToCustomerWatched = useWatch({
+    control: form.control,
+    name: "passFeeToCustomer",
+  });
   const dirty = form.formState.isDirty;
   useReportDirty(dirty, onDirtyChange);
   const pending = update.isPending;
@@ -169,6 +179,9 @@ function OnlinePaymentsForm({
         enabled: values.enabled,
         pixKey: values.pixKey,
         defaultExpiresInMinutes: Number(values.defaultExpiresInMinutes),
+        passFeeToCustomer: values.passFeeToCustomer,
+        passFeePix: values.passFeePix,
+        passFeeCard: values.passFeeCard,
       });
       toast.success(
         saved.enabled
@@ -279,6 +292,33 @@ function OnlinePaymentsForm({
                   hint="Depois disso o código expira e é preciso gerar outro."
                   disabled={disabled}
                 />
+              </div>
+
+              {/* Repasse de Custos ao Aluno */}
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3.5">
+                <SwitchField<Values>
+                  name="passFeeToCustomer"
+                  label="Repassar taxa de cobrança ao aluno por padrão"
+                  hint="Quando ativado, os valores das cobranças já serão gerados com o acréscimo da tarifa (R$ 1,99 no Pix ou 2,99% + taxa no cartão) para que sua academia receba o valor integral da mensalidade (custo zero)."
+                  disabled={disabled}
+                />
+
+                {passFeeToCustomerWatched ? (
+                  <div className="ml-6 space-y-2.5 pt-1 border-l-2 border-primary/20 pl-3">
+                    <SwitchField<Values>
+                      name="passFeePix"
+                      label="Repassar taxa no Pix"
+                      hint="Acréscimo fixo da tarifa por cobrança (+ R$ 1,99 no Free ou R$ 1,29 no Pro)."
+                      disabled={disabled}
+                    />
+                    <SwitchField<Values>
+                      name="passFeeCard"
+                      label="Repassar taxa no Cartão de Crédito"
+                      hint="Acréscimo calculado por gross-up (+ 2,99% + taxa) para preservar seu valor líquido."
+                      disabled={disabled}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
