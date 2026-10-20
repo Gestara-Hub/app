@@ -69,6 +69,7 @@ import { financialEntryStatusLabel, paymentMethodLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
+import { useUserPreferences } from "@/features/preferences";
 import {
   useCancelFinanceEntry,
   useDeleteFinanceEntry,
@@ -197,8 +198,11 @@ export function FinanceEntriesTab({
   const endMut = useEndFinanceRecurrence();
 
   const rows = data ?? [];
+  const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(
+    () => preferences.pageSizes?.finance ?? preferences.defaultPageSize ?? 25,
+  );
 
   const filterKey = `${competence}:${typeFilter}:${statusFilter}:${categoryFilter}:${search}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
@@ -679,6 +683,7 @@ export function FinanceEntriesTab({
 
       {!isPending && rows.length > 0 && (
         <PaginationBar
+          screenKey="finance"
           page={page}
           pageSize={pageSize}
           total={rows.length}

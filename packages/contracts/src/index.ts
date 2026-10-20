@@ -24,3 +24,4 @@ export * from "./report";
 export * from "./student-summary";
 export * from "./onboarding";
 export * from "./pagination";
+export * from "./preferences";

@@ -1,52 +1,53 @@
 # Modelo de negócio: Free vs Pro vs Scale
 
-> **Status:** Atualizado em 03/10/2026. Reflete o modelo freemium com monetização em fintech, automação de WhatsApp e inteligência analítica.
+> **Status:** Atualizado em 19/10/2026. Preços do Pro (R$ 79,90/mês e R$ 699/ano) e Scale (R$ 199/mês e R$ 1.790/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via Asaas (split nativo). Sem travas artificiais de alunos ou professores no Grátis.
 > **13/10/2026:** WhatsApp sempre com o número do próprio espaço; envio assistido no grátis e API oficial no Pro (seção 5). Pagamentos (assinatura, custo das mensagens e mensalidade online com split): levantamento em [19-levantamento-pagamentos.md](19-levantamento-pagamentos.md); integração real do WhatsApp: [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
-> **Em aberto (17/10/2026):** preço do Pro e forma de cobrar dois fluxos, ainda a validar. **Envio automático do WhatsApp:** o custo das mensagens provavelmente fica com o espaço. **Pagamento online:** pode valer também no grátis, com taxa por cobrança automática, em vez de ser só do Pro. Até decidir, a landing page não mostra planos nem cita o Pro (doc 08, seção 3.5). As seções 2 e 3 abaixo seguem como estavam.
+> **19/10/2026 (Decisão de Preço e Gateway):** O Asaas foi o gateway escolhido para a infraestrutura de pagamentos (assinaturas da plataforma + subcontas dos espaços com split automático). O Plano Grátis não possui travas de alunos ou equipe, monetizando no split transacional das mensalidades. O Plano Pro entrega automação pura (WhatsApp oficial, DRE Gerencial, certificados e taxas reduzidas no Pix).
 
 ## 1. Decisão Estratégica
 
-O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo financeiro e automação**:
-- **Plano Grátis:** O coração operacional e financeiro do dia a dia da academia é **100% gratuito**, sem limite artificial de alunos ou turmas. Isso elimina qualquer fricção de entrada e substitui de vez o caderno ou planilhas.
-- **Apps do Aluno e do Professor:** Acesso gratuito para consulta de horários, faltas, presenças, avisos e trilha de graduação (faixas e graus).
+O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo financeiro (fintech) e automação (SaaS)**:
+- **Plano Grátis:** O coração operacional e financeiro do dia a dia da academia é **100% gratuito**, sem limite artificial de alunos, turmas ou usuários da equipe. Isso elimina qualquer fricção de entrada e substitui de vez o caderno ou planilhas.
+- **Apps do Aluno e do Professor:** Acesso gratuito para consulta de horários, presenças, avisos, pagamentos e graduação.
 - **A Monetização ocorre em 3 pilares:**
-  1. **Automação e Comunicação (Pro):** Notificações e lembretes automáticos de cobrança via gateway de WhatsApp (redução da inadimplência sem esforço manual do dono).
-  2. **Fintech e Pagamento Integrado (Taxa Transacional / Pro):** Cobrança online (Pix Copia e Cola, link, Pix Automático, cartão) com baixa automática no app e web.
-  3. **Relatórios Gerenciais e BI (Pro / Scale):** DRE financeira, análises de retenção/churn e inteligência analítica preditiva.
-  4. **Certificado de conclusão de curso (Pro, 14/10/2026):** modelo pronto para imprimir ou salvar em PDF; depois, gerador de modelos próprios. Ideias de certificado e de notas dos alunos em [21-ideias-certificados-e-notas.md](21-ideias-certificados-e-notas.md).
+  1. **Fintech e Taxa Transacional (Em todos os planos, inclusive no Grátis):** Cobrança online (Pix Copia e Cola, link, Pix Automático, cartão) com baixa automática no app e web via Asaas. O GestaraHub retém sua margem no split na liquidação de cada mensalidade paga.
+  2. **Assinatura do Plano Pro (R$ 79,90/mês ou R$ 699,00/ano):** Notificações e lembretes 100% automáticos de cobrança via API oficial da Meta (WhatsApp), DRE gerencial, certificados e **taxas reduzidas no Pix**.
+  3. **Plano Scale (R$ 199,00/mês ou R$ 1.790,00/ano):** Gestão multiunidade, BI preditivo de evasão de alunos e franquias ampliadas de mensagens.
 
 ---
 
 ## 2. Estrutura dos Níveis de Assinatura (`SubscriptionTier`)
 
 ```
-┌────────────────────────────────┐   ┌────────────────────────────────┐   ┌────────────────────────────────┐
-│         PLANO GRÁTIS           │   │           PLANO PRO            │   │      PLANO SCALE / REDE        │
-│    (Coração Operacional)       │   │      (Piloto Automático)       │   │    (Inteligência e Gestão)     │
-│           R$ 0 / mês           │   │      Mensalidade por SaaS      │   │    Multiunidade & Analytics    │
-└────────────────────────────────┘   └────────────────────────────────┘   └────────────────────────────────┘
+┌─────────────────────────────────────────┐   ┌─────────────────────────────────────────┐   ┌─────────────────────────────────────────┐
+│              PLANO GRÁTIS               │   │                PLANO PRO                │   │               PLANO SCALE               │
+│         "Coração Operacional"           │   │          "Piloto Automático"            │   │          "Redes e Franquias"            │
+│               R$ 0 / mês                │   │             R$ 79,90 / mês              │   │             R$ 199,00 / mês             │
+│                                         │   │        (ou R$ 699/ano à vista)          │   │       (ou R$ 1.790/ano à vista)         │
+└─────────────────────────────────────────┘   └─────────────────────────────────────────┘   └─────────────────────────────────────────┘
 ```
 
 ### 2.1 Plano Grátis (Free)
-- **Operação Completa:** Cadastro de alunos, responsáveis, equipe, modalidades e planos.
-- **Turmas e Tatame:** Criação de turmas, grade de horários, chamada/frequência, reposições e lista de espera.
+- **Operação Completa e Ilimitada:** Alunos, responsáveis, turmas, chamadas com áudio, modalidades e planos ilimitados.
+- **Equipe Ilimitada:** Dono, professores e recepcionistas com permissões granulares.
 - **Trilha de Graduação:** Gestão de faixas, graus e critérios de progressão por presença/tempo.
 - **Mensalidades dos Alunos:** Geração de cobranças e controle manual de pagamentos (dinheiro, Pix manual conferido no extrato).
 - **Módulo Financeiro Básico:** Entradas, saídas manuais, despesas recorrentes, categorias, fluxo de caixa e cálculo do repasse de professores (com fechamento e quitação manual).
 - **Apps do Aluno e do Professor:** Acesso liberado (histórico de treinos, chamadas, graduações e avisos).
-- **Relatórios Operacionais:** Lista simples de chamada em PDF e relação de alunos ativos/inadimplentes.
 - **WhatsApp assistido:** cobrança, lembrete e parabéns com a mensagem pronta; o botão abre o WhatsApp do próprio espaço e a pessoa só toca em enviar (seção 5).
+- **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa transacional padrão (ex.: R$ 1,99 por Pix recebido).
 
-### 2.2 Plano Pro (O "Piloto Automático")
-- **`online_payments`:** Pagamento de mensalidades online diretamente no App do Aluno e na Web (Pix instantâneo, link e Pix Automático recorrente), com baixa automática sem conferência manual.
-- **`messaging`:** Envio automático pelo WhatsApp, pela API oficial da Meta e com o **número do próprio espaço**: lembretes de vencimento (antes, no dia e após), boas-vindas e recuperação de alunos ausentes (franquia mensal com custo de disparo Meta coberto pelo plano). Ver seção 5.
-- **`reports_advanced`:** Relatórios avançados gerenciais (DRE completa do negócio, faturamento previsto vs. realizado, evolução da inadimplência e taxa de retenção por faixa).
-- **Taxas transacionais reduzidas:** Vantagem comercial nas tarifas de processamento de pagamentos.
+### 2.2 Plano Pro (O "Piloto Automático" — R$ 79,90/mês ou R$ 699,00/ano)
+- **`messaging`:** Envio 100% automático pelo WhatsApp, pela API oficial da Meta e com o **número do próprio espaço**: lembretes de vencimento (antes, no dia e após), boas-vindas e recuperação de alunos ausentes (franquia mensal de 300 mensagens/mês inclusa; excedente via pacotes pré-pagos ou retorno ao assistido).
+- **Taxas transacionais reduzidas ⚡:** Desconto na tarifa do Pix (ex.: de R$ 1,99 para R$ 1,29 por Pix recebido). Para academias com mais de 70 alunos, a economia na taxa paga a própria assinatura do Pro.
+- **`reports_advanced`:** Relatórios avançados gerenciais (DRE completa do negócio com lucro líquido real, faturamento previsto vs. realizado, evolução da inadimplência e taxa de retenção por faixa).
+- **`certificates`:** Emissão de certificados de conclusão de curso e graduação prontos para imprimir ou exportar em PDF.
 
-### 2.3 Plano Scale (Para Redes e Grandes Academias)
-- **`bi`:** Módulo de BI & Analytics preditivo (análise de churn futuro, mapas de calor de ocupação de horários e tatames, desempenho financeiro por modalidade/professor).
+### 2.3 Plano Scale (Para Redes e Grandes Academias — R$ 199,00/mês ou R$ 1.790,00/ano)
 - **Multiunidade / Franquias:** Gestão centralizada de múltiplas unidades ou filiais sob uma única conta com consolidação financeira.
-- **Customização / White-label:** Identidade visual e marca personalizada no App do Aluno.
+- **`bi`:** Módulo de BI & Analytics preditivo (análise preditiva de churn/evasão de alunos, mapas de calor de ocupação de horários e tatames).
+- **Franquia estendida de WhatsApp:** 1.000 mensagens automáticas/mês inclusas.
+- **Taxas de pagamento personalizadas** para grandes volumes transacionados.
 
 ---
 

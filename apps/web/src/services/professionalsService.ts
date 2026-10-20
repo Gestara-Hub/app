@@ -45,6 +45,7 @@ function toView(p: Professional): ProfessionalView {
 }
 
 const NOT_FOUND = "Profissional não encontrado.";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // NOTA: mensagens a confirmar com o doc 10 quando o modulo Equipe for feito.
 function validateProfessional(
@@ -63,6 +64,13 @@ function validateProfessional(
   // Cargo e opcional; se informado, precisa existir.
   if (has("roleId") && payload.roleId && !store.roles.some((r) => r.id === payload.roleId)) {
     fields.push({ field: "roleId", message: "Cargo inválido." });
+  }
+  // Email e opcional; se informado, formato precisa ser valido.
+  if (has("email") && payload.email) {
+    const trimmedEmail = payload.email.trim();
+    if (trimmedEmail && !EMAIL_RE.test(trimmedEmail)) {
+      fields.push({ field: "email", message: "Informe um e-mail válido." });
+    }
   }
   // No modelo de turmas (classes), ao menos uma modalidade é obrigatória.
   if (store.organization.model === "classes" && (!partial || has("modalityIds"))) {
@@ -109,6 +117,7 @@ export const professionalsService = {
         result = result.filter(
           (p) =>
             textIncludes(p.name, term) ||
+            (p.email ? textIncludes(p.email, term) : false) ||
             textIncludes(roleNameOf(p.roleId), term),
         );
       }
@@ -154,6 +163,7 @@ export const professionalsService = {
         unitId: store.unit.id,
         name: payload.name.trim(),
         roleId: payload.roleId,
+        email: payload.email?.trim() || undefined,
         phone: payload.phone?.trim() || undefined,
         address: payload.address,
         status: payload.status ?? "active",
@@ -210,6 +220,9 @@ export const professionalsService = {
         updated = {
           ...current,
           ...payload,
+          ...(payload.email !== undefined
+            ? { email: payload.email?.trim() || undefined }
+            : {}),
           updatedAt: nowIso(),
         };
         store.professionals[idx] = updated;

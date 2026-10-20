@@ -2,11 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Award, Building2, Clock, Database, QrCode, Sparkles } from "lucide-react";
+import { Award, Building2, Clock, QrCode, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { ResetDataActions } from "@/features/system";
 import { useModel } from "@/features/auth";
+import { UserPreferencesView } from "@/features/preferences";
 import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 import { useBeforeUnloadGuard, useLeaveLinkGuard } from "./unsaved-changes";
@@ -14,7 +14,7 @@ import { SubscriptionPlanCard } from "./subscription-plan-card";
 import { OnlinePaymentsSettingsCard } from "./online-payments-settings-card";
 import { CertificateTemplateCard } from "./certificate-template-card";
 
-type Tab = "geral" | "horarios" | "pagamento" | "certificado" | "plano" | "dados";
+type Tab = "geral" | "horarios" | "pagamento" | "certificado" | "plano" | "preferencias";
 
 const TABS: {
   value: Tab;
@@ -57,11 +57,11 @@ const TABS: {
       "O plano do GestaraHub desta organização e o que o Pro inclui. Não confundir com os planos de mensalidade dos alunos.",
   },
   {
-    value: "dados",
-    label: "Dados",
-    icon: Database,
+    value: "preferencias",
+    label: "Preferências",
+    icon: SlidersHorizontal,
     description:
-      "Os dados desta demonstração ficam salvos neste navegador. Apagar tudo remove alunos, turmas, cobranças e demais cadastros e mantém só os proprietários iniciais.",
+      "Aparência da interface, modos padrão de visualização de listas, paginação e feedback sonoro.",
   },
 ];
 
@@ -210,7 +210,11 @@ export function SettingsTabs() {
             <CertificateTemplateCard onDirtyChange={setCertificadoDirty} />
           ) : null}
           {t.value === "plano" ? <SubscriptionPlanCard /> : null}
-          {t.value === "dados" ? <ResetDataActions /> : null}
+          {t.value === "preferencias" ? (
+            <div className="rounded-xl border border-border/60 bg-card p-6">
+              <UserPreferencesView />
+            </div>
+          ) : null}
         </div>
       ))}
       {confirmDialog}

@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useMessageLogs, useRetryMessage, useWhatsAppConnection } from "../hooks/use-communication";
+import { useUserPreferences } from "@/features/preferences";
 import { STATUS_META, TRIGGER_META } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
@@ -90,8 +91,11 @@ export function MessageLogsTab() {
     if (kind === "notices") return log.category === "administrative" && log.trigger !== "manual_broadcast";
     return true;
   });
+  const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(
+    () => preferences.pageSizes?.communication ?? preferences.defaultPageSize ?? 25,
+  );
 
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
@@ -240,6 +244,7 @@ export function MessageLogsTab() {
 
       {!isPending && rows.length > 0 && (
         <PaginationBar
+          screenKey="communication"
           page={page}
           pageSize={pageSize}
           total={rows.length}

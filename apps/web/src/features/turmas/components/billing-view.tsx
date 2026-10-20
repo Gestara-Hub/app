@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView } from "@gestarahub/contracts";
 import { useCurrentUser } from "@/features/auth";
+import { useUserPreferences } from "@/features/preferences";
 import { CompetencePicker } from "@/features/finance";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
 import { useCharges } from "../hooks/use-billing";
@@ -379,9 +380,12 @@ export function BillingView() {
   useEffect(() => {
     if (kindFilter === "course") markDiscoveryVisit(user, "course_billing");
   }, [kindFilter, user]);
+  const { preferences } = useUserPreferences();
   const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(
+    () => preferences.pageSizes?.billing ?? preferences.defaultPageSize ?? 25,
+  );
 
   const toggleStudent = (studentId: string) => {
     setExpandedStudents((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
@@ -1093,6 +1097,7 @@ export function BillingView() {
 
           {!isLoading && studentGroups.length > 0 ? (
             <PaginationBar
+              screenKey="billing"
               page={page}
               pageSize={pageSize}
               total={totalGroups}

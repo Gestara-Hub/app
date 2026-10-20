@@ -6,6 +6,7 @@ import {
   Briefcase,
   Calendar,
   Contact,
+  Mail,
   Pencil,
   Phone,
   Power,
@@ -150,6 +151,12 @@ function ProfessionalRow({
                 <span>{formatPhone(professional.phone)}</span>
               </span>
             ) : null}
+            {professional.email ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Mail className="size-3 text-muted-foreground/60" />
+                <span className="break-all">{professional.email}</span>
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -262,12 +269,20 @@ function ProfessionalCard({
           <Briefcase className="size-3.5 text-muted-foreground/60" />
           <span>{activityMeta}</span>
         </span>
-        {professional.phone ? (
-          <span className="inline-flex items-center gap-1.5 tabular-nums">
-            <Phone className="size-3.5 text-muted-foreground/60" />
-            <span>{formatPhone(professional.phone)}</span>
-          </span>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {professional.phone ? (
+            <span className="inline-flex items-center gap-1.5 tabular-nums">
+              <Phone className="size-3.5 text-muted-foreground/60" />
+              <span>{formatPhone(professional.phone)}</span>
+            </span>
+          ) : null}
+          {professional.email ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Mail className="size-3.5 text-muted-foreground/60" />
+              <span className="break-all">{professional.email}</span>
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );

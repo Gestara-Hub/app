@@ -76,6 +76,7 @@ import {
   useStudentPackages,
 } from "@/features/turmas";
 import { usePaginatedClients } from "../hooks/use-clients";
+import { useUserPreferences } from "@/features/preferences";
 
 const PERIOD_SHORT: Record<PlanPeriod, string> = {
   monthly: "mês",
@@ -901,8 +902,11 @@ export function ClientsList({
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
   const [viewMode, setViewMode] = useViewMode("clients", "list");
+  const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(
+    () => preferences.pageSizes?.clients ?? preferences.defaultPageSize ?? 20,
+  );
 
   const filter: ClientFilter = {
     search: search.trim() || undefined,
@@ -1114,6 +1118,7 @@ export function ClientsList({
       {/* Paginação */}
       {!isError && total > 0 ? (
         <PaginationBar
+          screenKey="clients"
           page={page}
           pageSize={pageSize}
           total={total}

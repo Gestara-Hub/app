@@ -182,8 +182,15 @@ export function useViewMode(
       }
       setViewModeCookie(fullKey, next);
       notify();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("gestarahub:viewmode-change", {
+            detail: { key: storageKey, mode: next },
+          }),
+        );
+      }
     },
-    [fullKey],
+    [fullKey, storageKey],
   );
 
   return [mode, updateMode];

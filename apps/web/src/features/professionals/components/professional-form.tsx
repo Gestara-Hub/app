@@ -60,6 +60,7 @@ function toDefaults(
   return {
     name: professional?.name ?? "",
     role: roleName,
+    email: professional?.email ?? "",
     phone: professional?.phone ?? "",
     address: professional?.address
       ? {
@@ -249,6 +250,7 @@ export function ProfessionalForm({
     const payload: Omit<CreateProfessional, "status"> = {
       name: values.name,
       roleId,
+      email: values.email?.trim() || undefined,
       phone: values.phone || undefined,
       address: addressPayload,
       // O modelo do tenant decide qual associação é relevante: M1 grava
@@ -326,22 +328,30 @@ export function ProfessionalForm({
           />
         )}
 
+        <ComboboxField<ProfessionalFormValues>
+          name="role"
+          label="Cargo"
+          placeholder="Selecione ou crie..."
+          searchPlaceholder="Buscar ou digitar..."
+          emptyMessage={"Nenhum cargo cadastrado.\nDigite acima para criar."}
+          options={roleOptions}
+          onCreateOption={handleCreateRole}
+          createOptionLabel={(val) => `Criar cargo "${val}"`}
+          clearable
+          disabled={pending}
+        />
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ComboboxField<ProfessionalFormValues>
-            name="role"
-            label="Cargo"
-            placeholder="Selecione ou crie..."
-            searchPlaceholder="Buscar ou digitar..."
-            emptyMessage={"Nenhum cargo cadastrado.\nDigite acima para criar."}
-            options={roleOptions}
-            onCreateOption={handleCreateRole}
-            createOptionLabel={(val) => `Criar cargo "${val}"`}
-            clearable
-            disabled={pending}
-          />
           <InputPhone<ProfessionalFormValues>
             name="phone"
             label="Telefone"
+            disabled={pending}
+          />
+          <InputText<ProfessionalFormValues>
+            name="email"
+            type="email"
+            label="E-mail"
+            placeholder="profissional@email.com (opcional)"
             disabled={pending}
           />
         </div>

@@ -15,6 +15,7 @@ function mapRowToProfessional(row: Record<string, unknown>): Professional {
     unitId: String(row.unit_id),
     name: String(row.name),
     roleId: row.role_id ? String(row.role_id) : undefined,
+    email: row.email ? String(row.email) : undefined,
     phone: row.phone ? String(row.phone) : undefined,
     address: (row.address as Professional["address"]) || undefined,
     status: (row.status as Professional["status"]) || "active",
@@ -50,7 +51,11 @@ export async function listProfessionalsFromDb(
   let result = (data || []).map(mapRowToProfessional);
   if (filter?.search) {
     const term = filter.search.toLowerCase().trim();
-    result = result.filter((p) => p.name.toLowerCase().includes(term));
+    result = result.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        (p.email ? p.email.toLowerCase().includes(term) : false),
+    );
   }
   if (filter?.serviceId) {
     result = result.filter((p) => p.serviceIds.includes(filter.serviceId!));
@@ -91,6 +96,7 @@ export async function createProfessionalInDb(
       unit_id: professional.unitId,
       name: professional.name.trim(),
       role_id: professional.roleId ?? null,
+      email: professional.email?.trim() || null,
       phone: professional.phone?.trim() ?? null,
       address: professional.address ?? null,
       status: professional.status,
@@ -119,6 +125,7 @@ export async function updateProfessionalInDb(
 
   if (payload.name !== undefined) updateData.name = payload.name.trim();
   if (payload.roleId !== undefined) updateData.role_id = payload.roleId || null;
+  if (payload.email !== undefined) updateData.email = payload.email?.trim() || null;
   if (payload.phone !== undefined) updateData.phone = payload.phone?.trim() || null;
   if (payload.address !== undefined) updateData.address = payload.address || null;
   if (payload.status !== undefined) updateData.status = payload.status;

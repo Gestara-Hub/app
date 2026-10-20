@@ -1,29 +1,25 @@
 # 19 — Levantamento: pagamentos
 
-> **Status:** 13/10/2026. **Levantamento**, não decisão. Reúne o que precisa ser decidido sobre dinheiro antes e durante o backend, com recomendações e o que falta validar. As decisões tomadas a partir daqui viram ADR (skill `adr`) neste documento ou no 13.
+> **Status:** Atualizado em 19/10/2026. **Decisão tomada:** Provedor escolhido = **Asaas**. Preços do Pro (R$ 79,90/mês e R$ 699/ano) e Scale (R$ 199/mês e R$ 1.790/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via split nativo.
 > Base: modelo de negócio em [13-modelo-de-negocio.md](13-modelo-de-negocio.md); pagamento online simulado em [../technical/05-modulo-financeiro.md](../technical/05-modulo-financeiro.md), seção 6; WhatsApp em [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
 
 ## 1. Os três fluxos de dinheiro
 
-| # | Quem paga | Quem recebe | O quê | Hoje no mock |
+| # | Quem paga | Quem recebe | O quê | Definição (19/10/2026) |
 |---|---|---|---|---|
-| 1 | Espaço | GestaraHub | Assinatura do plano (Pro, Scale) | Troca de plano livre em Configurações, sem cobrança |
-| 2 | GestaraHub | Meta (ou parceiro) | Mensagens do WhatsApp oficial | Franquia contada (`monthlyQuota`), sem custo real |
-| 3 | Aluno | Espaço (com taxa do GestaraHub) | Mensalidade online: Pix, link, Pix Automático | Simulado (`mockPaymentGateway`) |
+| 1 | Espaço | GestaraHub | Assinatura do plano (Pro: R$ 79,90/mês ou R$ 699/ano; Scale: R$ 199/mês ou R$ 1.790/ano) | Asaas (Assinatura por Pix Automático, Pix ou Cartão) |
+| 2 | GestaraHub | Meta (ou parceiro) | Mensagens do WhatsApp oficial | Pro com franquia de 300 msgs/mês; excedente pré-pago |
+| 3 | Aluno | Espaço (com taxa do GestaraHub) | Mensalidade online: Pix, link, Pix Automático | Asaas (Subconta da academia com split automático na liquidação) |
 
 ## 2. Fluxo 1: assinatura do GestaraHub
 
-### A decidir
-- **Preço** do Pro e do Scale (mensal e anual?). O doc 13 define os recursos, não os valores.
-- **Formas de pagamento:** cartão recorrente, **Pix Automático** e boleto. Pix Automático é o caminho natural no Brasil para assinatura: o pagador autoriza uma vez no app do banco e pode revogar ali; não ocupa limite de cartão.
-- **Período de teste** do Pro (ex.: 14 dias) e o que acontece no fim.
-- **Troca de plano:** subir na hora, com valor proporcional? Descer no fim do período?
-- **Falta de pagamento:** prazo de carência e depois volta ao Grátis **sem perder dados** (os recursos Pro só ficam bloqueados).
-- **Nota fiscal de serviço** (NFS-e) de cada fatura e impostos: pelo provedor de pagamento ou por um emissor à parte.
-- **Requisito:** o GestaraHub precisa de CNPJ e conta para receber. Ver o requisito de tempo de CNPJ do Pix Automático na seção 4.
-
-### Impacto no contrato
-`Subscription` hoje só tem `tier`. Vai precisar de: situação (ativa, em atraso, cancelada, em teste), fim do período atual, forma de pagamento, histórico de faturas e o identificador da assinatura no provedor.
+### Decisões (19/10/2026)
+- **Preço:**
+  - **Pro:** **R$ 79,90 / mês** ou **R$ 699,00 / ano** (desconto de ~2 meses, R$ 58,25/mês).
+  - **Scale:** **R$ 199,00 / mês** ou **R$ 1.790,00 / ano**.
+- **Formas de pagamento:** Cartão recorrente, Pix e Pix Automático.
+- **Falta de pagamento:** Prazo de carência (ex: 5 dias) e depois reverte ao Grátis **sem perder nenhum dado de alunos, histórico ou turmas** (apenas os recursos Pro — como envio automático de WhatsApp e taxas reduzidas — ficam bloqueados).
+- **Conta Master:** Aberta no Asaas com CNPJ ME do fundador (categoria: Software / Licenciamento).
 
 ## 3. Fluxo 2: mensagens do WhatsApp oficial
 
@@ -67,15 +63,12 @@ O Pro inclui uma franquia mensal (hoje 1.000 no mock). Opções para o excedente
 
 O ideal é **um provedor para os fluxos 1 e 3**: assinatura, subcontas, split e Pix Automático no mesmo lugar.
 
-| Provedor | O que a pesquisa confirmou | A validar |
-|---|---|---|
-| Asaas | Assinaturas (boleto, Pix, cartão) e Pix Automático na API, com geração automática das cobranças pela autorização | Split e subcontas **combinados com Pix Automático** |
-| Iugu | Pix Automático em dois modelos: ela cuida do ciclo da assinatura, ou só o trilho (autorização e liquidação) e o ciclo fica conosco | Split, subcontas e preço |
-| Efí | SDK oficial cita Pix Automático para assinatura e split de pagamentos | Se funcionam juntos |
-| Vindi, PagBrasil | Anunciam Pix Automático para recorrência | Subcontas e split |
-| Pagar.me, Stripe | Não encontramos confirmação de Pix Automático nesta pesquisa | Tudo |
-
-**Próximo passo:** pedir a dois ou três provedores (Asaas, Iugu, Efí) um exemplo de **split com Pix Automático em subconta**, testar em ambiente de testes e comparar tarifas. Esse é o ponto que mais pode mudar a escolha.
+### 5.1 Provedor Escolhido: Asaas (19/10/2026)
+O **Asaas** foi o provedor escolhido por cobrir com maturidade todos os requisitos técnicos e comerciais:
+1. **API de Subcontas e Split nativo:** Criação de subcontas filhas via API para cada academia, com retenção automática da taxa do GestaraHub na liquidação de cada mensalidade (sem que o dinheiro transite pela conta bancária da plataforma).
+2. **Pix e Pix Automático:** Suporte a Pix avulso com baixa imediata e documentação para cobrança recorrente.
+3. **Compatibilidade com Supabase Serverless (Edge Functions):** Autenticação por API Key (Bearer Token) simples, sem exigir certificado digital de cliente `.p12`/mTLS ou IP fixo.
+4. **Assinatura da Plataforma:** Cobrança recorrente dos planos Pro e Scale no mesmo provedor.
 
 ### Critérios técnicos (backend serverless no Supabase, ver [../technical/08-backend-supabase.md](../technical/08-backend-supabase.md))
 

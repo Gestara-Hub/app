@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, Check, LogOut, Moon, Sun, Users } from "lucide-react";
+import { useState } from "react";
+import { Building2, Check, LogOut, Moon, SlidersHorizontal, Sun, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ThemeCustomizer } from "@/components/theme/theme-customizer";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,6 +24,7 @@ import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization, useUnit } from "@/features/settings";
 import { useSwitchableUsers } from "@/features/users/hooks/use-users";
+import { UserPreferencesDialog } from "@/features/preferences";
 
 export function AppTopbar() {
   const user = useCurrentUser();
@@ -33,9 +35,11 @@ export function AppTopbar() {
     (opt) => opt.user.name !== "Marcelo Andrade" && opt.user.id !== "usr-marcelo",
   );
   const { resolvedTheme, setTheme } = useTheme();
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 print:hidden">
+    <>
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 print:hidden">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-5" />
 
@@ -86,6 +90,15 @@ export function AppTopbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
+            <DropdownMenuItem
+              onSelect={() => setPreferencesOpen(true)}
+              className="cursor-pointer"
+            >
+              <SlidersHorizontal className="size-4" />
+              <span>Preferências</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+
             <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <Users className="size-3.5" />
               Trocar usuário / organização (demo)
@@ -120,5 +133,7 @@ export function AppTopbar() {
         </DropdownMenu>
       </div>
     </header>
+    <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
+    </>
   );
 }

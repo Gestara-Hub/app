@@ -5,6 +5,8 @@ import { z } from "zod";
  * Schema de formulario do Professional. Mensagens alinhadas ao
  * professionalsService. Validacao no submit, revalida no change.
  */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const addressSchema = z.object({
   postalCode: z.string().optional(),
   street: z.string().optional(),
@@ -19,6 +21,13 @@ export const professionalFormSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome do profissional."),
   // Cargo opcional: campo pode ficar vazio.
   role: z.string().trim(),
+  email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || EMAIL_RE.test(v), {
+      message: "Informe um e-mail válido.",
+    }),
   phone: z
     .string()
     .trim()

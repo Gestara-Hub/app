@@ -13,6 +13,7 @@ export interface PaginationBarProps {
   onPageChange: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   pageSizeOptions?: number[];
+  screenKey?: string;
   itemLabel?: string;
   className?: string;
   disabled?: boolean;
@@ -26,6 +27,7 @@ export function PaginationBar({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [10, 20, 50],
+  screenKey,
   itemLabel = "registros",
   className,
   disabled = false,
@@ -72,7 +74,17 @@ export function PaginationBar({
               aria-label="Itens por página"
               value={pageSize}
               disabled={disabled}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              onChange={(e) => {
+                const newSize = Number(e.target.value);
+                onPageSizeChange(newSize);
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("gestarahub:pagesize-change", {
+                      detail: { screenKey, pageSize: newSize },
+                    }),
+                  );
+                }
+              }}
               className="h-7 rounded border border-input bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {pageSizeOptions.map((opt) => (

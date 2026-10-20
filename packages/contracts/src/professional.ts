@@ -13,6 +13,7 @@ export interface Professional {
   unitId: Id;
   name: string;
   roleId?: Id; // FK -> Role (cargo/especialidade) — OPCIONAL; nome via store.roles
+  email?: string;
   phone?: string;
   address?: Address;
   status: RecordStatus;
