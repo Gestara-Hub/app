@@ -40,6 +40,11 @@ export interface CreatePixInput {
   studentEmail?: string;
   subaccountApiKey?: string;
   splitAmountCents?: number;
+  chargeDueDate?: string;
+  competence?: string;
+  planName?: string;
+  chargeKind?: string;
+  description?: string;
 }
 
 export interface CreateLinkInput {
@@ -53,6 +58,11 @@ export interface CreateLinkInput {
   studentCpf?: string;
   studentEmail?: string;
   subaccountApiKey?: string;
+  chargeDueDate?: string;
+  competence?: string;
+  planName?: string;
+  chargeKind?: string;
+  description?: string;
 }
 
 /**

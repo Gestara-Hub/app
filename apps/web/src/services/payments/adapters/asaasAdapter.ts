@@ -20,6 +20,67 @@ function addMinutes(minutes: number): DateTimeISO {
 }
 
 /**
+ * Calcula a data de vencimento compatível com o Asaas a partir do tempo de expiração (em minutos).
+ * Se configurado para 24h (1440 min), vence no dia seguinte (amanhã).
+ * O Asaas exige que dueDate seja hoje ou no futuro.
+ */
+function calculateAsaasDueDate(expiresInMinutes: number): string {
+  const expirationMs = (expiresInMinutes || 1440) * 60 * 1000;
+  const validUntil = new Date(Date.now() + expirationMs);
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const targetDueDate = validUntil.toISOString().slice(0, 10);
+  return targetDueDate >= todayDate ? targetDueDate : todayDate;
+}
+
+/**
+ * Formata uma descrição detalhada para a fatura do Asaas, incluindo o tipo da cobrança,
+ * competência, plano, nome do aluno e da academia.
+ */
+export function formatPaymentDescription(input: {
+  description?: string;
+  chargeKind?: string;
+  competence?: string;
+  planName?: string;
+  studentName?: string;
+  merchantName?: string;
+}): string {
+  const parts: string[] = [];
+
+  if (input.description) {
+    parts.push(input.description);
+  } else if (input.chargeKind === "membership") {
+    if (input.competence) {
+      const [year, month] = input.competence.split("-");
+      parts.push(`Mensalidade ${month}/${year}`);
+    } else {
+      parts.push("Mensalidade");
+    }
+  } else if (input.chargeKind === "dropin") {
+    parts.push("Aula avulsa");
+  } else if (input.chargeKind === "package") {
+    parts.push("Pacote de créditos");
+  } else if (input.chargeKind === "course") {
+    parts.push("Curso / Workshop");
+  } else {
+    parts.push("Cobrança");
+  }
+
+  if (input.planName) {
+    parts.push(`Plano: ${input.planName}`);
+  }
+
+  if (input.studentName) {
+    parts.push(`Aluno(a): ${input.studentName}`);
+  }
+
+  if (input.merchantName) {
+    parts.push(input.merchantName);
+  }
+
+  return parts.join(" · ");
+}
+
+/**
  * Gera um CPF matematicamente válido para uso exclusivo no ambiente Sandbox do Asaas
  * caso o cadastro do aluno ainda não possua CPF informado.
  */
@@ -64,12 +125,13 @@ export const asaasPaymentGateway: PaymentGateway = {
       input.subaccountApiKey,
     );
 
-    // 2. Data de vencimento
-    const dueDate = new Date(Date.now() + 86400000 * 3)
-      .toISOString()
-      .slice(0, 10);
+    // 2. Data de vencimento alinhada com o tempo configurado (ex: 24h = amanhã)
+    const dueDate = calculateAsaasDueDate(input.expiresInMinutes);
 
-    // 3. Split de pagamento do marketplace GestaraHub se houver Master Wallet configurada
+    // 3. Descrição rica e detalhada do que está sendo pago
+    const description = formatPaymentDescription(input);
+
+    // 4. Split de pagamento do marketplace GestaraHub se houver Master Wallet configurada
     const splitAmountCents = input.splitAmountCents ?? 199; // R$ 1,99 por padrão
     const splitSettings =
       config.masterWalletId && input.subaccountApiKey
@@ -81,28 +143,30 @@ export const asaasPaymentGateway: PaymentGateway = {
           ]
         : undefined;
 
-    // 4. Cria a cobrança Pix no Asaas
+    // 5. Cria a cobrança Pix no Asaas
     const payment = await createPixPayment(
       {
         customer: customer.id,
         billingType: "PIX",
         value: input.amountCents / 100,
         dueDate,
-        description: `Mensalidade GestaraHub - ${input.merchantName || "Espaço"}`,
+        description,
         externalReference: input.chargeId,
         split: splitSettings,
       },
       input.subaccountApiKey,
     );
 
-    // 5. Busca o QR Code e código Copia e Cola
+    // 6. Busca o QR Code e código Copia e Cola
     const qrCode = await getPixQrCode(payment.id, input.subaccountApiKey);
 
     return {
       providerId: payment.id,
       pixCopyPaste: qrCode.payload,
       pixQrCodeBase64: qrCode.encodedImage,
-      expiresAt: qrCode.expirationDate || addMinutes(input.expiresInMinutes),
+      // Validade no GestaraHub respeita o tempo configurado pelo usuário (ex: 24h),
+      // em vez do padrão de 1 ano retornado tecnicamente pelo SPI/BACEN no QR Code
+      expiresAt: addMinutes(input.expiresInMinutes || 1440),
       splitAmountCents,
     };
   },
@@ -125,9 +189,9 @@ export const asaasPaymentGateway: PaymentGateway = {
       input.subaccountApiKey,
     );
 
-    const dueDate = new Date(Date.now() + 86400000 * 3)
-      .toISOString()
-      .slice(0, 10);
+    // Vencimento do link de pagamento calculado pelo tempo configurado (ex: 24h = amanhã)
+    const dueDate = calculateAsaasDueDate(input.expiresInMinutes);
+    const description = formatPaymentDescription(input);
 
     const payment = await createPixPayment(
       {
@@ -135,7 +199,7 @@ export const asaasPaymentGateway: PaymentGateway = {
         billingType: "UNDEFINED", // Permite Pix, Cartão e Boleto na fatura do cliente
         value: input.amountCents / 100,
         dueDate,
-        description: `Mensalidade GestaraHub - ${input.merchantName || "Espaço"}`,
+        description,
         externalReference: input.chargeId,
       },
       input.subaccountApiKey,
@@ -144,7 +208,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     return {
       providerId: payment.id,
       linkUrl: payment.invoiceUrl || `https://sandbox.asaas.com/i/${payment.id}`,
-      expiresAt: addMinutes(input.expiresInMinutes),
+      expiresAt: addMinutes(input.expiresInMinutes || 1440),
     };
   },
 

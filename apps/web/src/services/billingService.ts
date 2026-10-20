@@ -41,6 +41,7 @@ import {
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { applyRecurringAutoPayments, cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
+import { cancelOnlinePaymentsForChargeInDb } from "./onlinePaymentsBackend";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
@@ -863,6 +864,7 @@ export const billingService = {
           paidVia: c.paidVia,
           attachments: c.attachments,
         }, store.organization.id);
+        await cancelOnlinePaymentsForChargeInDb(c.id, store.organization.id);
       }
       // Pago na mao: o Pix/link em aberto nao vale mais.
       cancelOnlinePaymentsForCharge(c.id);
@@ -922,6 +924,7 @@ export const billingService = {
           method: undefined,
           paidVia: undefined,
         }, store.organization.id);
+        await cancelOnlinePaymentsForChargeInDb(c.id, store.organization.id);
       }
       cancelOnlinePaymentsForCharge(c.id);
       recordChargeEvent(c, "cancelled", "cancelou a", c.cancelReason);

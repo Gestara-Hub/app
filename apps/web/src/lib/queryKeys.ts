@@ -48,6 +48,11 @@ export const queryKeys = {
     list: (filter?: UserFilter) => ["users", "list", filter] as const,
     detail: (id: Id) => ["users", "detail", id] as const,
   },
+  legalConsent: {
+    all: ["legalConsent"] as const,
+    check: (userId?: Id, consentType?: string, version?: string) =>
+      ["legalConsent", "check", userId, consentType, version] as const,
+  },
   services: {
     all: ["services"] as const,
     list: (filter?: ServiceFilter) => ["services", "list", filter] as const,

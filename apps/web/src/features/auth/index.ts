@@ -1,2 +1,5 @@
 export * from "./session-provider";
 export * from "./scope";
+export { LegalConsentDialog } from "./components/legal-consent-dialog";
+export { useLegalConsent } from "./hooks/use-legal-consent";
+

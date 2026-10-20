@@ -707,6 +707,8 @@ export async function signInWithPasswordAction(input: {
       profile: dbUser.profile as UserProfile,
       status: dbUser.status as User["status"],
       professionalId: (dbUser.professional_id as string | undefined) ?? undefined,
+      termsAcceptedAt: (dbUser.terms_accepted_at as string | undefined) ?? undefined,
+      termsVersion: (dbUser.terms_version as string | undefined) ?? undefined,
       createdAt: dbUser.created_at as string,
       updatedAt: dbUser.updated_at as string,
     };

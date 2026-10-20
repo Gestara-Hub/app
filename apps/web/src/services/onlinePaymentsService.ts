@@ -269,6 +269,29 @@ export const onlinePaymentsService = {
     return simulateRead(() => clone(currentSettings()));
   },
 
+  /** Sincroniza o status de aprovação da subconta no store do cliente. */
+  syncSubaccountApproved(data: {
+    gatewayAccountId?: string;
+    gatewayWalletId?: string;
+    gatewayStatus: "not_configured" | "approved" | "pending" | "rejected";
+  }): void {
+    store.organization = {
+      ...store.organization,
+      settings: {
+        ...store.organization.settings,
+        onlinePayments: {
+          ...store.organization.settings?.onlinePayments,
+          enabled: true,
+          gatewayProvider: "asaas",
+          gatewayAccountId: data.gatewayAccountId,
+          gatewayWalletId: data.gatewayWalletId,
+          gatewayStatus: data.gatewayStatus,
+        },
+      },
+    };
+    persist();
+  },
+
   /** Grava em `organization.settings.onlinePayments` (proprietario/gerente). */
   updateSettings(
     payload: UpdateOnlinePaymentSettings,
@@ -366,7 +389,10 @@ export const onlinePaymentsService = {
     const charge = findOpenCharge(chargeId);
     const settings = currentSettings();
     const student = store.clients.find((s) => s.id === charge.studentId);
-    const expiresInMinutes = settings.defaultExpiresInMinutes;
+    const plan = charge.planId
+      ? store.plans.find((p) => p.id === charge.planId)
+      : undefined;
+    const expiresInMinutes = settings.defaultExpiresInMinutes || 1440;
     const provided =
       method === "pix"
         ? await paymentGateway.createPix({
@@ -379,6 +405,11 @@ export const onlinePaymentsService = {
             studentName: student?.name,
             studentPhone: student?.phone,
             studentEmail: student?.email,
+            chargeDueDate: charge.dueDate,
+            competence: charge.competence,
+            planName: plan?.name,
+            chargeKind: charge.kind,
+            description: charge.description,
           })
         : await paymentGateway.createLink({
             chargeId,
@@ -389,6 +420,11 @@ export const onlinePaymentsService = {
             studentName: student?.name,
             studentPhone: student?.phone,
             studentEmail: student?.email,
+            chargeDueDate: charge.dueDate,
+            competence: charge.competence,
+            planName: plan?.name,
+            chargeKind: charge.kind,
+            description: charge.description,
           });
 
     return simulateWrite(async () => {

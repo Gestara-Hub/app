@@ -26,6 +26,7 @@ import { ensureUserTenant, setActiveOrganization } from "@/mocks/store";
 import { usersService } from "@/services/usersService";
 import { settingsService } from "@/services/settingsService";
 import { refreshSession, signOut, syncSubscriptionTier } from "@/app/(auth)/actions";
+import { LegalConsentDialog } from "./components/legal-consent-dialog";
 import {
   isApiError,
   type OperationalModel,
@@ -123,6 +124,7 @@ export function SessionProvider({
       <SessionContext.Provider value={value}>
         <SessionSync user={user} />
         <SubscriptionSync organizationId={user.organizationId} serverTier={tier} />
+        <LegalConsentDialog />
         {children}
       </SessionContext.Provider>
     </QueryClientProvider>

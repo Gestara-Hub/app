@@ -18,6 +18,8 @@ export interface User {
   // costumam ter; proprietario/atendente normalmente nao.
   professionalId?: Id;
   status: RecordStatus;
+  termsAcceptedAt?: DateTimeISO;
+  termsVersion?: string;
   createdAt: DateTimeISO;
   updatedAt: DateTimeISO;
 }

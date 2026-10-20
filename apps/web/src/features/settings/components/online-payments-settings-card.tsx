@@ -1,17 +1,21 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
   AlertTriangle,
-  FlaskConical,
+  ArrowUpRight,
+  CheckCircle2,
   Loader2,
   QrCode,
   Save,
+  Sparkles,
 } from "lucide-react";
-import type { OnlinePaymentSettings } from "@gestarahub/contracts";
+import type { OnlinePaymentSettings, Organization } from "@gestarahub/contracts";
 import { InputText, SelectField, SwitchField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +32,7 @@ import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "../hooks/use-settings";
 import { useUpdateOnlinePaymentSettings } from "../hooks/use-online-payment-settings";
 import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
+import { ActivateSubaccountDialog } from "@/features/online-payments";
 
 const DEFAULT_EXPIRES = 1440;
 
@@ -53,7 +58,6 @@ function toValues(s?: OnlinePaymentSettings): Values {
   return {
     enabled: Boolean(s?.enabled),
     pixKey: s?.pixKey ?? "",
-    // Valor gravado fora da lista (ex.: pela API) cai no padrao.
     defaultExpiresInMinutes: EXPIRES_OPTIONS.some((o) => o.value === minutes)
       ? minutes
       : String(DEFAULT_EXPIRES),
@@ -67,9 +71,8 @@ const BENEFITS = [
 ] as const;
 
 /**
- * Configuracoes → "Pagamento online" (simulado): liga/desliga, chave Pix de
- * demonstracao e validade padrao do Pix. Edita quem tem `finance:manage`;
- * sem o recurso do plano mostra o upsell.
+ * Configurações → "Pagamento online": liga/desliga, subconta de recebimento
+ * com split automático e validade padrão do Pix. Edita quem tem `finance:manage`.
  */
 export function OnlinePaymentsSettingsCard({
   onDirtyChange,
@@ -125,7 +128,8 @@ export function OnlinePaymentsSettingsCard({
 
   return (
     <OnlinePaymentsForm
-      key={orgQuery.data.id}
+      key={`${orgQuery.data.id}-${orgQuery.data.settings?.onlinePayments?.gatewayStatus}`}
+      organization={orgQuery.data}
       settings={orgQuery.data.settings?.onlinePayments}
       canEdit={can("finance:manage")}
       onDirtyChange={onDirtyChange}
@@ -134,14 +138,17 @@ export function OnlinePaymentsSettingsCard({
 }
 
 function OnlinePaymentsForm({
+  organization,
   settings,
   canEdit,
   onDirtyChange,
 }: {
+  organization: Organization;
   settings?: OnlinePaymentSettings;
   canEdit: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const [subaccountDialogOpen, setSubaccountDialogOpen] = useState(false);
   const update = useUpdateOnlinePaymentSettings();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -153,6 +160,8 @@ function OnlinePaymentsForm({
   useReportDirty(dirty, onDirtyChange);
   const pending = update.isPending;
   const disabled = pending || !canEdit;
+
+  const isSubaccountActive = settings?.gatewayStatus === "approved";
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -177,94 +186,146 @@ function OnlinePaymentsForm({
   });
 
   return (
-    <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <QrCode className="size-4 text-primary" aria-hidden />
-              Cobrança online
-            </CardTitle>
-            <CardDescription>
-              Com a opção ligada, as cobranças ganham a ação &quot;Cobrar
-              online&quot; (Pix ou link) e os alunos podem autorizar o Pix
-              Automático.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="flex items-start gap-2 rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-              <FlaskConical
-                className="mt-0.5 size-3.5 shrink-0 text-primary"
-                aria-hidden
-              />
-              Demonstração: nenhum banco é chamado e nenhum dinheiro é
-              movimentado. Os códigos gerados são fictícios.
-            </p>
-
-            <SwitchField<Values>
-              name="enabled"
-              label="Cobrar online"
-              hint="Liga o Pix, o link de pagamento e o Pix Automático para este espaço."
-              disabled={disabled}
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <InputText<Values>
-                name="pixKey"
-                label="Chave Pix (simulada)"
-                placeholder="E-mail, telefone ou chave aleatória"
-                hint="Aparece no código de demonstração. Sem chave, usamos uma de exemplo."
-                disabled={disabled}
-              />
-              <SelectField<Values>
-                name="defaultExpiresInMinutes"
-                label="Validade padrão do Pix"
-                options={EXPIRES_OPTIONS}
-                clearable={false}
-                hint="Depois disso o código expira e é preciso gerar outro."
-                disabled={disabled}
-              />
-            </div>
-
-            <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
-              <AlertTriangle
-                className="mt-0.5 size-3.5 shrink-0 text-warning"
-                aria-hidden
-              />
-              <p>
-                No Pix Automático de verdade, o banco exige{" "}
-                <strong>CNPJ ativo há pelo menos 6 meses</strong>. Nesta
-                demonstração não há essa checagem.
-              </p>
-            </div>
-
-            {!canEdit ? (
-              <p className="text-xs text-muted-foreground">
-                Só o proprietário e o gerente alteram esta configuração.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        {canEdit ? (
-          <div className="flex items-center justify-between pt-2">
-            <UnsavedChangesStatus dirty={dirty} />
-            <Button type="submit" disabled={pending} className="min-w-36">
-              {pending ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Salvando...
-                </>
+    <>
+      <FormProvider {...form}>
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="size-4 text-primary" aria-hidden />
+                Cobrança online & Recebimento
+              </CardTitle>
+              <CardDescription>
+                Com a opção ligada, as cobranças ganham a ação &quot;Cobrar
+                online&quot; (Pix ou link) e os alunos podem pagar com baixa automática.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Box de Subconta / Marketplace */}
+              {isSubaccountActive ? (
+                <div className="flex flex-col gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-emerald-500/20 p-2 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-emerald-950 dark:text-emerald-100">
+                        Conta de recebimentos ativa
+                      </p>
+                      <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
+                        Taxa por transação ativa • R$ 1,29 no Pro ou R$ 1,99 no Free por pagamento recebido
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300 shrink-0"
+                  >
+                    <Link href="/online-payments">
+                      Abrir carteira e saques
+                      <ArrowUpRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
               ) : (
-                <>
-                  <Save className="mr-2 size-4" />
-                  Salvar
-                </>
+                <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
+                      <Sparkles className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Ativar recebimentos online
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Receba por Pix e link com desconto automático da taxa (R$ 1,99 no Free ou R$ 1,29 no Pro).
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setSubaccountDialogOpen(true)}
+                    disabled={!canEdit}
+                    className="shrink-0"
+                  >
+                    Ativar conta
+                  </Button>
+                </div>
               )}
-            </Button>
-          </div>
-        ) : null}
-      </form>
-    </FormProvider>
+
+              <SwitchField<Values>
+                name="enabled"
+                label="Cobrar online"
+                hint="Habilita a geração de Pix, link de pagamento e Pix Automático neste espaço."
+                disabled={disabled}
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <InputText<Values>
+                  name="pixKey"
+                  label="Chave Pix para saque/identificação"
+                  placeholder="E-mail, telefone ou chave aleatória"
+                  hint="Chave Pix para onde seus valores serão transferidos."
+                  disabled={disabled}
+                />
+                <SelectField<Values>
+                  name="defaultExpiresInMinutes"
+                  label="Validade padrão do Pix"
+                  options={EXPIRES_OPTIONS}
+                  clearable={false}
+                  hint="Depois disso o código expira e é preciso gerar outro."
+                  disabled={disabled}
+                />
+              </div>
+
+              <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground">
+                <AlertTriangle
+                  className="mt-0.5 size-3.5 shrink-0 text-warning"
+                  aria-hidden
+                />
+                <p>
+                  No Pix Automático de verdade, o Banco Central exige{" "}
+                  <strong>CNPJ ativo há pelo menos 6 meses</strong>.
+                </p>
+              </div>
+
+              {!canEdit ? (
+                <p className="text-xs text-muted-foreground">
+                  Só o proprietário e o gerente alteram esta configuração.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {canEdit ? (
+            <div className="flex items-center justify-between pt-2">
+              <UnsavedChangesStatus dirty={dirty} />
+              <Button type="submit" disabled={pending} className="min-w-36">
+                {pending ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 size-4" />
+                    Salvar
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </form>
+      </FormProvider>
+
+      <ActivateSubaccountDialog
+        open={subaccountDialogOpen}
+        onOpenChange={setSubaccountDialogOpen}
+        organization={organization}
+      />
+    </>
   );
 }

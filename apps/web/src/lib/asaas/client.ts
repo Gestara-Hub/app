@@ -6,6 +6,9 @@ import type {
   AsaasPaymentRequest,
   AsaasPaymentResponse,
   AsaasPixQrCodeResponse,
+  AsaasBalanceResponse,
+  AsaasTransferRequest,
+  AsaasTransferResponse,
 } from "./types";
 
 export interface AsaasConfig {
@@ -215,3 +218,40 @@ export async function deletePayment(
     },
   );
 }
+
+/**
+ * Consulta o saldo financeiro da subconta.
+ */
+export async function getSubaccountBalance(
+  subaccountApiKey: string,
+): Promise<AsaasBalanceResponse> {
+  return asaasFetch<AsaasBalanceResponse>("/finance/balance", {
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
+ * Realiza uma transferência / saque via Pix da subconta para a conta bancária do titular.
+ */
+export async function createTransfer(
+  data: AsaasTransferRequest,
+  subaccountApiKey: string,
+): Promise<AsaasTransferResponse> {
+  return asaasFetch<AsaasTransferResponse>("/transfers", {
+    method: "POST",
+    body: data,
+    apiKey: subaccountApiKey,
+  });
+}
+
+/**
+ * Lista as transferências / saques realizados na subconta.
+ */
+export async function listTransfers(
+  subaccountApiKey: string,
+): Promise<{ data: AsaasTransferResponse[] }> {
+  return asaasFetch<{ data: AsaasTransferResponse[] }>("/transfers", {
+    apiKey: subaccountApiKey,
+  });
+}
+

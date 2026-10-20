@@ -8,10 +8,12 @@ import type {
   Unit,
   User,
 } from "@gestarahub/contracts";
-import { hydrateTenantStore, setActiveOrganization, store } from "@/mocks/store";
+import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
+import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "./auditLogService";
+import { getOrganizationGatewayAction } from "./onlinePaymentsBackend";
 
 /** Nome do espaco e da unidade. */
 const MAX_NAME = 80;
@@ -77,7 +79,35 @@ export const settingsService = {
     hydrateTenantStore(input);
   },
 
-  getOrganization(): Promise<Organization> {
+  async getOrganization(): Promise<Organization> {
+    if (typeof window !== "undefined" && isSupabaseOrganization(store.organization.id)) {
+      try {
+        const remote = await getOrganizationGatewayAction(store.organization.id);
+        if (remote && remote.status !== "not_configured") {
+          const remoteSettings = (remote.settings as Record<string, unknown>) || {};
+          const remoteOnline = (remoteSettings.onlinePayments as Record<string, unknown>) || {};
+          const currentOnline = store.organization.settings?.onlinePayments;
+          store.organization = {
+            ...store.organization,
+            settings: {
+              ...store.organization.settings,
+              onlinePayments: {
+                enabled: currentOnline?.enabled ?? Boolean(remoteOnline.enabled) ?? true,
+                defaultExpiresInMinutes: (currentOnline?.defaultExpiresInMinutes ?? Number(remoteOnline.defaultExpiresInMinutes)) || 1440,
+                pixKey: currentOnline?.pixKey ?? (remoteOnline.pixKey as string | undefined),
+                gatewayProvider: (remote.provider as "asaas" | undefined) ?? (remoteOnline.gatewayProvider as "asaas" | undefined),
+                gatewayAccountId: remote.accountId ?? (remoteOnline.gatewayAccountId as string | undefined),
+                gatewayWalletId: remote.walletId ?? (remoteOnline.gatewayWalletId as string | undefined),
+                gatewayStatus: (remote.status as "approved" | "pending" | "rejected" | undefined) ?? (remoteOnline.gatewayStatus as "approved" | undefined),
+              },
+            },
+          };
+          persist();
+        }
+      } catch (err) {
+        console.error("[settingsService] Erro ao sincronizar organização:", err);
+      }
+    }
     return simulateRead(() => clone(store.organization));
   },
 

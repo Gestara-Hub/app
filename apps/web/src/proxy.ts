@@ -31,6 +31,7 @@ const APP_PATHS = [
   "/communication",
   "/dashboard",
   "/finance",
+  "/online-payments",
   "/reports",
   "/schedule",
   "/services",

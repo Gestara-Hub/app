@@ -7,6 +7,7 @@ import {
   Layers,
   LayoutDashboard,
   MessageSquareText,
+  QrCode,
   ScrollText,
   Settings,
   Shapes,
@@ -153,6 +154,14 @@ export const MAIN_NAV: NavItem[] = [
     permission: "billing:view",
     section: "financial",
     models: ["classes"],
+  },
+  {
+    label: "Recebimentos online",
+    href: "/online-payments",
+    icon: QrCode,
+    permission: "finance:view",
+    section: "financial",
+    feature: "online_payments",
   },
   {
     label: "Financeiro",

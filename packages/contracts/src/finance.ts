@@ -285,6 +285,7 @@ export interface OnlinePaymentSettings {
   gatewayProvider?: string; // 'asaas' | 'pagbank' | ...
   gatewayAccountId?: string; // subconta no provedor
   gatewayWalletId?: string; // carteira no provedor
+  gatewayApiKey?: string; // chave da subconta no provedor (armazenada de forma segura)
   gatewayStatus?: "not_configured" | "pending" | "approved" | "rejected";
 }
 

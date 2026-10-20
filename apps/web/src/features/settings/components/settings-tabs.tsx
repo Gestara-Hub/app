@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Award, Building2, Clock, QrCode, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Award, Building2, Clock, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useModel } from "@/features/auth";
@@ -11,10 +11,9 @@ import { OrganizationSettingsForm } from "./organization-settings-card";
 import { BusinessHoursForm } from "./business-hours-card";
 import { useBeforeUnloadGuard, useLeaveLinkGuard } from "./unsaved-changes";
 import { SubscriptionPlanCard } from "./subscription-plan-card";
-import { OnlinePaymentsSettingsCard } from "./online-payments-settings-card";
 import { CertificateTemplateCard } from "./certificate-template-card";
 
-type Tab = "geral" | "horarios" | "pagamento" | "certificado" | "plano" | "preferencias";
+type Tab = "geral" | "horarios" | "certificado" | "plano" | "preferencias";
 
 const TABS: {
   value: Tab;
@@ -35,13 +34,6 @@ const TABS: {
     icon: Clock,
     description:
       "Dias e horários em que o espaço funciona. Turmas e agenda seguem esse horário.",
-  },
-  {
-    value: "pagamento",
-    label: "Pagamento online",
-    icon: QrCode,
-    description:
-      "Cobrança das mensalidades por Pix, link de pagamento e Pix Automático (simulado nesta versão).",
   },
   {
     value: "certificado",
@@ -80,10 +72,10 @@ export function SettingsTabs() {
   const searchParams = useSearchParams();
 
   // Deep-link: `/settings?tab=horarios` ou `/settings?tab=geral` deriva diretamente da URL
-  // Pagamento online e Certificado sao do Modelo 3 (turmas e cursos).
+  // Certificado é do Modelo 3 (turmas e cursos).
   const isClasses = useModel() === "classes";
   const visibleTabs = TABS.filter(
-    (t) => (t.value !== "pagamento" && t.value !== "certificado") || isClasses,
+    (t) => t.value !== "certificado" || isClasses,
   );
   const paramTab = searchParams.get("tab");
   const tab: Tab =
@@ -100,17 +92,12 @@ export function SettingsTabs() {
       setDirtyTabs((prev) => (prev.horarios === dirty ? prev : { ...prev, horarios: dirty })),
     [],
   );
-  const setPagamentoDirty = useCallback(
-    (dirty: boolean) =>
-      setDirtyTabs((prev) => (prev.pagamento === dirty ? prev : { ...prev, pagamento: dirty })),
-    [],
-  );
   const setCertificadoDirty = useCallback(
     (dirty: boolean) =>
       setDirtyTabs((prev) => (prev.certificado === dirty ? prev : { ...prev, certificado: dirty })),
     [],
   );
-  const anyDirty = Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.pagamento || dirtyTabs.certificado);
+  const anyDirty = Boolean(dirtyTabs.geral || dirtyTabs.horarios || dirtyTabs.certificado);
   useBeforeUnloadGuard(anyDirty);
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Sair pelo menu com alteracoes nao salvas pergunta antes (antes perdia tudo).
@@ -203,9 +190,6 @@ export function SettingsTabs() {
           ) : null}
           {t.value === "geral" ? <OrganizationSettingsForm onDirtyChange={setGeralDirty} /> : null}
           {t.value === "horarios" ? <BusinessHoursForm onDirtyChange={setHorariosDirty} /> : null}
-          {t.value === "pagamento" ? (
-            <OnlinePaymentsSettingsCard onDirtyChange={setPagamentoDirty} />
-          ) : null}
           {t.value === "certificado" ? (
             <CertificateTemplateCard onDirtyChange={setCertificadoDirty} />
           ) : null}

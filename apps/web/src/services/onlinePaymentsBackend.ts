@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import type { Id, OnlinePayment } from "@gestarahub/contracts";
+import { getCurrentUser } from "@/features/auth/get-current-user";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
@@ -10,6 +12,12 @@ import type {
   PixPayment,
 } from "./payments/types";
 import { getPaymentGateway } from "./payments/registry";
+import {
+  createSubAccount,
+  getSubaccountBalance,
+  createTransfer,
+  listTransfers,
+} from "@/lib/asaas";
 
 function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
   return {
@@ -237,16 +245,250 @@ export async function cancelOnlinePaymentsForChargeInDb(
     .eq("status", "awaiting");
 }
 
+export interface SetupSubaccountInput {
+  organizationId: string;
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  companyType?: "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
+  mobilePhone?: string;
+  incomeValue?: number;
+}
+
+export interface SetupSubaccountResult {
+  success: boolean;
+  accountId?: string;
+  walletId?: string;
+  status?: string;
+  error?: string;
+}
+
+/**
+ * Server Action para ativar a subconta de recebimentos da academia no gateway.
+ * Cria a conta filha no Asaas com split automático para a Master Account.
+ */
+export async function setupSubaccountAction(
+  input: SetupSubaccountInput,
+): Promise<SetupSubaccountResult> {
+  const adminClient = createSupabaseAdminClient();
+
+  try {
+    const cleanCpfCnpj = input.cpfCnpj.replace(/\D/g, "");
+    const isCnpj = cleanCpfCnpj.length > 11;
+    const companyType = input.companyType || (isCnpj ? "LIMITED" : undefined);
+
+    let accountId = "";
+    let walletId = "";
+    let apiKey = "";
+
+    if (process.env.ASAAS_API_KEY) {
+      const res = await createSubAccount({
+        name: input.name,
+        email: input.email,
+        cpfCnpj: cleanCpfCnpj,
+        companyType,
+        mobilePhone: input.mobilePhone?.replace(/\D/g, "") || undefined,
+        incomeValue: input.incomeValue ?? 5000,
+      });
+
+      accountId = res.id;
+      walletId = res.walletId;
+      apiKey = res.apiKey;
+    } else {
+      // Mock mode fallback
+      accountId = `mock_acc_${Date.now()}`;
+      walletId = `mock_wallet_${Date.now()}`;
+      apiKey = `mock_key_${Date.now()}`;
+    }
+
+    // 1. Atualiza as colunas de gateway da organização
+    const { error: orgError } = await adminClient
+      .from("organizations")
+      .update({
+        gateway_provider: "asaas",
+        gateway_account_id: accountId,
+        gateway_wallet_id: walletId,
+        gateway_api_key: apiKey,
+        gateway_status: "approved",
+      })
+      .eq("id", input.organizationId);
+
+    if (orgError) {
+      console.error(
+        "[setupSubaccountAction] Erro ao gravar subconta na organização:",
+        orgError,
+      );
+      return {
+        success: false,
+        error: "Erro ao salvar os dados da subconta no banco de dados.",
+      };
+    }
+
+    // 2. Atualiza settings.onlinePayments da organização
+    const { data: orgData } = await adminClient
+      .from("organizations")
+      .select("settings")
+      .eq("id", input.organizationId)
+      .maybeSingle();
+
+    const currentSettings = (orgData?.settings as Record<string, unknown>) || {};
+    const currentOnline =
+      (currentSettings.onlinePayments as Record<string, unknown>) || {};
+
+    await adminClient
+      .from("organizations")
+      .update({
+        settings: {
+          ...currentSettings,
+          onlinePayments: {
+            ...currentOnline,
+            enabled: true,
+            gatewayProvider: "asaas",
+            gatewayAccountId: accountId,
+            gatewayWalletId: walletId,
+            gatewayStatus: "approved",
+            termsAcceptedAt: new Date().toISOString(),
+            termsVersion: "subaccount-v1.0",
+          },
+        },
+      })
+      .eq("id", input.organizationId);
+
+    // 3. Registra auditoria jurídica de consentimento (LGPD, Marco Civil, Bacen)
+    try {
+      const headerList = await headers();
+      const rawIp =
+        headerList.get("x-forwarded-for") ||
+        headerList.get("x-real-ip") ||
+        "127.0.0.1";
+      const ipAddress = rawIp.split(",")[0].trim();
+      const userAgent = headerList.get("user-agent") || "unknown";
+      const currentUser = await getCurrentUser();
+
+      if (currentUser?.id) {
+        await adminClient.from("legal_consents").insert({
+          organization_id: input.organizationId,
+          user_id: currentUser.id,
+          consent_type: "subaccount_brokerage",
+          terms_version: "subaccount-v1.0",
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          metadata: {
+            accountId,
+            walletId,
+            companyType,
+            titularName: input.name,
+            financeEmail: input.email,
+            cpfCnpjMasked:
+              cleanCpfCnpj.length === 11
+                ? `***.${cleanCpfCnpj.slice(3, 6)}.${cleanCpfCnpj.slice(6, 9)}-**`
+                : `**.***.${cleanCpfCnpj.slice(5, 8)}/${cleanCpfCnpj.slice(8, 12)}-**`,
+          },
+        });
+      }
+    } catch (consentErr) {
+      console.error(
+        "[setupSubaccountAction] Erro ao registrar consentimento legal:",
+        consentErr,
+      );
+    }
+
+    return {
+      success: true,
+      accountId,
+      walletId,
+      status: "approved",
+    };
+  } catch (err: unknown) {
+    const errorMsg =
+      err instanceof Error ? err.message : "Erro ao processar ativação de subconta.";
+    console.error("[setupSubaccountAction] Erro:", err);
+    return {
+      success: false,
+      error: errorMsg,
+    };
+  }
+}
+
+/**
+ * Consulta o status do gateway da organização no banco de dados.
+ */
+export async function getOrganizationGatewayAction(organizationId: string) {
+  const adminClient = createSupabaseAdminClient();
+  const { data } = await adminClient
+    .from("organizations")
+    .select(
+      "gateway_provider, gateway_account_id, gateway_wallet_id, gateway_status, settings",
+    )
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  return {
+    provider: data?.gateway_provider || "asaas",
+    accountId: data?.gateway_account_id || undefined,
+    walletId: data?.gateway_wallet_id || undefined,
+    status: data?.gateway_status || "not_configured",
+    settings: (data?.settings as Record<string, unknown>) || {},
+  };
+}
+
 /**
  * Server Action agnóstica para criação de Pix online via gateway ativo.
+ * Recupera de forma segura a subconta da organização e aplica a taxa de split correta.
  */
 export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
 ): Promise<PixPayment | null> {
   try {
+    let subaccountApiKey = input.subaccountApiKey;
+    let splitAmountCents = input.splitAmountCents;
+    let enrichedInput = { ...input };
+
+    // Se subaccountApiKey não foi fornecida, busca do tenant no banco
+    if (input.chargeId) {
+      const adminClient = createSupabaseAdminClient();
+      const { data: charge } = await adminClient
+        .from("charges")
+        .select("organization_id, due_date, competence, kind, description")
+        .eq("id", input.chargeId)
+        .maybeSingle();
+
+      if (charge) {
+        enrichedInput = {
+          ...enrichedInput,
+          chargeDueDate: enrichedInput.chargeDueDate || charge.due_date,
+          competence: enrichedInput.competence || charge.competence,
+          chargeKind: enrichedInput.chargeKind || charge.kind,
+          description: enrichedInput.description || charge.description,
+        };
+      }
+
+      if (charge?.organization_id) {
+        const { data: org } = await adminClient
+          .from("organizations")
+          .select("gateway_api_key, subscription")
+          .eq("id", charge.organization_id)
+          .maybeSingle();
+
+        if (org?.gateway_api_key) {
+          subaccountApiKey = org.gateway_api_key;
+        }
+
+        // Determina o valor do split com base no plano (Pro = R$ 1,29, Free = R$ 1,99)
+        if (splitAmountCents === undefined) {
+          const tier = (org?.subscription as Record<string, unknown>)?.tier;
+          splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
+        }
+      }
+    }
+
     const gateway = getPaymentGateway(provider);
-    return await gateway.createPix(input);
+    return await gateway.createPix({
+      ...enrichedInput,
+      subaccountApiKey,
+      splitAmountCents: splitAmountCents ?? 199,
+    });
   } catch (error) {
     console.error(
       "[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:",
@@ -264,8 +506,45 @@ export async function createOnlineLinkPaymentAction(
   provider?: string,
 ): Promise<PaymentLinkPayment | null> {
   try {
+    let subaccountApiKey = input.subaccountApiKey;
+    let enrichedInput = { ...input };
+
+    if (input.chargeId) {
+      const adminClient = createSupabaseAdminClient();
+      const { data: charge } = await adminClient
+        .from("charges")
+        .select("organization_id, due_date, competence, kind, description")
+        .eq("id", input.chargeId)
+        .maybeSingle();
+
+      if (charge) {
+        enrichedInput = {
+          ...enrichedInput,
+          chargeDueDate: enrichedInput.chargeDueDate || charge.due_date,
+          competence: enrichedInput.competence || charge.competence,
+          chargeKind: enrichedInput.chargeKind || charge.kind,
+          description: enrichedInput.description || charge.description,
+        };
+      }
+
+      if (charge?.organization_id) {
+        const { data: org } = await adminClient
+          .from("organizations")
+          .select("gateway_api_key")
+          .eq("id", charge.organization_id)
+          .maybeSingle();
+
+        if (org?.gateway_api_key) {
+          subaccountApiKey = org.gateway_api_key;
+        }
+      }
+    }
+
     const gateway = getPaymentGateway(provider);
-    return await gateway.createLink(input);
+    return await gateway.createLink({
+      ...enrichedInput,
+      subaccountApiKey,
+    });
   } catch (error) {
     console.error(
       "[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:",
@@ -294,3 +573,218 @@ export async function createAsaasLinkPaymentAction(
 ): Promise<PaymentLinkPayment | null> {
   return createOnlineLinkPaymentAction(input, "asaas");
 }
+
+function detectPixKeyType(
+  key: string,
+): "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP" {
+  const clean = key.trim();
+  if (clean.includes("@")) return "EMAIL";
+  const digits = clean.replace(/\D/g, "");
+  if (digits.length === 11) {
+    if (clean.startsWith("+") || clean.includes("(") || clean.includes(")")) {
+      return "PHONE";
+    }
+    return "CPF";
+  }
+  if (digits.length === 14) return "CNPJ";
+  return "EVP";
+}
+
+export interface SubaccountBalanceResult {
+  balanceCents: number;
+  awaitingCents: number;
+  availableForTransferCents: number;
+}
+
+/**
+ * Consulta o saldo financeiro da subconta na Asaas ou fallback local.
+ */
+export async function getSubaccountBalanceAction(
+  organizationId: string,
+): Promise<SubaccountBalanceResult> {
+  const adminClient = createSupabaseAdminClient();
+  const { data: org } = await adminClient
+    .from("organizations")
+    .select("gateway_api_key")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+    try {
+      const res = await getSubaccountBalance(org.gateway_api_key);
+      const balanceCents = Math.round((res.balance || 0) * 100);
+      const awaitingCents = Math.round((res.awaitingPayment || 0) * 100);
+      return {
+        balanceCents,
+        awaitingCents,
+        availableForTransferCents: Math.max(0, balanceCents),
+      };
+    } catch (err) {
+      console.error("[getSubaccountBalanceAction] Erro no Asaas:", err);
+    }
+  }
+
+  // Fallback: calcula a partir dos pagamentos online pagos no banco
+  const { data: payments } = await adminClient
+    .from("online_payments")
+    .select("net_amount_cents, status")
+    .eq("organization_id", organizationId)
+    .eq("status", "paid");
+
+  const totalNet = (payments || []).reduce(
+    (acc, p) => acc + (p.net_amount_cents || 0),
+    0,
+  );
+
+  return {
+    balanceCents: totalNet,
+    awaitingCents: 0,
+    availableForTransferCents: totalNet,
+  };
+}
+
+export interface TransferActionResult {
+  success: boolean;
+  transferId?: string;
+  status?: string;
+  error?: string;
+}
+
+/**
+ * Realiza transferência via Pix do saldo da subconta para a chave Pix do titular.
+ */
+export async function requestSubaccountTransferAction(input: {
+  organizationId: string;
+  amountCents: number;
+  pixKey: string;
+}): Promise<TransferActionResult> {
+  if (input.amountCents <= 0) {
+    return { success: false, error: "O valor deve ser maior que zero." };
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data: org } = await adminClient
+    .from("organizations")
+    .select("gateway_api_key")
+    .eq("id", input.organizationId)
+    .maybeSingle();
+
+  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+    try {
+      const keyType = detectPixKeyType(input.pixKey);
+      const res = await createTransfer(
+        {
+          value: input.amountCents / 100,
+          operationType: "PIX",
+          pixAddressKey: input.pixKey.trim(),
+          pixAddressKeyType: keyType,
+          description: "Saque GestaraHub",
+        },
+        org.gateway_api_key,
+      );
+
+      return {
+        success: true,
+        transferId: res.id,
+        status: res.status,
+      };
+    } catch (err: unknown) {
+      console.error("[requestSubaccountTransferAction] Erro no Asaas:", err);
+      const msg =
+        err instanceof Error ? err.message : "Erro ao realizar transferência.";
+      return { success: false, error: msg };
+    }
+  }
+
+  // Mock transfer
+  return {
+    success: true,
+    transferId: `mock_tr_${Date.now()}`,
+    status: "DONE",
+  };
+}
+
+export interface SubaccountTransferItem {
+  id: string;
+  dateCreated: string;
+  valueCents: number;
+  status: string;
+  receiptUrl?: string;
+}
+
+/**
+ * Lista as transferências realizadas na subconta.
+ */
+export async function listSubaccountTransfersAction(
+  organizationId: string,
+): Promise<SubaccountTransferItem[]> {
+  const adminClient = createSupabaseAdminClient();
+  const { data: org } = await adminClient
+    .from("organizations")
+    .select("gateway_api_key")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
+    try {
+      const res = await listTransfers(org.gateway_api_key);
+      return (res.data || []).map((t) => ({
+        id: t.id,
+        dateCreated: t.dateCreated,
+        valueCents: Math.round(t.value * 100),
+        status: t.status,
+        receiptUrl: t.transactionReceiptUrl,
+      }));
+    } catch (err) {
+      console.error("[listSubaccountTransfersAction] Erro no Asaas:", err);
+    }
+  }
+
+  return [];
+}
+
+export interface SubaccountReceiptItem {
+  id: string;
+  chargeId: string;
+  method: string;
+  status: string;
+  amountCents: number;
+  splitAmountCents: number;
+  netAmountCents: number;
+  paidAt?: string;
+  createdAt: string;
+}
+
+/**
+ * Lista os pagamentos online recebidos pela organização com o detalhe do split e valor líquido.
+ */
+export async function listSubaccountReceiptsAction(
+  organizationId: string,
+): Promise<SubaccountReceiptItem[]> {
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("online_payments")
+    .select(
+      "id, charge_id, method, status, amount_cents, split_amount_cents, net_amount_cents, paid_at, created_at",
+    )
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data.map((r) => ({
+    id: String(r.id),
+    chargeId: String(r.charge_id),
+    method: String(r.method),
+    status: String(r.status),
+    amountCents: Number(r.amount_cents) || 0,
+    splitAmountCents: Number(r.split_amount_cents) || 0,
+    netAmountCents: Number(r.net_amount_cents) || 0,
+    paidAt: r.paid_at ? String(r.paid_at) : undefined,
+    createdAt: String(r.created_at),
+  }));
+}
+

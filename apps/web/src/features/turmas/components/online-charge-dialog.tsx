@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import {
   AlertCircle,
+  CheckCircle2,
   Copy,
   FlaskConical,
   Link2,
@@ -161,10 +162,18 @@ export function OnlineChargeDialog({
 
   const simulatePaid = async (payment: OnlinePayment) => {
     if (!charge) return;
+    const isAsaas =
+      payment.gatewayProvider === "asaas" || Boolean(payment.pixQrCodeBase64);
     const ok = await confirm({
-      title: "Simular pagamento?",
-      description: `Demonstração: faz de conta que ${charge.studentName} pagou ${formatCents(payment.amountCents)} ${payment.method === "pix" ? "pelo Pix" : "pelo link"}. A cobrança fica paga como "Pago online" e não pode ser desfeita.`,
-      confirmLabel: "Simular pagamento",
+      title: isAsaas
+        ? "Simular liquidação no Sandbox?"
+        : "Simular pagamento?",
+      description: isAsaas
+        ? `Homologação: simula a confirmação imediata do pagamento de ${formatCents(payment.amountCents)} pelo Asaas Sandbox. A cobrança ficará com status "Pago online".`
+        : `Demonstração: faz de conta que ${charge.studentName} pagou ${formatCents(payment.amountCents)} ${payment.method === "pix" ? "pelo Pix" : "pelo link"}. A cobrança fica paga como "Pago online" e não pode ser desfeita.`,
+      confirmLabel: isAsaas
+        ? "Confirmar liquidação"
+        : "Simular pagamento",
     });
     if (!ok) return;
     paidMut.mutate(payment.id, {
@@ -379,23 +388,46 @@ export function OnlineChargeDialog({
                 </Button>
               </div>
 
-              <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                  <FlaskConical className="size-3.5" aria-hidden />
-                  Demonstração
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Não há banco de verdade nesta versão. Use o botão para ver a
-                  cobrança sendo paga.
-                </p>
-                <Button
-                  type="button"
-                  disabled={paidMut.isPending}
-                  onClick={() => void simulatePaid(awaiting)}
-                >
-                  {paidMut.isPending ? "Confirmando..." : "Simular pagamento"}
-                </Button>
-              </div>
+              {awaiting.gatewayProvider === "asaas" || Boolean(awaiting.pixQrCodeBase64) ? (
+                <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-3.5" aria-hidden />
+                    Integração Asaas Ativa (Sandbox)
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Cobrança real gerada no gateway com QR Code Pix oficial. Para testes no ambiente de homologação, você também pode simular a confirmação manual imediata.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={paidMut.isPending}
+                    onClick={() => void simulatePaid(awaiting)}
+                    className="gap-1.5 text-xs"
+                  >
+                    <RotateCw className="size-3" />
+                    {paidMut.isPending ? "Confirmando..." : "Simular liquidação (Sandbox)"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <FlaskConical className="size-3.5" aria-hidden />
+                    Demonstração
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Não há banco de verdade nesta versão. Use o botão para ver a
+                    cobrança sendo paga.
+                  </p>
+                  <Button
+                    type="button"
+                    disabled={paidMut.isPending}
+                    onClick={() => void simulatePaid(awaiting)}
+                  >
+                    {paidMut.isPending ? "Confirmando..." : "Simular pagamento"}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : null}
 

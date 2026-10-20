@@ -15,6 +15,7 @@ export interface AsaasAccountRequest {
   complement?: string;
   province?: string; // Bairro
   postalCode?: string; // CEP
+  incomeValue?: number; // Faturamento mensal estimado
 }
 
 export interface AsaasAccountResponse {
@@ -134,3 +135,31 @@ export interface AsaasWebhookPayload {
     | "PAYMENT_CHECKOUT_VIEWED";
   payment: AsaasPaymentResponse;
 }
+
+export interface AsaasBalanceResponse {
+  balance: number;
+  reservedBalance?: number;
+  awaitingPayment?: number;
+}
+
+export interface AsaasTransferRequest {
+  value: number;
+  operationType: "PIX" | "TED";
+  pixAddressKey?: string;
+  pixAddressKeyType?: "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP";
+  description?: string;
+}
+
+export interface AsaasTransferResponse {
+  object: "transfer";
+  id: string;
+  type: string;
+  status: "PENDING" | "BANK_PROCESSING" | "DONE" | "CANCELLED" | "FAILED";
+  dateCreated: string;
+  value: number;
+  netValue: number;
+  transferFee: number;
+  effectiveDate?: string;
+  transactionReceiptUrl?: string;
+}
+
