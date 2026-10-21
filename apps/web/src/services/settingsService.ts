@@ -14,6 +14,14 @@ import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "./auditLogService";
 import { getOrganizationGatewayAction } from "./onlinePaymentsBackend";
+import { updateOrganizationInDb, updateUnitInDb } from "./settingsBackend";
+
+/** Conta real (id UUID): grava no Supabase depois de atualizar o store. */
+async function persistOrganization(): Promise<void> {
+  if (isSupabaseOrganization(store.organization.id)) {
+    await updateOrganizationInDb(store.organization);
+  }
+}
 
 /** Nome do espaco e da unidade. */
 const MAX_NAME = 80;
@@ -127,7 +135,7 @@ export const settingsService = {
   },
 
   updateOrganization(payload: UpdateOrganization): Promise<Organization> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       // Nome ate 80 caracteres: cabe no topo e no cookie da sessao.
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "organizationName", message: "Use até 80 caracteres." }]);
@@ -147,6 +155,7 @@ export const settingsService = {
       if (store.organization.classSegment !== previousSegment) {
         syncTemplatesWithSegment(previousSegment);
       }
+      await persistOrganization();
       auditLogService.record({
         action: "updated",
         target: { type: "settings", label: "Dados da organização" },
@@ -159,11 +168,12 @@ export const settingsService = {
 
   /** "Está tudo certo" no aviso de Modalidades: fecha a revisao pedida pelo setup. */
   markModalitiesReviewed(): Promise<Organization> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       store.organization = {
         ...store.organization,
         settings: { ...store.organization.settings, modalitiesReviewed: true },
       };
+      await persistOrganization();
       auditLogService.record({
         action: "updated",
         target: { type: "settings", label: "Modalidades da configuração inicial" },
@@ -174,7 +184,7 @@ export const settingsService = {
   },
 
   updateUnit(payload: UpdateUnit): Promise<Unit> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "unitName", message: "Use até 80 caracteres." }]);
       }
@@ -185,6 +195,9 @@ export const settingsService = {
         address: payload.address !== undefined ? payload.address : store.unit.address,
         phone: payload.phone !== undefined ? (typeof payload.phone === "string" ? payload.phone.trim() || undefined : payload.phone) : store.unit.phone,
       };
+      if (isSupabaseOrganization(store.organization.id)) {
+        await updateUnitInDb(store.unit);
+      }
       // Distingue alteracao do expediente (o caso mais sensivel) dos demais dados.
       const changedHours = payload.businessHours !== undefined;
       auditLogService.record({
