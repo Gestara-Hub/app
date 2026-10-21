@@ -41,7 +41,8 @@ O GestaraHub adota o modelo de **três pontas integradas**:
 - **ALU-15 (Lojinha do Espaço):** Compra de uniformes, kimonos, faixas e itens do espaço direto pelo app.
 
 #### D. Perfil, Saúde e Família
-- **ALU-16 (Multi-Perfis Familiares):** Acesso único para pais gerenciarem múltiplos filhos dependentes.
+- **ALU-16 (Multi-Perfis Familiares):** Acesso único para pais gerenciarem múltiplos filhos dependentes. Um login por pessoa; dentro do espaço, seletor de perfil ("Ver como: Pedro, Lucas, Eu") no cabeçalho, ao lado do seletor de espaço. Modelo e regras no [ADR 13](../technical/13-acesso-de-alunos-e-responsaveis.md).
+- **ALU-16b (Acesso do próprio aluno por idade):** até 12 anos só o responsável entra; de 13 a 17 o aluno pode ter acesso próprio com o responsável ciente (sem valores nem pagamento, sem editar cadastro); a partir dos 18 o aluno tem acesso completo e pode revogar os responsáveis. O espaço libera e revoga pela seção "Acesso" da ficha, com auditoria. Escopo por vínculo (responsável só financeiro) fica para avaliar depois (ADR 13, Alternativas).
 - **ALU-17 (Ficha Médica e Anamnese):** Cadastro de restrições de saúde, alergias e contatos de emergência.
 - **ALU-18 (Assinatura Digital de Termos):** Assinatura de contratos, termos de consentimento e uso de imagem na tela do celular.
 - **ALU-19 (Atualização Cadastral):** Atualização de dados de contato e foto de perfil.

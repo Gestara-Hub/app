@@ -176,6 +176,7 @@ Regras especificas:
 
 - Ao integrar a API: transformar `PROFILE_PERMISSIONS` em policies/scopes reais e aplicar o enforcement tambem no servidor, incluindo `manageableProfiles`, o escopo do Profissional e a visibilidade da auditoria.
 - Decidido em 18/10/2026: o instrutor ve so as proprias turmas e as aulas em que substitui (feito no mock; repetir no backend).
+- Decidido em 21/10/2026: **aluno e responsavel nao sao perfis desta matriz**. Eles entram na Area do Aluno por um vinculo proprio (`student_access`, `self` ou `guardian`), nunca por `public.users`; quem concede e revoga esse acesso pela ficha e o Proprietario, o Gerente e o Atendente, com auditoria de seguranca. Ver [ADR 13](../technical/13-acesso-de-alunos-e-responsaveis.md).
 
 ### Usuarios e auditoria (18/10/2026)
 

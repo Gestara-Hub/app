@@ -4,7 +4,7 @@
 
 O GestaraHub adota o modelo de **Identidade Global com Vínculos Multi-Tenant** (padrão Slack / Notion / GitHub):
 1. **Identidade Global (Quem o usuário é)**: Gerenciada pelo Supabase Auth (`auth.users`). O e-mail (ex.: `carlos@gmail.com`) possui uma única conta global e uma única senha.
-2. **Vínculos / Memberships (Onde o usuário atua e qual seu perfil)**: Registrados em `public.users` (para proprietários, gerentes, atendentes e professores) e em `public.clients` (para alunos), com linhas separadas por `organization_id`.
+2. **Vínculos / Memberships (Onde o usuário atua e qual seu perfil)**: Registrados em `public.users` (para proprietários, gerentes, atendentes e professores) e, para alunos e responsáveis, em `student_access` (um vínculo por ficha, `self` ou `guardian`; a ficha em `public.clients` é o dado do aluno no espaço, não autentica ninguém). Decidido em 21/10/2026 no [ADR 13](13-acesso-de-alunos-e-responsaveis.md), que substitui a redação anterior ("em `public.clients` para alunos").
 3. **Isolamento e RLS**: Cada organização continua 100% isolada via Row-Level Security no PostgreSQL. Uma academia nunca tem acesso aos dados, histórico ou pagamentos de um aluno/professor em outra academia.
 4. **Momento de Ativação na Interface**:
    - O banco de dados já foi modelado sem restrição `UNIQUE(email)` por tenant, garantindo total compatibilidade futura sem refatorações destrutivas.
