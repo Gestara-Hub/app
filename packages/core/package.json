@@ -13,7 +13,8 @@
     "./packages": "./src/packages.ts",
     "./certificate": "./src/certificate.ts",
     "./grades": "./src/grades.ts",
-    "./phone": "./src/phone.ts"
+    "./phone": "./src/phone.ts",
+    "./payment-fees": "./src/payment-fees.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

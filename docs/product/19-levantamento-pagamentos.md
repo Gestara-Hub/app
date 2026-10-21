@@ -52,9 +52,15 @@ O Pro inclui uma franquia mensal (hoje 1.000 no mock). Opções para o excedente
 - O GestaraHub ganha uma **taxa por transação** retida automaticamente (**split**). O Pro tem taxa reduzida (doc 13).
 - Baixa automática da mensalidade pelo aviso (webhook) do provedor. Isso substitui o "Simular pagamento" e a baixa do Pix Automático simulado.
 
+### Decidido em 21/10/2026: tarifa do Asaas e taxa do GestaraHub
+- **Taxa do GestaraHub:** fixa por cobrança online recebida: R$ 1,99 no Grátis e R$ 1,29 no Profissional e no Expansão (split retido na liquidação).
+- **Quem paga a tarifa do Asaas:** o **espaço**, pela subconta dele, além da taxa do GestaraHub (opção A; a B, absorver a tarifa dentro do split, foi descartada porque R$ 1,29 não cobre um Pix de R$ 1,99 nem o percentual do cartão).
+- **Tabela de tarifas do Asaas** usada na prévia (conta padrão, 21/10/2026; a conta do GestaraHub tem promoção até 19/01/2027, mas a prévia usa a tabela cheia da subconta): Pix R$ 1,99 por cobrança; cartão de crédito à vista 1,99% + R$ 0,49; cartão de débito 1,89% + R$ 0,35; boleto R$ 0,99 (não oferecido hoje). Fonte única: `packages/core/src/payment-fees.ts` (`ASAAS_FEES`, `PLATFORM_SPLIT_CENTS`).
+- **Link de pagamento = cartão.** Decidido em 21/10/2026: o link é criado com `billingType: CREDIT_CARD`, e a fatura do Asaas oferece crédito e débito nesse modo (o débito não passa pela API, só pela fatura). Pix tem a própria opção na modal; boleto não é oferecido. A prévia usa a tarifa do crédito (1,99% + R$ 0,49), que é a maior; se o aluno pagar no débito (1,89% + R$ 0,35) a diferença fica com o espaço. Antes disso o link saía como `UNDEFINED` (Pix, boleto e cartão na mesma fatura) e a tarifa só se conhecia no pagamento. Parcelamento no link ainda não é oferecido (as faixas de 2,49% a 3,29% ficam para quando entrar, com `installmentCount`).
+- **Repasse ao aluno:** por meio (Pix e link), configurado em Pagamento online e ajustável a cada cobrança. Pix: acréscimo fixo (tarifa + taxa). Link: gross-up `(valor + taxa + fixo) / (1 - percentual)`, arredondado para cima para o líquido nunca ficar abaixo do valor.
+- **Gravado na cobrança online:** `gatewayFeeCents` (estimativa no link), `splitAmountCents`, `netAmountCents`, `feePassedToCustomer`. Pendência: quando o webhook do Asaas trouxer `netValue`, trocar a estimativa pela tarifa real.
+
 ### A decidir
-- **Taxa** do GestaraHub (percentual, fixa ou as duas) no Grátis e no Pro.
-- **Quem paga a tarifa do provedor:** o espaço (embutida) ou o GestaraHub (descontada da taxa).
 - **Estorno:** desfazer pagamento online não é permitido na demonstração ([DECIDIR] no doc 05, seção 6.4).
 - **Pix Automático exige CNPJ ativo há pelo menos 6 meses** (registrado no doc 05). Espaços com CPF ou CNPJ novo ficam com Pix e link avulsos.
 - **Cartão de crédito** para o aluno: entra agora ou depois?

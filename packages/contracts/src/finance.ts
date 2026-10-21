@@ -257,7 +257,8 @@ export interface OnlinePayment {
   gatewayProvider?: string; // ex: 'asaas', 'pagbank'
   gatewayPaymentId?: string; // ID da transação no provedor ativo
   splitAmountCents?: number; // valor do split do GestaraHub retido
-  netAmountCents?: number; // valor liquido que a academia recebe
+  gatewayFeeCents?: number; // tarifa do provedor (Asaas); no link e a pior estimativa ate o pagamento
+  netAmountCents?: number; // valor liquido que a academia recebe (valor - tarifa - split)
   feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
   canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
   expiresAt: DateTimeISO;

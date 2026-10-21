@@ -35,11 +35,11 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 - **Módulo Financeiro Básico:** Entradas, saídas manuais, despesas recorrentes, categorias, fluxo de caixa e cálculo do repasse de professores (com fechamento e quitação manual).
 - **Apps do Aluno e do Professor:** Acesso liberado (histórico de treinos, chamadas, graduações e avisos).
 - **WhatsApp assistido:** cobrança, lembrete e parabéns com a mensagem pronta; o botão abre o WhatsApp do próprio espaço e a pessoa só toca em enviar (seção 5).
-- **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa transacional padrão (ex.: R$ 1,99 por Pix recebido).
+- **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa do GestaraHub de R$ 1,99 por cobrança online recebida, além da tarifa do Asaas da subconta do espaço (doc 19, seção 4).
 
 ### 2.2 Plano Pro (O "Piloto Automático" — R$ 79,90/mês ou R$ 799,00/ano)
 - **`messaging`:** Envio 100% automático pelo WhatsApp, pela API oficial da Meta e com o **número do próprio espaço**: lembretes de vencimento (antes, no dia e após), boas-vindas e recuperação de alunos ausentes (franquia mensal de 300 mensagens/mês inclusa; excedente via pacotes pré-pagos ou retorno ao assistido).
-- **Taxas transacionais reduzidas ⚡:** Desconto na tarifa do Pix (ex.: de R$ 1,99 para R$ 1,29 por Pix recebido). Para academias com mais de 70 alunos, a economia na taxa paga a própria assinatura do Pro.
+- **Taxas transacionais reduzidas ⚡:** Taxa do GestaraHub de R$ 1,29 por cobrança online recebida (R$ 1,99 no Grátis); a tarifa do Asaas não muda. Para academias com mais de 70 alunos, a economia na taxa paga a própria assinatura do Pro.
 - **`reports_advanced`:** Relatórios avançados gerenciais (DRE completa do negócio com lucro líquido real, faturamento previsto vs. realizado, evolução da inadimplência e taxa de retenção por faixa).
 - **`certificates`:** Emissão de certificados de conclusão de curso e graduação prontos para imprimir ou exportar em PDF.
 

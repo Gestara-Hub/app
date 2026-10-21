@@ -38,6 +38,8 @@ function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
     amountCents: typeof row.amount_cents === "number" ? row.amount_cents : 0,
     splitAmountCents:
       typeof row.split_amount_cents === "number" ? row.split_amount_cents : 0,
+    gatewayFeeCents:
+      typeof row.gateway_fee_cents === "number" ? row.gateway_fee_cents : 0,
     netAmountCents:
       typeof row.net_amount_cents === "number" ? row.net_amount_cents : 0,
     gatewayProvider: row.gateway_provider
@@ -79,6 +81,7 @@ export async function insertOnlinePaymentInDb(
       status: payment.status,
       amount_cents: payment.amountCents,
       split_amount_cents: payment.splitAmountCents ?? 0,
+      gateway_fee_cents: payment.gatewayFeeCents ?? 0,
       net_amount_cents: payment.netAmountCents ?? payment.amountCents,
       gateway_provider: payment.gatewayProvider ?? "asaas",
       gateway_payment_id: payment.gatewayPaymentId ?? null,
@@ -957,7 +960,7 @@ export async function listSubaccountReceiptsAction(
     .from("online_payments")
     .select(
       `
-      id, charge_id, method, status, amount_cents, split_amount_cents, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
+      id, charge_id, method, status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
       charges (
         status, paid_via
       )
@@ -991,6 +994,7 @@ export async function listSubaccountReceiptsAction(
       status: String(r.status),
       amountCents: Number(r.amount_cents) || 0,
       splitAmountCents: Number(r.split_amount_cents) || 0,
+      gatewayFeeCents: Number(r.gateway_fee_cents) || 0,
       netAmountCents: Number(r.net_amount_cents) || 0,
       feePassedToCustomer: Boolean(r.fee_passed_to_customer),
       paidAt: r.paid_at ? String(r.paid_at) : undefined,

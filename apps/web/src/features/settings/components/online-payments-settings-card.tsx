@@ -307,7 +307,7 @@ function OnlinePaymentsForm({
                       Repassar taxas de cobrança ao aluno
                     </Label>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Emite os códigos Pix e links de cartão com a tarifa acrescida, garantindo que a sua academia receba <strong>100% do valor da mensalidade</strong> (custo zero).
+                      Emite os códigos Pix e os links com a tarifa do Asaas e a taxa GestaraHub acrescidas, garantindo que a sua academia receba <strong>100% do valor da mensalidade</strong> (custo zero).
                     </p>
                   </div>
                   <Controller
@@ -333,7 +333,7 @@ function OnlinePaymentsForm({
                           htmlFor="passFeePix"
                           className="text-xs font-medium text-foreground cursor-pointer"
                         >
-                          Repassar no Pix (+ R$ 1,99 no Free ou R$ 1,29 no Pro)
+                          Repassar no Pix (tarifa do Pix + taxa GestaraHub)
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
                           Exemplo: mensalidade de R$ 150,00 → aluno paga R$ 151,99 e você recebe R$ 150,00 líquido.
@@ -360,7 +360,7 @@ function OnlinePaymentsForm({
                           htmlFor="passFeeCard"
                           className="text-xs font-medium text-foreground cursor-pointer"
                         >
-                          Repassar no Cartão (+ 2,99% + taxa por gross-up)
+                          Repassar no link (tarifa do cartão de crédito + taxa GestaraHub)
                         </Label>
                         <p className="text-[11px] text-muted-foreground">
                           Exemplo: mensalidade de R$ 150,00 → link sai por R$ 156,67 e você recebe R$ 150,00 líquido.

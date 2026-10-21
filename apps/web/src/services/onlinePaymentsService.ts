@@ -8,7 +8,8 @@ import type {
   PaymentMethod,
   RecurringAuthorization,
 } from "@gestarahub/contracts";
-import { calculateChargeWithPassedFee, describeCharge } from "@gestarahub/core/billing";
+import { describeCharge } from "@gestarahub/core/billing";
+import { calculateOnlineChargeAmounts, platformSplitCents } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { format, parseISO } from "date-fns";
 import {
@@ -439,11 +440,9 @@ export const onlinePaymentsService = {
           ? Boolean(settings.passFeePix ?? settings.passFeeToCustomer ?? false)
           : Boolean(settings.passFeeCard ?? settings.passFeeToCustomer ?? false);
 
-    // Determina o valor do split da plataforma (R$ 1,29 Pro / R$ 1,99 Free)
-    const tier = store.organization.subscription?.tier;
-    const splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
-
-    const { chargedAmountCents, netAmountCents } = calculateChargeWithPassedFee({
+    // Taxa do GestaraHub por plano e tarifa do Asaas por meio (doc 19 §4, decisao A).
+    const splitAmountCents = platformSplitCents(store.organization.subscription?.tier);
+    const { chargedAmountCents, netAmountCents, gatewayFeeCents } = calculateOnlineChargeAmounts({
       amountCents: charge.amountCents,
       method,
       splitAmountCents,
@@ -502,6 +501,7 @@ export const onlinePaymentsService = {
         gatewayPaymentId: provided.providerId,
         splitAmountCents:
           "splitAmountCents" in provided ? provided.splitAmountCents : splitAmountCents,
+        gatewayFeeCents,
         netAmountCents,
         feePassedToCustomer: passFee,
         ...("pixCopyPaste" in provided

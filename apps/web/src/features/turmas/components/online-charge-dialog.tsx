@@ -18,7 +18,7 @@ import type {
   OnlinePayment,
   OnlinePaymentMethod,
 } from "@gestarahub/contracts";
-import { calculateChargeWithPassedFee } from "@gestarahub/core/billing";
+import { calculateOnlineChargeAmounts, platformSplitCents } from "@gestarahub/core/payment-fees";
 import { formatCents, formatDateTime } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +61,7 @@ const METHOD_OPTIONS: {
   {
     value: "link",
     label: "Link de pagamento",
-    description: "O aluno abre o link e paga com cartão.",
+    description: "O aluno abre o link e paga com cartão de crédito ou débito.",
     icon: Link2,
   },
 ];
@@ -138,15 +138,16 @@ export function OnlineChargeDialog({
   };
 
   const onlineSettings = org?.settings?.onlinePayments;
-  const tier = org?.subscription?.tier;
-  const splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
+  const splitAmountCents = platformSplitCents(org?.subscription?.tier);
   const defaultPassFee =
     method === "pix"
       ? Boolean(onlineSettings?.passFeePix ?? onlineSettings?.passFeeToCustomer ?? false)
       : Boolean(onlineSettings?.passFeeCard ?? onlineSettings?.passFeeToCustomer ?? false);
   const activePassFee = passFee !== null ? passFee : defaultPassFee;
 
-  const feePreview = calculateChargeWithPassedFee({
+  // Tarifa do Asaas + taxa do GestaraHub (doc 19 §4). No link o aluno escolhe
+  // credito ou debito, entao a tarifa mostrada e a do credito (a maior).
+  const feePreview = calculateOnlineChargeAmounts({
     amountCents: charge?.amountCents ?? 0,
     method,
     splitAmountCents,
@@ -308,8 +309,8 @@ export function OnlineChargeDialog({
                     </label>
                     <p className="text-[11px] text-muted-foreground">
                       {method === "pix"
-                        ? `Acréscimo fixo da taxa (+ ${formatCents(splitAmountCents)})`
-                        : "Acréscimo calculado (+ 2,99% + taxa)"}
+                        ? `Acréscimo fixo da tarifa e da taxa (+ ${formatCents(feePreview.totalFeeCents)})`
+                        : "Acréscimo que cobre a tarifa do cartão de crédito"}
                     </p>
                   </div>
                   <Switch
@@ -325,17 +326,20 @@ export function OnlineChargeDialog({
                     <span>{formatCents(charge?.amountCents ?? 0)}</span>
                   </div>
                   <div className="flex items-center justify-between text-muted-foreground">
-                    <span>Taxa {activePassFee ? "(acrescida ao aluno)" : "(descontada de você)"}:</span>
-                    <span
-                      className={
-                        activePassFee
-                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
-                          : "text-amber-600 dark:text-amber-400 font-medium"
-                      }
-                    >
-                      {activePassFee
-                        ? `+ ${formatCents(feePreview.feeAmountCents)}`
-                        : `- ${formatCents(feePreview.feeAmountCents)}`}
+                    <span>
+                      Tarifa do Asaas
+                      {method === "pix" ? " (Pix)" : " (cartão de crédito; no débito é menor)"}:
+                    </span>
+                    <span className={activePassFee ? "font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}>
+                      {activePassFee ? "+ " : "- "}
+                      {formatCents(feePreview.gatewayFeeCents)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Taxa GestaraHub:</span>
+                    <span className={activePassFee ? "font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}>
+                      {activePassFee ? "+ " : "- "}
+                      {formatCents(feePreview.splitAmountCents)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-border/50 pt-1 font-semibold">
@@ -345,7 +349,7 @@ export function OnlineChargeDialog({
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>Você recebe líquido:</span>
+                    <span>{feePreview.estimated ? "Você recebe líquido, no mínimo:" : "Você recebe líquido:"}</span>
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                       {formatCents(feePreview.netAmountCents)}
                     </span>
@@ -354,8 +358,10 @@ export function OnlineChargeDialog({
 
                 <p className="text-[10px] text-muted-foreground">
                   {activePassFee
-                    ? "✓ Custo zero para sua academia. O valor líquido creditado será exatamente o valor original da mensalidade."
-                    : "• Você absorve a taxa e ela será descontada do saldo recebido na subconta."}
+                    ? feePreview.estimated
+                      ? "✓ O acréscimo cobre a tarifa do cartão de crédito. Se o aluno pagar no débito, a diferença fica com você."
+                      : "✓ Custo zero para você: entra na subconta exatamente o valor da cobrança."
+                    : "• Tarifa do Asaas e taxa GestaraHub saem do valor que entra na subconta."}
                 </p>
               </div>
             </div>
