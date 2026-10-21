@@ -15,7 +15,6 @@ import { withKind } from "@/lib/text";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { clone, studentName, todayISO } from "./billingHelpers";
-import { syncStudentPackagesFromDb } from "./billingSync";
 import { validateSale } from "./billingValidation";
 import { toView } from "./billingViews";
 
@@ -25,7 +24,6 @@ export const studentPackagesService = {
   // --- Pacotes dos alunos --------------------------------------------------
   listStudentPackages(filter?: StudentPackageFilter): Promise<StudentPackageView[]> {
     return simulateRead(async () => {
-      await syncStudentPackagesFromDb(store.organization.id);
       let result = store.studentPackages;
       if (filter?.studentId) result = result.filter((p) => p.studentId === filter.studentId);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);

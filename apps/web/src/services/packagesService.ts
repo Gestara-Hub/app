@@ -6,8 +6,6 @@ export {
   packageCandidatesFor,
   packageRosterInfo,
   packagesService,
-  syncLessonPackagesFromDb,
   syncPackageUsage,
-  syncStudentPackagesFromDb,
   type PackageUsageChange,
 } from "./billing";

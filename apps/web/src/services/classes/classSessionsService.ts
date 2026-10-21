@@ -4,7 +4,6 @@ import { notFoundError, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { actorTeacherId, teacherSeesSession } from "../teacherScope";
 import { clone, makeSessionId, resolveSession, datesBetween } from "./classShared";
-import { syncTurmasFromDb } from "./classStore";
 import {
   toSessionView,
   buildRoster,
@@ -20,7 +19,6 @@ export const classSessionsService = {
     dateTo: DateISO;
   }): Promise<ClassSessionListItem[]> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const groups = store.classGroups.filter(
         (g) =>
           g.status === "active" &&
@@ -56,7 +54,6 @@ export const classSessionsService = {
 
   getSession(id: Id): Promise<ClassSessionDetail> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const { g } = resolveSession(id);
       if (!teacherSeesSession(g, id)) throw notFoundError("Aula não encontrada.");
       return clone(buildSessionDetail(id));

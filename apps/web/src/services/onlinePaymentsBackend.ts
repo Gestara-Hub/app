@@ -143,29 +143,6 @@ export async function listOnlinePaymentsForChargeFromDb(
   return (data || []).map(mapRowToOnlinePayment);
 }
 
-export async function getOnlinePaymentByGatewayIdFromDb(
-  gatewayPaymentId: string,
-  provider?: string,
-): Promise<OnlinePayment | null> {
-  const adminClient = createSupabaseAdminClient();
-  let query = adminClient
-    .from("online_payments")
-    .select("*")
-    .eq("gateway_payment_id", gatewayPaymentId);
-
-  if (provider) {
-    query = query.eq("gateway_provider", provider);
-  }
-
-  const { data, error } = await query.maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return mapRowToOnlinePayment(data);
-}
-
 /** Forma gravada na cobranca do aluno quando o pagamento online e confirmado. */
 function chargeMethodOf(payment: OnlinePayment): "pix" | "card" | "other" {
   const used = payment.paidMethod;
@@ -875,28 +852,6 @@ export async function createOnlineLinkPaymentAction(
   }
 }
 
-// --- Aliases de compatibilidade para código legado --------------------------
-
-export async function getOnlinePaymentByAsaasIdFromDb(
-  asaasPaymentId: string,
-): Promise<OnlinePayment | null> {
-  return getOnlinePaymentByGatewayIdFromDb(asaasPaymentId, "asaas");
-}
-
-export async function createAsaasPixPaymentAction(
-  input: CreatePixInput,
-): Promise<PixPayment | null> {
-  const result = await createOnlinePixPaymentAction(input, "asaas");
-  return "error" in result ? null : result;
-}
-
-export async function createAsaasLinkPaymentAction(
-  input: CreateLinkInput,
-): Promise<PaymentLinkPayment | null> {
-  const result = await createOnlineLinkPaymentAction(input, "asaas");
-  return "error" in result ? null : result;
-}
-
 function detectPixKeyType(
   key: string,
 ): "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP" {
@@ -1253,7 +1208,6 @@ export async function listSubaccountReceiptsAction(
 
   return { items, total: pageRes.count ?? items.length, summary };
 }
-
 
 /**
  * Depois de o servidor gravar o cancelamento dos codigos (doc 15, fatia 2),

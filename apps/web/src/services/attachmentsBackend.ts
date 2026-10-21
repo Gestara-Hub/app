@@ -107,22 +107,3 @@ export async function downloadAttachmentFromStorage(
   return { blob: data, contentType: data.type };
 }
 
-export async function getAttachmentSignedUrl(
-  id: Id,
-  organizationId?: string,
-): Promise<string | null> {
-  const record = await getAttachmentRecord(id, organizationId);
-  if (!record) return null;
-
-  const client = await getClientForTenant();
-  const { data, error } = await client.storage
-    .from("attachments")
-    .createSignedUrl(record.storagePath, 300); // 5 minutes
-
-  if (error || !data?.signedUrl) {
-    console.error("[attachmentsBackend] Erro ao gerar URL assinada:", error);
-    return null;
-  }
-
-  return data.signedUrl;
-}

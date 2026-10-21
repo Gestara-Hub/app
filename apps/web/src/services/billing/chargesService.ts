@@ -14,7 +14,6 @@ import { newId, nowIso, simulateRead, simulateWrite, validationError } from "@/m
 import { auditLogService } from "../auditLogService";
 import { applyRecurringAutoPayments } from "../onlinePaymentsService";
 import { clone, competenceLabel } from "./billingHelpers";
-import { syncChargesFromDb } from "./billingSync";
 import { validateExtraCharge } from "./billingValidation";
 import { toChargeView } from "./billingViews";
 import { ensureMembershipCharges, generateMembershipChargesFor } from "./membershipCharges";
@@ -25,7 +24,6 @@ export const chargesService = {
     return simulateRead(async () => {
       // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas;
       // na conta real, no servidor, e ja chegam sincronizadas.
-      await syncChargesFromDb(store.organization.id);
       await ensureMembershipCharges(filter?.competence);
       // Pix Automatico: paga na leitura o que venceu dentro do limite.
       applyRecurringAutoPayments();
@@ -74,7 +72,6 @@ export const chargesService = {
 
   listChargesPaginated(filter?: ChargeFilter): Promise<PaginatedResult<ChargeView>> {
     return simulateRead(async () => {
-      await syncChargesFromDb(store.organization.id);
       await ensureMembershipCharges(filter?.competence);
       applyRecurringAutoPayments();
 

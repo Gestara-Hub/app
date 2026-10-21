@@ -14,7 +14,6 @@ import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { clone, todayISO, studentName, activeEnrollments } from "./classShared";
-import { syncTurmasFromDb } from "./classStore";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
 import { toEnrollmentView } from "./classViews";
 import { createEnrollment, resolvePaysWithPackage } from "./enrollmentCreation";
@@ -23,7 +22,6 @@ export const enrollmentsService = {
   // --- Matriculas ---------------------------------------------------------
   listEnrollments(classGroupId: Id): Promise<EnrollmentView[]> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const rows = store.enrollments.filter(
         (e) => e.classGroupId === classGroupId && e.status !== "canceled",
       );

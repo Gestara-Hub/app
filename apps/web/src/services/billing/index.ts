@@ -8,10 +8,6 @@ import { delegateAll } from "../world/delegate";
 export { chargePaymentsService, chargesService, lessonPackagesService, plansService, studentPackagesService };
 
 export {
-  syncChargesFromDb,
-  syncLessonPackagesFromDb,
-  syncPlansFromDb,
-  syncStudentPackagesFromDb,
 } from "./billingSync";
 export {
   autoGenerateMembershipCharges,

@@ -1,4 +1,4 @@
-export { openPayoutPreviews, syncTeacherPayFromDb, teacherPayService } from "./finance";
+export { openPayoutPreviews, teacherPayService } from "./finance";
 export type {
   OpenPayoutPreview,
   TeacherPayDetailSession,

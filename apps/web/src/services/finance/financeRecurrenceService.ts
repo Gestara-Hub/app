@@ -8,7 +8,6 @@ import { auditLogService } from "../auditLogService";
 import { ensureMembershipCharges } from "../billingService";
 import { applyRecurringAutoPayments } from "../onlinePaymentsService";
 import { conflict, currentCompetence, todayISO } from "./financeHelpers";
-import { syncFinanceFromDb } from "./financeStore";
 
 // --- Recorrencia (materializacao idempotente) -------------------------------
 
@@ -51,7 +50,6 @@ export async function materializeAllAsync(): Promise<number> {
 
 /** Garante a materializacao numa leitura (persiste so se criou algo). */
 export async function ensureMaterialized(competence?: string): Promise<void> {
-  await syncFinanceFromDb(store.organization.id);
   // Mensalidades do mes (e do mes consultado, se ja chegou) geradas na leitura,
   // sem depender de alguem abrir Cobrancas.
   await ensureMembershipCharges(competence);

@@ -11,7 +11,6 @@ import { store } from "@/mocks/store";
 import { assertTeacherSession } from "../teacherScope";
 import { syncAttendanceUsage, auditPackageUsage } from "./attendancePackageUsage";
 import { todayISO, parseSessionId, resolveSession } from "./classShared";
-import { syncTurmasFromDb } from "./classStore";
 
 export const attendanceService = {
   markAttendance(input: {
@@ -70,7 +69,6 @@ export const attendanceService = {
 
   getAttendanceSummary(date: DateISO): Promise<AttendanceSummary> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       let present = 0;
       let absent = 0;
       let justified = 0;
@@ -98,7 +96,6 @@ export const attendanceService = {
    */
   listAbsenceStreaks(minStreak = 3): Promise<AbsenceStreakView[]> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const groupsByStudent = new Map<Id, Set<Id>>();
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;

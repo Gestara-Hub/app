@@ -1,1 +1,1 @@
-export { financeService, syncFinanceFromDb } from "./finance";
+export { financeService } from "./finance";

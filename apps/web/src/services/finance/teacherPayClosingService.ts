@@ -27,7 +27,6 @@ import {
   ruleOf,
 } from "./teacherPayHelpers";
 import { latePaymentShare } from "./teacherPayLatePayments";
-import { syncTeacherPayFromDb } from "./teacherPayStore";
 import { normalizeAdjustments } from "./teacherPayValidation";
 import { buildView, dueDateOf, toDetailSession, type TeacherPayoutDetail } from "./teacherPayViews";
 
@@ -38,7 +37,6 @@ export const teacherPayClosingService = {
    */
   listPayouts(competence: string): Promise<TeacherPayoutView[]> {
     return simulateRead(async () => {
-      await syncTeacherPayFromDb(store.organization.id);
       const facts = buildFacts(competence);
       const ids = new Set<Id>([
         ...store.teacherPayRules.map((r) => r.professionalId),
@@ -60,7 +58,6 @@ export const teacherPayClosingService = {
   /** Detalhe do mes com as aulas contadas (inclui substituicoes). */
   getPayoutPreview(professionalId: Id, competence: string): Promise<TeacherPayoutDetail> {
     return simulateRead(async () => {
-      await syncTeacherPayFromDb(store.organization.id);
       const facts = buildFacts(competence);
       const view = buildView(professionalId, competence, facts);
       if (!view) {

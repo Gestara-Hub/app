@@ -18,8 +18,6 @@ export {
   teacherPayPaymentsService,
   teacherPayRulesService,
 };
-export { syncFinanceFromDb } from "./financeStore";
-export { syncTeacherPayFromDb } from "./teacherPayStore";
 export { openPayoutPreviews } from "./teacherPayViews";
 export type {
   OpenPayoutPreview,

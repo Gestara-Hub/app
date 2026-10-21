@@ -16,7 +16,6 @@ import {
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { clone, studentName, activeEnrollments } from "./classShared";
-import { syncTurmasFromDb } from "./classStore";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
 import { toEnrollmentView } from "./classViews";
 import { createEnrollment, defaultPaysWithPackage } from "./enrollmentCreation";
@@ -37,7 +36,6 @@ export const waitlistService = {
   // --- Lista de espera ----------------------------------------------------
   listWaitlist(classGroupId: Id): Promise<WaitlistEntryView[]> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const rows = store.waitlist.filter(
         (w) => w.classGroupId === classGroupId && w.status === "waiting",
       );

@@ -1,4 +1,6 @@
-"use server";
+// Modulo so do servidor, usado pelo cron diario (app/api/cron/daily) com o
+// cliente administrativo. Sem "use server" de proposito: nao e action, entao o
+// navegador nao chama com um organizationId qualquer (doc 15, fatia 2).
 
 import { randomUUID } from "node:crypto";
 import {

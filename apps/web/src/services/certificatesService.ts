@@ -8,14 +8,11 @@ import {
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_LOGO_RULES } from "@/lib/files";
-import { delegateAll, realAccountInBrowser } from "./world/delegate";
+import { delegateAll } from "./world/delegate";
 import { nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { attachmentsService } from "./attachmentsService";
 import { auditLogService } from "./auditLogService";
-import {
-  getCertificateTemplateFromDb,
-} from "./certificatesBackend";
 import { assertFeature } from "./subscriptionService";
 
 /**
@@ -27,13 +24,6 @@ import { assertFeature } from "./subscriptionService";
  * o modelo guarda so o id. Na conta real o modelo vive em
  * `organizations.certificate_template` (doc 15, fatia 1); o store e so cache.
  */
-
-/** Conta real: traz o modelo do banco para o cache antes de ler. */
-export async function syncCertificateTemplateFromDb(): Promise<void> {
-  const organizationId = store.organization.id;
-  if (!realAccountInBrowser(organizationId)) return;
-  store.certificateTemplate = (await getCertificateTemplateFromDb(organizationId)) ?? undefined;
-}
 
 /** Modelo em vigor (salvo ou padrao), para quem monta o certificado. */
 export function currentCertificateTemplate(): CertificateTemplate {
@@ -57,7 +47,6 @@ function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
 export const certificatesServiceImpl = {
   getTemplate(): Promise<CertificateTemplate> {
     return simulateRead(async () => {
-      await syncCertificateTemplateFromDb();
       return currentCertificateTemplate();
     });
   },

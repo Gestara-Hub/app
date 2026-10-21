@@ -24,14 +24,12 @@ import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { actorTeacherId, teacherSeesClass } from "../teacherScope";
 import { clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
-import { syncTurmasFromDb } from "./classStore";
 import { normalizeBilling, validateGroup, sameSlots } from "./classValidation";
 import { toGroupView } from "./classViews";
 
 export const classGroupsService = {
   list(filter?: ClassGroupFilter): Promise<ClassGroupView[]> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       let result = store.classGroups;
       if (filter?.search) {
         const term = filter.search;
@@ -59,7 +57,6 @@ export const classGroupsService = {
 
   getById(id: Id): Promise<ClassGroupView> {
     return simulateRead(async () => {
-      await syncTurmasFromDb(store.organization.id);
       const g = store.classGroups.find((x) => x.id === id);
       if (!g || !teacherSeesClass(g)) throw notFoundError("Turma não encontrada.");
       return clone(toGroupView(g));

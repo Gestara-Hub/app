@@ -10,6 +10,4 @@ export {
   planlessScholarCharges,
   scholarshipChargeFields,
   studentMembershipTerms,
-  syncChargesFromDb,
-  syncPlansFromDb,
 } from "./billing";

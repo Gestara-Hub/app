@@ -20,7 +20,6 @@ import {
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { clone, conflict, isEntryType } from "./financeHelpers";
-import { syncFinanceFromDb } from "./financeStore";
 
 export function isDuplicateCategory(type: FinancialEntryType, name: string, exceptId?: Id): boolean {
   const target = normalizeText(name);
@@ -43,7 +42,6 @@ export const financeCategoriesService = {
 
   listCategories(filter?: FinancialCategoryFilter): Promise<FinancialCategory[]> {
     return simulateRead(async () => {
-      await syncFinanceFromDb(store.organization.id);
       let result = store.financialCategories;
       if (filter?.type) result = result.filter((c) => c.type === filter.type);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);

@@ -43,10 +43,7 @@ import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { auditLogService } from "./auditLogService";
-import { delegateAll, realAccountInBrowser } from "./world/delegate";
-import {
-  listAssessmentsFromDb,
-} from "./gradesBackend";
+import { delegateAll } from "./world/delegate";
 
 /**
  * Notas dos alunos (doc 21 §2.1, fase 1): avaliacoes da turma, lancamento por
@@ -224,29 +221,10 @@ function className(classGroupId: Id): string {
   return store.classGroups.find((g) => g.id === classGroupId)?.name ?? "Turma";
 }
 
-export async function syncAssessmentsFromDb(organizationId: string): Promise<void> {
-  if (!realAccountInBrowser(organizationId)) return;
-  const dbAssessments = await listAssessmentsFromDb(organizationId);
-  const dbMap = new Map(dbAssessments.map((a) => [a.id, a]));
-  const list = assessmentsStore();
-  for (let i = 0; i < list.length; i++) {
-    const existing = list[i];
-    const fromDb = dbMap.get(existing.id);
-    if (fromDb) {
-      list[i] = fromDb;
-      dbMap.delete(existing.id);
-    }
-  }
-  for (const newAssessment of dbMap.values()) {
-    list.push(newAssessment);
-  }
-}
-
 export const gradesServiceImpl = {
   /** Aba "Avaliações" da turma: avaliacoes (mais recente primeiro) e media da turma. */
   listClassAssessments(classGroupId: Id): Promise<ClassAssessmentsView> {
     return simulateRead(async () => {
-      await syncAssessmentsFromDb(store.organization.id);
       const group = findClass(classGroupId);
       const settings = enabledSettings(group.modalityId);
       const list = sortAssessments(assessmentsStore().filter((a) => a.classGroupId === classGroupId));
@@ -269,7 +247,6 @@ export const gradesServiceImpl = {
   /** Tela "Lançar notas": uma linha por aluno matriculado hoje, em ordem alfabetica. */
   getSheet(assessmentId: Id): Promise<AssessmentSheet> {
     return simulateRead(async () => {
-      await syncAssessmentsFromDb(store.organization.id);
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
       const settings = requireSettings(group);
@@ -440,7 +417,6 @@ export const gradesServiceImpl = {
    */
   getReportCard(studentId: Id): Promise<StudentReportCard> {
     return simulateRead(async () => {
-      await syncAssessmentsFromDb(store.organization.id);
       const student = store.clients.find((c) => c.id === studentId);
       if (!student) throw notFoundError("Aluno não encontrado.");
       const activeClassIds = new Set(

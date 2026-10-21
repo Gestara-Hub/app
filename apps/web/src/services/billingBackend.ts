@@ -1,15 +1,13 @@
-"use server";
+// Modulo so do servidor, usado pelo cron diario (app/api/cron/daily) com o
+// cliente administrativo. Sem "use server" de proposito: nao e action, entao o
+// navegador nao chama com um organizationId qualquer (doc 15, fatia 2).
 
-import { chargeToDbRow } from "./billingRows";
 import type {
   Charge,
   ChargeFilter,
   FileAttachment,
-  Id,
-  PaginatedResult,
   Plan,
   PlanFilter,
-  UpdatePlan,
 } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 
@@ -101,78 +99,6 @@ export async function listPlansFromDb(
   return result;
 }
 
-export async function getPlanFromDb(
-  id: Id,
-  organizationId: string,
-): Promise<Plan | null> {
-  const client = await getClientForTenant();
-  const { data, error } = await client
-    .from("plans")
-    .select("*")
-    .eq("id", id)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao obter plano:", error);
-    throw new Error("Erro ao consultar plano no banco de dados.");
-  }
-
-  return data ? mapRowToPlan(data) : null;
-}
-
-export async function createPlanInDb(plan: Plan): Promise<Plan> {
-  const client = await getClientForTenant();
-  const { data, error } = await client
-    .from("plans")
-    .insert({
-      id: plan.id,
-      organization_id: plan.organizationId,
-      name: plan.name.trim(),
-      price_cents: plan.priceCents,
-      period: plan.period,
-      status: plan.status,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao criar plano:", error);
-    throw new Error("Erro ao salvar plano no banco de dados.");
-  }
-
-  return mapRowToPlan(data);
-}
-
-export async function updatePlanInDb(
-  id: Id,
-  payload: UpdatePlan,
-  organizationId: string,
-): Promise<Plan> {
-  const client = await getClientForTenant();
-  const updateData: Record<string, unknown> = {};
-
-  if (payload.name !== undefined) updateData.name = payload.name.trim();
-  if (payload.priceCents !== undefined) updateData.price_cents = payload.priceCents;
-  if (payload.period !== undefined) updateData.period = payload.period;
-  if (payload.status !== undefined) updateData.status = payload.status;
-
-  const { data, error } = await client
-    .from("plans")
-    .update(updateData)
-    .eq("id", id)
-    .eq("organization_id", organizationId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao atualizar plano:", error);
-    throw new Error("Erro ao atualizar plano no banco de dados.");
-  }
-
-  return mapRowToPlan(data);
-}
-
 // =============================================================================
 // Charge Backend Operations
 // =============================================================================
@@ -202,138 +128,3 @@ export async function listChargesFromDb(
   return (data || []).map(mapRowToCharge);
 }
 
-export async function listChargesPaginatedFromDb(
-  organizationId: string,
-  filter?: ChargeFilter,
-): Promise<PaginatedResult<Charge>> {
-  const client = await getClientForTenant();
-  const page = Math.max(1, filter?.page ?? 1);
-  const pageSize = Math.max(1, Math.min(100, filter?.pageSize ?? 20));
-  const offset = (page - 1) * pageSize;
-
-  let query = client
-    .from("charges")
-    .select("*", { count: "exact" })
-    .eq("organization_id", organizationId);
-
-  if (filter?.competence) query = query.eq("competence", filter.competence);
-  if (filter?.kind) query = query.eq("kind", filter.kind);
-  if (filter?.status) query = query.eq("status", filter.status);
-  if (filter?.studentId) query = query.eq("student_id", filter.studentId);
-
-  query = query
-    .order("due_date", { ascending: true })
-    .range(offset, offset + pageSize - 1);
-
-  const { data, count, error } = await query;
-  if (error) {
-    console.error("[billingBackend] Erro ao listar cobranças paginadas:", error);
-    throw new Error("Erro ao consultar cobranças no banco de dados.");
-  }
-
-  const total = count ?? 0;
-  const items = (data || []).map(mapRowToCharge);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  return {
-    items,
-    total,
-    page,
-    pageSize,
-    totalPages,
-    hasMore: page < totalPages,
-  };
-}
-
-export async function getChargeFromDb(
-  id: Id,
-  organizationId: string,
-): Promise<Charge | null> {
-  const client = await getClientForTenant();
-  const { data, error } = await client
-    .from("charges")
-    .select("*")
-    .eq("id", id)
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao obter cobrança:", error);
-    throw new Error("Erro ao consultar cobrança no banco de dados.");
-  }
-
-  return data ? mapRowToCharge(data) : null;
-}
-
-
-export async function insertChargesInDb(charges: Charge[]): Promise<Charge[]> {
-  if (charges.length === 0) return [];
-  const client = await getClientForTenant();
-  const rows = charges.map(chargeToDbRow);
-
-  const { data, error } = await client
-    .from("charges")
-    .upsert(rows, { onConflict: "id" })
-    .select();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao inserir cobranças:", error);
-    throw new Error("Erro ao salvar cobranças no banco de dados.");
-  }
-
-  return (data || []).map(mapRowToCharge);
-}
-
-export async function updateChargeInDb(
-  id: Id,
-  updates: Partial<Charge>,
-  organizationId: string,
-): Promise<Charge> {
-  const client = await getClientForTenant();
-  const dbUpdates: Record<string, unknown> = {};
-
-  if (updates.status !== undefined) dbUpdates.status = updates.status;
-  if (updates.paidAt !== undefined) dbUpdates.paid_at = updates.paidAt;
-  if (updates.method !== undefined) dbUpdates.method = updates.method;
-  if (updates.paidVia !== undefined) dbUpdates.paid_via = updates.paidVia;
-  if (updates.attachments !== undefined) dbUpdates.attachments = updates.attachments;
-  if (updates.canceledBy !== undefined) dbUpdates.canceled_by = updates.canceledBy;
-  if (updates.cancelReason !== undefined) dbUpdates.cancel_reason = updates.cancelReason;
-  if (updates.replaced !== undefined) dbUpdates.replaced = updates.replaced;
-  if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-  if (updates.amountCents !== undefined) dbUpdates.amount_cents = updates.amountCents;
-  if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
-
-  const { data, error } = await client
-    .from("charges")
-    .update(dbUpdates)
-    .eq("id", id)
-    .eq("organization_id", organizationId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("[billingBackend] Erro ao atualizar cobrança:", error);
-    throw new Error("Erro ao atualizar cobrança no banco de dados.");
-  }
-
-  return mapRowToCharge(data);
-}
-
-export async function deleteChargesByIdsInDb(
-  ids: Id[],
-  organizationId: string,
-): Promise<void> {
-  if (ids.length === 0) return;
-  const client = await getClientForTenant();
-  const { error } = await client
-    .from("charges")
-    .delete()
-    .eq("organization_id", organizationId)
-    .in("id", ids);
-
-  if (error) {
-    console.error("[billingBackend] Erro ao remover cobranças:", error);
-    throw new Error("Erro ao remover cobranças no banco de dados.");
-  }
-}

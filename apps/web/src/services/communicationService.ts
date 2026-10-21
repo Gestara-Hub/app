@@ -31,63 +31,7 @@ import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/mocks/seed
 import { persist, store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
-import { delegateAll, realAccountInBrowser } from "./world/delegate";
-import {
-  getWhatsAppConnectionFromDb,
-  insertMessageTemplatesBatchInDb,
-  listMessageLogsFromDb,
-  listMessageTemplatesFromDb,
-  saveWhatsAppConnectionInDb,
-} from "./communicationBackend";
-
-export async function syncCommunicationFromDb(organizationId: string): Promise<void> {
-  if (!realAccountInBrowser(organizationId)) return;
-  const [connection, templates, logs] = await Promise.all([
-    getWhatsAppConnectionFromDb(organizationId),
-    listMessageTemplatesFromDb(organizationId),
-    listMessageLogsFromDb(organizationId),
-  ]);
-
-  if (connection) {
-    store.whatsAppConnection = connection;
-  } else {
-    const defaultConn = defaultWhatsAppConnection(organizationId);
-    store.whatsAppConnection = defaultConn;
-    try {
-      await saveWhatsAppConnectionInDb(defaultConn);
-    } catch (err) {
-      console.error("[communicationService] Erro ao salvar conexão padrão no banco:", err);
-    }
-  }
-
-  if (templates.length > 0) {
-    store.messageTemplates = templates;
-  } else {
-    const defaultTemplates = defaultMessageTemplates(organizationId, store.organization.classSegment);
-    store.messageTemplates = defaultTemplates;
-    try {
-      await insertMessageTemplatesBatchInDb(defaultTemplates);
-    } catch (err) {
-      console.error("[communicationService] Erro ao semear templates no banco:", err);
-    }
-  }
-
-  const logMap = new Map(logs.map((l) => [l.id, l]));
-  for (let i = 0; i < (store.messageLogs || []).length; i++) {
-    const existing = store.messageLogs[i];
-    if (existing.organizationId === organizationId) {
-      const fromDb = logMap.get(existing.id);
-      if (fromDb) {
-        store.messageLogs[i] = fromDb;
-        logMap.delete(existing.id);
-      }
-    }
-  }
-  if (!store.messageLogs) store.messageLogs = [];
-  for (const l of logMap.values()) {
-    store.messageLogs.push(l);
-  }
-}
+import { delegateAll } from "./world/delegate";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -230,7 +174,6 @@ function runBirthdayGreetings(): number {
 export const communicationServiceImpl = {
   getConnection(): Promise<WhatsAppConnectionView> {
     return simulateRead(async () => {
-      await syncCommunicationFromDb(store.organization.id);
       return connectionView();
     });
   },
@@ -299,7 +242,6 @@ export const communicationServiceImpl = {
 
   listTemplates(): Promise<MessageTemplate[]> {
     return simulateRead(async () => {
-      await syncCommunicationFromDb(store.organization.id);
       return [...ensureTemplates()].sort((a, b) => a.daysOffset - b.daysOffset);
     });
   },
@@ -351,7 +293,6 @@ export const communicationServiceImpl = {
 
   listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
     return simulateRead(async () => {
-      await syncCommunicationFromDb(store.organization.id);
       runBirthdayGreetings();
       let logs = [...ensureLogs()];
       // Ficha do aluno: so as mensagens dele.
@@ -447,7 +388,6 @@ export const communicationServiceImpl = {
 
   getMetrics(): Promise<CommunicationMetrics> {
     return simulateRead(async () => {
-      await syncCommunicationFromDb(store.organization.id);
       runBirthdayGreetings();
       const view = connectionView();
       const month = format(new Date(), "yyyy-MM");

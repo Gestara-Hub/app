@@ -3,7 +3,7 @@ import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { apiError, notFoundError, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { currentCertificateTemplate, syncCertificateTemplateFromDb } from "../certificatesService";
+import { currentCertificateTemplate } from "../certificatesService";
 import { assertFeature } from "../subscriptionService";
 import { clone, todayISO, modalityName, instructorName, studentName } from "./classShared";
 import { frequencyOf } from "./classViews";
@@ -17,7 +17,6 @@ export const courseCertificateService = {
   getCourseCertificate(enrollmentId: Id): Promise<CourseCertificateDocument> {
     return simulateRead(async () => {
       assertFeature("certificates");
-      await syncCertificateTemplateFromDb();
       const e = store.enrollments.find((x) => x.id === enrollmentId);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
       const g = store.classGroups.find((x) => x.id === e.classGroupId);

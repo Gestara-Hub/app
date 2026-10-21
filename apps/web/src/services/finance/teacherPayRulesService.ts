@@ -4,7 +4,6 @@ import { newId, notFoundError, nowIso, simulateRead, simulateWrite } from "@/moc
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { clone, ruleOf } from "./teacherPayHelpers";
-import { syncTeacherPayFromDb } from "./teacherPayStore";
 import { normalizeComponents, validateRulePayload } from "./teacherPayValidation";
 import type { TeacherPayTeacher } from "./teacherPayViews";
 
@@ -12,7 +11,6 @@ export const teacherPayRulesService = {
   /** Professores (ativos ou com regra) com as turmas em que sao titulares. */
   listTeachers(): Promise<TeacherPayTeacher[]> {
     return simulateRead(async () => {
-      await syncTeacherPayFromDb(store.organization.id);
       const out: TeacherPayTeacher[] = store.professionals
         .filter((p) => p.status === "active" || ruleOf(p.id))
         .map((p) => {
@@ -35,7 +33,6 @@ export const teacherPayRulesService = {
 
   listRules(): Promise<TeacherPayRule[]> {
     return simulateRead(async () => {
-      await syncTeacherPayFromDb(store.organization.id);
       return clone(store.teacherPayRules);
     });
   },
