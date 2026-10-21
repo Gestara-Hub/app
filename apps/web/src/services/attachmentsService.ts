@@ -2,7 +2,7 @@ import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
 import { realAccountInBrowser } from "./world/delegate";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
-import { newId, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
+import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
 
 /**
  * Envio e leitura de anexos (comprovantes, notas, boletos, logos).
@@ -58,7 +58,7 @@ export const attachmentsService = {
       uploadedAt,
     }));
     await Promise.all(attachments.map((a, i) => putFileBlob(a.id, files[i])));
-    return simulateWrite(() => attachments);
+    return writeOp(() => attachments);
   },
 
   /**

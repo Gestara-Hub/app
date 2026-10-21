@@ -1,6 +1,6 @@
 import type { AuditActor, CertificateTemplate } from "@gestarahub/contracts";
 import { apiError } from "@gestarahub/core/api-error";
-import type { MockStore } from "@/mocks/store";
+import type { TenantWorld } from "./types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { TenantContext } from "../server/tenant";
 import type { WorldEffect } from "./effects";
@@ -33,7 +33,7 @@ interface LoadedCollection {
 }
 
 interface LoadedWorld {
-  store: MockStore;
+  store: TenantWorld;
   /** Versao do espaco na leitura (world_versions); a gravacao confere. */
   version: number;
   unitId: string;
@@ -137,7 +137,7 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     }
   }
   store.certificateTemplate = (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined;
-  return { store: store as unknown as MockStore, version, unitId, collections, organizationRow };
+  return { store: store as unknown as TenantWorld, version, unitId, collections, organizationRow };
 }
 
 interface WorldChanges {

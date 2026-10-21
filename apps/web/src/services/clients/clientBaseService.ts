@@ -1,15 +1,15 @@
 import type { Client, ClientFilter, CreateClient, Id, PaginatedResult } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   phoneIncludes,
   textIncludes,
-} from "@/mocks/helpers";
+} from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { clientNoun } from "../nouns";
 import { ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
@@ -19,7 +19,7 @@ import { validateClient } from "./clientValidation";
 /** Cadastro, lista e leitura do aluno. */
 export const clientBaseService = {
   list(filter?: ClientFilter): Promise<Client[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
 
       let result = store.clients;
       if (filter?.search) {
@@ -38,7 +38,7 @@ export const clientBaseService = {
   },
 
   listPaginated(filter?: ClientFilter): Promise<PaginatedResult<Client>> {
-    return simulateRead(async () => {
+    return readOp(async () => {
 
       let result = store.clients;
       if (filter?.search) {
@@ -63,7 +63,7 @@ export const clientBaseService = {
   },
 
   getById(id: Id): Promise<Client> {
-    return simulateRead(async () => {
+    return readOp(async () => {
 
       const found = store.clients.find((c) => c.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
@@ -72,7 +72,7 @@ export const clientBaseService = {
   },
 
   create(payload: CreateClient): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateClient(payload, { partial: false });
 
       const ts = nowIso();

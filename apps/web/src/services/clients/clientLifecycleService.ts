@@ -1,7 +1,7 @@
 import type { Client, Id, UpdateClient } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
-import { store } from "@/mocks/store";
-import { notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import {
   cancelOpenMembershipCharges,
@@ -18,7 +18,7 @@ import { validateClient } from "./clientValidation";
 /** Edicao (com efeitos na cobranca) e inativacao do aluno. */
 export const clientLifecycleService = {
   update(id: Id, payload: UpdateClient): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let current = store.clients.find((c) => c.id === id);
 
       const idx = store.clients.findIndex((c) => c.id === id);
@@ -143,7 +143,7 @@ export const clientLifecycleService = {
    * como nao cobradas e podem ser reabertas.
    */
   remove(id: Id, opts: { cancelOpenCharges?: boolean } = {}): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let before = store.clients.find((c) => c.id === id);
 
       const idx = store.clients.findIndex((c) => c.id === id);

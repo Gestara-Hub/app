@@ -8,8 +8,8 @@ import type {
   TeacherPayoutLine,
 } from "@gestarahub/contracts";
 import { DEFAULT_TEACHER_PAYMENT_DAY } from "@gestarahub/core/finance";
-import { validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { isCompetence } from "./teacherPayHelpers";
 
 // ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ import type {
   UpdateFinancialEntry,
 } from "@gestarahub/contracts";
 import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
-import { validationError } from "@/mocks/helpers";
+import { validationError } from "@/services/world/ops";
 import { isEntryType, isPaymentMethod, isValidDate } from "./financeHelpers";
 import { categoryOf } from "./financeStore";
 

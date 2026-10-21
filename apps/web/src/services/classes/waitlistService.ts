@@ -10,11 +10,11 @@ import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   validationError,
-} from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { clone, studentName, activeEnrollments } from "./classShared";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
 import { toEnrollmentView } from "./classViews";
@@ -35,7 +35,7 @@ async function renumberWaitlist(classGroupId: Id): Promise<void> {
 export const waitlistService = {
   // --- Lista de espera ----------------------------------------------------
   listWaitlist(classGroupId: Id): Promise<WaitlistEntryView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const rows = store.waitlist.filter(
         (w) => w.classGroupId === classGroupId && w.status === "waiting",
       );
@@ -51,7 +51,7 @@ export const waitlistService = {
     classGroupId: Id;
     studentId: Id;
   }): Promise<WaitlistEntryView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const g = store.classGroups.find((x) => x.id === input.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
       const already = store.waitlist.find(
@@ -87,7 +87,7 @@ export const waitlistService = {
   // Promove o aluno da espera para matricula (decisao manual; permite exceder a
   // capacidade, pois e uma acao consciente). Curso exige o pagamento escolhido.
   promoteFromWaitlist(id: Id, course?: EnrollmentCourseChoice): Promise<EnrollmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
       // Guarda contra clique duplo: so promove quem ainda esta esperando.
@@ -122,7 +122,7 @@ export const waitlistService = {
   },
 
   removeFromWaitlist(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
 

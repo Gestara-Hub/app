@@ -1,7 +1,7 @@
 import type { ClassSessionDetail, DateISO, Id } from "@gestarahub/contracts";
 import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
-import { notFoundError, simulateRead } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { notFoundError, readOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { actorTeacherId, teacherSeesSession } from "../teacherScope";
 import { clone, makeSessionId, resolveSession, datesBetween } from "./classShared";
 import {
@@ -18,7 +18,7 @@ export const classSessionsService = {
     dateFrom: DateISO;
     dateTo: DateISO;
   }): Promise<ClassSessionListItem[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const groups = store.classGroups.filter(
         (g) =>
           g.status === "active" &&
@@ -53,7 +53,7 @@ export const classSessionsService = {
   },
 
   getSession(id: Id): Promise<ClassSessionDetail> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const { g } = resolveSession(id);
       if (!teacherSeesSession(g, id)) throw notFoundError("Aula não encontrada.");
       return clone(buildSessionDetail(id));

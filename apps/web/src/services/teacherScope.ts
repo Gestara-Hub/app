@@ -1,8 +1,8 @@
 import type { ClassGroup, Id } from "@gestarahub/contracts";
 import { can } from "@/lib/permissions";
-import { getCurrentActor } from "@/mocks/currentActor";
-import { apiError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { getCurrentActor } from "@/services/world/actor";
+import { apiError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 
 /**
  * Escopo do professor (decisao de 18/10/2026): ve e age (chamada, registros,

@@ -10,8 +10,8 @@ import type {
   StudentProgressionOverview,
 } from "@gestarahub/contracts";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
-import { store } from "@/mocks/store";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { assertCanManageProgression } from "../teacherScope";
 import { progressionTermSuggestions } from "./clientProgression";
@@ -20,7 +20,7 @@ import { NOT_FOUND, clone, todayISO } from "./clientStore";
 /** Graduacao: visao por modalidade, sugestoes, progresso e historico de promocoes. */
 export const clientProgressionService = {
   getProgressionOverview(studentId: Id): Promise<StudentProgressionOverview> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const client = store.clients.find((c) => c.id === studentId);
       if (!client) throw notFoundError(NOT_FOUND);
 
@@ -110,7 +110,7 @@ export const clientProgressionService = {
 
   /** Sugestoes de pontos fortes e focos para a modalidade (aprendidas do uso). */
   getProgressionTermSuggestions(modalityId: Id): Promise<ProgressionTermSuggestions> {
-    return simulateRead(() => ({
+    return readOp(() => ({
       strengths: progressionTermSuggestions("strengths", modalityId),
       goals: progressionTermSuggestions("goals", modalityId),
     }));
@@ -120,7 +120,7 @@ export const clientProgressionService = {
     studentId: Id,
     progression: Omit<StudentModalityProgression, "updatedAt">,
   ): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(studentId, { modalityId: progression.modalityId });
 
       const idx = store.clients.findIndex((c) => c.id === studentId);
@@ -165,7 +165,7 @@ export const clientProgressionService = {
     notes?: string;
     examiner?: string;
   }): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
       if (payload.date > todayISO()) {
         throw validationError([{ field: "date", message: "A data não pode ser futura." }]);

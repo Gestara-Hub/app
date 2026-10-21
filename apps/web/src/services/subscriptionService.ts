@@ -7,8 +7,8 @@ import type {
 } from "@gestarahub/contracts";
 import { hasFeature, isSubscriptionTier, tierOf } from "@/lib/subscription";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
-import { apiError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import {
@@ -55,7 +55,7 @@ export function featureNotInPlanError(feature: PaidFeature): ApiError {
 /**
  * Guard dos services pagos: recusa com FEATURE_NOT_IN_PLAN quando o tier do
  * tenant ativo nao tem o recurso (defesa no "servidor", como no backend real).
- * Chamar no inicio do `simulateWrite` (e das leituras pagas, se preciso).
+ * Chamar no inicio do `writeOp` (e das leituras pagas, se preciso).
  */
 export function assertFeature(feature: PaidFeature): void {
   if (!hasFeature(store.organization, feature)) throw featureNotInPlanError(feature);
@@ -68,11 +68,11 @@ export function tenantHasFeature(feature: PaidFeature): boolean {
 
 export const subscriptionService = {
   get(): Promise<Subscription> {
-    return simulateRead(() => currentSubscription());
+    return readOp(() => currentSubscription());
   },
 
   setTier(tier: SubscriptionTier): Promise<Subscription> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (!isSubscriptionTier(tier)) {
         throw validationError([{ field: "tier", message: "Plano inválido." }]);
       }
@@ -131,7 +131,7 @@ export const subscriptionService = {
   createCheckoutSession(
     input: Omit<CreateSubscriptionInput, "organizationId">,
   ): Promise<SubscriptionCheckoutResult> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const orgId = store.organization.id;
       const res = await createAsaasSubscriptionCheckoutAction({
         ...input,
@@ -151,7 +151,7 @@ export const subscriptionService = {
   },
 
   checkPaymentStatus(paymentId: string): Promise<{ status: string; isPaid: boolean }> {
-    return simulateRead(() => checkAsaasSubscriptionPaymentAction(paymentId));
+    return readOp(() => checkAsaasSubscriptionPaymentAction(paymentId));
   },
 
   simulatePayment(
@@ -160,7 +160,7 @@ export const subscriptionService = {
     interval: SubscriptionInterval,
     subscriptionId?: string,
   ): Promise<{ success: boolean; error?: string }> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const res = await simulateAsaasSubscriptionPaymentAction(
         paymentId,
         store.organization.id,
@@ -187,7 +187,7 @@ export const subscriptionService = {
       asaasCustomerId?: string;
     },
   ): Promise<Subscription> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const before = tierOf(store.organization);
       const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
       const newSub: Subscription = {

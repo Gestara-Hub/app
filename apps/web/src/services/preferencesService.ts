@@ -1,6 +1,6 @@
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
-import { simulateRead, simulateWrite } from "@/mocks/helpers";
+import { readOp, writeOp } from "@/services/world/ops";
 import { realAccountInBrowser } from "./world/delegate";
 import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "./preferencesBackend";
 
@@ -8,7 +8,7 @@ export const PREFERENCES_STORAGE_KEY = "gestarahub_user_preferences";
 
 export const preferencesService = {
   getPreferences(userId?: string): Promise<UserPreferences> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (userId && realAccountInBrowser()) {
         const remote = await getUserPreferencesFromDb(userId);
         if (remote) return remote;
@@ -31,7 +31,7 @@ export const preferencesService = {
     userId: string | undefined,
     partial: Partial<UserPreferences>,
   ): Promise<UserPreferences> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (typeof window !== "undefined") {
         try {
           const raw = window.localStorage.getItem(PREFERENCES_STORAGE_KEY);
@@ -52,7 +52,7 @@ export const preferencesService = {
   },
 
   resetPreferences(userId?: string): Promise<UserPreferences> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (typeof window !== "undefined") {
         try {
           window.localStorage.setItem(

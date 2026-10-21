@@ -1,7 +1,7 @@
 import type { ApiErrorField, Client, CreateClient, DateISO } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { store } from "@/mocks/store";
-import { validationError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { validationError } from "@/services/world/ops";
 import { clientNoun } from "../nouns";
 import { todayISO } from "./clientStore";
 

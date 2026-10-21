@@ -15,7 +15,7 @@ import {
   payoutTotalCents,
   teacherPayoutDueDate,
 } from "@gestarahub/core/finance";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { buildFacts, factsFor, type CompetenceFacts, type DerivedSession } from "./teacherPayFacts";
 import {
   adjustmentLines,

@@ -17,12 +17,12 @@ import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   textIncludes,
   validationError,
-} from "@/mocks/helpers";
-import { getCurrentActor } from "@/mocks/currentActor";
+} from "@/services/world/ops";
+import { getCurrentActor } from "@/services/world/actor";
 import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import {
@@ -168,7 +168,7 @@ function ensureNotSelfPrivilegeChange(current: User, next: Partial<CreateUser>):
 
 export const usersService = {
   list(filter?: UserFilter): Promise<UserView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (realAccountInBrowser()) {
         const dbUsers = await listUsersFromDb(store.organization.id);
         const dbIds = new Set(dbUsers.map((u) => u.id));
@@ -223,7 +223,7 @@ export const usersService = {
   // Usuarios ATIVOS de TODOS os tenants (cross-tenant), para o login e o
   // "trocar usuario" do demo — escolher um usuario de outra org troca o tenant.
   listForSwitch(): Promise<UserSwitchOption[]> {
-    return simulateRead(() => {
+    return readOp(() => {
       const options: UserSwitchOption[] = [];
       for (const tenant of allTenants()) {
         // Deixar apenas o ambiente de academia / Ana Ribeiro no demo por enquanto
@@ -250,7 +250,7 @@ export const usersService = {
   },
 
   getById(id: Id): Promise<UserView> {
-    return simulateRead(() => {
+    return readOp(() => {
       const found = store.users.find((u) => u.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(toView(found));
@@ -258,7 +258,7 @@ export const usersService = {
   },
 
   create(payload: CreateUser, sendInvite = true): Promise<UserView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateUser(payload, { partial: false });
 
       if (realAccountInBrowser()) {
@@ -318,7 +318,7 @@ export const usersService = {
   },
 
   update(id: Id, payload: UpdateUser): Promise<UserView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateUser(payload, { partial: true });
 
       if (realAccountInBrowser()) {
@@ -386,7 +386,7 @@ export const usersService = {
 
   // remove = inativacao logica; usuario inativo nao pode logar nem e sugerido.
   remove(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (realAccountInBrowser()) {
         const res = await inactivateUserInDb(store.organization.id, id);
         if (!res.success) {
@@ -419,7 +419,7 @@ export const usersService = {
   },
 
   resendInvite(id: Id): Promise<{ success: boolean; error?: string }> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (realAccountInBrowser()) {
         return resendInvitationAction(store.organization.id, id);
       }

@@ -6,9 +6,9 @@ import type {
   AuditTarget,
   UserProfile,
 } from "@gestarahub/contracts";
-import { getCurrentActor } from "@/mocks/currentActor";
-import { newId, nowIso, simulateRead, textIncludes } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { getCurrentActor } from "@/services/world/actor";
+import { newId, nowIso, readOp, textIncludes } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "./world/delegate";
 import { listAuditLogsFromDb, recordAuditLogInDb } from "./auditLogBackend";
 
@@ -51,7 +51,7 @@ function canView(entry: AuditLogEntry, viewer: UserProfile): boolean {
 
 export const auditLogService = {
   /**
-   * Registra uma entrada append-only. Chamado DENTRO do `simulateWrite` do
+   * Registra uma entrada append-only. Chamado DENTRO do `writeOp` do
    * service que fez a mutacao — assim a entrada e persistida junto. Sincrono e
    * a prova de falha: auditoria jamais derruba a operacao de negocio.
    */
@@ -84,7 +84,7 @@ export const auditLogService = {
 
   /** Lista o log visivel para o `viewer`, mais recente primeiro. */
   list(filter: AuditLogFilter | undefined, viewer: UserProfile): Promise<AuditLogEntry[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (realAccountInBrowser()) {
         const dbLogs = await listAuditLogsFromDb(store.organization.id, filter);
         const filtered = dbLogs.filter((e) => canView(e, viewer));

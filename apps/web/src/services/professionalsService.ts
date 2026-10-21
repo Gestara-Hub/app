@@ -6,15 +6,15 @@ import type {
   ProfessionalView,
   UpdateProfessional,
 } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   textIncludes,
-} from "@/mocks/helpers";
+} from "@/services/world/ops";
 import { auditLogService } from "./auditLogService";
 import { realAccountInBrowser } from "./world/delegate";
 import { unwrap } from "./server/action";
@@ -90,7 +90,7 @@ function recordUpdate(updated: Professional, previousStatus: Professional["statu
 
 export const professionalsService = {
   list(filter?: ProfessionalFilter): Promise<ProfessionalView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) {
         const views = await unwrap(listProfessionalsAction(filter));
         if (!filter?.search && !filter?.status && !filter?.serviceId) cacheProfessionals(views);
@@ -120,7 +120,7 @@ export const professionalsService = {
   },
 
   getById(id: Id): Promise<ProfessionalView> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) return unwrap(getProfessionalAction(id));
       const found = store.professionals.find((p) => p.id === id);
       if (!found) throw notFoundError(PROFESSIONAL_NOT_FOUND);
@@ -129,7 +129,7 @@ export const professionalsService = {
   },
 
   create(payload: CreateProfessional): Promise<ProfessionalView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let view: ProfessionalView;
       if (isRealAccount()) {
         view = await unwrap(createProfessionalAction(payload));
@@ -169,7 +169,7 @@ export const professionalsService = {
   },
 
   update(id: Id, payload: UpdateProfessional): Promise<ProfessionalView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const { professional, previousStatus } = await unwrap(updateProfessionalAction(id, payload));
         cacheProfessionals([professional]);
@@ -197,7 +197,7 @@ export const professionalsService = {
 
   // remove = inativacao logica; inativo nao e sugerido em novos agendamentos.
   remove(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let name: string;
       if (isRealAccount()) {
         const removed = await unwrap(removeProfessionalAction(id));

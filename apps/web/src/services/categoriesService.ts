@@ -5,7 +5,7 @@ import type {
   Id,
   UpdateCategory,
 } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { normalizeText } from "@/lib/text";
 import { plural } from "@gestarahub/core/format";
 import { format } from "date-fns";
@@ -13,10 +13,10 @@ import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   textIncludes,
-} from "@/mocks/helpers";
+} from "@/services/world/ops";
 import { auditLogService } from "./auditLogService";
 import { categoryNoun } from "./nouns";
 import { realAccountInBrowser } from "./world/delegate";
@@ -84,7 +84,7 @@ function recordUpdate(updated: Category, reset: number): void {
 
 export const categoriesService = {
   list(filter?: CategoryFilter): Promise<Category[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) {
         const categories = await unwrap(listCategoriesAction(filter));
         if (!filter?.search && !filter?.status) cacheCategories(categories);
@@ -104,7 +104,7 @@ export const categoriesService = {
   },
 
   getById(id: Id): Promise<Category> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) return unwrap(getCategoryAction(id));
       const found = store.categories.find((c) => c.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
@@ -113,7 +113,7 @@ export const categoriesService = {
   },
 
   create(payload: CreateCategory): Promise<Category> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const created = await unwrap(createCategoryAction(payload));
         cacheCategories([created]);
@@ -156,7 +156,7 @@ export const categoriesService = {
   },
 
   update(id: Id, payload: UpdateCategory): Promise<Category> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const { category, reset } = await unwrap(updateCategoryAction(id, payload));
         cacheCategories([category]);
@@ -203,7 +203,7 @@ export const categoriesService = {
 
   // remove = inativacao logica; categoria inativa nao e sugerida em novos servicos.
   remove(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let name: string;
       if (isRealAccount()) {
         const removed = await unwrap(removeCategoryAction(id));

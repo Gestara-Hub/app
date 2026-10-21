@@ -7,8 +7,8 @@ import type {
 } from "@gestarahub/contracts";
 import { computeTeacherPayout, isRuleEffective, payoutTotalCents } from "@gestarahub/core/finance";
 import { formatCents, pluralWord } from "@gestarahub/core/format";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { buildFacts, factsFor, percentChargeIds, sessionsIn } from "./teacherPayFacts";
 import {
@@ -36,7 +36,7 @@ export const teacherPayClosingService = {
    * com o mes ja fechado/pago (congelado, mesmo com o professor inativo).
    */
   listPayouts(competence: string): Promise<TeacherPayoutView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const facts = buildFacts(competence);
       const ids = new Set<Id>([
         ...store.teacherPayRules.map((r) => r.professionalId),
@@ -57,7 +57,7 @@ export const teacherPayClosingService = {
 
   /** Detalhe do mes com as aulas contadas (inclui substituicoes). */
   getPayoutPreview(professionalId: Id, competence: string): Promise<TeacherPayoutDetail> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const facts = buildFacts(competence);
       const view = buildView(professionalId, competence, facts);
       if (!view) {
@@ -90,7 +90,7 @@ export const teacherPayClosingService = {
     competence: string,
     adjustments: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
@@ -168,7 +168,7 @@ export const teacherPayClosingService = {
     competence: string,
     adjustments?: TeacherPayoutAdjustment[],
   ): Promise<TeacherPayoutView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       if (competence > currentCompetence()) {
         throw conflict("Não é possível fechar um mês que ainda não começou.");
@@ -240,7 +240,7 @@ export const teacherPayClosingService = {
 
   /** Reabre um mes fechado (volta a previa ao vivo; os ajustes ficam como rascunho). */
   reopenPayout(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const payout = findPayout(id);
       if (payout.status === "paid") {
         throw conflict("Desfaça o pagamento antes de reabrir o mês.");

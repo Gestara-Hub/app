@@ -4,9 +4,9 @@ import type {
   FinancialSystemCategoryKey,
   Id,
 } from "@gestarahub/contracts";
-import { notFoundError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
-import { systemFinancialCategoryId } from "@/mocks/seed";
+import { notFoundError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
+import { systemFinancialCategoryId } from "@/services/defaults";
 
 // --- Categorias -------------------------------------------------------------
 

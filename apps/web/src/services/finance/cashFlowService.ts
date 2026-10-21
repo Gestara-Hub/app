@@ -15,8 +15,8 @@ import {
   summarizeMonthlySeries,
 } from "@gestarahub/core/finance";
 import { addDays, format, parseISO } from "date-fns";
-import { simulateRead, textIncludes } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { readOp, textIncludes } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { cashFlowItems, chargeCompetence, openPreviews, professionalName } from "./cashFlowSources";
 import { clone, currentCompetence, monthName, todayISO } from "./financeHelpers";
 import { ensureMaterialized } from "./financeRecurrenceService";
@@ -26,7 +26,7 @@ import { chargeAggregateRow, payoutRow, toEntryView } from "./financeViews";
 export const cashFlowService = {
   /** Cartoes do Resumo da competencia (fontes da secao 4.1; atrasado conforme secao 14). */
   getSummary(competence: string): Promise<FinanceSummary> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMaterialized(competence);
       const items = cashFlowItems();
       const summary = summarizeCashFlow(items, competence, todayISO());
@@ -56,7 +56,7 @@ export const cashFlowService = {
 
   /** Entradas x saidas pagas nos ultimos `months` meses, terminando em `endCompetence`. */
   getMonthlySeries(months = 6, endCompetence: string = currentCompetence()): Promise<FinanceMonthPoint[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMaterialized();
       return summarizeMonthlySeries(cashFlowItems(), lastCompetences(endCompetence, months));
     });
@@ -64,7 +64,7 @@ export const cashFlowService = {
 
   /** Totais pagos por categoria na competencia, com percentual. */
   getByCategory(competence: string): Promise<FinanceCategoryTotal[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMaterialized();
       return summarizeByCategory(cashFlowItems(), store.financialCategories, competence);
     });
@@ -75,7 +75,7 @@ export const cashFlowService = {
    * ate `days` dias a partir de hoje. Inclui os ja vencidos em aberto (overdue).
    */
   getUpcoming(days = 7): Promise<FinanceUpcomingItem[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMaterialized();
       const today = todayISO();
       const limit = format(addDays(parseISO(today), days), "yyyy-MM-dd");
@@ -122,7 +122,7 @@ export const cashFlowService = {
    * kind, D7), pagamentos de professores fechados/pagos e lancamentos manuais.
    */
   listEntries(filter?: FinancialEntryFilter): Promise<FinanceEntryView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMaterialized(filter?.competence);
       const competence = filter?.competence ?? currentCompetence();
       const today = todayISO();

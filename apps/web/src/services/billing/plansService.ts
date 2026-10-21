@@ -1,7 +1,7 @@
 import type { CreatePlan, Id, Plan, PlanFilter, UpdatePlan } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { store } from "@/mocks/store";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, notFoundError, nowIso, readOp, writeOp, textIncludes } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../auditLogService";
 import { unwrap } from "../server/action";
@@ -61,7 +61,7 @@ function recordUpdated(id: Id, before: Plan, after: Plan): void {
 export const plansService = {
   // --- Planos -------------------------------------------------------------
   listPlans(filter?: PlanFilter): Promise<Plan[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) {
         const plans = await unwrap(listPlansAction(filter));
         if (!filter?.search && !filter?.period && !filter?.status) cachePlans(plans);
@@ -79,7 +79,7 @@ export const plansService = {
   },
 
   createPlan(payload: CreatePlan): Promise<Plan> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const created = await unwrap(createPlanAction(payload));
         cachePlans([created]);
@@ -103,7 +103,7 @@ export const plansService = {
   },
 
   updatePlan(id: Id, payload: UpdatePlan): Promise<Plan> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const { before, after } = await unwrap(updatePlanAction(id, payload));
         cachePlans([after]);

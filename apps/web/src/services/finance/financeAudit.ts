@@ -1,7 +1,7 @@
 import type { AuditChange, FileAttachment, FinancialEntry } from "@gestarahub/contracts";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { financialEntryTypeLabel } from "@/lib/labels";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { dateLabel } from "./financeHelpers";
 import { categoryName } from "./financeStore";

@@ -2,7 +2,7 @@ import type { FinancialEntryType, PaymentMethod } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PAYMENT_METHODS } from "@/lib/labels";
-import { apiError } from "@/mocks/helpers";
+import { apiError } from "@/services/world/ops";
 
 export function clone<T>(value: T): T {
   return structuredClone(value);

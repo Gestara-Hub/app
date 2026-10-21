@@ -1,45 +1,19 @@
 import type {
-  Appointment,
-  Assessment,
-  Attendance,
-  AuditLogEntry,
   Category,
-  CertificateTemplate,
-  Charge,
-  ClassGroup,
-  ClassReservation,
   ClassesBusinessSegment,
-  ClassSessionOverride,
-  Client,
-  Enrollment,
-  FinancialCategory,
-  FinancialEntry,
-  FinancialRecurrence,
   Id,
-  LessonPackage,
-  MessageLog,
   MessageTemplate,
-  OnlinePayment,
   OperationalModel,
   Organization,
   OrganizationSettings,
   SubscriptionTier,
-  Plan,
-  Professional,
-  RecurrenceSeries,
-  RecurringAuthorization,
-  Role,
-  Service,
-  StudentPackage,
-  TeacherPayout,
-  TeacherPayRule,
-  TimeBlock,
   Unit,
   User,
-  WaitlistEntry,
   WhatsAppConnection,
 } from "@gestarahub/contracts";
 import { STORE_CHANGED_EVENT } from "@/lib/store-events";
+import { inServerWorld, setLocalWorldResolver, store } from "@/services/world/store";
+import type { TenantWorld } from "@/services/world/types";
 import { mockConfig } from "./config";
 import {
   createInitialWorld,
@@ -64,58 +38,8 @@ import {
  * localStorage. Hidrata na 1a carga do modulo (client) e re-grava a cada escrita
  * (via simulateWrite). No servidor (SSR) e no Node (testes) e no-op.
  */
-export interface MockStore {
-  organization: Organization;
-  unit: Unit;
-  clients: Client[];
-  professionals: Professional[];
-  users: User[];
-  roles: Role[];
-  categories: Category[];
-  services: Service[];
-  appointments: Appointment[];
-  timeBlocks: TimeBlock[];
-  series: RecurrenceSeries[];
-  // Log de auditoria (append-only): registrado pelos services em cada mutacao.
-  auditLog: AuditLogEntry[];
-  // Modelo 3 (turmas) — presentes em todos os tenants; vazios exceto no de
-  // classes. Sessoes sao geradas on-the-fly dos meetingSlots (nao armazenadas);
-  // so a presenca e persistida (por sessionId deterministico).
-  classGroups: ClassGroup[];
-  enrollments: Enrollment[];
-  attendances: Attendance[];
-  // Financeiro do M3 (planos + cobrancas).
-  plans: Plan[];
-  charges: Charge[];
-  // Pacotes de aulas (doc 20, fase C): catalogo e compras dos alunos.
-  lessonPackages: LessonPackage[];
-  studentPackages: StudentPackage[];
-  // M3 Fatia 3: lista de espera e reservas (drop-in).
-  waitlist: WaitlistEntry[];
-  reservations: ClassReservation[];
-  sessionOverrides?: ClassSessionOverride[];
-  // Avaliacoes e notas (doc 21 §2.1). Opcional: nasce vazio no 1o lancamento,
-  // sem migracao (ver gradesService.assessmentsStore).
-  assessments?: Assessment[];
-  // Financeiro do negocio (plano pago). Presentes em todos os tenants; as
-  // categorias padrao so sao semeadas no de classes. Ver docs/technical/05.
-  financialCategories: FinancialCategory[];
-  financialEntries: FinancialEntry[];
-  financialRecurrences: FinancialRecurrence[];
-  teacherPayRules: TeacherPayRule[];
-  teacherPayouts: TeacherPayout[];
-  onlinePayments: OnlinePayment[];
-  recurringAuthorizations: RecurringAuthorization[];
-  // Comunicacao: WhatsApp do proprio espaco (assistido gratis; oficial no Pro)
-  whatsAppConnection?: WhatsAppConnection;
-  messageTemplates: MessageTemplate[];
-  messageLogs: MessageLog[];
-  // Modelo de certificado do espaco (Plano Pro). Ausente = modelo padrao.
-  certificateTemplate?: CertificateTemplate;
-  // Deprecated backward compatibility properties
-  cobrancas?: Charge[];
-  reservas?: ClassReservation[];
-}
+/** O espaco do tenant (mesmo formato do servidor: `services/world/types`). */
+export type MockStore = TenantWorld;
 
 /** Mundo multi-tenant: um `MockStore` por organizationId + o tenant ativo. */
 export interface MockWorld {
@@ -181,7 +105,8 @@ let lastSnapshot: string | null = null;
 //      da area do espaco, para quem ainda nao tem. Migracao suave.
 // v38: lembrete de atraso de 10 dias com o valor e o fecho (COB-28), so para
 //      quem nao mudou o texto padrao. Migracao suave.
-const SEED_VERSION = 38;
+// v39: a academia (modelo de turmas) saiu do mock; a demonstracao e no banco (doc 15, fatia 4).
+const SEED_VERSION = 39;
 
 /** Texto padrao antigo do atraso de 10 dias (v38 troca so se ninguem editou). */
 const OLD_CRITICAL_REMINDER =
@@ -554,25 +479,13 @@ if (canPersist()) {
   }
 }
 
-/**
- * Espaco da requisicao no servidor (doc 15, fatia 2): `services/world/scope`
- * registra aqui um resolvedor (AsyncLocalStorage) e, dentro de uma action, o
- * `store` passa a ser o espaco carregado do banco para aquela requisicao.
- */
-let scopedStore: (() => MockStore | undefined) | null = null;
-
-export function setStoreScopeResolver(resolver: () => MockStore | undefined): void {
-  scopedStore = resolver;
-}
-
-/** Rodando dentro de uma action com o espaco carregado do banco? */
-export function inServerWorld(): boolean {
-  return scopedStore?.() !== undefined;
-}
-
 function activeStore(): MockStore {
-  return scopedStore?.() ?? world.tenants[world.activeOrganizationId];
+  return world.tenants[world.activeOrganizationId];
 }
+
+// O `store` dos servicos cai neste mundo local fora do servidor (testes de
+// regra e barbearia de demonstracao). Ver services/world/store.
+setLocalWorldResolver(activeStore);
 
 /**
  * Duas abas: antes de cada leitura e escrita, rele o que a outra aba gravou,
@@ -611,27 +524,8 @@ if (canPersist() && typeof window.addEventListener === "function") {
   });
 }
 
-/**
- * Store do tenant ATIVO. Proxy: os services usam `store.clients` etc. e sempre
- * batem no tenant corrente, sem precisar filtrar por organizationId.
- */
-export const store: MockStore = new Proxy({} as MockStore, {
-  get(_target, prop) {
-    return activeStore()[prop as keyof MockStore];
-  },
-  set(_target, prop, value) {
-    return Reflect.set(activeStore(), prop, value);
-  },
-  has(_target, prop) {
-    return prop in activeStore();
-  },
-  ownKeys() {
-    return Reflect.ownKeys(activeStore());
-  },
-  getOwnPropertyDescriptor(_target, prop) {
-    return Object.getOwnPropertyDescriptor(activeStore(), prop);
-  },
-});
+/** O proxy dos servicos (resolve o espaco do servidor ou este mundo local). */
+export { inServerWorld, store };
 
 /** organizationId do tenant ativo (para os services carimbarem escritas). */
 export function currentOrganizationId(): Id {
@@ -767,14 +661,19 @@ export function setActiveOrganization(organizationId: Id): void {
   }
 }
 
+/** Acrescenta um espaco ao mundo em memoria (testes de regra montam a academia). */
+export function addTenant(tenant: MockStore): void {
+  world.tenants[tenant.organization.id] = tenant;
+}
+
 /** Grava o estado atual do mundo (chamado pelos writes via simulateWrite). */
 export function persist(): void {
   if (canPersist()) saveToStorage(world);
 }
 
 /**
- * Reseta o localStorage completo e reinicializa os mocks deixando apenas
- * os proprietários da Barbearia (Corte Nobre) e da Academia (Academia X).
+ * Reseta o localStorage completo e reinicializa os mocks deixando apenas a
+ * barbearia de demonstracao (Corte Nobre, modelo de agenda).
  */
 export function resetStore(): void {
   const fresh = createInitialWorld();

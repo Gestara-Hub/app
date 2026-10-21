@@ -7,7 +7,7 @@ import type {
   TeacherPayout,
 } from "@gestarahub/contracts";
 import { entryDisplayStatus, lastDayOfCompetence } from "@gestarahub/core/finance";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { wasEverPaid } from "./financeAudit";
 import { monthName } from "./financeHelpers";
 import { categoryName, systemCategoryId } from "./financeStore";

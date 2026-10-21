@@ -6,8 +6,8 @@ import type {
   DateISO,
   Id,
 } from "@gestarahub/contracts";
-import { apiError, newId, nowIso, simulateRead, simulateWrite } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, newId, nowIso, readOp, writeOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { assertTeacherSession } from "../teacherScope";
 import { syncAttendanceUsage, auditPackageUsage } from "./attendancePackageUsage";
 import { todayISO, parseSessionId, resolveSession } from "./classShared";
@@ -18,7 +18,7 @@ export const attendanceService = {
     studentId: Id;
     status: AttendanceStatus;
   }): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const { g, date } = resolveSession(input.sessionId);
       assertTeacherSession(g, input.sessionId);
       if (date > todayISO()) {
@@ -54,7 +54,7 @@ export const attendanceService = {
 
   /** Desmarca a presenca (volta a "a marcar") e devolve a aula do pacote, se gastou. */
   clearAttendance(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const { g, date } = resolveSession(input.sessionId);
       assertTeacherSession(g, input.sessionId);
 
@@ -68,7 +68,7 @@ export const attendanceService = {
   },
 
   getAttendanceSummary(date: DateISO): Promise<AttendanceSummary> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       let present = 0;
       let absent = 0;
       let justified = 0;
@@ -95,7 +95,7 @@ export const attendanceService = {
    * justificada encerram a sequencia. Mais faltas primeiro.
    */
   listAbsenceStreaks(minStreak = 3): Promise<AbsenceStreakView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const groupsByStudent = new Map<Id, Set<Id>>();
       for (const e of store.enrollments) {
         if (e.status !== "active") continue;

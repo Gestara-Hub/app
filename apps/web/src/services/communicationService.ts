@@ -23,12 +23,13 @@ import {
   apiError,
   newId,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
+  persistLocal,
   validationError,
-} from "@/mocks/helpers";
-import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/mocks/seed";
-import { persist, store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
+import { store } from "@/services/world/store";
 import { auditLogService } from "./auditLogService";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
 import { delegateAll } from "./world/delegate";
@@ -166,14 +167,14 @@ function runBirthdayGreetings(): number {
     sent += 1;
   }
   if (sent > 0) {
-    persist();
+    persistLocal();
   }
   return sent;
 }
 
 export const communicationServiceImpl = {
   getConnection(): Promise<WhatsAppConnectionView> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       return connectionView();
     });
   },
@@ -183,7 +184,7 @@ export const communicationServiceImpl = {
    * da Meta e simulado e ja volta conectado com o telefone da unidade.
    */
   connectOfficial(): Promise<WhatsAppConnectionView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       const phone = whatsappNumber(store.unit.phone);
@@ -207,7 +208,7 @@ export const communicationServiceImpl = {
   },
 
   disconnectOfficial(): Promise<WhatsAppConnectionView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       connection.officialStatus = "not_connected";
@@ -225,7 +226,7 @@ export const communicationServiceImpl = {
   },
 
   updateConnectionSettings(payload: UpdateConnectionSettingsPayload): Promise<WhatsAppConnectionView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("messaging");
       const connection = ensureConnection();
       if (payload.allowedSendHours) {
@@ -241,7 +242,7 @@ export const communicationServiceImpl = {
   },
 
   listTemplates(): Promise<MessageTemplate[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       return [...ensureTemplates()].sort((a, b) => a.daysOffset - b.daysOffset);
     });
   },
@@ -251,7 +252,7 @@ export const communicationServiceImpl = {
    * textos). Envio automatico, horario e prazo sao do Pro.
    */
   updateTemplate(payload: UpdateTemplatePayload): Promise<MessageTemplate> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const template = ensureTemplates().find((t) => t.id === payload.id);
       if (!template) {
         throw apiError("NOT_FOUND", "Modelo de mensagem não encontrado.", { httpStatus: 404 });
@@ -292,7 +293,7 @@ export const communicationServiceImpl = {
   },
 
   listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       runBirthdayGreetings();
       let logs = [...ensureLogs()];
       // Ficha do aluno: so as mensagens dele.
@@ -313,7 +314,7 @@ export const communicationServiceImpl = {
   },
 
   listLogsPaginated(filter?: MessageLogFilter): Promise<PaginatedResult<MessageLog>> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const all = await communicationService.listLogs(filter);
       return paginateArray(all, filter?.page, filter?.pageSize);
     });
@@ -324,7 +325,7 @@ export const communicationServiceImpl = {
    * "Aberto no WhatsApp" (o envio em si nao e confirmado). Nao gasta franquia.
    */
   registerAssistedMessage(payload: SendMessagePayload): Promise<MessageLog> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateMessage(payload);
       const log = newLog(payload, "opened");
       ensureLogs().unshift(log);
@@ -341,7 +342,7 @@ export const communicationServiceImpl = {
 
   /** Envio automatico pela API oficial (Pro e conectado). */
   sendMessage(payload: SendMessagePayload): Promise<MessageLog> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("messaging");
       if (connectionView().mode !== "official") {
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para enviar automaticamente.", {
@@ -364,7 +365,7 @@ export const communicationServiceImpl = {
   },
 
   retryFailedMessage(id: Id): Promise<MessageLog> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("messaging");
       if (connectionView().mode !== "official") {
         throw apiError("SERVICE_UNAVAILABLE", "Conecte o WhatsApp oficial do espaço para reenviar.", {
@@ -387,7 +388,7 @@ export const communicationServiceImpl = {
   },
 
   getMetrics(): Promise<CommunicationMetrics> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       runBirthdayGreetings();
       const view = connectionView();
       const month = format(new Date(), "yyyy-MM");

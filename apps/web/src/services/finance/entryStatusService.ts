@@ -7,7 +7,7 @@ import type {
   PaymentMethod,
 } from "@gestarahub/contracts";
 import { paymentMethodLabel } from "@/lib/labels";
-import { nowIso, simulateWrite, validationError } from "@/mocks/helpers";
+import { nowIso, writeOp, validationError } from "@/services/world/ops";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
 import { attachmentsNote, entryFacts, entryLabel, PAID_STATUS_LABEL, recordEntry } from "./financeAudit";
 import { clone, conflict, isPaymentMethod } from "./financeHelpers";
@@ -25,7 +25,7 @@ export const entryStatusService = {
     receipts: FileAttachment[] = [],
     paidOn?: DateISO,
   ): Promise<FinancialEntry> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const entry = findEntry(id);
       if (!isPaymentMethod(method)) {
         throw validationError([{ field: "method", message: "Selecione a forma de pagamento." }]);
@@ -55,7 +55,7 @@ export const entryStatusService = {
 
   /** Desfaz o pagamento (volta a pendente; atraso derivado na leitura). */
   markEntryPending(id: Id): Promise<FinancialEntry> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const entry = findEntry(id);
       if (entry.status !== "paid") throw conflict("Só é possível desfazer um lançamento pago.");
       const method = entry.method;
@@ -83,7 +83,7 @@ export const entryStatusService = {
 
   /** Cancela (mantem no historico, sai dos totais). Pago precisa desfazer antes. */
   cancelEntry(id: Id): Promise<FinancialEntry> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const entry = findEntry(id);
       if (entry.status === "canceled") throw conflict("Este lançamento já está cancelado.");
       if (entry.status === "paid") {

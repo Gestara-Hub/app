@@ -1,7 +1,7 @@
 import type { Id, SaveTeacherPayRule, TeacherPayRule } from "@gestarahub/contracts";
 import { DEFAULT_TEACHER_PAYMENT_DAY, describeTeacherPayRule } from "@gestarahub/core/finance";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { newId, notFoundError, nowIso, readOp, writeOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { clone, ruleOf } from "./teacherPayHelpers";
 import { normalizeComponents, validateRulePayload } from "./teacherPayValidation";
@@ -10,7 +10,7 @@ import type { TeacherPayTeacher } from "./teacherPayViews";
 export const teacherPayRulesService = {
   /** Professores (ativos ou com regra) com as turmas em que sao titulares. */
   listTeachers(): Promise<TeacherPayTeacher[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const out: TeacherPayTeacher[] = store.professionals
         .filter((p) => p.status === "active" || ruleOf(p.id))
         .map((p) => {
@@ -32,14 +32,14 @@ export const teacherPayRulesService = {
   },
 
   listRules(): Promise<TeacherPayRule[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       return clone(store.teacherPayRules);
     });
   },
 
   /** Cria ou substitui a regra do professor (uma por professor). */
   saveRule(professionalId: Id, payload: SaveTeacherPayRule): Promise<TeacherPayRule> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const professional = store.professionals.find((p) => p.id === professionalId);
       if (!professional) throw notFoundError("Professor não encontrado.");
       const components = normalizeComponents(professionalId, payload.components);

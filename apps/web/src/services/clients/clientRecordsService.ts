@@ -6,8 +6,8 @@ import type {
   Id,
 } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
-import { store } from "@/mocks/store";
-import { newId, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { assertCanManageProgression } from "../teacherScope";
 import {
@@ -24,7 +24,7 @@ import { assertRecordDate } from "./clientValidation";
 export const clientRecordsService = {
   /** Registro de aula de um aluno: anotacao, avanco de metas e lembrete. */
   addClassRecord(payload: CreateStudentClassRecord): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertRecordDate(payload.date);
       assertCanManageProgression(payload.studentId, {
         modalityId: payload.modalityId,
@@ -67,7 +67,7 @@ export const clientRecordsService = {
    * Devolve quantos registros criou.
    */
   addClassRecords(payload: CreateClassRecordsBatch): Promise<number> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertRecordDate(payload.date);
       for (const entry of payload.entries) {
         assertCanManageProgression(entry.studentId, {
@@ -125,7 +125,7 @@ export const clientRecordsService = {
 
   /** Pontos fortes do aluno na modalidade. */
   updateStrengths(studentId: Id, modalityId: Id, strengths: string[]): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(studentId, { modalityId });
       const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
@@ -136,7 +136,7 @@ export const clientRecordsService = {
   },
 
   addGoal(studentId: Id, modalityId: Id, input: { title: string; target?: number }): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(studentId, { modalityId });
       const title = input.title.trim();
       const fields: ApiErrorField[] = [];
@@ -165,7 +165,7 @@ export const clientRecordsService = {
 
   /** Marca a meta como feita ou reabre. */
   setGoalCompleted(studentId: Id, modalityId: Id, goalId: Id, completed: boolean): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(studentId, { modalityId });
       const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
@@ -183,7 +183,7 @@ export const clientRecordsService = {
   },
 
   removeGoal(studentId: Id, modalityId: Id, goalId: Id): Promise<Client> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertCanManageProgression(studentId, { modalityId });
       const idx = await ensureClientInStore(studentId);
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());

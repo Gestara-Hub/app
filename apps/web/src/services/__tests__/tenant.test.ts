@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetStore, setActiveOrganization, store } from "@/mocks/store";
+import { setActiveOrganization, store } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
 import { categoriesService } from "@/services/categoriesService";
 import { clientsService } from "@/services/clientsService";
@@ -30,7 +30,7 @@ describe("escopo do tenant carimbado pelo servidor", () => {
 });
 
 describe("termos por modelo de negócio", () => {
-  beforeEach(() => resetStore());
+  beforeEach(() => resetAcademy());
 
   it("academia fala em modalidade; barbearia em categoria", async () => {
     setActiveOrganization(ACADEMY_ORG);

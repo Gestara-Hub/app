@@ -15,8 +15,8 @@ import {
   usablePackagesFor,
   usageReasonFor,
 } from "@gestarahub/core/packages";
-import { store } from "@/mocks/store";
-import { nowIso } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { nowIso } from "@/services/world/ops";
 
 import { acceptsPackages } from "./packageRules";
 

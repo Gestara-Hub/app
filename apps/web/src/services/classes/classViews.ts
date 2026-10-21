@@ -16,7 +16,7 @@ import type {
 import { classBillingMode, hasEnded, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { isPastSlot } from "@gestarahub/core/date";
 import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { acceptsPackages, packageCandidatesFor, packageRosterInfo } from "../packagesService";
 import {
   todayISO,

@@ -2,8 +2,8 @@ import type { Charge, ClassGroup, Client, Enrollment, EnrollmentCourseChoice, Id
 import { classBillingMode, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { withKind } from "@/lib/text";
-import { newId, nowIso, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { newId, nowIso, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { hasUsablePackage } from "../packagesService";
 import { todayISO, studentName } from "./classShared";

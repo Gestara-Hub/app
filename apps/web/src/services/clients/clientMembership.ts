@@ -1,7 +1,7 @@
 import type { Charge, Client, CreateClientInitialCharge, Id } from "@gestarahub/contracts";
 import { chargesDueIn, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
-import { store } from "@/mocks/store";
-import { newId, nowIso } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, nowIso } from "@/services/world/ops";
 import {
   isPlanlessScholar,
   planlessScholarCharges,

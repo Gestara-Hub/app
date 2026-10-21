@@ -1,6 +1,6 @@
 import type { DateISO, Id, Plan } from "@gestarahub/contracts";
 import { format } from "date-fns";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 
 /**
  * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem

@@ -27,13 +27,13 @@ import { classBillingMode, isCourseEnded } from "@gestarahub/core/billing";
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { ownLessons, packageState } from "@gestarahub/core/packages";
 import { addDays, format, parseISO } from "date-fns";
-import { apiError, notFoundError, nowIso, simulateRead } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, notFoundError, nowIso, readOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { ensureMembershipCharges } from "./billingService";
 import { assertFeature } from "./subscriptionService";
 import { sessionDetailOf, sessionsOfClass } from "./turmasService";
 import { can } from "@/lib/permissions";
-import { getCurrentActor } from "@/mocks/currentActor";
+import { getCurrentActor } from "@/services/world/actor";
 import { delegateAll } from "./world/delegate";
 
 const CATALOG: ReportMetadata[] = [
@@ -249,7 +249,7 @@ function buildPackageReport(competence: string, today: string): Omit<PackageRepo
 
 export const reportsServiceImpl = {
   getCatalog(): Promise<ReportMetadata[]> {
-    return simulateRead(() =>
+    return readOp(() =>
       CATALOG.filter((r) => actorCanSee(r.type)).map((r) => ({
         ...r,
         permissionRequired: REPORT_PERMISSION[r.type],
@@ -258,7 +258,7 @@ export const reportsServiceImpl = {
   },
 
   generateReport(type: ReportType, filter: ReportFilter = {}): Promise<GeneratedReportData> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (!actorCanSee(type)) {
         throw apiError("FORBIDDEN", "Você não tem permissão para ver este relatório.", { httpStatus: 403 });
       }

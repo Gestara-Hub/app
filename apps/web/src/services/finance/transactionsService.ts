@@ -9,8 +9,8 @@ import type {
 import { competenceOf, recurrenceDueDate } from "@gestarahub/core/finance";
 import { plural } from "@gestarahub/core/format";
 import { paymentMethodLabel } from "@/lib/labels";
-import { newId, nowIso, simulateWrite } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { newId, nowIso, writeOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import {
   attachmentsNote,
   describeChanges,
@@ -44,7 +44,7 @@ export const transactionsService = {
    * seguintes (ate o mes seguinte ao atual). Devolve o primeiro lancamento.
    */
   createEntry(payload: CreateFinancialEntry): Promise<FinancialEntry> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateCreate(payload);
       const ts = nowIso();
       const organizationId = store.organization.id;
@@ -113,7 +113,7 @@ export const transactionsService = {
     payload: UpdateFinancialEntry,
     scope: FinancialEntryUpdateScope = "single",
   ): Promise<FinancialEntry> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const entry = findEntry(id);
       if (entry.status === "canceled") {
         throw conflict("Lançamento cancelado não pode ser editado.");
@@ -177,7 +177,7 @@ export const transactionsService = {
    * e excluido (a materializacao recriaria o mes): cancele ou encerre a repeticao.
    */
   deleteEntry(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const entry = findEntry(id);
       if (wasEverPaid(entry)) {
         throw conflict("Lançamento que já foi pago não pode ser excluído. Cancele em vez disso.");

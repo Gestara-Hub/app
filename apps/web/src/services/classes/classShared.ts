@@ -1,8 +1,8 @@
 import type { ClassGroup, ClassMeetingSlot, DateISO, Enrollment, Id, TimeISO } from "@gestarahub/contracts";
 import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
-import { notFoundError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { notFoundError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 
 /**
  * Modelo 3 (turmas) — Fatia 1. Sessoes/aulas sao GERADAS on-the-fly a partir dos

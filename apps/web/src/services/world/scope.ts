@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { AuditActor } from "@gestarahub/contracts";
-import { setActorScopeResolver } from "@/mocks/currentActor";
-import { setStoreScopeResolver, type MockStore } from "@/mocks/store";
+import { setActorScopeResolver } from "./actor";
+import { setStoreScopeResolver } from "./store";
+import type { TenantWorld } from "./types";
 import { setEffectsResolver, type WorldEffect } from "./effects";
 
 /**
@@ -11,7 +12,7 @@ import { setEffectsResolver, type WorldEffect } from "./effects";
  */
 
 interface WorldScope {
-  store: MockStore;
+  store: TenantWorld;
   actor: AuditActor;
   /** Efeitos externos para depois da gravacao (`afterWorldCommit`). */
   effects: WorldEffect[];

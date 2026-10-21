@@ -1,7 +1,7 @@
 import type { Id, LessonPackage, LessonPackageFilter, UpdateLessonPackage, CreateLessonPackage } from "@gestarahub/contracts";
 import { formatCents, plural } from "@gestarahub/core/format";
-import { store } from "@/mocks/store";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, notFoundError, nowIso, readOp, writeOp, textIncludes } from "@/services/world/ops";
 import { withKind } from "@/lib/text";
 import { realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../auditLogService";
@@ -62,7 +62,7 @@ function recordUpdated(id: Id, before: LessonPackage, after: LessonPackage): voi
 export const lessonPackagesService = {
   // --- Catalogo ------------------------------------------------------------
   listPackages(filter?: LessonPackageFilter): Promise<LessonPackage[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) {
         const packages = await unwrap(listPackagesAction(filter));
         if (!filter?.search && !filter?.status) cachePackages(packages);
@@ -79,7 +79,7 @@ export const lessonPackagesService = {
   },
 
   createPackage(input: CreateLessonPackage): Promise<LessonPackage> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const created = await unwrap(createPackageAction(input));
         cachePackages([created]);
@@ -106,7 +106,7 @@ export const lessonPackagesService = {
 
   /** Mudar o pacote vale para as proximas vendas; o que ja foi vendido fica como esta. */
   updatePackage(id: Id, payload: UpdateLessonPackage): Promise<LessonPackage> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const { before, after } = await unwrap(updatePackageAction(id, payload));
         cachePackages([after]);

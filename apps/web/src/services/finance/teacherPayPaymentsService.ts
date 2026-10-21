@@ -1,7 +1,7 @@
 import type { Id, ManualPaymentDetails, PaymentMethod, TeacherPayout } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
-import { nowIso, simulateWrite, validationError } from "@/mocks/helpers";
+import { nowIso, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
 import { clone, competenceLabel, conflict, findPayout, payoutLabel, professionalName } from "./teacherPayHelpers";
@@ -12,7 +12,7 @@ export const teacherPayPaymentsService = {
    * saida "Professores" em `paidAt`, com os comprovantes.
    */
   markPayoutPaid(id: Id, method: PaymentMethod, details: ManualPaymentDetails = {}): Promise<TeacherPayout> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const payout = findPayout(id);
       if (payout.status !== "closed") {
         throw conflict(
@@ -39,7 +39,7 @@ export const teacherPayPaymentsService = {
 
   /** Desfaz o pagamento: volta para fechado. */
   markPayoutUnpaid(id: Id): Promise<TeacherPayout> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const payout = findPayout(id);
       if (payout.status !== "paid") throw conflict("Este pagamento não está registrado como pago.");
       payout.status = "closed";

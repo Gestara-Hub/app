@@ -13,8 +13,8 @@ import {
   type PlannedMembershipCharge,
 } from "@gestarahub/core/membership-generation";
 import { addMonths, format, parseISO } from "date-fns";
-import { persist, store } from "@/mocks/store";
-import { newId, nowIso } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, nowIso, persistLocal } from "@/services/world/ops";
 import { planOf, todayISO } from "./billingHelpers";
 
 type ChargePeriod = CoreChargePeriod;
@@ -185,7 +185,7 @@ export function autoGenerateMembershipCharges(...competences: (string | undefine
   const world = storeMembershipWorld();
   const planned = planMembershipCharges(world, membershipCompetencesToGenerate(world, competences));
   for (const p of planned) store.charges.push(withRecordFields(p));
-  if (planned.length > 0) persist();
+  if (planned.length > 0) persistLocal();
   return planned.length;
 }
 

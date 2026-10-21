@@ -1,8 +1,8 @@
 import type { DateISO, Id, TeacherPayout, TeacherPayoutLine, TeacherPayRule } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { addMonths, format, parseISO } from "date-fns";
-import { apiError, notFoundError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, notFoundError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,27 +1,3 @@
-import type { AuditActor } from "@gestarahub/contracts";
-
-/**
- * Ator ambiente da sessao (mock). Analogo ao "principal autenticado do request"
- * que o backend real teria via guard/AsyncLocalStorage: quem esta logado agora.
- *
- * Publicado pelo `SessionProvider` (client) quando o usuario logado muda, e lido
- * pelo `auditLogService.record()` para carimbar o autor de cada mutacao — assim
- * os services nao precisam receber o ator por parametro (o que, no backend real,
- * seria ate inseguro: o ator vem do token, nunca do payload do cliente).
- */
-let currentActor: AuditActor | null = null;
-
-/** No servidor, o ator vem da requisicao (registrado por `services/world/scope`). */
-let scopedActor: (() => AuditActor | undefined) | null = null;
-
-export function setActorScopeResolver(resolver: () => AuditActor | undefined): void {
-  scopedActor = resolver;
-}
-
-export function setCurrentActor(actor: AuditActor | null): void {
-  currentActor = actor;
-}
-
-export function getCurrentActor(): AuditActor | null {
-  return scopedActor?.() ?? currentActor;
-}
+// O ator vive em services/world/actor (doc 15, fatia 4); reexportado para a
+// sessao do navegador e o setup dos testes.
+export { getCurrentActor, setCurrentActor } from "@/services/world/actor";

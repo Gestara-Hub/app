@@ -24,11 +24,10 @@ import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
-  validationError,
-} from "@/mocks/helpers";
-import { persist, store } from "@/mocks/store";
+  readOp,
+  writeOp,
+  validationError, persistLocal } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "./auditLogService";
 import { paymentGateway } from "./payments/paymentGateway";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
@@ -293,7 +292,7 @@ export function applyRecurringAutoPayments(): number {
     });
     paid += 1;
   }
-  if (paid > 0) persist();
+  if (paid > 0) persistLocal();
   return paid;
 }
 
@@ -337,7 +336,7 @@ function findAuthorization(id: Id): RecurringAuthorization {
 export const onlinePaymentsServiceImpl = {
   // --- Configuracao -----------------------------------------------------------
   getSettings(): Promise<OnlinePaymentSettings> {
-    return simulateRead(() => clone(currentSettings()));
+    return readOp(() => clone(currentSettings()));
   },
 
   /** Sincroniza o status de aprovação da subconta no store do cliente. */
@@ -360,14 +359,14 @@ export const onlinePaymentsServiceImpl = {
         },
       },
     };
-    persist();
+    persistLocal();
   },
 
   /** Grava em `organization.settings.onlinePayments` (proprietario/gerente). */
   updateSettings(
     payload: UpdateOnlinePaymentSettings,
   ): Promise<OnlinePaymentSettings> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("online_payments");
       const before = currentSettings();
       const pixKey =
@@ -448,16 +447,16 @@ export const onlinePaymentsServiceImpl = {
 
   // --- Cobranca online (Pix / link) -------------------------------------------
   listForCharge(chargeId: Id): Promise<OnlinePayment[]> {
-    return simulateRead(() => {
-      if (expireStale()) persist();
+    return readOp(() => {
+      if (expireStale()) persistLocal();
       return clone(paymentsOf(chargeId));
     });
   },
 
   /** Dados do dialogo "Cobrar online": aluno, telefone e os pagamentos da cobranca. */
   getCheckout(chargeId: Id): Promise<OnlineChargeCheckout> {
-    return simulateRead(async () => {
-      if (expireStale()) persist();
+    return readOp(async () => {
+      if (expireStale()) persistLocal();
       const c = store.charges.find((x) => x.id === chargeId);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       const student = store.clients.find((s) => s.id === c.studentId);
@@ -566,7 +565,7 @@ export const onlinePaymentsServiceImpl = {
       );
     }
 
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       // Revalida: a cobranca pode ter mudado durante a chamada ao provedor.
       const c = findOpenCharge(chargeId);
       cancelOnlinePaymentsForCharge(c.id, "Substituído por novo código");
@@ -627,7 +626,7 @@ export const onlinePaymentsServiceImpl = {
    * pagos (`paidVia = "online"`); os demais codigos em aberto sao cancelados.
    */
   simulatePaid(onlinePaymentId: Id): Promise<OnlinePayment> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("online_payments");
 
       if (realAccountInBrowser()) {
@@ -690,7 +689,7 @@ export const onlinePaymentsServiceImpl = {
 
   /** Cancela os codigos em aberto da cobranca (uso raro; o normal e interno). */
   cancelForCharge(chargeId: Id): Promise<{ canceled: number }> {
-    return simulateWrite(() => {
+    return writeOp(() => {
       assertFeature("online_payments");
       return { canceled: cancelOnlinePaymentsForCharge(chargeId) };
     });
@@ -701,7 +700,7 @@ export const onlinePaymentsServiceImpl = {
   getRecurringForStudent(
     studentId: Id,
   ): Promise<RecurringAuthorization | null> {
-    return simulateRead(() => {
+    return readOp(() => {
       const latest = store.recurringAuthorizations
         .filter((a) => a.studentId === studentId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
@@ -711,7 +710,7 @@ export const onlinePaymentsServiceImpl = {
 
   /** Autorizacoes ativas do tenant (aviso de limite em Cobrancas). */
   listActiveRecurring(): Promise<RecurringAuthorization[]> {
-    return simulateRead(() =>
+    return readOp(() =>
       clone(store.recurringAuthorizations.filter((a) => a.status === "active")),
     );
   },
@@ -746,7 +745,7 @@ export const onlinePaymentsServiceImpl = {
       maxAmountCents,
     });
 
-    return simulateWrite(() => {
+    return writeOp(() => {
       const open = store.recurringAuthorizations.find(
         (a) =>
           a.studentId === studentId &&
@@ -785,7 +784,7 @@ export const onlinePaymentsServiceImpl = {
 
   /** Demonstracao: o aluno autorizou no app do banco. Ja processa o que venceu. */
   simulateAuthorize(id: Id): Promise<RecurringAuthorization> {
-    return simulateWrite(() => {
+    return writeOp(() => {
       assertFeature("online_payments");
       const a = findAuthorization(id);
       if (a.status !== "pending") {
@@ -820,7 +819,7 @@ export const onlinePaymentsServiceImpl = {
 
   /** Revoga a autorizacao ativa ou cancela a solicitacao pendente. */
   revokeRecurring(id: Id): Promise<RecurringAuthorization> {
-    return simulateWrite(() => {
+    return writeOp(() => {
       assertFeature("online_payments");
       const a = findAuthorization(id);
       if (a.status === "revoked") {

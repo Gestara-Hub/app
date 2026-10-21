@@ -5,7 +5,7 @@ import {
   percentPayoutLines,
   type TeacherPayFacts,
 } from "@gestarahub/core/finance";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import {
   chargeCompetence,
   paidCourseInstallmentsIn,

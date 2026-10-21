@@ -28,17 +28,17 @@ import {
   normalizeGrade,
   validateWeight,
 } from "@gestarahub/core/grades";
-import { getCurrentActor } from "@/mocks/currentActor";
+import { getCurrentActor } from "@/services/world/actor";
 import {
   apiError,
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   validationError,
-} from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
@@ -224,7 +224,7 @@ function className(classGroupId: Id): string {
 export const gradesServiceImpl = {
   /** Aba "Avaliações" da turma: avaliacoes (mais recente primeiro) e media da turma. */
   listClassAssessments(classGroupId: Id): Promise<ClassAssessmentsView> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const group = findClass(classGroupId);
       const settings = enabledSettings(group.modalityId);
       const list = sortAssessments(assessmentsStore().filter((a) => a.classGroupId === classGroupId));
@@ -246,7 +246,7 @@ export const gradesServiceImpl = {
 
   /** Tela "Lançar notas": uma linha por aluno matriculado hoje, em ordem alfabetica. */
   getSheet(assessmentId: Id): Promise<AssessmentSheet> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const a = findAssessment(assessmentId);
       const group = findClass(a.classGroupId);
       const settings = requireSettings(group);
@@ -266,7 +266,7 @@ export const gradesServiceImpl = {
   },
 
   create(payload: CreateAssessment): Promise<AssessmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const group = findClass(payload.classGroupId);
       assertCanManage(group);
       const settings = requireSettings(group);
@@ -303,7 +303,7 @@ export const gradesServiceImpl = {
   },
 
   update(id: Id, payload: UpdateAssessment): Promise<AssessmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
@@ -330,7 +330,7 @@ export const gradesServiceImpl = {
 
   /** Exclui a avaliacao e as notas dela (a tela confirma antes). */
   remove(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
@@ -350,7 +350,7 @@ export const gradesServiceImpl = {
    * Alunos fora do lote ficam como estao.
    */
   setGrades(assessmentId: Id, entries: AssessmentGradeInput[]): Promise<AssessmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const current = findAssessment(assessmentId);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
@@ -416,7 +416,7 @@ export const gradesServiceImpl = {
    * media por etapa da trilha e geral.
    */
   getReportCard(studentId: Id): Promise<StudentReportCard> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const student = store.clients.find((c) => c.id === studentId);
       if (!student) throw notFoundError("Aluno não encontrado.");
       const activeClassIds = new Set(

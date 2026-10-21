@@ -1,6 +1,6 @@
 import type { DiscoveryMilestones } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
-import { simulateRead } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { readOp } from "@/services/world/ops";
 import { delegateAll } from "./world/delegate";
 
 /**
@@ -11,7 +11,7 @@ import { delegateAll } from "./world/delegate";
  */
 export const onboardingServiceImpl = {
   getDiscoveryMilestones(): Promise<DiscoveryMilestones> {
-    return simulateRead(() => {
+    return readOp(() => {
       const enrollClassGroupId = store.classGroups
         .filter((group) => group.status === "active")
         .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))[0]?.id;

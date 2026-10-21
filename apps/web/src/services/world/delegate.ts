@@ -1,5 +1,5 @@
 import { isSupabaseOrganization } from "@/lib/session";
-import { inServerWorld, store } from "@/mocks/store";
+import { inServerWorld, store } from "./store";
 import { unwrap } from "../server/action";
 import { serviceAction } from "./serviceActions";
 

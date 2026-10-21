@@ -13,7 +13,8 @@ import type {
   StudentPackageView,
 } from "@gestarahub/contracts";
 import { firstCharge, resolveMembershipTerms } from "@gestarahub/core/billing";
-import { resetStore, setActiveOrganization, store } from "@/mocks/store";
+import { defaultFinancialCategories, emptyStore } from "@/mocks/seed";
+import { addTenant, resetStore, setActiveOrganization, store, type MockStore } from "@/mocks/store";
 import { billingService } from "@/services/billingService";
 import { categoriesService } from "@/services/categoriesService";
 import { clientsService } from "@/services/clientsService";
@@ -24,9 +25,45 @@ import { turmasService } from "@/services/turmasService";
 export const ACADEMY_ORG = "org-academia-x";
 export const ACADEMY_UNIT = "unit-academia-x";
 
+/**
+ * Academia em memoria para os testes de regra (o modelo de turmas saiu do
+ * seed do mock na fatia 4 do doc 15; a demonstracao e no banco).
+ */
+export function academyTenant(): MockStore {
+  const ts = new Date().toISOString();
+  return {
+    ...emptyStore(
+      {
+        id: ACADEMY_ORG,
+        name: "Academia X",
+        segment: "Academia",
+        model: "classes",
+        settings: { defaultDueDay: 10 },
+        subscription: { tier: "free" },
+        status: "active",
+      },
+      { id: ACADEMY_UNIT, organizationId: ACADEMY_ORG, name: "", status: "active", businessHours: [] },
+      [
+        {
+          id: "usr-ac-ana",
+          organizationId: ACADEMY_ORG,
+          name: "Ana Ribeiro",
+          email: "ana@academiax.com",
+          profile: "owner",
+          status: "active",
+          createdAt: ts,
+          updatedAt: ts,
+        },
+      ],
+    ),
+    financialCategories: defaultFinancialCategories(ACADEMY_ORG),
+  };
+}
+
 /** Mundo limpo, tenant da academia ativo, regras de cobranca e horario definidos. */
 export function resetAcademy(settings: OrganizationSettings = {}): void {
   resetStore();
+  addTenant(academyTenant());
   setActiveOrganization(ACADEMY_ORG);
   store.organization.settings = {
     defaultDueDay: 10,

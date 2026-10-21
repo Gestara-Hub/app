@@ -9,8 +9,8 @@ import type {
 import { splitInstallments } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { carryOverSources, leftoverLots, mergeLots, packageExpiresAt } from "@gestarahub/core/packages";
-import { store } from "@/mocks/store";
-import { apiError, newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { apiError, newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { withKind } from "@/lib/text";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
@@ -23,7 +23,7 @@ const ACTIVE_STATUSES = new Set(["pending", "overdue"]);
 export const studentPackagesService = {
   // --- Pacotes dos alunos --------------------------------------------------
   listStudentPackages(filter?: StudentPackageFilter): Promise<StudentPackageView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       let result = store.studentPackages;
       if (filter?.studentId) result = result.filter((p) => p.studentId === filter.studentId);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
@@ -42,7 +42,7 @@ export const studentPackagesService = {
    * antigos ficam "Renovado".
    */
   sellPackage(payload: SellPackage): Promise<StudentPackageView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateSale(payload);
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) throw validationError([{ field: "studentId", message: "Aluno não encontrado." }]);
@@ -135,7 +135,7 @@ export const studentPackagesService = {
    * de outro, o anterior volta a valer.
    */
   cancelStudentPackage(id: Id): Promise<StudentPackageView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const pkg = store.studentPackages.find((p) => p.id === id);
       if (!pkg) throw notFoundError("Pacote não encontrado.");
       if (pkg.status === "canceled") {

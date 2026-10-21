@@ -13,11 +13,11 @@ import {
   normalizeText,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   validationError,
-} from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { clone, conflict, isEntryType } from "./financeHelpers";
 
@@ -41,7 +41,7 @@ export const financeCategoriesService = {
   // --- Categorias -----------------------------------------------------------
 
   listCategories(filter?: FinancialCategoryFilter): Promise<FinancialCategory[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       let result = store.financialCategories;
       if (filter?.type) result = result.filter((c) => c.type === filter.type);
       if (filter?.status) result = result.filter((c) => c.status === filter.status);
@@ -51,7 +51,7 @@ export const financeCategoriesService = {
   },
 
   createCategory(payload: CreateFinancialCategory): Promise<FinancialCategory> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const fields: ApiErrorField[] = [];
       const name = typeof payload.name === "string" ? payload.name.trim() : "";
       if (!isEntryType(payload.type)) fields.push({ field: "type", message: "Escolha entre entrada e saída." });
@@ -84,7 +84,7 @@ export const financeCategoriesService = {
 
   /** Renomeia, inativa ou reativa. Categorias de sistema ficam travadas. */
   updateCategory(id: Id, payload: UpdateFinancialCategory): Promise<FinancialCategory> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const idx = store.financialCategories.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError("Categoria não encontrada.");
       const current = store.financialCategories[idx];

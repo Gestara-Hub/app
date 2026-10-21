@@ -1,15 +1,15 @@
 import type { CreateRole, Id, Role, RoleFilter, UpdateRole } from "@gestarahub/contracts";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "./world/delegate";
 import { normalizeText } from "@/lib/text";
 import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   textIncludes,
-} from "@/mocks/helpers";
+} from "@/services/world/ops";
 import { auditLogService } from "./auditLogService";
 import { unwrap } from "./server/action";
 import {
@@ -66,7 +66,7 @@ function recordUpdate(updated: Role, previousStatus: Role["status"]): void {
 
 export const rolesService = {
   list(filter?: RoleFilter): Promise<Role[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) {
         const roles = await unwrap(listRolesAction(filter));
         if (!filter?.search && !filter?.status) cacheRoles(roles);
@@ -85,7 +85,7 @@ export const rolesService = {
   },
 
   getById(id: Id): Promise<Role> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       if (isRealAccount()) return unwrap(getRoleAction(id));
       const found = store.roles.find((r) => r.id === id);
       if (!found) throw notFoundError(ROLE_NOT_FOUND);
@@ -94,7 +94,7 @@ export const rolesService = {
   },
 
   create(payload: CreateRole): Promise<Role> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let role: Role;
       if (isRealAccount()) {
         role = await unwrap(createRoleAction(payload));
@@ -124,7 +124,7 @@ export const rolesService = {
   },
 
   update(id: Id, payload: UpdateRole): Promise<Role> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if (isRealAccount()) {
         const { role, previousStatus } = await unwrap(updateRoleAction(id, payload));
         cacheRoles([role]);
@@ -150,7 +150,7 @@ export const rolesService = {
 
   // remove = inativacao logica; cargo inativo nao e sugerido em novos cadastros.
   remove(id: Id): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       let name: string;
       if (isRealAccount()) {
         const removed = await unwrap(removeRoleAction(id));

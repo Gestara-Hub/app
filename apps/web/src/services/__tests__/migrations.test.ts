@@ -2,7 +2,7 @@ import type { Charge, Client, MessageLog, MessageTemplate, Plan } from "@gestara
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createInitialWorld, defaultMessageTemplates } from "@/mocks/seed";
 import type { MockStore, MockWorld } from "@/mocks/store";
-import { ACADEMY_ORG } from "@/test/academy";
+import { ACADEMY_ORG, academyTenant } from "@/test/academy";
 
 /**
  * Migracoes suaves do banco simulado (`gestarahub:db` no localStorage). No
@@ -12,7 +12,7 @@ import { ACADEMY_ORG } from "@/test/academy";
  */
 
 const STORAGE_KEY = "gestarahub:db";
-const CURRENT_VERSION = 38;
+const CURRENT_VERSION = 39;
 
 function fakeLocalStorage(initial: Record<string, string>) {
   const data = new Map(Object.entries(initial));
@@ -38,6 +38,7 @@ async function hydrate(v: number, world: MockWorld) {
 /** Mundo salvo com a academia como tenant ativo. */
 function oldWorld(edit: (academy: MockStore) => void): MockWorld {
   const world = createInitialWorld();
+  world.tenants[ACADEMY_ORG] = academyTenant();
   world.activeOrganizationId = ACADEMY_ORG;
   edit(world.tenants[ACADEMY_ORG]);
   return world;
@@ -94,10 +95,11 @@ describe("carga do banco salvo", () => {
       t.organization.name = "Nome salvo";
     });
     const { store, saved } = await hydrate(19, world);
-    // Seed limpo: tenant ativo volta ao padrao e o nome salvo se perde.
+    // Seed limpo: tenant ativo volta ao padrao e o espaco salvo se perde (a
+    // academia nem existe mais no seed do mock: a demonstracao e no banco).
     expect(store.organization.id).not.toBe(ACADEMY_ORG);
     expect(saved()?.v).toBe(CURRENT_VERSION);
-    expect(saved()?.data.tenants[ACADEMY_ORG].organization.name).toBe("Academia X");
+    expect(saved()?.data.tenants[ACADEMY_ORG]).toBeUndefined();
   });
 
   it("migrado e regravado na versao atual", async () => {

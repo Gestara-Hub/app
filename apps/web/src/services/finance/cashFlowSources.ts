@@ -7,7 +7,7 @@ import type {
   TeacherPayout,
 } from "@gestarahub/contracts";
 import { competenceOf, type CashFlowItem } from "@gestarahub/core/finance";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { currentCompetence, todayISO } from "./financeHelpers";
 import { systemCategoryId } from "./financeStore";
 import { openPayoutPreviews } from "./teacherPayViews";

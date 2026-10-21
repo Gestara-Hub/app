@@ -1,19 +1,19 @@
-import type { MockStore } from "@/mocks/store";
+import type { TenantWorld } from "./types";
 import { WORLD_SCHEMA, type WorldTableSchema } from "./schema.generated";
 
 /**
- * Colecoes do "mundo" do espaco (o `MockStore`) e as tabelas do banco (doc 15,
+ * Colecoes do "mundo" do espaco (o `TenantWorld`) e as tabelas do banco (doc 15,
  * fatia 2). O contrato espelha as colunas: campo `fooBar` = coluna `foo_bar`.
  * As excecoes ficam aqui, perto da conversao.
  */
 
 export type CollectionKey = {
-  [K in keyof MockStore]: MockStore[K] extends unknown[] | undefined ? K : never;
-}[keyof MockStore];
+  [K in keyof TenantWorld]: TenantWorld[K] extends unknown[] | undefined ? K : never;
+}[keyof TenantWorld];
 
 export interface WorldCollection {
-  /** Chave no `MockStore`. */
-  key: keyof MockStore;
+  /** Chave no `TenantWorld`. */
+  key: keyof TenantWorld;
   table: string;
   /** `single`: um objeto (organizacao, unidade, WhatsApp). */
   kind: "list" | "single";

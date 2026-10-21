@@ -9,8 +9,8 @@ import type {
 import { paginateArray } from "@gestarahub/contracts";
 import { describeCharge, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
-import { persist, store } from "@/mocks/store";
-import { newId, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { newId, nowIso, readOp, writeOp, validationError, persistLocal } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { applyRecurringAutoPayments } from "../onlinePaymentsService";
 import { clone, competenceLabel } from "./billingHelpers";
@@ -21,7 +21,7 @@ import { ensureMembershipCharges, generateMembershipChargesFor } from "./members
 export const chargesService = {
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas;
       // na conta real, no servidor, e ja chegam sincronizadas.
       await ensureMembershipCharges(filter?.competence);
@@ -48,7 +48,7 @@ export const chargesService = {
           return !dropinDup;
         });
         if (store.charges.length !== beforeLen) {
-          persist();
+          persistLocal();
         }
       }
       let result = store.charges.map(toChargeView);
@@ -71,7 +71,7 @@ export const chargesService = {
   },
 
   listChargesPaginated(filter?: ChargeFilter): Promise<PaginatedResult<ChargeView>> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       await ensureMembershipCharges(filter?.competence);
       applyRecurringAutoPayments();
 
@@ -100,7 +100,7 @@ export const chargesService = {
    * uso nunca gera duas cobrancas (inclusive a 1a, criada no cadastro).
    */
   generateCharges(competence: string): Promise<{ created: number }> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const created = generateMembershipChargesFor(competence);
 
       if (created > 0) {
@@ -121,7 +121,7 @@ export const chargesService = {
    * `installmentGroupId`. Nao passa pelo motor de mensalidades.
    */
   createExtraCharge(payload: CreateExtraCharge): Promise<ChargeView[]> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       validateExtraCharge(payload);
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) {
@@ -174,7 +174,7 @@ export const chargesService = {
    * avulsas ficam (nao sao recriadas pela geracao).
    */
   clearCharges(competence: string): Promise<{ deleted: number; keptPaid: number }> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const inCompetence = store.charges.filter(
         (c) => c.kind === "membership" && c.competence === competence,
       );

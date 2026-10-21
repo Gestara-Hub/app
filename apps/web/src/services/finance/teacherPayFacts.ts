@@ -14,7 +14,7 @@ import { valuePackageLessons } from "@gestarahub/core/packages";
 import { isPastSlot } from "@gestarahub/core/date";
 import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { closedPayoutsOf } from "./teacherPayHelpers";
 
 // ---------------------------------------------------------------------------

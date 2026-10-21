@@ -1,4 +1,4 @@
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 
 /**
  * Substantivos que mudam com o modelo do tenant, para mensagens e auditoria:

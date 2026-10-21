@@ -1,7 +1,7 @@
 import type { ChargeView, Id, ManualPaymentDetails, PaymentMethod } from "@gestarahub/contracts";
 import { coversPeriod } from "@gestarahub/core/membership-generation";
-import { store } from "@/mocks/store";
-import { apiError, notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { apiError, notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
 import { clone } from "./billingHelpers";
@@ -11,7 +11,7 @@ import { recordChargeEvent, toChargeView } from "./billingViews";
 export const chargePaymentsService = {
   /** Registra o pagamento manual: dia do pagamento (padrao hoje) e comprovantes. */
   markPaid(id: Id, method?: PaymentMethod, details: ManualPaymentDetails = {}): Promise<ChargeView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -35,7 +35,7 @@ export const chargePaymentsService = {
 
   // Desfaz o pagamento (volta a ficar em aberto; o atraso e derivado na leitura).
   markPending(id: Id): Promise<ChargeView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -53,7 +53,7 @@ export const chargePaymentsService = {
 
   // Cancela a cobrança (mantém o título no histórico sem compor o total a receber).
   cancelCharge(id: Id, reason?: string): Promise<ChargeView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       assertNotWaived(c);
@@ -76,7 +76,7 @@ export const chargePaymentsService = {
   // pelo sistema (troca de plano/regra, inativacao, saida da aula) nao reabre:
   // voltaria a cobrar um periodo que o novo arranjo ja cobre.
   reopenCharge(id: Id): Promise<ChargeView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const c = store.charges.find((x) => x.id === id);
       if (!c) throw notFoundError("Cobrança não encontrada.");
       if (c.status !== "canceled") {

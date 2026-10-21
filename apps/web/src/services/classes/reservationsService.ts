@@ -1,7 +1,7 @@
 import type { Charge, ClassReservation, Id, ReservationKind, ReservationView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { apiError, newId, notFoundError, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, newId, notFoundError, nowIso, writeOp, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { acceptsPackages, hasUsablePackage } from "../packagesService";
 import { syncAttendanceUsage } from "./attendancePackageUsage";
@@ -23,7 +23,7 @@ export const reservationsService = {
     kind?: ReservationKind;
     amountCents?: number;
   }): Promise<ReservationView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const { g } = resolveSession(input.sessionId);
       if (g.id !== input.classGroupId) throw notFoundError("Aula não encontrada.");
       const already = store.reservations.find(
@@ -141,7 +141,7 @@ export const reservationsService = {
   },
 
   cancelReservation(input: { sessionId: Id; studentId: Id }): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const r = store.reservations.find(
         (x) =>
           x.sessionId === input.sessionId &&

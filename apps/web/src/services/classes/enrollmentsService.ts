@@ -6,11 +6,11 @@ import {
   apiError,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   validationError,
-} from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { clone, todayISO, studentName, activeEnrollments } from "./classShared";
@@ -21,7 +21,7 @@ import { createEnrollment, resolvePaysWithPackage } from "./enrollmentCreation";
 export const enrollmentsService = {
   // --- Matriculas ---------------------------------------------------------
   listEnrollments(classGroupId: Id): Promise<EnrollmentView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const rows = store.enrollments.filter(
         (e) => e.classGroupId === classGroupId && e.status !== "canceled",
       );
@@ -40,7 +40,7 @@ export const enrollmentsService = {
     payload: CreateEnrollment,
     opts: { allowOverCapacity?: boolean } = {},
   ): Promise<EnrollmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const g = store.classGroups.find((x) => x.id === payload.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
       if (g.status !== "active") {
@@ -102,7 +102,7 @@ export const enrollmentsService = {
    * daqui em diante gasta uma aula) ou pela mensalidade. Aulas ja gastas ficam.
    */
   setEnrollmentPayment(id: Id, paysWithPackage: boolean): Promise<EnrollmentView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
@@ -133,7 +133,7 @@ export const enrollmentsService = {
   },
 
   cancelEnrollment(id: Id, reason?: string): Promise<void> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const e = store.enrollments.find((x) => x.id === id);
       if (!e) throw notFoundError("Matrícula não encontrada.");
       if (e.status === "canceled") {
@@ -173,7 +173,7 @@ export const enrollmentsService = {
 
   /** Pares aluno x modalidade das matriculas ativas (uma linha por par). */
   listEnrolledModalities(): Promise<{ studentId: Id; modalityId: Id }[]> {
-    return simulateRead(() => {
+    return readOp(() => {
       const modalityByGroup = new Map(store.classGroups.map((g) => [g.id, g.modalityId]));
       const seen = new Set<string>();
       const pairs: { studentId: Id; modalityId: Id }[] = [];

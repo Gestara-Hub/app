@@ -1,7 +1,7 @@
 import type { Id } from "@gestarahub/contracts";
 import { format } from "date-fns";
-import { store } from "@/mocks/store";
-import { notFoundError } from "@/mocks/helpers";
+import { store } from "@/services/world/store";
+import { notFoundError } from "@/services/world/ops";
 
 export function clone<T>(value: T): T {
   return structuredClone(value);

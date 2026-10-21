@@ -10,8 +10,8 @@ import type {
   User,
 } from "@gestarahub/contracts";
 import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
-import { defaultMessageTemplates } from "@/mocks/seed";
-import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
+import { defaultMessageTemplates } from "@/services/defaults";
+import { readOp, writeOp, validationError } from "@/services/world/ops";
 import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import { getOrganizationGatewayAction } from "./onlinePaymentsBackend";
@@ -74,7 +74,7 @@ function syncTemplatesWithSegment(previous: ClassesBusinessSegment | undefined) 
 
 export const settingsService = {
   setActiveTenant(organizationId: Id): Promise<void> {
-    return simulateWrite(() => {
+    return writeOp(() => {
       setActiveOrganization(organizationId);
     });
   },
@@ -136,15 +136,15 @@ export const settingsService = {
         console.error("[settingsService] Erro ao sincronizar organização:", err);
       }
     }
-    return simulateRead(() => clone(store.organization));
+    return readOp(() => clone(store.organization));
   },
 
   getUnit(): Promise<Unit> {
-    return simulateRead(() => clone(store.unit));
+    return readOp(() => clone(store.unit));
   },
 
   updateOrganization(payload: UpdateOrganization): Promise<Organization> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       // Nome ate 80 caracteres: cabe no topo e no cookie da sessao.
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "organizationName", message: "Use até 80 caracteres." }]);
@@ -177,7 +177,7 @@ export const settingsService = {
 
   /** "Está tudo certo" no aviso de Modalidades: fecha a revisao pedida pelo setup. */
   markModalitiesReviewed(): Promise<Organization> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       store.organization = {
         ...store.organization,
         settings: { ...store.organization.settings, modalitiesReviewed: true },
@@ -193,7 +193,7 @@ export const settingsService = {
   },
 
   updateUnit(payload: UpdateUnit): Promise<Unit> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "unitName", message: "Use até 80 caracteres." }]);
       }

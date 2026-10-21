@@ -13,7 +13,7 @@ import type {
   CreatePixInput,
   CreateLinkInput,
 } from "../types";
-import { newId } from "@/mocks/helpers";
+import { newId } from "@/services/world/ops";
 
 function addMinutes(minutes: number): DateTimeISO {
   return new Date(Date.now() + minutes * 60_000).toISOString();

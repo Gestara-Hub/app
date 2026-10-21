@@ -1,8 +1,8 @@
 import type { CourseCertificateDocument, Id } from "@gestarahub/contracts";
 import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
-import { apiError, notFoundError, simulateRead } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, notFoundError, readOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { currentCertificateTemplate } from "../certificatesService";
 import { assertFeature } from "../subscriptionService";
 import { clone, todayISO, modalityName, instructorName, studentName } from "./classShared";
@@ -15,7 +15,7 @@ export const courseCertificateService = {
    * dados do aluno e o modelo do espaco (doc 21, secao 1).
    */
   getCourseCertificate(enrollmentId: Id): Promise<CourseCertificateDocument> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       assertFeature("certificates");
       const e = store.enrollments.find((x) => x.id === enrollmentId);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");

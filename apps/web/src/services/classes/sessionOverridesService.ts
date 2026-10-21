@@ -5,8 +5,8 @@ import type {
   SubstituteInstructorPayload,
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
-import { notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { clone, instructorName, resolveSession } from "./classShared";
 import { validateSubstituteConflict } from "./classValidation";
@@ -17,7 +17,7 @@ export const sessionOverridesService = {
     sessionId: Id,
     payload: SubstituteInstructorPayload,
   ): Promise<ClassSessionDetail> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const { g, date, slot } = resolveSession(sessionId);
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
@@ -57,7 +57,7 @@ export const sessionOverridesService = {
   },
 
   restorePrimaryInstructor(sessionId: Id): Promise<ClassSessionDetail> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
 
       if (store.sessionOverrides) {
         const idx = store.sessionOverrides.findIndex(

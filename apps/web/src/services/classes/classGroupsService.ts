@@ -14,12 +14,12 @@ import {
   newId,
   notFoundError,
   nowIso,
-  simulateRead,
-  simulateWrite,
+  readOp,
+  writeOp,
   textIncludes,
   validationError,
-} from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+} from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { actorTeacherId, teacherSeesClass } from "../teacherScope";
@@ -29,7 +29,7 @@ import { toGroupView } from "./classViews";
 
 export const classGroupsService = {
   list(filter?: ClassGroupFilter): Promise<ClassGroupView[]> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       let result = store.classGroups;
       if (filter?.search) {
         const term = filter.search;
@@ -56,7 +56,7 @@ export const classGroupsService = {
   },
 
   getById(id: Id): Promise<ClassGroupView> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       const g = store.classGroups.find((x) => x.id === id);
       if (!g || !teacherSeesClass(g)) throw notFoundError("Turma não encontrada.");
       return clone(toGroupView(g));
@@ -64,7 +64,7 @@ export const classGroupsService = {
   },
 
   create(input: CreateClassGroup): Promise<ClassGroupView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const payload = normalizeBilling(input);
       validateGroup(payload, undefined);
       const ts = nowIso();
@@ -88,7 +88,7 @@ export const classGroupsService = {
   },
 
   update(id: Id, payload: UpdateClassGroup): Promise<ClassGroupView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       // Mudar a forma ou o valor nao mexe nas parcelas das matriculas ja feitas.
@@ -124,7 +124,7 @@ export const classGroupsService = {
 
   // Desativa uma turma (soft delete): preserva histórico, impede novas sessões.
   deactivate(id: Id): Promise<ClassGroupView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const g = store.classGroups[idx];
@@ -169,7 +169,7 @@ export const classGroupsService = {
 
   // Reativa uma turma desativada.
   reactivate(id: Id): Promise<ClassGroupView> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);
       if (idx === -1) throw notFoundError("Turma não encontrada.");
       const g = store.classGroups[idx];

@@ -1,6 +1,6 @@
 import type { AttendanceStatus, ClassGroup, DateISO, Id } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
-import { store } from "@/mocks/store";
+import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { hasPackageUsage, syncPackageUsage } from "../packagesService";
 import { studentName, parseSessionId } from "./classShared";

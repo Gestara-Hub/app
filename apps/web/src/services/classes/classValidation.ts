@@ -18,8 +18,8 @@ import {
   weekdayOf,
 } from "@gestarahub/core/scheduling";
 import { parseISO } from "date-fns";
-import { apiError, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { apiError, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { todayISO, brDate, makeSessionId, upcomingPeriod } from "./classShared";
 
 // Verifica se dois horários se sobrepõem (qualquer minuto em comum é conflito).

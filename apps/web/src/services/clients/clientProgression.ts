@@ -10,9 +10,9 @@ import type {
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
-import { getCurrentActor } from "@/mocks/currentActor";
-import { store } from "@/mocks/store";
-import { newId, normalizeText, notFoundError, nowIso } from "@/mocks/helpers";
+import { getCurrentActor } from "@/services/world/actor";
+import { store } from "@/services/world/store";
+import { newId, normalizeText, notFoundError, nowIso } from "@/services/world/ops";
 
 // --- Sugestoes da evolucao (aprendidas do uso) ----------------------------
 

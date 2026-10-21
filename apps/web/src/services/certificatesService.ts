@@ -9,8 +9,8 @@ import {
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_LOGO_RULES } from "@/lib/files";
 import { delegateAll } from "./world/delegate";
-import { nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
+import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
+import { store } from "@/services/world/store";
 import { attachmentsService } from "./attachmentsService";
 import { auditLogService } from "./auditLogService";
 import { assertFeature } from "./subscriptionService";
@@ -46,13 +46,13 @@ function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
 
 export const certificatesServiceImpl = {
   getTemplate(): Promise<CertificateTemplate> {
-    return simulateRead(async () => {
+    return readOp(async () => {
       return currentCertificateTemplate();
     });
   },
 
   saveTemplate(payload: SaveCertificateTemplate): Promise<CertificateTemplate> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("certificates");
       const next = normalize(payload);
       const issues = validateCertificateTemplate(next);
@@ -70,7 +70,7 @@ export const certificatesServiceImpl = {
 
   /** "Restaurar padrão": apaga o modelo salvo (logo inclusa). */
   resetTemplate(): Promise<CertificateTemplate> {
-    return simulateWrite(async () => {
+    return writeOp(async () => {
       assertFeature("certificates");
       if (store.certificateTemplate) {
         // O `store` e um proxy do tenant ativo (sem `delete`): `undefined` = padrao.
