@@ -43,15 +43,19 @@ Modelo de turmas: modalidades, equipe e cargos, planos, catálogo de pacotes, al
 
 ### Fatia 2 — Leitura direto do banco, por domínio
 
-Para cada domínio: os read-models passam a ser montados por server actions a partir do banco (reusando as funções puras), os hooks do TanStack Query chamam essas actions, e o `sync*FromDb` e a escrita no store daquele domínio são apagados. Ordem, de quem depende de menos para quem depende de mais:
+Para cada domínio: os read-models passam a ser montados por server actions a partir do banco (reusando as funções puras), os hooks do TanStack Query chamam essas actions, e o `sync*FromDb` e a escrita no store daquele domínio são apagados.
 
-- [ ] 2.1 Catálogo: modalidades, equipe, cargos, planos, catálogo de pacotes.
-- [ ] 2.2 Alunos e responsáveis (ficha, lista, inativação).
-- [ ] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário.
-- [ ] 2.4 Cobranças e recebimentos online.
-- [ ] 2.5 Pacotes do aluno (venda, uso, renovação).
+**Junto com a modularização do [doc 12](12-modularizacao-da-camada-de-servicos.md)** (decidido em 21/10/2026): nos domínios com serviço grande, o primeiro passo é dividir o serviço em pasta por subdomínio (`*Views.ts`, `*Validation.ts`, sub-serviços e `index.ts` com o nome antigo), só movendo código, num commit próprio com testes verdes. A troca da fonte para o banco vem no commit seguinte; nunca os dois juntos, para saber de onde veio uma quebra. Os `*Views.ts` são o que passa a rodar no servidor, e os `*Validation.ts` são a base da fatia 3.
+
+Ordem, de quem depende de menos para quem depende de mais:
+
+- [ ] 2.1 Catálogo: modalidades, equipe, cargos, planos, catálogo de pacotes. Sem divisão (serviços pequenos; os planos vão para `services/billing/` no 2.4).
+- [ ] 2.2 Alunos e responsáveis (ficha, lista, inativação). Antes: fase 2 do doc 12 (`clientsService` → `services/clients/`).
+- [ ] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário. Antes: fase 1 do doc 12 (`turmasService` → `services/classes/`).
+- [ ] 2.4 Cobranças e recebimentos online. Antes: fase 4 do doc 12 (`billingService` → `services/billing/`).
+- [ ] 2.5 Pacotes do aluno (venda, uso, renovação). Antes: `packagesService` → `services/billing/` (fase 4 do doc 12).
 - [ ] 2.6 Notas, evolução e certificado.
-- [ ] 2.7 Financeiro e repasse de professores.
+- [ ] 2.7 Financeiro e repasse de professores. Antes: fase 3 do doc 12 (`financeService` e `teacherPayService` → `services/finance/`).
 - [ ] 2.8 Comunicação (modelos, histórico, WhatsApp).
 - [ ] 2.9 Agregados: Painel, relatórios e resumo do aluno, com consultas agregadas no banco onde o volume pedir.
 - **Pronto quando, por domínio:** a tela funciona com o `localStorage` vazio e sem o `sync*FromDb` daquele domínio; os testes do domínio passam (fatia 5).
@@ -68,7 +72,7 @@ Para cada domínio: os read-models passam a ser montados por server actions a pa
 
 - [ ] Seed (`apps/supabase/seed.sql` ou script) que cria o espaço de demonstração completo: organização, unidade, usuários por perfil, modalidades, turmas, alunos, matrículas, chamadas, cobranças e pacotes, com datas relativas a hoje.
 - [ ] Login da demonstração por usuário do seed (hoje é o seletor do mock em `(auth)/actions.ts`).
-- [ ] Apagar `mocks/store`, `mocks/seed`, `simulateRead`/`simulateWrite`, o `SEED_VERSION` e os `isSupabaseOrganization` dos serviços.
+- [ ] Apagar `mocks/store`, `mocks/seed`, `simulateRead`/`simulateWrite`, o `SEED_VERSION` e os `isSupabaseOrganization` dos serviços. É a fase 5 do doc 12: sai também o alias `turmasService`, e as telas passam a importar os serviços em inglês.
 - **Pronto quando:** não existe mais `@/mocks` no código e o espaço de demonstração é recriado por um comando.
 
 ### Fatia 5 — Testes
