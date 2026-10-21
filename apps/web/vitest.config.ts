@@ -9,6 +9,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Os *.db.test.ts rodam contra o Supabase local (vitest.db.config.ts).
+    exclude: ["src/**/*.db.test.ts", "node_modules/**"],
     setupFiles: ["./src/test/setup.ts"],
   },
 });

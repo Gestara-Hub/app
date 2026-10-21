@@ -1,10 +1,13 @@
 import type {
-  ApiError,
-  ApiErrorCode,
-  ApiErrorField,
   DateTimeISO,
   Id,
 } from "@gestarahub/contracts";
+import {
+  apiError,
+  networkError,
+  notFoundError,
+  validationError,
+} from "@gestarahub/core/api-error";
 import { mockConfig } from "./config";
 import { persist, syncFromStorage } from "./store";
 
@@ -32,37 +35,8 @@ export function nowIso(): DateTimeISO {
 
 // --- Fabrica de erros (formato unico, imita erro de API) -------------------
 
-export function apiError(
-  code: ApiErrorCode,
-  message: string,
-  options?: { fields?: ApiErrorField[]; httpStatus?: number },
-): ApiError {
-  return {
-    code,
-    message,
-    fields: options?.fields,
-    httpStatus: options?.httpStatus,
-  };
-}
-
-export function networkError(): ApiError {
-  return apiError(
-    "NETWORK",
-    "Não foi possível concluir a operação. Tente novamente.",
-    { httpStatus: 500 },
-  );
-}
-
-export function notFoundError(message = "Registro não encontrado."): ApiError {
-  return apiError("NOT_FOUND", message, { httpStatus: 404 });
-}
-
-export function validationError(fields: ApiErrorField[]): ApiError {
-  return apiError("VALIDATION", "Verifique os campos destacados.", {
-    fields,
-    httpStatus: 422,
-  });
-}
+// Os construtores vivem no core, para o servidor usar os mesmos (doc 15, fatia 2).
+export { apiError, networkError, notFoundError, validationError };
 
 // --- Simulacao de latencia e erro de leitura -------------------------------
 
@@ -93,25 +67,5 @@ export async function simulateWrite<T>(produce: () => T | Promise<T>): Promise<T
 }
 
 // --- Busca textual tolerante a acentos/caixa -------------------------------
-
-export function normalizeText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-export function textIncludes(haystack: string, needle: string): boolean {
-  return normalizeText(haystack).includes(normalizeText(needle));
-}
-
-/**
- * Busca de telefone pelos digitos: "(11) 97777-6603", "97777-6603" e
- * "977776603" encontram o mesmo numero, gravado so com digitos.
- */
-export function phoneIncludes(phone: string | undefined, needle: string): boolean {
-  const digits = needle.replace(/\D/g, "");
-  if (!phone || digits.length < 3) return false;
-  return phone.replace(/\D/g, "").includes(digits);
-}
+// Vive em `@/lib/text`, para o servidor usar a mesma (doc 15, fatia 2).
+export { normalizeText, phoneIncludes, textIncludes } from "@/lib/text";
