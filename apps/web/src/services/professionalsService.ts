@@ -1,5 +1,4 @@
 import type {
-  ApiErrorField,
   CreateProfessional,
   Id,
   Professional,
@@ -15,113 +14,100 @@ import {
   simulateRead,
   simulateWrite,
   textIncludes,
-  validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { isSupabaseOrganization } from "@/lib/session";
+import { unwrap } from "./server/action";
 import {
-  createProfessionalInDb,
-  getProfessionalFromDb,
-  inactivateProfessionalInDb,
-  listProfessionalsFromDb,
-  updateProfessionalInDb,
-} from "./professionalsBackend";
-import { syncRolesFromDb } from "./rolesService";
+  createProfessionalAction,
+  getProfessionalAction,
+  listProfessionalsAction,
+  removeProfessionalAction,
+  updateProfessionalAction,
+} from "./catalog/teamActions";
+import {
+  PROFESSIONAL_NOT_FOUND,
+  sortProfessionals,
+  toProfessionalView,
+  validateProfessionalPayload,
+} from "./catalog/teamRules";
+
+/**
+ * Equipe. Conta real: banco pelo servidor (`catalog/teamActions`, doc 15,
+ * fatia 2.1). Demonstracao: store.
+ */
 
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
-function roleNameOf(roleId?: Id): string {
-  return roleId ? (store.roles.find((r) => r.id === roleId)?.name ?? "") : "";
+function isRealAccount(): boolean {
+  return isSupabaseOrganization(store.organization.id);
 }
 
-// Expande o cargo (roleId -> role) — espelha o join que a API faria no GET.
-// Cargo e opcional: sem roleId, o profissional nao tem `role`.
 function toView(p: Professional): ProfessionalView {
-  return {
-    ...p,
-    role: p.roleId ? { id: p.roleId, name: roleNameOf(p.roleId) } : undefined,
-  };
+  return toProfessionalView(p, store.roles);
 }
 
-const NOT_FOUND = "Profissional não encontrado.";
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** O contrato do profissional, sem o cargo expandido. */
+function withoutRole(view: ProfessionalView): Professional {
+  const professional: ProfessionalView = { ...view };
+  delete professional.role;
+  return professional;
+}
 
-// NOTA: mensagens a confirmar com o doc 10 quando o modulo Equipe for feito.
-function validateProfessional(
-  payload: Partial<CreateProfessional>,
-  { partial }: { partial: boolean },
-): void {
-  const fields: ApiErrorField[] = [];
-  const has = (key: keyof CreateProfessional) =>
-    Object.prototype.hasOwnProperty.call(payload, key);
+/**
+ * Transicao (doc 15, fatia 2): turmas, chamada e repasse ainda montam as telas
+ * no navegador a partir do store. Ate migrarem, a conta real mantem la uma
+ * copia da equipe lida do banco. Sai na fatia 4.
+ */
+function cacheProfessionals(list: Professional[]): void {
+  const ids = new Set(list.map((p) => p.id));
+  store.professionals = [
+    ...store.professionals.filter((p) => !ids.has(p.id)),
+    ...list.map((p) => withoutRole(p)),
+  ];
+}
 
-  if (!partial || has("name")) {
-    if (!payload.name || !payload.name.trim()) {
-      fields.push({ field: "name", message: "Informe o nome do profissional." });
-    }
-  }
-  // Cargo e opcional; se informado, precisa existir.
-  if (has("roleId") && payload.roleId && !store.roles.some((r) => r.id === payload.roleId)) {
-    fields.push({ field: "roleId", message: "Cargo inválido." });
-  }
-  // Email e opcional; se informado, formato precisa ser valido.
-  if (has("email") && payload.email) {
-    const trimmedEmail = payload.email.trim();
-    if (trimmedEmail && !EMAIL_RE.test(trimmedEmail)) {
-      fields.push({ field: "email", message: "Informe um e-mail válido." });
-    }
-  }
-  // No modelo de turmas (classes), ao menos uma modalidade é obrigatória.
-  if (store.organization.model === "classes" && (!partial || has("modalityIds"))) {
-    if (!payload.modalityIds || payload.modalityIds.length === 0) {
-      fields.push({
-        field: "modalityIds",
-        message: "Selecione ao menos uma modalidade que o profissional leciona.",
-      });
-    }
-  }
-  if (has("workingHours") && payload.workingHours) {
-    const invalid = payload.workingHours.some((h) => h.start >= h.end);
-    if (invalid) {
-      fields.push({
-        field: "workingHours",
-        message: "Horário inválido: o início deve ser antes do fim.",
-      });
-    }
-  }
+function validateProfessional(payload: Partial<CreateProfessional>, { partial }: { partial: boolean }): void {
+  validateProfessionalPayload(payload, {
+    partial,
+    roleExists: (roleId) => store.roles.some((r) => r.id === roleId),
+  });
+}
 
-  if (fields.length > 0) throw validationError(fields);
+function recordUpdate(updated: Professional, previousStatus: Professional["status"]): void {
+  // Reativacao (inativo -> ativo) e um evento proprio; senao, edicao comum.
+  const reactivated = previousStatus === "inactive" && updated.status === "active";
+  auditLogService.record({
+    action: reactivated ? "activated" : "updated",
+    target: { type: "professional", id: updated.id, label: updated.name },
+    predicate: reactivated
+      ? `reativou o profissional ${updated.name}`
+      : `atualizou o profissional ${updated.name}`,
+  });
 }
 
 export const professionalsService = {
   list(filter?: ProfessionalFilter): Promise<ProfessionalView[]> {
     return simulateRead(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
-        await syncRolesFromDb();
-        const dbProfessionals = await listProfessionalsFromDb(store.organization.id, filter);
-        const dbIds = new Set(dbProfessionals.map((p) => p.id));
-        store.professionals = [
-          ...store.professionals.filter((p) => p.organizationId === store.organization.id ? !dbIds.has(p.id) : true),
-          ...dbProfessionals,
-        ];
-        return clone(
-          [...dbProfessionals]
-            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-            .map(toView),
-        );
+      if (isRealAccount()) {
+        const views = await unwrap(listProfessionalsAction(filter));
+        if (!filter?.search && !filter?.status && !filter?.serviceId) cacheProfessionals(views);
+        return views;
       }
 
       let result = store.professionals;
       if (filter?.search) {
         const term = filter.search;
-        result = result.filter(
-          (p) =>
+        result = result.filter((p) => {
+          const view = toView(p);
+          return (
             textIncludes(p.name, term) ||
             (p.email ? textIncludes(p.email, term) : false) ||
-            textIncludes(roleNameOf(p.roleId), term),
-        );
+            (view.role ? textIncludes(view.role.name, term) : false)
+          );
+        });
       }
       if (filter?.status) {
         result = result.filter((p) => p.status === filter.status);
@@ -129,121 +115,82 @@ export const professionalsService = {
       if (filter?.serviceId) {
         result = result.filter((p) => p.serviceIds.includes(filter.serviceId!));
       }
-      return clone(
-        [...result]
-          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-          .map(toView),
-      );
+      return clone(sortProfessionals(result).map(toView));
     });
   },
 
   getById(id: Id): Promise<ProfessionalView> {
     return simulateRead(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
-        await syncRolesFromDb();
-        const dbProf = await getProfessionalFromDb(id, store.organization.id);
-        if (dbProf) {
-          const idx = store.professionals.findIndex((p) => p.id === id);
-          if (idx !== -1) store.professionals[idx] = dbProf;
-          else store.professionals.push(dbProf);
-          return clone(toView(dbProf));
-        }
-      }
+      if (isRealAccount()) return unwrap(getProfessionalAction(id));
       const found = store.professionals.find((p) => p.id === id);
-      if (!found) throw notFoundError(NOT_FOUND);
+      if (!found) throw notFoundError(PROFESSIONAL_NOT_FOUND);
       return clone(toView(found));
     });
   },
 
   create(payload: CreateProfessional): Promise<ProfessionalView> {
     return simulateWrite(async () => {
-      // Conta real: o cargo escolhido precisa estar no cache para validar.
-      await syncRolesFromDb();
-      validateProfessional(payload, { partial: false });
-      const ts = nowIso();
-      const professional: Professional = {
-        id: newId(),
-        organizationId: store.organization.id,
-        // A unidade vem do tenant ativo (a sessao), nunca de um id fixo da UI.
-        unitId: store.unit.id,
-        name: payload.name.trim(),
-        roleId: payload.roleId,
-        email: payload.email?.trim() || undefined,
-        phone: payload.phone?.trim() || undefined,
-        address: payload.address,
-        status: payload.status ?? "active",
-        workingHours: payload.workingHours ?? [],
-        serviceIds: payload.serviceIds,
-        ...(payload.modalityIds && payload.modalityIds.length > 0
-          ? { modalityIds: payload.modalityIds }
-          : {}),
-        createdAt: ts,
-        updatedAt: ts,
-      };
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        const created = await createProfessionalInDb(professional);
-        store.professionals.push(created);
-        auditLogService.record({
-          action: "created",
-          target: { type: "professional", id: created.id, label: created.name },
-          predicate: `criou o profissional ${created.name}`,
-        });
-        return clone(toView(created));
+      let view: ProfessionalView;
+      if (isRealAccount()) {
+        view = await unwrap(createProfessionalAction(payload));
+        cacheProfessionals([view]);
+      } else {
+        validateProfessional(payload, { partial: false });
+        const ts = nowIso();
+        const professional: Professional = {
+          id: newId(),
+          organizationId: store.organization.id,
+          // A unidade vem do tenant ativo (a sessao), nunca de um id fixo da UI.
+          unitId: store.unit.id,
+          name: payload.name.trim(),
+          roleId: payload.roleId,
+          email: payload.email?.trim() || undefined,
+          phone: payload.phone?.trim() || undefined,
+          address: payload.address,
+          status: payload.status ?? "active",
+          workingHours: payload.workingHours ?? [],
+          serviceIds: payload.serviceIds,
+          ...(payload.modalityIds && payload.modalityIds.length > 0
+            ? { modalityIds: payload.modalityIds }
+            : {}),
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        store.professionals.push(professional);
+        view = toView(professional);
       }
-
-      store.professionals.push(professional);
       auditLogService.record({
         action: "created",
-        target: { type: "professional", id: professional.id, label: professional.name },
-        predicate: `criou o profissional ${professional.name}`,
+        target: { type: "professional", id: view.id, label: view.name },
+        predicate: `criou o profissional ${view.name}`,
       });
-      return clone(toView(professional));
+      return clone(view);
     });
   },
 
   update(id: Id, payload: UpdateProfessional): Promise<ProfessionalView> {
     return simulateWrite(async () => {
-      const idx = store.professionals.findIndex((p) => p.id === id);
-      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
-      // Conta real: o cargo escolhido precisa estar no cache para validar.
-      await syncRolesFromDb();
-      validateProfessional(payload, { partial: true });
-
-      let updated: Professional;
-      let currentStatus: string = "active";
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        if (idx !== -1) currentStatus = store.professionals[idx].status;
-        updated = await updateProfessionalInDb(id, payload, store.organization.id);
-        if (idx !== -1) {
-          store.professionals[idx] = updated;
-        } else {
-          store.professionals.push(updated);
-        }
-      } else {
-        const current = store.professionals[idx];
-        currentStatus = current.status;
-        updated = {
-          ...current,
-          ...payload,
-          ...(payload.email !== undefined
-            ? { email: payload.email?.trim() || undefined }
-            : {}),
-          updatedAt: nowIso(),
-        };
-        store.professionals[idx] = updated;
+      if (isRealAccount()) {
+        const { professional, previousStatus } = await unwrap(updateProfessionalAction(id, payload));
+        cacheProfessionals([professional]);
+        recordUpdate(professional, previousStatus);
+        return professional;
       }
 
-      // Reativacao (inativo -> ativo) e um evento proprio; senao, edicao comum.
-      const reactivated = currentStatus === "inactive" && updated.status === "active";
-      auditLogService.record({
-        action: reactivated ? "activated" : "updated",
-        target: { type: "professional", id: updated.id, label: updated.name },
-        predicate: reactivated
-          ? `reativou o profissional ${updated.name}`
-          : `atualizou o profissional ${updated.name}`,
-      });
+      const idx = store.professionals.findIndex((p) => p.id === id);
+      if (idx === -1) throw notFoundError(PROFESSIONAL_NOT_FOUND);
+      validateProfessional(payload, { partial: true });
+      const current = store.professionals[idx];
+      const updated: Professional = {
+        ...current,
+        ...payload,
+        ...(payload.email !== undefined
+          ? { email: payload.email?.trim() || undefined }
+          : {}),
+        updatedAt: nowIso(),
+      };
+      store.professionals[idx] = updated;
+      recordUpdate(updated, current.status);
       return clone(toView(updated));
     });
   },
@@ -251,14 +198,15 @@ export const professionalsService = {
   // remove = inativacao logica; inativo nao e sugerido em novos agendamentos.
   remove(id: Id): Promise<void> {
     return simulateWrite(async () => {
-      const idx = store.professionals.findIndex((p) => p.id === id);
-      if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
-      const name = idx !== -1 ? store.professionals[idx].name : "profissional";
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await inactivateProfessionalInDb(id, store.organization.id);
-      }
-      if (idx !== -1) {
+      let name: string;
+      if (isRealAccount()) {
+        const removed = await unwrap(removeProfessionalAction(id));
+        cacheProfessionals([removed]);
+        name = removed.name;
+      } else {
+        const idx = store.professionals.findIndex((p) => p.id === id);
+        if (idx === -1) throw notFoundError(PROFESSIONAL_NOT_FOUND);
+        name = store.professionals[idx].name;
         store.professionals[idx] = {
           ...store.professionals[idx],
           status: "inactive",
