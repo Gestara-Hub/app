@@ -7,6 +7,7 @@ import type {
   UpdateRole,
 } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
+import { isSupabaseOrganization } from "@/lib/session";
 import { normalizeText } from "@/lib/text";
 import {
   newId,
@@ -18,12 +19,49 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
+import {
+  createRoleInDb,
+  listRolesFromDb,
+  updateRoleInDb,
+  type RoleWriteResult,
+} from "./rolesBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
 const NOT_FOUND = "Cargo não encontrado.";
+const DUPLICATE_NAME = "Já existe um cargo com esse nome.";
+
+function isRealAccount(): boolean {
+  return isSupabaseOrganization(store.organization.id);
+}
+
+/** Resultado do banco: nome repetido vira erro de campo. */
+function unwrap(result: RoleWriteResult): Role {
+  if ("duplicate" in result) {
+    throw validationError([{ field: "name", message: DUPLICATE_NAME }]);
+  }
+  return result.role;
+}
+
+/**
+ * Conta real: os cargos vivem na tabela `roles` (doc 15, fatia 1) e o store e
+ * so cache (a Equipe le o nome do cargo dele). Cargo criado antes so no
+ * navegador sobe uma vez para o banco; nome repetido fica com o do banco.
+ */
+export async function syncRolesFromDb(): Promise<void> {
+  if (!isRealAccount()) return;
+  const organizationId = store.organization.id;
+  let roles = await listRolesFromDb(organizationId);
+  const known = new Set(roles.map((r) => r.id));
+  const localOnly = store.roles.filter((r) => !known.has(r.id));
+  if (localOnly.length > 0) {
+    for (const role of localOnly) await createRoleInDb({ ...role, organizationId });
+    roles = await listRolesFromDb(organizationId);
+  }
+  store.roles = roles;
+}
 
 // Nome de cargo e unico por organizacao (match accent/case-insensitive).
 function isDuplicateName(name: string, excludeId?: Id): boolean {
@@ -58,7 +96,8 @@ function sortRoles(list: Role[]): Role[] {
 
 export const rolesService = {
   list(filter?: RoleFilter): Promise<Role[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncRolesFromDb();
       let result = store.roles;
       if (filter?.search) {
         const term = filter.search;
@@ -72,7 +111,8 @@ export const rolesService = {
   },
 
   getById(id: Id): Promise<Role> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      await syncRolesFromDb();
       const found = store.roles.find((r) => r.id === id);
       if (!found) throw notFoundError(NOT_FOUND);
       return clone(found);
@@ -80,18 +120,18 @@ export const rolesService = {
   },
 
   create(payload: CreateRole): Promise<Role> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       validateRole(payload, { partial: false });
       if (isDuplicateName(payload.name)) {
         throw validationError([
-          { field: "name", message: "Já existe um cargo com esse nome." },
+          { field: "name", message: DUPLICATE_NAME },
         ]);
       }
       const ts = nowIso();
       const nextPosition =
         payload.position ??
         Math.max(0, ...store.roles.map((r) => r.position)) + 1;
-      const role: Role = {
+      let role: Role = {
         id: newId(),
         organizationId: store.organization.id,
         name: payload.name.trim(),
@@ -100,6 +140,7 @@ export const rolesService = {
         createdAt: ts,
         updatedAt: ts,
       };
+      if (isRealAccount()) role = unwrap(await createRoleInDb(role));
       store.roles.push(role);
       auditLogService.record({
         action: "created",
@@ -111,22 +152,31 @@ export const rolesService = {
   },
 
   update(id: Id, payload: UpdateRole): Promise<Role> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.roles.findIndex((r) => r.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       validateRole(payload, { partial: true });
       if (payload.name !== undefined && isDuplicateName(payload.name, id)) {
         throw validationError([
-          { field: "name", message: "Já existe um cargo com esse nome." },
+          { field: "name", message: DUPLICATE_NAME },
         ]);
       }
       const current = store.roles[idx];
-      const updated: Role = {
+      let updated: Role = {
         ...current,
         ...payload,
         name: payload.name !== undefined ? payload.name.trim() : current.name,
         updatedAt: nowIso(),
       };
+      if (isRealAccount()) {
+        updated = unwrap(
+          await updateRoleInDb(id, store.organization.id, {
+            name: updated.name,
+            position: updated.position,
+            status: updated.status,
+          }),
+        );
+      }
       store.roles[idx] = updated;
       auditLogService.record({
         action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
@@ -139,15 +189,13 @@ export const rolesService = {
 
   // remove = inativacao logica; cargo inativo nao e sugerido em novos cadastros.
   remove(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
       const idx = store.roles.findIndex((r) => r.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const name = store.roles[idx].name;
-      store.roles[idx] = {
-        ...store.roles[idx],
-        status: "inactive",
-        updatedAt: nowIso(),
-      };
+      store.roles[idx] = isRealAccount()
+        ? unwrap(await updateRoleInDb(id, store.organization.id, { status: "inactive" }))
+        : { ...store.roles[idx], status: "inactive", updatedAt: nowIso() };
       auditLogService.record({
         action: "inactivated",
         target: { type: "role", id, label: name },

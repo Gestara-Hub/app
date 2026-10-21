@@ -26,6 +26,7 @@ import {
   listProfessionalsFromDb,
   updateProfessionalInDb,
 } from "./professionalsBackend";
+import { syncRolesFromDb } from "./rolesService";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -98,6 +99,7 @@ export const professionalsService = {
   list(filter?: ProfessionalFilter): Promise<ProfessionalView[]> {
     return simulateRead(async () => {
       if (isSupabaseOrganization(store.organization.id)) {
+        await syncRolesFromDb();
         const dbProfessionals = await listProfessionalsFromDb(store.organization.id, filter);
         const dbIds = new Set(dbProfessionals.map((p) => p.id));
         store.professionals = [
@@ -138,6 +140,7 @@ export const professionalsService = {
   getById(id: Id): Promise<ProfessionalView> {
     return simulateRead(async () => {
       if (isSupabaseOrganization(store.organization.id)) {
+        await syncRolesFromDb();
         const dbProf = await getProfessionalFromDb(id, store.organization.id);
         if (dbProf) {
           const idx = store.professionals.findIndex((p) => p.id === id);
@@ -154,6 +157,8 @@ export const professionalsService = {
 
   create(payload: CreateProfessional): Promise<ProfessionalView> {
     return simulateWrite(async () => {
+      // Conta real: o cargo escolhido precisa estar no cache para validar.
+      await syncRolesFromDb();
       validateProfessional(payload, { partial: false });
       const ts = nowIso();
       const professional: Professional = {
@@ -201,6 +206,8 @@ export const professionalsService = {
     return simulateWrite(async () => {
       const idx = store.professionals.findIndex((p) => p.id === id);
       if (idx === -1 && !isSupabaseOrganization(store.organization.id)) throw notFoundError(NOT_FOUND);
+      // Conta real: o cargo escolhido precisa estar no cache para validar.
+      await syncRolesFromDb();
       validateProfessional(payload, { partial: true });
 
       let updated: Professional;
