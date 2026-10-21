@@ -56,8 +56,28 @@ describe("tarifas da cobrança online (doc 19 §4, decisão A)", () => {
 
   it("tarifa por meio: Pix fixa, cartão percentual + fixo, nada sobre zero", () => {
     assert.equal(gatewayFeeCents(PROMO.pix, 4000), 99);
-    assert.equal(gatewayFeeCents(PROMO.creditCard, 4000), 80 + 49);
+    // O Asaas trunca a parte percentual: 1,99% de R$ 40,00 = 0,796 -> 0,79.
+    assert.equal(gatewayFeeCents(PROMO.creditCard, 4000), 79 + 49);
     assert.equal(gatewayFeeCents(PROMO.creditCard, 0), 0);
+  });
+
+  it("tarifa do cartão igual à do Asaas (8 valores reais do sandbox, 21/10/2026)", () => {
+    const credit = { percent: 0.0199, fixedCents: 49 };
+    const real: Array<[number, number]> = [
+      [4263, 133], [1000, 68], [3333, 115], [15075, 348], [9999, 247], [123456, 2505], [5750, 163], [1890, 86],
+    ];
+    for (const [charged, fee] of real) assert.equal(gatewayFeeCents(credit, charged), fee, `R$ ${charged / 100}`);
+  });
+
+  it("repasse fecha exatamente no valor da cobrança (caso da Victoria: R$ 40,00)", () => {
+    const r = calculateOnlineChargeAmounts({ amountCents: 4000, method: "link", splitAmountCents: 129, passFee: true, fees: PROMO });
+    assert.equal(r.chargedAmountCents, 4262);
+    assert.equal(r.gatewayFeeCents, 133);
+    assert.equal(r.netAmountCents, 4000);
+  });
+
+  it("valor percentual exato não perde 1 centavo no ponto flutuante", () => {
+    assert.equal(gatewayFeeCents({ percent: 0.0299, fixedCents: 0 }, 10000), 299);
   });
 
   it("piso e teto da tarifa percentual", () => {
@@ -89,8 +109,8 @@ describe("tarifas da cobrança online (doc 19 §4, decisão A)", () => {
 
   it("link sem repasse: a pior tarifa entre crédito e débito é o crédito", () => {
     const r = calculateOnlineChargeAmounts({ amountCents: 4000, method: "link", splitAmountCents: 129, passFee: false, fees: PROMO });
-    assert.equal(r.gatewayFeeCents, 80 + 49);
-    assert.equal(r.netAmountCents, 4000 - 129 - 129);
+    assert.equal(r.gatewayFeeCents, 79 + 49);
+    assert.equal(r.netAmountCents, 4000 - 128 - 129);
     assert.equal(r.estimated, true);
   });
 
@@ -107,7 +127,7 @@ describe("tarifas da cobrança online (doc 19 §4, decisão A)", () => {
     }
   });
 
-  it("cartão com repasse: gross-up (valor + taxa + fixo) / (1 - percentual), arredondado para cima", () => {
+  it("cartão com repasse: menor valor que cobre as taxas; o líquido fecha no valor", () => {
     const r = calculateOnlineChargeAmounts({
       amountCents: 15000,
       method: "link",
@@ -115,9 +135,9 @@ describe("tarifas da cobrança online (doc 19 §4, decisão A)", () => {
       passFee: true,
       fees: { ...PROMO, linkMethods: ["creditCard"] },
     });
-    assert.equal(r.chargedAmountCents, 15558);
-    assert.equal(r.gatewayFeeCents, Math.round(15558 * 0.0199) + 49);
-    assert.ok(r.netAmountCents >= 15000);
+    assert.equal(r.chargedAmountCents, 15557);
+    assert.equal(r.gatewayFeeCents, Math.floor(15557 * 0.0199) + 49);
+    assert.equal(r.netAmountCents, 15000);
     assert.equal(r.estimated, false);
   });
 

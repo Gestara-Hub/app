@@ -191,10 +191,16 @@ export function platformSplitCents(tier: PlatformTier | undefined): number {
   return PLATFORM_SPLIT_CENTS[tier ?? "free"];
 }
 
-/** Tarifa de um meio sobre um valor cobrado (com piso e teto, se houver). */
+/**
+ * Tarifa de um meio sobre um valor cobrado (com piso e teto, se houver). O Asaas
+ * TRUNCA a parte percentual (R$ 42,63 a 1,99% = 0,8483 -> 0,84): conferido em
+ * 8 valores no sandbox em 21/10/2026. O arredondamento a 6 casas antes do floor
+ * tira o resto de ponto flutuante (10000 x 0.0299 = 298.99999...).
+ */
 export function gatewayFeeCents(fee: GatewayFee, chargedCents: number): number {
   if (chargedCents <= 0) return 0;
-  let value = Math.round(chargedCents * fee.percent) + fee.fixedCents;
+  const percentPart = Math.floor(Math.round(chargedCents * fee.percent * 1e6) / 1e6);
+  let value = percentPart + fee.fixedCents;
   if (fee.minCents !== undefined) value = Math.max(value, fee.minCents);
   if (fee.maxCents !== undefined) value = Math.min(value, fee.maxCents);
   return value;
@@ -207,8 +213,11 @@ export function gatewayFeeCents(fee: GatewayFee, chargedCents: number): number {
  * nao deixar o liquido abaixo do valor.
  */
 function grossUp(fee: GatewayFee, amountCents: number, splitCents: number): number {
-  let charged = Math.ceil((amountCents + splitCents + fee.fixedCents) / (1 - fee.percent));
-  while (charged - gatewayFeeCents(fee, charged) - splitCents < amountCents) charged += 1;
+  // Comeca um pouco abaixo da formula e sobe ate o menor valor que cobre tudo:
+  // com a parte percentual truncada, o liquido fecha no valor da cobranca.
+  const netOf = (charged: number) => charged - gatewayFeeCents(fee, charged) - splitCents;
+  let charged = Math.max(amountCents, Math.floor((amountCents + splitCents + fee.fixedCents) / (1 - fee.percent)) - 2);
+  while (netOf(charged) < amountCents) charged += 1;
   return charged;
 }
 

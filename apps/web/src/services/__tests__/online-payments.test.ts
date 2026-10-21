@@ -56,7 +56,7 @@ describe("cobrança online: gerar Pix ou link", () => {
 
     // Link = cartão: sem tabela da subconta, a reserva usa o crédito cheio (2,99% + R$ 0,49).
     const link = await onlinePaymentsService.createForCharge(charge.id, "link", false);
-    expect(link.gatewayFeeCents).toBe(Math.round(15000 * 0.0299) + 49);
+    expect(link.gatewayFeeCents).toBe(Math.floor(15000 * 0.0299) + 49);
     expect(link.netAmountCents).toBe(15000 - link.gatewayFeeCents! - 129);
   });
 
@@ -73,7 +73,7 @@ describe("cobrança online: gerar Pix ou link", () => {
     const promo = await onlinePaymentsService.createForCharge(charge.id, "pix", false);
     expect(promo.gatewayFeeCents).toBe(99);
     const card = await onlinePaymentsService.createForCharge(charge.id, "link", false);
-    expect(card.gatewayFeeCents).toBe(Math.round(15000 * 0.0199) + 49);
+    expect(card.gatewayFeeCents).toBe(Math.floor(15000 * 0.0199) + 49);
 
     // Depois do fim da promoção vale o valor cheio, sem buscar nada.
     vi.setSystemTime(new Date("2027-01-20T12:00:00"));
