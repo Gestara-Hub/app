@@ -105,7 +105,7 @@ describe("catálogo no banco (doc 15, fatia 2.1)", () => {
     const role = await unwrap(createRoleAction({ name: "Instrutor" }));
     expect((await createRoleAction({ name: "instrutor" })).ok).toBe(false);
 
-    const pro = await unwrap(createProfessionalAction({ name: "Ana", roleId: role.id, serviceIds: [] }));
+    const pro = await unwrap(createProfessionalAction({ name: "Ana", roleId: role.id, serviceIds: [], status: "active", workingHours: [] }));
     expect(pro.role).toEqual({ id: role.id, name: "Instrutor" });
     expect(pro.unitId).toBe(tenant.unitId);
     expect(await unwrap(listProfessionalsAction({ search: "instrutor" }))).toHaveLength(1);
