@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
 import { withKind } from "@/lib/text";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useOnlineCheckout } from "../hooks/use-billing";
 
 /**
  * Pecas da linha de cobranca, as mesmas em Cobrancas e no extrato da ficha do
@@ -62,14 +64,87 @@ export const PAID_ONLINE_HINT =
 export const PAID_RECURRING_HINT =
   "Pago pelo Pix Automático: não pode ser desfeito, porque seria um estorno (não existe nesta versão).";
 
-/** Selo de como a cobranca paga foi recebida (so online / Pix Automatico). */
+const PAID_VIA_CLASS =
+  "inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary";
+
+/**
+ * Selo de como a cobranca paga foi recebida (so online / Pix Automatico).
+ * "Pago online" abre o acerto: quanto o aluno pagou, as taxas e quanto entrou.
+ */
 export function PaidViaBadge({ charge }: { charge: ChargeView }) {
   if (charge.status !== "paid") return null;
-  if (charge.paidVia !== "online" && charge.paidVia !== "recurring") return null;
+  if (charge.paidVia === "recurring") return <span className={PAID_VIA_CLASS}>Pix Automático</span>;
+  if (charge.paidVia !== "online") return null;
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] leading-none font-medium text-primary">
-      {charge.paidVia === "online" ? "Pago online" : "Pix Automático"}
-    </span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Ver quanto o aluno pagou, as taxas e quanto entrou"
+          className={cn(PAID_VIA_CLASS, "cursor-pointer hover:bg-primary/20")}
+          onClick={(event) => event.stopPropagation()}
+        >
+          Pago online
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 text-xs" onClick={(event) => event.stopPropagation()}>
+        <OnlineSettlement charge={charge} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const USED_METHOD_LABEL: Record<string, string> = {
+  pix: "Pix",
+  boleto: "boleto",
+  creditCard: "cartão de crédito",
+  debitCard: "cartão de débito",
+};
+
+/** Acerto do pagamento online: so busca quando o popup abre. */
+function OnlineSettlement({ charge }: { charge: ChargeView }) {
+  const { data, isPending } = useOnlineCheckout(charge.id);
+  const paid = data?.payments.find((p) => p.status === "paid");
+  if (isPending) return <p className="text-muted-foreground">Carregando...</p>;
+  if (!paid) return <p className="text-muted-foreground">Sem o registro do pagamento online desta cobrança.</p>;
+
+  const asaasFee = paid.gatewayFeeCents ?? 0;
+  const split = paid.splitAmountCents ?? 0;
+  const net = paid.netAmountCents ?? paid.amountCents - asaasFee - split;
+  const used = paid.paidMethod
+    ? USED_METHOD_LABEL[paid.paidMethod]
+    : paid.method === "pix"
+      ? "Pix"
+      : undefined;
+  const row = "flex items-center justify-between gap-3";
+  return (
+    <div className="space-y-2.5">
+      <p className="text-sm font-medium text-foreground">Pagamento online</p>
+      <div className="space-y-1.5">
+        <div className={row}>
+          <span className="text-muted-foreground">Aluno pagou{used ? ` (${used})` : ""}</span>
+          <span className="font-medium text-foreground">{formatCents(paid.amountCents)}</span>
+        </div>
+        <div className={row}>
+          <span className="text-muted-foreground">Tarifa do Asaas</span>
+          <span className="text-foreground">{asaasFee > 0 ? `- ${formatCents(asaasFee)}` : "—"}</span>
+        </div>
+        <div className={row}>
+          <span className="text-muted-foreground">Taxa GestaraHub</span>
+          <span className="text-foreground">- {formatCents(split)}</span>
+        </div>
+        <div className={cn(row, "border-t border-border/50 pt-1.5 font-semibold")}>
+          <span className="text-foreground">Entrou na sua conta</span>
+          <span className="text-emerald-600 dark:text-emerald-400">{formatCents(net)}</span>
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        {paid.feePassedToCustomer
+          ? `Taxas repassadas: o aluno pagou o valor da cobrança (${formatCents(charge.amountCents)}) mais as taxas.`
+          : "Taxas absorvidas: saíram do valor da cobrança."}
+        {asaasFee > 0 && !paid.paidMethod && paid.method !== "pix" ? " Tarifa estimada; o Asaas não informou o meio usado." : ""}
+      </p>
+    </div>
   );
 }
 
