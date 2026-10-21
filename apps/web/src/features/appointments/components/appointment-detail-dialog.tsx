@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -105,12 +107,14 @@ interface AppointmentDetailDialogProps {
 }
 
 export function AppointmentDetailDialog({
-  appointment,
+  appointment: appointmentProp,
   open,
   onOpenChange,
   onReschedule,
   onEdit,
 }: AppointmentDetailDialogProps) {
+  // Retido durante a animacao de saida (o pai zera ao fechar).
+  const appointment = useRetainedValue(appointmentProp);
   const setStatusMut = useSetAppointmentStatus();
   const cancelMut = useCancelAppointment();
   const noShowMut = useMarkNoShow();
@@ -129,6 +133,12 @@ export function AppointmentDetailDialog({
   // Le o dado vivo por id: reflete edicao/remarcacao feitas na modal aberta por
   // cima (as mutations invalidam a query e este detalhe re-renderiza).
   const liveQuery = useAppointment(appointment?.id ?? "");
+  // Motivos limpam depois que o alerta fechou, nao no clique (evita o campo piscar vazio).
+  useAfterDialogClose(showCancel, () => {
+    setCancelReason("");
+    setCancelReasonError(null);
+  });
+  useAfterDialogClose(showNoShow, () => setNoShowReason(""));
   const pending = setStatusMut.isPending || cancelMut.isPending || noShowMut.isPending;
 
   if (!appointment) return null;
@@ -366,13 +376,7 @@ export function AppointmentDetailDialog({
 
       <AlertDialog
         open={showCancel}
-        onOpenChange={(open) => {
-          setShowCancel(open);
-          if (!open) {
-            setCancelReason("");
-            setCancelReasonError(null);
-          }
-        }}
+        onOpenChange={setShowCancel}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -419,10 +423,7 @@ export function AppointmentDetailDialog({
 
       <AlertDialog
         open={showNoShow}
-        onOpenChange={(open) => {
-          setShowNoShow(open);
-          if (!open) setNoShowReason("");
-        }}
+        onOpenChange={setShowNoShow}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

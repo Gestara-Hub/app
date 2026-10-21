@@ -1,5 +1,6 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { Eye, MessageCircle, RefreshCw } from "lucide-react";
@@ -265,14 +266,15 @@ export function MessageLogsTab() {
 
 /** Mensagem completa (texto, situacao e data). */
 export function MessageDetailDialog({
-  message: selected,
+  message,
   onOpenChange,
 }: {
   message: MessageLog | null;
   onOpenChange: (open: boolean) => void;
 }) {
+  const selected = useRetainedValue(message);
   return (
-    <Dialog open={Boolean(selected)} onOpenChange={onOpenChange}>
+    <Dialog open={Boolean(message)} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
         <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
           <DialogTitle>{selected ? TRIGGER_META[selected.trigger]?.label ?? "Mensagem" : "Mensagem"}</DialogTitle>

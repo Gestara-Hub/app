@@ -1,5 +1,6 @@
 "use client";
 
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -221,6 +222,7 @@ export function SubstituteInstructorDialog({
   onOpenChange,
   session,
 }: SubstituteInstructorDialogProps) {
+  const present = useDialogPresence(open);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -229,7 +231,7 @@ export function SubstituteInstructorDialog({
         expandable
         storageKey="substitute-instructor"
       >
-        {open && (
+        {present && (
           <SubstituteInstructorForm
             key={session.id + (session.isSubstitute ? "-sub" : "-orig")}
             session={session}

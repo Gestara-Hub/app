@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -590,7 +592,7 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
  * registro e a linha do tempo. Aberto pela chamada, ja vem com a aula.
  */
 export function StudentRecordsDialog({
-  client,
+  client: clientProp,
   open,
   onOpenChange,
   context,
@@ -600,10 +602,12 @@ export function StudentRecordsDialog({
   onOpenChange: (open: boolean) => void;
   context?: ClassRecordContext;
 }) {
+  const client = useRetainedValue(clientProp);
+  const present = useDialogPresence(open);
   if (!client) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {open ? (
+      {present ? (
         <RecordsContent
           key={`${client.id}-${context?.sessionId ?? "free"}`}
           client={client}

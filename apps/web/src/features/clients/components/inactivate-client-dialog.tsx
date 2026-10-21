@@ -1,5 +1,6 @@
 "use client";
 
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
@@ -42,6 +43,8 @@ export function InactivateClientDialog({
   const isClasses = useModel() === "classes";
   const inactivateMut = useInactivateClient();
   const [choice, setChoice] = useState<OpenChargesChoice>("keep");
+  // A escolha volta ao padrao depois da animacao de saida.
+  useAfterDialogClose(client !== null, () => setChoice("keep"));
 
   // Mensalidades em aberto de periodos ja iniciados: as futuras saem sempre;
   // estas o usuario decide se continua cobrando.
@@ -101,10 +104,7 @@ export function InactivateClientDialog({
     <ConfirmActionDialog
       open={client !== null}
       onOpenChange={(open) => {
-        if (!open) {
-          onOpenChange(false);
-          setChoice("keep");
-        }
+        if (!open) onOpenChange(false);
       }}
       title={isClasses ? "Inativar aluno?" : "Inativar cliente?"}
       description={

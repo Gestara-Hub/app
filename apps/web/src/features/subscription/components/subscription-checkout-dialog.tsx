@@ -1,5 +1,6 @@
 "use client";
 
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -814,10 +815,11 @@ export function SubscriptionCheckoutDialog({
   targetTier,
   initialInterval = "monthly",
 }: SubscriptionCheckoutDialogProps) {
+  const present = useDialogPresence(open);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border bg-card shadow-2xl">
-        {open && (
+        {present && (
           <SubscriptionCheckoutContent
             key={`${targetTier}-${initialInterval}`}
             targetTier={targetTier}

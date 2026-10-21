@@ -1,5 +1,6 @@
 "use client";
 
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -57,6 +58,8 @@ import {
 export function useChargeActions() {
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  // O motivo limpa depois que a confirmacao fechou (evita o campo piscar vazio).
+  useAfterDialogClose(chargeToCancel !== null, () => setCancelReason(""));
   // Conteudo do confirm com o ultimo valor: nao some durante a animacao de saida.
   const shownChargeToCancel = useRetainedValue(chargeToCancel);
   const [chargeToPay, setChargeToPay] = useState<ChargeView | null>(null);
@@ -328,10 +331,7 @@ export function useChargeActions() {
       <ConfirmActionDialog
         open={chargeToCancel !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setChargeToCancel(null);
-            setCancelReason("");
-          }
+          if (!open) setChargeToCancel(null);
         }}
         title="Cancelar a cobrança?"
         description={

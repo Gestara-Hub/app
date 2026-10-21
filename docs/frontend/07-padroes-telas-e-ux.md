@@ -168,6 +168,17 @@ Todos os modais de cadastro e edição usam **exclusivamente** este trio de labe
 
 ---
 
+### 2.6. Nada muda enquanto o diálogo fecha (21/10/2026)
+
+`Dialog`, `Sheet` e `AlertDialog` saem com animação (200 a 500 ms). Trocar o conteúdo ou resetar estado no `onOpenChange(false)` faz a tela piscar nesse intervalo: o título some, o formulário volta ao início, a lista perde o filtro. Regras:
+
+- **Entidade que abre o diálogo** (`open={x !== null}` ou `open={Boolean(x)}`): o `open` usa o valor atual e o conteúdo usa o retido, `const x = useRetainedValue(xProp)` (`lib/use-retained-value.ts`). Nunca `if (!x) return null` com o valor cru.
+- **Conteúdo montado só quando aberto** (`{open ? <Form /> : null}`, para o formulário recomeçar a cada abertura): use `const present = useDialogPresence(open)` e `{present ? <Form /> : null}` (`lib/use-dialog-presence.ts`). O conteúdo fica até o fim da animação; a `key` continua reiniciando o formulário.
+- **Reset de estado interno** (busca, método escolhido, motivo, aba técnica): `useAfterDialogClose(open, reset)` em vez de resetar dentro do `onOpenChange`. Roda depois da animação; se reabrir antes, roda na hora.
+- Formulários em `Sheet` que precisam reter a entidade e reiniciar por abertura já usam o estado `shown` com `session` (ex.: `sell-package-dialog.tsx`); vale igual.
+
+Aplicado em 21/10/2026 em: detalhe e remarcação do agendamento, detalhe da auditoria, graduação, registros e notas do aluno, registrar a aula, avaliação e lançar notas, substituição de instrutor, nova mensagem, editar modelo, detalhe da mensagem, checkout da assinatura, cobrar online, matricular alunos, cancelar cobrança e inativar aluno.
+
 ## 3. Usabilidade Mobile (iOS Safari & iOS/Android Chrome)
 
 O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As seguintes regras técnicas evitam bugs clássicos de WebKit / WKWebView (Chrome e Safari no iOS):

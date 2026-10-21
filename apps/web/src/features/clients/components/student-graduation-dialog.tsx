@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { AlertTriangle, Award, Check, GraduationCap, History, Lock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -526,7 +528,7 @@ function GraduationContent({
 
 /** Drawer de Graduação (raro): a trilha do aluno, graduar e ponto de partida. */
 export function StudentGraduationDialog({
-  client,
+  client: clientProp,
   open,
   onOpenChange,
   initialModalityId,
@@ -536,10 +538,13 @@ export function StudentGraduationDialog({
   onOpenChange: (open: boolean) => void;
   initialModalityId?: string;
 }) {
+  // Aluno retido e conteudo montado ate o fim da animacao de saida.
+  const client = useRetainedValue(clientProp);
+  const present = useDialogPresence(open);
   if (!client) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {open ? <GraduationContent key={client.id} client={client} initialModalityId={initialModalityId} /> : null}
+      {present ? <GraduationContent key={client.id} client={client} initialModalityId={initialModalityId} /> : null}
     </Sheet>
   );
 }

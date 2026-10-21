@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { FileText, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
@@ -202,7 +204,7 @@ function ClassRecordsForm({
 export function ClassRecordsDialog({
   open,
   onOpenChange,
-  session,
+  session: sessionProp,
   students,
 }: {
   open: boolean;
@@ -210,6 +212,8 @@ export function ClassRecordsDialog({
   session: ClassRecordsSession | null;
   students: Client[];
 }) {
+  const session = useRetainedValue(sessionProp);
+  const present = useDialogPresence(open);
   const when = session
     ? session.date === todayISO()
       ? "hoje"
@@ -228,7 +232,7 @@ export function ClassRecordsDialog({
             {session ? `${session.classGroupName} · ${when} · ${plural(students.length, "presente", "presentes")}` : ""}
           </SheetDescription>
         </SheetHeader>
-        {open && session ? (
+        {present && session ? (
           <ClassRecordsForm session={session} students={students} onDone={() => onOpenChange(false)} />
         ) : null}
       </SheetContent>

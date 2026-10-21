@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import type {
@@ -289,13 +291,15 @@ function SheetForm({ sheet, onDone }: { sheet: AssessmentSheet; onDone: () => vo
 
 /** "Lançar notas": uma linha por aluno matriculado, pensado para o celular. */
 export function GradeEntryDialog({
-  assessmentId,
+  assessmentId: assessmentIdProp,
   onOpenChange,
 }: {
   assessmentId: Id | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const open = Boolean(assessmentId);
+  const open = Boolean(assessmentIdProp);
+  const assessmentId = useRetainedValue(assessmentIdProp);
+  const present = useDialogPresence(open);
   const { data: sheet, isPending } = useAssessmentSheet(assessmentId ?? undefined);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -310,9 +314,9 @@ export function GradeEntryDialog({
             {sheet ? `${sheet.assessment.name} · ${sheet.classGroupName}` : "Carregando a avaliação"}
           </SheetDescription>
         </SheetHeader>
-        {open && sheet && !isPending ? (
+        {present && sheet && !isPending ? (
           <SheetForm key={sheet.assessment.id} sheet={sheet} onDone={() => onOpenChange(false)} />
-        ) : open ? (
+        ) : present ? (
           <div className="space-y-2 px-6 pb-6">
             <Skeleton className="h-14 w-full rounded-lg" />
             <Skeleton className="h-14 w-full rounded-lg" />

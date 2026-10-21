@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { useForm, useWatch, FormProvider, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -237,23 +239,21 @@ interface RescheduleDialogProps {
 }
 
 export function RescheduleDialog({
-  appointment,
+  appointment: appointmentProp,
   open,
   onOpenChange,
 }: RescheduleDialogProps) {
   const [scope, setScope] = useState<SeriesScope | null>(null);
+  const appointment = useRetainedValue(appointmentProp);
+  // O escopo volta ao padrao depois da animacao de saida.
+  useAfterDialogClose(open, () => setScope(null));
 
   if (!appointment) return null;
   const isSeries = Boolean(appointment.seriesId);
   const effectiveScope: SeriesScope = isSeries ? (scope ?? "only_this") : "only_this";
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) setScope(null);
-    onOpenChange(next);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-md"
         onInteractOutside={(event) => event.preventDefault()}
@@ -286,7 +286,7 @@ export function RescheduleDialog({
             key={effectiveScope}
             appointment={appointment}
             scope={effectiveScope}
-            onDone={() => handleOpenChange(false)}
+            onDone={() => onOpenChange(false)}
           />
         )}
       </DialogContent>

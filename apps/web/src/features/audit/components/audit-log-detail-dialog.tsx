@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Copy, Fingerprint, Lock, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -39,11 +41,12 @@ interface AuditLogDetailDialogProps {
 }
 
 export function AuditLogDetailDialog({
-  entry,
+  entry: entryProp,
   open,
   onOpenChange,
 }: AuditLogDetailDialogProps) {
   const model = useModel();
+  const entry = useRetainedValue(entryProp);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTech, setShowTech] = useState(false);
   // Afordância de scroll: fade+chevron quando há conteúdo além da dobra.
@@ -65,14 +68,8 @@ export function AuditLogDetailDialog({
     return () => cancelAnimationFrame(id);
   }, [entry, open, showTech, updateScroll]);
 
-  // Fecha e recolhe os detalhes técnicos (próxima abertura começa resumida).
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (!next) setShowTech(false);
-      onOpenChange(next);
-    },
-    [onOpenChange],
-  );
+  // Recolhe os detalhes técnicos depois de fechar (próxima abertura começa resumida).
+  useAfterDialogClose(open, () => setShowTech(false));
 
   if (!entry) return null;
 
@@ -89,7 +86,7 @@ export function AuditLogDetailDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
         {/* Hero: autor + ação + quando. */}
         <DialogHeader className="gap-0 space-y-0 border-b p-5 pr-12">
@@ -259,7 +256,7 @@ export function AuditLogDetailDialog({
             <Copy className="size-4" />
             Copiar registro (JSON)
           </Button>
-          <Button variant="secondary" onClick={() => handleOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
         </div>

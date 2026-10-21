@@ -1,5 +1,6 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { MessageTemplate } from "@gestarahub/contracts";
@@ -190,7 +191,7 @@ function EditTemplateForm({
 }
 
 export function EditTemplateDialog({
-  template,
+  template: templateProp,
   official,
   open,
   onOpenChange,
@@ -200,6 +201,7 @@ export function EditTemplateDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const template = useRetainedValue(templateProp);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -208,6 +209,7 @@ export function SendMessageDialog({
   recipient?: MessageRecipient;
 }) {
   const whatsapp = useWhatsAppSend();
+  const present = useDialogPresence(open);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -225,7 +227,7 @@ export function SendMessageDialog({
               : "Abre o WhatsApp deste aparelho com a mensagem pronta."}
           </SheetDescription>
         </SheetHeader>
-        {open ? <SendMessageForm onDone={() => onOpenChange(false)} fixed={recipient} /> : null}
+        {present ? <SendMessageForm onDone={() => onOpenChange(false)} fixed={recipient} /> : null}
       </SheetContent>
     </Sheet>
   );

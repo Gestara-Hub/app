@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -191,7 +193,7 @@ export function AssessmentFormDialog({
   onOpenChange,
   classGroupId,
   classGroupName,
-  assessment,
+  assessment: assessmentProp,
   track,
 }: {
   open: boolean;
@@ -202,6 +204,9 @@ export function AssessmentFormDialog({
   /** Trilha da modalidade da turma (etapa opcional). */
   track: ModalityProgressionTrack | null;
 }) {
+  // Enquanto fecha, mantem a avaliacao (titulo "Editar") e o formulario montado.
+  const assessment = useRetainedValue(assessmentProp) ?? undefined;
+  const present = useDialogPresence(open);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -215,7 +220,7 @@ export function AssessmentFormDialog({
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">{classGroupName}</SheetDescription>
         </SheetHeader>
-        {open ? (
+        {present ? (
           <AssessmentForm
             key={assessment?.id ?? "new"}
             classGroupId={classGroupId}

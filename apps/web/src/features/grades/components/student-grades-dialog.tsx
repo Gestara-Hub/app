@@ -1,5 +1,7 @@
 "use client";
 
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ClipboardList } from "lucide-react";
@@ -152,7 +154,7 @@ function ReportCardContent({ studentId, initialModalityId }: { studentId: Id; in
  * Registros de aula): so as modalidades com avaliacoes ligadas.
  */
 export function StudentGradesDialog({
-  client,
+  client: clientProp,
   open,
   onOpenChange,
   initialModalityId,
@@ -162,6 +164,8 @@ export function StudentGradesDialog({
   onOpenChange: (open: boolean) => void;
   initialModalityId?: Id;
 }) {
+  const client = useRetainedValue(clientProp);
+  const present = useDialogPresence(open);
   if (!client) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -175,7 +179,7 @@ export function StudentGradesDialog({
           <SheetDescription className="text-sm text-muted-foreground">{client.name}</SheetDescription>
         </SheetHeader>
         <DialogBody className="pb-6">
-          {open ? <ReportCardContent studentId={client.id} initialModalityId={initialModalityId} /> : null}
+          {present ? <ReportCardContent studentId={client.id} initialModalityId={initialModalityId} /> : null}
         </DialogBody>
       </SheetContent>
     </Sheet>

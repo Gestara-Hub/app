@@ -1,5 +1,6 @@
 "use client";
 
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -233,10 +234,10 @@ export function EnrollStudentsDialog({
     courseForm.reset(coursePaymentDefaults(turma));
   };
 
-  const close = () => {
-    reset();
-    onOpenChange(false);
-  };
+  // Busca, selecao e parcelas voltam ao inicio depois da animacao de saida.
+  useAfterDialogClose(open, reset);
+
+  const close = () => onOpenChange(false);
 
   // Sequencial (nao Promise.all): cada matricula reavalia a capacidade no
   // "servidor", e o resumo precisa contar quantas de fato entraram.
@@ -316,10 +317,7 @@ export function EnrollStudentsDialog({
   return (
     <Sheet
       open={open}
-      onOpenChange={(next) => {
-        if (!next) reset();
-        onOpenChange(next);
-      }}
+      onOpenChange={onOpenChange}
     >
       <SheetContent
         side="right"
