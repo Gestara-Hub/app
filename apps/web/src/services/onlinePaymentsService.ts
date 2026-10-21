@@ -146,8 +146,13 @@ function findOpenCharge(chargeId: Id): Charge {
   return c;
 }
 
-/** `awaiting` com validade passada vira `expired`. Retorna se mudou algo. */
+/**
+ * `awaiting` com validade passada vira `expired`. Retorna se mudou algo. So na
+ * demonstracao: na conta real quem expira (e exclui no Asaas) e o servidor
+ * (`expireDueOnlinePayments`), e o navegador so le o status do banco.
+ */
 function expireStale(): boolean {
+  if (isSupabaseOrganization(store.organization.id)) return false;
   const now = nowIso();
   let changed = false;
   for (const p of store.onlinePayments) {
