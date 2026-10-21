@@ -91,7 +91,6 @@ import {
   createClassGroupInDb,
   createEnrollmentInDb,
   createReservationInDb,
-  deleteAttendanceInDb,
   deleteSessionOverrideInDb,
   listAttendancesFromDb,
   listClassGroupsFromDb,
@@ -104,11 +103,14 @@ import {
   updateClassGroupInDb,
   updateEnrollmentInDb,
   updateWaitlistStatusInDb,
-  upsertAttendanceInDb,
   upsertSessionOverrideInDb,
 } from "./turmasBackend";
 import { insertChargesInDb, updateChargeInDb } from "./billingBackend";
-import { listStudentPackagesFromDb, upsertMultipleStudentPackagesInDb } from "./packagesBackend";
+import {
+  applyAttendanceWithPackagesInDb,
+  listStudentPackagesFromDb,
+  upsertMultipleStudentPackagesInDb,
+} from "./packagesBackend";
 
 async function syncTurmasFromDb(organizationId: string): Promise<void> {
   if (!isSupabaseOrganization(organizationId)) return;
@@ -1461,17 +1463,18 @@ export const turmasService = {
         store.attendances.push(attendanceRecord);
       }
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await upsertAttendanceInDb(attendanceRecord, store.organization.id);
-      }
-
       // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
       const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
-      if (usage !== "none" && isSupabaseOrganization(store.organization.id)) {
-        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
-        if (pkgs.length > 0) {
-          await upsertMultipleStudentPackagesInDb(pkgs);
-        }
+      // Presenca e gasto do pacote na mesma transacao (nunca um sem o outro).
+      if (isSupabaseOrganization(store.organization.id)) {
+        await applyAttendanceWithPackagesInDb({
+          organizationId: store.organization.id,
+          sessionId: input.sessionId,
+          studentId: input.studentId,
+          attendance: attendanceRecord,
+          packages:
+            usage === "none" ? [] : store.studentPackages.filter((p) => p.studentId === input.studentId),
+        });
       }
       auditPackageUsage(usage, g, date, input.studentId, input.status);
     });
@@ -1483,19 +1486,20 @@ export const turmasService = {
       const { g, date } = resolveSession(input.sessionId);
       assertTeacherSession(g, input.sessionId);
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await deleteAttendanceInDb(input.sessionId, input.studentId, store.organization.id);
-      }
-
       store.attendances = store.attendances.filter(
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
       const usage = syncAttendanceUsage(input.sessionId, input.studentId);
-      if (usage !== "none" && isSupabaseOrganization(store.organization.id)) {
-        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
-        if (pkgs.length > 0) {
-          await upsertMultipleStudentPackagesInDb(pkgs);
-        }
+      // Apaga a presenca e devolve a aula do pacote na mesma transacao.
+      if (isSupabaseOrganization(store.organization.id)) {
+        await applyAttendanceWithPackagesInDb({
+          organizationId: store.organization.id,
+          sessionId: input.sessionId,
+          studentId: input.studentId,
+          attendance: null,
+          packages:
+            usage === "none" ? [] : store.studentPackages.filter((p) => p.studentId === input.studentId),
+        });
       }
       auditPackageUsage(usage, g, date, input.studentId);
     });

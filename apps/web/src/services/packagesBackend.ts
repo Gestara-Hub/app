@@ -1,6 +1,7 @@
 "use server";
 
 import type {
+  Attendance,
   CarriedLessons,
   Id,
   LessonPackage,
@@ -295,6 +296,39 @@ export async function updateStudentPackageInDb(
   }
 
   return mapRowToStudentPackage(data);
+}
+
+/**
+ * Chamada e gasto do pacote na mesma transacao (funcao SQL
+ * `apply_attendance_with_packages`). `attendance` nulo desmarca a presenca.
+ * Os pacotes chegam ja recalculados pelo service (saldo e usos).
+ */
+export async function applyAttendanceWithPackagesInDb(input: {
+  organizationId: Id;
+  sessionId: Id;
+  studentId: Id;
+  attendance: Attendance | null;
+  packages: StudentPackage[];
+}): Promise<void> {
+  const client = await getClientForTenant();
+  const { error } = await client.rpc("apply_attendance_with_packages", {
+    p_organization_id: input.organizationId,
+    p_session_id: input.sessionId,
+    p_student_id: input.studentId,
+    p_attendance: input.attendance
+      ? {
+          id: input.attendance.id,
+          status: input.attendance.status,
+          marked_at: input.attendance.markedAt,
+        }
+      : null,
+    p_packages: input.packages.map(studentPackageToDbRow),
+  });
+
+  if (error) {
+    console.error("[packagesBackend] Erro ao gravar chamada com pacote:", error);
+    throw new Error("Erro ao salvar a chamada no banco de dados.");
+  }
 }
 
 export async function upsertMultipleStudentPackagesInDb(
