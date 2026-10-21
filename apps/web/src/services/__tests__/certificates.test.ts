@@ -67,7 +67,7 @@ describe("certificado de conclusão", () => {
     await expect(turmasService.getCourseCertificate(enrollment.id)).rejects.toMatchObject({
       code: "FEATURE_NOT_IN_PLAN",
       httpStatus: 403,
-      message: "Certificado de conclusão está disponível no Plano Pro.",
+      message: "Certificado de conclusão está disponível no Plano Profissional.",
     });
   });
 
@@ -168,7 +168,7 @@ describe("modelo de certificado", () => {
     await expect(certificatesService.saveTemplate(customTemplate())).rejects.toMatchObject({
       code: "FEATURE_NOT_IN_PLAN",
       httpStatus: 403,
-      message: "Certificado de conclusão está disponível no Plano Pro.",
+      message: "Certificado de conclusão está disponível no Plano Profissional.",
     });
     await expect(certificatesService.resetTemplate()).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });
     await expect(certificatesService.uploadLogo(imageFile(10))).rejects.toMatchObject({ code: "FEATURE_NOT_IN_PLAN" });

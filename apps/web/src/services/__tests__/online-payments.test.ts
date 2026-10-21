@@ -29,14 +29,12 @@ async function studentWithCharge(name = "Aluno"): Promise<{ student: Client; cha
 describe("cobrança online: gerar Pix ou link", () => {
   beforeEach(proAcademy);
 
-  it("recusa no plano Grátis", async () => {
+  it("funciona no plano Grátis (doc 13: pagamento online liberado com taxa por transação)", async () => {
     const { charge } = await studentWithCharge();
     await subscriptionService.setTier("free");
-    await expect(onlinePaymentsService.createForCharge(charge.id, "pix")).rejects.toMatchObject({
-      code: "FEATURE_NOT_IN_PLAN",
-      httpStatus: 403,
-    });
-    expect(store.onlinePayments).toHaveLength(0);
+    const payment = await onlinePaymentsService.createForCharge(charge.id, "pix");
+    expect(payment.chargeId).toBe(charge.id);
+    expect(store.onlinePayments).toHaveLength(1);
   });
 
   it("recusa com a cobrança online desligada", async () => {
@@ -185,10 +183,10 @@ describe("cobrança online: pagamento", () => {
 describe("configuração do pagamento online", () => {
   beforeEach(() => resetAcademy());
 
-  it("exige o plano Pro", async () => {
-    await expect(onlinePaymentsService.updateSettings({ enabled: true })).rejects.toMatchObject({
-      code: "FEATURE_NOT_IN_PLAN",
-    });
+  it("não exige plano pago", async () => {
+    await subscriptionService.setTier("free");
+    const settings = await onlinePaymentsService.updateSettings({ enabled: true });
+    expect(settings.enabled).toBe(true);
   });
 
   it("valida validade e chave; ligar entra na auditoria de segurança", async () => {
@@ -287,17 +285,18 @@ describe("Pix Automático", () => {
     await expect(onlinePaymentsService.revokeRecurring(auth.id)).rejects.toMatchObject({ httpStatus: 409 });
   });
 
-  it("sem o plano Pro ou com a opção desligada não debita", async () => {
+  it("com a opção desligada não debita; no plano Grátis debita", async () => {
     const s = await studentWithThreeCharges("Aluno", 15000);
     const auth = await onlinePaymentsService.requestRecurring(s.id, 20000);
     await onlinePaymentsService.simulateAuthorize(auth.id);
     vi.setSystemTime(new Date("2026-10-01T12:00:00"));
     await onlinePaymentsService.updateSettings({ enabled: false });
     expect(applyRecurringAutoPayments()).toBe(0);
+    expect(chargesOf(s.id).at(-1)).toBe("2026-10-01 pending");
     await onlinePaymentsService.updateSettings({ enabled: true });
     await subscriptionService.setTier("free");
-    expect(applyRecurringAutoPayments()).toBe(0);
-    expect(chargesOf(s.id).at(-1)).toBe("2026-10-01 pending");
+    expect(applyRecurringAutoPayments()).toBe(1);
+    expect(chargesOf(s.id).at(-1)).toBe("2026-10-01 paid recurring");
   });
 
   it("uma solicitação aberta por aluno; exige plano e limite válido", async () => {

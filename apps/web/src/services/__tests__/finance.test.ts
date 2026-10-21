@@ -55,7 +55,7 @@ describe("plano GestaraHub (assinatura)", () => {
     expect(sub.changedAt).toBeTruthy();
     expect(store.auditLog.length).toBe(before + 1);
     expect(store.auditLog.at(-1)).toMatchObject({
-      summary: "Ana Ribeiro trocou o Plano GestaraHub de Grátis para Pro",
+      summary: "Ana Ribeiro trocou o Plano GestaraHub de Grátis para Profissional",
       security: true,
     });
   });
@@ -78,11 +78,13 @@ describe("plano GestaraHub (assinatura)", () => {
 
   it("recurso pago fora do plano Grátis: FEATURE_NOT_IN_PLAN (403)", async () => {
     await subscriptionService.setTier("free");
-    expect(() => assertFeature("online_payments")).toThrow(
+    expect(() => assertFeature("messaging")).toThrow(
       expect.objectContaining({ code: "FEATURE_NOT_IN_PLAN", httpStatus: 403 }),
     );
-    await subscriptionService.setTier("pro");
+    // Pagamento online é do Grátis desde 19/10/2026 (doc 13, Asaas com taxa por transação).
     expect(() => assertFeature("online_payments")).not.toThrow();
+    await subscriptionService.setTier("pro");
+    expect(() => assertFeature("messaging")).not.toThrow();
   });
 
   it("financeiro básico funciona no plano Grátis (freemium)", async () => {
