@@ -8,7 +8,7 @@ import {
   planMembershipCharges,
 } from "@gestarahub/core/membership-generation";
 import type { BillingDefaults } from "@gestarahub/core/billing";
-import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { listChargesFromDb, listPlansFromDb } from "./billingBackend";
 import { chargeToDbRow } from "./billingRows";
 import { listClientsFromDb } from "./clientsBackend";
@@ -26,7 +26,7 @@ export async function generateMembershipChargesAction(
   organizationId: string,
   requested: string[] = [],
 ): Promise<number> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   const [{ data: org }, { data: unit }, clients, plans, classGroups, enrollments, charges] = await Promise.all([
     client.from("organizations").select("settings").eq("id", organizationId).maybeSingle(),
     client.from("units").select("id").eq("organization_id", organizationId).limit(1).maybeSingle(),

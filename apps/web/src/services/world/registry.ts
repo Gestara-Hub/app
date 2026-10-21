@@ -14,6 +14,8 @@ interface ServiceNamespace {
   permissions: Record<string, Permission[]>;
   /** Metodos que nao vao para o servidor (arquivo, navegador). */
   browserOnly?: string[];
+  /** Metodos com efeito externo antes da gravacao: nao repetem em conflito. */
+  noRetry?: string[];
 }
 
 const MANAGE_CLIENTS: Permission[] = ["clients:manage"];
@@ -107,6 +109,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       ),
       ...all(["connectOfficial", "disconnectOfficial", "updateConnectionSettings", "updateTemplate"], MANAGE_COMMUNICATION),
     },
+    noRetry: ["sendMessage", "retryFailedMessage", "connectOfficial", "disconnectOfficial"],
   },
   reports: {
     load: async () => (await import("../reportsService")).reportsServiceImpl as unknown as ServiceObject,
@@ -122,6 +125,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       ...all(["listForCharge", "getCheckout"], VIEW_BILLING),
       ...all(["createForCharge", "cancelForCharge"], MANAGE_BILLING),
     },
+    noRetry: ["createForCharge"],
     browserOnly: [
       "getSettings",
       "syncSubaccountApproved",
@@ -148,6 +152,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
 export interface ResolvedMethod {
   run: (...args: unknown[]) => Promise<unknown>;
   permissions: Permission[];
+  noRetry: boolean;
 }
 
 export async function resolveServiceMethod(name: string): Promise<ResolvedMethod | undefined> {
@@ -160,5 +165,6 @@ export async function resolveServiceMethod(name: string): Promise<ResolvedMethod
   return {
     run: (...args) => (fn as (...a: unknown[]) => Promise<unknown>).apply(service, args),
     permissions: entry.permissions[method] ?? [],
+    noRetry: entry.noRetry?.includes(method) ?? false,
   };
 }

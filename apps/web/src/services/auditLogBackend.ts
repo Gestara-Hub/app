@@ -1,19 +1,8 @@
 "use server";
 
 import type { AuditLogEntry, AuditLogFilter } from "@gestarahub/contracts";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getClientForTenant } from "@/lib/supabase/tenant-client";
 
-async function getClientForTenant() {
-  try {
-    const serverClient = await createSupabaseServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    if (user) return serverClient;
-  } catch {
-    // Fallback below
-  }
-  return createSupabaseAdminClient();
-}
 
 export async function recordAuditLogInDb(entry: AuditLogEntry): Promise<void> {
   try {

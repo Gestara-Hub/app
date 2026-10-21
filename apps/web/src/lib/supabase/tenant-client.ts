@@ -1,22 +1,17 @@
-import { createSupabaseAdminClient } from "./admin";
+import { apiError } from "@gestarahub/core/api-error";
 import { createSupabaseServerClient } from "./server";
 
 /**
- * Returns a Supabase client configured for the current tenant context.
- * In authenticated requests (cookies present), returns the SSR client so RLS applies using auth.uid().
- * In background or script contexts where cookies are not available, falls back to the admin client.
+ * Cliente do Supabase da sessao (RLS pelo usuario autenticado). Sem sessao
+ * valida, recusa: nunca cai no cliente administrativo, que ignora o RLS (doc 15,
+ * fatia 3). Quem precisa do administrativo (cron, webhook) usa
+ * `createSupabaseAdminClient` de forma explicita.
  */
 export async function getClientForTenant() {
-  try {
-    const serverClient = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await serverClient.auth.getUser();
-    if (user) {
-      return serverClient;
-    }
-  } catch {
-    // Non-cookie environment (e.g. background tasks, seed or direct scripts)
-  }
-  return createSupabaseAdminClient();
+  const serverClient = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await serverClient.auth.getUser();
+  if (!user) throw apiError("FORBIDDEN", "Sua sessão expirou. Entre de novo.", { httpStatus: 401 });
+  return serverClient;
 }

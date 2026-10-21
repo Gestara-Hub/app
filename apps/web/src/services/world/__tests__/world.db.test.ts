@@ -134,17 +134,42 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
     expect((await serviceAction("clients.nao_existe", [])).ok).toBe(false);
   });
 
-  it("gravação com leitura velha é recusada inteira (concorrência)", async () => {
+  it("a função de gravação não é chamada direto pelo usuário", async () => {
     const created = await call<Client>("clients.create", { name: "Eva", phone: "11955554444", status: "active" });
     const { data: row } = await adminClient().from("clients").select("*").eq("id", created.id).single();
-    await adminClient().from("clients").update({ notes: "outra aba" }).eq("id", created.id).throwOnError();
     const { error } = await sessionClient().rpc("apply_world_changes", {
+      p_organization_id: tenant.organizationId,
+      p_changes: { upserts: [{ table: "clients", pk: "id", row: { ...row, name: "Eva 2" } }], deletes: [] },
+      p_expected_version: 0,
+    });
+    expect(error?.code).toBe("42501");
+  });
+
+  it("linha mudada depois da leitura aborta a gravação inteira (concorrência)", async () => {
+    const created = await call<Client>("clients.create", { name: "Eva", phone: "11955554444", status: "active" });
+    const admin = adminClient();
+    const { data: row } = await admin.from("clients").select("*").eq("id", created.id).single();
+    const { data: version } = await admin
+      .from("world_versions")
+      .select("version")
+      .eq("organization_id", tenant.organizationId)
+      .single();
+    await admin.from("clients").update({ notes: "outra aba" }).eq("id", created.id).throwOnError();
+    const { error } = await admin.rpc("apply_world_changes", {
       p_organization_id: tenant.organizationId,
       p_changes: {
         upserts: [{ table: "clients", pk: "id", row: { ...row, name: "Eva 2" }, expected: row!.updated_at }],
         deletes: [],
       },
+      p_expected_version: version!.version,
     });
     expect(error?.code).toBe("40001");
+    // Versao velha tambem aborta.
+    const stale = await admin.rpc("apply_world_changes", {
+      p_organization_id: tenant.organizationId,
+      p_changes: { upserts: [], deletes: [] },
+      p_expected_version: Number(version!.version) - 1,
+    });
+    expect(stale.error?.code).toBe("40001");
   });
 });

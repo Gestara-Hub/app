@@ -8,7 +8,7 @@ import type {
   Enrollment,
   Id,
 } from "@gestarahub/contracts";
-import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // =============================================================================
 // Row Mappers
@@ -62,7 +62,7 @@ export async function listClassGroupsFromDb(
   organizationId: string,
   filter?: ClassGroupFilter,
 ): Promise<ClassGroup[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("class_groups")
     .select("*")
@@ -102,7 +102,7 @@ export async function listEnrollmentsFromDb(
   organizationId: string,
   classGroupId?: Id,
 ): Promise<Enrollment[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("enrollments")
     .select("*")

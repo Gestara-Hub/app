@@ -9,7 +9,7 @@ import type {
   Plan,
   PlanFilter,
 } from "@gestarahub/contracts";
-import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // =============================================================================
 // Row Mappers
@@ -75,7 +75,7 @@ export async function listPlansFromDb(
   organizationId: string,
   filter?: PlanFilter,
 ): Promise<Plan[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("plans")
     .select("*")
@@ -107,7 +107,7 @@ export async function listChargesFromDb(
   organizationId: string,
   filter?: ChargeFilter,
 ): Promise<Charge[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("charges")
     .select("*")

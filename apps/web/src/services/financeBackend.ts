@@ -10,7 +10,7 @@ import type {
 } from "@gestarahub/contracts";
 import { randomUUID } from "node:crypto";
 import { addCompetence, materializeRecurrence, recurrenceDueDate } from "@gestarahub/core/finance";
-import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 function mapRowToRecurrence(row: Record<string, unknown>): FinancialRecurrence {
   return {
@@ -54,7 +54,7 @@ function mapRowToEntry(row: Record<string, unknown>): FinancialEntry {
 export async function listFinancialRecurrencesFromDb(
   organizationId: string,
 ): Promise<FinancialRecurrence[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   const { data, error } = await client
     .from("financial_recurrences")
     .select("*")
@@ -73,7 +73,7 @@ export async function listFinancialEntriesFromDb(
   organizationId: string,
   filter?: FinancialEntryFilter,
 ): Promise<FinancialEntry[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("financial_entries")
     .select("*")
@@ -110,7 +110,7 @@ export async function listFinancialEntriesFromDb(
  * migracao 27). Idempotente e segura com dois aparelhos. Devolve quantos criou.
  */
 export async function materializeRecurrencesAction(organizationId: string): Promise<number> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   const [recurrences, entries, { data: unit }] = await Promise.all([
     listFinancialRecurrencesFromDb(organizationId),
     listFinancialEntriesFromDb(organizationId),

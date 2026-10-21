@@ -81,10 +81,16 @@ Ordem, de quem depende de menos para quem depende de mais:
 
 ### Fatia 3 — Regras no servidor
 
-- [ ] Conflito de horário do professor e horário de funcionamento ao criar e editar turma.
-- [ ] Capacidade da turma e da aula (matrícula, avulsa, promoção da lista de espera) na mesma transação da gravação.
-- [ ] Geração de parcelas de curso e de pacote numa transação com a matrícula ou a venda.
-- [ ] Permissões e escopo do professor (`teacherScope`) conferidos no servidor e no RLS, não só no serviço do navegador.
+- [x] Conflito de horário do professor e horário de funcionamento ao criar e editar turma (21/10/2026): a validação roda no servidor sobre o banco (fatia 2).
+- [x] Capacidade da turma e da aula (matrícula, avulsa, promoção da lista de espera) na mesma transação da gravação (21/10/2026).
+- [x] Geração de parcelas de curso e de pacote numa transação com a matrícula ou a venda (21/10/2026): tudo o que um método muda vai numa chamada só de `apply_world_changes`.
+- [x] Permissões e escopo do professor conferidos no servidor e no RLS (21/10/2026).
+- **Como ficou (migrações 32 e 33):**
+  1. **Versão por espaço** (`world_versions`): o servidor lê a versão antes das tabelas e a gravação confere; se outra gravação do mesmo espaço entrou no meio, aborta (40001) e o servidor roda o método de novo sobre o banco atual (até 3 vezes). Assim a regra (vaga, horário, parcelas) sempre vale sobre o estado mais novo. Métodos com efeito externo antes da gravação (gerar código no Asaas, enviar WhatsApp) não repetem sozinhos e devolvem `CONFLICT` para a tela.
+  2. **Gravação só pelo servidor:** `apply_world_changes` só roda com a chave de serviço, depois de o servidor conferir sessão, permissão do método (`world/registry.ts`) e as regras do serviço (inclusive o escopo do professor, com o ator da sessão). O usuário não chama a função direto. Cada linha continua presa ao espaço da sessão.
+  3. **Leitura do servidor com a chave de serviço**, sempre filtrada pelo espaço da sessão. Com isso o RLS de leitura passou a seguir as permissões do app para o acesso direto do navegador: alunos, cobranças, pagamentos online e pacotes do aluno só para dono, gerente e recepção; auditoria só para dono e gerente; usuários, cada um vê só a si (dono e gerente veem todos). As políticas que citavam perfis inexistentes (`teacher`, `receptionist`) usam os reais.
+  4. **Sem cair no administrativo:** `getClientForTenant` recusa sem sessão (antes caía no cliente administrativo, que ignora o RLS). O cron usa o administrativo de forma explícita.
+- Testes: `world/__tests__/rules.db.test.ts` (duas matrículas na última vaga ao mesmo tempo, duas turmas do professor no mesmo horário ao mesmo tempo, chamada só nas próprias aulas, avulsa pela recepção, acesso direto por perfil e gravação sem sessão) e `world.db.test.ts` (função de gravação recusada para o usuário, conflito por linha e por versão).
 - **Pronto quando:** duas abas fazendo a mesma operação ao mesmo tempo não furam nenhuma das regras acima.
 
 ### Fatia 4 — Demonstração no banco

@@ -7,22 +7,7 @@ import type {
   ClientFilter,
 } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-async function getClientForTenant() {
-  try {
-    const serverClient = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await serverClient.auth.getUser();
-    if (user) {
-      return serverClient;
-    }
-  } catch {
-    // Non-cookie environment (e.g. background tasks or direct scripts)
-  }
-  return createSupabaseAdminClient();
-}
 
 function mapRowToClient(row: Record<string, unknown>): Client {
   return {
@@ -57,7 +42,7 @@ export async function listClientsFromDb(
   organizationId: string,
   filter?: ClientFilter,
 ): Promise<Client[]> {
-  const client = await getClientForTenant();
+  const client = createSupabaseAdminClient();
   let query = client
     .from("clients")
     .select("*")

@@ -1,6 +1,7 @@
 import type { AuditActor, CertificateTemplate } from "@gestarahub/contracts";
 import { apiError } from "@gestarahub/core/api-error";
 import type { MockStore } from "@/mocks/store";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { TenantContext } from "../server/tenant";
 import type { WorldEffect } from "./effects";
 import { runScoped } from "./scope";
@@ -33,6 +34,8 @@ interface LoadedCollection {
 
 interface LoadedWorld {
   store: MockStore;
+  /** Versao do espaco na leitura (world_versions); a gravacao confere. */
+  version: number;
   unitId: string;
   collections: LoadedCollection[];
   organizationRow: Row;
@@ -52,11 +55,17 @@ function objectIdentity(collection: WorldCollection, object: Row): string | unde
   return object[key] as string | undefined;
 }
 
+/**
+ * Leitura com a chave de servico, sempre filtrada pelo espaco da sessao: a
+ * sessao e a permissao do metodo ja foram conferidas, e o RLS de leitura fica
+ * livre para restringir o acesso direto do navegador por perfil (fatia 3).
+ */
 async function loadRows(ctx: TenantContext, table: string): Promise<Row[]> {
   const scopeColumn = table === "organizations" ? "id" : "organization_id";
+  const admin = createSupabaseAdminClient();
   const rows: Row[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await ctx.client
+    const { data, error } = await admin
       .from(table)
       .select("*")
       .eq(scopeColumn, ctx.organizationId)
@@ -68,7 +77,19 @@ async function loadRows(ctx: TenantContext, table: string): Promise<Row[]> {
   }
 }
 
+async function loadVersion(ctx: TenantContext): Promise<number> {
+  const { data, error } = await createSupabaseAdminClient()
+    .from("world_versions")
+    .select("version")
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+  if (error) throw new Error(`world: leitura da versão: ${error.message}`);
+  return Number(data?.version ?? 0);
+}
+
 async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
+  // A versao e lida antes das tabelas: gravacao que entrar depois dela aborta.
+  const version = await loadVersion(ctx);
   const tables = await Promise.all(
     WORLD_COLLECTIONS.map(async (collection) =>
       collection.appendOnly ? [] : loadRows(ctx, collection.table),
@@ -116,7 +137,7 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     }
   }
   store.certificateTemplate = (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined;
-  return { store: store as unknown as MockStore, unitId, collections, organizationRow };
+  return { store: store as unknown as MockStore, version, unitId, collections, organizationRow };
 }
 
 interface WorldChanges {
@@ -173,10 +194,15 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
 
 const CONFLICT_MESSAGE = "Outra pessoa mudou esses dados agora. Atualize a tela e tente de novo.";
 
-async function applyChanges(ctx: TenantContext, changes: WorldChanges): Promise<void> {
-  const { error } = await ctx.client.rpc("apply_world_changes", {
+/**
+ * Grava com a chave de servico: a sessao e a permissao do metodo ja foram
+ * conferidas e cada linha segue presa ao espaco da sessao (doc 15, fatia 3).
+ */
+async function applyChanges(ctx: TenantContext, changes: WorldChanges, version: number): Promise<void> {
+  const { error } = await createSupabaseAdminClient().rpc("apply_world_changes", {
     p_organization_id: ctx.organizationId,
     p_changes: changes,
+    p_expected_version: version,
   });
   if (!error) return;
   if (error.code === "40001" || error.code === "23505") {
@@ -189,8 +215,12 @@ async function applyChanges(ctx: TenantContext, changes: WorldChanges): Promise<
 }
 
 async function actorOf(ctx: TenantContext): Promise<AuditActor> {
-  const { data } = await ctx.client.from("users").select("name").eq("id", ctx.userId).maybeSingle();
+  const { data } = await createSupabaseAdminClient().from("users").select("name").eq("id", ctx.userId).maybeSingle();
   return { userId: ctx.userId, name: String(data?.name ?? "Usuário"), profile: ctx.profile };
+}
+
+export function isConflict(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: string }).code === "CONFLICT";
 }
 
 /** Roda `fn` no espaco do banco e grava o que mudou. */
@@ -199,7 +229,7 @@ export async function runInWorld<T>(ctx: TenantContext, fn: () => Promise<T>): P
   const effects: WorldEffect[] = [];
   const result = await runScoped({ store: world.store, actor, effects }, fn);
   const changes = diffWorld(ctx, world);
-  if (changes.upserts.length > 0 || changes.deletes.length > 0) await applyChanges(ctx, changes);
+  if (changes.upserts.length > 0 || changes.deletes.length > 0) await applyChanges(ctx, changes, world.version);
   // Efeitos externos so depois de gravar; falha neles nao desfaz a gravacao.
   for (const effect of effects) {
     await effect().catch((err) => console.error("[world] Efeito depois da gravação falhou:", err));
