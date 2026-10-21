@@ -172,4 +172,28 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
     });
     expect(stale.error?.code).toBe("40001");
   });
+
+  it("configurações: leitura do banco, troca de área atualiza os modelos e só o dono altera", async () => {
+    await call("communication.listTemplates");
+    const org = await call<{ name: string; classSegment?: string }>("settings.getOrganization");
+    expect(org.name).toBe("Espaço de teste");
+    await call("settings.updateOrganization", { name: "Escola de Idiomas", classSegment: "languages" });
+    const admin = adminClient();
+    const { data: row } = await admin.from("organizations").select("name, class_segment").eq("id", tenant.organizationId).single();
+    expect(row).toEqual({ name: "Escola de Idiomas", class_segment: "languages" });
+    const { data: welcome } = await admin
+      .from("message_templates")
+      .select("content")
+      .eq("organization_id", tenant.organizationId)
+      .eq("trigger", "welcome_student")
+      .single();
+    // Lutas fala em tatame; idiomas, em aula.
+    expect(welcome?.content).not.toContain("tatame");
+
+    await signInAs(await tenant.addUser("manager"));
+    const denied = await serviceAction("settings.updateOrganization", [{ name: "Outro" }]);
+    expect(denied.ok).toBe(false);
+    if (!denied.ok) expect(denied.error.code).toBe("FORBIDDEN");
+  });
 });
+

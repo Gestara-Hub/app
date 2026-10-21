@@ -138,6 +138,13 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
       "revokeRecurring",
     ],
   },
+  settings: {
+    load: async () => (await import("../settingsService")).settingsServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["updateOrganization", "updateUnit"], ["settings:view"]),
+      markModalitiesReviewed: ["classes:manage", "services:manage"],
+    },
+  },
   onboarding: {
     load: async () => (await import("../onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
     permissions: {},
