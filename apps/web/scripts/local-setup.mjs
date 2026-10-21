@@ -13,6 +13,8 @@
  *    (URL, chave anonima e service role), sem mexer nas que ja existem.
  * 4. Prepara o cron diario: CRON_SECRET no .env.local e app_url/cron_secret no Vault
  *    (o mesmo que `pnpm cron:local`).
+ * 5. Recria o espaco de demonstracao no banco (o mesmo que `pnpm demo:local`):
+ *    DEMO_PASSWORD no .env.local e os usuarios e dados da Academia X.
  *
  * Nunca imprime chaves nem segredos. Depois: `pnpm dev` (e `pnpm tunnel` para o
  * webhook do Asaas).
@@ -112,6 +114,17 @@ execFileSync(process.execPath, [resolve(ROOT, "apps/web/scripts/dev-cron-secrets
   .toString()
   .split("\n")
   .filter((l) => l.trim() && !l.startsWith("Para testar"))
+  .forEach((l) => console.log(`   ${l}`));
+
+// 5. Demonstracao no banco
+step(5, "Espaço de demonstração (Academia X)");
+execFileSync(process.execPath, [resolve(ROOT, "apps/web/scripts/dev-demo.mjs")], {
+  cwd: ROOT,
+  stdio: ["ignore", "pipe", "inherit"],
+})
+  .toString()
+  .split("\n")
+  .filter((l) => l.trim())
   .forEach((l) => console.log(`   ${l}`));
 
 console.log(`

@@ -15,6 +15,7 @@ import type {
   UserProfile,
   UserView,
 } from "@gestarahub/contracts";
+import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendSignupLinkEmail } from "@/lib/email/mailersend";
@@ -574,6 +575,34 @@ export async function completeSignupWithPassword(input: {
 export type SignInWithPasswordResult =
   | ({ ok: true; redirectTo: string } & HydratedTenantPayload)
   | { ok: false; message: string };
+
+/**
+ * Entrar na demonstracao (doc 15, fatia 4): login de verdade no espaco de
+ * demonstracao do banco, como o dono. Sem DEMO_PASSWORD no ambiente, a
+ * demonstracao nao existe ali.
+ */
+export async function signInDemoAction(from?: string): Promise<SignInWithPasswordResult> {
+  return signInAsDemo("owner", from);
+}
+
+/**
+ * Troca de perfil na demonstracao (barra do topo): so dentro do espaco de
+ * demonstracao, entra como o usuario daquele perfil.
+ */
+export async function switchDemoProfileAction(profile: UserProfile): Promise<SignInWithPasswordResult> {
+  const current = await getCurrentUser();
+  if (!current || !isDemoOrganization(current.organizationId)) {
+    return { ok: false, message: "A troca de perfil só vale na demonstração." };
+  }
+  return signInAsDemo(profile);
+}
+
+async function signInAsDemo(profile: UserProfile, from?: string): Promise<SignInWithPasswordResult> {
+  const password = process.env.DEMO_PASSWORD;
+  const demoUser = DEMO_USERS.find((u) => u.profile === profile);
+  if (!password || !demoUser) return { ok: false, message: "A demonstração não está disponível neste ambiente." };
+  return signInWithPasswordAction({ email: demoUser.email, password, from });
+}
 
 /**
  * Login com e-mail e senha reais no Supabase Auth.

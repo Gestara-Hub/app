@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import type { UserProfile } from "@gestarahub/contracts";
 import { Building2, Check, Crown, LogOut, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -16,13 +19,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut, switchUser } from "@/app/(auth)/actions";
+import { signOut } from "@/app/(auth)/actions";
+import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization, useSubscription, useUnit } from "@/features/settings";
-import { useSwitchableUsers } from "@/features/users/hooks/use-users";
+import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
+import { settingsService } from "@/services/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 
 export function AppTopbar() {
@@ -31,10 +36,26 @@ export function AppTopbar() {
   const { data: organization, isError: orgError } = useOrganization();
   const { data: subscription } = useSubscription();
   const tier = subscription?.tier ?? "free";
-  const { data: rawSwitchOptions } = useSwitchableUsers();
-  const switchOptions = (rawSwitchOptions ?? []).filter(
-    (opt) => opt.user.name !== "Marcelo Andrade" && opt.user.id !== "usr-marcelo",
-  );
+  const router = useRouter();
+  // Demonstracao no banco: troca de perfil entrando como o usuario dele.
+  const demo = isDemoOrganization(user.organizationId);
+  const [isSwitching, startSwitch] = useTransition();
+  const onSwitchProfile = (profile: UserProfile) =>
+    startSwitch(async () => {
+      const result = await switchDemoProfileAction(profile);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      settingsService.hydrateTenant({
+        organization: result.organization,
+        unit: result.unit,
+        user: result.user,
+        categories: result.categories,
+      });
+      router.push(result.redirectTo);
+      router.refresh();
+    });
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   return (
@@ -119,26 +140,30 @@ export function AppTopbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
 
-            <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
-              <Users className="size-3.5" />
-              Trocar usuário / organização (demo)
-            </DropdownMenuLabel>
-            {(switchOptions ?? []).map((opt) => (
-              <form key={opt.user.id} action={switchUser.bind(null, opt.user)}>
-                <DropdownMenuItem asChild disabled={opt.user.id === user.id}>
-                  <button type="submit" className="w-full cursor-pointer items-start text-left">
-                    {/* Nome e, embaixo, perfil e organizacao (dois "Carlos Silva" se distinguem). */}
+            {demo ? (
+              <>
+                <DropdownMenuLabel className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                  <Users className="size-3.5" />
+                  Ver a demonstração como
+                </DropdownMenuLabel>
+                {DEMO_USERS.map((demoUser) => (
+                  <DropdownMenuItem
+                    key={demoUser.profile}
+                    disabled={isSwitching || demoUser.profile === user.profile}
+                    onSelect={() => onSwitchProfile(demoUser.profile)}
+                    className="cursor-pointer items-start"
+                  >
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words">{opt.user.name}</span>
+                      <span className="block break-words">{demoUser.name}</span>
                       <span className="block break-words text-xs text-muted-foreground">
-                        {userProfileLabel(opt.user.profile)} · {opt.organizationName}
+                        {userProfileLabel(demoUser.profile)}
                       </span>
                     </span>
-                    {opt.user.id === user.id ? <Check className="mt-0.5 size-4" /> : null}
-                  </button>
-                </DropdownMenuItem>
-              </form>
-            ))}
+                    {demoUser.profile === user.profile ? <Check className="mt-0.5 size-4" /> : null}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            ) : null}
 
             <DropdownMenuSeparator />
             <form action={signOut}>

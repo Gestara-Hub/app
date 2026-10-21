@@ -9,6 +9,7 @@
     "setup:local": "node apps/web/scripts/local-setup.mjs",
     "setup:local:reset": "node apps/web/scripts/local-setup.mjs --reset",
     "cron:local": "node apps/web/scripts/dev-cron-secrets.mjs",
+    "demo:local": "node apps/web/scripts/dev-demo.mjs",
     "build": "pnpm --filter @gestarahub/web build",
     "lint": "pnpm --filter @gestarahub/web lint",
     "typecheck": "pnpm --filter @gestarahub/web typecheck",

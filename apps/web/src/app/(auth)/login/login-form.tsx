@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
   Eye,
   EyeOff,
   Loader2,
@@ -15,37 +14,31 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { userInitials } from "@/lib/session";
-import { userProfileLabel } from "@/lib/labels";
-import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 import { settingsService } from "@/services/settingsService";
-import type { UserSwitchOption } from "@/services/usersService";
-import { signIn } from "../actions";
 import {
   completeSignupWithPassword,
   requestSignupLink,
+  signInDemoAction,
   signInWithPasswordAction,
   type ValidateSignupTokenResult,
 } from "../signup-actions";
-
-/** Usuario de demonstracao (dona da Academia X no seed). */
-const DEMO_OWNER_ID = "usr-ac-ana";
 
 interface LoginFormProps {
   from: string;
   initialEmail?: string;
   tokenValidation?: ValidateSignupTokenResult | null;
+  /** Ambiente com o espaco de demonstracao no banco (DEMO_PASSWORD). */
+  demoAvailable?: boolean;
 }
 
 export function LoginForm({
   from,
   initialEmail,
   tokenValidation: initialTokenValidation = null,
+  demoAvailable = false,
 }: LoginFormProps) {
   const router = useRouter();
   const [tokenState, setTokenState] = useState<ValidateSignupTokenResult | null>(
@@ -76,10 +69,8 @@ export function LoginForm({
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isSigningIn, startSignInTransition] = useTransition();
 
-  // Acesso de demonstracao (seed local)
-  const { data: options, isLoading } = useSwitchableUsers();
+  // Acesso de demonstracao (espaco de demonstracao no banco)
   const [isDemoPending, startDemoTransition] = useTransition();
-  const filteredOptions = (options ?? []).filter((opt) => opt.user.id === DEMO_OWNER_ID);
 
   // ---------------------------------------------------------------------------
   // 1. MODO CRIAR SENHA (link valido dentro de 24h)
@@ -406,11 +397,22 @@ export function LoginForm({
     });
   };
 
-  const onSelectDemo = (opt: UserSwitchOption) => {
+  const onEnterDemo = () => {
+    setLoginError(null);
     startDemoTransition(async () => {
-      const destination =
-        !opt.onboardingCompleted && opt.user.profile === "owner" ? "/setup" : from;
-      await signIn(opt.user, destination);
+      const result = await signInDemoAction(from);
+      if (!result.ok) {
+        setLoginError(result.message);
+        return;
+      }
+      settingsService.hydrateTenant({
+        organization: result.organization,
+        unit: result.unit,
+        user: result.user,
+        categories: result.categories,
+      });
+      router.push(result.redirectTo);
+      router.refresh();
     });
   };
 
@@ -525,43 +527,21 @@ export function LoginForm({
         </p>
       </form>
 
-      {/* Acesso rapido de demonstracao (mantido para testes locais / seed) */}
-      <div className="space-y-3 border-t border-border pt-4">
-        <p className="text-xs font-medium text-muted-foreground">
-          Ou acesse com a conta de demonstração:
-        </p>
-
-        <div className="space-y-2">
-          {isLoading ? (
-            <Skeleton className="h-14 w-full rounded-lg" />
-          ) : (
-            filteredOptions.map((opt) => (
-              <button
-                key={opt.user.id}
-                type="button"
-                onClick={() => onSelectDemo(opt)}
-                disabled={isDemoPending || isSigningIn}
-                className="flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent disabled:pointer-events-none disabled:opacity-60 cursor-pointer"
-              >
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-secondary text-xs">
-                    {userInitials(opt.user.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="min-w-0 break-words text-sm font-medium">
-                    {opt.user.name}
-                  </div>
-                  <div className="min-w-0 break-words text-xs text-muted-foreground">
-                    {opt.organizationName} · {userProfileLabel(opt.user.profile)}
-                  </div>
-                </div>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-              </button>
-            ))
-          )}
+      {demoAvailable ? (
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-xs font-medium text-muted-foreground">Quer só conhecer o sistema?</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={onEnterDemo}
+            disabled={isDemoPending || isSigningIn}
+          >
+            {isDemoPending ? <Loader2 className="animate-spin" /> : null}
+            Entrar na demonstração
+          </Button>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

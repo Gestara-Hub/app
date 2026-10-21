@@ -58,6 +58,7 @@ export default async function LoginPage({
         from={target}
         initialEmail={initialEmail}
         tokenValidation={tokenValidation}
+        demoAvailable={Boolean(process.env.DEMO_PASSWORD)}
       />
     </PublicAuthShell>
   );
