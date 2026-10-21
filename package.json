@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "pnpm --filter @gestarahub/web dev",
     "tunnel": "node apps/web/scripts/dev-tunnel.mjs",
+    "setup:local": "node apps/web/scripts/local-setup.mjs",
+    "setup:local:reset": "node apps/web/scripts/local-setup.mjs --reset",
     "cron:local": "node apps/web/scripts/dev-cron-secrets.mjs",
     "build": "pnpm --filter @gestarahub/web build",
     "lint": "pnpm --filter @gestarahub/web lint",

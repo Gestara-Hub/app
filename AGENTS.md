@@ -81,3 +81,6 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ## 7. Asaas Documentation via MCP
 - The Asaas API docs are available as an MCP server (`https://docs.asaas.com/mcp`, public, HTTP). Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) pick it up from the repo; Antigravity, Codex and Claude Desktop need a one-time user config. Setup per tool and the usage rule in [`docs/technical/14-asaas-mcp.md`](docs/technical/14-asaas-mcp.md).
 - **Read-only.** Use it to look up endpoints, fields and guides. Never call its `execute-request` tool: real calls go through `apps/web/src/services/payments/` with the `ASAAS_*` env vars, and API keys never appear in prompts, code, logs or PRs.
+
+## 8. Local Environment
+- `pnpm setup:local` brings up the local Supabase, applies pending migrations, fills the missing Supabase variables in `apps/web/.env.local` and prepares the daily cron (CRON_SECRET + Vault). `pnpm setup:local:reset` starts from scratch (wipes local data). Details in [`docs/technical/16-ambiente-local.md`](docs/technical/16-ambiente-local.md).

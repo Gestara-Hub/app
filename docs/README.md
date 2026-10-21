@@ -51,6 +51,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/13-acesso-de-alunos-e-responsaveis.md](technical/13-acesso-de-alunos-e-responsaveis.md) — **Acesso de alunos e responsáveis:** vínculo `student_access` (`self` ou `guardian`) separado da ficha, um login com seletor de espaço e de perfil, regras por idade, revogação auditada.
 - [technical/14-asaas-mcp.md](technical/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
 - [technical/15-retirada-do-mock-turmas.md](technical/15-retirada-do-mock-turmas.md) — **Retirada do mock (turmas):** plano por fatias para a conta real ler e gravar só no Supabase; demonstração vira espaço real criado por seed.
+- [technical/16-ambiente-local.md](technical/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
