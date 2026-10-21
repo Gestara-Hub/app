@@ -18,8 +18,13 @@ DECLARE
   v_pkg jsonb;
 BEGIN
   -- Mesmas regras das policies de attendances: so o proprio espaco e os
-  -- perfis que fazem chamada. O service role (sem auth.uid()) passa direto.
-  IF auth.uid() IS NOT NULL THEN
+  -- perfis que fazem chamada. O service role (sem auth.uid()) passa direto;
+  -- anonimo nunca.
+  IF auth.uid() IS NULL THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+      RAISE EXCEPTION 'é preciso estar autenticado' USING ERRCODE = '42501';
+    END IF;
+  ELSE
     IF public.current_organization_id() IS DISTINCT FROM p_organization_id THEN
       RAISE EXCEPTION 'organização inválida' USING ERRCODE = '42501';
     END IF;
@@ -99,5 +104,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.apply_attendance_with_packages(text, text, text, jsonb, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.apply_attendance_with_packages(text, text, text, jsonb, jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.apply_attendance_with_packages(text, text, text, jsonb, jsonb) TO authenticated, service_role;
