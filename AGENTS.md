@@ -77,3 +77,7 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
   - `packages/core/src/`
   - `docs/`
 
+
+## 7. Asaas Documentation via MCP
+- The Asaas API docs are available as an MCP server (`https://docs.asaas.com/mcp`, public, HTTP). Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) pick it up from the repo; Antigravity, Codex and Claude Desktop need a one-time user config. Setup per tool and the usage rule in [`docs/technical/14-asaas-mcp.md`](docs/technical/14-asaas-mcp.md).
+- **Read-only.** Use it to look up endpoints, fields and guides. Never call its `execute-request` tool: real calls go through `apps/web/src/services/payments/` with the `ASAAS_*` env vars, and API keys never appear in prompts, code, logs or PRs.

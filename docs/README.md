@@ -49,6 +49,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/11-identidade-global-e-multi-membership.md](technical/11-identidade-global-e-multi-membership.md) — **Identidade Global e Multi-Membership:** conta única global com múltiplos vínculos por espaço.
 - [technical/12-modularizacao-da-camada-de-servicos.md](technical/12-modularizacao-da-camada-de-servicos.md) — **Modularização de Services:** fatiamento de arquivos gigantes (+1.000 linhas) em subdomínios com fachada retrocompatível.
 - [technical/13-acesso-de-alunos-e-responsaveis.md](technical/13-acesso-de-alunos-e-responsaveis.md) — **Acesso de alunos e responsáveis:** vínculo `student_access` (`self` ou `guardian`) separado da ficha, um login com seletor de espaço e de perfil, regras por idade, revogação auditada.
+- [technical/14-asaas-mcp.md](technical/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
