@@ -59,7 +59,7 @@ import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { store } from "@/mocks/store";
 import { withKind } from "@/lib/text";
 import { auditLogService } from "./auditLogService";
-import { currentCertificateTemplate } from "./certificatesService";
+import { currentCertificateTemplate, syncCertificateTemplateFromDb } from "./certificatesService";
 import { assertFeature } from "./subscriptionService";
 import { actorTeacherId, assertTeacherSession, teacherSeesClass, teacherSeesSession } from "./teacherScope";
 import { cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
@@ -1204,8 +1204,9 @@ export const turmasService = {
    * dados do aluno e o modelo do espaco (doc 21, secao 1).
    */
   getCourseCertificate(enrollmentId: Id): Promise<CourseCertificateDocument> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
       assertFeature("certificates");
+      await syncCertificateTemplateFromDb();
       const e = store.enrollments.find((x) => x.id === enrollmentId);
       if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
