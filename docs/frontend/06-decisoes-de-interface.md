@@ -37,9 +37,7 @@
       - Compartilhados em ambos: **Painel** e **Configurações**.
     - No topo da sidebar, há um controle segmentado `[ Dia a dia ] [ Gestão ]` (e botão compacto `[DIA]` / `[GES]` no modo ícone).
     - **Sincronização flexível:** O clique do usuário altera a aba livremente. Navegações do navegador ajustam a aba durante o render (`if (pathname !== prevPathname)`).
-    - **Indicador de aba e atalho contextual:** Quando o usuário está em uma rota de uma aba (ex.: Calendário em Dia a dia) e visualiza a outra aba (Gestão):
-      - A aba inativa de origem exibe um ponto de destaque (`size-1.5 rounded-full bg-primary`).
-      - Abaixo do seletor é exibido um chip/banner de atalho (`Tela aberta: [Nome] · [Aba] →`) que permite retornar com 1 clique à aba da tela aberta.
+    - **Indicador de aba:** Quando o usuário está em uma rota de uma aba (ex.: Calendário em Dia a dia) e visualiza a outra aba (Gestão), a aba de origem exibe um ponto verde pulsante (`bg-emerald-500` com `animate-ping`), com o texto no `title`. Clicar na aba volta para ela. O banner "Tela aberta: [Nome] · [Aba] →" abaixo do seletor foi removido em 21/10/2026 a pedido: poluía o topo da sidebar e repetia o que o ponto já diz.
 
 ## Contexto
 

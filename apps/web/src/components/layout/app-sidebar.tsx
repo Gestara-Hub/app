@@ -224,10 +224,10 @@ export function AppSidebar() {
             >
               <span>Dia a dia</span>
               {routeContext === "operations" && context !== "operations" ? (
-                <span
-                  className="size-1.5 rounded-full bg-primary shrink-0 animate-pulse"
-                  title="A tela aberta no momento pertence a esta aba"
-                />
+                <span className="relative flex size-2 shrink-0" title="A tela aberta no momento pertence a esta aba">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                </span>
               ) : null}
             </button>
             <button
@@ -247,40 +247,14 @@ export function AppSidebar() {
             >
               <span>Gestão</span>
               {routeContext === "management" && context !== "management" ? (
-                <span
-                  className="size-1.5 rounded-full bg-primary shrink-0 animate-pulse"
-                  title="A tela aberta no momento pertence a esta aba"
-                />
+                <span className="relative flex size-2 shrink-0" title="A tela aberta no momento pertence a esta aba">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                </span>
               ) : null}
             </button>
           </div>
         </div>
-
-        {/* Notificação/Atalho contextual quando a página aberta pertence à outra aba */}
-        {isRouteInDifferentContext && activeRouteItem && routeContext ? (
-          <div className="px-3 pt-0 pb-1 group-data-[collapsible=icon]:hidden">
-            <button
-              type="button"
-              onClick={() => handleContextChange(routeContext)}
-              className="group flex w-full items-center justify-between gap-1.5 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer"
-              title={`A tela ${activeRouteItem.label} pertence à aba ${routeContext === "operations" ? "Dia a dia" : "Gestão"}. Clique para alternar.`}
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="relative flex size-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-                  <span className="relative inline-flex size-2 rounded-full bg-primary" />
-                </span>
-                <span className="truncate text-[11px] text-muted-foreground">
-                  Tela aberta: <strong className="font-semibold text-foreground">{activeRouteItem.label}</strong>
-                </span>
-              </div>
-              <span className="shrink-0 text-[10px] font-semibold text-primary group-hover:underline flex items-center gap-0.5">
-                <span>{routeContext === "operations" ? "Dia a dia" : "Gestão"}</span>
-                <span aria-hidden="true">&rarr;</span>
-              </span>
-            </button>
-          </div>
-        ) : null}
 
         {/* Alternador Compacto quando a sidebar está recolhida em ícone */}
         <div className="hidden group-data-[collapsible=icon]:flex justify-center py-1">
@@ -298,7 +272,7 @@ export function AppSidebar() {
           >
             {context === "operations" ? "DIA" : "GES"}
             {isRouteInDifferentContext ? (
-              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-sidebar" />
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 ring-2 ring-sidebar" />
             ) : null}
           </button>
         </div>
