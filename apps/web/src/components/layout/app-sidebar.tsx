@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -92,25 +92,29 @@ function NavMenu({
   );
 }
 
+const subscribeNoop = () => () => {};
+function readSavedContext(): NavContext | null {
+  try {
+    const saved = localStorage.getItem("gestarahub:sidebar-context");
+    return saved === "operations" || saved === "management" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const can = useCan();
   const model = useModel();
 
   const [prevPathname, setPrevPathname] = useState(pathname);
-  const [context, setContext] = useState<NavContext>(() => {
-    if (typeof window !== "undefined") {
-      const fromRoute = getContextForRoute(pathname);
-      if (fromRoute) return fromRoute;
-      try {
-        const saved = localStorage.getItem("gestarahub:sidebar-context") as NavContext | null;
-        if (saved === "operations" || saved === "management") return saved;
-      } catch {
-        // ignore
-      }
-    }
-    return "operations";
-  });
+  // Inicial igual no servidor e no cliente: so a rota decide. Ler o localStorage
+  // no useState fazia o HTML do servidor e o do cliente divergirem (erro de
+  // hidratacao). Sem rota de uma aba so, vale a aba salva, lida como "store
+  // externo" (no servidor e na hidratacao: nenhuma).
+  const [chosenContext, setContext] = useState<NavContext | null>(() => getContextForRoute(pathname));
+  const savedContext = useSyncExternalStore(subscribeNoop, readSavedContext, () => null);
+  const context: NavContext = chosenContext ?? savedContext ?? "operations";
 
   // Se a rota (pathname) mudou por navegação e pertence exclusivamente a outro contexto,
   // ajusta o contexto durante o render (padrão oficial do React para sincronização de props/rotas):

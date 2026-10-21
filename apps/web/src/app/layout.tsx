@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { Toaster } from "@/components/ui/sonner";
@@ -37,7 +38,12 @@ export default function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script
+        {/* Tema antes da pintura. next/script com beforeInteractive (e nao <script>
+            cru): o React 19 avisa quando um componente renderiza <script>, que no
+            cliente nunca executa; o Next injeta este no <head> antes de hidratar. */}
+        <Script
+          id="gh-theme-pre-paint"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               try {
@@ -92,7 +98,11 @@ export default function RootLayout({
           }}
         />
         {/* Lista vs cards antes da pintura (skeleton certo, sem flicker). */}
-        <script dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }} />
+        <Script
+          id="gh-view-mode-pre-paint"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: PRE_PAINT_VIEW_MODE_SCRIPT }}
+        />
       </head>
       <body className="min-h-full">
         <Providers>
