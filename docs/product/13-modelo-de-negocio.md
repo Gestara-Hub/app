@@ -1,6 +1,6 @@
 # Modelo de negócio: Free vs Pro vs Scale
 
-> **Status:** Atualizado em 19/10/2026. Preços do Pro (R$ 79,90/mês e R$ 699/ano) e Scale (R$ 199/mês e R$ 1.790/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via Asaas (split nativo). Sem travas artificiais de alunos ou professores no Grátis.
+> **Status:** Atualizado em 19/10/2026. Preços do Pro (R$ 79,90/mês e R$ 799/ano) e Scale (R$ 199/mês e R$ 1.990/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via Asaas (split nativo). Sem travas artificiais de alunos ou professores no Grátis.
 > **13/10/2026:** WhatsApp sempre com o número do próprio espaço; envio assistido no grátis e API oficial no Pro (seção 5). Pagamentos (assinatura, custo das mensagens e mensalidade online com split): levantamento em [19-levantamento-pagamentos.md](19-levantamento-pagamentos.md); integração real do WhatsApp: [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
 > **19/10/2026 (Decisão de Preço e Gateway):** O Asaas foi o gateway escolhido para a infraestrutura de pagamentos (assinaturas da plataforma + subcontas dos espaços com split automático). O Plano Grátis não possui travas de alunos ou equipe, monetizando no split transacional das mensalidades. O Plano Pro entrega automação pura (WhatsApp oficial, DRE Gerencial, certificados e taxas reduzidas no Pix).
 
@@ -11,8 +11,8 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 - **Apps do Aluno e do Professor:** Acesso gratuito para consulta de horários, presenças, avisos, pagamentos e graduação.
 - **A Monetização ocorre em 3 pilares:**
   1. **Fintech e Taxa Transacional (Em todos os planos, inclusive no Grátis):** Cobrança online (Pix Copia e Cola, link, Pix Automático, cartão) com baixa automática no app e web via Asaas. O GestaraHub retém sua margem no split na liquidação de cada mensalidade paga.
-  2. **Assinatura do Plano Pro (R$ 79,90/mês ou R$ 699,00/ano):** Notificações e lembretes 100% automáticos de cobrança via API oficial da Meta (WhatsApp), DRE gerencial, certificados e **taxas reduzidas no Pix**.
-  3. **Plano Scale (R$ 199,00/mês ou R$ 1.790,00/ano):** Gestão multiunidade, BI preditivo de evasão de alunos e franquias ampliadas de mensagens.
+  2. **Assinatura do Plano Pro (R$ 79,90/mês ou R$ 799,00/ano):** Notificações e lembretes 100% automáticos de cobrança via API oficial da Meta (WhatsApp), DRE gerencial, certificados e **taxas reduzidas no Pix**.
+  3. **Plano Scale (R$ 199,00/mês ou R$ 1.990,00/ano):** Gestão multiunidade, BI preditivo de evasão de alunos e franquias ampliadas de mensagens.
 
 ---
 
@@ -23,7 +23,7 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 │              PLANO GRÁTIS               │   │                PLANO PRO                │   │               PLANO SCALE               │
 │         "Coração Operacional"           │   │          "Piloto Automático"            │   │          "Redes e Franquias"            │
 │               R$ 0 / mês                │   │             R$ 79,90 / mês              │   │             R$ 199,00 / mês             │
-│                                         │   │        (ou R$ 699/ano à vista)          │   │       (ou R$ 1.790/ano à vista)         │
+│                                         │   │        (ou R$ 799/ano à vista)          │   │       (ou R$ 1.990/ano à vista)         │
 └─────────────────────────────────────────┘   └─────────────────────────────────────────┘   └─────────────────────────────────────────┘
 ```
 
@@ -37,13 +37,13 @@ O GestaraHub adota o modelo **Freemium agressivo com monetização em fluxo fina
 - **WhatsApp assistido:** cobrança, lembrete e parabéns com a mensagem pronta; o botão abre o WhatsApp do próprio espaço e a pessoa só toca em enviar (seção 5).
 - **Pagamento Online Integrado (Asaas):** Liberado no Grátis com baixa automática imediata. Taxa transacional padrão (ex.: R$ 1,99 por Pix recebido).
 
-### 2.2 Plano Pro (O "Piloto Automático" — R$ 79,90/mês ou R$ 699,00/ano)
+### 2.2 Plano Pro (O "Piloto Automático" — R$ 79,90/mês ou R$ 799,00/ano)
 - **`messaging`:** Envio 100% automático pelo WhatsApp, pela API oficial da Meta e com o **número do próprio espaço**: lembretes de vencimento (antes, no dia e após), boas-vindas e recuperação de alunos ausentes (franquia mensal de 300 mensagens/mês inclusa; excedente via pacotes pré-pagos ou retorno ao assistido).
 - **Taxas transacionais reduzidas ⚡:** Desconto na tarifa do Pix (ex.: de R$ 1,99 para R$ 1,29 por Pix recebido). Para academias com mais de 70 alunos, a economia na taxa paga a própria assinatura do Pro.
 - **`reports_advanced`:** Relatórios avançados gerenciais (DRE completa do negócio com lucro líquido real, faturamento previsto vs. realizado, evolução da inadimplência e taxa de retenção por faixa).
 - **`certificates`:** Emissão de certificados de conclusão de curso e graduação prontos para imprimir ou exportar em PDF.
 
-### 2.3 Plano Scale (Para Redes e Grandes Academias — R$ 199,00/mês ou R$ 1.790,00/ano)
+### 2.3 Plano Scale (Para Redes e Grandes Academias — R$ 199,00/mês ou R$ 1.990,00/ano)
 - **Multiunidade / Franquias:** Gestão centralizada de múltiplas unidades ou filiais sob uma única conta com consolidação financeira.
 - **`bi`:** Módulo de BI & Analytics preditivo (análise preditiva de churn/evasão de alunos, mapas de calor de ocupação de horários e tatames).
 - **Franquia estendida de WhatsApp:** 1.000 mensagens automáticas/mês inclusas.

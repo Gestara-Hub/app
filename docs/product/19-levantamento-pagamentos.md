@@ -1,13 +1,13 @@
 # 19 — Levantamento: pagamentos
 
-> **Status:** Atualizado em 19/10/2026. **Decisão tomada:** Provedor escolhido = **Asaas**. Preços do Pro (R$ 79,90/mês e R$ 699/ano) e Scale (R$ 199/mês e R$ 1.790/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via split nativo.
+> **Status:** Atualizado em 19/10/2026. **Decisão tomada:** Provedor escolhido = **Asaas**. Preços do Pro (R$ 79,90/mês e R$ 799/ano) e Scale (R$ 199/mês e R$ 1.990/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via split nativo.
 > Base: modelo de negócio em [13-modelo-de-negocio.md](13-modelo-de-negocio.md); pagamento online simulado em [../technical/05-modulo-financeiro.md](../technical/05-modulo-financeiro.md), seção 6; WhatsApp em [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
 
 ## 1. Os três fluxos de dinheiro
 
 | # | Quem paga | Quem recebe | O quê | Definição (19/10/2026) |
 |---|---|---|---|---|
-| 1 | Espaço | GestaraHub | Assinatura do plano (Pro: R$ 79,90/mês ou R$ 699/ano; Scale: R$ 199/mês ou R$ 1.790/ano) | Asaas (Assinatura por Pix Automático, Pix ou Cartão) |
+| 1 | Espaço | GestaraHub | Assinatura do plano (Pro: R$ 79,90/mês ou R$ 799/ano; Scale: R$ 199/mês ou R$ 1.990/ano) | Asaas (Assinatura por Pix Automático, Pix ou Cartão) |
 | 2 | GestaraHub | Meta (ou parceiro) | Mensagens do WhatsApp oficial | Pro com franquia de 300 msgs/mês; excedente pré-pago |
 | 3 | Aluno | Espaço (com taxa do GestaraHub) | Mensalidade online: Pix, link, Pix Automático | Asaas (Subconta da academia com split automático na liquidação) |
 
@@ -15,8 +15,8 @@
 
 ### Decisões (19/10/2026)
 - **Preço:**
-  - **Pro:** **R$ 79,90 / mês** ou **R$ 699,00 / ano** (desconto de ~2 meses, R$ 58,25/mês).
-  - **Scale:** **R$ 199,00 / mês** ou **R$ 1.790,00 / ano**.
+  - **Pro:** **R$ 79,90 / mês** ou **R$ 799,00 / ano** (desconto de ~2 meses, R$ 66,58/mês).
+  - **Scale:** **R$ 199,00 / mês** ou **R$ 1.990,00 / ano**.
 - **Formas de pagamento:** Cartão recorrente, Pix e Pix Automático.
 - **Falta de pagamento:** Prazo de carência (ex: 5 dias) e depois reverte ao Grátis **sem perder nenhum dado de alunos, histórico ou turmas** (apenas os recursos Pro — como envio automático de WhatsApp e taxas reduzidas — ficam bloqueados).
 - **Conta Master:** Aberta no Asaas com CNPJ ME do fundador (categoria: Software / Licenciamento).
