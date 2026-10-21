@@ -16,6 +16,7 @@ import { getPaymentGateway } from "./payments/registry";
 import {
   cancelGatewayPayment,
   ensureSubaccountWebhook,
+  expireDueOnlinePayments,
   refreshGatewayIfNeeded,
   subaccountKeyOf,
   syncGatewayFees,
@@ -120,6 +121,10 @@ export async function listOnlinePaymentsForChargeFromDb(
   organizationId: string,
 ): Promise<OnlinePayment[]> {
   const client = await getClientForTenant();
+  // A modal Cobrar online mostra o codigo em aberto: o vencido expira antes (e sai do Asaas).
+  await expireDueOnlinePayments(organizationId).catch((err) =>
+    console.error("[listOnlinePaymentsForChargeFromDb] Erro ao expirar cobranças vencidas:", err),
+  );
   const { data, error } = await client
     .from("online_payments")
     .select("*")
@@ -367,17 +372,30 @@ export async function expireOnlinePaymentInDb(
   provider?: string,
 ): Promise<boolean> {
   const adminClient = createSupabaseAdminClient();
-  let query = adminClient
+  let lookup = adminClient
     .from("online_payments")
-    .update({ status: "expired" })
+    .select("id, organization_id, gateway_provider")
     .eq("gateway_payment_id", gatewayPaymentId)
     .eq("status", "awaiting");
+  if (provider) lookup = lookup.eq("gateway_provider", provider);
+  const { data: row } = await lookup.maybeSingle();
+  if (!row) return true;
 
-  if (provider) {
-    query = query.eq("gateway_provider", provider);
+  // Venceu no Asaas, mas la ainda e pagavel: exclui, para "Expirado" valer nos dois lados.
+  let pending = false;
+  if (row.gateway_provider === "asaas") {
+    const key = await subaccountKeyOf(String(row.organization_id));
+    if (key) {
+      const result = await cancelGatewayPayment(gatewayPaymentId, key);
+      if (result === "paid") return true; // o webhook de pagamento da a baixa
+      pending = result === "failed";
+    }
   }
-
-  const { error } = await query;
+  const { error } = await adminClient
+    .from("online_payments")
+    .update({ status: "expired", ...(pending ? { gateway_cancel_pending: true } : {}) })
+    .eq("id", row.id)
+    .eq("status", "awaiting");
   return !error;
 }
 
@@ -1066,14 +1084,86 @@ export interface SubaccountReceiptItem {
   canceledReason?: string;
 }
 
+/** Situacao no filtro do historico. "open" = pagas e aguardando (padrao). */
+export type ReceiptStatusFilter = "open" | "paid" | "awaiting" | "canceled" | "all";
+
+export interface SubaccountReceiptsQuery {
+  organizationId: string;
+  /**
+   * Periodo "AAAA-MM-DD" (inclusive, horario de Brasilia), pela data do
+   * pagamento ou, se nao pago, da criacao. Sem `from` e `to`: todo o periodo.
+   */
+  from?: string;
+  to?: string;
+  status: ReceiptStatusFilter;
+  method: "all" | OnlinePayment["method"];
+  page: number;
+  pageSize: number;
+}
+
+export interface SubaccountReceiptsSummary {
+  count: number;
+  /** So os pagos: o que os alunos pagaram, as taxas e o que entrou. */
+  paidCount: number;
+  grossCents: number;
+  feeCents: number;
+  netCents: number;
+}
+
+export interface SubaccountReceiptsPage {
+  items: SubaccountReceiptItem[];
+  total: number;
+  summary: SubaccountReceiptsSummary;
+}
+
+const STATUS_FILTER_VALUES: Record<ReceiptStatusFilter, string[] | null> = {
+  open: ["paid", "awaiting"],
+  paid: ["paid"],
+  awaiting: ["awaiting"],
+  canceled: ["canceled", "expired"],
+  all: null,
+};
+
+/** Dia "AAAA-MM-DD" no horario de Brasilia: inicio, em ISO UTC. */
+function startOfDayInBrazil(date: string): string {
+  return new Date(`${date}T00:00:00-03:00`).toISOString();
+}
+
+/** Dia seguinte a "AAAA-MM-DD" (fim exclusivo do intervalo). */
+function nextDay(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
- * Lista os pagamentos online recebidos pela organização com o detalhe do split e valor líquido.
+ * Historico de movimentacoes da subconta (Recebimentos online), filtrado no
+ * banco: mes, situacao e forma, com paginacao e os totais do filtro. Le com o
+ * cliente do usuario (RLS da organizacao), nao com a chave de servico.
  */
 export async function listSubaccountReceiptsAction(
-  organizationId: string,
-): Promise<SubaccountReceiptItem[]> {
-  const adminClient = createSupabaseAdminClient();
-  const { data, error } = await adminClient
+  query: SubaccountReceiptsQuery,
+): Promise<SubaccountReceiptsPage> {
+  const client = await getClientForTenant();
+  // Vencidas pela validade: expira aqui e exclui no Asaas antes de listar.
+  await expireDueOnlinePayments(query.organizationId).catch((err) =>
+    console.error("[listSubaccountReceiptsAction] Erro ao expirar cobranças vencidas:", err),
+  );
+  const statuses = STATUS_FILTER_VALUES[query.status];
+
+  // Mesmo filtro para a pagina e para os totais.
+  // Intervalo aberto de um lado tambem vale (so "de" ou so "ate").
+  let period: string | null = null;
+  if (query.from || query.to) {
+    const from = query.from ? startOfDayInBrazil(query.from) : null;
+    const to = query.to ? startOfDayInBrazil(nextDay(query.to)) : null;
+    const on = (col: string) =>
+      [from ? `${col}.gte.${from}` : null, to ? `${col}.lt.${to}` : null].filter(Boolean).join(",");
+    period = `and(${on("paid_at")}),and(paid_at.is.null,${on("created_at")})`;
+  }
+  const offset = (query.page - 1) * query.pageSize;
+
+  let pageQuery = client
     .from("online_payments")
     .select(
       `
@@ -1082,16 +1172,56 @@ export async function listSubaccountReceiptsAction(
         status, paid_via
       )
       `,
+      { count: "exact" },
     )
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error || !data) {
-    return [];
+    .eq("organization_id", query.organizationId);
+  let totalsQuery = client
+    .from("online_payments")
+    .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents")
+    .eq("organization_id", query.organizationId);
+  if (period) {
+    pageQuery = pageQuery.or(period);
+    totalsQuery = totalsQuery.or(period);
+  }
+  if (statuses) {
+    pageQuery = pageQuery.in("status", statuses);
+    totalsQuery = totalsQuery.in("status", statuses);
+  }
+  if (query.method !== "all") {
+    pageQuery = pageQuery.eq("method", query.method);
+    totalsQuery = totalsQuery.eq("method", query.method);
   }
 
-  return data.map((r) => {
+  const [pageRes, totalsRes] = await Promise.all([
+    pageQuery.order("created_at", { ascending: false }).range(offset, offset + query.pageSize - 1),
+    totalsQuery,
+  ]);
+
+  const empty: SubaccountReceiptsPage = {
+    items: [],
+    total: 0,
+    summary: { count: 0, paidCount: 0, grossCents: 0, feeCents: 0, netCents: 0 },
+  };
+  if (pageRes.error || !pageRes.data) {
+    console.error("[listSubaccountReceiptsAction] Erro ao listar recebimentos:", pageRes.error);
+    return empty;
+  }
+
+  const summary = (totalsRes.data ?? []).reduce<SubaccountReceiptsSummary>(
+    (acc, r) => {
+      acc.count += 1;
+      if (r.status === "paid") {
+        acc.paidCount += 1;
+        acc.grossCents += Number(r.amount_cents) || 0;
+        acc.feeCents += (Number(r.gateway_fee_cents) || 0) + (Number(r.split_amount_cents) || 0);
+        acc.netCents += Number(r.net_amount_cents) || 0;
+      }
+      return acc;
+    },
+    { ...empty.summary },
+  );
+
+  const items = pageRes.data.map((r) => {
     const charge = Array.isArray(r.charges) ? r.charges[0] : (r.charges as { status?: string; paid_via?: string } | null);
     let canceledReason = r.canceled_reason ? String(r.canceled_reason) : undefined;
     if (String(r.status) === "canceled" && !canceledReason) {
@@ -1120,5 +1250,7 @@ export async function listSubaccountReceiptsAction(
       canceledReason,
     };
   });
+
+  return { items, total: pageRes.count ?? items.length, summary };
 }
 

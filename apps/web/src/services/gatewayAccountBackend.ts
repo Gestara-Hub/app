@@ -151,6 +151,7 @@ export async function refreshGatewayIfNeeded(row: {
   gateway_webhook_url?: unknown;
 }): Promise<void> {
   if (!realSubaccountKey(row.gateway_api_key)) return;
+  await expireDueOnlinePayments(row.id);
   await retryPendingGatewayCancels(row.id);
   const fees = (row.gateway_fees ?? undefined) as GatewayAccountFees | undefined;
   if (areGatewayFeesStale(fees, new Date())) await syncGatewayFees(row.id);
@@ -250,4 +251,45 @@ export async function retryPendingGatewayCancels(organizationId: string): Promis
       await admin.from("online_payments").update({ gateway_cancel_pending: false }).eq("id", row.id);
     }
   }
+}
+
+// --- Expiracao ------------------------------------------------------------------
+
+/**
+ * Cobrancas online em aberto que passaram da validade (expires_at): marca como
+ * expiradas aqui e exclui no Asaas, para que "Expirado" signifique que nao da
+ * mais para pagar nos dois lados (antes o Asaas so vencia a cobranca, que
+ * seguia pagavel). Ja paga no Asaas: fica em aberto aqui e o webhook da a baixa.
+ * Falha no Asaas: expira aqui e marca para tentar de novo. Roda quando o app le
+ * a organizacao, o historico ou a cobranca. Devolve quantas expirou.
+ */
+export async function expireDueOnlinePayments(organizationId: string): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  const { data: rows } = await admin
+    .from("online_payments")
+    .select("id, gateway_provider, gateway_payment_id")
+    .eq("organization_id", organizationId)
+    .eq("status", "awaiting")
+    .lte("expires_at", new Date().toISOString())
+    .limit(50);
+  if (!rows?.length) return 0;
+
+  const key = rows.some((r) => r.gateway_provider === "asaas") ? await subaccountKeyOf(organizationId) : null;
+  const toExpire: string[] = [];
+  const pendingAtGateway: string[] = [];
+  for (const row of rows) {
+    if (row.gateway_provider === "asaas" && row.gateway_payment_id && key) {
+      const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
+      if (result === "paid") continue;
+      if (result === "failed") pendingAtGateway.push(String(row.id));
+    }
+    toExpire.push(String(row.id));
+  }
+  if (toExpire.length > 0) {
+    await admin.from("online_payments").update({ status: "expired" }).in("id", toExpire).eq("status", "awaiting");
+  }
+  if (pendingAtGateway.length > 0) {
+    await admin.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
+  }
+  return toExpire.length;
 }

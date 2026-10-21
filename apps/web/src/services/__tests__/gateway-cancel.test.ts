@@ -18,9 +18,43 @@ vi.mock("@/lib/asaas", () => ({
   listWebhooks: vi.fn(),
   updateWebhook: vi.fn(),
 }));
-vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: vi.fn() }));
+/**
+ * Banco falso so com o que a expiracao usa: online_payments em aberto e a chave
+ * da subconta. Encadeia select/eq/lte/limit/maybeSingle e update/in/eq.
+ */
+const db = vi.hoisted(() => ({
+  rows: [] as Array<{ id: string; gateway_provider: string; gateway_payment_id: string }>,
+  updates: [] as Array<{ values: Record<string, unknown>; ids: string[] }>,
+}));
+vi.mock("@/lib/supabase/admin", () => ({
+  createSupabaseAdminClient: () => ({
+    from: (table: string) => {
+      if (table === "organizations") {
+        const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { gateway_api_key: "$aact_sub" } }) };
+        return q;
+      }
+      const select = { eq: () => select, lte: () => select, limit: async () => ({ data: db.rows }) };
+      return {
+        select: () => select,
+        update: (values: Record<string, unknown>) => {
+          const entry = { values, ids: [] as string[] };
+          db.updates.push(entry);
+          const chain = {
+            in: (_col: string, ids: string[]) => {
+              entry.ids = ids;
+              return chain;
+            },
+            eq: () => chain,
+            then: (resolve: (v: { error: null }) => void) => resolve({ error: null }),
+          };
+          return chain;
+        },
+      };
+    },
+  }),
+}));
 
-const { cancelGatewayPayment } = await import("@/services/gatewayAccountBackend");
+const { cancelGatewayPayment, expireDueOnlinePayments } = await import("@/services/gatewayAccountBackend");
 
 describe("cancelar a cobrança online no Asaas", () => {
   beforeEach(() => {
@@ -59,5 +93,41 @@ describe("cancelar a cobrança online no Asaas", () => {
     await expect(cancelGatewayPayment("pay_1", "key")).resolves.toBe("failed");
     asaas.getPayment.mockRejectedValueOnce(Object.assign(new Error("fora do ar"), { status: 503 }));
     await expect(cancelGatewayPayment("pay_1", "key")).resolves.toBe("failed");
+  });
+});
+
+describe("expiração: vencida aqui sai do Asaas", () => {
+  beforeEach(() => {
+    asaas.deletePayment.mockReset();
+    asaas.getPayment.mockReset();
+    db.updates = [];
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("expira aqui e exclui no Asaas; já paga lá não expira; falha marca para tentar de novo", async () => {
+    db.rows = [
+      { id: "op_1", gateway_provider: "asaas", gateway_payment_id: "pay_ok" },
+      { id: "op_2", gateway_provider: "asaas", gateway_payment_id: "pay_paid" },
+      { id: "op_3", gateway_provider: "asaas", gateway_payment_id: "pay_down" },
+      { id: "op_4", gateway_provider: "mock", gateway_payment_id: "DEMO1" },
+    ];
+    asaas.deletePayment.mockImplementation(async (id: string) => {
+      if (id === "pay_ok") return { deleted: true, id };
+      throw new Error("recusado");
+    });
+    asaas.getPayment.mockImplementation(async (id: string) => ({ status: id === "pay_paid" ? "CONFIRMED" : "PENDING" }));
+
+    await expect(expireDueOnlinePayments("org_1")).resolves.toBe(3);
+    expect(asaas.deletePayment).toHaveBeenCalledTimes(3);
+    const expired = db.updates.find((u) => u.values.status === "expired");
+    expect(expired?.ids).toEqual(["op_1", "op_3", "op_4"]);
+    const pending = db.updates.find((u) => u.values.gateway_cancel_pending === true);
+    expect(pending?.ids).toEqual(["op_3"]);
+  });
+
+  it("nada vencido: não chama o Asaas", async () => {
+    db.rows = [];
+    await expect(expireDueOnlinePayments("org_1")).resolves.toBe(0);
+    expect(asaas.deletePayment).not.toHaveBeenCalled();
   });
 });

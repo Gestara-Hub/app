@@ -1,6 +1,22 @@
 "use client";
 
-import type { SubaccountReceiptItem } from "@/services/onlinePaymentsBackend";
+import type { OnlinePaymentMethod } from "@gestarahub/contracts";
+import { ONLINE_METHOD_LABEL } from "@gestarahub/core/payment-fees";
+import {
+  periodFromPreset,
+  periodLabel,
+  PeriodRangePicker,
+  type PeriodRange,
+} from "@/components/shared/period-range-picker";
+import { PaginationBar } from "@/components/shared/list";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { ReceiptStatusFilter, SubaccountReceiptItem } from "@/services/onlinePaymentsBackend";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LINK_PAYMENT_METHOD_LABEL } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
@@ -97,17 +113,37 @@ export function SubaccountPanel({
 
   const balanceQuery = useSubaccountBalance(organizationId);
   const transfersQuery = useSubaccountTransfers(organizationId);
-  const receiptsQuery = useSubaccountReceipts(organizationId);
+  // Filtros do historico (no banco): mes, situacao (abre em pagas e aguardando) e forma.
+  // Periodo: abre em "Este mes"; sugestoes de trimestre, semestre e ano, ou intervalo livre.
+  const [period, setPeriod] = useState<PeriodRange>(() => periodFromPreset("this_month"));
+  const [statusFilter, setStatusFilter] = useState<ReceiptStatusFilter>("open");
+  const [methodFilter, setMethodFilter] = useState<"all" | OnlinePaymentMethod>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const receiptsQuery = useSubaccountReceipts({
+    organizationId,
+    from: period.from,
+    to: period.to,
+    status: statusFilter,
+    method: methodFilter,
+    page,
+    pageSize,
+  });
+  const hasFilters = statusFilter !== "open" || methodFilter !== "all" || period.preset !== "this_month";
+  const clearFilters = () => {
+    setPeriod(periodFromPreset("this_month"));
+    setStatusFilter("open");
+    setMethodFilter("all");
+    setPage(1);
+  };
 
   const availableCents = balanceQuery.data?.availableForTransferCents ?? 0;
   const awaitingCents = balanceQuery.data?.awaitingCents ?? 0;
-  const receipts = receiptsQuery.data || [];
+  const receipts = receiptsQuery.data?.items ?? [];
+  const receiptsTotal = receiptsQuery.data?.total ?? 0;
+  const summary = receiptsQuery.data?.summary;
   const transfers = transfersQuery.data || [];
 
-  const paidReceipts = receipts.filter((r) => r.status === "paid");
-  const totalSplitCents = paidReceipts.reduce((acc, r) => acc + r.splitAmountCents, 0);
-  const totalGatewayFeeCents = paidReceipts.reduce((acc, r) => acc + r.gatewayFeeCents, 0);
-  const totalNetCents = paidReceipts.reduce((acc, r) => acc + r.netAmountCents, 0);
 
   return (
     <div className="space-y-6">
@@ -120,13 +156,13 @@ export function SubaccountPanel({
               <span>Disponível para saque</span>
               <ArrowDownLeft className="size-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
+            <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-950 dark:text-emerald-100">
               {balanceQuery.isLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : (
                 formatCents(availableCents)
               )}
-            </p>
+            </div>
           </div>
 
           <div className="mt-3 flex items-center justify-between pt-2 border-t border-emerald-500/15">
@@ -154,13 +190,13 @@ export function SubaccountPanel({
               <span>A compensar (Cartão)</span>
               <Clock className="size-4 text-muted-foreground" />
             </div>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
               {balanceQuery.isLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
                 formatCents(awaitingCents)
               )}
-            </p>
+            </div>
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
@@ -172,20 +208,20 @@ export function SubaccountPanel({
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>Total recebido líquido</span>
+              <span>{period.preset === "this_month" ? "Recebido líquido no mês" : "Recebido líquido no período"}</span>
               <Receipt className="size-4 text-muted-foreground" />
             </div>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
               {receiptsQuery.isLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : (
-                formatCents(totalNetCents)
+                formatCents(summary?.netCents ?? 0)
               )}
-            </p>
+            </div>
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
-            Taxas: {formatCents(totalGatewayFeeCents + totalSplitCents)}
+            Taxas: {formatCents(summary?.feeCents ?? 0)} · {periodLabel(period).toLowerCase()}
           </div>
         </div>
       </div>
@@ -215,7 +251,7 @@ export function SubaccountPanel({
               )}
             >
               <QrCode className="size-3.5" />
-              Recebimentos ({receipts.length})
+              Recebimentos
             </button>
             <button
               type="button"
@@ -237,10 +273,72 @@ export function SubaccountPanel({
 
         <CardContent className="pt-0">
           {tab === "receipts" ? (
+            <div className="space-y-3">
+              {/* Filtros: mes, situacao e forma */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <PeriodRangePicker
+                  value={period}
+                  onChange={(next) => {
+                    setPeriod(next);
+                    setPage(1);
+                  }}
+                  className="sm:min-w-56"
+                />
+                <div className="grid grid-cols-1 gap-2 sm:flex">
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v) => {
+                      setStatusFilter(v as ReceiptStatusFilter);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Filtrar por situação">
+                      <SelectValue>{RECEIPT_STATUS_FILTER_LABEL[statusFilter]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(RECEIPT_STATUS_FILTER_LABEL) as ReceiptStatusFilter[]).map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {RECEIPT_STATUS_FILTER_LABEL[v]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={methodFilter}
+                    onValueChange={(v) => {
+                      setMethodFilter(v as "all" | OnlinePaymentMethod);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-auto sm:min-w-40" aria-label="Filtrar por forma">
+                      <SelectValue>{methodFilter === "all" ? "Todas as formas" : ONLINE_METHOD_LABEL[methodFilter]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as formas</SelectItem>
+                      {(Object.keys(ONLINE_METHOD_LABEL) as OnlinePaymentMethod[]).map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {ONLINE_METHOD_LABEL[m]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {hasFilters ? (
+                <div className="flex justify-end px-1 text-xs">
+                  <button type="button" onClick={clearFilters} className="cursor-pointer font-medium text-foreground hover:underline">
+                    Limpar filtros
+                  </button>
+                </div>
+              ) : null}
+
             <div className="overflow-x-auto rounded-lg border border-border/60">
               {receipts.length === 0 ? (
                 <div className="py-10 text-center text-xs text-muted-foreground">
-                  Nenhum pagamento online recebido ainda.
+                  {hasFilters
+                    ? "Nenhuma movimentação com estes filtros."
+                    : "Nenhuma movimentação neste período."}
                 </div>
               ) : (
                 <table className="w-full text-left text-xs">
@@ -342,6 +440,23 @@ export function SubaccountPanel({
                 </table>
               )}
             </div>
+
+              {receiptsTotal > 0 ? (
+                <PaginationBar
+                  page={page}
+                  pageSize={pageSize}
+                  total={receiptsTotal}
+                  totalPages={Math.max(1, Math.ceil(receiptsTotal / pageSize))}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                  itemLabel="movimentações"
+                  disabled={receiptsQuery.isFetching}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {tab === "transfers" ? (
@@ -430,6 +545,14 @@ export function SubaccountPanel({
     </div>
   );
 }
+
+const RECEIPT_STATUS_FILTER_LABEL: Record<ReceiptStatusFilter, string> = {
+  open: "Pagas e aguardando",
+  paid: "Pagas",
+  awaiting: "Aguardando",
+  canceled: "Canceladas",
+  all: "Todas",
+};
 
 /** Forma gerada, no historico (o meio usado entra depois do ponto, quando o Asaas confirma). */
 const RECEIPT_METHOD_LABEL: Record<string, string> = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import {
   onlinePaymentsService,
@@ -13,6 +13,7 @@ import {
   listSubaccountTransfersAction,
   listSubaccountReceiptsAction,
   type SetupSubaccountInput,
+  type SubaccountReceiptsQuery,
 } from "@/services/onlinePaymentsBackend";
 
 /**
@@ -86,11 +87,12 @@ export function useSubaccountTransfers(organizationId?: string) {
 /**
  * Lista os recebimentos online com detalhamento do split.
  */
-export function useSubaccountReceipts(organizationId?: string) {
+export function useSubaccountReceipts(query: Omit<SubaccountReceiptsQuery, "organizationId"> & { organizationId?: string }) {
   return useQuery({
-    queryKey: [...queryKeys.onlinePayments.all, "receipts", organizationId],
-    queryFn: () => listSubaccountReceiptsAction(organizationId!),
-    enabled: Boolean(organizationId),
+    queryKey: [...queryKeys.onlinePayments.all, "receipts", query],
+    queryFn: () => listSubaccountReceiptsAction({ ...query, organizationId: query.organizationId! }),
+    enabled: Boolean(query.organizationId),
+    placeholderData: keepPreviousData,
   });
 }
 
