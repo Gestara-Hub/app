@@ -2,12 +2,12 @@
 
 import { SlidersHorizontal } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { UserPreferencesView } from "./user-preferences-view";
 import { useUserPreferences } from "../hooks/use-user-preferences";
 
@@ -21,34 +21,42 @@ export function UserPreferencesDialog({
   const { isDirty } = useUserPreferences();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <SlidersHorizontal className="size-4" />
             </div>
             <div>
-              <DialogTitle>Preferências do Usuário</DialogTitle>
-              <DialogDescription>
-                Personalize sua experiência de navegação, aparência e sons.
-              </DialogDescription>
+              <SheetTitle className="text-lg font-semibold text-foreground">
+                Preferências do Usuário
+              </SheetTitle>
+              <SheetDescription className="text-sm text-muted-foreground">
+                Personalize sua experiência de navegação, aparência, tema e sons.
+              </SheetDescription>
             </div>
           </div>
-        </DialogHeader>
+        </SheetHeader>
 
-        <div className="py-2">
+        <div className="flex-1 overflow-y-auto p-6">
           <UserPreferencesView onResetComplete={() => onOpenChange(false)} />
         </div>
 
-        <div className="border-t border-border/40 pt-3 text-right">
+        <div className="border-t border-border/40 px-6 py-3 text-right bg-muted/10 shrink-0">
           <p className="text-[11px] text-muted-foreground">
             {isDirty
               ? "Sincronizando com a nuvem em segundo plano..."
               : "Suas escolhas são salvas automaticamente."}
           </p>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const UserPreferencesDrawer = UserPreferencesDialog;

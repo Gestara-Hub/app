@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, FormProvider, useWatch } from "react-hook-form";
+import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -15,6 +15,8 @@ import {
 import type { OnlinePaymentSettings, Organization } from "@gestarahub/contracts";
 import { InputText, SelectField, SwitchField } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -165,29 +167,90 @@ export function OnlinePaymentsSettingsTab({
               />
             </div>
 
-            {/* Repasse de Custos ao Aluno */}
-            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3.5">
-              <SwitchField<Values>
-                name="passFeeToCustomer"
-                label="Repassar taxa de cobrança ao aluno por padrão"
-                hint="Quando ativado, os valores das cobranças já serão gerados com o acréscimo da tarifa (R$ 1,99 no Pix ou 2,99% + taxa no cartão) para que sua academia receba o valor integral da mensalidade (custo zero)."
-                disabled={disabled}
-              />
+            {/* Repasse de Taxas ao Aluno */}
+            <div className="pt-2 border-t border-border/50">
+              <div className="flex items-start justify-between gap-4 py-1.5">
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="passFeeToCustomer"
+                    className="text-sm font-semibold text-foreground cursor-pointer"
+                  >
+                    Repassar taxas de cobrança ao aluno
+                  </Label>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Emite os códigos Pix e links de cartão com a tarifa acrescida, garantindo que a sua academia receba <strong>100% do valor da mensalidade</strong> (custo zero).
+                  </p>
+                </div>
+                <Controller
+                  control={form.control}
+                  name="passFeeToCustomer"
+                  render={({ field }) => (
+                    <Switch
+                      id="passFeeToCustomer"
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                      disabled={disabled}
+                      className="mt-0.5 shrink-0"
+                    />
+                  )}
+                />
+              </div>
 
               {passFeeToCustomerWatched ? (
-                <div className="ml-6 space-y-2.5 pt-1 border-l-2 border-primary/20 pl-3">
-                  <SwitchField<Values>
-                    name="passFeePix"
-                    label="Repassar taxa no Pix"
-                    hint="Acréscimo fixo da tarifa por cobrança (+ R$ 1,99 no Free ou R$ 1,29 no Pro)."
-                    disabled={disabled}
-                  />
-                  <SwitchField<Values>
-                    name="passFeeCard"
-                    label="Repassar taxa no Cartão de Crédito"
-                    hint="Acréscimo calculado por gross-up (+ 2,99% + taxa) para preservar seu valor líquido."
-                    disabled={disabled}
-                  />
+                <div className="mt-3 ml-1 space-y-3 border-l-2 border-primary/30 pl-4 py-1">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="passFeePix"
+                        className="text-xs font-medium text-foreground cursor-pointer"
+                      >
+                        Repassar no Pix (+ R$ 1,99 no Free ou R$ 1,29 no Pro)
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Exemplo: mensalidade de R$ 150,00 → aluno paga R$ 151,99 e você recebe R$ 150,00 líquido.
+                      </p>
+                    </div>
+                    <Controller
+                      control={form.control}
+                      name="passFeePix"
+                      render={({ field }) => (
+                        <Switch
+                          id="passFeePix"
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                          disabled={disabled}
+                          className="shrink-0"
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label
+                        htmlFor="passFeeCard"
+                        className="text-xs font-medium text-foreground cursor-pointer"
+                      >
+                        Repassar no Cartão (+ 2,99% + taxa por gross-up)
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Exemplo: mensalidade de R$ 150,00 → link sai por R$ 156,67 e você recebe R$ 150,00 líquido.
+                      </p>
+                    </div>
+                    <Controller
+                      control={form.control}
+                      name="passFeeCard"
+                      render={({ field }) => (
+                        <Switch
+                          id="passFeeCard"
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                          disabled={disabled}
+                          className="shrink-0"
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
               ) : null}
             </div>

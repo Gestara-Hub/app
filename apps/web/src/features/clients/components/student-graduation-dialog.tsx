@@ -16,13 +16,15 @@ import { relativeDateLabel, todayISO } from "@gestarahub/core/date";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SegmentVocabulary } from "@/lib/business-segment-presets";
@@ -409,9 +411,13 @@ function GraduationContent({
         : vocabulary.levelsTitle;
 
   return (
-    <DialogContent expandable className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-      <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-20 text-left">
-        <DialogTitle className="flex items-center gap-2">
+    <SheetContent
+      side="right"
+      className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+      onInteractOutside={(event) => event.preventDefault()}
+    >
+      <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+        <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
           {activePanel === "graduate" ? (
             <Award className="size-5 text-primary" />
           ) : activePanel === "start" ? (
@@ -420,12 +426,12 @@ function GraduationContent({
             <GraduationCap className="size-5 text-primary" />
           )}
           {title}
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription className="text-sm text-muted-foreground">
           {client.name}
           {active ? ` · ${active.modality.name}` : ""}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       {activePanel === "graduate" && active && track && currentLevel ? (
         <GraduatePanel
@@ -514,11 +520,11 @@ function GraduationContent({
           )}
         </DialogBody>
       )}
-    </DialogContent>
+    </SheetContent>
   );
 }
 
-/** Modal de Graduação (raro): a trilha do aluno, graduar e ponto de partida. */
+/** Drawer de Graduação (raro): a trilha do aluno, graduar e ponto de partida. */
 export function StudentGraduationDialog({
   client,
   open,
@@ -532,8 +538,10 @@ export function StudentGraduationDialog({
 }) {
   if (!client) return null;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       {open ? <GraduationContent key={client.id} client={client} initialModalityId={initialModalityId} /> : null}
-    </Dialog>
+    </Sheet>
   );
 }
+
+export const StudentGraduationDrawer = StudentGraduationDialog;

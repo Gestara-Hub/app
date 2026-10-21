@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Lock, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check, Lock, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { PaidFeature } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -71,16 +72,16 @@ export function SubscriptionPlanCard() {
     const ok = await confirm(
       next === "pro"
         ? {
-            title: "Ativar o Plano Pro?",
+            title: "Ativar o Plano Profissional?",
             description:
               "Demonstração: libera pagamentos online, comunicação automática via WhatsApp e relatórios avançados para esta organização. Nenhuma cobrança é feita.",
-            confirmLabel: "Ativar Pro",
+            confirmLabel: "Ativar Profissional",
             variant: "default",
           }
         : {
             title: "Voltar ao Plano Grátis?",
             description:
-              "Os recursos do Pro ficam bloqueados. Os dados já lançados continuam guardados e voltam ao ativar o Pro de novo.",
+              "Os recursos do Profissional ficam bloqueados. Os dados já lançados continuam guardados e voltam ao ativar o Profissional de novo.",
             confirmLabel: "Voltar ao Grátis",
             variant: "destructive",
           },
@@ -88,7 +89,7 @@ export function SubscriptionPlanCard() {
     if (!ok) return;
     setTier.mutate(next, {
       onSuccess: () =>
-        toast.success(next === "pro" ? "Plano Pro ativado." : "Plano Grátis ativado."),
+        toast.success(next === "pro" ? "Plano Profissional ativado." : "Plano Grátis ativado."),
       onError: (error) =>
         toast.error(getErrorMessage(error, "Não foi possível trocar o plano.")),
     });
@@ -98,25 +99,34 @@ export function SubscriptionPlanCard() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>Plano atual</CardTitle>
-            <Badge variant={isPro ? "default" : "secondary"}>
-              {subscriptionTierLabel(data.tier)}
-            </Badge>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Plano atual</CardTitle>
+              <Badge variant={isPro ? "default" : "secondary"}>
+                {subscriptionTierLabel(data.tier)}
+              </Badge>
+            </div>
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs font-semibold">
+              <Link href="/plans">
+                <Sparkles className="size-3.5 text-primary" />
+                <span>Comparar todos os planos</span>
+                <ArrowRight className="size-3" />
+              </Link>
+            </Button>
           </div>
           <CardDescription>
             {isScale
-              ? "Sua organização tem todos os recursos do Pro e várias unidades."
+              ? "Sua organização tem todos os recursos do Profissional e várias unidades."
               : isPro
-              ? "Sua organização tem todos os recursos do Pro."
-              : "O cadastro e a operação do dia a dia são grátis. Os recursos abaixo fazem parte do Pro."}
+              ? "Sua organização tem todos os recursos do Profissional."
+              : "O cadastro e a operação do dia a dia são grátis. Os recursos abaixo fazem parte do Profissional."}
             {data.changedAt ? ` Alterado em ${formatDateTime(data.changedAt)}.` : null}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="size-4 text-primary" aria-hidden />O que o Pro inclui
+              <Sparkles className="size-4 text-primary" aria-hidden />O que o Profissional inclui
             </p>
             <ul className="grid gap-3 sm:grid-cols-2">
               {PRO_FEATURES.map((feature) => (
@@ -150,7 +160,7 @@ export function SubscriptionPlanCard() {
                   ? "Salvando..."
                   : isPro
                     ? "Voltar ao Grátis"
-                    : "Ativar Pro (demonstração)"}
+                    : "Ativar Profissional (demonstração)"}
               </Button>
             </div>
           ) : (

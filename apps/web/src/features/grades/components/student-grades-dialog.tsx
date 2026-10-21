@@ -5,13 +5,15 @@ import { format, parseISO } from "date-fns";
 import { ClipboardList } from "lucide-react";
 import type { Id, ReportCardModality } from "@gestarahub/contracts";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { cn } from "@/lib/utils";
@@ -162,16 +164,22 @@ export function StudentGradesDialog({
 }) {
   if (!client) return null;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 p-6 pb-3 pr-20">
-          <DialogTitle>Notas</DialogTitle>
-          <DialogDescription>{client.name}</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="shrink-0 p-6 pb-3 pr-16 text-left border-b border-border/40">
+          <SheetTitle className="text-lg font-semibold text-foreground">Notas</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">{client.name}</SheetDescription>
+        </SheetHeader>
         <DialogBody className="pb-6">
           {open ? <ReportCardContent studentId={client.id} initialModalityId={initialModalityId} /> : null}
         </DialogBody>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const StudentGradesDrawer = StudentGradesDialog;

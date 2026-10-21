@@ -6,14 +6,16 @@ import { toast } from "sonner";
 import { ComboboxField, DateField, TextArea, TimeField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogClose,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import type { CreateTimeBlock } from "@gestarahub/contracts";
 import { useProfessionals } from "@/features/professionals";
@@ -23,9 +25,11 @@ import { blockFormSchema, type BlockFormValues } from "../block-schema";
 function BlockForm({
   formId,
   onSuccess,
+  onCancel,
 }: {
   formId: string;
   onSuccess: () => void;
+  onCancel?: () => void;
 }) {
   const createMut = useCreateTimeBlock();
   const pending = createMut.isPending;
@@ -97,12 +101,18 @@ function BlockForm({
           placeholder="Ex.: Almoço, folga (opcional)"
           disabled={pending}
         />
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+          )}
           <Button type="submit" disabled={pending}>
             {pending ? "Salvando..." : "Adicionar"}
           </Button>
@@ -122,26 +132,29 @@ export function BlockFormDialog({
   onOpenChange,
 }: BlockFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="appointment-block"
       >
-        <DialogHeader className="pr-14">
-          <DialogTitle>Bloquear horário</DialogTitle>
-          <DialogDescription>
-            O horário bloqueado não aceita agendamento e aparece destacado na
-            Agenda.
-          </DialogDescription>
-        </DialogHeader>
-        <BlockForm
-          key={String(open)}
-          formId="block-form"
-          onSuccess={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Bloquear horário</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            O horário bloqueado não aceita agendamento e aparece destacado na Agenda.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto p-6">
+          <BlockForm
+            key={String(open)}
+            formId="block-form-drawer"
+            onSuccess={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const BlockFormDrawer = BlockFormDialog;

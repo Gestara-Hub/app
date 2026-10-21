@@ -17,14 +17,14 @@ import {
   InputText,
   SelectField,
 } from "@/components/form";
+import { DialogBody } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useClients } from "@/features/clients";
@@ -61,9 +61,11 @@ const INSTALLMENT_OPTIONS = Array.from({ length: MAX_INSTALLMENTS }, (_, i) => (
 function ExtraChargeForm({
   student,
   onSuccess,
+  onCancel,
 }: {
   student?: Pick<Client, "id" | "name">;
   onSuccess: (created: ChargeView[]) => void;
+  onCancel?: () => void;
 }) {
   const createMut = useCreateExtraCharge();
   const pending = createMut.isPending;
@@ -230,7 +232,11 @@ function ExtraChargeForm({
             ) : null}
           </div>
         </DialogBody>
-        <DialogFormFooter isPending={pending} className="shrink-0 border-t border-border/40 px-6 py-4" />
+        <DialogFormFooter
+          isPending={pending}
+          onCancel={onCancel}
+          className="shrink-0 border-t border-border/40 px-6 py-4"
+        />
       </form>
       {confirmDialog}
     </FormProvider>
@@ -238,8 +244,9 @@ function ExtraChargeForm({
 }
 
 /**
- * Nova cobranca avulsa (taxa, material, uniforme, exame, evento), a vista ou
- * parcelada. Em Cobrancas escolhe o aluno; na lista de alunos ja vem fixo.
+ * Nova cobrança avulsa (taxa, material, uniforme, exame, evento), à vista ou
+ * parcelada. Em Cobranças escolhe o aluno; na lista de alunos já vem fixo.
+ * Renderizada em Drawer Lateral (slide-over pela direita).
  */
 export function NewExtraChargeDialog({
   open,
@@ -253,7 +260,7 @@ export function NewExtraChargeDialog({
   student?: Pick<Client, "id" | "name"> | null;
   onCreated?: (created: ChargeView[]) => void;
 }) {
-  // Retem o aluno durante a animacao de saida; `session` recomeca o formulario a cada abertura.
+  // Retém o aluno durante a animação de saída; `session` recomeça o formulário a cada abertura.
   const [shown, setShown] = useState({ open, student, session: 0 });
   if (open && (!shown.open || student !== shown.student)) {
     setShown({ open, student, session: shown.open ? shown.session : shown.session + 1 });
@@ -263,19 +270,20 @@ export function NewExtraChargeDialog({
   const fixed = shown.student ?? undefined;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl md:max-w-2xl border-l border-border/60 shadow-2xl"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>Nova cobrança</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle>Nova cobrança</SheetTitle>
+          <SheetDescription>
             {fixed
               ? `Cobrança avulsa para ${fixed.name}, à vista ou parcelada.`
               : "Taxa, material, uniforme ou evento, à vista ou parcelado."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <ExtraChargeForm
           key={`${shown.session}-${fixed?.id ?? "any"}`}
           student={fixed}
@@ -283,8 +291,9 @@ export function NewExtraChargeDialog({
             onCreated?.(created);
             onOpenChange(false);
           }}
+          onCancel={() => onOpenChange(false)}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

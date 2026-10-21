@@ -103,6 +103,14 @@ export function ProductTour({
 
   const step = effectiveSteps[index];
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && step?.target) {
+      window.dispatchEvent(
+        new CustomEvent("gestarahub:tour-target", { detail: { target: step.target } }),
+      );
+    }
+  }, [step]);
+
   const handleClose = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);

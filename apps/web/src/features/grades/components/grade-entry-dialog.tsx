@@ -21,13 +21,15 @@ import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { DialogFormFooter } from "@/components/form";
 import { InitialsAvatar } from "@/components/shared/list";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -296,19 +298,18 @@ export function GradeEntryDialog({
   const open = Boolean(assessmentId);
   const { data: sheet, isPending } = useAssessmentSheet(assessmentId ?? undefined);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        expandable
-        storageKey="grade-entry"
-        className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 p-6 pb-3 pr-20">
-          <DialogTitle>Lançar notas</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="shrink-0 p-6 pb-3 pr-16 text-left border-b border-border/40">
+          <SheetTitle className="text-lg font-semibold text-foreground">Lançar notas</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {sheet ? `${sheet.assessment.name} · ${sheet.classGroupName}` : "Carregando a avaliação"}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {open && sheet && !isPending ? (
           <SheetForm key={sheet.assessment.id} sheet={sheet} onDone={() => onOpenChange(false)} />
         ) : open ? (
@@ -317,7 +318,9 @@ export function GradeEntryDialog({
             <Skeleton className="h-14 w-full rounded-lg" />
           </div>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const GradeEntryDrawer = GradeEntryDialog;

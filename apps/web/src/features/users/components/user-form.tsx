@@ -9,7 +9,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { Check, Mail } from "lucide-react";
 import {
   FieldShell,
   InputText,
@@ -49,10 +49,11 @@ function toDefaults(user?: UserView): UserFormValues {
 interface UserFormProps {
   user?: UserView;
   onSuccess: () => void;
+  onCancel?: () => void;
   formId: string;
 }
 
-export function UserForm({ user, onSuccess, formId }: UserFormProps) {
+export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
   const isEdit = Boolean(user);
   const createMut = useCreateUser();
   const updateMut = useUpdateUser();
@@ -126,7 +127,7 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         toast.success("Usuário atualizado com sucesso.");
       } else {
         await createMut.mutateAsync(payload);
-        toast.success("Usuário criado com sucesso.");
+        toast.success("Usuário cadastrado e convite de acesso enviado por e-mail!");
       }
       onSuccess();
     } catch (error) {
@@ -150,6 +151,15 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         className="flex flex-col min-h-0 flex-1 overflow-hidden"
       >
         <DialogBody className="space-y-4">
+          {!isEdit && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground flex items-start gap-2.5">
+              <Mail className="size-4 text-primary shrink-0 mt-0.5" />
+              <span>
+                Um e-mail de convite será enviado automaticamente com link para o usuário definir sua senha pessoal e acessar o sistema.
+              </span>
+            </div>
+          )}
+
           <InputText<UserFormValues>
             name="name"
             label="Nome"
@@ -260,11 +270,17 @@ export function UserForm({ user, onSuccess, formId }: UserFormProps) {
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+          )}
           <Button type="submit" disabled={pending}>
             {pending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
           </Button>

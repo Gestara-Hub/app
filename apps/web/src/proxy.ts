@@ -7,8 +7,8 @@ import { SESSION_COOKIE } from "@/lib/session";
  * `/login` guardando o destino em `?from=`. Estando logado, `/login` redireciona
  * para o Dashboard. Como e mock, mantemos simples.
  */
-// Landing, paginas legais e termo de consentimento publico para pais sao publicos.
-const PUBLIC_PATHS = ["/login", "/", "/terms", "/privacy", "/consent"];
+// Landing, paginas legais, termo de consentimento publico e aceite de convites sao publicos.
+const PUBLIC_PATHS = ["/login", "/", "/terms", "/privacy", "/consent", "/accept-invite"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;

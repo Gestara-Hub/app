@@ -2,6 +2,17 @@ export type ThemeMode = "light" | "dark" | "system";
 export type DensityMode = "comfortable" | "compact";
 export type ListViewMode = "list" | "grid";
 
+export interface ThemeStylingPreferences {
+  baseColor?: "zinc" | "slate" | "stone" | "gray" | "neutral" | string;
+  themeColor?: string;
+  radius?: string;
+  menuColor?: "default" | "inverted" | "subtle" | string;
+  menuAccent?: "subtle" | "bold" | string;
+  font?: string;
+  style?: string;
+  presetId?: string;
+}
+
 export interface UserPreferences {
   theme: ThemeMode;
   accentColor?: string;
@@ -18,6 +29,7 @@ export interface UserPreferences {
   dismissedAlertKeys: string[];
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
+  themeStyling?: ThemeStylingPreferences;
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -36,6 +48,16 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
     completedStepIds: [],
   },
   dismissedAlertKeys: [],
+  themeStyling: {
+    baseColor: "zinc",
+    themeColor: "zinc",
+    radius: "0.5",
+    menuColor: "inverted",
+    menuAccent: "subtle",
+    font: "geist",
+    style: "default",
+    presetId: "default",
+  },
 };
 
 export function mergeUserPreferences(
@@ -47,6 +69,11 @@ export function mergeUserPreferences(
     ...DEFAULT_USER_PREFERENCES,
     ...base,
     ...patch,
+    themeStyling: {
+      ...(DEFAULT_USER_PREFERENCES.themeStyling ?? {}),
+      ...(base.themeStyling ?? {}),
+      ...(patch.themeStyling ?? {}),
+    },
     viewModes: {
       ...DEFAULT_USER_PREFERENCES.viewModes,
       ...(base.viewModes ?? {}),

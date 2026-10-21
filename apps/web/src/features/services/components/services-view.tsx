@@ -12,7 +12,7 @@ import { useCan } from "@/features/auth";
 import { CategoryManagerDialog } from "@/features/categories";
 import { useUpdateService } from "../hooks/use-services";
 import { ServicesList } from "./services-list";
-import { ServiceFormDialog } from "./service-form-dialog";
+import { ServiceFormDrawer } from "./service-form-drawer";
 import { InactivateServiceDialog } from "./inactivate-service-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -88,7 +88,7 @@ export function ServicesView() {
         onReactivate={reactivate}
       />
 
-      <ServiceFormDialog
+      <ServiceFormDrawer
         open={formState.open}
         onOpenChange={(open) => {
           if (!open) setFormState((state) => ({ ...state, open: false }));

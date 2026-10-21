@@ -13,7 +13,7 @@ import { StudentGradesDialog } from "@/features/grades";
 import { SendMessageDialog } from "@/features/communication";
 import { useUpdateClient } from "../hooks/use-clients";
 import { ClientsList } from "./clients-list";
-import { ClientFormDialog } from "./client-form-dialog";
+import { ClientFormDrawer } from "./client-form-drawer";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
@@ -22,11 +22,8 @@ import { withKind } from "@/lib/text";
 
 export function ClientsView() {
   const isClasses = useModel() === "classes";
-  const [formState, setFormState] = useState<{
-    open: boolean;
-    client?: Client;
-  }>({ open: false });
   const [inactivating, setInactivating] = useState<Client | null>(null);
+  const [drawerState, setDrawerState] = useState<{ open: boolean; client?: Client }>({ open: false });
   // Dois modais: Graduação (raro) e Registros de aula (toda aula).
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
@@ -46,8 +43,8 @@ export function ClientsView() {
   const canCharge = isClasses && can("billing:manage");
   const canMessage = can("communication:view");
 
-  const openCreate = () => setFormState({ open: true });
-  const openEdit = (client: Client) => setFormState({ open: true, client });
+  const openCreate = () => setDrawerState({ open: true });
+  const openEdit = (client: Client) => setDrawerState({ open: true, client });
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(client: Client) {
@@ -132,14 +129,6 @@ export function ClientsView() {
         onReactivate={reactivate}
       />
 
-      <ClientFormDialog
-        open={formState.open}
-        onOpenChange={(open) => {
-          if (!open) setFormState((state) => ({ ...state, open: false }));
-        }}
-        client={formState.client}
-      />
-
       {isClasses ? (
         <>
           <StudentGraduationDialog
@@ -197,6 +186,12 @@ export function ClientsView() {
         onOpenChange={(open) => {
           if (!open) setInactivating(null);
         }}
+      />
+
+      <ClientFormDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => !open && setDrawerState({ open: false })}
+        client={drawerState.client}
       />
     </>
   );

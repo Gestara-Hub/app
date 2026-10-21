@@ -54,7 +54,7 @@ import {
   useClassSessions,
 } from "@/features/turmas";
 import { useStudentSummary, useUpdateClient } from "../hooks/use-clients";
-import { ClientFormDialog } from "./client-form-dialog";
+import { ClientFormDrawer } from "./client-form-drawer";
 import { InactivateClientDialog } from "./inactivate-client-dialog";
 import { StudentGraduationDialog } from "./student-graduation-dialog";
 import { StudentRecordsDialog } from "./student-records-dialog";
@@ -559,7 +559,11 @@ export function StudentProfileView({ id }: { id: Id }) {
         ))}
       </div>
 
-      <ClientFormDialog open={editOpen} onOpenChange={setEditOpen} client={student} />
+      <ClientFormDrawer
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        client={student}
+      />
       <InactivateClientDialog
         client={inactivateOpen ? student : null}
         onOpenChange={(open) => {

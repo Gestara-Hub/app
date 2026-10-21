@@ -6,6 +6,8 @@ import type { DateTimeISO } from "./common";
  * "Plano GestaraHub". Ver docs/technical/05-modulo-financeiro (secao 3).
  */
 export type SubscriptionTier = "free" | "pro" | "scale";
+export type SubscriptionInterval = "monthly" | "yearly";
+export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing";
 
 /** Recursos pagos, checados junto com a permissao do perfil. */
 export type PaidFeature =
@@ -17,6 +19,13 @@ export type PaidFeature =
 
 export interface Subscription {
   tier: SubscriptionTier;
-  /** So demonstracao: quando o tier foi trocado nas Configuracoes. */
+  interval?: SubscriptionInterval;
+  status?: SubscriptionStatus;
+  asaasCustomerId?: string;
+  asaasSubscriptionId?: string;
+  nextDueDate?: string;
+  priceCents?: number;
+  paymentMethod?: "pix" | "credit_card";
+  /** So demonstracao / historico: quando o tier foi trocado nas Configuracoes ou Checkout. */
   changedAt?: DateTimeISO;
 }

@@ -19,13 +19,15 @@ import {
   type MultiSelectOption,
 } from "@/components/form";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { handleFormApiError } from "@/lib/form-errors";
 import { useCreateLessonPackage, useUpdateLessonPackage } from "../hooks/use-packages";
 import { useClassGroups } from "../hooks/use-turmas";
@@ -84,10 +86,12 @@ function PackageForm({
   pkg,
   classes,
   onSuccess,
+  onCancel,
 }: {
   pkg?: LessonPackage;
   classes: ClassGroupView[];
   onSuccess: () => void;
+  onCancel?: () => void;
 }) {
   const createMut = useCreateLessonPackage();
   const updateMut = useUpdateLessonPackage();
@@ -194,6 +198,7 @@ function PackageForm({
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
+          onCancel={onCancel}
           className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
         />
       </form>
@@ -223,28 +228,32 @@ export function PackageFormDialog({
   const classes = (allClasses ?? []).filter(acceptsPackages);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="package-form"
       >
-        <DialogHeader className="shrink-0 p-6 pb-2 pr-20">
-          <DialogTitle>{editing ? "Editar pacote" : "Novo pacote"}</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
+            {editing ? "Editar pacote" : "Novo pacote"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {editing ? "Vale para as próximas vendas." : "Aulas vendidas juntas, usadas na chamada."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {classesPending ? null : (
           <PackageForm
             key={`${shown.session}-${editing?.id ?? "new"}`}
             pkg={editing}
             classes={classes}
             onSuccess={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const PackageFormDrawer = PackageFormDialog;

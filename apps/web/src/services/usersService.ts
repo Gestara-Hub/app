@@ -23,7 +23,15 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { getCurrentActor } from "@/mocks/currentActor";
+import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "./auditLogService";
+import {
+  createUserAndInviteAction,
+  inactivateUserInDb,
+  listUsersFromDb,
+  resendInvitationAction,
+  updateUserInDb,
+} from "./usersBackend";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -160,7 +168,37 @@ function ensureNotSelfPrivilegeChange(current: User, next: Partial<CreateUser>):
 
 export const usersService = {
   list(filter?: UserFilter): Promise<UserView[]> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const dbUsers = await listUsersFromDb(store.organization.id);
+        const dbIds = new Set(dbUsers.map((u) => u.id));
+        store.users = [
+          ...store.users.filter((u) =>
+            u.organizationId === store.organization.id ? !dbIds.has(u.id) : true,
+          ),
+          ...dbUsers,
+        ];
+
+        let result = dbUsers;
+        if (filter?.search) {
+          const term = filter.search.toLowerCase();
+          result = result.filter(
+            (u) =>
+              u.name.toLowerCase().includes(term) ||
+              u.email.toLowerCase().includes(term),
+          );
+        }
+        if (filter?.status) {
+          result = result.filter((u) => u.status === filter.status);
+        }
+        if (filter?.profile) {
+          result = result.filter((u) => u.profile === filter.profile);
+        }
+        return clone(
+          [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+        );
+      }
+
       let result = store.users;
       if (filter?.search) {
         const term = filter.search;
@@ -219,9 +257,41 @@ export const usersService = {
     });
   },
 
-  create(payload: CreateUser): Promise<UserView> {
-    return simulateWrite(() => {
+  create(payload: CreateUser, sendInvite = true): Promise<UserView> {
+    return simulateWrite(async () => {
       validateUser(payload, { partial: false });
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const res = await createUserAndInviteAction(
+          store.organization.id,
+          payload,
+          sendInvite,
+        );
+        if (!res.success || !res.user) {
+          throw validationError([
+            { field: "email", message: res.error || "Erro ao criar usuário." },
+          ]);
+        }
+        store.users = [
+          ...store.users.filter((u) => u.id !== res.user!.id),
+          res.user,
+        ];
+
+        auditLogService.record({
+          action: "created",
+          target: {
+            type: "user",
+            id: res.user.id,
+            label: res.user.name,
+            profile: res.user.profile,
+          },
+          predicate: `criou o usuário ${res.user.name} (${userProfileLabel(res.user.profile)}) com convite por e-mail`,
+          security: true,
+        });
+
+        return clone(res.user);
+      }
+
       ensureEmailUnique(payload.email);
       ensureProfessionalFree(payload.professionalId || undefined, payload.status ?? "active");
       const ts = nowIso();
@@ -243,15 +313,34 @@ export const usersService = {
         predicate: `criou o usuário ${user.name} (${userProfileLabel(user.profile)})`,
         security: true,
       });
-      return clone(toView(user));
+      return clone({ ...toView(user), pendingInvite: sendInvite });
     });
   },
 
   update(id: Id, payload: UpdateUser): Promise<UserView> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      validateUser(payload, { partial: true });
+
+      if (isSupabaseOrganization(store.organization.id)) {
+        const res = await updateUserInDb(store.organization.id, id, payload);
+        if (!res.success) {
+          throw validationError([
+            { field: "email", message: res.error || "Erro ao atualizar usuário." },
+          ]);
+        }
+        const updatedUsers = await listUsersFromDb(store.organization.id);
+        const match = updatedUsers.find((u) => u.id === id);
+        if (match) {
+          store.users = [
+            ...store.users.filter((u) => u.id !== id),
+            match,
+          ];
+          return clone(match);
+        }
+      }
+
       const idx = store.users.findIndex((u) => u.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
-      validateUser(payload, { partial: true });
       if (payload.email !== undefined) ensureEmailUnique(payload.email, id);
       const current = store.users[idx];
       ensureNotSelfPrivilegeChange(current, payload);
@@ -297,7 +386,19 @@ export const usersService = {
 
   // remove = inativacao logica; usuario inativo nao pode logar nem e sugerido.
   remove(id: Id): Promise<void> {
-    return simulateWrite(() => {
+    return simulateWrite(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        const res = await inactivateUserInDb(store.organization.id, id);
+        if (!res.success) {
+          throw validationError([
+            { field: "status", message: res.error || "Erro ao inativar usuário." },
+          ]);
+        }
+        const user = store.users.find((u) => u.id === id);
+        if (user) user.status = "inactive";
+        return;
+      }
+
       const idx = store.users.findIndex((u) => u.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       ensureNotSelfPrivilegeChange(store.users[idx], { status: "inactive" });
@@ -314,6 +415,15 @@ export const usersService = {
         predicate: `inativou o usuário ${target.name}`,
         security: true,
       });
+    });
+  },
+
+  resendInvite(id: Id): Promise<{ success: boolean; error?: string }> {
+    return simulateWrite(async () => {
+      if (isSupabaseOrganization(store.organization.id)) {
+        return resendInvitationAction(store.organization.id, id);
+      }
+      return { success: true };
     });
   },
 };

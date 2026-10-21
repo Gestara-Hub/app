@@ -104,6 +104,14 @@ export const settingsService = {
                 passFeeCard: currentOnline?.passFeeCard ?? (remoteOnline.passFeeCard !== undefined ? Boolean(remoteOnline.passFeeCard) : undefined),
               },
             },
+            ...(remote.subscription && typeof remote.subscription === "object" && "tier" in remote.subscription
+              ? {
+                  subscription: {
+                    tier: (remote.subscription as { tier: "free" | "pro" | "scale" }).tier,
+                    changedAt: (remote.subscription as { changedAt?: string }).changedAt,
+                  },
+                }
+              : {}),
           };
           persist();
         }

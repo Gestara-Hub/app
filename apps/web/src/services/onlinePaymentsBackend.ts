@@ -549,7 +549,7 @@ export async function getOrganizationGatewayAction(organizationId: string) {
   const { data } = await adminClient
     .from("organizations")
     .select(
-      "gateway_provider, gateway_account_id, gateway_wallet_id, gateway_status, settings",
+      "gateway_provider, gateway_account_id, gateway_wallet_id, gateway_status, settings, subscription",
     )
     .eq("id", organizationId)
     .maybeSingle();
@@ -560,6 +560,7 @@ export async function getOrganizationGatewayAction(organizationId: string) {
     walletId: data?.gateway_wallet_id || undefined,
     status: data?.gateway_status || "not_configured",
     settings: (data?.settings as Record<string, unknown>) || {},
+    subscription: (data?.subscription as Record<string, unknown>) || undefined,
   };
 }
 

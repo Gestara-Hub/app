@@ -1,16 +1,16 @@
 "use client";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { AppointmentView } from "@gestarahub/contracts";
 import { AppointmentForm } from "./appointment-form";
 
-interface AppointmentFormDialogProps {
+export interface AppointmentFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProfessionalId?: string;
@@ -20,6 +20,11 @@ interface AppointmentFormDialogProps {
   appointment?: AppointmentView;
 }
 
+/**
+ * Drawer lateral para criação e edição de Agendamento.
+ * Ocupa 100vh de altura com largura ampla (sm:max-w-xl md:max-w-2xl),
+ * mantendo o contexto de fundo visível com backdrop escuro.
+ */
 export function AppointmentFormDialog({
   open,
   onOpenChange,
@@ -31,31 +36,35 @@ export function AppointmentFormDialog({
   const isEdit = Boolean(appointment);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="appointment"
       >
-        <DialogHeader className="pr-14">
-          <DialogTitle>
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
             {isEdit ? "Editar agendamento" : "Novo agendamento"}
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             Selecione cliente, profissional, serviço, data e horário.
-          </DialogDescription>
-        </DialogHeader>
-        <AppointmentForm
-          key={`${appointment?.id ?? "new"}-${defaultProfessionalId ?? ""}-${defaultDate ?? ""}-${defaultStart ?? ""}-${String(open)}`}
-          appointment={appointment}
-          defaultProfessionalId={defaultProfessionalId}
-          defaultDate={defaultDate}
-          defaultStart={defaultStart}
-          formId="appointment-form"
-          onSuccess={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto">
+          <AppointmentForm
+            key={`${appointment?.id ?? "new"}-${defaultProfessionalId ?? ""}-${defaultDate ?? ""}-${defaultStart ?? ""}-${String(open)}`}
+            appointment={appointment}
+            defaultProfessionalId={defaultProfessionalId}
+            defaultDate={defaultDate}
+            defaultStart={defaultStart}
+            formId="appointment-form-drawer"
+            onSuccess={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const AppointmentFormDrawer = AppointmentFormDialog;

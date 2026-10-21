@@ -48,7 +48,7 @@ import {
   useDeactivateClassGroup,
   useReactivateClassGroup,
 } from "../hooks/use-turmas";
-import { TurmaFormDialog } from "./turma-form-dialog";
+import { TurmaFormDrawer } from "./turma-form-drawer";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -477,7 +477,7 @@ export function TurmasView({
         ) : null}
       </PageHeader>
 
-      <TurmaFormDialog
+      <TurmaFormDrawer
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(created) => {
@@ -497,7 +497,7 @@ export function TurmasView({
         }}
       />
 
-      <TurmaFormDialog
+      <TurmaFormDrawer
         open={editingTurma !== null}
         onOpenChange={(open) => {
           if (!open) setEditingTurma(null);

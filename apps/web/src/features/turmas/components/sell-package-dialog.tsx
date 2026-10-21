@@ -20,13 +20,15 @@ import {
   SelectField,
 } from "@/components/form";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { handleFormApiError } from "@/lib/form-errors";
 import { withKind } from "@/lib/text";
@@ -69,10 +71,12 @@ function SellPackageForm({
   student,
   initialPackageId,
   onSuccess,
+  onCancel,
 }: {
   student: Pick<Client, "id" | "name">;
   initialPackageId?: string;
   onSuccess: () => void;
+  onCancel?: () => void;
 }) {
   const sellMut = useSellPackage();
   const pending = sellMut.isPending;
@@ -232,6 +236,7 @@ function SellPackageForm({
         </DialogBody>
         <DialogFormFooter
           isPending={pending}
+          onCancel={onCancel}
           className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
         />
       </form>
@@ -263,26 +268,30 @@ export function SellPackageDialog({
   const fixed = shown.student;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 p-6 pb-2 pr-20">
-          <DialogTitle>Vender pacote</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Vender pacote</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {fixed ? `Pacote de aulas para ${fixed.name}.` : "Pacote de aulas para o aluno."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {fixed ? (
           <SellPackageForm
             key={`${shown.session}-${fixed.id}`}
             student={fixed}
             initialPackageId={initialPackageId}
             onSuccess={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
           />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const SellPackageDrawer = SellPackageDialog;

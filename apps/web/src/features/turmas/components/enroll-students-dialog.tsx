@@ -5,13 +5,15 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Ban, Check, ChevronDown, ListPlus, Search, UserPlus, X } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -312,29 +314,29 @@ export function EnrollStudentsDialog({
   };
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         if (!next) reset();
         onOpenChange(next);
       }}
     >
-      <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="enroll-students"
       >
-        <DialogHeader className="pr-14">
-          <DialogTitle>Matricular alunos</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="p-6 pb-4 border-b border-border/40 shrink-0 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Matricular alunos</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {turma.name} ·{" "}
             {isFull
               ? "turma lotada"
               : `${remaining} ${remaining === 1 ? "vaga livre" : "vagas livres"}`}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {isFull ? (
           <p className="rounded-md border border-dashed border-amber-300/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/20 dark:text-amber-500">
             A turma atingiu a capacidade ({plural(turma.capacity, "vaga", "vagas")}). Você pode pôr
@@ -595,8 +597,10 @@ export function EnrollStudentsDialog({
           </p>
         )}
 
+        </div>
+
         {/* Lotada: dois botoes de texto longo, empilhados no celular. */}
-        <DialogFooter className={cn(isFull && "max-sm:grid-cols-1")}>
+        <DialogFooter className={cn("p-6 pt-4 border-t border-border/40 shrink-0 bg-background", isFull && "max-sm:grid-cols-1")}>
           {isFull ? (
             <Button
               variant="outline"
@@ -622,10 +626,12 @@ export function EnrollStudentsDialog({
                     : `Matricular ${selected.size} alunos`}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const EnrollStudentsDrawer = EnrollStudentsDialog;
 
 /** Mensalidade ou Pacote, por aluno (so quem tem pacote da modalidade). */
 function PaymentToggle({

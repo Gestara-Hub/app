@@ -10,13 +10,15 @@ import { todayISO } from "@gestarahub/core/date";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -214,18 +216,24 @@ export function ClassRecordsDialog({
       : `${session.date.slice(8, 10)}/${session.date.slice(5, 7)}`
     : "";
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>Registrar a aula</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Registrar a aula</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {session ? `${session.classGroupName} · ${when} · ${plural(students.length, "presente", "presentes")}` : ""}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {open && session ? (
           <ClassRecordsForm session={session} students={students} onDone={() => onOpenChange(false)} />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const ClassRecordsDrawer = ClassRecordsDialog;

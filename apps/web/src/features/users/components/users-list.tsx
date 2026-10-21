@@ -3,12 +3,14 @@
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Clock,
   Contact,
   Mail,
   Pencil,
   Power,
   PowerOff,
   RotateCw,
+  Send,
   ShieldCheck,
   User,
 } from "lucide-react";
@@ -42,6 +44,7 @@ interface UsersListProps {
   onEdit: (user: UserView) => void;
   onInactivate: (user: UserView) => void;
   onReactivate: (user: UserView) => void;
+  onResendInvite?: (user: UserView) => void;
 }
 
 function UserRow({
@@ -51,6 +54,7 @@ function UserRow({
   onEdit,
   onInactivate,
   onReactivate,
+  onResendInvite,
 }: {
   user: UserView;
   canManage: boolean;
@@ -58,11 +62,22 @@ function UserRow({
   onEdit: (u: UserView) => void;
   onInactivate: (u: UserView) => void;
   onReactivate: (u: UserView) => void;
+  onResendInvite?: (u: UserView) => void;
 }) {
   const isActive = user.status === "active";
 
   const actions: ListItemAction[] = canManage
     ? [
+        ...(user.pendingInvite && onResendInvite
+          ? [
+              {
+                key: "resend-invite",
+                label: "Reenviar convite",
+                icon: <Send className="size-4" />,
+                onSelect: () => onResendInvite(user),
+              },
+            ]
+          : []),
         {
           key: "edit",
           label: "Editar",
@@ -119,6 +134,12 @@ function UserRow({
                 Equipe
               </span>
             ) : null}
+            {user.pendingInvite ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                <Clock className="size-3" />
+                Convite pendente
+              </span>
+            ) : null}
             <RecordStatusBadge status={user.status} />
           </div>
 
@@ -167,6 +188,7 @@ export function UsersList({
   onEdit,
   onInactivate,
   onReactivate,
+  onResendInvite,
 }: UsersListProps) {
   const currentUser = useCurrentUser();
   const [search, setSearch] = useState("");
@@ -251,6 +273,7 @@ export function UsersList({
         onEdit={onEdit}
         onInactivate={onInactivate}
         onReactivate={onReactivate}
+        onResendInvite={onResendInvite}
       />
     ));
   }

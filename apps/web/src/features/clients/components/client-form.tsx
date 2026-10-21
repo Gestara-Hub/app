@@ -44,6 +44,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";
 import type {
@@ -221,13 +222,22 @@ function toDefaults(
 
 interface ClientFormProps {
   client?: Client;
-  onSuccess: () => void;
+  onSuccess: (savedClient?: Client) => void;
+  onCancel?: () => void;
   formId: string;
+  isPage?: boolean;
   /** Avisa o diálogo se há alterações não salvas (para confirmar o descarte). */
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientFormProps) {
+export function ClientForm({
+  client,
+  onSuccess,
+  onCancel,
+  formId,
+  isPage = false,
+  onDirtyChange,
+}: ClientFormProps) {
   const isEdit = Boolean(client);
   const isClasses = useModel() === "classes";
   // Fora da area de mensalidade (curso, pacote, sem cobranca): aluno novo
@@ -1083,6 +1093,8 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
     }
   };
 
+  const FormBodyWrapper = isPage ? "div" : DialogBody;
+
   return (
     <FormProvider {...form}>
       {duplicateDialog}
@@ -1090,9 +1102,12 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
         id={formId}
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
         noValidate
-        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+        className={cn(
+          "flex flex-col min-h-0 flex-1",
+          isPage ? "overflow-visible" : "overflow-hidden"
+        )}
       >
-        <DialogBody className="space-y-4">
+        <FormBodyWrapper className={isPage ? "space-y-6 p-6" : "space-y-4"}>
           {/* Bloco 1: Dados de Identificação */}
         <div className="space-y-4">
           <InputText<ClientFormValues>
@@ -1776,22 +1791,45 @@ export function ClientForm({ client, onSuccess, formId, onDirtyChange }: ClientF
             disabled={pending}
           />
         </CollapsibleSection>
-        </DialogBody>
+        </FormBodyWrapper>
 
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
-              Cancelar
+        {isPage ? (
+          <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-end gap-3 shadow-lg rounded-b-xl">
+            {onCancel && (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
             </Button>
-          </DialogClose>
-          <Button type="submit" disabled={pending}>
-            {pending
-              ? "Salvando..."
-              : isEdit
-                ? "Salvar"
-                : "Adicionar"}
-          </Button>
-        </DialogFooter>
+          </div>
+        ) : (
+          <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+            {onCancel ? (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            ) : (
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={pending}>
+                  Cancelar
+                </Button>
+              </DialogClose>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        )}
       </form>
       {/* Fora do <form>: o envio do formulario da venda nao sobe para o do aluno. */}
       {isEdit && canSellPackage ? (

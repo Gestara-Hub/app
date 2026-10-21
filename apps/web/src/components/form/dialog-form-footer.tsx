@@ -10,6 +10,7 @@ export interface DialogFormFooterProps {
   editLabel?: string;
   cancelLabel?: string;
   className?: string;
+  onCancel?: () => void;
 }
 
 export function DialogFormFooter({
@@ -19,14 +20,26 @@ export function DialogFormFooter({
   editLabel = "Salvar",
   cancelLabel = "Cancelar",
   className,
+  onCancel,
 }: DialogFormFooterProps) {
   return (
     <DialogFooter className={className}>
-      <DialogClose asChild>
-        <Button type="button" variant="outline" disabled={isPending}>
+      {onCancel ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isPending}
+          onClick={onCancel}
+        >
           {cancelLabel}
         </Button>
-      </DialogClose>
+      ) : (
+        <DialogClose asChild>
+          <Button type="button" variant="outline" disabled={isPending}>
+            {cancelLabel}
+          </Button>
+        </DialogClose>
+      )}
       <Button type="submit" disabled={isPending}>
         {isPending ? "Salvando..." : isEdit ? editLabel : createLabel}
       </Button>

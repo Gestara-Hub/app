@@ -161,8 +161,9 @@ export function can(
   subject: UserProfile | Pick<User, "profile">,
   permission: Permission,
 ): boolean {
-  const profile = typeof subject === "string" ? subject : subject.profile;
-  return PROFILE_PERMISSIONS[profile].includes(permission);
+  const profile = typeof subject === "string" ? subject : subject?.profile;
+  const perms = profile ? PROFILE_PERMISSIONS[profile] : undefined;
+  return perms ? perms.includes(permission) : false;
 }
 
 /**

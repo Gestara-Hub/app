@@ -16,13 +16,15 @@ import {
   fieldAria,
 } from "@/components/form";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
@@ -201,12 +203,18 @@ export function AssessmentFormDialog({
   track: ModalityProgressionTrack | null;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 p-6 pb-2 pr-20">
-          <DialogTitle>{assessment ? "Editar avaliação" : "Nova avaliação"}</DialogTitle>
-          <DialogDescription>{classGroupName}</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="shrink-0 p-6 pb-4 border-b border-border/40 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
+            {assessment ? "Editar avaliação" : "Nova avaliação"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">{classGroupName}</SheetDescription>
+        </SheetHeader>
         {open ? (
           <AssessmentForm
             key={assessment?.id ?? "new"}
@@ -216,7 +224,9 @@ export function AssessmentFormDialog({
             onDone={() => onOpenChange(false)}
           />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const AssessmentFormDrawer = AssessmentFormDialog;

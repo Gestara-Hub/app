@@ -6,6 +6,7 @@ import {
   Check,
   Monitor,
   Moon,
+  Palette,
   RotateCcw,
   Rows3,
   Sparkles,
@@ -17,9 +18,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ThemeCustomizerPanel } from "@/components/theme/theme-customizer";
 import { useUserPreferences } from "../hooks/use-user-preferences";
 import { playAudioFeedback } from "@/lib/audio-feedback";
-import type { DensityMode, ThemeMode } from "@gestarahub/contracts";
+import type { ThemeMode } from "@gestarahub/contracts";
 
 export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () => void }) {
   const { preferences, updatePreference, updatePreferences, resetPreferences } =
@@ -29,15 +31,6 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const handleThemeChange = (mode: ThemeMode) => {
     updatePreference("theme", mode);
     setTheme(mode);
-  };
-
-  const handleDensityChange = (density: DensityMode) => {
-    updatePreference("density", density);
-    toast.success(
-      density === "compact"
-        ? "Modo compacto ativado."
-        : "Modo confortável ativado.",
-    );
   };
 
   const handleAudioToggle = (enabled: boolean) => {
@@ -79,7 +72,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
         <div>
           <h3 className="text-sm font-semibold text-foreground">Aparência e Tema</h3>
           <p className="text-xs text-muted-foreground">
-            Escolha o esquema de cores e a densidade das telas do sistema.
+            Escolha o esquema de cores e o modo de exibição do sistema.
           </p>
         </div>
 
@@ -133,34 +126,20 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
           </button>
         </div>
 
-        {/* Densidade */}
-        <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Label className="text-xs font-medium text-foreground">Densidade das listas</Label>
-            <p className="text-[11px] text-muted-foreground">
-              Compacto exibe mais informações na tela sem precisar de rolagem.
-            </p>
+        {/* Estilização Completa do Tema */}
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+          <div className="flex items-center gap-2.5 border-b border-border/40 pb-3">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Palette className="size-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold text-foreground">Estilização do Tema</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Personalize cores de destaque, base neutra, tipografia e bordas.
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant={preferences.density === "comfortable" ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => handleDensityChange("comfortable")}
-            >
-              Confortável
-            </Button>
-            <Button
-              type="button"
-              variant={preferences.density === "compact" ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => handleDensityChange("compact")}
-            >
-              Compacto
-            </Button>
-          </div>
+          <ThemeCustomizerPanel />
         </div>
       </section>
 

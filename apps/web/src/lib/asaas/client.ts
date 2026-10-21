@@ -9,6 +9,8 @@ import type {
   AsaasBalanceResponse,
   AsaasTransferRequest,
   AsaasTransferResponse,
+  AsaasSubscriptionRequest,
+  AsaasSubscriptionResponse,
 } from "./types";
 
 export interface AsaasConfig {
@@ -20,7 +22,8 @@ export interface AsaasConfig {
 export function getAsaasConfig(): AsaasConfig {
   const apiUrl =
     process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3";
-  const masterApiKey = process.env.ASAAS_API_KEY || "";
+  const rawKey = process.env.ASAAS_API_KEY || "";
+  const masterApiKey = rawKey.replace(/^\\/, "").trim();
   const masterWalletId = process.env.ASAAS_MASTER_WALLET_ID;
 
   if (!masterApiKey) {
@@ -274,4 +277,60 @@ export async function listTransfers(
     apiKey: subaccountApiKey,
   });
 }
+
+/**
+ * Cria uma assinatura no Asaas (usada para a assinatura da plataforma GestaraHub).
+ */
+export async function createSubscription(
+  subscriptionData: AsaasSubscriptionRequest,
+  apiKey?: string,
+): Promise<AsaasSubscriptionResponse> {
+  return asaasFetch<AsaasSubscriptionResponse>("/subscriptions", {
+    method: "POST",
+    body: subscriptionData,
+    apiKey,
+  });
+}
+
+/**
+ * Consulta uma assinatura pelo ID no Asaas.
+ */
+export async function getSubscription(
+  subscriptionId: string,
+  apiKey?: string,
+): Promise<AsaasSubscriptionResponse> {
+  return asaasFetch<AsaasSubscriptionResponse>(`/subscriptions/${subscriptionId}`, {
+    apiKey,
+  });
+}
+
+/**
+ * Lista as cobranças vinculadas a uma assinatura no Asaas.
+ */
+export async function getSubscriptionPayments(
+  subscriptionId: string,
+  apiKey?: string,
+): Promise<{ data: AsaasPaymentResponse[] }> {
+  return asaasFetch<{ data: AsaasPaymentResponse[] }>(
+    `/subscriptions/${subscriptionId}/payments`,
+    { apiKey },
+  );
+}
+
+/**
+ * Cancela uma assinatura no Asaas.
+ */
+export async function cancelSubscription(
+  subscriptionId: string,
+  apiKey?: string,
+): Promise<{ deleted: boolean; id: string }> {
+  return asaasFetch<{ deleted: boolean; id: string }>(
+    `/subscriptions/${subscriptionId}`,
+    {
+      method: "DELETE",
+      apiKey,
+    },
+  );
+}
+
 

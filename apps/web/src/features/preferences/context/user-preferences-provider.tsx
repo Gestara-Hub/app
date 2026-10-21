@@ -12,6 +12,12 @@ import {
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { PREFERENCES_STORAGE_KEY } from "@/services/preferencesService";
+import {
+  applyThemeStateFromServer,
+  isThemeSyncingFromServer,
+  resetThemeCustomizerState,
+  subscribeToThemeCustomizer,
+} from "@/lib/theme-customizer";
 
 interface UserPreferencesContextValue {
   preferences: UserPreferences;
@@ -127,6 +133,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   );
 
   const resetPreferences = useCallback(async () => {
+    resetThemeCustomizerState();
     setPreferences(DEFAULT_USER_PREFERENCES);
     try {
       window.localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(DEFAULT_USER_PREFERENCES));
@@ -147,6 +154,9 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         if (!res.ok) return;
         const data = await res.json();
         if (active && data?.preferences) {
+          if (data.preferences.themeStyling) {
+            applyThemeStateFromServer(data.preferences.themeStyling);
+          }
           setPreferences((prev) => {
             const merged = mergeUserPreferences(prev, data.preferences);
             try {
@@ -168,6 +178,45 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, []);
+
+  // Escutar alterações de estilização do tema no customizer
+  useEffect(() => {
+    const unsubscribe = subscribeToThemeCustomizer((themeState) => {
+      if (isThemeSyncingFromServer()) return;
+
+      const stylingPayload = {
+        baseColor: themeState.baseColor,
+        themeColor: themeState.themeColor,
+        radius: themeState.radius,
+        menuColor: themeState.menuColor,
+        menuAccent: themeState.menuAccent,
+        font: themeState.font,
+        style: themeState.style,
+        presetId: themeState.presetId,
+      };
+
+      setPreferences((prev) => {
+        const next = {
+          ...prev,
+          themeStyling: stylingPayload,
+        };
+        try {
+          window.localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+
+      pendingRef.current = {
+        ...pendingRef.current,
+        themeStyling: stylingPayload,
+      };
+      scheduleSync();
+    });
+
+    return unsubscribe;
+  }, [scheduleSync]);
 
   // Flush imediato ao fechar aba ou trocar de janela
   useEffect(() => {
@@ -285,12 +334,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     };
   }, [scheduleSync]);
 
-  // Aplicar densidade (compacta vs confortável) no elemento raiz
+  // Limpeza de atributo de densidade legado, mantendo o padrão confortável do sistema
   useEffect(() => {
     if (typeof document !== "undefined") {
-      document.documentElement.setAttribute("data-density", preferences.density);
+      document.documentElement.removeAttribute("data-density");
     }
-  }, [preferences.density]);
+  }, []);
 
   return (
     <UserPreferencesContext.Provider

@@ -634,6 +634,72 @@ export function reapplySavedTheme(): void {
   applyStateToDOM(currentState);
 }
 
+let isSyncingFromServer = false;
+
+export function isThemeSyncingFromServer(): boolean {
+  return isSyncingFromServer;
+}
+
+export function getCurrentThemeState(): ThemeState {
+  return currentState;
+}
+
+export function applyThemeStateFromServer(styling: Partial<ThemeState>): void {
+  if (!styling || typeof window === "undefined") return;
+
+  const isMatch =
+    (!styling.baseColor || styling.baseColor === currentState.baseColor) &&
+    (!styling.themeColor || styling.themeColor === currentState.themeColor) &&
+    (!styling.radius || styling.radius === currentState.radius) &&
+    (!styling.menuColor || styling.menuColor === currentState.menuColor) &&
+    (!styling.menuAccent || styling.menuAccent === currentState.menuAccent) &&
+    (!styling.font || styling.font === currentState.font) &&
+    (!styling.style || styling.style === currentState.style) &&
+    (styling.presetId === undefined || styling.presetId === currentState.presetId);
+
+  if (isMatch) return;
+
+  isSyncingFromServer = true;
+  try {
+    const next: ThemeState = {
+      baseColor: (styling.baseColor as BaseColor) || currentState.baseColor,
+      themeColor: (styling.themeColor as ThemeColor) || currentState.themeColor,
+      radius: (styling.radius as ThemeRadius) || currentState.radius,
+      menuColor: (styling.menuColor as MenuColor) || currentState.menuColor,
+      menuAccent: (styling.menuAccent as MenuAccent) || currentState.menuAccent,
+      font: (styling.font as ThemeFont) || currentState.font,
+      style: (styling.style as ThemeStyle) || currentState.style,
+      presetId: styling.presetId ?? currentState.presetId,
+    };
+    next.presetId = getActivePresetId(next) ?? next.presetId;
+    currentState = next;
+    history = [next];
+    historyIndex = 0;
+    applyStateToDOM(next);
+    saveStateToStorage(next);
+    emitChange();
+  } finally {
+    isSyncingFromServer = false;
+  }
+}
+
+export function resetThemeCustomizerState(): void {
+  currentState = DEFAULT_STATE;
+  history = [DEFAULT_STATE];
+  historyIndex = 0;
+  applyStateToDOM(DEFAULT_STATE);
+  saveStateToStorage(DEFAULT_STATE);
+  emitChange();
+}
+
+export function subscribeToThemeCustomizer(callback: (state: ThemeState) => void): () => void {
+  const handler = () => callback(currentState);
+  listeners.add(handler);
+  return () => {
+    listeners.delete(handler);
+  };
+}
+
 function subscribe(callback: () => void) {
   listeners.add(callback);
   window.addEventListener("storage", callback);

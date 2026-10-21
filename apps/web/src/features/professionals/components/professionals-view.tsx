@@ -12,7 +12,7 @@ import { useCan } from "@/features/auth";
 import { RoleManagerDialog } from "@/features/roles";
 import { useUpdateProfessional } from "../hooks/use-professionals";
 import { ProfessionalsList } from "./professionals-list";
-import { ProfessionalFormDialog } from "./professional-form-dialog";
+import { ProfessionalFormDrawer } from "./professional-form-drawer";
 import { InactivateProfessionalDialog } from "./inactivate-professional-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -93,7 +93,7 @@ export function ProfessionalsView() {
         onReactivate={reactivate}
       />
 
-      <ProfessionalFormDialog
+      <ProfessionalFormDrawer
         open={formState.open}
         onOpenChange={(open) => {
           if (!open) setFormState((state) => ({ ...state, open: false }));

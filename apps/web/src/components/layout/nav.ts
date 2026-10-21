@@ -32,6 +32,8 @@ export type NavSectionId =
   | "financial"
   | "catalog";
 
+export type NavContext = "operations" | "management";
+
 export interface NavSectionMeta {
   id: NavSectionId;
   /** Rótulo da seção na sidebar (ausente para o topo/Dashboard sem cabeçalho). */
@@ -49,12 +51,12 @@ export const NAV_SECTIONS: NavSectionMeta[] = [
   },
   {
     id: "financial",
-    label: "Financeiro",
+    label: "Controladoria & Finanças",
     tourId: "nav-group-financial",
   },
   {
     id: "catalog",
-    label: "Cadastros",
+    label: "Estrutura do Negócio",
     tourId: "nav-group-catalog",
   },
 ];
@@ -79,22 +81,26 @@ export interface NavItem {
    * (FeatureLocked). Nao afeta isRouteInModel/canAccessRoute.
    */
   feature?: PaidFeature;
+  /** Abas de contexto da barra lateral em que o item aparece (Dia a dia vs Gestão). */
+  contexts?: NavContext[];
 }
 
 // Itens canonicos do app shell. `models` gata a visibilidade por tenant:
 // scheduling (M1) ve Agenda/Serviços; classes (M3) ve Turmas/Calendário; os
 // compartilhados (sem `models`) aparecem em todos.
+// `contexts` define em qual aba do seletor da sidebar o item aparece ("operations" = Dia a dia; "management" = Gestão).
 export const MAIN_NAV: NavItem[] = [
-  // Topo: Visão Geral
+  // Topo: Visão Geral (visível em ambos os contextos)
   {
     label: "Painel",
     href: "/dashboard",
     icon: LayoutDashboard,
     permission: "dashboard:view",
     section: "overview",
+    contexts: ["operations", "management"],
   },
 
-  // Bloco 1: Operação Diária
+  // Bloco 1: Operação Diária (Contexto: Dia a dia)
   {
     label: "Calendário",
     href: "/classes/calendar",
@@ -102,6 +108,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "classes:view",
     section: "daily_operations",
     models: ["classes"],
+    contexts: ["operations"],
   },
   {
     label: "Agenda",
@@ -111,6 +118,7 @@ export const MAIN_NAV: NavItem[] = [
     section: "daily_operations",
     models: ["scheduling"],
     tourId: "nav-agenda",
+    contexts: ["operations"],
   },
   {
     label: "Turmas",
@@ -120,6 +128,7 @@ export const MAIN_NAV: NavItem[] = [
     section: "daily_operations",
     models: ["classes"],
     tourId: "nav-classes",
+    contexts: ["operations"],
   },
   {
     label: "Alunos",
@@ -128,6 +137,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "clients:view",
     section: "daily_operations",
     models: ["classes"],
+    contexts: ["operations"],
   },
   {
     label: "Clientes",
@@ -136,6 +146,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "clients:view",
     section: "daily_operations",
     models: ["scheduling", "delivery"],
+    contexts: ["operations"],
   },
   {
     label: "Comunicação",
@@ -143,17 +154,27 @@ export const MAIN_NAV: NavItem[] = [
     icon: MessageSquareText,
     permission: "communication:view",
     section: "daily_operations",
-    // Sem `feature`: o envio assistido e gratis; o oficial (Pro) fica dentro da tela.
+    contexts: ["operations"],
   },
-
-  // Bloco 2: Financeiro
   {
     label: "Cobranças",
     href: "/classes/billing",
     icon: Wallet,
     permission: "billing:view",
+    section: "daily_operations",
+    models: ["classes"],
+    contexts: ["operations"],
+  },
+
+  // Bloco 2: Financeiro (Contexto: Gestão)
+  {
+    label: "Financeiro",
+    href: "/finance",
+    icon: WalletCards,
+    permission: "finance:view",
     section: "financial",
     models: ["classes"],
+    contexts: ["management"],
   },
   {
     label: "Recebimentos online",
@@ -162,14 +183,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "finance:view",
     section: "financial",
     feature: "online_payments",
-  },
-  {
-    label: "Financeiro",
-    href: "/finance",
-    icon: WalletCards,
-    permission: "finance:view",
-    section: "financial",
-    models: ["classes"],
+    contexts: ["management"],
   },
   {
     label: "Relatórios",
@@ -177,9 +191,10 @@ export const MAIN_NAV: NavItem[] = [
     icon: FileSpreadsheet,
     permission: "reports:view",
     section: "financial",
+    contexts: ["management"],
   },
 
-  // Bloco 3: Cadastros Estruturais
+  // Bloco 3: Cadastros Estruturais (Contexto: Gestão)
   {
     label: "Modalidades",
     href: "/classes/modalities",
@@ -187,6 +202,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "classes:manage",
     section: "catalog",
     models: ["classes"],
+    contexts: ["management"],
   },
   {
     label: "Planos e pacotes",
@@ -195,6 +211,7 @@ export const MAIN_NAV: NavItem[] = [
     permission: "billing:view",
     section: "catalog",
     models: ["classes"],
+    contexts: ["management"],
   },
   {
     label: "Serviços",
@@ -204,6 +221,7 @@ export const MAIN_NAV: NavItem[] = [
     section: "catalog",
     models: ["scheduling"],
     tourId: "nav-services",
+    contexts: ["management"],
   },
   {
     label: "Equipe",
@@ -211,15 +229,88 @@ export const MAIN_NAV: NavItem[] = [
     icon: Contact,
     permission: "team:view",
     section: "catalog",
+    contexts: ["management"],
   },
 ];
 
-// Itens administrativos (owner) ancorados no rodape, separados dos operacionais.
+// Itens administrativos (owner) ancorados no rodape.
 export const FOOTER_NAV: NavItem[] = [
-  { label: "Usuários", href: "/users", icon: UserCog, permission: "users:view", tourId: "nav-users" },
-  { label: "Auditoria", href: "/audit", icon: ScrollText, permission: "audit:view" },
-  { label: "Configurações", href: "/settings", icon: Settings, permission: "settings:view", tourId: "nav-settings" },
+  {
+    label: "Usuários",
+    href: "/users",
+    icon: UserCog,
+    permission: "users:view",
+    tourId: "nav-users",
+    contexts: ["management"],
+  },
+  {
+    label: "Auditoria",
+    href: "/audit",
+    icon: ScrollText,
+    permission: "audit:view",
+    contexts: ["management"],
+  },
+  {
+    label: "Configurações",
+    href: "/settings",
+    icon: Settings,
+    permission: "settings:view",
+    tourId: "nav-settings",
+    contexts: ["operations", "management"],
+  },
 ];
+
+export const ALL_NAV: NavItem[] = [...MAIN_NAV, ...FOOTER_NAV];
+
+// Remove query/hash: o casamento de rota olha so o pathname.
+function pathOnly(pathname: string): string {
+  return pathname.split(/[?#]/)[0] || "/dashboard";
+}
+
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
+ * Itens que casam com a rota no nivel MAIS especifico (href mais longo), igual
+ * a sidebar: /classes/modalities e Modalidades, nao Turmas. Pode haver mais de
+ * um (mesma rota com rotulo por modelo, ex.: Clientes/Alunos).
+ */
+function mostSpecificMatches(items: NavItem[], pathname: string): NavItem[] {
+  const path = pathOnly(pathname);
+  const matches = items.filter((i) => isNavItemActive(path, i.href));
+  if (matches.length === 0) return [];
+  const longest = Math.max(...matches.map((i) => i.href.length));
+  return matches.filter((i) => i.href.length === longest);
+}
+
+/** Retorna o item mais especifico da navegacao que casa com a rota e modelo informados. */
+export function getActiveNavItem(
+  pathname: string,
+  model?: OperationalModel,
+): NavItem | undefined {
+  const items = model ? navForModel(ALL_NAV, model) : ALL_NAV;
+  const matches = mostSpecificMatches(items, pathname);
+  return matches[0];
+}
+
+/** Detecta se uma rota pertence exclusivamente a um dos contextos ("operations" | "management"). Retorna null se for compartilhada (ex: /dashboard, /settings). */
+export function getContextForRoute(pathname: string): NavContext | null {
+  const match = getActiveNavItem(pathname);
+  if (!match || !match.contexts || match.contexts.length !== 1) {
+    return null;
+  }
+  return match.contexts[0];
+}
+
+/** Itens visiveis no contexto ativo ("operations" = Dia a dia; "management" = Gestão). */
+export function navForContext(
+  items: NavItem[],
+  context: NavContext,
+): NavItem[] {
+  return items.filter((i) => !i.contexts || i.contexts.includes(context));
+}
 
 /** Itens visiveis no modelo do tenant (undefined = compartilhado). */
 export function navForModel(
@@ -238,11 +329,6 @@ export function isNavItemLocked(
   hasFeature: (feature: PaidFeature) => boolean,
 ): boolean {
   return Boolean(item.feature) && !hasFeature(item.feature!);
-}
-
-export function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 // Rota "nucleo" de cada modelo — destino do redirect pos-login/switch.
@@ -274,26 +360,6 @@ export function firstAllowedRoute(
     can(subject, i.permission),
   );
   return item?.href ?? "/dashboard";
-}
-
-const ALL_NAV: NavItem[] = [...MAIN_NAV, ...FOOTER_NAV];
-
-// Remove query/hash: o casamento de rota olha so o pathname.
-function pathOnly(pathname: string): string {
-  return pathname.split(/[?#]/)[0] || "/dashboard";
-}
-
-/**
- * Itens que casam com a rota no nivel MAIS especifico (href mais longo), igual
- * a sidebar: /classes/modalities e Modalidades, nao Turmas. Pode haver mais de
- * um (mesma rota com rotulo por modelo, ex.: Clientes/Alunos).
- */
-function mostSpecificMatches(items: NavItem[], pathname: string): NavItem[] {
-  const path = pathOnly(pathname);
-  const matches = items.filter((i) => isNavItemActive(path, i.href));
-  if (matches.length === 0) return [];
-  const longest = Math.max(...matches.map((i) => i.href.length));
-  return matches.filter((i) => i.href.length === longest);
 }
 
 /**

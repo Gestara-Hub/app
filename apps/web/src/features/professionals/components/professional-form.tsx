@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useForm,
   FormProvider,
@@ -10,9 +10,11 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MailCheck, MapPin, Sparkles, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   AddressFields,
   CollapsibleSection,
@@ -20,8 +22,11 @@ import {
   InputPhone,
   InputText,
 } from "@/components/form";
+import { SectionSpotlight } from "@/components/shared/section-spotlight";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
+import { userProfileLabel } from "@/lib/labels";
 import { normalizeText } from "@/lib/text";
+import { cn } from "@/lib/utils";
 import type {
   Address,
   CreateProfessional,
@@ -30,9 +35,11 @@ import type {
   Unit,
   Weekday,
 } from "@gestarahub/contracts";
-import { useModel } from "@/features/auth";
+import { useCurrentUser, useModel } from "@/features/auth";
+import { useUserPreferences } from "@/features/preferences";
 import { useCreateRole, useRoles } from "@/features/roles";
 import { useUnit } from "@/features/settings";
+import { useCreateUser, useUsers } from "@/features/users";
 import {
   useCreateProfessional,
   useUpdateProfessional,
@@ -86,12 +93,14 @@ function toDefaults(
 interface ProfessionalFormProps {
   professional?: ProfessionalView;
   onSuccess: () => void;
+  onCancel?: () => void;
   formId: string;
 }
 
 export function ProfessionalForm({
   professional,
   onSuccess,
+  onCancel,
   formId,
 }: ProfessionalFormProps) {
   const isEdit = Boolean(professional);
@@ -106,7 +115,24 @@ export function ProfessionalForm({
   const { data: unit } = useUnit();
   const createMut = useCreateProfessional();
   const updateMut = useUpdateProfessional();
-  const pending = createMut.isPending || updateMut.isPending;
+  const { data: users } = useUsers();
+  const createUserMut = useCreateUser();
+  const currentUser = useCurrentUser();
+  const { preferences, updatePreferences } = useUserPreferences();
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const [inviteUser, setInviteUser] = useState(false);
+  const SPOTLIGHT_ALERT_KEY = "professional_invite_access_spotlight";
+
+  const isSpotlightDismissed = useMemo(() => {
+    if (typeof window === "undefined") return true;
+    const hasLocal =
+      window.localStorage.getItem(`gestarahub_spotlight_invite_${currentUser.id}`) === "true";
+    const hasRemote = (preferences?.dismissedAlertKeys ?? []).includes(SPOTLIGHT_ALERT_KEY);
+    return hasLocal || hasRemote;
+  }, [currentUser.id, preferences?.dismissedAlertKeys]);
+
+  const pending = createMut.isPending || updateMut.isPending || createUserMut.isPending;
 
   // Cargo (Role) e OPCIONAL: gerenciado no CRUD de Cargos, aqui so seleciona um
   // existente (select com filtro), nao cria. Sugestoes = cargos ativos; inclui
@@ -128,6 +154,53 @@ export function ProfessionalForm({
     control: form.control,
     name: "role",
   });
+
+  const watchedEmail = useWatch({
+    control: form.control,
+    name: "email",
+  });
+
+  const normalizedWatchedEmail = (watchedEmail || "").trim().toLowerCase();
+  const linkedUser = (users ?? []).find(
+    (u) =>
+      (professional?.id && u.professionalId === professional.id) ||
+      (normalizedWatchedEmail && u.email.toLowerCase() === normalizedWatchedEmail),
+  );
+
+  // Ativa o spotlight na primeira vez que o usuário preenche um e-mail válido para um profissional sem acesso
+  const isCandidateForSpotlight =
+    !isSpotlightDismissed &&
+    Boolean(normalizedWatchedEmail && normalizedWatchedEmail.includes("@") && !linkedUser);
+
+  const [spotlightDismissedThisSession, setSpotlightDismissedThisSession] = useState(false);
+  const spotlightActive = isCandidateForSpotlight && !spotlightDismissedThisSession;
+
+  const handleDismissSpotlight = useCallback(() => {
+    setSpotlightDismissedThisSession(true);
+    try {
+      window.localStorage.setItem(
+        `gestarahub_spotlight_invite_${currentUser.id}`,
+        "true",
+      );
+    } catch {
+      // ignore
+    }
+    if (!(preferences?.dismissedAlertKeys ?? []).includes(SPOTLIGHT_ALERT_KEY)) {
+      updatePreferences({
+        dismissedAlertKeys: [
+          ...(preferences?.dismissedAlertKeys ?? []),
+          SPOTLIGHT_ALERT_KEY,
+        ],
+      });
+    }
+  }, [currentUser.id, preferences?.dismissedAlertKeys, updatePreferences]);
+
+  const handleToggleInvite = (checked: boolean) => {
+    setInviteUser(checked);
+    if (spotlightActive) {
+      handleDismissSpotlight();
+    }
+  };
 
   const roleOptions = useMemo(() => {
     const activeRoleNames = (roles ?? [])
@@ -193,7 +266,7 @@ export function ProfessionalForm({
         setWorkingHoursOpen(true);
       }
     },
-    [],
+    [setAddressOpen, setWorkingHoursOpen],
   );
 
   // Se os dados da unidade carregarem após o primeiro render e o usuário ainda não
@@ -270,10 +343,42 @@ export function ProfessionalForm({
     try {
       if (isEdit && professional) {
         await updateMut.mutateAsync({ id: professional.id, payload });
-        toast.success("Profissional atualizado com sucesso.");
+        if (inviteUser && !linkedUser && payload.email) {
+          try {
+            await createUserMut.mutateAsync({
+              name: payload.name,
+              email: payload.email,
+              profile: "professional",
+              professionalId: professional.id,
+              status: "active",
+            });
+            toast.success("Profissional atualizado e convite de acesso enviado por e-mail!");
+          } catch (userErr) {
+            console.warn("[ProfessionalForm] Aviso ao enviar convite:", userErr);
+            toast.success("Profissional atualizado com sucesso.");
+          }
+        } else {
+          toast.success("Profissional atualizado com sucesso.");
+        }
       } else {
-        await createMut.mutateAsync({ ...payload, status: "active" });
-        toast.success("Profissional criado com sucesso.");
+        const created = await createMut.mutateAsync({ ...payload, status: "active" });
+        if (inviteUser && payload.email) {
+          try {
+            await createUserMut.mutateAsync({
+              name: payload.name,
+              email: payload.email,
+              profile: "professional",
+              professionalId: created.id,
+              status: "active",
+            });
+            toast.success("Profissional criado e convite de acesso enviado por e-mail!");
+          } catch (userErr) {
+            console.warn("[ProfessionalForm] Aviso ao enviar convite:", userErr);
+            toast.success("Profissional criado com sucesso.");
+          }
+        } else {
+          toast.success("Profissional criado com sucesso.");
+        }
       }
       onSuccess();
     } catch (error) {
@@ -356,6 +461,68 @@ export function ProfessionalForm({
           />
         </div>
 
+        {/* Bloco de Convite / Vinculação de Acesso */}
+        {linkedUser ? (
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 flex items-center gap-2.5 text-xs text-indigo-700 dark:text-indigo-300">
+            <MailCheck className="size-4 shrink-0 text-indigo-500" />
+            <span>
+              {linkedUser.pendingInvite
+                ? `Convite pendente de aceite já enviado para ${linkedUser.email}.`
+                : `Vinculado ao usuário ${linkedUser.name} (${userProfileLabel(linkedUser.profile)}).`}
+            </span>
+          </div>
+        ) : normalizedWatchedEmail && normalizedWatchedEmail.includes("@") ? (
+          <>
+            <div
+              ref={cardRef}
+              className={cn(
+                "rounded-xl border p-3.5 space-y-2 transition-all",
+                spotlightActive
+                  ? "border-primary/80 bg-primary/10 ring-2 ring-primary/50 shadow-lg"
+                  : "border-primary/30 bg-primary/5",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="inviteUserSwitch"
+                      className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1.5"
+                    >
+                      <UserPlus className="size-3.5 text-primary" />
+                      <span>Liberar acesso ao sistema GestaraHub</span>
+                    </Label>
+                    {!isSpotlightDismissed && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.2 animate-pulse">
+                        <Sparkles className="size-2.5" />
+                        Novo
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Enviar e-mail para <strong>{normalizedWatchedEmail}</strong> com convite para definir senha e acessar suas turmas, chamada e notas.
+                  </p>
+                </div>
+                <Switch
+                  id="inviteUserSwitch"
+                  checked={inviteUser}
+                  onCheckedChange={handleToggleInvite}
+                  disabled={pending}
+                />
+              </div>
+            </div>
+
+            <SectionSpotlight
+              active={spotlightActive}
+              targetRefs={[cardRef]}
+              onDismiss={handleDismissSpotlight}
+              hint="Dica: Você pode liberar o acesso deste profissional ao sistema por aqui!"
+              zIndex={60}
+              allowModalTarget
+            />
+          </>
+        ) : null}
+
         {/* Bloco: Endereço Estruturado (Opcional) */}
         <CollapsibleSection
           title="Endereço (opcional)"
@@ -390,11 +557,17 @@ export function ProfessionalForm({
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+          )}
           <Button type="submit" disabled={pending}>
             {pending
               ? "Salvando..."

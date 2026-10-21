@@ -11,12 +11,12 @@ import { useCan } from "@/features/auth";
 import { useCategories, useUpdateCategory } from "@/features/categories";
 import { ModalitiesList } from "./modalities-list";
 import { ModalitiesReviewNotice } from "./modalities-review-notice";
-import { ModalityFormDialog } from "./modality-form-dialog";
+import { ModalityFormDrawer } from "./modality-form-drawer";
 import { InactivateModalityDialog } from "./inactivate-modality-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ModalitiesView() {
-  const [formState, setFormState] = useState<{
+  const [drawerState, setDrawerState] = useState<{
     open: boolean;
     modality?: Category;
   }>({ open: false });
@@ -29,8 +29,9 @@ export function ModalitiesView() {
   const { data: modalities } = useCategories();
   const hasModalities = (modalities?.length ?? 0) > 0;
 
-  const openCreate = () => setFormState({ open: true });
-  const openEdit = (modality: Category) => setFormState({ open: true, modality });
+  const openCreate = () => setDrawerState({ open: true });
+  const openEdit = (modality: Category) =>
+    setDrawerState({ open: true, modality });
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(modality: Category) {
@@ -81,12 +82,12 @@ export function ModalitiesView() {
         onReactivate={reactivate}
       />
 
-      <ModalityFormDialog
-        open={formState.open}
+      <ModalityFormDrawer
+        open={drawerState.open}
         onOpenChange={(open) => {
-          if (!open) setFormState((state) => ({ ...state, open: false }));
+          if (!open) setDrawerState((prev) => ({ ...prev, open: false }));
         }}
-        modality={formState.modality}
+        modality={drawerState.modality}
       />
 
       <InactivateModalityDialog

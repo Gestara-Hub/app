@@ -27,6 +27,19 @@
 11. **Combobox com largura fixa e Matrícula rápida (`EnrollStudentsDialog`).**
     - `Combobox` (`components/shared/combobox.tsx`) usa `w-[var(--radix-popover-trigger-width)]` no `PopoverContent` para não mudar de largura conforme o texto digitado, e `CommandEmpty` suporta quebra em múltiplas linhas (`whitespace-pre-line`).
     - `EnrollStudentsDialog` mantém o texto buscado focado e selecionado (`focus()` + `select()`) ao marcar um aluno (permitindo selecionar múltiplos homônimos ou sobrescrever digitando direto), aceita `Enter` quando há 1 resultado disponível e exibe indicador flutuante de rolagem (`"Mais alunos abaixo ⌄"`).
+12. **Header compacto sem nome do usuário (`AppTopbar`).** O header exibe apenas o avatar com iniciais (`InitialsAvatar`), sem o nome de texto ao lado. Ao clicar no avatar, o menu dropdown abre exibindo o nome, e-mail e opções de perfil/sair, reduzindo a poluição visual no topo.
+13. **Fundo desfocado em modais e gavetas (`backdrop-blur`).** Ao abrir qualquer modal (`Dialog`, `AlertDialog`) ou drawer (`Sheet`), o overlay recebe desfoque suave (`backdrop-blur-xs` / `backdrop-blur-sm`) para isolar o contexto e focar a atenção do usuário no conteúdo aberto.
+14. **Remoção da configuração de densidade das preferências.** O seletor de densidade (confortável vs compacto) foi removido do diálogo de preferências, view e contratos, pois trazia variação visual imperceptível e gerava complexidade desnecessária. O sistema adota a densidade confortável como padrão fixo único.
+15. **Barra lateral com seletor de contexto ("Dia a dia" vs "Gestão").**
+    - A barra lateral agrupa os itens de navegação em dois contextos (`NavContext` em `components/layout/nav.ts`):
+      - **Dia a dia (`operations`):** Operação diária (Calendário, Agenda, Turmas, Alunos/Clientes, Comunicação, Cobranças).
+      - **Gestão (`management`):** Financeiro, Recebimentos online, Relatórios, Modalidades, Planos e pacotes, Serviços, Equipe, Usuários, Auditoria.
+      - Compartilhados em ambos: **Painel** e **Configurações**.
+    - No topo da sidebar, há um controle segmentado `[ Dia a dia ] [ Gestão ]` (e botão compacto `[DIA]` / `[GES]` no modo ícone).
+    - **Sincronização flexível:** O clique do usuário altera a aba livremente. Navegações do navegador ajustam a aba durante o render (`if (pathname !== prevPathname)`).
+    - **Indicador de aba e atalho contextual:** Quando o usuário está em uma rota de uma aba (ex.: Calendário em Dia a dia) e visualiza a outra aba (Gestão):
+      - A aba inativa de origem exibe um ponto de destaque (`size-1.5 rounded-full bg-primary`).
+      - Abaixo do seletor é exibido um chip/banner de atalho (`Tela aberta: [Nome] · [Aba] →`) que permite retornar com 1 clique à aba da tela aberta.
 
 ## Contexto
 
@@ -34,7 +47,7 @@ Pedido do dono do produto para evitar cliques acidentais em ações sensíveis e
 
 ## Escopo
 
-`apps/web/src/components/shared/confirm-action-dialog.tsx`, `components/shared/list/view-mode-toggle.tsx`, `components/shared/list/list-summary-bar.tsx`, `components/shared/combobox.tsx`, `components/ui/dialog.tsx`, `components/ui/sheet.tsx`, `components/ui/sidebar.tsx`, `features/onboarding/components/product-tour.tsx`, `features/turmas/components/enroll-students-dialog.tsx`, `lib/theme-customizer.ts`, `app/(app)/layout.tsx`, `app/globals.css`.
+`apps/web/src/components/shared/confirm-action-dialog.tsx`, `components/shared/list/view-mode-toggle.tsx`, `components/shared/list/list-summary-bar.tsx`, `components/shared/combobox.tsx`, `components/ui/dialog.tsx`, `components/ui/sheet.tsx`, `components/ui/sidebar.tsx`, `components/layout/app-sidebar.tsx`, `components/layout/app-topbar.tsx`, `components/layout/nav.ts`, `features/preferences/`, `features/onboarding/components/product-tour.tsx`, `features/turmas/components/enroll-students-dialog.tsx`, `lib/theme-customizer.ts`, `app/(app)/layout.tsx`, `app/globals.css`.
 
 ## Alternativas
 

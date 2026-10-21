@@ -634,10 +634,14 @@ export function TurmaForm({
   turma,
   formId,
   onSuccess,
+  onCancel,
+  isPage = false,
 }: {
   turma?: ClassGroupView;
   formId: string;
   onSuccess?: (created?: ClassGroupView) => void;
+  onCancel?: () => void;
+  isPage?: boolean;
 }) {
   const createMut = useCreateClassGroup();
   const updateMut = useUpdateClassGroup();
@@ -991,6 +995,8 @@ export function TurmaForm({
   if (inactiveInstructor) {
     instructorOptions.push({ label: `${turma.instructorName} (inativo)`, value: turma.instructorId });
   }
+  const FormBodyWrapper = isPage ? "div" : DialogBody;
+
   return (
     <FormProvider {...form}>
       {confirmDialog}
@@ -998,9 +1004,12 @@ export function TurmaForm({
         id={formId}
         onSubmit={onSubmit}
         noValidate
-        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+        className={cn(
+          "flex flex-col min-h-0 flex-1",
+          isPage ? "overflow-visible" : "overflow-hidden"
+        )}
       >
-        <DialogBody className="space-y-4">
+        <FormBodyWrapper className={isPage ? "space-y-6 p-6" : "space-y-4"}>
           <InputText<TurmaFormValues>
           name="name"
           label="Nome da turma"
@@ -1133,22 +1142,45 @@ export function TurmaForm({
             />
           )}
         />
-        </DialogBody>
+        </FormBodyWrapper>
 
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
-              Cancelar
+        {isPage ? (
+          <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-end gap-3 shadow-lg rounded-b-xl">
+            {onCancel && (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
             </Button>
-          </DialogClose>
-          <Button type="submit" disabled={pending}>
-            {pending
-              ? "Salvando..."
-              : isEdit
-                ? "Salvar"
-                : "Adicionar"}
-          </Button>
-        </DialogFooter>
+          </div>
+        ) : (
+          <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+            {onCancel ? (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            ) : (
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={pending}>
+                  Cancelar
+                </Button>
+              </DialogClose>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        )}
       </form>
     </FormProvider>
   );

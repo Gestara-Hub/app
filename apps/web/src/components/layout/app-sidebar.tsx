@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -24,13 +25,18 @@ import iconImage from "@/assets/icon.png";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
 import { useCan, useHasFeature, useModel } from "@/features/auth";
+import { SidebarSubscriptionCard } from "@/features/subscription";
 import {
   FOOTER_NAV,
   MAIN_NAV,
   NAV_SECTIONS,
+  getActiveNavItem,
+  getContextForRoute,
   isNavItemActive,
   isNavItemLocked,
+  navForContext,
   navForModel,
+  type NavContext,
   type NavItem,
 } from "./nav";
 
@@ -91,11 +97,71 @@ export function AppSidebar() {
   const can = useCan();
   const model = useModel();
 
-  // Filtra por MODELO do tenant, depois por permissao (RBAC).
-  const mainItems = navForModel(MAIN_NAV, model).filter((item) =>
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  const [context, setContext] = useState<NavContext>(() => {
+    if (typeof window !== "undefined") {
+      const fromRoute = getContextForRoute(pathname);
+      if (fromRoute) return fromRoute;
+      try {
+        const saved = localStorage.getItem("gestarahub:sidebar-context") as NavContext | null;
+        if (saved === "operations" || saved === "management") return saved;
+      } catch {
+        // ignore
+      }
+    }
+    return "operations";
+  });
+
+  // Se a rota (pathname) mudou por navegação e pertence exclusivamente a outro contexto,
+  // ajusta o contexto durante o render (padrão oficial do React para sincronização de props/rotas):
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    const routeContext = getContextForRoute(pathname);
+    if (routeContext && routeContext !== context) {
+      setContext(routeContext);
+      try {
+        localStorage.setItem("gestarahub:sidebar-context", routeContext);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Se o tour guiado focar em seções de gestão, muda automaticamente de aba
+  useEffect(() => {
+    function handleTourTarget(e: Event) {
+      const custom = e as CustomEvent<{ target?: string }>;
+      const target = custom.detail?.target;
+      if (target?.includes("financial") || target?.includes("catalog")) {
+        setContext("management");
+      } else if (target?.includes("operations")) {
+        setContext("operations");
+      }
+    }
+    window.addEventListener("gestarahub:tour-target", handleTourTarget);
+    return () => window.removeEventListener("gestarahub:tour-target", handleTourTarget);
+  }, []);
+
+  const handleContextChange = (next: NavContext) => {
+    setContext(next);
+    try {
+      localStorage.setItem("gestarahub:sidebar-context", next);
+    } catch {
+      // ignore
+    }
+  };
+
+  const routeContext = getContextForRoute(pathname);
+  const activeRouteItem = getActiveNavItem(pathname, model);
+  const isRouteInDifferentContext = Boolean(
+    routeContext && routeContext !== context && activeRouteItem,
+  );
+
+  // Filtra por MODELO do tenant, permissao (RBAC) e CONTEXTO ativo (Dia a dia vs Gestão).
+  const mainItems = navForContext(navForModel(MAIN_NAV, model), context).filter((item) =>
     can(item.permission),
   );
-  const footerItems = navForModel(FOOTER_NAV, model).filter((item) =>
+  const footerItems = navForContext(navForModel(FOOTER_NAV, model), context).filter((item) =>
     can(item.permission),
   );
 
@@ -137,6 +203,105 @@ export function AppSidebar() {
             priority
           />
         </div>
+
+        {/* Seletor de Contexto no Topo (Opção 2: Dia a dia vs Gestão) */}
+        <div className="px-3 pt-1 pb-1 group-data-[collapsible=icon]:hidden" data-tour="nav-context-switcher">
+          <div className="grid grid-cols-2 rounded-lg bg-sidebar-accent/70 p-0.5 border border-sidebar-border text-xs">
+            <button
+              type="button"
+              onClick={() => handleContextChange("operations")}
+              aria-label={
+                routeContext === "operations" && context !== "operations"
+                  ? "Dia a dia (tela aberta nesta aba)"
+                  : "Dia a dia"
+              }
+              className={cn(
+                "relative flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-semibold transition-all cursor-pointer select-none",
+                context === "operations"
+                  ? "bg-background text-foreground shadow-2xs font-bold"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
+              )}
+            >
+              <span>Dia a dia</span>
+              {routeContext === "operations" && context !== "operations" ? (
+                <span
+                  className="size-1.5 rounded-full bg-primary shrink-0 animate-pulse"
+                  title="A tela aberta no momento pertence a esta aba"
+                />
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleContextChange("management")}
+              aria-label={
+                routeContext === "management" && context !== "management"
+                  ? "Gestão (tela aberta nesta aba)"
+                  : "Gestão"
+              }
+              className={cn(
+                "relative flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-semibold transition-all cursor-pointer select-none",
+                context === "management"
+                  ? "bg-background text-foreground shadow-2xs font-bold"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40",
+              )}
+            >
+              <span>Gestão</span>
+              {routeContext === "management" && context !== "management" ? (
+                <span
+                  className="size-1.5 rounded-full bg-primary shrink-0 animate-pulse"
+                  title="A tela aberta no momento pertence a esta aba"
+                />
+              ) : null}
+            </button>
+          </div>
+        </div>
+
+        {/* Notificação/Atalho contextual quando a página aberta pertence à outra aba */}
+        {isRouteInDifferentContext && activeRouteItem && routeContext ? (
+          <div className="px-3 pt-0 pb-1 group-data-[collapsible=icon]:hidden">
+            <button
+              type="button"
+              onClick={() => handleContextChange(routeContext)}
+              className="group flex w-full items-center justify-between gap-1.5 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer"
+              title={`A tela ${activeRouteItem.label} pertence à aba ${routeContext === "operations" ? "Dia a dia" : "Gestão"}. Clique para alternar.`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="relative flex size-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                </span>
+                <span className="truncate text-[11px] text-muted-foreground">
+                  Tela aberta: <strong className="font-semibold text-foreground">{activeRouteItem.label}</strong>
+                </span>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold text-primary group-hover:underline flex items-center gap-0.5">
+                <span>{routeContext === "operations" ? "Dia a dia" : "Gestão"}</span>
+                <span aria-hidden="true">&rarr;</span>
+              </span>
+            </button>
+          </div>
+        ) : null}
+
+        {/* Alternador Compacto quando a sidebar está recolhida em ícone */}
+        <div className="hidden group-data-[collapsible=icon]:flex justify-center py-1">
+          <button
+            type="button"
+            onClick={() => handleContextChange(context === "operations" ? "management" : "operations")}
+            title={
+              isRouteInDifferentContext && activeRouteItem && routeContext
+                ? `Tela aberta (${activeRouteItem.label}) pertence à aba ${routeContext === "operations" ? "Dia a dia" : "Gestão"}. Clique para alternar.`
+                : context === "operations"
+                  ? "Modo: Dia a dia (clique para alternar para Gestão)"
+                  : "Modo: Gestão (clique para alternar para Dia a dia)"
+            }
+            className="relative flex size-7 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/80 text-[10px] font-bold text-sidebar-foreground hover:bg-sidebar-accent cursor-pointer transition-colors"
+          >
+            {context === "operations" ? "DIA" : "GES"}
+            {isRouteInDifferentContext ? (
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-sidebar" />
+            ) : null}
+          </button>
+        </div>
       </SidebarHeader>
 
       <SidebarContent data-tour="sidebar-nav">
@@ -157,6 +322,10 @@ export function AppSidebar() {
             </SidebarGroup>
           </Fragment>
         ))}
+
+        <div className="mt-auto p-2">
+          <SidebarSubscriptionCard />
+        </div>
       </SidebarContent>
 
       {footerItems.length > 0 ? (

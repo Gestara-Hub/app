@@ -156,10 +156,18 @@ function isCustomizedTrack(t: ModalityProgressionTrack): boolean {
 interface ModalityFormProps {
   modality?: Category;
   onSuccess: () => void;
+  onCancel?: () => void;
   formId: string;
+  isPage?: boolean;
 }
 
-export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps) {
+export function ModalityForm({
+  modality,
+  onSuccess,
+  onCancel,
+  formId,
+  isPage = false,
+}: ModalityFormProps) {
   const isEdit = Boolean(modality);
   const createMut = useCreateCategory();
   const updateMut = useUpdateCategory();
@@ -445,6 +453,8 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
     track.criteriaType === "time" ||
     track.criteriaType === "attendance_and_time";
 
+  const FormBodyWrapper = isPage ? "div" : DialogBody;
+
   return (
     <FormProvider {...form}>
       {confirmDialog}
@@ -452,9 +462,12 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
         id={formId}
         onSubmit={onSubmit}
         noValidate
-        className="flex flex-col min-h-0 flex-1 overflow-hidden"
+        className={cn(
+          "flex flex-col min-h-0 flex-1",
+          isPage ? "overflow-visible" : "overflow-hidden"
+        )}
       >
-        <DialogBody className="space-y-3.5">
+        <FormBodyWrapper className={isPage ? "space-y-4 p-6" : "space-y-3.5"}>
           <div className="space-y-2">
             <InputText<ModalityFormValues>
               name="name"
@@ -1231,22 +1244,45 @@ export function ModalityForm({ modality, onSuccess, formId }: ModalityFormProps)
               disabled={pending}
             />
           ) : null}
-        </DialogBody>
+        </FormBodyWrapper>
 
-        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
-              Cancelar
+        {isPage ? (
+          <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-end gap-3 shadow-lg rounded-b-xl">
+            {onCancel && (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
             </Button>
-          </DialogClose>
-          <Button type="submit" disabled={pending}>
-            {pending
-              ? "Salvando..."
-              : isEdit
-                ? "Salvar"
-                : "Adicionar"}
-          </Button>
-        </DialogFooter>
+          </div>
+        ) : (
+          <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+            {onCancel ? (
+              <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+                Cancelar
+              </Button>
+            ) : (
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={pending}>
+                  Cancelar
+                </Button>
+              </DialogClose>
+            )}
+            <Button type="submit" disabled={pending}>
+              {pending
+                ? "Salvando..."
+                : isEdit
+                  ? "Salvar"
+                  : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        )}
       </form>
     </FormProvider>
   );

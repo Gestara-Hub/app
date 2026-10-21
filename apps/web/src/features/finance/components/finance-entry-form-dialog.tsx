@@ -35,14 +35,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { DialogBody } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { AttachmentList } from "@/components/shared/attachment-list";
 import { ENTRY_ATTACHMENT_RULES, filesSchema } from "@/lib/files";
@@ -164,11 +164,13 @@ function EntryForm({
   defaultType,
   defaultDueDate,
   onSuccess,
+  onCancel,
 }: {
   entry?: FinancialEntry;
   defaultType: FinancialEntryType;
   defaultDueDate: string;
   onSuccess: () => void;
+  onCancel?: () => void;
 }) {
   const isEdit = Boolean(entry);
   const createMut = useCreateFinanceEntry();
@@ -419,6 +421,7 @@ function EntryForm({
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
+          onCancel={onCancel}
           className="shrink-0 border-t border-border/40 px-6 py-4"
         />
       </form>
@@ -462,27 +465,29 @@ export function FinanceEntryFormDialog({
   const defaultDueDate = today.startsWith(competence) ? today : `${competence}-10`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl md:max-w-2xl border-l border-border/60 shadow-2xl"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>{current ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle>{current ? "Editar lançamento" : "Novo lançamento"}</SheetTitle>
+          <SheetDescription>
             {current
               ? "Altere os dados do lançamento. O tipo não muda depois de criado."
               : "Registre uma receita ou despesa que não vem das mensalidades."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <EntryForm
           key={`${shown.session}-${current?.id ?? "new"}`}
           entry={current}
           defaultType={defaultType}
           defaultDueDate={defaultDueDate}
           onSuccess={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -31,6 +31,8 @@ export function SectionSpotlight({
   targetRefs,
   onDismiss,
   hint,
+  zIndex = 40,
+  allowModalTarget = false,
 }: {
   active: boolean;
   /**
@@ -41,6 +43,10 @@ export function SectionSpotlight({
   onDismiss: () => void;
   /** Frase curta acima da secao, dizendo o que fazer. */
   hint?: string;
+  /** z-index base do spotlight (útil se estiver dentro de um modal z-50). */
+  zIndex?: number;
+  /** Se verdadeiro, permite destacar um alvo dentro de um modal/dialog. */
+  allowModalTarget?: boolean;
 }) {
   const [rect, setRect] = useState<Rect | null>(null);
 
@@ -104,12 +110,14 @@ export function SectionSpotlight({
       if (!target) return;
       if (targetRefs.some((ref) => ref.current?.contains(target))) return;
       // Menus, seletores e modais abertos pela secao (portais do Radix).
-      if (
-        target.closest(
-          '[data-radix-popper-content-wrapper], [data-slot="dialog-content"], [data-slot="alert-dialog-content"], [role="listbox"], [role="menu"]',
-        )
-      ) {
-        return;
+      if (!allowModalTarget) {
+        if (
+          target.closest(
+            '[data-radix-popper-content-wrapper], [data-slot="dialog-content"], [data-slot="alert-dialog-content"], [role="listbox"], [role="menu"]',
+          )
+        ) {
+          return;
+        }
       }
       onDismiss();
     };
@@ -119,7 +127,7 @@ export function SectionSpotlight({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onPointer, true);
     };
-  }, [active, onDismiss, targetRefs]);
+  }, [active, onDismiss, targetRefs, allowModalTarget]);
 
   if (!active || !rect || typeof document === "undefined") return null;
 
@@ -139,22 +147,32 @@ export function SectionSpotlight({
           curva da borda (faixas retas deixavam os cantos claros). So visual. */}
       <div
         aria-hidden
-        className="pointer-events-none fixed z-40 rounded-xl shadow-[0_0_0_9999px_rgb(0_0_0/0.5)] motion-safe:animate-in motion-safe:fade-in-0 dark:shadow-[0_0_0_9999px_rgb(0_0_0/0.65)]"
-        style={{ top, left, width, height }}
+        className="pointer-events-none fixed rounded-xl shadow-[0_0_0_9999px_rgb(0_0_0/0.5)] motion-safe:animate-in motion-safe:fade-in-0 dark:shadow-[0_0_0_9999px_rgb(0_0_0/0.65)]"
+        style={{ top, left, width, height, zIndex }}
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed z-40 rounded-xl ring-2 ring-primary/70"
-        style={{ top, left, width, height }}
+        className="pointer-events-none fixed rounded-xl ring-2 ring-primary/80"
+        style={{ top, left, width, height, zIndex }}
       />
       {hint ? (
-        <p
+        <div
           role="status"
-          className="pointer-events-none fixed z-40 max-w-[calc(100vw-1rem)] rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-lg"
-          style={{ top: hintTop, left: Math.max(8, left) }}
+          className="fixed flex items-center gap-2 max-w-[calc(100vw-1rem)] rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow-xl animate-in fade-in"
+          style={{ top: hintTop, left: Math.max(8, left), zIndex: zIndex + 1 }}
         >
-          {hint}
-        </p>
+          <span>{hint}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+            className="rounded-full bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 text-[10px] font-bold transition-colors cursor-pointer"
+          >
+            Entendi
+          </button>
+        </div>
       ) : null}
     </div>,
     document.body,

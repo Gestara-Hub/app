@@ -778,6 +778,8 @@ html:not(.dark)[data-menu-color="inverted"] {
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
 }
 
 /* Menu invertido no tema claro: o logo usa a versao para fundo escuro */

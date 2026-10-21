@@ -8,9 +8,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { UserView } from "@gestarahub/contracts";
 import { useCan } from "@/features/auth";
-import { useUpdateUser } from "../hooks/use-users";
+import { useResendInviteUser, useUpdateUser } from "../hooks/use-users";
 import { UsersList } from "./users-list";
-import { UserFormDialog } from "./user-form-dialog";
+import { UserFormDrawer } from "./user-form-drawer";
 import { InactivateUserDialog } from "./inactivate-user-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -22,10 +22,24 @@ export function UsersView() {
   const [inactivating, setInactivating] = useState<UserView | null>(null);
 
   const updateMut = useUpdateUser();
+  const resendInviteMut = useResendInviteUser();
   const canManage = useCan()("users:manage");
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (user: UserView) => setFormState({ open: true, user });
+
+  const handleResendInvite = async (user: UserView) => {
+    try {
+      const res = await resendInviteMut.mutateAsync(user.id);
+      if (res.success) {
+        toast.success(`Convite reenviado com sucesso para ${user.email}.`);
+      } else {
+        toast.error(res.error || "Não foi possível reenviar o convite.");
+      }
+    } catch {
+      toast.error("Erro ao reenviar convite.");
+    }
+  };
 
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   async function reactivate(user: UserView) {
@@ -67,9 +81,10 @@ export function UsersView() {
         onEdit={openEdit}
         onInactivate={setInactivating}
         onReactivate={reactivate}
+        onResendInvite={handleResendInvite}
       />
 
-      <UserFormDialog
+      <UserFormDrawer
         open={formState.open}
         onOpenChange={(open) => {
           if (!open) setFormState((state) => ({ ...state, open: false }));

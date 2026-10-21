@@ -137,8 +137,8 @@ export function paymentMethodLabel(method: PaymentMethod): string {
 
 const SUBSCRIPTION_TIER_LABEL: Record<SubscriptionTier, string> = {
   free: "Grátis",
-  pro: "Pro",
-  scale: "Scale",
+  pro: "Profissional",
+  scale: "Expansão",
 };
 
 export function subscriptionTierLabel(tier: SubscriptionTier): string {

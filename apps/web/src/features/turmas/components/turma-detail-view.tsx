@@ -93,7 +93,7 @@ import { useStudentPackages } from "../hooks/use-packages";
 import { slotsSummary } from "./turmas-view";
 import { EnrollStudentsDialog } from "./enroll-students-dialog";
 import { SetupCompleteDialog } from "./setup-complete-dialog";
-import { TurmaFormDialog } from "./turma-form-dialog";
+import { TurmaFormDrawer } from "./turma-form-drawer";
 import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -606,7 +606,7 @@ export function TurmaDetailView({
         {isInactive ? null : <NextSessionLink classGroupId={turma.id} canMark={canMark} />}
       </div>
 
-      <TurmaFormDialog open={editOpen} onOpenChange={setEditOpen} turma={turma} />
+      <TurmaFormDrawer open={editOpen} onOpenChange={setEditOpen} turma={turma} />
       <PromoteToCourseDialog
         turma={turma}
         entry={promoteCourseEntry}

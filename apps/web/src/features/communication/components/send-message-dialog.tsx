@@ -9,14 +9,16 @@ import { formatPhone } from "@gestarahub/core/format";
 import { ComboboxField, TextArea } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { MESSAGE_MAX_LENGTH, whatsappNumber } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
@@ -207,18 +209,26 @@ export function SendMessageDialog({
 }) {
   const whatsapp = useWhatsAppSend();
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>{recipient ? `Mensagem para ${recipient.name}` : "Nova mensagem"}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
+            {recipient ? `Mensagem para ${recipient.name}` : "Nova mensagem"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {whatsapp.mode === "official"
               ? "Sai pelo WhatsApp oficial do espaço."
               : "Abre o WhatsApp deste aparelho com a mensagem pronta."}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {open ? <SendMessageForm onDone={() => onOpenChange(false)} fixed={recipient} /> : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const SendMessageDrawer = SendMessageDialog;

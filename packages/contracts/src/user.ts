@@ -40,4 +40,6 @@ export interface UserFilter {
  */
 export interface UserView extends User {
   professional?: { id: Id; name: string; status: RecordStatus };
+  /** Indica se há um convite de acesso pendente de aceite por e-mail. */
+  pendingInvite?: boolean;
 }

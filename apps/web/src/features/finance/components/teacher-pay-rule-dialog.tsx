@@ -16,13 +16,15 @@ import {
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { handleFormApiError } from "@/lib/form-errors";
 import { teacherPayComponentLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
@@ -66,21 +68,22 @@ export function TeacherPayRuleDialog({ teacher: current, competence, onOpenChang
   const teacher = useRetainedValue(current) ?? null;
 
   return (
-    <Dialog open={current !== null} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+    <Sheet open={current !== null} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-xl md:max-w-2xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
             {teacher?.rule ? "Editar pagamento" : "Configurar pagamento"}
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {teacher
               ? `Como ${teacher.name} recebe por mês. As partes são somadas.`
               : null}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {teacher ? (
           <TeacherPayRuleForm
             key={teacher.professionalId}
@@ -89,10 +92,12 @@ export function TeacherPayRuleDialog({ teacher: current, competence, onOpenChang
             onSuccess={() => onOpenChange(false)}
           />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const TeacherPayRuleDrawer = TeacherPayRuleDialog;
 
 function TeacherPayRuleForm({
   teacher,

@@ -59,6 +59,45 @@ export interface AsaasSplitSetting {
   percentualValue?: number;
 }
 
+export interface AsaasSubscriptionRequest {
+  customer: string;
+  billingType: "PIX" | "CREDIT_CARD" | "BOLETO" | "UNDEFINED";
+  value: number;
+  nextDueDate: string;
+  cycle: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
+  description?: string;
+  creditCard?: {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+    ccv: string;
+  };
+  creditCardHolderInfo?: {
+    name: string;
+    email: string;
+    cpfCnpj: string;
+    postalCode?: string;
+    addressNumber?: string;
+    phone?: string;
+    mobilePhone?: string;
+  };
+}
+
+export interface AsaasSubscriptionResponse {
+  object: "subscription";
+  id: string;
+  dateCreated: string;
+  customer: string;
+  value: number;
+  nextDueDate: string;
+  cycle: string;
+  description?: string;
+  billingType: "PIX" | "CREDIT_CARD" | "BOLETO" | "UNDEFINED";
+  status: "ACTIVE" | "EXPIRED" | "INACTIVE";
+  deleted?: boolean;
+}
+
 export interface AsaasPaymentRequest {
   customer: string; // Asaas customer ID (cus_...)
   billingType: "PIX" | "BOLETO" | "CREDIT_CARD" | "UNDEFINED";

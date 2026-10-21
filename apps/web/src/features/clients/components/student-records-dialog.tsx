@@ -28,6 +28,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -423,17 +430,21 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
   }
 
   return (
-    <DialogContent expandable className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-      <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-20 text-left">
-        <DialogTitle className="flex items-center gap-2">
+    <SheetContent
+      side="right"
+      className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-0 gap-0 overflow-hidden shadow-2xl flex flex-col h-full border-l border-border/60"
+      onInteractOutside={(event) => event.preventDefault()}
+    >
+      <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+        <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <MessageSquarePlus className="size-5 text-primary" />
           Registros de aula
-        </DialogTitle>
-        <DialogDescription>
+        </SheetTitle>
+        <SheetDescription className="text-sm text-muted-foreground">
           {client.name}
           {active ? ` · ${active.modality.name}` : ""}
-        </DialogDescription>
-      </DialogHeader>
+        </SheetDescription>
+      </SheetHeader>
 
       <DialogBody className="space-y-4">
         {isPending ? (
@@ -570,12 +581,12 @@ function RecordsContent({ client, context }: { client: Client; context: ClassRec
           </>
         )}
       </DialogBody>
-    </DialogContent>
+    </SheetContent>
   );
 }
 
 /**
- * Modal de Registros de aula (toda aula): metas, pontos fortes, caixa de
+ * Drawer de Registros de aula (toda aula): metas, pontos fortes, caixa de
  * registro e a linha do tempo. Aberto pela chamada, ja vem com a aula.
  */
 export function StudentRecordsDialog({
@@ -591,7 +602,7 @@ export function StudentRecordsDialog({
 }) {
   if (!client) return null;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       {open ? (
         <RecordsContent
           key={`${client.id}-${context?.sessionId ?? "free"}`}
@@ -599,6 +610,8 @@ export function StudentRecordsDialog({
           context={context ?? { date: todayISO() }}
         />
       ) : null}
-    </Dialog>
+    </Sheet>
   );
 }
+
+export const StudentRecordsDrawer = StudentRecordsDialog;

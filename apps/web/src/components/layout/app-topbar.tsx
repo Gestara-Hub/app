@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Check, LogOut, Moon, SlidersHorizontal, Sun, Users } from "lucide-react";
-import { useTheme } from "next-themes";
-import { ThemeCustomizer } from "@/components/theme/theme-customizer";
+import Link from "next/link";
+import { Building2, Check, Crown, LogOut, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { useCurrentUser } from "@/features/auth";
-import { useOrganization, useUnit } from "@/features/settings";
+import { useOrganization, useSubscription, useUnit } from "@/features/settings";
 import { useSwitchableUsers } from "@/features/users/hooks/use-users";
 import { UserPreferencesDialog } from "@/features/preferences";
 
@@ -30,11 +29,12 @@ export function AppTopbar() {
   const user = useCurrentUser();
   const { data: unit } = useUnit();
   const { data: organization, isError: orgError } = useOrganization();
+  const { data: subscription } = useSubscription();
+  const tier = subscription?.tier ?? "free";
   const { data: rawSwitchOptions } = useSwitchableUsers();
   const switchOptions = (rawSwitchOptions ?? []).filter(
     (opt) => opt.user.name !== "Marcelo Andrade" && opt.user.id !== "usr-marcelo",
   );
-  const { resolvedTheme, setTheme } = useTheme();
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
   return (
@@ -56,29 +56,42 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <ThemeCustomizer />
         <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Alternar modo claro/escuro"
-          title="Alternar modo claro/escuro"
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          asChild
+          variant="outline"
+          size="sm"
+          className="hidden sm:inline-flex h-8 gap-1.5 px-2.5 text-xs font-semibold rounded-full border-border/80 hover:border-primary/50 transition-colors shadow-2xs"
+          title="Ver todos os planos e recursos"
         >
-          <Moon className="size-4 dark:hidden" />
-          <Sun className="hidden size-4 dark:block" />
+          <Link href="/plans">
+            {tier === "scale" ? (
+              <Crown className="size-3.5 text-indigo-500" />
+            ) : tier === "pro" ? (
+              <Sparkles className="size-3.5 text-amber-500" />
+            ) : (
+              <Sparkles className="size-3.5 text-primary" />
+            )}
+            <span>
+              {tier === "scale"
+                ? "Plano Expansão"
+                : tier === "pro"
+                  ? "Plano Profissional"
+                  : "Ver planos"}
+            </span>
+          </Link>
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 px-1.5 sm:px-2">
-              <Avatar className="size-6">
-                <AvatarFallback className="bg-secondary text-xs">
+            <Button
+              variant="ghost"
+              className="size-8 rounded-full p-0"
+              aria-label="Menu do usuário"
+            >
+              <Avatar className="size-8">
+                <AvatarFallback className="bg-secondary text-xs font-medium">
                   {userInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden text-sm font-medium sm:inline">
-                {user.name}
-              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
@@ -89,6 +102,13 @@ export function AppTopbar() {
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/plans" className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                <span>Planos & Assinatura</span>
+              </Link>
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onSelect={() => setPreferencesOpen(true)}

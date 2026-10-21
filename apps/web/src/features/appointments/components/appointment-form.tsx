@@ -51,6 +51,7 @@ interface AppointmentFormProps {
   defaultDate?: string;
   defaultStart?: string;
   onSuccess: () => void;
+  onCancel?: () => void;
   formId: string;
 }
 
@@ -60,6 +61,7 @@ export function AppointmentForm({
   defaultDate,
   defaultStart,
   onSuccess,
+  onCancel,
   formId,
 }: AppointmentFormProps) {
   const isEdit = Boolean(appointment);
@@ -355,12 +357,18 @@ export function AppointmentForm({
           disabled={pending}
         />
 
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
+        <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+          )}
           <Button type="submit" disabled={pending || missingPrereqs.length > 0}>
             {pending
               ? "Salvando..."

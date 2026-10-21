@@ -37,11 +37,13 @@ export function PlanForm({
   plan,
   formId,
   onSuccess,
+  onCancel,
 }: {
   plan?: Plan;
   formId: string;
   onSuccess: () => void;
-  }) {
+  onCancel?: () => void;
+}) {
   const createMut = useCreatePlan();
   const updateMut = useUpdatePlan();
   const isEdit = Boolean(plan);
@@ -129,6 +131,7 @@ export function PlanForm({
           isEdit={isEdit}
           createLabel="Adicionar"
           editLabel="Salvar"
+          onCancel={onCancel}
         />
       </form>
     </FormProvider>

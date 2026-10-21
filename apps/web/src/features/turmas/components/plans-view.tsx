@@ -14,13 +14,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { PageHeader } from "@/components/layout/page-header";
@@ -51,7 +44,7 @@ import {
   usePlans,
   useReactivatePlan,
 } from "../hooks/use-billing";
-import { PlanForm } from "./plan-form";
+import { PlanFormDrawer } from "./plan-form-drawer";
 import { LessonPackagesTab } from "./lesson-packages-tab";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
@@ -554,28 +547,12 @@ function MembershipPlansTab({
         )}
       </div>
 
-      {/* Dialog Criar / Editar Plano */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent
-          className="max-h-[90vh] overflow-y-auto sm:max-w-md"
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <DialogHeader className="pr-12">
-            <DialogTitle>{formPlan ? "Editar plano" : "Novo plano"}</DialogTitle>
-            <DialogDescription>
-              {formPlan
-                ? "Altere o nome, a periodicidade ou o valor."
-                : "Será usado para cobrar as mensalidades nas turmas."}
-            </DialogDescription>
-          </DialogHeader>
-          <PlanForm
-            key={formPlan?.id ?? "novo"}
-            plan={formPlan ?? undefined}
-            formId="plan-form"
-            onSuccess={() => setFormOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Drawer Criar / Editar Plano */}
+      <PlanFormDrawer
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        plan={formPlan ?? undefined}
+      />
 
       {/* Confirmação de Inativação */}
       <ConfirmActionDialog

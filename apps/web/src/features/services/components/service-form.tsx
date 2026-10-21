@@ -39,10 +39,11 @@ function toDefaults(service?: Service): ServiceFormValues {
 interface ServiceFormProps {
   service?: Service;
   onSuccess: () => void;
+  onCancel?: () => void;
   formId: string;
 }
 
-export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
+export function ServiceForm({ service, onSuccess, onCancel, formId }: ServiceFormProps) {
   const isEdit = Boolean(service);
   const createMut = useCreateService();
   const updateMut = useUpdateService();
@@ -185,11 +186,17 @@ export function ServiceForm({ service, onSuccess, formId }: ServiceFormProps) {
         </DialogBody>
 
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
-          <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={pending}>
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
               Cancelar
             </Button>
-          </DialogClose>
+          ) : (
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            </DialogClose>
+          )}
           <Button type="submit" disabled={pending}>
             {pending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
           </Button>
