@@ -6,11 +6,9 @@ import type {
   Id,
 } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
-import { isSupabaseOrganization } from "@/lib/session";
 import { store } from "@/mocks/store";
 import { newId, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
 import { auditLogService } from "../auditLogService";
-import { getClientFromDb } from "../clientsBackend";
 import { assertCanManageProgression } from "../teacherScope";
 import {
   applyGoalProgress,
@@ -83,14 +81,7 @@ export const clientRecordsService = {
       let removed = 0;
       for (const entry of payload.entries) {
         const note = entry.note?.trim() ?? "";
-        let idx = store.clients.findIndex((c) => c.id === entry.studentId);
-        if (idx === -1 && isSupabaseOrganization(store.organization.id)) {
-          const dbClient = await getClientFromDb(store.organization.id, entry.studentId);
-          if (dbClient) {
-            store.clients.push(dbClient);
-            idx = store.clients.length - 1;
-          }
-        }
+        const idx = store.clients.findIndex((c) => c.id === entry.studentId);
         if (idx === -1) continue;
         // Um registro por aluno e aula: registrar de novo troca o anterior.
         const current = store.clients[idx].progressions?.[payload.modalityId];

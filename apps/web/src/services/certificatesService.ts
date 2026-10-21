@@ -8,14 +8,13 @@ import {
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_LOGO_RULES } from "@/lib/files";
-import { isSupabaseOrganization } from "@/lib/session";
+import { delegateAll, realAccountInBrowser } from "./world/delegate";
 import { nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { attachmentsService } from "./attachmentsService";
 import { auditLogService } from "./auditLogService";
 import {
   getCertificateTemplateFromDb,
-  saveCertificateTemplateInDb,
 } from "./certificatesBackend";
 import { assertFeature } from "./subscriptionService";
 
@@ -32,7 +31,7 @@ import { assertFeature } from "./subscriptionService";
 /** Conta real: traz o modelo do banco para o cache antes de ler. */
 export async function syncCertificateTemplateFromDb(): Promise<void> {
   const organizationId = store.organization.id;
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   store.certificateTemplate = (await getCertificateTemplateFromDb(organizationId)) ?? undefined;
 }
 
@@ -55,7 +54,7 @@ function normalize(payload: SaveCertificateTemplate): SaveCertificateTemplate {
   };
 }
 
-export const certificatesService = {
+export const certificatesServiceImpl = {
   getTemplate(): Promise<CertificateTemplate> {
     return simulateRead(async () => {
       await syncCertificateTemplateFromDb();
@@ -70,9 +69,6 @@ export const certificatesService = {
       const issues = validateCertificateTemplate(next);
       if (issues.length > 0) throw validationError(issues);
       const template: CertificateTemplate = { ...next, updatedAt: nowIso() };
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveCertificateTemplateInDb(store.organization.id, template);
-      }
       store.certificateTemplate = template;
       auditLogService.record({
         action: "updated",
@@ -87,9 +83,6 @@ export const certificatesService = {
   resetTemplate(): Promise<CertificateTemplate> {
     return simulateWrite(async () => {
       assertFeature("certificates");
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveCertificateTemplateInDb(store.organization.id, null);
-      }
       if (store.certificateTemplate) {
         // O `store` e um proxy do tenant ativo (sem `delete`): `undefined` = padrao.
         store.certificateTemplate = undefined;
@@ -110,3 +103,6 @@ export const certificatesService = {
     return logo;
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const certificatesService = delegateAll("certificates", certificatesServiceImpl, ["uploadLogo"]);

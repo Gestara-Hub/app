@@ -10,11 +10,9 @@ import type {
   StudentProgressionOverview,
 } from "@gestarahub/contracts";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
-import { isSupabaseOrganization } from "@/lib/session";
 import { store } from "@/mocks/store";
 import { newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { auditLogService } from "../auditLogService";
-import { getClientFromDb, promoteStudentInDb, saveModalityProgressionInDb } from "../clientsBackend";
 import { assertCanManageProgression } from "../teacherScope";
 import { progressionTermSuggestions } from "./clientProgression";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
@@ -23,14 +21,7 @@ import { NOT_FOUND, clone, todayISO } from "./clientStore";
 export const clientProgressionService = {
   getProgressionOverview(studentId: Id): Promise<StudentProgressionOverview> {
     return simulateRead(async () => {
-      let client = store.clients.find((c) => c.id === studentId);
-      if (isSupabaseOrganization(store.organization.id) && !client) {
-        const dbClient = await getClientFromDb(store.organization.id, studentId);
-        if (dbClient) {
-          store.clients.push(dbClient);
-          client = dbClient;
-        }
-      }
+      const client = store.clients.find((c) => c.id === studentId);
       if (!client) throw notFoundError(NOT_FOUND);
 
       const activeEnrollments = store.enrollments.filter(
@@ -132,20 +123,6 @@ export const clientProgressionService = {
     return simulateWrite(async () => {
       assertCanManageProgression(studentId, { modalityId: progression.modalityId });
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        const updated = await saveModalityProgressionInDb(store.organization.id, studentId, progression);
-        const idx = store.clients.findIndex((c) => c.id === studentId);
-        if (idx !== -1) store.clients[idx] = updated;
-        else store.clients.push(updated);
-
-        auditLogService.record({
-          action: "updated",
-          target: { type: "client", id: updated.id, label: updated.name },
-          predicate: `atualizou o progresso de ${updated.name} (${progression.levelName})`,
-        });
-        return clone(updated);
-      }
-
       const idx = store.clients.findIndex((c) => c.id === studentId);
       if (idx === -1) throw notFoundError(NOT_FOUND);
       const current = store.clients[idx];
@@ -192,20 +169,6 @@ export const clientProgressionService = {
       assertCanManageProgression(payload.studentId, { modalityId: payload.modalityId });
       if (payload.date > todayISO()) {
         throw validationError([{ field: "date", message: "A data não pode ser futura." }]);
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        const updated = await promoteStudentInDb(store.organization.id, payload);
-        const idx = store.clients.findIndex((c) => c.id === payload.studentId);
-        if (idx !== -1) store.clients[idx] = updated;
-        else store.clients.push(updated);
-
-        auditLogService.record({
-          action: "updated",
-          target: { type: "client", id: updated.id, label: updated.name },
-          predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
-        });
-        return clone(updated);
       }
 
       const idx = store.clients.findIndex((c) => c.id === payload.studentId);

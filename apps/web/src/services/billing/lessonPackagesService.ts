@@ -3,7 +3,7 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
 import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes } from "@/mocks/helpers";
 import { withKind } from "@/lib/text";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../auditLogService";
 import { unwrap } from "../server/action";
 import { clone } from "./billingHelpers";
@@ -17,7 +17,7 @@ import { sortByName } from "./planRules";
  */
 
 function isRealAccount(): boolean {
-  return isSupabaseOrganization(store.organization.id);
+  return realAccountInBrowser();
 }
 
 /**

@@ -1,0 +1,164 @@
+import type { Permission } from "@gestarahub/contracts";
+
+/**
+ * Metodos de servico que a conta real roda no servidor (doc 15, fatia 2), com
+ * a permissao exigida alem das regras do proprio servico e do RLS. Importa os
+ * servicos sob demanda para nao fechar ciclo com quem delega.
+ */
+
+type ServiceObject = Record<string, (...args: never[]) => Promise<unknown>>;
+
+interface ServiceNamespace {
+  load: () => Promise<ServiceObject>;
+  /** Permissao por metodo; ausente = qualquer usuario do espaco. */
+  permissions: Record<string, Permission[]>;
+  /** Metodos que nao vao para o servidor (arquivo, navegador). */
+  browserOnly?: string[];
+}
+
+const MANAGE_CLIENTS: Permission[] = ["clients:manage"];
+const MANAGE_CLASSES: Permission[] = ["classes:manage"];
+const MANAGE_ENROLLMENT: Permission[] = ["enrollment:manage"];
+const MARK_ATTENDANCE: Permission[] = ["attendance:mark"];
+const VIEW_BILLING: Permission[] = ["billing:view"];
+const MANAGE_BILLING: Permission[] = ["billing:manage"];
+const VIEW_FINANCE: Permission[] = ["finance:view"];
+const MANAGE_FINANCE: Permission[] = ["finance:manage"];
+const MANAGE_GRADES: Permission[] = ["grades:manage"];
+const VIEW_COMMUNICATION: Permission[] = ["communication:view"];
+const MANAGE_COMMUNICATION: Permission[] = ["communication:manage"];
+
+function all(methods: string[], permissions: Permission[]): Record<string, Permission[]> {
+  return Object.fromEntries(methods.map((m) => [m, permissions]));
+}
+
+export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
+  clients: {
+    load: async () => (await import("../clients")).clientsServiceImpl as unknown as ServiceObject,
+    permissions: all(["create", "update", "remove"], MANAGE_CLIENTS),
+  },
+  turmas: {
+    load: async () => (await import("../classes")).turmasServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["create", "update", "deactivate", "reactivate", "substituteInstructor", "restorePrimaryInstructor"], MANAGE_CLASSES),
+      ...all(
+        [
+          "enroll",
+          "setEnrollmentPayment",
+          "cancelEnrollment",
+          "addToWaitlist",
+          "promoteFromWaitlist",
+          "removeFromWaitlist",
+          "reserveSession",
+          "cancelReservation",
+          "cancelReserva",
+        ],
+        MANAGE_ENROLLMENT,
+      ),
+      ...all(["markAttendance", "clearAttendance"], MARK_ATTENDANCE),
+    },
+  },
+  billing: {
+    load: async () => (await import("../billing")).billingServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["listCharges", "listChargesPaginated"], VIEW_BILLING),
+      ...all(
+        ["generateCharges", "createExtraCharge", "clearCharges", "markPaid", "markPending", "cancelCharge", "reopenCharge"],
+        MANAGE_BILLING,
+      ),
+    },
+    browserOnly: ["listPlans", "createPlan", "updatePlan"],
+  },
+  packages: {
+    load: async () => (await import("../billing")).packagesServiceImpl as unknown as ServiceObject,
+    permissions: {
+      listStudentPackages: VIEW_BILLING,
+      ...all(["sellPackage", "cancelStudentPackage"], MANAGE_BILLING),
+    },
+    browserOnly: ["listPackages", "createPackage", "updatePackage"],
+  },
+  finance: {
+    load: async () => (await import("../finance")).financeServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["getSummary", "getMonthlySeries", "getByCategory", "getUpcoming", "listEntries", "listCategories"], VIEW_FINANCE),
+      ...all(
+        ["createEntry", "updateEntry", "deleteEntry", "markEntryPaid", "markEntryPending", "cancelEntry", "endRecurrence", "createCategory", "updateCategory", "applyRecurringAutoPayments"],
+        MANAGE_FINANCE,
+      ),
+    },
+  },
+  teacherPay: {
+    load: async () => (await import("../finance")).teacherPayServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["listTeachers", "listRules", "listPayouts", "getPayoutPreview"], VIEW_FINANCE),
+      ...all(["saveRule", "saveAdjustments", "closePayout", "reopenPayout", "markPayoutPaid", "markPayoutUnpaid"], MANAGE_FINANCE),
+    },
+  },
+  grades: {
+    load: async () => (await import("../gradesService")).gradesServiceImpl as unknown as ServiceObject,
+    permissions: all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
+  },
+  communication: {
+    load: async () => (await import("../communicationService")).communicationServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(
+        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
+        VIEW_COMMUNICATION,
+      ),
+      ...all(["connectOfficial", "disconnectOfficial", "updateConnectionSettings", "updateTemplate"], MANAGE_COMMUNICATION),
+    },
+  },
+  reports: {
+    load: async () => (await import("../reportsService")).reportsServiceImpl as unknown as ServiceObject,
+    permissions: all(["getCatalog", "generateReport"], ["reports:view"]),
+  },
+  studentSummary: {
+    load: async () => (await import("../studentSummaryService")).studentSummaryServiceImpl as unknown as ServiceObject,
+    permissions: {},
+  },
+  onlinePayments: {
+    load: async () => (await import("../onlinePaymentsService")).onlinePaymentsServiceImpl as unknown as ServiceObject,
+    permissions: {
+      ...all(["listForCharge", "getCheckout"], VIEW_BILLING),
+      ...all(["createForCharge", "cancelForCharge"], MANAGE_BILLING),
+    },
+    browserOnly: [
+      "getSettings",
+      "syncSubaccountApproved",
+      "updateSettings",
+      "simulatePaid",
+      "getRecurringForStudent",
+      "listActiveRecurring",
+      "requestRecurring",
+      "simulateAuthorize",
+      "revokeRecurring",
+    ],
+  },
+  onboarding: {
+    load: async () => (await import("../onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
+    permissions: {},
+  },
+  certificates: {
+    load: async () => (await import("../certificatesService")).certificatesServiceImpl as unknown as ServiceObject,
+    permissions: all(["saveTemplate", "resetTemplate"], MANAGE_CLASSES),
+    browserOnly: ["uploadLogo"],
+  },
+};
+
+export interface ResolvedMethod {
+  run: (...args: unknown[]) => Promise<unknown>;
+  permissions: Permission[];
+}
+
+export async function resolveServiceMethod(name: string): Promise<ResolvedMethod | undefined> {
+  const [namespace, method] = name.split(".");
+  const entry = SERVICE_NAMESPACES[namespace];
+  if (!entry || !method || entry.browserOnly?.includes(method)) return undefined;
+  const service = await entry.load();
+  const fn = service[method];
+  if (typeof fn !== "function") return undefined;
+  return {
+    run: (...args) => (fn as (...a: unknown[]) => Promise<unknown>).apply(service, args),
+    permissions: entry.permissions[method] ?? [],
+  };
+}

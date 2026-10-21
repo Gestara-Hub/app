@@ -73,6 +73,7 @@ export type ApiErrorCode =
   | "NOT_FOUND"
   | "VALIDATION"
   | "FORBIDDEN" // sem permissao para a acao (403)
+  | "CONFLICT" // outra pessoa mudou o registro depois da leitura (409): tentar de novo
   // Regras de negocio (agenda)
   | "OVERLAP_CONFLICT"
   | "OUTSIDE_BUSINESS_HOURS"

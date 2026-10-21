@@ -9,7 +9,7 @@ import type {
 import { getCurrentActor } from "@/mocks/currentActor";
 import { newId, nowIso, simulateRead, textIncludes } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { listAuditLogsFromDb, recordAuditLogInDb } from "./auditLogBackend";
 
 function clone<T>(value: T): T {
@@ -72,7 +72,7 @@ export const auditLogService = {
       };
       store.auditLog.push(entry);
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         recordAuditLogInDb(entry).catch((err) => {
           console.error("[auditLogService] Erro ao persistir log:", err);
         });
@@ -85,7 +85,7 @@ export const auditLogService = {
   /** Lista o log visivel para o `viewer`, mais recente primeiro. */
   list(filter: AuditLogFilter | undefined, viewer: UserProfile): Promise<AuditLogEntry[]> {
     return simulateRead(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const dbLogs = await listAuditLogsFromDb(store.organization.id, filter);
         const filtered = dbLogs.filter((e) => canView(e, viewer));
         return clone(filtered);

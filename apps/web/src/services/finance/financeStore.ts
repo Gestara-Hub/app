@@ -7,7 +7,7 @@ import type {
 import { notFoundError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { systemFinancialCategoryId } from "@/mocks/seed";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "../world/delegate";
 import {
   listFinancialCategoriesFromDb,
   listFinancialEntriesFromDb,
@@ -33,7 +33,7 @@ export function categoryName(id?: Id, fallback = "Sem categoria"): string {
 }
 
 export async function syncFinanceFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const [categories, recurrences, entries] = await Promise.all([
     listFinancialCategoriesFromDb(organizationId),
     listFinancialRecurrencesFromDb(organizationId),

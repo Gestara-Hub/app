@@ -31,21 +31,17 @@ import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/mocks/seed
 import { persist, store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
-import { isSupabaseOrganization } from "@/lib/session";
+import { delegateAll, realAccountInBrowser } from "./world/delegate";
 import {
-  createMessageLogInDb,
   getWhatsAppConnectionFromDb,
   insertMessageTemplatesBatchInDb,
   listMessageLogsFromDb,
-  listMessageLogsPaginatedFromDb,
   listMessageTemplatesFromDb,
   saveWhatsAppConnectionInDb,
-  updateMessageLogInDb,
-  updateMessageTemplateInDb,
 } from "./communicationBackend";
 
 export async function syncCommunicationFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const [connection, templates, logs] = await Promise.all([
     getWhatsAppConnectionFromDb(organizationId),
     listMessageTemplatesFromDb(organizationId),
@@ -224,24 +220,14 @@ function runBirthdayGreetings(): number {
     logs.unshift(log);
     connection.monthlyQuota.used += 1;
     sent += 1;
-    if (isSupabaseOrganization(store.organization.id)) {
-      void createMessageLogInDb(log).catch((err) =>
-        console.error("[communicationService] Erro ao salvar parabéns no banco:", err),
-      );
-    }
   }
   if (sent > 0) {
     persist();
-    if (isSupabaseOrganization(store.organization.id)) {
-      void saveWhatsAppConnectionInDb(connection).catch((err) =>
-        console.error("[communicationService] Erro ao atualizar quota no banco:", err),
-      );
-    }
   }
   return sent;
 }
 
-export const communicationService = {
+export const communicationServiceImpl = {
   getConnection(): Promise<WhatsAppConnectionView> {
     return simulateRead(async () => {
       await syncCommunicationFromDb(store.organization.id);
@@ -268,10 +254,6 @@ export const communicationService = {
       connection.displayName = store.organization.name;
       connection.connectedAt = nowIso();
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveWhatsAppConnectionInDb(connection);
-      }
-
       auditLogService.record({
         action: "updated",
         target: { type: "communication_session", label: "WhatsApp oficial" },
@@ -289,10 +271,6 @@ export const communicationService = {
       delete connection.phoneNumber;
       delete connection.displayName;
       delete connection.connectedAt;
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveWhatsAppConnectionInDb(connection);
-      }
 
       auditLogService.record({
         action: "updated",
@@ -313,10 +291,6 @@ export const communicationService = {
           throw validationError([{ field: "allowedSendHours", message: "O início precisa ser antes do fim." }]);
         }
         connection.allowedSendHours = { start, end };
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveWhatsAppConnectionInDb(connection);
       }
 
       return connectionView();
@@ -366,10 +340,6 @@ export const communicationService = {
       if (payload.daysOffset !== undefined) template.daysOffset = payload.daysOffset;
       template.updatedAt = nowIso();
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateMessageTemplateInDb(template.id, payload, store.organization.id);
-      }
-
       auditLogService.record({
         action: "updated",
         target: { type: "message_template", label: template.title },
@@ -403,9 +373,6 @@ export const communicationService = {
 
   listLogsPaginated(filter?: MessageLogFilter): Promise<PaginatedResult<MessageLog>> {
     return simulateRead(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
-        return listMessageLogsPaginatedFromDb(store.organization.id, filter);
-      }
       const all = await communicationService.listLogs(filter);
       return paginateArray(all, filter?.page, filter?.pageSize);
     });
@@ -420,10 +387,6 @@ export const communicationService = {
       validateMessage(payload);
       const log = newLog(payload, "opened");
       ensureLogs().unshift(log);
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createMessageLogInDb(log);
-      }
 
       // Envio assistido: so da para saber que abriu o WhatsApp com o texto.
       auditLogService.record({
@@ -450,13 +413,6 @@ export const communicationService = {
       ensureLogs().unshift(log);
       connection.monthlyQuota.used += 1;
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await Promise.all([
-          createMessageLogInDb(log),
-          saveWhatsAppConnectionInDb(connection),
-        ]);
-      }
-
       auditLogService.record({
         action: "created",
         target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
@@ -479,10 +435,6 @@ export const communicationService = {
       log.status = "delivered";
       delete log.errorReason;
       log.sentAt = nowIso();
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateMessageLogInDb(log);
-      }
 
       auditLogService.record({
         action: "updated",
@@ -536,3 +488,6 @@ export const communicationService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const communicationService = delegateAll("communication", communicationServiceImpl);

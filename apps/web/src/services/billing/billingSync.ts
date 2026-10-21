@@ -1,10 +1,10 @@
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "../world/delegate";
 import { listChargesFromDb, listPlansFromDb } from "../billingBackend";
 import { listLessonPackagesFromDb, listStudentPackagesFromDb } from "../packagesBackend";
 
 export async function syncPlansFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const dbPlans = await listPlansFromDb(organizationId);
   const dbMap = new Map(dbPlans.map((p) => [p.id, p]));
   for (let i = 0; i < store.plans.length; i++) {
@@ -21,7 +21,7 @@ export async function syncPlansFromDb(organizationId: string): Promise<void> {
 }
 
 export async function syncChargesFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const dbCharges = await listChargesFromDb(organizationId);
   const dbMap = new Map(dbCharges.map((c) => [c.id, c]));
   for (let i = 0; i < store.charges.length; i++) {
@@ -46,7 +46,7 @@ export async function syncChargesFromDb(organizationId: string): Promise<void> {
 // --- Sync with DB -----------------------------------------------------------
 
 export async function syncLessonPackagesFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const dbPackages = await listLessonPackagesFromDb(organizationId);
   const dbMap = new Map(dbPackages.map((p) => [p.id, p]));
   for (let i = 0; i < store.lessonPackages.length; i++) {
@@ -63,7 +63,7 @@ export async function syncLessonPackagesFromDb(organizationId: string): Promise<
 }
 
 export async function syncStudentPackagesFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const dbPkgs = await listStudentPackagesFromDb(organizationId);
   const dbMap = new Map(dbPkgs.map((p) => [p.id, p]));
   for (let i = 0; i < store.studentPackages.length; i++) {

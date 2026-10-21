@@ -1,9 +1,8 @@
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
 import { newId, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
 
 /**
  * Envio e leitura de anexos (comprovantes, notas, boletos, logos).
@@ -22,7 +21,7 @@ export const attachmentsService = {
       throw validationError([{ field, message: `“${invalid.name}”: ${fileIssue(invalid, rules)}` }]);
     }
 
-    if (typeof window !== "undefined" && isSupabaseOrganization(store.organization.id)) {
+    if (typeof window !== "undefined" && realAccountInBrowser()) {
       try {
         const formData = new FormData();
         for (const file of files) {
@@ -68,7 +67,7 @@ export const attachmentsService = {
    * No mock, retorna o object URL temporário do IndexedDB.
    */
   async openUrl(id: Id): Promise<string | null> {
-    if (isSupabaseOrganization(store.organization.id)) {
+    if (realAccountInBrowser()) {
       return `/api/attachments/${id}`;
     }
     const blob = await getFileBlob(id);

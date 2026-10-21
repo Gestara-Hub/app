@@ -16,7 +16,7 @@ import {
   textIncludes,
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { unwrap } from "./server/action";
 import {
   createProfessionalAction,
@@ -42,7 +42,7 @@ function clone<T>(value: T): T {
 }
 
 function isRealAccount(): boolean {
-  return isSupabaseOrganization(store.organization.id);
+  return realAccountInBrowser();
 }
 
 function toView(p: Professional): ProfessionalView {

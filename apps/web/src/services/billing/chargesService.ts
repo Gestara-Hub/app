@@ -11,11 +11,8 @@ import { describeCharge, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { persist, store } from "@/mocks/store";
 import { newId, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
-import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "../auditLogService";
 import { applyRecurringAutoPayments } from "../onlinePaymentsService";
-import { generateMembershipChargesAction } from "../membershipBackend";
-import { deleteChargesByIdsInDb, insertChargesInDb, listChargesPaginatedFromDb } from "../billingBackend";
 import { clone, competenceLabel } from "./billingHelpers";
 import { syncChargesFromDb } from "./billingSync";
 import { validateExtraCharge } from "./billingValidation";
@@ -54,9 +51,6 @@ export const chargesService = {
         });
         if (store.charges.length !== beforeLen) {
           persist();
-          if (toDelete.length > 0 && isSupabaseOrganization(store.organization.id)) {
-            await deleteChargesByIdsInDb(toDelete, store.organization.id);
-          }
         }
       }
       let result = store.charges.map(toChargeView);
@@ -84,23 +78,6 @@ export const chargesService = {
       await ensureMembershipCharges(filter?.competence);
       applyRecurringAutoPayments();
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        const paginated = await listChargesPaginatedFromDb(store.organization.id, filter);
-        const views = paginated.items.map(toChargeView);
-        return clone({
-          items: views.sort(
-            (a, b) =>
-              a.studentName.localeCompare(b.studentName, "pt-BR") ||
-              a.dueDate.localeCompare(b.dueDate),
-          ),
-          total: paginated.total,
-          page: paginated.page,
-          pageSize: paginated.pageSize,
-          totalPages: paginated.totalPages,
-          hasMore: paginated.hasMore,
-        });
-      }
-
       let result = store.charges.map(toChargeView);
       if (filter?.competence) {
         result = result.filter((c) => c.competence === filter.competence);
@@ -127,14 +104,7 @@ export const chargesService = {
    */
   generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(async () => {
-      // Conta real: so a competencia pedida, no servidor (mesma regra e protecao contra duplicata).
-      let created: number;
-      if (isSupabaseOrganization(store.organization.id)) {
-        created = await generateMembershipChargesAction(store.organization.id, [competence]);
-        await syncChargesFromDb(store.organization.id);
-      } else {
-        created = generateMembershipChargesFor(competence);
-      }
+      const created = generateMembershipChargesFor(competence);
 
       if (created > 0) {
         auditLogService.record({
@@ -187,9 +157,6 @@ export const chargesService = {
         createdAt: ts,
         updatedAt: ts,
       }));
-      if (isSupabaseOrganization(store.organization.id)) {
-        await insertChargesInDb(created);
-      }
       store.charges.push(...created);
       auditLogService.record({
         action: "created",
@@ -216,9 +183,6 @@ export const chargesService = {
       );
       const keptPaid = inCompetence.filter((c) => c.status === "paid").length;
       const removed = new Set(inCompetence.filter((c) => c.status !== "paid").map((c) => c.id));
-      if (isSupabaseOrganization(store.organization.id) && removed.size > 0) {
-        await deleteChargesByIdsInDb(Array.from(removed), store.organization.id);
-      }
       store.charges = store.charges.filter((c) => !removed.has(c.id));
       const deleted = removed.size;
       if (deleted > 0) {

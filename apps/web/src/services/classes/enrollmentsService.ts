@@ -1,7 +1,6 @@
 import type { CreateEnrollment, EnrollmentView, Id } from "@gestarahub/contracts";
 import { classBillingMode, isCourseEnded, isFutureOpenInstallment } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
-import { isSupabaseOrganization } from "@/lib/session";
 import { withKind } from "@/lib/text";
 import {
   apiError,
@@ -14,7 +13,6 @@ import {
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
-import { cancelEnrollmentInDb, updateEnrollmentInDb } from "../turmasBackend";
 import { clone, todayISO, studentName, activeEnrollments } from "./classShared";
 import { syncTurmasFromDb } from "./classStore";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
@@ -124,10 +122,6 @@ export const enrollmentsService = {
         delete e.paysWithPackage;
       }
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateEnrollmentInDb(id, { paysWithPackage: Boolean(e.paysWithPackage) }, store.organization.id);
-      }
-
       const name = studentName(e.studentId);
       auditLogService.record({
         action: "updated",
@@ -150,10 +144,6 @@ export const enrollmentsService = {
       e.status = "canceled";
       e.canceledAt = nowIso();
       e.cancellationReason = reason?.trim() || undefined;
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await cancelEnrollmentInDb(id, e.cancellationReason, e.canceledAt, store.organization.id);
-      }
 
       const g = store.classGroups.find((x) => x.id === e.classGroupId);
       const turma = g?.name ?? "";

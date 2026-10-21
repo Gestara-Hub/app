@@ -11,10 +11,17 @@ import type { AuditActor } from "@gestarahub/contracts";
  */
 let currentActor: AuditActor | null = null;
 
+/** No servidor, o ator vem da requisicao (registrado por `services/world/scope`). */
+let scopedActor: (() => AuditActor | undefined) | null = null;
+
+export function setActorScopeResolver(resolver: () => AuditActor | undefined): void {
+  scopedActor = resolver;
+}
+
 export function setCurrentActor(actor: AuditActor | null): void {
   currentActor = actor;
 }
 
 export function getCurrentActor(): AuditActor | null {
-  return currentActor;
+  return scopedActor?.() ?? currentActor;
 }

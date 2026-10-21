@@ -10,11 +10,9 @@ import type {
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
-import { isSupabaseOrganization } from "@/lib/session";
 import { getCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
 import { newId, normalizeText, notFoundError, nowIso } from "@/mocks/helpers";
-import { updateStudentProgressionInDb } from "../clientsBackend";
 
 // --- Sugestoes da evolucao (aprendidas do uso) ----------------------------
 
@@ -115,14 +113,6 @@ export async function writeProgression(idx: number, progression: StudentModality
     updatedAt: ts,
   };
   store.clients[idx] = updated;
-
-  if (isSupabaseOrganization(store.organization.id)) {
-    try {
-      await updateStudentProgressionInDb(store.organization.id, current.id, nextProgression);
-    } catch (err) {
-      console.error("[clientsService] Erro ao sincronizar progressão no Supabase:", err);
-    }
-  }
 
   return updated;
 }

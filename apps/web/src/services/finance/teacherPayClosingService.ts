@@ -10,8 +10,6 @@ import { formatCents, pluralWord } from "@gestarahub/core/format";
 import { newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
-import { isSupabaseOrganization } from "@/lib/session";
-import { saveTeacherPayoutInDb } from "../teacherPayBackend";
 import { buildFacts, factsFor, percentChargeIds, sessionsIn } from "./teacherPayFacts";
 import {
   adjustmentLines,
@@ -145,10 +143,6 @@ export const teacherPayClosingService = {
         store.teacherPayouts.push(payout);
       }
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayoutInDb(payout);
-      }
-
       const describe = (l: TeacherPayoutLine) => `"${l.label}" (${formatSignedCents(l.amountCents)})`;
       const added = lineDifference(lines, before).map(describe);
       const removed = lineDifference(before, lines).map(describe);
@@ -237,10 +231,6 @@ export const teacherPayClosingService = {
         store.teacherPayouts.push(payout);
       }
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayoutInDb(payout);
-      }
-
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id: payout.id, label: payoutLabel(professionalId, competence) },
@@ -264,10 +254,6 @@ export const teacherPayClosingService = {
       payout.totalCents = payoutTotalCents(payout.lines);
       payout.closedAt = undefined;
       payout.updatedAt = nowIso();
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayoutInDb(payout);
-      }
 
       auditLogService.record({
         action: "status_changed",

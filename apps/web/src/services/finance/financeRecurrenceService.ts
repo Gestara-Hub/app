@@ -7,12 +7,6 @@ import { persist, store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { ensureMembershipCharges } from "../billingService";
 import { applyRecurringAutoPayments } from "../onlinePaymentsService";
-import { isSupabaseOrganization } from "@/lib/session";
-import {
-  materializeRecurrencesAction,
-  updateFinancialEntryInDb,
-  updateFinancialRecurrenceInDb,
-} from "../financeBackend";
 import { conflict, currentCompetence, todayISO } from "./financeHelpers";
 import { syncFinanceFromDb } from "./financeStore";
 
@@ -55,7 +49,6 @@ export async function materializeAllAsync(): Promise<number> {
   return newEntries.length;
 }
 
-
 /** Garante a materializacao numa leitura (persiste so se criou algo). */
 export async function ensureMaterialized(competence?: string): Promise<void> {
   await syncFinanceFromDb(store.organization.id);
@@ -73,15 +66,6 @@ export async function ensureMaterialized(competence?: string): Promise<void> {
  * banco; o navegador nao cria mais. Demonstracao: no store, como antes.
  */
 export async function ensureRecurrenceEntries(): Promise<void> {
-  if (isSupabaseOrganization(store.organization.id)) {
-    try {
-      const created = await materializeRecurrencesAction(store.organization.id);
-      if (created > 0) await syncFinanceFromDb(store.organization.id);
-    } catch (err) {
-      console.error("[financeService] Erro ao gerar lançamentos repetidos no servidor:", err);
-    }
-    return;
-  }
   const created = await materializeAllAsync();
   if (created > 0) persist();
 }
@@ -105,17 +89,6 @@ export const financeRecurrenceService = {
         e.status = "canceled";
         e.updatedAt = ts;
         canceled += 1;
-        if (isSupabaseOrganization(store.organization.id)) {
-          await updateFinancialEntryInDb(e.id, { status: "canceled" }, store.organization.id);
-        }
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialRecurrenceInDb(
-          recurrenceId,
-          { status: "inactive", endCompetence: recurrence.endCompetence },
-          store.organization.id,
-        );
       }
 
       auditLogService.record({

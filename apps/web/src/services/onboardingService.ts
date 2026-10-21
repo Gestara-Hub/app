@@ -1,6 +1,7 @@
 import type { DiscoveryMilestones } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
 import { simulateRead } from "@/mocks/helpers";
+import { delegateAll } from "./world/delegate";
 
 /**
  * Leituras do onboarding que nao cabem num service de entidade. Hoje: os
@@ -8,7 +9,7 @@ import { simulateRead } from "@/mocks/helpers";
  * inicial), calculados do store numa unica leitura. Na API real vira um
  * endpoint de agregados (EXISTS por tabela, filtrando o tenant).
  */
-export const onboardingService = {
+export const onboardingServiceImpl = {
   getDiscoveryMilestones(): Promise<DiscoveryMilestones> {
     return simulateRead(() => {
       const enrollClassGroupId = store.classGroups
@@ -36,3 +37,6 @@ export const onboardingService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const onboardingService = delegateAll("onboarding", onboardingServiceImpl);

@@ -554,8 +554,24 @@ if (canPersist()) {
   }
 }
 
+/**
+ * Espaco da requisicao no servidor (doc 15, fatia 2): `services/world/scope`
+ * registra aqui um resolvedor (AsyncLocalStorage) e, dentro de uma action, o
+ * `store` passa a ser o espaco carregado do banco para aquela requisicao.
+ */
+let scopedStore: (() => MockStore | undefined) | null = null;
+
+export function setStoreScopeResolver(resolver: () => MockStore | undefined): void {
+  scopedStore = resolver;
+}
+
+/** Rodando dentro de uma action com o espaco carregado do banco? */
+export function inServerWorld(): boolean {
+  return scopedStore?.() !== undefined;
+}
+
 function activeStore(): MockStore {
-  return world.tenants[world.activeOrganizationId];
+  return scopedStore?.() ?? world.tenants[world.activeOrganizationId];
 }
 
 /**

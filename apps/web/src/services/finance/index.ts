@@ -6,6 +6,7 @@ import { transactionsService } from "./transactionsService";
 import { teacherPayClosingService } from "./teacherPayClosingService";
 import { teacherPayPaymentsService } from "./teacherPayPaymentsService";
 import { teacherPayRulesService } from "./teacherPayRulesService";
+import { delegateAll } from "../world/delegate";
 
 export {
   cashFlowService,
@@ -37,13 +38,16 @@ export type {
 
 // --- Service ----------------------------------------------------------------
 
-export const financeService = {
+export const financeServiceImpl = {
   ...cashFlowService,
   ...transactionsService,
   ...entryStatusService,
   ...financeRecurrenceService,
   ...financeCategoriesService,
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const financeService = delegateAll("finance", financeServiceImpl);
 
 /**
  * Pagamento dos professores (Financeiro basico, gratis). Regra por professor,
@@ -53,8 +57,11 @@ export const financeService = {
  * pagos). Especificacao: docs/technical/05, secao 5.
  */
 
-export const teacherPayService = {
+export const teacherPayServiceImpl = {
   ...teacherPayRulesService,
   ...teacherPayClosingService,
   ...teacherPayPaymentsService,
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const teacherPayService = delegateAll("teacherPay", teacherPayServiceImpl);

@@ -1,8 +1,7 @@
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { simulateRead, simulateWrite } from "@/mocks/helpers";
-import { isSupabaseOrganization } from "@/lib/session";
-import { store } from "@/mocks/store";
+import { realAccountInBrowser } from "./world/delegate";
 import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "./preferencesBackend";
 
 export const PREFERENCES_STORAGE_KEY = "gestarahub_user_preferences";
@@ -10,7 +9,7 @@ export const PREFERENCES_STORAGE_KEY = "gestarahub_user_preferences";
 export const preferencesService = {
   getPreferences(userId?: string): Promise<UserPreferences> {
     return simulateRead(async () => {
-      if (userId && isSupabaseOrganization(store.organization.id)) {
+      if (userId && realAccountInBrowser()) {
         const remote = await getUserPreferencesFromDb(userId);
         if (remote) return remote;
       }
@@ -44,7 +43,7 @@ export const preferencesService = {
         }
       }
 
-      if (userId && isSupabaseOrganization(store.organization.id)) {
+      if (userId && realAccountInBrowser()) {
         return saveUserPreferencesInDb(userId, partial);
       }
 
@@ -65,7 +64,7 @@ export const preferencesService = {
         }
       }
 
-      if (userId && isSupabaseOrganization(store.organization.id)) {
+      if (userId && realAccountInBrowser()) {
         return saveUserPreferencesInDb(userId, DEFAULT_USER_PREFERENCES);
       }
 

@@ -2,11 +2,8 @@ import type { ChargeView, Id, ManualPaymentDetails, PaymentMethod } from "@gesta
 import { coversPeriod } from "@gestarahub/core/membership-generation";
 import { store } from "@/mocks/store";
 import { apiError, notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
-import { isSupabaseOrganization } from "@/lib/session";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
-import { cancelOnlinePaymentsForChargeInDb } from "../onlinePaymentsBackend";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
-import { updateChargeInDb } from "../billingBackend";
 import { clone } from "./billingHelpers";
 import { assertNotPaidOnline, assertNotWaived } from "./billingValidation";
 import { recordChargeEvent, toChargeView } from "./billingViews";
@@ -29,20 +26,6 @@ export const chargePaymentsService = {
       c.paidVia = "manual";
       if (details.receipts?.length) c.attachments = [...(c.attachments ?? []), ...details.receipts];
       c.updatedAt = nowIso();
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateChargeInDb(c.id, {
-          status: "paid",
-          paidAt: c.paidAt,
-          method: c.method,
-          paidVia: c.paidVia,
-          attachments: c.attachments,
-        }, store.organization.id);
-        await cancelOnlinePaymentsForChargeInDb(
-          c.id,
-          store.organization.id,
-          "Baixa manual da cobrança",
-        );
-      }
       // Pago na mao: o Pix/link em aberto nao vale mais.
       cancelOnlinePaymentsForCharge(c.id, "Baixa manual da cobrança");
       recordChargeEvent(c, "status_changed", `registrou${paidOnNote(details.paidOn)} o pagamento da`);
@@ -63,15 +46,6 @@ export const chargePaymentsService = {
       c.paidVia = undefined;
       c.attachments = undefined;
       c.updatedAt = nowIso();
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateChargeInDb(c.id, {
-          status: "pending",
-          paidAt: undefined,
-          method: undefined,
-          paidVia: undefined,
-          attachments: [],
-        }, store.organization.id);
-      }
       recordChargeEvent(c, "status_changed", "desfez o pagamento da");
       return clone(toChargeView(c));
     });
@@ -92,21 +66,6 @@ export const chargePaymentsService = {
       c.method = undefined;
       c.paidVia = undefined;
       c.updatedAt = nowIso();
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateChargeInDb(c.id, {
-          status: "canceled",
-          canceledBy: "user",
-          cancelReason: c.cancelReason,
-          paidAt: undefined,
-          method: undefined,
-          paidVia: undefined,
-        }, store.organization.id);
-        await cancelOnlinePaymentsForChargeInDb(
-          c.id,
-          store.organization.id,
-          c.cancelReason || "Cobrança cancelada",
-        );
-      }
       cancelOnlinePaymentsForCharge(c.id, c.cancelReason || "Cobrança cancelada");
       recordChargeEvent(c, "cancelled", "cancelou a", c.cancelReason);
       return clone(toChargeView(c));
@@ -161,13 +120,6 @@ export const chargePaymentsService = {
       c.canceledBy = undefined;
       c.cancelReason = undefined;
       c.updatedAt = nowIso();
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateChargeInDb(c.id, {
-          status: "pending",
-          canceledBy: undefined,
-          cancelReason: undefined,
-        }, store.organization.id);
-      }
       recordChargeEvent(c, "status_changed", "reabriu a");
       return clone(toChargeView(c));
     });

@@ -1,13 +1,9 @@
 import type { Charge, ClassReservation, Id, ReservationKind, ReservationView } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { isSupabaseOrganization } from "@/lib/session";
 import { apiError, newId, notFoundError, nowIso, simulateWrite, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
-import { insertChargesInDb, updateChargeInDb } from "../billingBackend";
-import { upsertMultipleStudentPackagesInDb } from "../packagesBackend";
 import { acceptsPackages, hasUsablePackage } from "../packagesService";
-import { cancelReservationBySessionStudentInDb, createReservationInDb } from "../turmasBackend";
 import { syncAttendanceUsage } from "./attendancePackageUsage";
 import {
   clone,
@@ -115,9 +111,6 @@ export const reservationsService = {
           };
           store.charges.push(charge);
           chargeId = charge.id;
-          if (isSupabaseOrganization(store.organization.id)) {
-            await insertChargesInDb([charge]);
-          }
         }
       }
 
@@ -132,10 +125,6 @@ export const reservationsService = {
         status: "reserved",
         reservedAt: ts,
       };
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createReservationInDb(reservation, store.organization.id);
-      }
 
       store.reservations.push(reservation);
       auditLogService.record({
@@ -167,10 +156,6 @@ export const reservationsService = {
         (a) => !(a.sessionId === input.sessionId && a.studentId === input.studentId),
       );
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await cancelReservationBySessionStudentInDb(input.sessionId, input.studentId, store.organization.id);
-      }
-
       r.status = "canceled";
       // Cancela a cobranca avulsa vinculada (por chargeId ou busca), se ainda nao paga.
       const targetChargeId = r.chargeId || r.cobrancaId;
@@ -191,19 +176,6 @@ export const reservationsService = {
         charge.canceledBy = "system";
         charge.notes = "Saiu da aula";
         charge.updatedAt = nowIso();
-        if (isSupabaseOrganization(store.organization.id)) {
-          await updateChargeInDb(charge.id, {
-            status: "canceled",
-            canceledBy: "system",
-            notes: charge.notes,
-          }, store.organization.id);
-        }
-      }
-      if (returned && isSupabaseOrganization(store.organization.id)) {
-        const pkgs = store.studentPackages.filter((p) => p.studentId === input.studentId);
-        if (pkgs.length > 0) {
-          await upsertMultipleStudentPackagesInDb(pkgs);
-        }
       }
       auditLogService.record({
         action: "cancelled",

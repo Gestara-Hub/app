@@ -3,8 +3,6 @@ import { DEFAULT_TEACHER_PAYMENT_DAY, describeTeacherPayRule } from "@gestarahub
 import { newId, notFoundError, nowIso, simulateRead, simulateWrite } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
-import { isSupabaseOrganization } from "@/lib/session";
-import { saveTeacherPayRuleInDb } from "../teacherPayBackend";
 import { clone, ruleOf } from "./teacherPayHelpers";
 import { syncTeacherPayFromDb } from "./teacherPayStore";
 import { normalizeComponents, validateRulePayload } from "./teacherPayValidation";
@@ -88,10 +86,6 @@ export const teacherPayRulesService = {
           target: { type: "teacher_pay_rule", id: rule.id, label: professional.name },
           predicate: `configurou o pagamento de ${professional.name} (${describeTeacherPayRule(rule)})`,
         });
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayRuleInDb(rule);
       }
 
       return clone(rule);

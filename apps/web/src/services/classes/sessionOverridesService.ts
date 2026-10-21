@@ -5,11 +5,9 @@ import type {
   SubstituteInstructorPayload,
 } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
-import { isSupabaseOrganization } from "@/lib/session";
 import { notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
-import { deleteSessionOverrideInDb, upsertSessionOverrideInDb } from "../turmasBackend";
 import { clone, instructorName, resolveSession } from "./classShared";
 import { validateSubstituteConflict } from "./classValidation";
 import { buildSessionDetail } from "./classViews";
@@ -43,10 +41,6 @@ export const sessionOverridesService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await upsertSessionOverrideInDb(overrideRecord, store.organization.id);
-      }
-
       if (existingIndex !== -1) {
         store.sessionOverrides[existingIndex] = overrideRecord;
       } else {
@@ -64,9 +58,6 @@ export const sessionOverridesService = {
 
   restorePrimaryInstructor(sessionId: Id): Promise<ClassSessionDetail> {
     return simulateWrite(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
-        await deleteSessionOverrideInDb(sessionId, store.organization.id);
-      }
 
       if (store.sessionOverrides) {
         const idx = store.sessionOverrides.findIndex(

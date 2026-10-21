@@ -6,10 +6,8 @@ import type {
   DateISO,
   Id,
 } from "@gestarahub/contracts";
-import { isSupabaseOrganization } from "@/lib/session";
 import { apiError, newId, nowIso, simulateRead, simulateWrite } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { applyAttendanceWithPackagesInDb } from "../packagesBackend";
 import { assertTeacherSession } from "../teacherScope";
 import { syncAttendanceUsage, auditPackageUsage } from "./attendancePackageUsage";
 import { todayISO, parseSessionId, resolveSession } from "./classShared";
@@ -51,16 +49,6 @@ export const attendanceService = {
       // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
       const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
       // Presenca e gasto do pacote na mesma transacao (nunca um sem o outro).
-      if (isSupabaseOrganization(store.organization.id)) {
-        await applyAttendanceWithPackagesInDb({
-          organizationId: store.organization.id,
-          sessionId: input.sessionId,
-          studentId: input.studentId,
-          attendance: attendanceRecord,
-          packages:
-            usage === "none" ? [] : store.studentPackages.filter((p) => p.studentId === input.studentId),
-        });
-      }
       auditPackageUsage(usage, g, date, input.studentId, input.status);
     });
   },
@@ -76,16 +64,6 @@ export const attendanceService = {
       );
       const usage = syncAttendanceUsage(input.sessionId, input.studentId);
       // Apaga a presenca e devolve a aula do pacote na mesma transacao.
-      if (isSupabaseOrganization(store.organization.id)) {
-        await applyAttendanceWithPackagesInDb({
-          organizationId: store.organization.id,
-          sessionId: input.sessionId,
-          studentId: input.studentId,
-          attendance: null,
-          packages:
-            usage === "none" ? [] : store.studentPackages.filter((p) => p.studentId === input.studentId),
-        });
-      }
       auditPackageUsage(usage, g, date, input.studentId);
     });
   },

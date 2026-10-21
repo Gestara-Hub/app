@@ -9,7 +9,7 @@ import {
   validationError,
 } from "@gestarahub/core/api-error";
 import { mockConfig } from "./config";
-import { persist, syncFromStorage } from "./store";
+import { inServerWorld, persist, syncFromStorage } from "./store";
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -42,6 +42,8 @@ export { apiError, networkError, notFoundError, validationError };
 
 /** Leitura simulada: latencia + chance de erro de rede (readErrorRate). */
 export async function simulateRead<T>(produce: () => T | Promise<T>): Promise<T> {
+  // No servidor (espaco do banco da requisicao) nao ha latencia simulada.
+  if (inServerWorld()) return await produce();
   await sleep(mockConfig.latencyMs);
   syncFromStorage();
   if (
@@ -58,6 +60,8 @@ export async function simulateRead<T>(produce: () => T | Promise<T>): Promise<T>
  * apos a mutacao, persiste o store (no-op no server/Node).
  */
 export async function simulateWrite<T>(produce: () => T | Promise<T>): Promise<T> {
+  // No servidor quem grava e o `services/world` (diferenca para o banco).
+  if (inServerWorld()) return await produce();
   await sleep(mockConfig.latencyMs);
   // Grava por cima do que esta salvo agora (outra aba pode ter gravado).
   syncFromStorage();

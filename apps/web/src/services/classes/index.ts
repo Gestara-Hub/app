@@ -6,6 +6,7 @@ import { enrollmentsService } from "./enrollmentsService";
 import { reservationsService } from "./reservationsService";
 import { sessionOverridesService } from "./sessionOverridesService";
 import { waitlistService } from "./waitlistService";
+import { delegateAll } from "../world/delegate";
 
 // Sub-servicos por subdominio (doc 12, fase 1). Codigo novo importa daqui.
 export {
@@ -22,7 +23,7 @@ export { sessionDetailOf, sessionsOfClass } from "./classViews";
 export type { ClassSessionListItem } from "./classViews";
 
 // Fachada retrocompativel: quem ja importa turmasService segue igual.
-export const turmasService = {
+export const turmasServiceImpl = {
   ...classGroupsService,
   ...enrollmentsService,
   ...courseCertificateService,
@@ -32,3 +33,6 @@ export const turmasService = {
   ...waitlistService,
   ...reservationsService,
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const turmasService = delegateAll("turmas", turmasServiceImpl);

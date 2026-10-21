@@ -9,7 +9,7 @@ import type {
   StudentPackage,
   WaitlistEntry,
 } from "@gestarahub/contracts";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "../world/delegate";
 import { store } from "@/mocks/store";
 import { listCategoriesFromDb } from "../categoriesBackend";
 import { listStudentPackagesFromDb } from "../packagesBackend";
@@ -24,7 +24,7 @@ import {
 } from "../turmasBackend";
 
 export async function syncTurmasFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   try {
     const promises: [
       Promise<ClassGroup[]>,

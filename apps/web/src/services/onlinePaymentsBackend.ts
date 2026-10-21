@@ -1254,3 +1254,36 @@ export async function listSubaccountReceiptsAction(
   return { items, total: pageRes.count ?? items.length, summary };
 }
 
+
+/**
+ * Depois de o servidor gravar o cancelamento dos codigos (doc 15, fatia 2),
+ * cancela tambem no Asaas. O espaco vem da sessao e as linhas sao lidas com o
+ * RLS dela. Ja pago no Asaas fica para o webhook dar a baixa; falha no Asaas
+ * marca para tentar de novo.
+ */
+export async function cancelGatewayPaymentsAction(paymentIds: Id[]): Promise<void> {
+  if (paymentIds.length === 0) return;
+  const { requireTenant } = await import("./server/tenant");
+  const ctx = await requireTenant();
+  const { data: rows } = await ctx.client
+    .from("online_payments")
+    .select("id, gateway_provider, gateway_payment_id")
+    .eq("organization_id", ctx.organizationId)
+    .in("id", paymentIds);
+  const asaasRows = (rows ?? []).filter((r) => r.gateway_provider === "asaas" && r.gateway_payment_id);
+  if (asaasRows.length === 0) return;
+  const key = await subaccountKeyOf(ctx.organizationId);
+  if (!key) return;
+  const pending: string[] = [];
+  for (const row of asaasRows) {
+    const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
+    if (result === "failed") pending.push(String(row.id));
+  }
+  if (pending.length > 0) {
+    await createSupabaseAdminClient()
+      .from("online_payments")
+      .update({ gateway_cancel_pending: true })
+      .eq("organization_id", ctx.organizationId)
+      .in("id", pending);
+  }
+}

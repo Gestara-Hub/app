@@ -15,10 +15,7 @@ import {
 import { addMonths, format, parseISO } from "date-fns";
 import { persist, store } from "@/mocks/store";
 import { newId, nowIso } from "@/mocks/helpers";
-import { isSupabaseOrganization } from "@/lib/session";
-import { generateMembershipChargesAction } from "../membershipBackend";
 import { planOf, todayISO } from "./billingHelpers";
-import { syncChargesFromDb } from "./billingSync";
 
 type ChargePeriod = CoreChargePeriod;
 
@@ -178,7 +175,6 @@ export function chargeStartedMembershipPeriods(student: Client, untilDate: strin
   return created;
 }
 
-
 /**
  * Geracao automatica na leitura: todo mes desde o inicio da vigencia mais
  * antiga ate o atual (mes em que ninguem abriu o app tambem gera, e o atraso
@@ -200,17 +196,6 @@ export function autoGenerateMembershipCharges(...competences: (string | undefine
  * Demonstracao: gera no store, como antes. Retorna quantas criou.
  */
 export async function ensureMembershipCharges(...competences: (string | undefined)[]): Promise<number> {
-  if (isSupabaseOrganization(store.organization.id)) {
-    const requested = competences.filter((c): c is string => Boolean(c));
-    let created = 0;
-    try {
-      created = await generateMembershipChargesAction(store.organization.id, requested);
-    } catch (err) {
-      console.error("[billingService] Erro ao gerar mensalidades no servidor:", err);
-    }
-    await syncChargesFromDb(store.organization.id);
-    return created;
-  }
   return autoGenerateMembershipCharges(...competences);
 }
 

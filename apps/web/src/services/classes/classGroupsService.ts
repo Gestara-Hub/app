@@ -9,7 +9,6 @@ import type {
 import { plural } from "@gestarahub/core/format";
 import { findInstructorConflicts, instructorConflictMessage } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
-import { isSupabaseOrganization } from "@/lib/session";
 import {
   apiError,
   newId,
@@ -24,7 +23,6 @@ import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
 import { actorTeacherId, teacherSeesClass } from "../teacherScope";
-import { createClassGroupInDb, setClassGroupStatusInDb, updateClassGroupInDb } from "../turmasBackend";
 import { clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
 import { syncTurmasFromDb } from "./classStore";
 import { normalizeBilling, validateGroup, sameSlots } from "./classValidation";
@@ -82,10 +80,6 @@ export const classGroupsService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createClassGroupInDb(g);
-      }
-
       store.classGroups.push(g);
       auditLogService.record({
         action: "created",
@@ -118,12 +112,6 @@ export const classGroupsService = {
         }
       }
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateClassGroupInDb(id, payload, store.organization.id, {
-          scheduleHistory: next.scheduleHistory,
-        });
-      }
-
       store.classGroups[idx] = {
         ...next,
         updatedAt: nowIso(),
@@ -147,10 +135,6 @@ export const classGroupsService = {
         throw validationError([
           { field: "status", message: "Turma já foi desativada." },
         ]);
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await setClassGroupStatusInDb(id, "inactive", store.organization.id);
       }
 
       store.classGroups[idx] = {
@@ -206,10 +190,6 @@ export const classGroupsService = {
           instructorConflictMessage(instructorName(g.instructorId) || "O instrutor", conflict),
           { httpStatus: 409 },
         );
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await setClassGroupStatusInDb(id, "active", store.organization.id);
       }
 
       store.classGroups[idx] = {

@@ -1,9 +1,9 @@
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "../world/delegate";
 import { listTeacherPayoutsFromDb, listTeacherPayRulesFromDb } from "../teacherPayBackend";
 
 export async function syncTeacherPayFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const [rules, payouts] = await Promise.all([
     listTeacherPayRulesFromDb(organizationId),
     listTeacherPayoutsFromDb(organizationId),

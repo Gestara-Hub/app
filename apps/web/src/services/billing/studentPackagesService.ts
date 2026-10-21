@@ -12,15 +12,8 @@ import { carryOverSources, leftoverLots, mergeLots, packageExpiresAt } from "@ge
 import { store } from "@/mocks/store";
 import { apiError, newId, notFoundError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { withKind } from "@/lib/text";
-import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "../auditLogService";
 import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
-import {
-  createStudentPackageInDb,
-  updateStudentPackageInDb,
-  upsertMultipleStudentPackagesInDb,
-} from "../packagesBackend";
-import { insertChargesInDb } from "../billingBackend";
 import { clone, studentName, todayISO } from "./billingHelpers";
 import { syncStudentPackagesFromDb } from "./billingSync";
 import { validateSale } from "./billingValidation";
@@ -126,14 +119,6 @@ export const studentPackagesService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createStudentPackageInDb(sold);
-        await insertChargesInDb(charges);
-        if (carry.sources.length > 0) {
-          await upsertMultipleStudentPackagesInDb(carry.sources);
-        }
-      }
-
       store.charges.push(...charges);
       store.studentPackages.push(sold);
       auditLogService.record({
@@ -186,15 +171,6 @@ export const studentPackagesService = {
         previous.renewedIntoId = undefined;
         previous.updatedAt = ts;
         restoredSources.push(previous);
-      }
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateStudentPackageInDb(pkg.id, { status: "canceled" }, store.organization.id);
-        if (canceledCharges.length > 0) {
-          await insertChargesInDb(canceledCharges);
-        }
-        if (restoredSources.length > 0) {
-          await upsertMultipleStudentPackagesInDb(restoredSources);
-        }
       }
       const name = studentName(pkg.studentId);
       auditLogService.record({

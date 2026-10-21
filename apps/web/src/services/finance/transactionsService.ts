@@ -11,14 +11,6 @@ import { plural } from "@gestarahub/core/format";
 import { paymentMethodLabel } from "@/lib/labels";
 import { newId, nowIso, simulateWrite } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
-import {
-  createFinancialEntryInDb,
-  createFinancialRecurrenceInDb,
-  deleteFinancialEntryInDb,
-  updateFinancialEntryInDb,
-  updateFinancialRecurrenceInDb,
-} from "../financeBackend";
 import {
   attachmentsNote,
   describeChanges,
@@ -94,13 +86,6 @@ export const transactionsService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(organizationId)) {
-        if (recurrence) {
-          await createFinancialRecurrenceInDb(recurrence);
-        }
-        await createFinancialEntryInDb(entry);
-      }
-
       store.financialEntries.push(entry);
       if (recurrence) await ensureRecurrenceEntries();
 
@@ -139,10 +124,6 @@ export const transactionsService = {
       applyPatch(entry, payload, ts);
       const changes = describeChanges(before, entry);
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialEntryInDb(id, payload, store.organization.id);
-      }
-
       let following = 0;
       const recurrence =
         scope === "following" && entry.recurrenceId
@@ -154,19 +135,6 @@ export const transactionsService = {
         if (payload.amountCents !== undefined) recurrence.amountCents = payload.amountCents;
         if (payload.dueDate !== undefined) recurrence.dayOfMonth = Number(payload.dueDate.slice(8, 10));
         recurrence.updatedAt = ts;
-
-        if (isSupabaseOrganization(store.organization.id)) {
-          await updateFinancialRecurrenceInDb(
-            recurrence.id,
-            {
-              categoryId: payload.categoryId,
-              description: payload.description,
-              amountCents: payload.amountCents,
-              dayOfMonth: payload.dueDate !== undefined ? Number(payload.dueDate.slice(8, 10)) : undefined,
-            },
-            store.organization.id,
-          );
-        }
 
         const from = entry.recurrenceCompetence ?? competenceOf(entry.dueDate);
         for (const other of store.financialEntries) {
@@ -191,18 +159,6 @@ export const transactionsService = {
             },
             ts,
           );
-          if (isSupabaseOrganization(store.organization.id)) {
-            await updateFinancialEntryInDb(
-              other.id,
-              {
-                categoryId: other.categoryId,
-                description: other.description,
-                amountCents: other.amountCents,
-                dueDate: other.dueDate,
-              },
-              store.organization.id,
-            );
-          }
           following += 1;
         }
       }
@@ -228,10 +184,6 @@ export const transactionsService = {
       }
       if (entry.recurrenceId) {
         throw conflict("Lançamento de repetição não pode ser excluído. Cancele ou encerre a repetição.");
-      }
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await deleteFinancialEntryInDb(id, store.organization.id);
       }
 
       store.financialEntries = store.financialEntries.filter((e) => e.id !== id);

@@ -23,7 +23,7 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { getCurrentActor } from "@/mocks/currentActor";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import {
   createUserAndInviteAction,
@@ -169,7 +169,7 @@ function ensureNotSelfPrivilegeChange(current: User, next: Partial<CreateUser>):
 export const usersService = {
   list(filter?: UserFilter): Promise<UserView[]> {
     return simulateRead(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const dbUsers = await listUsersFromDb(store.organization.id);
         const dbIds = new Set(dbUsers.map((u) => u.id));
         store.users = [
@@ -261,7 +261,7 @@ export const usersService = {
     return simulateWrite(async () => {
       validateUser(payload, { partial: false });
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const res = await createUserAndInviteAction(
           store.organization.id,
           payload,
@@ -321,7 +321,7 @@ export const usersService = {
     return simulateWrite(async () => {
       validateUser(payload, { partial: true });
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const res = await updateUserInDb(store.organization.id, id, payload);
         if (!res.success) {
           throw validationError([
@@ -387,7 +387,7 @@ export const usersService = {
   // remove = inativacao logica; usuario inativo nao pode logar nem e sugerido.
   remove(id: Id): Promise<void> {
     return simulateWrite(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const res = await inactivateUserInDb(store.organization.id, id);
         if (!res.success) {
           throw validationError([
@@ -420,7 +420,7 @@ export const usersService = {
 
   resendInvite(id: Id): Promise<{ success: boolean; error?: string }> {
     return simulateWrite(async () => {
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         return resendInvitationAction(store.organization.id, id);
       }
       return { success: true };

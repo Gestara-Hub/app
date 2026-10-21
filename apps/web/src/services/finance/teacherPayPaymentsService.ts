@@ -2,11 +2,8 @@ import type { Id, ManualPaymentDetails, PaymentMethod, TeacherPayout } from "@ge
 import { formatCents } from "@gestarahub/core/format";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { nowIso, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
-import { isSupabaseOrganization } from "@/lib/session";
-import { saveTeacherPayoutInDb } from "../teacherPayBackend";
 import { clone, competenceLabel, conflict, findPayout, payoutLabel, professionalName } from "./teacherPayHelpers";
 
 export const teacherPayPaymentsService = {
@@ -31,10 +28,6 @@ export const teacherPayPaymentsService = {
       if (details.receipts?.length) payout.attachments = details.receipts;
       payout.updatedAt = nowIso();
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayoutInDb(payout);
-      }
-
       auditLogService.record({
         action: "status_changed",
         target: { type: "teacher_payout", id, label: payoutLabel(payout.professionalId, payout.competence) },
@@ -54,10 +47,6 @@ export const teacherPayPaymentsService = {
       payout.method = undefined;
       payout.attachments = undefined;
       payout.updatedAt = nowIso();
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await saveTeacherPayoutInDb(payout);
-      }
 
       auditLogService.record({
         action: "status_changed",

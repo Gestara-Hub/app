@@ -18,8 +18,6 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
-import { createFinancialCategoryInDb, updateFinancialCategoryInDb } from "../financeBackend";
 import { auditLogService } from "../auditLogService";
 import { clone, conflict, isEntryType } from "./financeHelpers";
 import { syncFinanceFromDb } from "./financeStore";
@@ -76,10 +74,6 @@ export const financeCategoriesService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createFinancialCategoryInDb(category);
-      }
-
       store.financialCategories.push(category);
       auditLogService.record({
         action: "created",
@@ -119,10 +113,6 @@ export const financeCategoriesService = {
         status: payload.status ?? current.status,
         updatedAt: nowIso(),
       };
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialCategoryInDb(id, payload, store.organization.id);
-      }
 
       store.financialCategories[idx] = updated;
       const reactivated = current.status !== "active" && updated.status === "active";

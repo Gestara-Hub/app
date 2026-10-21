@@ -5,7 +5,6 @@ import type {
   WaitlistEntry,
   WaitlistEntryView,
 } from "@gestarahub/contracts";
-import { isSupabaseOrganization } from "@/lib/session";
 import {
   apiError,
   newId,
@@ -16,7 +15,6 @@ import {
   validationError,
 } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { addToWaitlistInDb, reorderWaitlistInDb, updateWaitlistStatusInDb } from "../turmasBackend";
 import { clone, studentName, activeEnrollments } from "./classShared";
 import { syncTurmasFromDb } from "./classStore";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
@@ -33,9 +31,6 @@ async function renumberWaitlist(classGroupId: Id): Promise<void> {
     w.position = i + 1;
   });
 
-  if (isSupabaseOrganization(store.organization.id)) {
-    await reorderWaitlistInDb(classGroupId, waiting.map((w) => w.id), store.organization.id);
-  }
 }
 
 export const waitlistService = {
@@ -86,10 +81,6 @@ export const waitlistService = {
         createdAt: nowIso(),
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await addToWaitlistInDb(entry, store.organization.id);
-      }
-
       store.waitlist.push(entry);
       return clone({ ...entry, studentName: studentName(input.studentId) });
     });
@@ -125,10 +116,6 @@ export const waitlistService = {
       validateStudentScheduleConflict(w.studentId, g.id);
       const choice = resolveCourseChoice(g, course);
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateWaitlistStatusInDb(id, "promoted", store.organization.id);
-      }
-
       w.status = "promoted";
       await renumberWaitlist(g.id);
       const enrollment = await createEnrollment(g, student.id, choice, defaultPaysWithPackage(g, student));
@@ -140,10 +127,6 @@ export const waitlistService = {
     return simulateWrite(async () => {
       const w = store.waitlist.find((x) => x.id === id);
       if (!w) throw notFoundError("Registro não encontrado.");
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateWaitlistStatusInDb(id, "canceled", store.organization.id);
-      }
 
       w.status = "canceled";
       await renumberWaitlist(w.classGroupId);

@@ -43,13 +43,9 @@ import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { auditLogService } from "./auditLogService";
-import { isSupabaseOrganization } from "@/lib/session";
+import { delegateAll, realAccountInBrowser } from "./world/delegate";
 import {
-  createAssessmentInDb,
-  deleteAssessmentInDb,
   listAssessmentsFromDb,
-  setGradesInDb,
-  updateAssessmentInDb,
 } from "./gradesBackend";
 
 /**
@@ -229,7 +225,7 @@ function className(classGroupId: Id): string {
 }
 
 export async function syncAssessmentsFromDb(organizationId: string): Promise<void> {
-  if (!isSupabaseOrganization(organizationId)) return;
+  if (!realAccountInBrowser(organizationId)) return;
   const dbAssessments = await listAssessmentsFromDb(organizationId);
   const dbMap = new Map(dbAssessments.map((a) => [a.id, a]));
   const list = assessmentsStore();
@@ -246,7 +242,7 @@ export async function syncAssessmentsFromDb(organizationId: string): Promise<voi
   }
 }
 
-export const gradesService = {
+export const gradesServiceImpl = {
   /** Aba "Avaliações" da turma: avaliacoes (mais recente primeiro) e media da turma. */
   listClassAssessments(classGroupId: Id): Promise<ClassAssessmentsView> {
     return simulateRead(async () => {
@@ -319,10 +315,6 @@ export const gradesService = {
         updatedAt: ts,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createAssessmentInDb(assessment);
-      }
-
       assessmentsStore().push(assessment);
       auditLogService.record({
         action: "created",
@@ -343,10 +335,6 @@ export const gradesService = {
       validateFields(payload, true, fields);
       if (payload.levelId) validateLevel(current.modalityId, payload.levelId, fields);
       if (fields.length > 0) throw validationError(fields);
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateAssessmentInDb(id, payload, store.organization.id);
-      }
 
       if (payload.name !== undefined) current.name = payload.name.trim();
       if (payload.date !== undefined) current.date = payload.date;
@@ -369,10 +357,6 @@ export const gradesService = {
       const current = findAssessment(id);
       const group = findClass(current.classGroupId);
       assertCanManage(group);
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await deleteAssessmentInDb(id, store.organization.id);
-      }
 
       store.assessments = assessmentsStore().filter((a) => a.id !== id);
       auditLogService.record({
@@ -439,10 +423,6 @@ export const gradesService = {
         });
       }
       current.updatedAt = ts;
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await setGradesInDb(assessmentId, current.grades, store.organization.id);
-      }
 
       auditLogService.record({
         action: "updated",
@@ -520,3 +500,6 @@ export const gradesService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const gradesService = delegateAll("grades", gradesServiceImpl);

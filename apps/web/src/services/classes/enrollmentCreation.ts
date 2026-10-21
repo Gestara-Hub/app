@@ -1,14 +1,11 @@
 import type { Charge, ClassGroup, Client, Enrollment, EnrollmentCourseChoice, Id } from "@gestarahub/contracts";
 import { classBillingMode, splitInstallments } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
-import { isSupabaseOrganization } from "@/lib/session";
 import { withKind } from "@/lib/text";
 import { newId, nowIso, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
 import { auditLogService } from "../auditLogService";
-import { insertChargesInDb } from "../billingBackend";
 import { hasUsablePackage } from "../packagesService";
-import { createEnrollmentInDb } from "../turmasBackend";
 import { todayISO, studentName } from "./classShared";
 
 /**
@@ -57,12 +54,6 @@ export async function createEnrollment(
       }),
     );
     store.charges.push(...courseCharges);
-    if (isSupabaseOrganization(store.organization.id)) {
-      await insertChargesInDb(courseCharges);
-    }
-  }
-  if (isSupabaseOrganization(store.organization.id)) {
-    await createEnrollmentInDb(enrollment, store.organization.id);
   }
   store.enrollments.push(enrollment);
   auditLogService.record({

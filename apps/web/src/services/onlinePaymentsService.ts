@@ -32,8 +32,11 @@ import { persist, store } from "@/mocks/store";
 import { auditLogService } from "./auditLogService";
 import { paymentGateway } from "./payments/paymentGateway";
 import { assertFeature, tenantHasFeature } from "./subscriptionService";
+import { delegateAll, realAccountInBrowser } from "./world/delegate";
+import { afterWorldCommit } from "./world/effects";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
+  cancelGatewayPaymentsAction,
   cancelOnlinePaymentsForChargeInDb,
   insertOnlinePaymentInDb,
   listOnlinePaymentsForChargeFromDb,
@@ -152,7 +155,7 @@ function findOpenCharge(chargeId: Id): Charge {
  * (`expireDueOnlinePayments`), e o navegador so le o status do banco.
  */
 function expireStale(): boolean {
-  if (isSupabaseOrganization(store.organization.id)) return false;
+  if (realAccountInBrowser()) return false;
   const now = nowIso();
   let changed = false;
   for (const p of store.onlinePayments) {
@@ -208,18 +211,25 @@ function assertMethodAccepted(method: OnlinePaymentMethod, settings: OnlinePayme
  */
 export function cancelOnlinePaymentsForCharge(chargeId: Id, reason?: string): number {
   let count = 0;
+  const canceled: Id[] = [];
   for (const p of store.onlinePayments) {
     if (p.chargeId === chargeId && p.status === "awaiting") {
       p.status = "canceled";
       if (reason) p.canceledReason = reason;
       count += 1;
+      canceled.push(p.id);
     }
+  }
+  // No servidor (doc 15, fatia 2) o cancelamento vai para o banco junto com o
+  // resto da operacao; o Asaas e avisado depois que a gravacao der certo.
+  if (canceled.length > 0 && afterWorldCommit(() => cancelGatewayPaymentsAction(canceled))) {
+    return count;
   }
   // Conta real: cancela tambem no banco e no Asaas (troca de plano, inativacao,
   // saida da aula...), para o aluno nao pagar um link antigo. Sem esperar: quem
   // chama esta no meio da propria escrita; erro fica no log e o Asaas e
   // retentado depois. Repetir para a mesma cobranca nao tem efeito.
-  if (isSupabaseOrganization(store.organization.id)) {
+  if (realAccountInBrowser()) {
     void cancelOnlinePaymentsForChargeInDb(chargeId, store.organization.id, reason).catch((err) =>
       console.error("[onlinePaymentsService] Erro ao cancelar a cobrança online no banco e no Asaas:", err),
     );
@@ -324,7 +334,7 @@ function findAuthorization(id: Id): RecurringAuthorization {
   return a;
 }
 
-export const onlinePaymentsService = {
+export const onlinePaymentsServiceImpl = {
   // --- Configuracao -----------------------------------------------------------
   getSettings(): Promise<OnlinePaymentSettings> {
     return simulateRead(() => clone(currentSettings()));
@@ -392,7 +402,7 @@ export const onlinePaymentsService = {
         settings: { ...store.organization.settings, onlinePayments: next },
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         try {
           await updateOrganizationOnlineSettingsAction(store.organization.id, {
             enabled: next.enabled,
@@ -453,7 +463,7 @@ export const onlinePaymentsService = {
       const student = store.clients.find((s) => s.id === c.studentId);
       let payments = paymentsOf(c.id);
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const dbPayments = await listOnlinePaymentsForChargeFromDb(
           c.id,
           store.organization.id,
@@ -585,7 +595,7 @@ export const onlinePaymentsService = {
         createdAt: nowIso(),
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         try {
           await cancelOnlinePaymentsForChargeInDb(
             c.id,
@@ -620,7 +630,7 @@ export const onlinePaymentsService = {
     return simulateWrite(async () => {
       assertFeature("online_payments");
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         const result = await simulateOnlinePaidAction(onlinePaymentId);
         if (!result) {
           throw notFoundError("Pagamento online não encontrado no banco.");
@@ -836,3 +846,6 @@ export const onlinePaymentsService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const onlinePaymentsService = delegateAll("onlinePayments", onlinePaymentsServiceImpl, ["getSettings", "syncSubaccountApproved", "updateSettings", "simulatePaid", "getRecurringForStudent", "listActiveRecurring", "requestRecurring", "simulateAuthorize", "revokeRecurring"]);

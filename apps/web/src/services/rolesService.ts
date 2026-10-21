@@ -1,6 +1,6 @@
 import type { CreateRole, Id, Role, RoleFilter, UpdateRole } from "@gestarahub/contracts";
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { normalizeText } from "@/lib/text";
 import {
   newId,
@@ -36,7 +36,7 @@ function clone<T>(value: T): T {
 }
 
 function isRealAccount(): boolean {
-  return isSupabaseOrganization(store.organization.id);
+  return realAccountInBrowser();
 }
 
 /**

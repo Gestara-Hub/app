@@ -3,6 +3,7 @@ import { chargesService } from "./chargesService";
 import { lessonPackagesService } from "./lessonPackagesService";
 import { plansService } from "./plansService";
 import { studentPackagesService } from "./studentPackagesService";
+import { delegateAll } from "../world/delegate";
 
 export { chargePaymentsService, chargesService, lessonPackagesService, plansService, studentPackagesService };
 
@@ -34,14 +35,20 @@ export {
 } from "./packageUsage";
 
 /** Objeto legado: planos + cobrancas (mesmos metodos de antes). */
-export const billingService = {
+export const billingServiceImpl = {
   ...plansService,
   ...chargesService,
   ...chargePaymentsService,
 };
 
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const billingService = delegateAll("billing", billingServiceImpl, ["listPlans", "createPlan", "updatePlan"]);
+
 /** Objeto legado: catalogo de pacotes + pacotes dos alunos. */
-export const packagesService = {
+export const packagesServiceImpl = {
   ...lessonPackagesService,
   ...studentPackagesService,
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const packagesService = delegateAll("packages", packagesServiceImpl, ["listPackages", "createPackage", "updatePackage"]);

@@ -34,6 +34,7 @@ import { assertFeature } from "./subscriptionService";
 import { sessionDetailOf, sessionsOfClass } from "./turmasService";
 import { can } from "@/lib/permissions";
 import { getCurrentActor } from "@/mocks/currentActor";
+import { delegateAll } from "./world/delegate";
 
 const CATALOG: ReportMetadata[] = [
   // 1. Operacionais (Free)
@@ -246,7 +247,7 @@ function buildPackageReport(competence: string, today: string): Omit<PackageRepo
   };
 }
 
-export const reportsService = {
+export const reportsServiceImpl = {
   getCatalog(): Promise<ReportMetadata[]> {
     return simulateRead(() =>
       CATALOG.filter((r) => actorCanSee(r.type)).map((r) => ({
@@ -641,3 +642,6 @@ export const reportsService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const reportsService = delegateAll("reports", reportsServiceImpl);

@@ -8,9 +8,6 @@ import type {
 } from "@gestarahub/contracts";
 import { paymentMethodLabel } from "@/lib/labels";
 import { nowIso, simulateWrite, validationError } from "@/mocks/helpers";
-import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
-import { updateFinancialEntryInDb } from "../financeBackend";
 import { paidAtFromDate, paidOnNote } from "../payment-date";
 import { attachmentsNote, entryFacts, entryLabel, PAID_STATUS_LABEL, recordEntry } from "./financeAudit";
 import { clone, conflict, isPaymentMethod } from "./financeHelpers";
@@ -46,19 +43,6 @@ export const entryStatusService = {
       if (receipts.length > 0) entry.attachments = attachments;
       entry.updatedAt = nowIso();
 
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialEntryInDb(
-          id,
-          {
-            status: "paid",
-            paidAt,
-            method,
-            attachments: entry.attachments,
-          },
-          store.organization.id,
-        );
-      }
-
       recordEntry(
         entry,
         "status_changed",
@@ -79,18 +63,6 @@ export const entryStatusService = {
       entry.paidAt = undefined;
       entry.method = undefined;
       entry.updatedAt = nowIso();
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialEntryInDb(
-          id,
-          {
-            status: "pending",
-            paidAt: undefined,
-            method: undefined,
-          },
-          store.organization.id,
-        );
-      }
 
       recordEntry(
         entry,
@@ -119,10 +91,6 @@ export const entryStatusService = {
       }
       entry.status = "canceled";
       entry.updatedAt = nowIso();
-
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateFinancialEntryInDb(id, { status: "canceled" }, store.organization.id);
-      }
 
       recordEntry(entry, "cancelled", `cancelou a ${entryLabel(entry)} ${entryFacts(entry)}`);
       return clone(entry);

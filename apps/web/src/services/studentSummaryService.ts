@@ -30,6 +30,7 @@ import { store } from "@/mocks/store";
 import { notFoundError, simulateRead } from "@/mocks/helpers";
 import { ensureMembershipCharges } from "./billingService";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
+import { delegateAll } from "./world/delegate";
 
 /**
  * Resumo do aluno (ficha do aluno, doc 22 item 2): a leitura unica que a API
@@ -299,7 +300,7 @@ function activePackagesOf(client: Client, today: DateISO): StudentPackageView[] 
     );
 }
 
-export const studentSummaryService = {
+export const studentSummaryServiceImpl = {
   getStudentSummary(studentId: Id): Promise<StudentSummary> {
     return simulateRead(async () => {
       const client = store.clients.find((c) => c.id === studentId);
@@ -333,3 +334,6 @@ export const studentSummaryService = {
     });
   },
 };
+
+/** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */
+export const studentSummaryService = delegateAll("studentSummary", studentSummaryServiceImpl);

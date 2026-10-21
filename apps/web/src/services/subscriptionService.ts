@@ -9,7 +9,7 @@ import { hasFeature, isSubscriptionTier, tierOf } from "@/lib/subscription";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { apiError, nowIso, simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import {
   cancelAsaasSubscriptionAction,
@@ -99,7 +99,7 @@ export const subscriptionService = {
         },
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         try {
           await updateOrganizationSubscriptionAction(store.organization.id, tier);
         } catch (dbErr) {
@@ -206,7 +206,7 @@ export const subscriptionService = {
         subscription: newSub,
       };
 
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         try {
           await updateOrganizationSubscriptionAction(store.organization.id, newSub);
         } catch (dbErr) {

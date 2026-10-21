@@ -19,7 +19,7 @@ import {
 } from "@/mocks/helpers";
 import { auditLogService } from "./auditLogService";
 import { categoryNoun } from "./nouns";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { unwrap } from "./server/action";
 import {
   createCategoryAction,
@@ -49,7 +49,7 @@ function clone<T>(value: T): T {
 const NOT_FOUND = "Categoria não encontrada.";
 
 function isRealAccount(): boolean {
-  return isSupabaseOrganization(store.organization.id);
+  return realAccountInBrowser();
 }
 
 /**

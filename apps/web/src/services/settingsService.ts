@@ -12,14 +12,14 @@ import type {
 import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { simulateRead, simulateWrite, validationError } from "@/mocks/helpers";
-import { isSupabaseOrganization } from "@/lib/session";
+import { realAccountInBrowser } from "./world/delegate";
 import { auditLogService } from "./auditLogService";
 import { getOrganizationGatewayAction } from "./onlinePaymentsBackend";
 import { updateOrganizationInDb, updateUnitInDb } from "./settingsBackend";
 
 /** Conta real (id UUID): grava no Supabase depois de atualizar o store. */
 async function persistOrganization(): Promise<void> {
-  if (isSupabaseOrganization(store.organization.id)) {
+  if (realAccountInBrowser()) {
     await updateOrganizationInDb(store.organization);
   }
 }
@@ -89,7 +89,7 @@ export const settingsService = {
   },
 
   async getOrganization(): Promise<Organization> {
-    if (typeof window !== "undefined" && isSupabaseOrganization(store.organization.id)) {
+    if (typeof window !== "undefined" && realAccountInBrowser()) {
       try {
         const remote = await getOrganizationGatewayAction(store.organization.id);
         if (remote && remote.status !== "not_configured") {
@@ -204,7 +204,7 @@ export const settingsService = {
         address: payload.address !== undefined ? payload.address : store.unit.address,
         phone: payload.phone !== undefined ? (typeof payload.phone === "string" ? payload.phone.trim() || undefined : payload.phone) : store.unit.phone,
       };
-      if (isSupabaseOrganization(store.organization.id)) {
+      if (realAccountInBrowser()) {
         await updateUnitInDb(store.unit);
       }
       // Distingue alteracao do expediente (o caso mais sensivel) dos demais dados.

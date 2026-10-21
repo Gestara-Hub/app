@@ -1,6 +1,5 @@
 import type { Client, Id, UpdateClient } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
-import { isSupabaseOrganization } from "@/lib/session";
 import { store } from "@/mocks/store";
 import { notFoundError, nowIso, simulateWrite } from "@/mocks/helpers";
 import { auditLogService } from "../auditLogService";
@@ -11,7 +10,6 @@ import {
   membershipPeriodTaken,
   studentMembershipTerms,
 } from "../billingService";
-import { getClientFromDb, inactivateClientInDb, updateClientInDb } from "../clientsBackend";
 import { clientNoun } from "../nouns";
 import { endStudentEnrollments, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
@@ -22,29 +20,6 @@ export const clientLifecycleService = {
   update(id: Id, payload: UpdateClient): Promise<Client> {
     return simulateWrite(async () => {
       let current = store.clients.find((c) => c.id === id);
-      if (isSupabaseOrganization(store.organization.id)) {
-        if (!current) {
-          const fetched = await getClientFromDb(store.organization.id, id);
-          if (fetched) {
-            store.clients.push(fetched);
-            current = fetched;
-          }
-        }
-        if (!current) throw notFoundError(NOT_FOUND);
-        validateClient(payload, { partial: true, current });
-
-        const updated = await updateClientInDb(store.organization.id, id, payload);
-        const idx = store.clients.findIndex((c) => c.id === id);
-        if (idx !== -1) store.clients[idx] = updated;
-        else store.clients.push(updated);
-
-        auditLogService.record({
-          action: current.status !== "active" && updated.status === "active" ? "activated" : "updated",
-          target: { type: "client", id: updated.id, label: updated.name },
-          predicate: `${current.status !== "active" && updated.status === "active" ? "reativou" : "atualizou"} o ${clientNoun()} ${updated.name}`,
-        });
-        return clone(updated);
-      }
 
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
@@ -170,32 +145,6 @@ export const clientLifecycleService = {
   remove(id: Id, opts: { cancelOpenCharges?: boolean } = {}): Promise<void> {
     return simulateWrite(async () => {
       let before = store.clients.find((c) => c.id === id);
-      if (isSupabaseOrganization(store.organization.id)) {
-        if (!before) {
-          const fetched = await getClientFromDb(store.organization.id, id);
-          if (fetched) {
-            store.clients.push(fetched);
-            before = fetched;
-          }
-        }
-        if (!before) throw notFoundError(NOT_FOUND);
-
-        await inactivateClientInDb(store.organization.id, id);
-
-        const idx = store.clients.findIndex((c) => c.id === id);
-        if (idx !== -1) {
-          store.clients[idx] = { ...store.clients[idx], status: "inactive", updatedAt: nowIso() };
-        }
-        const ended = endStudentEnrollments(id);
-        const canceled = cancelOpenMembershipCharges(id, todayISO(), "Cancelada na inativação do aluno");
-
-        auditLogService.record({
-          action: "inactivated",
-          target: { type: "client", id, label: before.name },
-          predicate: `inativou o ${clientNoun()} ${before.name}${ended > 0 ? `, encerrou ${plural(ended, "matrícula", "matrículas")}` : ""}${canceled > 0 ? ` e cancelou ${plural(canceled, "mensalidade futura", "mensalidades futuras")}` : ""}`,
-        });
-        return;
-      }
 
       const idx = store.clients.findIndex((c) => c.id === id);
       if (idx === -1) throw notFoundError(NOT_FOUND);
