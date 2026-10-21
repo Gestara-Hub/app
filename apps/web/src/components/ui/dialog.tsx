@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
+import { ArrowDown, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
@@ -564,20 +564,21 @@ function DialogBody({
         </div>
       </div>
 
-      {/* Barra dedicada fora da área dos inputs (nunca sobrepõe caixas de texto) */}
+      {/* Pill flutuante so com o icone: some no fim da rolagem e com o teclado
+          aberto no celular, entao nao fica por cima do campo em que se digita. */}
       {showCue ? (
-        <div className="shrink-0 flex justify-center border-t border-border/40 bg-muted/30 px-4 py-1">
+        <>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-background to-transparent" />
           <button
             type="button"
             onClick={scrollToBottom}
-            aria-label="Rolar para ver mais campos"
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer select-none active:scale-95"
-            title="Clique para rolar e ver mais opções"
+            aria-label={scrollCueLabel}
+            title={scrollCueLabel}
+            className="absolute bottom-3 left-1/2 z-20 inline-flex size-9 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-muted/90 text-foreground shadow-sm backdrop-blur-xs transition-colors select-none hover:bg-accent active:scale-95"
           >
-            <span>{scrollCueLabel}</span>
-            <ChevronDown className="h-3.5 w-3.5 animate-bounce text-primary" />
+            <ArrowDown className="size-4" aria-hidden />
           </button>
-        </div>
+        </>
       ) : null}
     </div>
   )

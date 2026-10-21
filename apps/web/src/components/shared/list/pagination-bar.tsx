@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export interface PaginationBarProps {
@@ -70,12 +71,11 @@ export function PaginationBar({
         {onPageSizeChange && (
           <div className="ml-2 hidden items-center gap-1.5 sm:flex">
             <span>por página:</span>
-            <select
-              aria-label="Itens por página"
-              value={pageSize}
+            <Select
+              value={String(pageSize)}
               disabled={disabled}
-              onChange={(e) => {
-                const newSize = Number(e.target.value);
+              onValueChange={(value) => {
+                const newSize = Number(value);
                 onPageSizeChange(newSize);
                 if (typeof window !== "undefined") {
                   window.dispatchEvent(
@@ -85,14 +85,18 @@ export function PaginationBar({
                   );
                 }
               }}
-              className="h-7 rounded border border-input bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger size="sm" className="w-auto min-w-16 text-xs" aria-label="Itens por página">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((opt) => (
+                  <SelectItem key={opt} value={String(opt)}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>

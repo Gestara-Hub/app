@@ -86,7 +86,7 @@ Todo modal de formulário (`*-form.tsx` / `*-dialog.tsx`) deve dividir a estrutu
 2. **`DialogHeader`**: `className="p-6 pb-2 pr-20 shrink-0"` (reserva espaço à direita para o botão `X` e o botão expandir).
 3. **`<form>` + `DialogBody` + `DialogFormFooter`**:
    - O `<form>` recebe `className="flex flex-col min-h-0 flex-1 overflow-hidden"`.
-   - Os campos ficam dentro de `<DialogBody className="space-y-4">` (que gerencia o `overflow-y-auto`, padding `px-6 py-3` e o indicador `"Mais campos abaixo"`).
+   - Os campos ficam dentro de `<DialogBody className="space-y-4">` (que gerencia o `overflow-y-auto`, padding `px-6 py-3` e o indicador de rolagem, um pill flutuante ⌄).
    - O rodapé fica fora do `DialogBody`, com `shrink-0 border-t border-border/40 p-6 pt-4 bg-background`.
 
 ```tsx
@@ -202,8 +202,8 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Solução implementada em `components/ui/dialog.tsx`**:
   `DialogContent` mede `Math.round(window.screen.height * 0.78)` em pixels fixos (`mobileMaxHeightPx`) e aplica via `style={{ maxHeight: "${mobileMaxHeightPx}px" }}` no mobile. Assim, o tamanho do modal permanece constante quando o teclado abre no Chrome iOS (idêntico ao comportamento nativo do Safari).
 
-### 3.4. Indicador `"Mais campos abaixo"` e Rodapé de 2 Colunas no Mobile
-- O indicador de rolagem `"Mais campos abaixo ⌄"` do `DialogBody` fica em uma **barra dedicada na base do scroll (`border-t bg-muted/30`)**, nunca em `position: absolute` flutuando sobre os inputs, e é ocultado automaticamente enquanto um input está focado no celular (`isMobileInputFocused`).
+### 3.4. Indicador de rolagem (pill ⌄) e Rodapé de 2 Colunas no Mobile
+- O indicador de rolagem do `DialogBody` é um **botão redondo flutuante com a seta ↓, sem animação** (21/10/2026, a pedido; antes era uma barra com o texto "Mais campos abaixo"), centralizado na base da área rolável, com um esmaecido por trás. O texto (`scrollCueLabel`) fica no `aria-label` e no `title`. Some no fim da rolagem e enquanto um input está focado no celular (`isMobileInputFocused`), por isso não fica por cima do campo em que se digita.
 - O `DialogFooter` posiciona `Cancelar` e `Adicionar`/`Salvar` **lado a lado em 2 colunas no mobile** (`grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:justify-end`), economizando `~48px` de altura vertical.
 
 ### 3.5. `crypto.randomUUID()` em Redes Locais (`http://192.168.x.x`)
