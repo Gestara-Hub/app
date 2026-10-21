@@ -70,7 +70,7 @@ import {
   createFinancialEntryInDb,
   createFinancialRecurrenceInDb,
   deleteFinancialEntryInDb,
-  insertFinancialEntriesBatchInDb,
+  materializeRecurrencesAction,
   listFinancialCategoriesFromDb,
   listFinancialEntriesFromDb,
   listFinancialRecurrencesFromDb,
@@ -239,7 +239,7 @@ export async function syncFinanceFromDb(organizationId: string): Promise<void> {
   }
 }
 
-/** Cria os lancamentos que faltam de cada recorrencia ativa. Devolve quantos criou. */
+/** Demonstracao: cria no store os lancamentos que faltam de cada recorrencia ativa. Devolve quantos criou. */
 async function materializeAllAsync(): Promise<number> {
   const upTo = addCompetence(currentCompetence(), 1);
   const ts = nowIso();
@@ -255,13 +255,6 @@ async function materializeAllAsync(): Promise<number> {
       newEntries.push(entry);
     }
   }
-  if (newEntries.length > 0 && isSupabaseOrganization(store.organization.id)) {
-    try {
-      await insertFinancialEntriesBatchInDb(newEntries);
-    } catch (err) {
-      console.error("[financeService] Erro ao sincronizar lote de recorrências no banco:", err);
-    }
-  }
   return newEntries.length;
 }
 
@@ -274,6 +267,24 @@ async function ensureMaterialized(competence?: string): Promise<void> {
   await ensureMembershipCharges(competence);
   // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Cobrancas.
   applyRecurringAutoPayments();
+  await ensureRecurrenceEntries();
+}
+
+/**
+ * Lancamentos das recorrencias. Conta real: no servidor
+ * (`materializeRecurrencesAction`, protegido contra duplicata) e trazidos do
+ * banco; o navegador nao cria mais. Demonstracao: no store, como antes.
+ */
+async function ensureRecurrenceEntries(): Promise<void> {
+  if (isSupabaseOrganization(store.organization.id)) {
+    try {
+      const created = await materializeRecurrencesAction(store.organization.id);
+      if (created > 0) await syncFinanceFromDb(store.organization.id);
+    } catch (err) {
+      console.error("[financeService] Erro ao gerar lançamentos repetidos no servidor:", err);
+    }
+    return;
+  }
   const created = await materializeAllAsync();
   if (created > 0) persist();
 }
@@ -890,7 +901,7 @@ export const financeService = {
       }
 
       store.financialEntries.push(entry);
-      if (recurrence) await materializeAllAsync();
+      if (recurrence) await ensureRecurrenceEntries();
 
       const paidNote = payload.paidNow ? `, pago via ${paymentMethodLabel(payload.paidNow.method)}` : "";
       const repeatNote = recurrence ? ", com repetição mensal" : "";
