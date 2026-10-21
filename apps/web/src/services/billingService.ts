@@ -24,8 +24,20 @@ import {
   resolveMembershipTerms,
   splitInstallments,
   type CompetenceCharge,
-  type ScheduledCharge,
 } from "@gestarahub/core/billing";
+import {
+  coversPeriod,
+  isPlanlessScholar as coreIsPlanlessScholar,
+  membershipCompetencesToGenerate,
+  membershipPeriodTaken as coreMembershipPeriodTaken,
+  membershipStartDate,
+  planMembershipCharges,
+  plannedMembershipCharge,
+  scholarshipChargeFields as coreScholarshipChargeFields,
+  type ChargePeriod as CoreChargePeriod,
+  type MembershipWorld,
+  type PlannedMembershipCharge,
+} from "@gestarahub/core/membership-generation";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { addMonths, format, parseISO } from "date-fns";
 import { persist, store } from "@/mocks/store";
@@ -43,6 +55,7 @@ import { auditLogService } from "./auditLogService";
 import { applyRecurringAutoPayments, cancelOnlinePaymentsForCharge } from "./onlinePaymentsService";
 import { cancelOnlinePaymentsForChargeInDb } from "./onlinePaymentsBackend";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
+import { generateMembershipChargesAction } from "./membershipBackend";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
   createPlanInDb,
@@ -204,42 +217,16 @@ function validatePlan(payload: Partial<CreatePlan>): void {
   if (fields.length > 0) throw validationError(fields);
 }
 
-/**
- * A cobranca existente ja cobre o periodo planejado? Com periodo completo vale a
- * sobreposicao (depois de mudar a regra os periodos podem nao bater o inicio, e
- * o mesmo dia nunca e cobrado duas vezes); dado antigo compara inicio/competencia.
- */
-type ChargePeriod = Pick<CompetenceCharge, "periodStart" | "periodEnd" | "competence" | "cycleIndex">;
+type ChargePeriod = CoreChargePeriod;
 
-function coversPeriod(c: Charge, planned: ChargePeriod): boolean {
-  if (c.periodStart && c.periodEnd) {
-    return c.periodStart <= planned.periodEnd && c.periodEnd >= planned.periodStart;
-  }
-  if (c.periodStart) return c.periodStart === planned.periodStart;
-  return c.competence === planned.competence && (c.cycleIndex ?? 1) === planned.cycleIndex;
-}
-
-/**
- * O periodo ja tem mensalidade deste aluno? Vale para QUALQUER plano: nunca duas
- * cobrancas para os mesmos dias (ex.: troca de plano com o mes ja pago no plano
- * antigo pula esse mes). Cancelada pelo usuario so ocupa o periodo no mesmo
- * plano (a geracao automatica nao a recria; trocar o plano por correcao, sim).
- * Cancelada pelo sistema libera o periodo.
- */
+/** Periodo ja tem mensalidade deste aluno (regra em @gestarahub/core/membership-generation). */
 export function membershipPeriodTaken(
   studentId: Id,
   planId: Id | undefined,
   period: ChargePeriod,
   exceptChargeId?: Id,
 ): boolean {
-  return store.charges.some(
-    (c) =>
-      c.id !== exceptChargeId &&
-      c.kind === "membership" &&
-      c.studentId === studentId &&
-      (c.status !== "canceled" || (c.canceledBy === "user" && c.planId === planId)) &&
-      coversPeriod(c, period),
-  );
+  return coreMembershipPeriodTaken(store.charges, studentId, planId, period, exceptChargeId);
 }
 
 function hasMembershipCharge(studentId: Id, planId: Id | undefined, planned: CompetenceCharge): boolean {
@@ -266,27 +253,7 @@ function activeStudentsInPlan(planId: Id): number {
  * Bolsa do aluno nesta mensalidade: percentual, valor sem bolsa e status.
  * Bolsa integral (valor final zero) nasce "Isento" (`waived`), nunca pendente.
  */
-export function scholarshipChargeFields(
-  student: Pick<Client, "discount"> | undefined,
-  planned: Pick<ScheduledCharge, "amountCents" | "discountApplied" | "listAmountCents">,
-): Pick<Charge, "status" | "scholarshipPercent" | "listAmountCents"> {
-  const discount = student?.discount;
-  if (!discount || !planned.discountApplied) return { status: "pending" };
-  // Desconto do valor todo (100% ou o preco do plano) e isento, nunca R$ 0 a cobrar.
-  if (!discount.scholarship) return { status: planned.amountCents === 0 ? "waived" : "pending" };
-  // Bolsa por "valor a pagar" e guardada como valor fixo: a % sai da conta.
-  const percent =
-    discount.type === "percentage"
-      ? discount.value
-      : planned.listAmountCents > 0
-        ? Math.round(((planned.listAmountCents - planned.amountCents) / planned.listAmountCents) * 100)
-        : 100;
-  return {
-    status: planned.amountCents === 0 ? "waived" : "pending",
-    scholarshipPercent: Math.min(100, Math.max(0, percent)),
-    listAmountCents: planned.listAmountCents,
-  };
-}
+export const scholarshipChargeFields = coreScholarshipChargeFields;
 
 /** Isento (bolsa integral) nao tem pagamento, desfazer nem cancelamento manual. */
 function assertNotWaived(c: Charge): void {
@@ -300,9 +267,7 @@ function assertNotWaived(c: Charge): void {
 }
 
 /** Bolsista integral sem plano: so ele tem mensalidade (isenta) sem plano. */
-export function isPlanlessScholar(student: Client): boolean {
-  return !student.planId && Boolean(student.discount?.scholarship);
-}
+export const isPlanlessScholar = coreIsPlanlessScholar;
 
 /**
  * Mensalidades "Isento" do bolsista integral sem plano na competencia: mensais,
@@ -345,36 +310,24 @@ function membershipCharge(
   planned: CompetenceCharge,
   classGroupId?: Id,
 ): Charge {
-  const ts = nowIso();
   const student = store.clients.find((c) => c.id === studentId);
+  return withRecordFields(plannedMembershipCharge(student, studentId, plan, planned, classGroupId));
+}
+
+/** Da mensalidade planejada (core) a cobranca do store: id, organizacao, unidade e datas. */
+function withRecordFields(planned: PlannedMembershipCharge): Charge {
+  const ts = nowIso();
   return {
+    ...planned,
     id: newId(),
     organizationId: store.organization.id,
     unitId: store.unit.id,
-    studentId,
-    kind: "membership",
-    planId: plan?.id,
-    classGroupId,
-    competence: planned.competence,
-    periodStart: planned.periodStart,
-    periodEnd: planned.periodEnd,
-    dueDate: planned.dueDate,
-    amountCents: planned.amountCents,
-    ...scholarshipChargeFields(student, planned),
-    cycleIndex: planned.cycleIndex,
-    cycleTotal: planned.cycleTotal,
-    isProrated: planned.isProrated,
-    proratedDays: planned.proratedDays,
-    notes: planned.isProrated ? `Mensalidade proporcional (${planned.proratedDays} dias)` : undefined,
     createdAt: ts,
     updatedAt: ts,
   };
 }
 
 /** Inicio da vigencia de cobranca do aluno (data local, nao UTC). */
-function membershipStartDate(student: Client): string {
-  return student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd");
-}
 
 /** Termos de cobranca do aluno: a regra dele prevalece sobre a da academia. */
 export function studentMembershipTerms(student: Client, plan: Plan) {
@@ -449,54 +402,6 @@ export function chargeStartedMembershipPeriods(student: Client, untilDate: strin
   return created;
 }
 
-/**
- * Gera as mensalidades que vencem na competencia para os alunos ativos, pela
- * regra de cada um (inclui bolsista integral sem plano e o legado sem plano
- * proprio em turma com plano). Idempotente. Retorna quantas criou.
- */
-function generateMembershipChargesFor(competence: string): number {
-  let created = 0;
-
-  for (const student of store.clients) {
-    if (student.status !== "active") continue;
-    if (student.membershipStatus === "paused" || student.membershipStatus === "canceled") continue;
-    if (isPlanlessScholar(student)) {
-      created += planlessScholarCharges(student, competence);
-      continue;
-    }
-    if (!student.planId) continue;
-    const plan = store.plans.find((p) => p.id === student.planId);
-    if (!plan) continue;
-
-    for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
-      if (hasMembershipCharge(student.id, plan.id, planned)) continue;
-      store.charges.push(membershipCharge(student.id, plan, planned));
-      created += 1;
-    }
-  }
-
-  // Retrocompatibilidade: aluno sem plano proprio matriculado em turma com
-  // plano (dado legado) segue a regra da academia a partir do cadastro.
-  for (const e of store.enrollments) {
-    if (e.status !== "active") continue;
-    const student = store.clients.find((c) => c.id === e.studentId);
-    // Bolsista integral sem plano nao herda o plano da turma.
-    if (!student || student.planId || isPlanlessScholar(student) || student.status !== "active") continue;
-    const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    // Curso, turma sem cobranca e quem paga a turma com pacote nunca geram
-    // mensalidade pelo plano da turma.
-    if (!turma || classBillingMode(turma) !== "membership" || e.paysWithPackage) continue;
-    const plan = turma.planId ? store.plans.find((p) => p.id === turma.planId) : undefined;
-    if (!plan) continue;
-
-    for (const planned of chargesDueIn(studentMembershipTerms(student, plan), competence)) {
-      if (hasMembershipCharge(student.id, plan.id, planned)) continue;
-      store.charges.push(membershipCharge(student.id, plan, planned, turma.id));
-      created += 1;
-    }
-  }
-  return created;
-}
 
 /**
  * Geracao automatica na leitura: todo mes desde o inicio da vigencia mais
@@ -505,25 +410,52 @@ function generateMembershipChargesFor(competence: string): number {
  * aparecem quando chegarem. Idempotente. Sem auditoria (e o sistema).
  */
 export function autoGenerateMembershipCharges(...competences: (string | undefined)[]): number {
-  const current = todayISO().slice(0, 7);
-  const wanted = new Set(competences.filter((c): c is string => Boolean(c) && c! <= current));
-  let from = current;
-  for (const student of store.clients) {
-    if (student.status !== "active") continue;
-    const start = membershipStartDate(student).slice(0, 7);
-    if (start < from) from = start;
+  const world = storeMembershipWorld();
+  const planned = planMembershipCharges(world, membershipCompetencesToGenerate(world, competences));
+  for (const p of planned) store.charges.push(withRecordFields(p));
+  if (planned.length > 0) persist();
+  return planned.length;
+}
+
+/**
+ * Garante as mensalidades geradas antes de uma leitura. Conta real: gera no
+ * servidor (`generateMembershipChargesAction`) e traz do banco; nunca cria so
+ * no navegador, onde a mensalidade nao chegava ao banco (doc 15, fatia 1).
+ * Demonstracao: gera no store, como antes. Retorna quantas criou.
+ */
+export async function ensureMembershipCharges(...competences: (string | undefined)[]): Promise<number> {
+  if (isSupabaseOrganization(store.organization.id)) {
+    const requested = competences.filter((c): c is string => Boolean(c));
+    let created = 0;
+    try {
+      created = await generateMembershipChargesAction(store.organization.id, requested);
+    } catch (err) {
+      console.error("[billingService] Erro ao gerar mensalidades no servidor:", err);
+    }
+    await syncChargesFromDb(store.organization.id);
+    return created;
   }
-  for (let month = parseISO(`${from}-01`); ; month = addMonths(month, 1)) {
-    const competence = format(month, "yyyy-MM");
-    if (competence > current) break;
-    wanted.add(competence);
-  }
-  let created = 0;
-  for (const competence of [...wanted].sort()) {
-    created += generateMembershipChargesFor(competence);
-  }
-  if (created > 0) persist();
-  return created;
+  return autoGenerateMembershipCharges(...competences);
+}
+
+/** Gera so a competencia pedida (botao "Gerar cobrancas"). Retorna quantas criou. */
+function generateMembershipChargesFor(competence: string): number {
+  const planned = planMembershipCharges(storeMembershipWorld(), [competence]);
+  for (const p of planned) store.charges.push(withRecordFields(p));
+  return planned.length;
+}
+
+/** O store no formato que o planejamento puro recebe. */
+function storeMembershipWorld(): MembershipWorld {
+  return {
+    clients: store.clients,
+    plans: store.plans,
+    classGroups: store.classGroups,
+    enrollments: store.enrollments,
+    charges: store.charges,
+    settings: store.organization.settings,
+    today: todayISO(),
+  };
 }
 
 export async function syncPlansFromDb(organizationId: string): Promise<void> {
@@ -558,6 +490,12 @@ export async function syncChargesFromDb(organizationId: string): Promise<void> {
   for (const newCharge of dbMap.values()) {
     store.charges.push(newCharge);
   }
+  // Mensalidade que so existe neste navegador (gerada aqui antes da fatia 1 do
+  // doc 15) nao vale: a geracao agora e no servidor e o banco e a fonte.
+  const inDb = new Set(dbCharges.map((c) => c.id));
+  store.charges = store.charges.filter(
+    (c) => c.organizationId !== organizationId || c.kind !== "membership" || inDb.has(c.id),
+  );
 }
 
 export const billingService = {
@@ -654,14 +592,10 @@ export const billingService = {
   // --- Cobrancas (Charges) ------------------------------------------------
   listCharges(filter?: ChargeFilter): Promise<ChargeView[]> {
     return simulateRead(async () => {
+      // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas;
+      // na conta real, no servidor, e ja chegam sincronizadas.
       await syncChargesFromDb(store.organization.id);
-      // Mensalidades do mes atual (e do mes consultado, se ja chegou) nascem sozinhas.
-      const countBefore = store.charges.length;
-      autoGenerateMembershipCharges(filter?.competence);
-      const newCharges = store.charges.slice(countBefore);
-      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
-        await insertChargesInDb(newCharges);
-      }
+      await ensureMembershipCharges(filter?.competence);
       // Pix Automatico: paga na leitura o que venceu dentro do limite.
       applyRecurringAutoPayments();
       // Se um aluno saiu da aula avulsa e foi readicionado na mesma aula antes,
@@ -713,12 +647,7 @@ export const billingService = {
   listChargesPaginated(filter?: ChargeFilter): Promise<PaginatedResult<ChargeView>> {
     return simulateRead(async () => {
       await syncChargesFromDb(store.organization.id);
-      const countBefore = store.charges.length;
-      autoGenerateMembershipCharges(filter?.competence);
-      const newCharges = store.charges.slice(countBefore);
-      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
-        await insertChargesInDb(newCharges);
-      }
+      await ensureMembershipCharges(filter?.competence);
       applyRecurringAutoPayments();
 
       if (isSupabaseOrganization(store.organization.id)) {
@@ -764,11 +693,13 @@ export const billingService = {
    */
   generateCharges(competence: string): Promise<{ created: number }> {
     return simulateWrite(async () => {
-      const countBefore = store.charges.length;
-      const created = generateMembershipChargesFor(competence);
-      const newCharges = store.charges.slice(countBefore);
-      if (newCharges.length > 0 && isSupabaseOrganization(store.organization.id)) {
-        await insertChargesInDb(newCharges);
+      // Conta real: so a competencia pedida, no servidor (mesma regra e protecao contra duplicata).
+      let created: number;
+      if (isSupabaseOrganization(store.organization.id)) {
+        created = await generateMembershipChargesAction(store.organization.id, [competence]);
+        await syncChargesFromDb(store.organization.id);
+      } else {
+        created = generateMembershipChargesFor(competence);
       }
 
       if (created > 0) {

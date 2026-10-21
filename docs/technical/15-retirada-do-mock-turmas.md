@@ -33,7 +33,8 @@ Modelo de turmas: modalidades, equipe e cargos, planos, catálogo de pacotes, al
 
 ### Fatia 1 — Fechar o que hoje se perde (prioridade)
 
-- [ ] **Mensalidades automáticas no servidor.** A geração vira uma server action idempotente: a mesma regra do motor (`packages/core/billing`), gravando no banco. Uma chave única impede duplicar (aluno + competência + mensalidade; parcial por `kind = 'membership'`). É chamada nos mesmos pontos de hoje. Em seguida, Supabase Cron diário (doc 06 §2.1).
+- [x] **Mensalidades automáticas no servidor** (21/10/2026). O planejamento virou função pura em `packages/core/src/membership-generation.ts` (a mesma regra para a demonstração e para a conta real). Na conta real, `ensureMembershipCharges` chama `generateMembershipChargesAction` (`services/membershipBackend.ts`), que lê do banco, planeja e grava por `insert_membership_charges`; o índice único `uq_charges_membership_period` (aluno + período, mensalidade não cancelada) impede duplicata entre aparelhos, e as duplicadas que existiam foram canceladas pelo sistema (migração 25). O navegador não gera mais mensalidade na conta real, e as que só existiam no `localStorage` saem na sincronização. Pontos que garantem a geração: Cobranças (lista e "Gerar cobranças"), Financeiro, Relatórios e resumo do aluno.
+- [ ] **Supabase Cron diário** chamando a mesma geração, para não depender de alguém abrir o app (doc 06 §2.1).
 - [ ] **Recorrências do Financeiro** com o mesmo tratamento (materialização no servidor, idempotente).
 - [ ] **Tirar a expiração local** dos códigos online (`expireStale`): o servidor já expira e exclui no Asaas.
 - [ ] **Modelo do certificado:** coluna `certificate_template` (jsonb) na organização e logo no Storage privado.

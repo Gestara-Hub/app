@@ -14,7 +14,8 @@
     "./certificate": "./src/certificate.ts",
     "./grades": "./src/grades.ts",
     "./phone": "./src/phone.ts",
-    "./payment-fees": "./src/payment-fees.ts"
+    "./payment-fees": "./src/payment-fees.ts",
+    "./membership-generation": "./src/membership-generation.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

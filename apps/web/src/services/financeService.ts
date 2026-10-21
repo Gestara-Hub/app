@@ -60,7 +60,7 @@ import {
 import { persist, store } from "@/mocks/store";
 import { systemFinancialCategoryId } from "@/mocks/seed";
 import { auditLogService } from "./auditLogService";
-import { autoGenerateMembershipCharges } from "./billingService";
+import { ensureMembershipCharges } from "./billingService";
 import { paidAtFromDate, paidOnNote } from "./payment-date";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 import { openPayoutPreviews } from "./teacherPayService";
@@ -271,7 +271,7 @@ async function ensureMaterialized(competence?: string): Promise<void> {
   await syncFinanceFromDb(store.organization.id);
   // Mensalidades do mes (e do mes consultado, se ja chegou) geradas na leitura,
   // sem depender de alguem abrir Cobrancas.
-  autoGenerateMembershipCharges(competence);
+  await ensureMembershipCharges(competence);
   // Pix Automatico antes de ler: o Resumo nao depende de alguem abrir Cobrancas.
   applyRecurringAutoPayments();
   const created = await materializeAllAsync();

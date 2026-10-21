@@ -29,7 +29,7 @@ import { ownLessons, packageState } from "@gestarahub/core/packages";
 import { addDays, format, parseISO } from "date-fns";
 import { apiError, notFoundError, nowIso, simulateRead } from "@/mocks/helpers";
 import { store } from "@/mocks/store";
-import { autoGenerateMembershipCharges } from "./billingService";
+import { ensureMembershipCharges } from "./billingService";
 import { assertFeature } from "./subscriptionService";
 import { sessionDetailOf, sessionsOfClass } from "./turmasService";
 import { can } from "@/lib/permissions";
@@ -257,7 +257,7 @@ export const reportsService = {
   },
 
   generateReport(type: ReportType, filter: ReportFilter = {}): Promise<GeneratedReportData> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
       if (!actorCanSee(type)) {
         throw apiError("FORBIDDEN", "Você não tem permissão para ver este relatório.", { httpStatus: 403 });
       }
@@ -369,7 +369,7 @@ export const reportsService = {
 
         case "billing_statement": {
           // Mensalidades do mes nascem na leitura (como em Cobrancas e no Financeiro).
-          autoGenerateMembershipCharges(competence);
+          await ensureMembershipCharges(competence);
           const today = format(new Date(), "yyyy-MM-dd");
           const clientsById = new Map(store.clients.map((c) => [c.id, c.name]));
 

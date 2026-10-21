@@ -1,5 +1,6 @@
 "use server";
 
+import { chargeToDbRow } from "./billingRows";
 import type {
   Charge,
   ChargeFilter,
@@ -264,42 +265,6 @@ export async function getChargeFromDb(
   return data ? mapRowToCharge(data) : null;
 }
 
-function chargeToDbRow(charge: Charge) {
-  return {
-    id: charge.id,
-    organization_id: charge.organizationId,
-    unit_id: charge.unitId ?? null,
-    student_id: charge.studentId,
-    kind: charge.kind,
-    plan_id: charge.planId ?? null,
-    class_group_id: charge.classGroupId ?? null,
-    competence: charge.competence ?? null,
-    period_start: charge.periodStart ?? null,
-    period_end: charge.periodEnd ?? null,
-    session_id: charge.sessionId ?? null,
-    due_date: charge.dueDate,
-    amount_cents: charge.amountCents,
-    status: charge.status,
-    paid_at: charge.paidAt ?? null,
-    method: charge.method ?? null,
-    paid_via: charge.paidVia ?? null,
-    attachments: charge.attachments ?? [],
-    canceled_by: charge.canceledBy ?? null,
-    cancel_reason: charge.cancelReason ?? null,
-    replaced: charge.replaced ?? false,
-    scholarship_percent: charge.scholarshipPercent ?? null,
-    list_amount_cents: charge.listAmountCents ?? null,
-    description: charge.description ?? null,
-    installment_group_id: charge.installmentGroupId ?? null,
-    enrollment_id: charge.enrollmentId ?? null,
-    student_package_id: charge.studentPackageId ?? null,
-    cycle_index: charge.cycleIndex ?? null,
-    cycle_total: charge.cycleTotal ?? null,
-    is_prorated: charge.isProrated ?? false,
-    prorated_days: charge.proratedDays ?? null,
-    notes: charge.notes ?? null,
-  };
-}
 
 export async function insertChargesInDb(charges: Charge[]): Promise<Charge[]> {
   if (charges.length === 0) return [];

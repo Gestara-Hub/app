@@ -28,7 +28,7 @@ import {
 } from "@/lib/progression-tracks";
 import { store } from "@/mocks/store";
 import { notFoundError, simulateRead } from "@/mocks/helpers";
-import { autoGenerateMembershipCharges } from "./billingService";
+import { ensureMembershipCharges } from "./billingService";
 import { applyRecurringAutoPayments } from "./onlinePaymentsService";
 
 /**
@@ -301,11 +301,11 @@ function activePackagesOf(client: Client, today: DateISO): StudentPackageView[] 
 
 export const studentSummaryService = {
   getStudentSummary(studentId: Id): Promise<StudentSummary> {
-    return simulateRead(() => {
+    return simulateRead(async () => {
       const client = store.clients.find((c) => c.id === studentId);
       if (!client) throw notFoundError("Aluno não encontrado.");
       // Mesma leitura de Cobranças: mensalidades do mes nascem e o Pix Automatico paga.
-      autoGenerateMembershipCharges();
+      await ensureMembershipCharges();
       applyRecurringAutoPayments();
 
       const today = todayISO();
