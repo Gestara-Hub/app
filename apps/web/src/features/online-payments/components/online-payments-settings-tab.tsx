@@ -1,5 +1,6 @@
 "use client";
 
+import { acceptedMethodsOf, defaultPassFeeFor } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
 import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,9 +46,17 @@ const schema = z.object({
   enabled: z.boolean(),
   pixKey: z.string().trim().max(77, "A chave Pix tem no máximo 77 caracteres."),
   defaultExpiresInMinutes: z.string().min(1, "Escolha a validade."),
+  acceptPix: z.boolean(),
+  acceptCard: z.boolean(),
+  acceptBoleto: z.boolean(),
   passFeeToCustomer: z.boolean(),
   passFeePix: z.boolean(),
   passFeeCard: z.boolean(),
+  passFeeBoleto: z.boolean(),
+  passFeeChoice: z.boolean(),
+}).refine((v) => v.acceptPix || v.acceptCard || v.acceptBoleto, {
+  path: ["acceptPix"],
+  message: "Deixe ao menos uma forma de pagamento ligada.",
 });
 type Values = z.infer<typeof schema>;
 
@@ -59,9 +68,14 @@ function toValues(s?: OnlinePaymentSettings): Values {
     defaultExpiresInMinutes: EXPIRES_OPTIONS.some((o) => o.value === minutes)
       ? minutes
       : String(DEFAULT_EXPIRES),
+    acceptPix: acceptedMethodsOf(s).pix,
+    acceptCard: acceptedMethodsOf(s).card,
+    acceptBoleto: acceptedMethodsOf(s).boleto,
     passFeeToCustomer: Boolean(s?.passFeeToCustomer),
-    passFeePix: Boolean(s?.passFeePix ?? s?.passFeeToCustomer),
-    passFeeCard: Boolean(s?.passFeeCard ?? s?.passFeeToCustomer),
+    passFeePix: defaultPassFeeFor(s, "pix"),
+    passFeeCard: defaultPassFeeFor(s, "link"),
+    passFeeBoleto: defaultPassFeeFor(s, "boleto"),
+    passFeeChoice: defaultPassFeeFor(s, "choice"),
   };
 }
 
@@ -87,6 +101,10 @@ export function OnlinePaymentsSettingsTab({
     control: form.control,
     name: "passFeeToCustomer",
   });
+  const [acceptPix, acceptCard, acceptBoleto] = useWatch({
+    control: form.control,
+    name: ["acceptPix", "acceptCard", "acceptBoleto"],
+  });
 
   const dirty = form.formState.isDirty;
   const pending = update.isPending;
@@ -98,9 +116,12 @@ export function OnlinePaymentsSettingsTab({
         enabled: values.enabled,
         pixKey: values.pixKey,
         defaultExpiresInMinutes: Number(values.defaultExpiresInMinutes),
+        acceptedMethods: { pix: values.acceptPix, card: values.acceptCard, boleto: values.acceptBoleto },
         passFeeToCustomer: values.passFeeToCustomer,
         passFeePix: values.passFeePix,
         passFeeCard: values.passFeeCard,
+        passFeeBoleto: values.passFeeBoleto,
+        passFeeChoice: values.passFeeChoice,
       });
       toast.success(
         saved.enabled
@@ -167,6 +188,48 @@ export function OnlinePaymentsSettingsTab({
               />
             </div>
 
+            {/* Formas de pagamento aceitas */}
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground">Formas de pagamento</p>
+                <p className="text-xs text-muted-foreground">
+                  O que aparece em Cobrar online. Com as três ligadas, surge também &quot;O aluno escolhe&quot;.
+                </p>
+              </div>
+              {(
+                [
+                  { name: "acceptPix", label: "Pix", hint: "QR Code e copia e cola. Cai na hora." },
+                  { name: "acceptCard", label: "Cartão", hint: "Link com cartão de crédito ou débito." },
+                  { name: "acceptBoleto", label: "Boleto", hint: "Compensa em 1 dia útil." },
+                ] as const
+              ).map((opt) => (
+                <div key={opt.name} className="flex items-start justify-between gap-4 py-1">
+                  <div className="space-y-0.5">
+                    <Label htmlFor={opt.name} className="text-xs font-medium text-foreground cursor-pointer">
+                      {opt.label}
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">{opt.hint}</p>
+                  </div>
+                  <Controller
+                    control={form.control}
+                    name={opt.name}
+                    render={({ field }) => (
+                      <Switch
+                        id={opt.name}
+                        checked={Boolean(field.value)}
+                        onCheckedChange={field.onChange}
+                        disabled={disabled}
+                        className="shrink-0"
+                      />
+                    )}
+                  />
+                </div>
+              ))}
+              {form.formState.errors.acceptPix ? (
+                <p className="text-xs text-destructive">{form.formState.errors.acceptPix.message}</p>
+              ) : null}
+            </div>
+
             {/* Repasse de Taxas ao Aluno */}
             <div className="pt-2 border-t border-border/50">
               <div className="flex items-start justify-between gap-4 py-1.5">
@@ -178,7 +241,7 @@ export function OnlinePaymentsSettingsTab({
                     Repassar taxas de cobrança ao aluno
                   </Label>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Emite os códigos Pix e os links com a tarifa do Asaas e a taxa GestaraHub acrescidas, garantindo que a sua academia receba <strong>100% do valor da mensalidade</strong> (custo zero).
+                    O aluno paga as taxas (Asaas e GestaraHub) e você recebe o valor da cobrança. Dá para mudar em cada cobrança.
                   </p>
                 </div>
                 <Controller
@@ -198,59 +261,43 @@ export function OnlinePaymentsSettingsTab({
 
               {passFeeToCustomerWatched ? (
                 <div className="mt-3 ml-1 space-y-3 border-l-2 border-primary/30 pl-4 py-1">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <Label
-                        htmlFor="passFeePix"
-                        className="text-xs font-medium text-foreground cursor-pointer"
-                      >
-                        Repassar no Pix (tarifa do Pix + taxa GestaraHub)
-                      </Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        Exemplo: mensalidade de R$ 150,00 → aluno paga R$ 151,99 e você recebe R$ 150,00 líquido.
-                      </p>
-                    </div>
-                    <Controller
-                      control={form.control}
-                      name="passFeePix"
-                      render={({ field }) => (
-                        <Switch
-                          id="passFeePix"
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                          disabled={disabled}
-                          className="shrink-0"
+                  {(
+                    [
+                      { name: "passFeePix", label: "No Pix", hint: "Acréscimo fixo das taxas.", show: acceptPix },
+                      { name: "passFeeCard", label: "No cartão", hint: "Cobre as taxas do crédito, as maiores.", show: acceptCard },
+                      { name: "passFeeBoleto", label: "No boleto", hint: "Cobre a maior taxa entre boleto e Pix.", show: acceptBoleto },
+                      {
+                        name: "passFeeChoice",
+                        label: "Quando o aluno escolhe",
+                        hint: "Cobre a maior taxa entre as formas.",
+                        show: acceptPix && acceptCard && acceptBoleto,
+                      },
+                    ] as const
+                  )
+                    .filter((opt) => opt.show)
+                    .map((opt) => (
+                      <div key={opt.name} className="flex items-start justify-between gap-4">
+                        <div className="space-y-0.5">
+                          <Label htmlFor={opt.name} className="text-xs font-medium text-foreground cursor-pointer">
+                            {opt.label}
+                          </Label>
+                          <p className="text-[11px] text-muted-foreground">{opt.hint}</p>
+                        </div>
+                        <Controller
+                          control={form.control}
+                          name={opt.name}
+                          render={({ field }) => (
+                            <Switch
+                              id={opt.name}
+                              checked={Boolean(field.value)}
+                              onCheckedChange={field.onChange}
+                              disabled={disabled}
+                              className="shrink-0"
+                            />
+                          )}
                         />
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-0.5">
-                      <Label
-                        htmlFor="passFeeCard"
-                        className="text-xs font-medium text-foreground cursor-pointer"
-                      >
-                        Repassar no link (tarifa do cartão de crédito + taxa GestaraHub)
-                      </Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        Exemplo: mensalidade de R$ 150,00 → link sai por R$ 156,67 e você recebe R$ 150,00 líquido.
-                      </p>
-                    </div>
-                    <Controller
-                      control={form.control}
-                      name="passFeeCard"
-                      render={({ field }) => (
-                        <Switch
-                          id="passFeeCard"
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                          disabled={disabled}
-                          className="shrink-0"
-                        />
-                      )}
-                    />
-                  </div>
+                      </div>
+                    ))}
                 </div>
               ) : null}
             </div>

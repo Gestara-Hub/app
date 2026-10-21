@@ -9,6 +9,15 @@ import { getClientForTenant } from "@/lib/supabase/tenant-client";
  * edicoes feitas depois, em Configuracoes > Geral e Horarios.
  */
 
+/** As tarifas da subconta vivem na coluna gateway_fees; nao vao para settings. */
+function withoutGatewayFees(settings: Organization["settings"]): Record<string, unknown> {
+  if (!settings) return {};
+  const online = settings.onlinePayments;
+  if (!online?.gatewayFees) return { ...settings };
+  const rest = Object.fromEntries(Object.entries(online).filter(([key]) => key !== "gatewayFees"));
+  return { ...settings, onlinePayments: rest };
+}
+
 export async function updateOrganizationInDb(organization: Organization): Promise<void> {
   const client = await getClientForTenant();
   const { error } = await client
@@ -21,7 +30,7 @@ export async function updateOrganizationInDb(organization: Organization): Promis
       custom_segment_name: organization.customSegmentName ?? null,
       custom_segment_progression: organization.customSegmentProgression ?? null,
       custom_segment_billing: organization.customSegmentBilling ?? null,
-      settings: organization.settings ?? {},
+      settings: withoutGatewayFees(organization.settings),
     })
     .eq("id", organization.id);
 

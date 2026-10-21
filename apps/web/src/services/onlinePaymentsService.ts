@@ -9,7 +9,14 @@ import type {
   RecurringAuthorization,
 } from "@gestarahub/contracts";
 import { describeCharge } from "@gestarahub/core/billing";
-import { calculateOnlineChargeAmounts, platformSplitCents } from "@gestarahub/core/payment-fees";
+import {
+  ASAAS_BILLING_TYPE,
+  availableOnlineMethods,
+  calculateOnlineChargeAmounts,
+  defaultPassFeeFor,
+  effectiveGatewayFees,
+  platformSplitCents,
+} from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { format, parseISO } from "date-fns";
 import {
@@ -104,6 +111,15 @@ function currentSettings(): OnlinePaymentSettings & {
     pixKey: s?.pixKey,
     defaultExpiresInMinutes:
       s?.defaultExpiresInMinutes ?? DEFAULT_PIX_EXPIRES_IN_MINUTES,
+    // Antes estes campos ficavam de fora: o repasse padrao por meio e as
+    // tarifas da subconta nunca chegavam ao calculo da cobranca.
+    passFeeToCustomer: s?.passFeeToCustomer,
+    passFeePix: s?.passFeePix,
+    passFeeCard: s?.passFeeCard,
+    passFeeBoleto: s?.passFeeBoleto,
+    passFeeChoice: s?.passFeeChoice,
+    acceptedMethods: s?.acceptedMethods,
+    gatewayFees: s?.gatewayFees,
   };
 }
 
@@ -150,12 +166,34 @@ function paymentsOf(chargeId: Id): OnlinePayment[] {
 }
 
 function methodLabel(method: OnlinePaymentMethod): string {
-  return method === "pix" ? "Pix" : "link de pagamento";
+  switch (method) {
+    case "pix":
+      return "Pix";
+    case "link":
+      return "link de cartão";
+    case "boleto":
+      return "boleto";
+    default:
+      return "link com Pix, boleto ou cartão";
+  }
 }
 
-/** Forma de pagamento gravada na cobranca (ver decisoes no topo). */
+/** Forma de pagamento gravada na cobranca (ver decisoes no topo). Boleto e "o aluno escolhe" sem o meio confirmado: outro. */
 function chargeMethodFor(method: OnlinePaymentMethod): PaymentMethod {
-  return method === "link" ? "card" : "pix";
+  return method === "link" ? "card" : method === "pix" ? "pix" : "other";
+}
+
+/** A forma precisa estar entre as aceitas pelo espaco (Recebimentos online). */
+function assertMethodAccepted(method: OnlinePaymentMethod, settings: OnlinePaymentSettings): void {
+  if (!availableOnlineMethods(settings).includes(method)) {
+    throw apiError(
+      "VALIDATION",
+      method === "choice"
+        ? "\"O aluno escolhe\" exige Pix, cartão e boleto ligados em Recebimentos online."
+        : "Esta forma de pagamento está desligada em Recebimentos online.",
+      { httpStatus: 422 },
+    );
+  }
 }
 
 /**
@@ -171,6 +209,15 @@ export function cancelOnlinePaymentsForCharge(chargeId: Id, reason?: string): nu
       if (reason) p.canceledReason = reason;
       count += 1;
     }
+  }
+  // Conta real: cancela tambem no banco e no Asaas (troca de plano, inativacao,
+  // saida da aula...), para o aluno nao pagar um link antigo. Sem esperar: quem
+  // chama esta no meio da propria escrita; erro fica no log e o Asaas e
+  // retentado depois. Repetir para a mesma cobranca nao tem efeito.
+  if (isSupabaseOrganization(store.organization.id)) {
+    void cancelOnlinePaymentsForChargeInDb(chargeId, store.organization.id, reason).catch((err) =>
+      console.error("[onlinePaymentsService] Erro ao cancelar a cobrança online no banco e no Asaas:", err),
+    );
   }
   return count;
 }
@@ -255,6 +302,10 @@ function validateSettings(next: OnlinePaymentSettings): void {
       message: `A chave Pix tem no máximo ${PIX_KEY_MAX_LENGTH} caracteres.`,
     });
   }
+  const accepted = next.acceptedMethods;
+  if (accepted && !accepted.pix && !accepted.card && !accepted.boleto) {
+    fields.push({ field: "acceptedMethods", message: "Deixe ao menos uma forma de pagamento ligada." });
+  }
   if (fields.length > 0) throw validationError(fields);
 }
 
@@ -326,6 +377,9 @@ export const onlinePaymentsService = {
           payload.passFeeCard !== undefined
             ? payload.passFeeCard
             : before.passFeeCard,
+        passFeeBoleto: payload.passFeeBoleto ?? before.passFeeBoleto,
+        passFeeChoice: payload.passFeeChoice ?? before.passFeeChoice,
+        acceptedMethods: payload.acceptedMethods ?? before.acceptedMethods,
       };
       validateSettings(next);
       store.organization = {
@@ -342,6 +396,9 @@ export const onlinePaymentsService = {
             passFeeToCustomer: next.passFeeToCustomer,
             passFeePix: next.passFeePix,
             passFeeCard: next.passFeeCard,
+            passFeeBoleto: next.passFeeBoleto,
+            passFeeChoice: next.passFeeChoice,
+            acceptedMethods: next.acceptedMethods,
           });
         } catch (dbErr) {
           console.error(
@@ -432,13 +489,9 @@ export const onlinePaymentsService = {
       : undefined;
     const expiresInMinutes = settings.defaultExpiresInMinutes || 1440;
 
-    // Determina se a taxa será repassada ao aluno
-    const passFee =
-      passFeeOverride !== undefined
-        ? passFeeOverride
-        : method === "pix"
-          ? Boolean(settings.passFeePix ?? settings.passFeeToCustomer ?? false)
-          : Boolean(settings.passFeeCard ?? settings.passFeeToCustomer ?? false);
+    assertMethodAccepted(method, settings);
+    // Repasse: o da modal; sem ele, o padrao da forma em Recebimentos online.
+    const passFee = passFeeOverride !== undefined ? passFeeOverride : defaultPassFeeFor(settings, method);
 
     // Taxa do GestaraHub por plano e tarifa do Asaas por meio (doc 19 §4, decisao A).
     const splitAmountCents = platformSplitCents(store.organization.subscription?.tier);
@@ -447,6 +500,8 @@ export const onlinePaymentsService = {
       method,
       splitAmountCents,
       passFee,
+      // Tarifas da subconta (promocao pela data); sem elas, a reserva do core.
+      fees: effectiveGatewayFees(settings.gatewayFees, todayISO()),
     });
 
     const provided =
@@ -469,6 +524,7 @@ export const onlinePaymentsService = {
             description: charge.description,
           })
         : await paymentGateway.createLink({
+            billingType: ASAAS_BILLING_TYPE[method] as "CREDIT_CARD" | "BOLETO" | "UNDEFINED",
             chargeId,
             amountCents: chargedAmountCents,
             splitAmountCents,

@@ -202,3 +202,19 @@ export interface AsaasTransferResponse {
   transactionReceiptUrl?: string;
 }
 
+/** Webhook de uma conta (principal ou subconta): POST/PUT /v3/webhooks. */
+export interface AsaasWebhookConfig {
+  name: string;
+  url: string;
+  email: string; // obrigatorio no Asaas
+  enabled: boolean;
+  interrupted: boolean;
+  apiVersion: 3;
+  authToken: string;
+  sendType: "SEQUENTIALLY" | "NON_SEQUENTIALLY";
+  events: string[];
+}
+
+export interface AsaasWebhookResponse extends Omit<AsaasWebhookConfig, "authToken"> {
+  id: string;
+}

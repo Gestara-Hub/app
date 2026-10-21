@@ -241,7 +241,19 @@ export interface TeacherPayoutView {
 // Pagamento online (simulado)
 // ---------------------------------------------------------------------------
 
-export type OnlinePaymentMethod = "pix" | "link";
+/**
+ * Forma da cobranca online (uma por cobranca; no Asaas, um `billingType`):
+ * "pix" (PIX, QR na hora), "link" (CREDIT_CARD: fatura com credito ou debito),
+ * "boleto" (BOLETO) e "choice" (UNDEFINED: o aluno escolhe Pix, boleto ou cartao).
+ */
+export type OnlinePaymentMethod = "pix" | "link" | "boleto" | "choice";
+
+/** Formas que o espaco aceita (Recebimentos online). Ausente: Pix e cartao sim, boleto nao. */
+export interface AcceptedOnlineMethods {
+  pix: boolean;
+  card: boolean;
+  boleto: boolean;
+}
 export type OnlinePaymentStatus = "awaiting" | "paid" | "expired" | "canceled";
 
 export interface OnlinePayment {
@@ -257,7 +269,8 @@ export interface OnlinePayment {
   gatewayProvider?: string; // ex: 'asaas', 'pagbank'
   gatewayPaymentId?: string; // ID da transação no provedor ativo
   splitAmountCents?: number; // valor do split do GestaraHub retido
-  gatewayFeeCents?: number; // tarifa do provedor (Asaas); no link e a pior estimativa ate o pagamento
+  gatewayFeeCents?: number; // tarifa do provedor (Asaas); no link e a pior estimativa ate o pagamento, depois a real
+  paidMethod?: LinkPaymentMethodName; // meio que o aluno usou (webhook do Asaas)
   netAmountCents?: number; // valor liquido que a academia recebe (valor - tarifa - split)
   feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
   canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
@@ -281,6 +294,35 @@ export interface RecurringAuthorization {
 }
 
 /** Em `OrganizationSettings.onlinePayments`. */
+/** Meio que o aluno usou de fato: Pix direto ou o que escolheu na fatura do link. */
+export type LinkPaymentMethodName = "pix" | "boleto" | "creditCard" | "debitCard";
+
+/** Tarifa de um meio no provedor: percentual sobre o valor mais um fixo (centavos). */
+export interface GatewayFeeRule {
+  percent: number; // fracao: 1,99% = 0.0199
+  fixedCents: number;
+  minCents?: number; // piso quando a tarifa e percentual
+  maxCents?: number; // teto quando a tarifa e percentual
+}
+
+/** Tarifa de um meio com a promocao, se houver (vale ate `promoUntil`, exclusive). */
+export interface GatewayFeeWithPromo extends GatewayFeeRule {
+  promo?: GatewayFeeRule;
+  promoUntil?: DateISO;
+}
+
+/**
+ * Tabela de tarifas da subconta do espaco no provedor (Asaas `GET /myAccount/fees`),
+ * guardada crua: a promocao e escolhida pela data na hora de usar (doc 19, secao 4).
+ */
+export interface GatewayAccountFees {
+  pix: GatewayFeeWithPromo;
+  creditCard: GatewayFeeWithPromo;
+  debitCard: GatewayFeeWithPromo;
+  boleto: GatewayFeeWithPromo;
+  syncedAt: DateTimeISO;
+}
+
 export interface OnlinePaymentSettings {
   enabled: boolean;
   pixKey?: string; // exibida como dado da academia (simulado)
@@ -292,7 +334,11 @@ export interface OnlinePaymentSettings {
   gatewayStatus?: "not_configured" | "pending" | "approved" | "rejected";
   passFeeToCustomer?: boolean; // repassar taxa da cobranca ao aluno por padrao
   passFeePix?: boolean; // repassar taxa no Pix
-  passFeeCard?: boolean; // repassar taxa no Cartao
+  passFeeCard?: boolean; // repassar taxa no Cartao (link)
+  passFeeBoleto?: boolean; // repassar taxa no boleto
+  passFeeChoice?: boolean; // repassar taxa quando o aluno escolhe
+  acceptedMethods?: AcceptedOnlineMethods; // formas que o espaco aceita
+  gatewayFees?: GatewayAccountFees; // tarifas da subconta (lidas da coluna gateway_fees, nunca gravadas em settings)
 }
 
 /** Como a cobranca do aluno foi paga. */

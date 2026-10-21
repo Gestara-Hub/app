@@ -55,6 +55,8 @@ export interface CreatePixInput {
 }
 
 export interface CreateLinkInput {
+  /** Forma da fatura no Asaas: cartao (padrao), boleto ou o aluno escolhe. */
+  billingType?: "CREDIT_CARD" | "BOLETO" | "UNDEFINED";
   chargeId: Id;
   amountCents: number;
   expiresInMinutes: number;

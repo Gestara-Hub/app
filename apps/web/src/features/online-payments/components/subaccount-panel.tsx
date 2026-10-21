@@ -1,5 +1,8 @@
 "use client";
 
+import type { SubaccountReceiptItem } from "@/services/onlinePaymentsBackend";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LINK_PAYMENT_METHOD_LABEL } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
 import {
   ArrowDownLeft,
@@ -101,13 +104,10 @@ export function SubaccountPanel({
   const receipts = receiptsQuery.data || [];
   const transfers = transfersQuery.data || [];
 
-  const totalReceivedCents = receipts
-    .filter((r) => r.status === "paid")
-    .reduce((acc, r) => acc + r.amountCents, 0);
-
-  const totalSplitCents = receipts
-    .filter((r) => r.status === "paid")
-    .reduce((acc, r) => acc + r.splitAmountCents, 0);
+  const paidReceipts = receipts.filter((r) => r.status === "paid");
+  const totalSplitCents = paidReceipts.reduce((acc, r) => acc + r.splitAmountCents, 0);
+  const totalGatewayFeeCents = paidReceipts.reduce((acc, r) => acc + r.gatewayFeeCents, 0);
+  const totalNetCents = paidReceipts.reduce((acc, r) => acc + r.netAmountCents, 0);
 
   return (
     <div className="space-y-6">
@@ -179,13 +179,13 @@ export function SubaccountPanel({
               {receiptsQuery.isLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : (
-                formatCents(totalReceivedCents - totalSplitCents)
+                formatCents(totalNetCents)
               )}
             </p>
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
-            Taxas retidas: {formatCents(totalSplitCents)}
+            Taxas: {formatCents(totalGatewayFeeCents + totalSplitCents)}
           </div>
         </div>
       </div>
@@ -249,7 +249,7 @@ export function SubaccountPanel({
                       <th className="px-3.5 py-2.5 font-medium">Data / Hora</th>
                       <th className="px-3.5 py-2.5 font-medium">Método</th>
                       <th className="px-3.5 py-2.5 font-medium">Valor Bruto</th>
-                      <th className="px-3.5 py-2.5 font-medium">Taxa Retida</th>
+                      <th className="px-3.5 py-2.5 font-medium">Taxas</th>
                       <th className="px-3.5 py-2.5 font-medium">Valor Líquido</th>
                       <th className="px-3.5 py-2.5 font-medium">Status</th>
                     </tr>
@@ -270,7 +270,11 @@ export function SubaccountPanel({
                           </td>
                           <td className="px-3.5 py-2.5">
                             <Badge variant="outline" className="text-[10px] font-normal">
-                              {r.method === "pix" ? "Pix" : "Link"}
+                              {r.method === "pix"
+                                ? "Pix"
+                                : `${RECEIPT_METHOD_LABEL[r.method] ?? "Link"}${
+                                    r.paidMethod ? ` · ${LINK_PAYMENT_METHOD_LABEL[r.paidMethod]}` : ""
+                                  }`}
                             </Badge>
                           </td>
                           <td className="px-3.5 py-2.5 font-medium text-foreground">
@@ -287,7 +291,7 @@ export function SubaccountPanel({
                             </div>
                           </td>
                           <td className="px-3.5 py-2.5 text-muted-foreground">
-                            - {formatCents(r.splitAmountCents)}
+                            <FeesPopover receipt={r} />
                           </td>
                           <td
                             className={cn(
@@ -298,7 +302,9 @@ export function SubaccountPanel({
                                 "text-muted-foreground line-through opacity-70",
                             )}
                           >
-                            {formatCents(r.netAmountCents)}
+                            {r.method !== "pix" && !r.paidMethod && r.status === "awaiting"
+                              ? `a partir de ${formatCents(r.netAmountCents)}`
+                              : formatCents(r.netAmountCents)}
                           </td>
                           <td className="px-3.5 py-2.5">
                             {(() => {
@@ -422,5 +428,83 @@ export function SubaccountPanel({
         defaultPixKey={defaultPixKey}
       />
     </div>
+  );
+}
+
+/** Forma gerada, no historico (o meio usado entra depois do ponto, quando o Asaas confirma). */
+const RECEIPT_METHOD_LABEL: Record<string, string> = {
+  pix: "Pix",
+  link: "Cartão",
+  boleto: "Boleto",
+  choice: "Escolha do aluno",
+};
+
+/**
+ * "Taxas" do historico: o total (Asaas + GestaraHub) com um popup que explica
+ * cada parte. Clique (funciona no celular); no link ainda nao pago, avisa que
+ * e a estimativa pelo credito.
+ */
+function FeesPopover({ receipt: r }: { receipt: SubaccountReceiptItem }) {
+  const total = r.gatewayFeeCents + r.splitAmountCents;
+  // Fora o Pix, o meio so e conhecido no pagamento: antes disso a tarifa e a maior possivel.
+  const estimated = r.method !== "pix" && !r.paidMethod && r.gatewayFeeCents > 0;
+  const methodLabel =
+    r.method === "pix" || r.paidMethod === "pix"
+      ? "Pix"
+      : r.paidMethod === "boleto"
+        ? "boleto"
+        : r.paidMethod
+          ? `cartão de ${LINK_PAYMENT_METHOD_LABEL[r.paidMethod].toLowerCase()}`
+          : "meio mais caro da forma escolhida";
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="cursor-pointer text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+          aria-label="Ver o detalhe das taxas"
+        >
+          {estimated ? "até " : ""}- {formatCents(total)}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 space-y-2.5 text-xs">
+        <p className="text-sm font-medium text-foreground">Taxas desta cobrança</p>
+        <div className="space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-muted-foreground">
+              Tarifa do Asaas
+              <span className="block text-[11px]">
+                {r.gatewayFeeCents > 0 ? `Pelo ${methodLabel}, cobrada pelo banco.` : "Não registrada nesta cobrança."}
+              </span>
+            </span>
+            <span className="shrink-0 font-medium text-foreground">
+              {r.gatewayFeeCents > 0 ? formatCents(r.gatewayFeeCents) : "—"}
+            </span>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-muted-foreground">
+              Taxa GestaraHub
+              <span className="block text-[11px]">Fixa por cobrança recebida.</span>
+            </span>
+            <span className="shrink-0 font-medium text-foreground">{formatCents(r.splitAmountCents)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-1.5 font-semibold text-foreground">
+            <span>Total</span>
+            <span>{formatCents(total)}</span>
+          </div>
+        </div>
+        {estimated ? (
+          <p className="text-[11px] text-muted-foreground">
+            O aluno ainda não pagou. A tarifa mostrada é a maior possível nesta forma; se ele pagar por um meio mais
+            barato, é menor. Quando o Asaas confirmar, fica o valor real.
+          </p>
+        ) : null}
+        {r.feePassedToCustomer ? (
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+            Taxas repassadas: o aluno pagou o acréscimo.
+          </p>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }

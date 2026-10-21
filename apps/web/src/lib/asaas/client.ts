@@ -1,5 +1,7 @@
 import type {
   AsaasAccountRequest,
+  AsaasWebhookConfig,
+  AsaasWebhookResponse,
   AsaasAccountResponse,
   AsaasCustomerRequest,
   AsaasCustomerResponse,
@@ -123,6 +125,32 @@ async function asaasFetch<T>(
  */
 export async function getAccountInfo(apiKey?: string): Promise<Record<string, unknown>> {
   return asaasFetch<Record<string, unknown>>("/myAccount", { apiKey });
+}
+
+/**
+ * Tarifas da conta dona da chave (GET /myAccount/fees). Com a chave da
+ * subconta, devolve as tarifas do espaco; a da conta principal nunca e usada aqui.
+ */
+export async function getAccountFees(apiKey: string): Promise<unknown> {
+  return asaasFetch<unknown>("/myAccount/fees/", { apiKey });
+}
+
+/** Webhooks cadastrados na conta dona da chave. */
+export async function listWebhooks(apiKey: string): Promise<AsaasWebhookResponse[]> {
+  const res = await asaasFetch<{ data?: AsaasWebhookResponse[] }>("/webhooks", { apiKey });
+  return res.data ?? [];
+}
+
+export async function createWebhook(config: AsaasWebhookConfig, apiKey: string): Promise<AsaasWebhookResponse> {
+  return asaasFetch<AsaasWebhookResponse>("/webhooks", { method: "POST", body: config, apiKey });
+}
+
+export async function updateWebhook(
+  id: string,
+  config: AsaasWebhookConfig,
+  apiKey: string,
+): Promise<AsaasWebhookResponse> {
+  return asaasFetch<AsaasWebhookResponse>(`/webhooks/${id}`, { method: "PUT", body: config, apiKey });
 }
 
 /**

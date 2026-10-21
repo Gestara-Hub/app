@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import type { Id, OnlinePayment, OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
@@ -12,6 +13,13 @@ import type {
   PixPayment,
 } from "./payments/types";
 import { getPaymentGateway } from "./payments/registry";
+import {
+  cancelGatewayPayment,
+  ensureSubaccountWebhook,
+  refreshGatewayIfNeeded,
+  subaccountKeyOf,
+  syncGatewayFees,
+} from "./gatewayAccountBackend";
 import {
   createSubAccount,
   getSubaccountBalance,
@@ -40,6 +48,7 @@ function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
       typeof row.split_amount_cents === "number" ? row.split_amount_cents : 0,
     gatewayFeeCents:
       typeof row.gateway_fee_cents === "number" ? row.gateway_fee_cents : 0,
+    paidMethod: (row.paid_method as OnlinePayment["paidMethod"]) ?? undefined,
     netAmountCents:
       typeof row.net_amount_cents === "number" ? row.net_amount_cents : 0,
     gatewayProvider: row.gateway_provider
@@ -152,12 +161,41 @@ export async function getOnlinePaymentByGatewayIdFromDb(
   return mapRowToOnlinePayment(data);
 }
 
+/** Forma gravada na cobranca do aluno quando o pagamento online e confirmado. */
+function chargeMethodOf(payment: OnlinePayment): "pix" | "card" | "other" {
+  const used = payment.paidMethod;
+  if (used === "pix") return "pix";
+  if (used === "creditCard" || used === "debitCard") return "card";
+  if (used === "boleto") return "other";
+  return payment.method === "pix" ? "pix" : payment.method === "link" ? "card" : "other";
+}
+
 export async function markOnlinePaymentPaidInDb(
   gatewayPaymentId: string,
   paidAtISO: string,
   provider?: string,
+  /** Do webhook: valor liquido do Asaas (centavos) e o meio usado. Troca a tarifa estimada pela real. */
+  settlement?: { netValueCents?: number; paidMethod?: OnlinePayment["paidMethod"] },
 ): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
   const adminClient = createSupabaseAdminClient();
+
+  const real: Record<string, unknown> = {};
+  if (settlement?.paidMethod) real.paid_method = settlement.paidMethod;
+  if (typeof settlement?.netValueCents === "number") {
+    let lookup = adminClient
+      .from("online_payments")
+      .select("amount_cents, split_amount_cents")
+      .eq("gateway_payment_id", gatewayPaymentId);
+    if (provider) lookup = lookup.eq("gateway_provider", provider);
+    const { data: current } = await lookup.maybeSingle();
+    if (current) {
+      const amount = Number(current.amount_cents) || 0;
+      const split = Number(current.split_amount_cents) || 0;
+      // netValue do Asaas ja desconta a tarifa dele; o split sai depois, na liquidacao.
+      real.gateway_fee_cents = Math.max(0, amount - settlement.netValueCents);
+      real.net_amount_cents = Math.max(0, settlement.netValueCents - split);
+    }
+  }
 
   // 1. Atualiza online_payments
   let query = adminClient
@@ -165,6 +203,7 @@ export async function markOnlinePaymentPaidInDb(
     .update({
       status: "paid",
       paid_at: paidAtISO,
+      ...real,
     })
     .eq("gateway_payment_id", gatewayPaymentId);
 
@@ -191,7 +230,8 @@ export async function markOnlinePaymentPaidInDb(
     .from("charges")
     .update({
       status: "paid",
-      method: "pix",
+      // Meio real do webhook; sem ele, pela forma gerada (link e cartao, Pix e Pix, o resto outro).
+      method: chargeMethodOf(payment),
       paid_via: "online",
       paid_at: paidAtISO,
     })
@@ -367,16 +407,36 @@ export async function cancelOnlinePaymentsForChargeInDb(
   reason?: string,
 ): Promise<void> {
   const client = await getClientForTenant();
-  const updatePayload: Record<string, unknown> = { status: "canceled" };
-  if (reason) {
-    updatePayload.canceled_reason = reason;
-  }
-  await client
+  const { data: rows } = await client
     .from("online_payments")
-    .update(updatePayload)
+    .select("id, gateway_provider, gateway_payment_id")
     .eq("charge_id", chargeId)
     .eq("organization_id", organizationId)
     .eq("status", "awaiting");
+  if (!rows?.length) return;
+
+  // Cancela tambem no Asaas, senao o aluno ainda paga o link ou o QR antigo.
+  const key = rows.some((r) => r.gateway_provider === "asaas") ? await subaccountKeyOf(organizationId) : null;
+  const toCancel: string[] = [];
+  const pendingAtGateway: string[] = [];
+  for (const row of rows) {
+    if (row.gateway_provider === "asaas" && row.gateway_payment_id && key) {
+      const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
+      // Ja paga no Asaas: nao cancela aqui; o webhook de pagamento da a baixa.
+      if (result === "paid") continue;
+      if (result === "failed") pendingAtGateway.push(String(row.id));
+    }
+    toCancel.push(String(row.id));
+  }
+  if (toCancel.length === 0) return;
+
+  const updatePayload: Record<string, unknown> = { status: "canceled" };
+  if (reason) updatePayload.canceled_reason = reason;
+  await client.from("online_payments").update(updatePayload).in("id", toCancel);
+  // Falhou no Asaas: cancela aqui mesmo assim e marca para tentar de novo.
+  if (pendingAtGateway.length > 0) {
+    await client.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
+  }
 }
 
 export interface SetupSubaccountInput {
@@ -488,7 +548,15 @@ export async function setupSubaccountAction(
       })
       .eq("id", input.organizationId);
 
-    // 3. Registra auditoria jurídica de consentimento (LGPD, Marco Civil, Bacen)
+    // 3. Subconta aprovada: tarifas dela e webhook de baixa automatica (doc 19, secao 4).
+    //    Falha aqui nao desfaz a ativacao: as tarifas voltam a ser buscadas no uso
+    //    e o webhook e recadastrado quando a URL estiver configurada.
+    if (process.env.ASAAS_API_KEY) {
+      await syncGatewayFees(input.organizationId);
+      await ensureSubaccountWebhook(input.organizationId);
+    }
+
+    // 4. Registra auditoria jurídica de consentimento (LGPD, Marco Civil, Bacen)
     try {
       const headerList = await headers();
       const rawIp =
@@ -544,6 +612,11 @@ export async function setupSubaccountAction(
   }
 }
 
+/** As tarifas vivem na coluna gateway_fees; nunca dentro de settings. */
+function stripGatewayFees<T extends Record<string, unknown>>(online: T): T {
+  return Object.fromEntries(Object.entries(online).filter(([key]) => key !== "gatewayFees")) as T;
+}
+
 /**
  * Consulta o status do gateway da organização no banco de dados.
  */
@@ -552,12 +625,22 @@ export async function getOrganizationGatewayAction(organizationId: string) {
   const { data } = await adminClient
     .from("organizations")
     .select(
-      "gateway_provider, gateway_account_id, gateway_wallet_id, gateway_status, settings, subscription",
+      "id, gateway_provider, gateway_account_id, gateway_wallet_id, gateway_status, gateway_api_key, gateway_fees, gateway_webhook_url, settings, subscription",
     )
     .eq("id", organizationId)
     .maybeSingle();
 
+  // Tarifas com mais de 24 horas e webhook com URL antiga: atualiza depois da resposta.
+  if (data) {
+    after(() =>
+      refreshGatewayIfNeeded(data).catch((err) =>
+        console.error("[getOrganizationGatewayAction] Erro ao atualizar a subconta:", err),
+      ),
+    );
+  }
+
   return {
+    gatewayFees: (data?.gateway_fees as OnlinePaymentSettings["gatewayFees"]) ?? undefined,
     provider: data?.gateway_provider || "asaas",
     accountId: data?.gateway_account_id || undefined,
     walletId: data?.gateway_wallet_id || undefined,
@@ -591,10 +674,10 @@ export async function updateOrganizationOnlineSettingsAction(
       .update({
         settings: {
           ...currentSettings,
-          onlinePayments: {
+          onlinePayments: stripGatewayFees({
             ...currentOnline,
             ...updates,
-          },
+          }),
         },
       })
       .eq("id", organizationId);
@@ -972,6 +1055,10 @@ export interface SubaccountReceiptItem {
   status: string;
   amountCents: number;
   splitAmountCents: number;
+  /** Tarifa do Asaas: real depois do pagamento (webhook), estimada antes. */
+  gatewayFeeCents: number;
+  /** Meio usado pelo aluno, quando o Asaas informou. */
+  paidMethod?: OnlinePayment["paidMethod"];
   netAmountCents: number;
   feePassedToCustomer?: boolean;
   paidAt?: string;
@@ -990,7 +1077,7 @@ export async function listSubaccountReceiptsAction(
     .from("online_payments")
     .select(
       `
-      id, charge_id, method, status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
+      id, charge_id, method, status, amount_cents, split_amount_cents, gateway_fee_cents, paid_method, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
       charges (
         status, paid_via
       )
@@ -1025,6 +1112,7 @@ export async function listSubaccountReceiptsAction(
       amountCents: Number(r.amount_cents) || 0,
       splitAmountCents: Number(r.split_amount_cents) || 0,
       gatewayFeeCents: Number(r.gateway_fee_cents) || 0,
+      paidMethod: (r.paid_method as SubaccountReceiptItem["paidMethod"]) ?? undefined,
       netAmountCents: Number(r.net_amount_cents) || 0,
       feePassedToCustomer: Boolean(r.fee_passed_to_customer),
       paidAt: r.paid_at ? String(r.paid_at) : undefined,

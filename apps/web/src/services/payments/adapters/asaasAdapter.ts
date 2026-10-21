@@ -209,8 +209,9 @@ export const asaasPaymentGateway: PaymentGateway = {
     const payment = await createPixPayment(
       {
         customer: customer.id,
-        // So cartao: a fatura do Asaas oferece credito e debito. Pix tem a propria opcao na modal.
-        billingType: "CREDIT_CARD",
+        // Cartao (padrao): a fatura oferece credito e debito. BOLETO: boleto.
+        // UNDEFINED: o aluno escolhe Pix, boleto ou cartao na fatura.
+        billingType: input.billingType ?? "CREDIT_CARD",
         value: input.amountCents / 100,
         dueDate,
         description,

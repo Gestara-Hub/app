@@ -1,5 +1,8 @@
 "use client";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useRetainedValue } from "@/lib/use-retained-value";
+import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -8,7 +11,9 @@ import {
   CheckCircle2,
   Copy,
   FlaskConical,
-  Link2,
+  Barcode,
+  CreditCard,
+  LayoutGrid,
   MessageCircle,
   QrCode,
   RotateCw,
@@ -18,7 +23,15 @@ import type {
   OnlinePayment,
   OnlinePaymentMethod,
 } from "@gestarahub/contracts";
-import { calculateOnlineChargeAmounts, platformSplitCents } from "@gestarahub/core/payment-fees";
+import {
+  availableOnlineMethods,
+  calculateOnlineChargeAmounts,
+  defaultPassFeeFor,
+  effectiveGatewayFees,
+  LINK_PAYMENT_METHOD_LABEL,
+  platformSplitCents,
+  type LinkPaymentMethod,
+} from "@gestarahub/core/payment-fees";
 import { formatCents, formatDateTime } from "@gestarahub/core/format";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Badge } from "@/components/ui/badge";
@@ -60,9 +73,21 @@ const METHOD_OPTIONS: {
   },
   {
     value: "link",
-    label: "Link de pagamento",
+    label: "Link de cartão",
     description: "O aluno abre o link e paga com cartão de crédito ou débito.",
-    icon: Link2,
+    icon: CreditCard,
+  },
+  {
+    value: "boleto",
+    label: "Boleto",
+    description: "O aluno abre o link e paga o boleto. Compensa em 1 dia útil.",
+    icon: Barcode,
+  },
+  {
+    value: "choice",
+    label: "O aluno escolhe",
+    description: "Link em que o aluno paga com Pix, boleto ou cartão.",
+    icon: LayoutGrid,
   },
 ];
 
@@ -114,10 +139,11 @@ interface OnlineChargeDialogProps {
  * WhatsApp. "Simular pagamento" e so da demonstracao.
  */
 export function OnlineChargeDialog({
-  charge,
+  charge: chargeProp,
   onOpenChange,
 }: OnlineChargeDialogProps) {
-  const open = charge !== null;
+  const open = chargeProp !== null;
+  const charge = useRetainedValue(chargeProp);
   const checkout = useOnlineCheckout(charge?.id ?? null);
   const createMut = useCreateOnlinePayment();
   const paidMut = useSimulateOnlinePaid();
@@ -125,25 +151,27 @@ export function OnlineChargeDialog({
   const whatsapp = useWhatsAppSend();
   // Forcar a escolha de novo metodo mesmo com um codigo valido em aberto.
   const [choosing, setChoosing] = useState(false);
-  const [method, setMethod] = useState<OnlinePaymentMethod>("pix");
+  // null = a primeira forma aceita pelo espaco.
+  const [chosenMethod, setMethod] = useState<OnlinePaymentMethod | null>(null);
   const [passFee, setPassFee] = useState<boolean | null>(null);
 
-  const close = (next: boolean) => {
-    if (!next) {
-      setChoosing(false);
-      setMethod("pix");
-      setPassFee(null);
-    }
-    onOpenChange(next);
-  };
+  // Metodo e repasse voltam ao padrao depois da animacao de saida, nao no clique.
+  useAfterDialogClose(open, () => {
+    setChoosing(false);
+    setMethod(null);
+    setPassFee(null);
+  });
+  const close = (next: boolean) => onOpenChange(next);
 
   const onlineSettings = org?.settings?.onlinePayments;
+  // So as formas ligadas em Recebimentos online ("O aluno escolhe" so com as tres).
+  const methodOptions = METHOD_OPTIONS.filter((opt) => availableOnlineMethods(onlineSettings).includes(opt.value));
+  const method: OnlinePaymentMethod =
+    chosenMethod && methodOptions.some((opt) => opt.value === chosenMethod)
+      ? chosenMethod
+      : (methodOptions[0]?.value ?? "pix");
   const splitAmountCents = platformSplitCents(org?.subscription?.tier);
-  const defaultPassFee =
-    method === "pix"
-      ? Boolean(onlineSettings?.passFeePix ?? onlineSettings?.passFeeToCustomer ?? false)
-      : Boolean(onlineSettings?.passFeeCard ?? onlineSettings?.passFeeToCustomer ?? false);
-  const activePassFee = passFee !== null ? passFee : defaultPassFee;
+  const activePassFee = passFee !== null ? passFee : defaultPassFeeFor(onlineSettings, method);
 
   // Tarifa do Asaas + taxa do GestaraHub (doc 19 §4). No link o aluno escolhe
   // credito ou debito, entao a tarifa mostrada e a do credito (a maior).
@@ -152,6 +180,7 @@ export function OnlineChargeDialog({
     method,
     splitAmountCents,
     passFee: activePassFee,
+    fees: effectiveGatewayFees(onlineSettings?.gatewayFees, format(new Date(), "yyyy-MM-dd")),
   });
 
   const payments = checkout.data?.payments ?? [];
@@ -169,7 +198,7 @@ export function OnlineChargeDialog({
         onSuccess: () => {
           setChoosing(false);
           toast.success(
-            method === "pix" ? "Pix gerado." : "Link de pagamento gerado.",
+            method === "pix" ? "Pix gerado." : method === "boleto" ? "Boleto gerado." : "Link de pagamento gerado.",
           );
         },
         onError: (err) =>
@@ -262,7 +291,7 @@ export function OnlineChargeDialog({
                 aria-label="Forma de cobrança"
                 className="grid gap-2"
               >
-                {METHOD_OPTIONS.map((opt) => {
+                {methodOptions.map((opt) => {
                   const Icon = opt.icon;
                   const active = method === opt.value;
                   return (
@@ -308,9 +337,7 @@ export function OnlineChargeDialog({
                       Repassar taxa ao aluno
                     </label>
                     <p className="text-[11px] text-muted-foreground">
-                      {method === "pix"
-                        ? `Acréscimo fixo da tarifa e da taxa (+ ${formatCents(feePreview.totalFeeCents)})`
-                        : "Acréscimo que cobre a tarifa do cartão de crédito"}
+                      {activePassFee ? "O aluno paga as taxas no seu lugar." : "As taxas saem do que você recebe."}
                     </p>
                   </div>
                   <Switch
@@ -320,49 +347,50 @@ export function OnlineChargeDialog({
                   />
                 </div>
 
-                <div className="rounded-md border border-border/60 bg-background/80 p-2.5 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span>Valor nominal da cobrança:</span>
-                    <span>{formatCents(charge?.amountCents ?? 0)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span>
-                      Tarifa do Asaas
-                      {method === "pix" ? " (Pix)" : " (cartão de crédito; no débito é menor)"}:
-                    </span>
-                    <span className={activePassFee ? "font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}>
-                      {activePassFee ? "+ " : "- "}
-                      {formatCents(feePreview.gatewayFeeCents)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span>Taxa GestaraHub:</span>
-                    <span className={activePassFee ? "font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}>
-                      {activePassFee ? "+ " : "- "}
-                      {formatCents(feePreview.splitAmountCents)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-border/50 pt-1 font-semibold">
-                    <span className="text-foreground">Aluno paga:</span>
-                    <span className="text-foreground text-sm font-bold">
-                      {formatCents(feePreview.chargedAmountCents)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>{feePreview.estimated ? "Você recebe líquido, no mínimo:" : "Você recebe líquido:"}</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatCents(feePreview.netAmountCents)}
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-[10px] text-muted-foreground">
-                  {activePassFee
-                    ? feePreview.estimated
-                      ? "✓ O acréscimo cobre a tarifa do cartão de crédito. Se o aluno pagar no débito, a diferença fica com você."
-                      : "✓ Custo zero para você: entra na subconta exatamente o valor da cobrança."
-                    : "• Tarifa do Asaas e taxa GestaraHub saem do valor que entra na subconta."}
-                </p>
+                {(() => {
+                  // Tres linhas: o que o aluno paga, as taxas e o que voce recebe.
+                  // No link a taxa depende de credito ou debito: mostra a faixa.
+                  const methods = feePreview.byMethod;
+                  const fees = methods.map((m) => m.gatewayFeeCents + feePreview.splitAmountCents);
+                  const nets = methods.map((m) => m.netAmountCents);
+                  const range = (values: number[]) => {
+                    const lo = Math.min(...values);
+                    const hi = Math.max(...values);
+                    return lo === hi ? formatCents(lo) : `${formatCents(lo)} a ${formatCents(hi)}`;
+                  };
+                  return (
+                    <div className="space-y-2 rounded-md border border-border/60 bg-background/80 p-3 text-xs">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-muted-foreground">Aluno paga</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {formatCents(feePreview.chargedAmountCents)}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-muted-foreground">Taxas</span>
+                        <FeesPopover
+                          label={`${activePassFee ? "+" : "-"} ${range(fees)}`}
+                          passFee={activePassFee}
+                          splitAmountCents={feePreview.splitAmountCents}
+                          methods={methods}
+                        />
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border/50 pt-2">
+                        <span className="font-medium text-foreground">Você recebe</span>
+                        <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                          {range(nets)}
+                        </span>
+                      </div>
+                      {methods.length > 1 ? (
+                        <p className="text-[11px] text-muted-foreground">
+                          {method === "link"
+                            ? "Depende de o aluno pagar no débito (taxa menor) ou no crédito."
+                            : "Depende de como o aluno pagar; a taxa de cada forma está no detalhe."}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : awaiting ? (
@@ -504,7 +532,11 @@ export function OnlineChargeDialog({
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {awaiting.method === "pix"
                       ? "Cobrança real gerada no Asaas, com QR Code Pix oficial."
-                      : "Cobrança real gerada no Asaas; o aluno paga com cartão na fatura do link."}{" "}
+                      : awaiting.method === "boleto"
+                        ? "Cobrança real gerada no Asaas; o aluno paga o boleto na fatura do link."
+                        : awaiting.method === "choice"
+                          ? "Cobrança real gerada no Asaas; o aluno escolhe Pix, boleto ou cartão na fatura."
+                          : "Cobrança real gerada no Asaas; o aluno paga com cartão na fatura do link."}{" "}
                     No ambiente de homologação você também pode simular a confirmação.
                   </p>
                   <Button
@@ -559,7 +591,9 @@ export function OnlineChargeDialog({
                     ? "Gerando..."
                     : method === "pix"
                       ? "Gerar Pix"
-                      : "Gerar link"}
+                      : method === "boleto"
+                        ? "Gerar boleto"
+                        : "Gerar link"}
                 </Button>
               </>
             ) : (
@@ -571,5 +605,66 @@ export function OnlineChargeDialog({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * Valor das taxas com popup que explica cada parte, por meio de pagamento
+ * (Pix, ou credito e debito no link). Clique, para funcionar no celular.
+ */
+function FeesPopover({
+  label,
+  passFee,
+  splitAmountCents,
+  methods,
+}: {
+  label: string;
+  passFee: boolean;
+  splitAmountCents: number;
+  methods: Array<{ method: LinkPaymentMethod; gatewayFeeCents: number }>;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Ver o detalhe das taxas"
+          className={cn(
+            "cursor-pointer font-medium underline decoration-dotted underline-offset-2",
+            passFee ? "text-foreground" : "text-amber-600 dark:text-amber-400",
+          )}
+        >
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 space-y-3 text-xs">
+        <p className="text-sm font-medium text-foreground">Como as taxas são calculadas</p>
+        {methods.map((m) => (
+          <div key={m.method} className="space-y-1">
+            {methods.length > 1 ? (
+              <p className="font-medium text-foreground">
+                No {m.method === "pix" ? "Pix" : LINK_PAYMENT_METHOD_LABEL[m.method].toLowerCase()}
+              </p>
+            ) : null}
+            <div className="flex justify-between gap-3 text-muted-foreground">
+              <span>Tarifa do Asaas</span>
+              <span>{formatCents(m.gatewayFeeCents)}</span>
+            </div>
+            <div className="flex justify-between gap-3 text-muted-foreground">
+              <span>Taxa GestaraHub</span>
+              <span>{formatCents(splitAmountCents)}</span>
+            </div>
+            <div className="flex justify-between gap-3 border-t border-border/50 pt-1 font-medium text-foreground">
+              <span>Total</span>
+              <span>{formatCents(m.gatewayFeeCents + splitAmountCents)}</span>
+            </div>
+          </div>
+        ))}
+        <p className="text-[11px] text-muted-foreground">
+          A tarifa do Asaas é do banco; a taxa GestaraHub é fixa por cobrança recebida.{" "}
+          {passFee ? "Repassadas: somadas ao valor do aluno." : "Absorvidas: saem do que entra na sua subconta."}
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }

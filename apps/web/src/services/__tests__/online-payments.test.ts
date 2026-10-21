@@ -54,10 +54,75 @@ describe("cobrança online: gerar Pix ou link", () => {
     expect(passed.netAmountCents).toBe(15000);
     expect(passed.feePassedToCustomer).toBe(true);
 
-    // Link = cartão: a prévia usa o crédito (1,99% + R$ 0,49), a maior entre crédito e débito.
+    // Link = cartão: sem tabela da subconta, a reserva usa o crédito cheio (2,99% + R$ 0,49).
     const link = await onlinePaymentsService.createForCharge(charge.id, "link", false);
-    expect(link.gatewayFeeCents).toBe(Math.round(15000 * 0.0199) + 49);
+    expect(link.gatewayFeeCents).toBe(Math.round(15000 * 0.0299) + 49);
     expect(link.netAmountCents).toBe(15000 - link.gatewayFeeCents! - 129);
+  });
+
+  it("usa as tarifas da subconta, com a promoção só até a data de fim", async () => {
+    const { charge } = await studentWithCharge();
+    const online = store.organization.settings!.onlinePayments!;
+    online.gatewayFees = {
+      pix: { percent: 0, fixedCents: 199, promo: { percent: 0, fixedCents: 99 }, promoUntil: "2027-01-20" },
+      creditCard: { percent: 0.0299, fixedCents: 49, promo: { percent: 0.0199, fixedCents: 49 }, promoUntil: "2027-01-20" },
+      debitCard: { percent: 0.0189, fixedCents: 35 },
+      boleto: { percent: 0, fixedCents: 199 },
+      syncedAt: "2026-09-22T12:00:00.000Z",
+    };
+    const promo = await onlinePaymentsService.createForCharge(charge.id, "pix", false);
+    expect(promo.gatewayFeeCents).toBe(99);
+    const card = await onlinePaymentsService.createForCharge(charge.id, "link", false);
+    expect(card.gatewayFeeCents).toBe(Math.round(15000 * 0.0199) + 49);
+
+    // Depois do fim da promoção vale o valor cheio, sem buscar nada.
+    vi.setSystemTime(new Date("2027-01-20T12:00:00"));
+    const full = await onlinePaymentsService.createForCharge(charge.id, "pix", false);
+    expect(full.gatewayFeeCents).toBe(199);
+  });
+
+  it("formas aceitas: boleto desligado por padrão; 'o aluno escolhe' só com as três", async () => {
+    const { charge } = await studentWithCharge();
+    await expect(onlinePaymentsService.createForCharge(charge.id, "boleto")).rejects.toMatchObject({
+      httpStatus: 422,
+      message: "Esta forma de pagamento está desligada em Recebimentos online.",
+    });
+    await expect(onlinePaymentsService.createForCharge(charge.id, "choice")).rejects.toMatchObject({
+      httpStatus: 422,
+    });
+
+    await onlinePaymentsService.updateSettings({ acceptedMethods: { pix: true, card: true, boleto: true } });
+    const boleto = await onlinePaymentsService.createForCharge(charge.id, "boleto", false);
+    expect(boleto.method).toBe("boleto");
+    expect(boleto.linkUrl).toBeTruthy();
+    const choice = await onlinePaymentsService.createForCharge(charge.id, "choice", true);
+    expect(choice.method).toBe("choice");
+    // Com repasse, o espaço recebe ao menos o valor mesmo no meio mais caro (cartão de crédito).
+    expect(choice.netAmountCents).toBeGreaterThanOrEqual(15000);
+
+    await onlinePaymentsService.updateSettings({ acceptedMethods: { pix: true, card: false, boleto: true } });
+    await expect(onlinePaymentsService.createForCharge(charge.id, "link")).rejects.toMatchObject({ httpStatus: 422 });
+  });
+
+  it("não deixa desligar todas as formas", async () => {
+    await expect(
+      onlinePaymentsService.updateSettings({ acceptedMethods: { pix: false, card: false, boleto: false } }),
+    ).rejects.toMatchObject({
+      fields: [{ field: "acceptedMethods", message: "Deixe ao menos uma forma de pagamento ligada." }],
+    });
+  });
+
+  it("repasse padrão por forma, com o geral como reserva", async () => {
+    const { charge } = await studentWithCharge();
+    await onlinePaymentsService.updateSettings({
+      acceptedMethods: { pix: true, card: true, boleto: true },
+      passFeeToCustomer: true,
+      passFeeBoleto: false,
+    });
+    const pix = await onlinePaymentsService.createForCharge(charge.id, "pix");
+    expect(pix.feePassedToCustomer).toBe(true);
+    const boleto = await onlinePaymentsService.createForCharge(charge.id, "boleto");
+    expect(boleto.feePassedToCustomer).toBe(false);
   });
 
   it("recusa com a cobrança online desligada", async () => {

@@ -8,17 +8,28 @@
  * Tudo em centavos. Os percentuais sao fracoes (1,99% = 0.0199).
  */
 
-export type OnlinePaymentMethodKind = "pix" | "link";
+import type {
+  DateISO,
+  DateTimeISO,
+  GatewayAccountFees,
+  GatewayFeeRule,
+  GatewayFeeWithPromo,
+  LinkPaymentMethodName,
+  AcceptedOnlineMethods,
+  OnlinePaymentMethod,
+  OnlinePaymentSettings,
+} from "@gestarahub/contracts";
+
+export type OnlinePaymentMethodKind = OnlinePaymentMethod;
+/** Meio efetivamente usado pelo aluno (Pix direto ou o que escolheu na fatura do link). */
+export type LinkPaymentMethod = LinkPaymentMethodName;
 export type PlatformTier = "free" | "pro" | "scale";
 
-/** Tarifa de um meio de pagamento: percentual sobre o valor mais um fixo. */
-export interface GatewayFee {
-  percent: number;
-  fixedCents: number;
-}
+/** Tarifa de um meio de pagamento: percentual sobre o valor mais um fixo, com piso e teto opcionais. */
+export type GatewayFee = GatewayFeeRule;
 
 /**
- * Tabela de tarifas do Asaas na subconta (conta padrao, 21/10/2026).
+ * Tabela de tarifas efetiva (ja com a promocao do dia, se houver).
  * `linkMethods` sao os meios que o aluno pode escolher na fatura do link.
  * O link e criado com `billingType: CREDIT_CARD`, e a fatura do Asaas oferece
  * credito e debito nesse modo; o pior caso e o credito. Parcelamento no link
@@ -29,16 +40,145 @@ export interface GatewayFeeTable {
   boleto: GatewayFee;
   creditCard: GatewayFee;
   debitCard: GatewayFee;
-  linkMethods: ReadonlyArray<"pix" | "boleto" | "creditCard" | "debitCard">;
+  linkMethods: ReadonlyArray<LinkPaymentMethod>;
 }
 
+const LINK_METHODS: ReadonlyArray<LinkPaymentMethod> = ["creditCard", "debitCard"];
+
+/**
+ * Reserva: tabela padrao do Asaas sem promocao (21/10/2026). Vale so quando a
+ * subconta ainda nao tem a propria tabela gravada ou a busca falhou. Sem
+ * promocao de proposito: na duvida, a previa mostra taxa a mais, nunca a menos.
+ */
 export const ASAAS_FEES: GatewayFeeTable = {
   pix: { percent: 0, fixedCents: 199 },
-  boleto: { percent: 0, fixedCents: 99 },
-  creditCard: { percent: 0.0199, fixedCents: 49 },
+  boleto: { percent: 0, fixedCents: 199 },
+  creditCard: { percent: 0.0299, fixedCents: 49 },
   debitCard: { percent: 0.0189, fixedCents: 35 },
-  linkMethods: ["creditCard", "debitCard"],
+  linkMethods: LINK_METHODS,
 };
+
+/** Intervalo de atualizacao das tarifas da subconta (decisao de 21/10/2026). */
+export const GATEWAY_FEES_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** Tabela gravada passou de 24 horas (ou nao existe): hora de buscar de novo. */
+export function areGatewayFeesStale(fees: GatewayAccountFees | undefined, now: Date): boolean {
+  if (!fees?.syncedAt) return true;
+  return now.getTime() - new Date(fees.syncedAt).getTime() > GATEWAY_FEES_MAX_AGE_MS;
+}
+
+function effectiveRule(rule: GatewayFeeWithPromo, today: DateISO): GatewayFee {
+  const promoValid = rule.promo && (!rule.promoUntil || today < rule.promoUntil);
+  const chosen = promoValid ? rule.promo! : rule;
+  return {
+    percent: chosen.percent,
+    fixedCents: chosen.fixedCents,
+    ...(chosen.minCents !== undefined ? { minCents: chosen.minCents } : {}),
+    ...(chosen.maxCents !== undefined ? { maxCents: chosen.maxCents } : {}),
+  };
+}
+
+/**
+ * Tabela efetiva da subconta no dia: promocao enquanto valer, depois o valor
+ * cheio. Sem tabela gravada, a reserva `ASAAS_FEES`.
+ */
+export function effectiveGatewayFees(fees: GatewayAccountFees | undefined, today: DateISO): GatewayFeeTable {
+  if (!fees) return ASAAS_FEES;
+  return {
+    pix: effectiveRule(fees.pix, today),
+    boleto: effectiveRule(fees.boleto, today),
+    creditCard: effectiveRule(fees.creditCard, today),
+    debitCard: effectiveRule(fees.debitCard, today),
+    linkMethods: LINK_METHODS,
+  };
+}
+
+// --- Leitura da resposta do Asaas (GET /myAccount/fees) ---------------------
+
+const toCents = (value: unknown): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) : undefined;
+/** 2,99 (%) -> 0.0299, sem o resto de ponto flutuante de 2.99 / 100. */
+const toFraction = (value: unknown): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) / 10000 : undefined;
+/** "2027-01-20 00:00:00" -> "2027-01-20". */
+const toDate = (value: unknown): DateISO | undefined =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : undefined;
+
+type Raw = Record<string, unknown> | undefined;
+
+/**
+ * Converte a resposta de `GET /v3/myAccount/fees` na tabela crua do contrato.
+ * Campo ausente cai na reserva daquele meio, para nunca gravar taxa zero por engano.
+ */
+export function parseAsaasAccountFees(response: unknown, syncedAt: DateTimeISO): GatewayAccountFees {
+  const payment = ((response as Raw)?.payment ?? {}) as Record<string, Raw>;
+
+  const pix = payment.pix;
+  const pixPercent = toFraction(pix?.percentageFee);
+  const pixFixed = toCents(pix?.fixedFeeValue);
+  const pixPromo = toCents(pix?.fixedFeeValueWithDiscount);
+  const pixRule: GatewayFeeWithPromo =
+    pixPercent !== undefined
+      ? {
+          percent: pixPercent,
+          fixedCents: 0,
+          ...(toCents(pix?.minimumFeeValue) !== undefined ? { minCents: toCents(pix?.minimumFeeValue) } : {}),
+          ...(toCents(pix?.maximumFeeValue) !== undefined ? { maxCents: toCents(pix?.maximumFeeValue) } : {}),
+        }
+      : { percent: 0, fixedCents: pixFixed ?? ASAAS_FEES.pix.fixedCents };
+  if (pixPromo !== undefined && pixPercent === undefined) {
+    pixRule.promo = { percent: 0, fixedCents: pixPromo };
+    const until = toDate(pix?.discountExpiration);
+    if (until) pixRule.promoUntil = until;
+  }
+
+  const credit = payment.creditCard;
+  const creditFixed = toCents(credit?.operationValue) ?? ASAAS_FEES.creditCard.fixedCents;
+  const creditRule: GatewayFeeWithPromo = {
+    percent: toFraction(credit?.oneInstallmentPercentage) ?? ASAAS_FEES.creditCard.percent,
+    fixedCents: creditFixed,
+  };
+  const creditPromo = toFraction(credit?.discountOneInstallmentPercentage);
+  if (credit?.hasValidDiscount === true && creditPromo !== undefined) {
+    creditRule.promo = { percent: creditPromo, fixedCents: creditFixed };
+    const until = toDate(credit?.discountExpiration);
+    if (until) creditRule.promoUntil = until;
+  }
+
+  const debit = payment.debitCard;
+  const debitRule: GatewayFeeWithPromo = {
+    percent: toFraction(debit?.defaultPercentage) ?? ASAAS_FEES.debitCard.percent,
+    fixedCents: toCents(debit?.operationValue) ?? ASAAS_FEES.debitCard.fixedCents,
+  };
+
+  const slip = payment.bankSlip;
+  const boletoRule: GatewayFeeWithPromo = {
+    percent: 0,
+    fixedCents: toCents(slip?.defaultValue) ?? ASAAS_FEES.boleto.fixedCents,
+  };
+  const slipPromo = toCents(slip?.discountValue);
+  if (slipPromo !== undefined) {
+    boletoRule.promo = { percent: 0, fixedCents: slipPromo };
+    const until = toDate(slip?.expirationDate);
+    if (until) boletoRule.promoUntil = until;
+  }
+
+  return { pix: pixRule, creditCard: creditRule, debitCard: debitRule, boleto: boletoRule, syncedAt };
+}
+
+/**
+ * A tarifa real do pagamento (webhook) bate com a tabela? Tolerancia de 1
+ * centavo para arredondamento. Divergiu: a tarifa da subconta mudou e a
+ * tabela precisa ser buscada de novo.
+ */
+export function isGatewayFeeDivergent(
+  table: GatewayFeeTable,
+  method: LinkPaymentMethod,
+  chargedCents: number,
+  realFeeCents: number,
+): boolean {
+  return Math.abs(gatewayFeeCents(table[method], chargedCents) - realFeeCents) > 1;
+}
 
 /** Taxa do GestaraHub por cobranca online recebida (doc 13). */
 export const PLATFORM_SPLIT_CENTS: Record<PlatformTier, number> = {
@@ -51,10 +191,13 @@ export function platformSplitCents(tier: PlatformTier | undefined): number {
   return PLATFORM_SPLIT_CENTS[tier ?? "free"];
 }
 
-/** Tarifa de um meio sobre um valor cobrado. */
+/** Tarifa de um meio sobre um valor cobrado (com piso e teto, se houver). */
 export function gatewayFeeCents(fee: GatewayFee, chargedCents: number): number {
   if (chargedCents <= 0) return 0;
-  return Math.round(chargedCents * fee.percent) + fee.fixedCents;
+  let value = Math.round(chargedCents * fee.percent) + fee.fixedCents;
+  if (fee.minCents !== undefined) value = Math.max(value, fee.minCents);
+  if (fee.maxCents !== undefined) value = Math.min(value, fee.maxCents);
+  return value;
 }
 
 /**
@@ -85,6 +228,11 @@ export interface OnlineChargeAmounts {
    * no pagamento: aqui vai a pior (credito), e `estimated` fica true.
    */
   estimated: boolean;
+  /**
+   * Cada meio possivel com a tarifa e o liquido sobre o mesmo valor cobrado,
+   * do mais caro ao mais barato. Um item so no Pix.
+   */
+  byMethod: Array<{ method: LinkPaymentMethod; gatewayFeeCents: number; netAmountCents: number }>;
 }
 
 /**
@@ -112,12 +260,20 @@ export function calculateOnlineChargeAmounts(params: {
       totalFeeCents: 0,
       netAmountCents: 0,
       estimated: false,
+      byMethod: [],
     };
   }
 
-  const candidates: GatewayFee[] =
-    method === "pix" ? [fees.pix] : fees.linkMethods.map((m) => fees[m]);
+  const methods = paymentMethodsFor(method, fees);
+  const candidates: GatewayFee[] = methods.map((m) => fees[m]);
   const estimated = candidates.length > 1;
+  const breakdown = (charged: number) =>
+    methods
+      .map((m) => {
+        const fee = gatewayFeeCents(fees[m], charged);
+        return { method: m, gatewayFeeCents: fee, netAmountCents: Math.max(0, charged - fee - splitAmountCents) };
+      })
+      .sort((a, b) => b.gatewayFeeCents - a.gatewayFeeCents);
 
   if (!passFee) {
     const gateway = Math.max(...candidates.map((f) => gatewayFeeCents(f, amountCents)));
@@ -128,6 +284,7 @@ export function calculateOnlineChargeAmounts(params: {
       totalFeeCents: gateway + splitAmountCents,
       netAmountCents: Math.max(0, amountCents - gateway - splitAmountCents),
       estimated,
+      byMethod: breakdown(amountCents),
     };
   }
 
@@ -140,5 +297,102 @@ export function calculateOnlineChargeAmounts(params: {
     totalFeeCents: charged - amountCents,
     netAmountCents: charged - gateway - splitAmountCents,
     estimated,
+    byMethod: breakdown(charged),
   };
 }
+
+/** Rotulo curto do meio usado ("Crédito", "Débito"...), para a tela. */
+export const LINK_PAYMENT_METHOD_LABEL: Record<LinkPaymentMethod, string> = {
+  pix: "Pix",
+  boleto: "Boleto",
+  creditCard: "Crédito",
+  debitCard: "Débito",
+};
+
+/** `billingType` do Asaas (webhook) para o meio usado. */
+export function linkMethodFromAsaasBillingType(billingType: string | undefined | null): LinkPaymentMethod | undefined {
+  switch ((billingType ?? "").toUpperCase()) {
+    case "PIX":
+      return "pix";
+    case "BOLETO":
+      return "boleto";
+    case "CREDIT_CARD":
+      return "creditCard";
+    case "DEBIT_CARD":
+      return "debitCard";
+    default:
+      return undefined;
+  }
+}
+
+// --- Formas de cobranca online (21/10/2026) -----------------------------------
+
+/**
+ * Meios que o aluno pode usar em cada forma. No boleto, a fatura do Asaas
+ * costuma trazer tambem um QR de Pix (a confirmar no sandbox), entao conta os dois.
+ */
+export function paymentMethodsFor(method: OnlinePaymentMethodKind, fees: GatewayFeeTable = ASAAS_FEES): LinkPaymentMethod[] {
+  switch (method) {
+    case "pix":
+      return ["pix"];
+    case "boleto":
+      return ["boleto", "pix"];
+    case "choice":
+      return ["pix", "boleto", "creditCard", "debitCard"];
+    default:
+      return [...fees.linkMethods];
+  }
+}
+
+/** `billingType` do Asaas para cada forma. */
+export const ASAAS_BILLING_TYPE: Record<OnlinePaymentMethod, "PIX" | "CREDIT_CARD" | "BOLETO" | "UNDEFINED"> = {
+  pix: "PIX",
+  link: "CREDIT_CARD",
+  boleto: "BOLETO",
+  choice: "UNDEFINED",
+};
+
+/** Padrao quando o espaco ainda nao escolheu: Pix e cartao sim, boleto nao. */
+export const DEFAULT_ACCEPTED_METHODS: AcceptedOnlineMethods = { pix: true, card: true, boleto: false };
+
+export function acceptedMethodsOf(settings: Pick<OnlinePaymentSettings, "acceptedMethods"> | undefined): AcceptedOnlineMethods {
+  return { ...DEFAULT_ACCEPTED_METHODS, ...(settings?.acceptedMethods ?? {}) };
+}
+
+/**
+ * Opcoes da modal Cobrar online, na ordem. "O aluno escolhe" (UNDEFINED) so
+ * com as tres ligadas: no Asaas a fatura dele sempre mostra Pix, boleto e cartao.
+ */
+export function availableOnlineMethods(
+  settings: Pick<OnlinePaymentSettings, "acceptedMethods"> | undefined,
+): OnlinePaymentMethod[] {
+  const accepted = acceptedMethodsOf(settings);
+  const list: OnlinePaymentMethod[] = [];
+  if (accepted.pix) list.push("pix");
+  if (accepted.card) list.push("link");
+  if (accepted.boleto) list.push("boleto");
+  if (accepted.pix && accepted.card && accepted.boleto) list.push("choice");
+  return list;
+}
+
+/** Repasse padrao da forma; sem configuracao propria, o geral (`passFeeToCustomer`). */
+export function defaultPassFeeFor(settings: OnlinePaymentSettings | undefined, method: OnlinePaymentMethod): boolean {
+  const general = settings?.passFeeToCustomer ?? false;
+  const own =
+    method === "pix"
+      ? settings?.passFeePix
+      : method === "link"
+        ? settings?.passFeeCard
+        : method === "boleto"
+          ? settings?.passFeeBoleto
+          : settings?.passFeeChoice;
+  return Boolean(own ?? general);
+}
+
+/** Rotulo da forma, para as telas. */
+export const ONLINE_METHOD_LABEL: Record<OnlinePaymentMethod, string> = {
+  pix: "Pix",
+  link: "Cartão",
+  boleto: "Boleto",
+  choice: "O aluno escolhe",
+};

@@ -1,4 +1,5 @@
 import type {
+  OnlinePaymentSettings,
   Address,
   BusinessHoursDay,
   Category,
@@ -110,6 +111,14 @@ export const settingsService = {
                 passFeeToCustomer: currentOnline?.passFeeToCustomer ?? (remoteOnline.passFeeToCustomer !== undefined ? Boolean(remoteOnline.passFeeToCustomer) : false),
                 passFeePix: currentOnline?.passFeePix ?? (remoteOnline.passFeePix !== undefined ? Boolean(remoteOnline.passFeePix) : undefined),
                 passFeeCard: currentOnline?.passFeeCard ?? (remoteOnline.passFeeCard !== undefined ? Boolean(remoteOnline.passFeeCard) : undefined),
+                passFeeBoleto: currentOnline?.passFeeBoleto ?? (remoteOnline.passFeeBoleto !== undefined ? Boolean(remoteOnline.passFeeBoleto) : undefined),
+                passFeeChoice: currentOnline?.passFeeChoice ?? (remoteOnline.passFeeChoice !== undefined ? Boolean(remoteOnline.passFeeChoice) : undefined),
+                // Formas aceitas (Recebimentos online); antes ficavam de fora e a escolha se perdia.
+                acceptedMethods:
+                  currentOnline?.acceptedMethods ??
+                  (remoteOnline.acceptedMethods as OnlinePaymentSettings["acceptedMethods"] | undefined),
+                // Tarifas da subconta: sempre as do banco (coluna gateway_fees).
+                gatewayFees: remote.gatewayFees ?? currentOnline?.gatewayFees,
               },
             },
             ...(remote.subscription && typeof remote.subscription === "object" && "tier" in remote.subscription
