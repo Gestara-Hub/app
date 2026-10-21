@@ -68,15 +68,16 @@ Para cada domínio: os read-models passam a ser montados por server actions a pa
 Ordem, de quem depende de menos para quem depende de mais:
 
 - [x] 2.1 Catálogo: modalidades, equipe, cargos, planos, catálogo de pacotes (21/10/2026). Actions em `services/catalog/` (`categoriesActions`, `teamActions`) e `services/billing/catalogActions`; regras em `categoryRules`, `teamRules`, `planRules` e `billingValidation` (sem store). Modalidade com nome único sem acento nem caixa no banco (migração 29, `name_key`, a mesma dos cargos). Trocar a trilha da modalidade grava no banco a volta dos alunos ao primeiro nível, e revisar a modalidade marca `modalitiesReviewed` no espaço, que antes ficavam só no navegador. Cargos criados só no navegador antes da migração 28 não sobem mais para o banco. Testes: `catalog/__tests__` e `billing/__tests__` (`*.db.test.ts`).
-- [ ] 2.2 Alunos e responsáveis (ficha, lista, inativação). Divisão feita (`services/clients/`, 21/10/2026, fase 2 do doc 12).
-- [ ] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário. Divisão feita (`services/classes/`, 21/10/2026, fase 1 do doc 12).
-- [ ] 2.4 Cobranças e recebimentos online. Divisão feita (`services/billing/`, 21/10/2026, fase 4 do doc 12).
-- [ ] 2.5 Pacotes do aluno (venda, uso, renovação). Divisão feita (`services/billing/`, 21/10/2026).
-- [ ] 2.6 Notas, evolução e certificado.
-- [ ] 2.7 Financeiro e repasse de professores. Divisão feita (`services/finance/`, 21/10/2026, fase 3 do doc 12).
-- [ ] 2.8 Comunicação (modelos, histórico, WhatsApp).
-- [ ] 2.9 Agregados: Painel, relatórios e resumo do aluno, com consultas agregadas no banco onde o volume pedir.
+- [x] 2.2 Alunos e responsáveis (ficha, lista, inativação). Divisão feita (`services/clients/`, 21/10/2026, fase 2 do doc 12).
+- [x] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário. Divisão feita (`services/classes/`, 21/10/2026, fase 1 do doc 12).
+- [x] 2.4 Cobranças e recebimentos online. Divisão feita (`services/billing/`, 21/10/2026, fase 4 do doc 12).
+- [x] 2.5 Pacotes do aluno (venda, uso, renovação). Divisão feita (`services/billing/`, 21/10/2026).
+- [x] 2.6 Notas, evolução e certificado.
+- [x] 2.7 Financeiro e repasse de professores. Divisão feita (`services/finance/`, 21/10/2026, fase 3 do doc 12).
+- [x] 2.8 Comunicação (modelos, histórico, WhatsApp).
+- [x] 2.9 Agregados: Painel, relatórios e resumo do aluno, com consultas agregadas no banco onde o volume pedir.
 - **Pronto quando, por domínio:** a tela funciona com o `localStorage` vazio e sem o `sync*FromDb` daquele domínio; os testes do domínio passam (fatia 5).
+- **Feito em 21/10/2026 (2.2 a 2.9):** todos esses domínios rodam no servidor pela técnica acima; os `sync*FromDb` e as actions antigas por tabela foram apagados (elas aceitavam `organizationId` de quem chamava e, sem sessão, caíam no cliente administrativo). As leituras usadas só pelo cron (`membershipBackend`, `financeBackend` e as listas que eles usam) viraram módulos só do servidor, sem `"use server"`. Testes no banco: `world/__tests__` (`world.db.test.ts`, `flows.db.test.ts`, `flows2.db.test.ts`) cobrem cadastro, edição e inativação do aluno, turma, matrícula, chamada, lista de espera, avulsa, substituição, curso parcelado, mensalidade gerada e baixa, venda de pacote, notas, mensagem, lançamento, repasse (regra, fechamento e pagamento), modelo do certificado, relatório e troca de plano. Ainda não verificado no navegador (fica para o e2e da fatia 5). Fica para depois: cada método declarar as coleções que carrega (custo do item 6 acima).
 
 ### Fatia 3 — Regras no servidor
 
