@@ -11,6 +11,10 @@ export interface PixPayment {
   pixQrCodeBase64?: string;
   expiresAt: DateTimeISO;
   splitAmountCents?: number;
+  /** Quem gerou de fato: "asaas" ou "mock" (demonstracao). */
+  provider?: string;
+  /** Preenchido quando caiu na demonstracao: o motivo, para a tela e o log. */
+  fallbackReason?: string;
 }
 
 export interface PaymentLinkPayment {
@@ -19,6 +23,8 @@ export interface PaymentLinkPayment {
   linkUrl: string;
   expiresAt: DateTimeISO;
   splitAmountCents?: number;
+  provider?: string;
+  fallbackReason?: string;
 }
 
 /** Autorização do Pix Automático devolvida pelo provedor (sem escopo do tenant). */

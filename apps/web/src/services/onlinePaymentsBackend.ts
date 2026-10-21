@@ -623,11 +623,13 @@ export async function updateOrganizationOnlineSettingsAction(
 export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
-): Promise<PixPayment | null> {
+): Promise<PixPayment | { error: string }> {
   try {
     let subaccountApiKey = input.subaccountApiKey;
     let splitAmountCents = input.splitAmountCents;
     let enrichedInput = { ...input };
+    // A cobranca da demonstracao nao esta no banco; a consulta nao pode derrubar a chamada ao gateway.
+    try {
 
     // Se subaccountApiKey não foi fornecida, busca do tenant no banco
     if (input.chargeId) {
@@ -667,18 +669,30 @@ export async function createOnlinePixPaymentAction(
       }
     }
 
+    } catch (lookupError) {
+      console.warn("[createOnlinePixPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
+    }
+
     const gateway = getPaymentGateway(provider);
-    return await gateway.createPix({
+    const result = await gateway.createPix({
       ...enrichedInput,
       subaccountApiKey,
       splitAmountCents: splitAmountCents ?? 199,
     });
+    if (gateway.provider === "mock") {
+      return {
+        ...result,
+        provider: "mock",
+        fallbackReason: process.env.ASAAS_API_KEY
+          ? "Provedor de demonstração selecionado no servidor."
+          : "ASAAS_API_KEY não configurada no servidor.",
+      };
+    }
+    return { ...result, provider: gateway.provider };
   } catch (error) {
-    console.error(
-      "[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:",
-      error,
-    );
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
+    return { error: message };
   }
 }
 
@@ -688,11 +702,13 @@ export async function createOnlinePixPaymentAction(
 export async function createOnlineLinkPaymentAction(
   input: CreateLinkInput,
   provider?: string,
-): Promise<PaymentLinkPayment | null> {
+): Promise<PaymentLinkPayment | { error: string }> {
   try {
     let subaccountApiKey = input.subaccountApiKey;
     let splitAmountCents = input.splitAmountCents;
     let enrichedInput = { ...input };
+    // A cobranca da demonstracao nao esta no banco; a consulta nao pode derrubar a chamada ao gateway.
+    try {
 
     if (input.chargeId) {
       const adminClient = createSupabaseAdminClient();
@@ -731,18 +747,30 @@ export async function createOnlineLinkPaymentAction(
       }
     }
 
+    } catch (lookupError) {
+      console.warn("[createOnlineLinkPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
+    }
+
     const gateway = getPaymentGateway(provider);
-    return await gateway.createLink({
+    const result = await gateway.createLink({
       ...enrichedInput,
       subaccountApiKey,
       splitAmountCents: splitAmountCents ?? 199,
     });
+    if (gateway.provider === "mock") {
+      return {
+        ...result,
+        provider: "mock",
+        fallbackReason: process.env.ASAAS_API_KEY
+          ? "Provedor de demonstração selecionado no servidor."
+          : "ASAAS_API_KEY não configurada no servidor.",
+      };
+    }
+    return { ...result, provider: gateway.provider };
   } catch (error) {
-    console.error(
-      "[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:",
-      error,
-    );
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:", error);
+    return { error: message };
   }
 }
 
@@ -757,13 +785,15 @@ export async function getOnlinePaymentByAsaasIdFromDb(
 export async function createAsaasPixPaymentAction(
   input: CreatePixInput,
 ): Promise<PixPayment | null> {
-  return createOnlinePixPaymentAction(input, "asaas");
+  const result = await createOnlinePixPaymentAction(input, "asaas");
+  return "error" in result ? null : result;
 }
 
 export async function createAsaasLinkPaymentAction(
   input: CreateLinkInput,
 ): Promise<PaymentLinkPayment | null> {
-  return createOnlineLinkPaymentAction(input, "asaas");
+  const result = await createOnlineLinkPaymentAction(input, "asaas");
+  return "error" in result ? null : result;
 }
 
 function detectPixKeyType(

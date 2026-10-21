@@ -24,33 +24,29 @@ export const paymentGateway: PaymentGateway = {
   provider: "facade",
 
   async createPix(input: CreatePixInput): Promise<PixPayment> {
+    let fallbackReason = "O servidor não respondeu.";
     try {
-      const realPayment = await createOnlinePixPaymentAction(input);
-      if (realPayment) {
-        return realPayment;
-      }
+      const result = await createOnlinePixPaymentAction(input);
+      if (!("error" in result)) return result;
+      fallbackReason = result.error;
     } catch (err) {
-      console.error(
-        "[PaymentGateway] Falha ao processar Pix no gateway ativo, fallback para mock:",
-        err,
-      );
+      fallbackReason = err instanceof Error ? err.message : String(err);
     }
-    return mockPaymentGateway.createPix(input);
+    console.error("[PaymentGateway] Pix caiu na demonstração:", fallbackReason);
+    return { ...(await mockPaymentGateway.createPix(input)), provider: "mock", fallbackReason };
   },
 
   async createLink(input: CreateLinkInput): Promise<PaymentLinkPayment> {
+    let fallbackReason = "O servidor não respondeu.";
     try {
-      const realPayment = await createOnlineLinkPaymentAction(input);
-      if (realPayment) {
-        return realPayment;
-      }
+      const result = await createOnlineLinkPaymentAction(input);
+      if (!("error" in result)) return result;
+      fallbackReason = result.error;
     } catch (err) {
-      console.error(
-        "[PaymentGateway] Falha ao processar link no gateway ativo, fallback para mock:",
-        err,
-      );
+      fallbackReason = err instanceof Error ? err.message : String(err);
     }
-    return mockPaymentGateway.createLink(input);
+    console.error("[PaymentGateway] link caiu na demonstração:", fallbackReason);
+    return { ...(await mockPaymentGateway.createLink(input)), provider: "mock", fallbackReason };
   },
 
   async requestRecurringAuthorization(input: {

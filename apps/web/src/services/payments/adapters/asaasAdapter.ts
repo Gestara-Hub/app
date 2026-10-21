@@ -161,6 +161,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     const qrCode = await getPixQrCode(payment.id, input.subaccountApiKey);
 
     return {
+      provider: "asaas",
       providerId: payment.id,
       pixCopyPaste: qrCode.payload,
       pixQrCodeBase64: qrCode.encodedImage,
@@ -220,6 +221,7 @@ export const asaasPaymentGateway: PaymentGateway = {
     );
 
     return {
+      provider: "asaas",
       providerId: payment.id,
       linkUrl: payment.invoiceUrl || `https://sandbox.asaas.com/i/${payment.id}`,
       expiresAt: addMinutes(input.expiresInMinutes || 1440),

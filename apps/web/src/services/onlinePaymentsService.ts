@@ -485,6 +485,16 @@ export const onlinePaymentsService = {
             description: charge.description,
           });
 
+    // Conta real nunca entrega codigo de demonstracao ao aluno: avisa o motivo.
+    const gatewayProvider = provided.provider ?? "mock";
+    if (gatewayProvider === "mock" && isSupabaseOrganization(store.organization.id)) {
+      throw apiError(
+        "NETWORK",
+        `Não foi possível gerar ${method === "pix" ? "o Pix" : "o link"} no Asaas. ${provided.fallbackReason ?? ""}`.trim(),
+        { httpStatus: 502 },
+      );
+    }
+
     return simulateWrite(async () => {
       // Revalida: a cobranca pode ter mudado durante a chamada ao provedor.
       const c = findOpenCharge(chargeId);
@@ -496,8 +506,7 @@ export const onlinePaymentsService = {
         method,
         amountCents: chargedAmountCents,
         status: "awaiting",
-        gatewayProvider:
-          store.organization.settings?.onlinePayments?.gatewayProvider ?? "asaas",
+        gatewayProvider,
         gatewayPaymentId: provided.providerId,
         splitAmountCents:
           "splitAmountCents" in provided ? provided.splitAmountCents : splitAmountCents,

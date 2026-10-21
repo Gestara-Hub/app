@@ -79,6 +79,7 @@ export const mockPaymentGateway: PaymentGateway = {
   async createPix(input: CreatePixInput): Promise<PixPayment> {
     const txid = `DEMO${randomToken(21)}`;
     return {
+      provider: "mock",
       providerId: txid,
       pixCopyPaste: fakePixCopyPaste({ ...input, txid }),
       expiresAt: addMinutes(input.expiresInMinutes),
@@ -89,6 +90,7 @@ export const mockPaymentGateway: PaymentGateway = {
   async createLink(input: CreateLinkInput): Promise<PaymentLinkPayment> {
     const token = randomToken(10).toLowerCase();
     return {
+      provider: "mock",
       providerId: `link_${token}`,
       linkUrl: `https://pagar.gestarahub.demo/c/${token}`,
       expiresAt: addMinutes(input.expiresInMinutes),

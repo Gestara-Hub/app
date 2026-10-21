@@ -495,14 +495,17 @@ export function OnlineChargeDialog({
                 </Button>
               </div>
 
-              {awaiting.gatewayProvider === "asaas" || Boolean(awaiting.pixQrCodeBase64) ? (
+              {awaiting.gatewayProvider === "asaas" ? (
                 <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="size-3.5" aria-hidden />
                     Integração Asaas Ativa (Sandbox)
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Cobrança real gerada no gateway com QR Code Pix oficial. Para testes no ambiente de homologação, você também pode simular a confirmação manual imediata.
+                    {awaiting.method === "pix"
+                      ? "Cobrança real gerada no Asaas, com QR Code Pix oficial."
+                      : "Cobrança real gerada no Asaas; o aluno paga com cartão na fatura do link."}{" "}
+                    No ambiente de homologação você também pode simular a confirmação.
                   </p>
                   <Button
                     type="button"
@@ -523,8 +526,9 @@ export function OnlineChargeDialog({
                     Demonstração
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Não há banco de verdade nesta versão. Use o botão para ver a
-                    cobrança sendo paga.
+                    Código de demonstração: o Asaas não foi acionado (sem chave no
+                    servidor ou falha na chamada). Use o botão para ver a cobrança
+                    sendo paga.
                   </p>
                   <Button
                     type="button"
