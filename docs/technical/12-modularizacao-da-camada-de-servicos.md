@@ -38,7 +38,7 @@ Adota-se a **Modularização por Subdomínio com Fachada Retrocompatível (Barre
    - Algoritmos de cálculo (comissões, parcelamento, regras de graduação) migram para `packages/core`.
    - Mapeamentos de DTO/View são isolados em `*Views.ts`.
    - Validações de payload são isoladas em `*Validation.ts`.
-5. **Aposentadoria Futura do Mock:** Quando o Supabase cobrir 100% dos dados, a manipulação de `store.ts` será removida, reduzindo os sub-serviços a orquestradores enxutos.
+5. **Aposentadoria Futura do Mock:** Quando o Supabase cobrir 100% dos dados, a manipulação de `store.ts` será removida, reduzindo os sub-serviços a orquestradores enxutos. Plano por fatias no [doc 15](15-retirada-do-mock-turmas.md) (21/10/2026).
 
 ---
 

@@ -82,3 +82,5 @@ Status **derivados** continuam calculados na leitura, sem tarefa: mensalidade "a
 8. **Pagamentos reais:** plano da plataforma e cobrança online dos alunos ([doc 19](../product/19-levantamento-pagamentos.md)).
 
 Cada fatia troca a implementação dos services correspondentes (de store em memória para chamadas à API), mantendo assinaturas e tipos.
+
+> **21/10/2026:** as fatias 1 a 7 acima já gravam no Supabase, mas ainda com o store do navegador como cache. A retirada do mock no modelo de turmas segue o plano do [doc 15](15-retirada-do-mock-turmas.md).
