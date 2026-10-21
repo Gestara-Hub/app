@@ -44,12 +44,10 @@ export async function syncTurmasFromDb(organizationId: string): Promise<void> {
       listReservationsFromDb(organizationId),
       listSessionOverridesFromDb(organizationId),
       listStudentPackagesFromDb(organizationId),
-      store.professionals.some((p) => p.organizationId === organizationId)
-        ? Promise.resolve(null)
-        : listProfessionalsFromDb(organizationId),
-      store.categories.some((c) => c.organizationId === organizationId)
-        ? Promise.resolve(null)
-        : listCategoriesFromDb(organizationId),
+      // Equipe e modalidades sempre do banco: outro aparelho pode ter mudado
+      // (doc 15, fatia 2.1; o store e so copia ate a fatia 4).
+      listProfessionalsFromDb(organizationId),
+      listCategoriesFromDb(organizationId),
     ];
 
     const [groups, enrollments, attendances, waitlist, reservations, overrides, pkgs, profs, cats] =

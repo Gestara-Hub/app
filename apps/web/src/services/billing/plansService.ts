@@ -1,36 +1,72 @@
 import type { CreatePlan, Id, Plan, PlanFilter, UpdatePlan } from "@gestarahub/contracts";
-import { classBillingMode } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/mocks/store";
-import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes, validationError } from "@/mocks/helpers";
+import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes } from "@/mocks/helpers";
 import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "../auditLogService";
-import { createPlanInDb, updatePlanInDb } from "../billingBackend";
+import { unwrap } from "../server/action";
 import { clone } from "./billingHelpers";
-import { syncPlansFromDb } from "./billingSync";
 import { validatePlan } from "./billingValidation";
+import { createPlanAction, listPlansAction, updatePlanAction } from "./catalogActions";
+import { activeStudentsInPlan, periodChangeError, sortByName } from "./planRules";
 
-/** Alunos ativos no plano (inclui o legado: sem plano proprio, em turma com o plano). */
-function activeStudentsInPlan(planId: Id): number {
-  const ids = new Set<Id>();
-  for (const c of store.clients) {
-    if (c.status === "active" && c.planId === planId) ids.add(c.id);
-  }
-  for (const e of store.enrollments) {
-    if (e.status !== "active") continue;
-    const turma = store.classGroups.find((t) => t.id === e.classGroupId);
-    if (!turma || turma.planId !== planId || classBillingMode(turma) !== "membership" || e.paysWithPackage) continue;
-    const student = store.clients.find((c) => c.id === e.studentId);
-    if (student && student.status === "active" && !student.planId) ids.add(student.id);
-  }
-  return ids.size;
+/**
+ * Planos. Conta real: banco pelo servidor (`catalogActions`, doc 15, fatia
+ * 2.1). Demonstracao: store.
+ */
+
+function isRealAccount(): boolean {
+  return isSupabaseOrganization(store.organization.id);
+}
+
+/**
+ * Transicao (doc 15, fatia 2): cobrancas, alunos e turmas ainda leem os planos
+ * no store. Ate migrarem, a conta real mantem la uma copia. Sai na fatia 4.
+ */
+function cachePlans(plans: Plan[]): void {
+  const ids = new Set(plans.map((p) => p.id));
+  store.plans = [...store.plans.filter((p) => !ids.has(p.id)), ...plans];
+}
+
+function recordCreated(plan: Plan): void {
+  auditLogService.record({
+    action: "created",
+    target: { type: "plan", id: plan.id, label: plan.name },
+    predicate: `criou o plano ${plan.name} (${formatCents(plan.priceCents)})`,
+  });
+}
+
+function recordUpdated(id: Id, before: Plan, after: Plan): void {
+  auditLogService.record({
+    action: before.status !== after.status ? (after.status === "active" ? "activated" : "inactivated") : "updated",
+    target: { type: "plan", id, label: after.name },
+    predicate:
+      before.status !== after.status
+        ? `${after.status === "active" ? "reativou" : "inativou"} o plano ${after.name}`
+        : `atualizou o plano ${after.name}`,
+    changes:
+      before.priceCents !== after.priceCents
+        ? [
+            {
+              field: "priceCents",
+              label: "Valor",
+              before: formatCents(before.priceCents),
+              after: formatCents(after.priceCents),
+            },
+          ]
+        : undefined,
+  });
 }
 
 export const plansService = {
   // --- Planos -------------------------------------------------------------
   listPlans(filter?: PlanFilter): Promise<Plan[]> {
     return simulateRead(async () => {
-      await syncPlansFromDb(store.organization.id);
+      if (isRealAccount()) {
+        const plans = await unwrap(listPlansAction(filter));
+        if (!filter?.search && !filter?.period && !filter?.status) cachePlans(plans);
+        return plans;
+      }
       let result = store.plans;
       if (filter?.search) {
         const term = filter.search;
@@ -38,14 +74,18 @@ export const plansService = {
       }
       if (filter?.period) result = result.filter((p) => p.period === filter.period);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
-      return clone(
-        [...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
-      );
+      return clone(sortByName(result));
     });
   },
 
   createPlan(payload: CreatePlan): Promise<Plan> {
     return simulateWrite(async () => {
+      if (isRealAccount()) {
+        const created = await unwrap(createPlanAction(payload));
+        cachePlans([created]);
+        recordCreated(created);
+        return created;
+      }
       validatePlan(payload);
       const ts = nowIso();
       const plan: Plan = {
@@ -56,37 +96,27 @@ export const plansService = {
         createdAt: ts,
         updatedAt: ts,
       };
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createPlanInDb(plan);
-      }
       store.plans.push(plan);
-      auditLogService.record({
-        action: "created",
-        target: { type: "plan", id: plan.id, label: plan.name },
-        predicate: `criou o plano ${plan.name} (${formatCents(plan.priceCents)})`,
-      });
+      recordCreated(plan);
       return clone(plan);
     });
   },
 
   updatePlan(id: Id, payload: UpdatePlan): Promise<Plan> {
     return simulateWrite(async () => {
+      if (isRealAccount()) {
+        const { before, after } = await unwrap(updatePlanAction(id, payload));
+        cachePlans([after]);
+        recordUpdated(id, before, after);
+        return after;
+      }
       const idx = store.plans.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Plano não encontrado.");
       const before = store.plans[idx];
       validatePlan({ ...before, ...payload });
       // Mudar a periodicidade reinterpretaria os periodos ja cobrados dos alunos.
-      if (payload.period && payload.period !== before.period && activeStudentsInPlan(id) > 0) {
-        throw validationError([
-          {
-            field: "period",
-            message:
-              "Não é possível mudar a periodicidade de um plano com alunos ativos. Crie um novo plano.",
-          },
-        ]);
-      }
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updatePlanInDb(id, payload, store.organization.id);
+      if (payload.period && payload.period !== before.period && activeStudentsInPlan(store, id) > 0) {
+        throw periodChangeError();
       }
       store.plans[idx] = {
         ...before,
@@ -94,25 +124,7 @@ export const plansService = {
         updatedAt: nowIso(),
       };
       const after = store.plans[idx];
-      auditLogService.record({
-        action: before.status !== after.status ? (after.status === "active" ? "activated" : "inactivated") : "updated",
-        target: { type: "plan", id, label: after.name },
-        predicate:
-          before.status !== after.status
-            ? `${after.status === "active" ? "reativou" : "inativou"} o plano ${after.name}`
-            : `atualizou o plano ${after.name}`,
-        changes:
-          before.priceCents !== after.priceCents
-            ? [
-                {
-                  field: "priceCents",
-                  label: "Valor",
-                  before: formatCents(before.priceCents),
-                  after: formatCents(after.priceCents),
-                },
-              ]
-            : undefined,
-      });
+      recordUpdated(id, before, after);
       return clone(after);
     });
   },

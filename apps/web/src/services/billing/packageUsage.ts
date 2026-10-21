@@ -7,7 +7,6 @@ import type {
   SessionRosterEntry,
   StudentPackage,
 } from "@gestarahub/contracts";
-import { classBillingMode } from "@gestarahub/core/billing";
 import {
   carriedLots,
   lessonOriginAt,
@@ -19,11 +18,9 @@ import {
 import { store } from "@/mocks/store";
 import { nowIso } from "@/mocks/helpers";
 
-/** Turma de pacote ou de mensalidade aceita pacote; sem cobranca e curso, nunca. */
-export function acceptsPackages(g: Pick<ClassGroup, "billingMode">): boolean {
-  const mode = classBillingMode(g);
-  return mode === "package" || mode === "membership";
-}
+import { acceptsPackages } from "./packageRules";
+
+export { acceptsPackages };
 
 // --- Gasto de aula na chamada (usado pelo turmasService) ---------------------
 

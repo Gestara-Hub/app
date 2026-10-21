@@ -1,4 +1,5 @@
 import type {
+  ClassGroup,
   ApiErrorField,
   Charge,
   CreateExtraCharge,
@@ -9,9 +10,8 @@ import type {
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { MAX_PACKAGE_LESSONS, MAX_PACKAGE_VALIDITY_DAYS } from "@gestarahub/core/packages";
 import { parseISO } from "date-fns";
-import { store } from "@/mocks/store";
-import { apiError, validationError } from "@/mocks/helpers";
-import { acceptsPackages } from "./packageUsage";
+import { apiError, validationError } from "@gestarahub/core/api-error";
+import { acceptsPackages } from "./packageRules";
 
 /**
  * D8: pagamento online ou por Pix Automatico nao se desfaz (seria estorno, fora
@@ -81,7 +81,11 @@ export function assertNotWaived(c: Charge): void {
   }
 }
 
-export function validatePackage(payload: Partial<CreateLessonPackage>): void {
+/** `classGroups`: as turmas do espaco, para conferir as escolhidas. */
+export function validatePackage(
+  payload: Partial<CreateLessonPackage>,
+  classGroups: Pick<ClassGroup, "id" | "billingMode">[],
+): void {
   const fields: ApiErrorField[] = [];
   if (!payload.name || !payload.name.trim()) {
     fields.push({ field: "name", message: "Informe o nome do pacote." });
@@ -98,7 +102,7 @@ export function validatePackage(payload: Partial<CreateLessonPackage>): void {
     fields.push({ field: "validityDays", message: `A validade vai de 1 a ${MAX_PACKAGE_VALIDITY_DAYS} dias.` });
   }
   const invalidClass = (payload.classGroupIds ?? []).some((id) => {
-    const g = store.classGroups.find((x) => x.id === id);
+    const g = classGroups.find((x) => x.id === id);
     return !g || !acceptsPackages(g);
   });
   if (invalidClass) {

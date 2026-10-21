@@ -2,7 +2,7 @@
 
 > **Status:** Decidido e planejado em 19/10/2026. Plano de ação para execução sob demanda.
 > **Alvo:** `apps/web/src/services/`
-> **Execução (21/10/2026):** as fases 1 a 4 entram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4.
+> **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4.
 > **Contexto relacionado:** [01-extensao-modelos-operacionais.md](01-extensao-modelos-operacionais.md), [06-passagem-backend.md](06-passagem-backend.md) e [08-backend-supabase.md](08-backend-supabase.md).
 
 ---

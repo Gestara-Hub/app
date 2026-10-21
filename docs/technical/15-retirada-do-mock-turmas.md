@@ -47,15 +47,24 @@ Para cada domínio: os read-models passam a ser montados por server actions a pa
 
 **Junto com a modularização do [doc 12](12-modularizacao-da-camada-de-servicos.md)** (decidido em 21/10/2026): nos domínios com serviço grande, o primeiro passo é dividir o serviço em pasta por subdomínio (`*Views.ts`, `*Validation.ts`, sub-serviços e `index.ts` com o nome antigo), só movendo código, num commit próprio com testes verdes. A troca da fonte para o banco vem no commit seguinte; nunca os dois juntos, para saber de onde veio uma quebra. Os `*Views.ts` são o que passa a rodar no servidor, e os `*Validation.ts` são a base da fatia 3.
 
+**Como cada domínio passa para o banco** (definido em 21/10/2026, no 2.1):
+
+1. **Actions por domínio** (`services/<domínio>/*Actions.ts`, `"use server"`): o espaço, o usuário e o perfil saem de `requireTenant()` (`services/server/tenant.ts`), que lê o usuário autenticado no Supabase e usa o cliente da sessão, com RLS. A action nunca recebe `organizationId` do navegador e nunca cai no cliente administrativo; sem sessão, devolve 401. Escrita confere a permissão com `ctx.require(...)`, além do RLS.
+2. **Erro como valor:** a action devolve `ActionResult` (`services/server/action.ts`). Erro lançado numa action perde a mensagem em produção, então o `ApiError` volta como valor e o serviço do navegador relança com `unwrap`. Os construtores de erro ficam em `@gestarahub/core/api-error`.
+3. **Regras sem store:** validação e cálculo saem para módulos puros (`*Rules.ts`, `*Validation.ts`) que recebem os dados como parâmetro. A demonstração passa o `store`; a action passa o que leu do banco.
+4. **Serviço do navegador:** na conta real chama a action e não grava no store; na demonstração segue no store até a fatia 4.
+5. **Cópia de transição:** domínios ainda não migrados montam telas no navegador a partir do store. Até migrarem, o serviço migrado guarda no store uma cópia do que leu ou gravou (`cache*`), marcada no código, e as sincronizações antigas recarregam do banco o que precisam. A cópia sai na fatia 4.
+6. **Testes no banco:** `pnpm --filter @gestarahub/web test:db` roda os `*.db.test.ts` contra o Supabase local, com um espaço e usuários criados por teste e as actions chamadas como numa requisição (`src/test/db.ts`). É a base da fatia 5.
+
 Ordem, de quem depende de menos para quem depende de mais:
 
-- [ ] 2.1 Catálogo: modalidades, equipe, cargos, planos, catálogo de pacotes. Sem divisão (serviços pequenos; os planos vão para `services/billing/` no 2.4).
-- [ ] 2.2 Alunos e responsáveis (ficha, lista, inativação). Antes: fase 2 do doc 12 (`clientsService` → `services/clients/`).
-- [ ] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário. Antes: fase 1 do doc 12 (`turmasService` → `services/classes/`).
-- [ ] 2.4 Cobranças e recebimentos online. Antes: fase 4 do doc 12 (`billingService` → `services/billing/`).
-- [ ] 2.5 Pacotes do aluno (venda, uso, renovação). Antes: `packagesService` → `services/billing/` (fase 4 do doc 12).
+- [x] 2.1 Catálogo: modalidades, equipe, cargos, planos, catálogo de pacotes (21/10/2026). Actions em `services/catalog/` (`categoriesActions`, `teamActions`) e `services/billing/catalogActions`; regras em `categoryRules`, `teamRules`, `planRules` e `billingValidation` (sem store). Modalidade com nome único sem acento nem caixa no banco (migração 29, `name_key`, a mesma dos cargos). Trocar a trilha da modalidade grava no banco a volta dos alunos ao primeiro nível, e revisar a modalidade marca `modalitiesReviewed` no espaço, que antes ficavam só no navegador. Cargos criados só no navegador antes da migração 28 não sobem mais para o banco. Testes: `catalog/__tests__` e `billing/__tests__` (`*.db.test.ts`).
+- [ ] 2.2 Alunos e responsáveis (ficha, lista, inativação). Divisão feita (`services/clients/`, 21/10/2026, fase 2 do doc 12).
+- [ ] 2.3 Turmas, matrículas, chamada, avulsas e experimentais, lista de espera, substituições, calendário. Divisão feita (`services/classes/`, 21/10/2026, fase 1 do doc 12).
+- [ ] 2.4 Cobranças e recebimentos online. Divisão feita (`services/billing/`, 21/10/2026, fase 4 do doc 12).
+- [ ] 2.5 Pacotes do aluno (venda, uso, renovação). Divisão feita (`services/billing/`, 21/10/2026).
 - [ ] 2.6 Notas, evolução e certificado.
-- [ ] 2.7 Financeiro e repasse de professores. Antes: fase 3 do doc 12 (`financeService` e `teacherPayService` → `services/finance/`).
+- [ ] 2.7 Financeiro e repasse de professores. Divisão feita (`services/finance/`, 21/10/2026, fase 3 do doc 12).
 - [ ] 2.8 Comunicação (modelos, histórico, WhatsApp).
 - [ ] 2.9 Agregados: Painel, relatórios e resumo do aluno, com consultas agregadas no banco onde o volume pedir.
 - **Pronto quando, por domínio:** a tela funciona com o `localStorage` vazio e sem o `sync*FromDb` daquele domínio; os testes do domínio passam (fatia 5).

@@ -5,30 +5,89 @@ import { newId, notFoundError, nowIso, simulateRead, simulateWrite, textIncludes
 import { withKind } from "@/lib/text";
 import { isSupabaseOrganization } from "@/lib/session";
 import { auditLogService } from "../auditLogService";
-import { createLessonPackageInDb, updateLessonPackageInDb } from "../packagesBackend";
+import { unwrap } from "../server/action";
 import { clone } from "./billingHelpers";
-import { syncLessonPackagesFromDb } from "./billingSync";
 import { normalizePackage, validatePackage } from "./billingValidation";
+import { createPackageAction, listPackagesAction, updatePackageAction } from "./catalogActions";
+import { sortByName } from "./planRules";
+
+/**
+ * Catalogo de pacotes. Conta real: banco pelo servidor (`catalogActions`,
+ * doc 15, fatia 2.1). Demonstracao: store.
+ */
+
+function isRealAccount(): boolean {
+  return isSupabaseOrganization(store.organization.id);
+}
+
+/**
+ * Transicao (doc 15, fatia 2): venda e uso de pacote ainda leem o catalogo no
+ * store. Ate migrarem, a conta real mantem la uma copia. Sai na fatia 4.
+ */
+function cachePackages(packages: LessonPackage[]): void {
+  const ids = new Set(packages.map((p) => p.id));
+  store.lessonPackages = [...store.lessonPackages.filter((p) => !ids.has(p.id)), ...packages];
+}
+
+function recordCreated(pkg: LessonPackage): void {
+  auditLogService.record({
+    action: "created",
+    target: { type: "lesson_package", id: pkg.id, label: pkg.name },
+    predicate: `criou o ${withKind("pacote", pkg.name)} (${plural(pkg.lessons, "aula", "aulas")}, ${formatCents(pkg.priceCents)})`,
+  });
+}
+
+function recordUpdated(id: Id, before: LessonPackage, after: LessonPackage): void {
+  const statusChanged = before.status !== after.status;
+  auditLogService.record({
+    action: statusChanged ? (after.status === "active" ? "activated" : "inactivated") : "updated",
+    target: { type: "lesson_package", id, label: after.name },
+    predicate: statusChanged
+      ? `${after.status === "active" ? "reativou" : "inativou"} o ${withKind("pacote", after.name)}`
+      : `atualizou o ${withKind("pacote", after.name)}`,
+    changes:
+      before.priceCents !== after.priceCents
+        ? [
+            {
+              field: "priceCents",
+              label: "Valor",
+              before: formatCents(before.priceCents),
+              after: formatCents(after.priceCents),
+            },
+          ]
+        : undefined,
+  });
+}
 
 export const lessonPackagesService = {
   // --- Catalogo ------------------------------------------------------------
   listPackages(filter?: LessonPackageFilter): Promise<LessonPackage[]> {
     return simulateRead(async () => {
-      await syncLessonPackagesFromDb(store.organization.id);
+      if (isRealAccount()) {
+        const packages = await unwrap(listPackagesAction(filter));
+        if (!filter?.search && !filter?.status) cachePackages(packages);
+        return packages;
+      }
       let result = store.lessonPackages;
       if (filter?.search) {
         const term = filter.search;
         result = result.filter((p) => textIncludes(p.name, term));
       }
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
-      return clone([...result].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")));
+      return clone(sortByName(result));
     });
   },
 
   createPackage(input: CreateLessonPackage): Promise<LessonPackage> {
     return simulateWrite(async () => {
+      if (isRealAccount()) {
+        const created = await unwrap(createPackageAction(input));
+        cachePackages([created]);
+        recordCreated(created);
+        return created;
+      }
       const payload = normalizePackage(input);
-      validatePackage(payload);
+      validatePackage(payload, store.classGroups);
       const ts = nowIso();
       const pkg: LessonPackage = {
         ...payload,
@@ -39,15 +98,8 @@ export const lessonPackagesService = {
         createdAt: ts,
         updatedAt: ts,
       };
-      if (isSupabaseOrganization(store.organization.id)) {
-        await createLessonPackageInDb(pkg);
-      }
       store.lessonPackages.push(pkg);
-      auditLogService.record({
-        action: "created",
-        target: { type: "lesson_package", id: pkg.id, label: pkg.name },
-        predicate: `criou o ${withKind("pacote", pkg.name)} (${plural(pkg.lessons, "aula", "aulas")}, ${formatCents(pkg.priceCents)})`,
-      });
+      recordCreated(pkg);
       return clone(pkg);
     });
   },
@@ -55,35 +107,20 @@ export const lessonPackagesService = {
   /** Mudar o pacote vale para as proximas vendas; o que ja foi vendido fica como esta. */
   updatePackage(id: Id, payload: UpdateLessonPackage): Promise<LessonPackage> {
     return simulateWrite(async () => {
+      if (isRealAccount()) {
+        const { before, after } = await unwrap(updatePackageAction(id, payload));
+        cachePackages([after]);
+        recordUpdated(id, before, after);
+        return after;
+      }
       const idx = store.lessonPackages.findIndex((p) => p.id === id);
       if (idx === -1) throw notFoundError("Pacote não encontrado.");
       const before = store.lessonPackages[idx];
       const next = normalizePackage({ ...before, ...payload });
-      validatePackage(next);
-      if (isSupabaseOrganization(store.organization.id)) {
-        await updateLessonPackageInDb(id, payload, store.organization.id);
-      }
+      validatePackage(next, store.classGroups);
       store.lessonPackages[idx] = { ...before, ...next, name: next.name ?? before.name, updatedAt: nowIso() };
       const after = store.lessonPackages[idx];
-      const statusChanged = before.status !== after.status;
-      auditLogService.record({
-        action: statusChanged ? (after.status === "active" ? "activated" : "inactivated") : "updated",
-        target: { type: "lesson_package", id, label: after.name },
-        predicate: statusChanged
-          ? `${after.status === "active" ? "reativou" : "inativou"} o ${withKind("pacote", after.name)}`
-          : `atualizou o ${withKind("pacote", after.name)}`,
-        changes:
-          before.priceCents !== after.priceCents
-            ? [
-                {
-                  field: "priceCents",
-                  label: "Valor",
-                  before: formatCents(before.priceCents),
-                  after: formatCents(after.priceCents),
-                },
-              ]
-            : undefined,
-      });
+      recordUpdated(id, before, after);
       return clone(after);
     });
   },
