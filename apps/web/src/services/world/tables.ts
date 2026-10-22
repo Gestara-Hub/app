@@ -22,6 +22,11 @@ export interface WorldCollection {
    * acrescentar e inserido.
    */
   appendOnly?: boolean;
+  /**
+   * Parte que uma colecao `appendOnly` carrega mesmo assim, quando uma regra
+   * le dela (filtro do PostgREST, ex.: `target->>type`).
+   */
+  partialLoad?: { column: string; value: string };
   /** Campo que identifica a linha quando difere da chave primaria. */
   identity?: string;
 }
@@ -55,7 +60,14 @@ export const WORLD_COLLECTIONS: WorldCollection[] = [
   { key: "whatsAppConnection", table: "whatsapp_connections", kind: "single" },
   { key: "messageTemplates", table: "message_templates", kind: "list" },
   { key: "messageLogs", table: "message_logs", kind: "list" },
-  { key: "auditLog", table: "audit_logs", kind: "list", appendOnly: true },
+  // So a dos lancamentos: "ja foi pago uma vez" vem dela (financeAudit.wasEverPaid).
+  {
+    key: "auditLog",
+    table: "audit_logs",
+    kind: "list",
+    appendOnly: true,
+    partialLoad: { column: "target->>type", value: "financial_entry" },
+  },
 ];
 
 /**

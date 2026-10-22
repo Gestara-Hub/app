@@ -60,15 +60,18 @@ function objectIdentity(collection: WorldCollection, object: Row): string | unde
  * sessao e a permissao do metodo ja foram conferidas, e o RLS de leitura fica
  * livre para restringir o acesso direto do navegador por perfil (fatia 3).
  */
-async function loadRows(ctx: TenantContext, table: string): Promise<Row[]> {
+async function loadRows(
+  ctx: TenantContext,
+  table: string,
+  filter?: { column: string; value: string },
+): Promise<Row[]> {
   const scopeColumn = table === "organizations" ? "id" : "organization_id";
   const admin = createSupabaseAdminClient();
   const rows: Row[] = [];
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await admin
-      .from(table)
-      .select("*")
-      .eq(scopeColumn, ctx.organizationId)
+    let query = admin.from(table).select("*").eq(scopeColumn, ctx.organizationId);
+    if (filter) query = query.eq(filter.column, filter.value);
+    const { data, error } = await query
       .order(schemaOf(table).primaryKey, { ascending: true })
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`world: leitura de ${table}: ${error.message}`);
@@ -92,7 +95,11 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
   const version = await loadVersion(ctx);
   const tables = await Promise.all(
     WORLD_COLLECTIONS.map(async (collection) =>
-      collection.appendOnly ? [] : loadRows(ctx, collection.table),
+      collection.appendOnly
+        ? collection.partialLoad
+          ? loadRows(ctx, collection.table, collection.partialLoad)
+          : []
+        : loadRows(ctx, collection.table),
     ),
   );
   const store: Record<string, unknown> = {

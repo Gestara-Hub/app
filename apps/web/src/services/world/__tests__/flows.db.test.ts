@@ -6,6 +6,7 @@ import type {
   Client,
   FinancialCategory,
   FinancialEntry,
+  FinanceEntryView,
   StudentPackageView,
 } from "@gestarahub/contracts";
 import type { ActionResult } from "@/services/server/action";
@@ -173,6 +174,11 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     });
     const { data: entryRow } = await admin.from("financial_entries").select("amount_cents").eq("id", entry.id).single();
     expect(entryRow?.amount_cents).toBe(150000);
+    // Pago e desfeito: segue sem excluir (a auditoria do lancamento e carregada).
+    await call("finance.markEntryPaid", entry.id, "pix");
+    await call("finance.markEntryPending", entry.id);
+    const views = await call<FinanceEntryView[]>("finance.listEntries");
+    expect(views.find((v) => v.id === entry.id)?.everPaid).toBe(true);
 
     // Leituras agregadas rodam sobre o mesmo banco.
     await call("finance.getSummary", today().slice(0, 7));
