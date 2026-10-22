@@ -1118,7 +1118,8 @@ export function BillingView() {
         open={newChargeOpen}
         onOpenChange={setNewChargeOpen}
         onCreated={(created) => {
-          const first = created[0]?.competence;
+          // Mes da 1a parcela: o vencimento mais cedo (a avulsa pode vir sem competencia).
+          const first = created.map((c) => c.competence || c.dueDate.slice(0, 7)).sort()[0];
           if (first && first !== competence) setCompetence(first);
         }}
       />
