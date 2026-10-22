@@ -15,7 +15,6 @@ import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useClients } from "@/features/clients";
-import { plural } from "@gestarahub/core/format";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
@@ -72,7 +71,7 @@ export function PlanForm({
     if (plan && inPlan > 0 && values.priceCents !== plan.priceCents) {
       const ok = await confirm({
         title: "Mudar o valor do plano?",
-        description: `Vale para ${plural(inPlan, "o aluno deste plano", "os alunos deste plano")} a partir da próxima mensalidade. As já geradas ficam como estão.`,
+        description: `Vale para ${inPlan === 1 ? "o aluno deste plano" : `os ${inPlan} alunos deste plano`} a partir da próxima mensalidade. As já geradas ficam como estão.`,
         confirmLabel: "Mudar o valor",
         variant: "default",
       });
