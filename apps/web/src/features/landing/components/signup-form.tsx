@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, CheckCircle2, Clock, Loader2, Mail, RefreshCw } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -205,7 +205,7 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
     <>
       <FormProvider {...form}>
         <form onSubmit={onSubmit} noValidate className={cn("space-y-4", className)}>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <InputText<SignupValues>
               name="name"
               id={`${idPrefix}-name`}
@@ -225,7 +225,14 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
               required
               disabled={isPending}
             />
-            <SubmitButton pending={isPending} className="w-full" />
+            <div className="space-y-2">
+              <SubmitButton pending={isPending} className="w-full" />
+              {/* O cadastro segue por um link no e-mail: avisa antes, para ninguem esperar senha aqui. */}
+              <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                <Mail className="size-3.5 shrink-0" aria-hidden />
+                Enviamos um link de acesso para o seu e-mail.
+              </p>
+            </div>
           </div>
 
           {accountExistsEmail ? (
@@ -249,17 +256,23 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
             </p>
           ) : null}
 
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Ao criar a conta, você aceita os{" "}
-            <Link href="/terms" className="font-medium text-foreground underline-offset-4 hover:underline">
-              Termos de uso
-            </Link>{" "}
-            e a{" "}
-            <Link href="/privacy" className="font-medium text-foreground underline-offset-4 hover:underline">
-              Política de privacidade
-            </Link>
-            .
-          </p>
+          <div className="space-y-2 border-t border-border/60 pt-4 text-xs leading-relaxed text-muted-foreground">
+            <p>
+              Ao criar a conta, você aceita os{" "}
+              <Link href="/terms" className="whitespace-nowrap font-medium text-foreground underline-offset-4 hover:underline">
+                Termos de uso
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacy" className="whitespace-nowrap font-medium text-foreground underline-offset-4 hover:underline">
+                Política de privacidade
+              </Link>
+              .
+            </p>
+            <p className="flex items-center gap-1.5">
+              <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
+              Seus dados protegidos, conforme a LGPD.
+            </p>
+          </div>
         </form>
       </FormProvider>
 
