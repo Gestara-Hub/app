@@ -70,6 +70,14 @@ export function identifyUser(user: AnalyticsIdentity): void {
   else initAnalytics();
 }
 
+/**
+ * Evento de produto (ex.: clique no cadastro da landing). Sem chave ou sem o
+ * aceite dos cookies, nao faz nada. Nunca mandar nome, e-mail ou texto digitado.
+ */
+export function trackEvent(name: string, properties?: Record<string, string>): void {
+  if (started) posthog.capture(name, properties);
+}
+
 /** Ao sair: as proximas visitas neste navegador ficam anonimas. */
 export function resetAnalytics(): void {
   currentIdentity = null;

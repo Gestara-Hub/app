@@ -7,6 +7,7 @@ const posthog = vi.hoisted(() => ({
   reset: vi.fn(),
   opt_in_capturing: vi.fn(),
   opt_out_capturing: vi.fn(),
+  capture: vi.fn(),
   has_opted_out_capturing: vi.fn(() => false),
   get_distinct_id: vi.fn(() => "anon-1"),
   get_property: vi.fn(() => "anonymous"),
@@ -150,5 +151,25 @@ describe("analytics", () => {
     const analytics = await loadAnalytics();
     analytics.reviewAnalyticsConsent();
     expect(data.has(ANALYTICS_CONSENT_KEY)).toBe(false);
+  });
+});
+
+describe("trackEvent", () => {
+  it("só envia depois do aceite", async () => {
+    stubStorage();
+    const analytics = await loadAnalytics();
+    analytics.trackEvent("landing_signup_cta_clicked", { placement: "hero" });
+    expect(posthog.capture).not.toHaveBeenCalled();
+    analytics.setAnalyticsConsent("granted");
+    analytics.trackEvent("landing_signup_cta_clicked", { placement: "hero" });
+    expect(posthog.capture).toHaveBeenCalledWith("landing_signup_cta_clicked", { placement: "hero" });
+  });
+
+  it("sem chave não envia nada", async () => {
+    stubStorage({ [ANALYTICS_CONSENT_KEY]: "granted" });
+    const analytics = await loadAnalytics(null);
+    analytics.setAnalyticsConsent("granted");
+    analytics.trackEvent("landing_section_viewed", { section: "online_payments" });
+    expect(posthog.capture).not.toHaveBeenCalled();
   });
 });

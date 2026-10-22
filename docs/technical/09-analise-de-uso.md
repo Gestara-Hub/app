@@ -22,6 +22,7 @@ Alternativas avaliadas: **Microsoft Clarity** (grátis e sem limite de gravaçõ
 | Identificação | `features/auth/session-provider.tsx`: `identifyUser` com **id, perfil e organização** (sem nome nem e-mail) |
 | Sair | `components/layout/app-topbar.tsx`: "Sair" chama `resetAnalytics()` |
 | Troca de usuário no mesmo navegador | `identifyUser` reinicia a identidade antes de identificar o novo |
+| Eventos da landing (22/10/2026) | `trackEvent` em `lib/analytics.ts` (só envia com chave e aceite): `landing_signup_cta_clicked` (`placement`: `header`, `header_mobile`, `hero`, `segments`), `landing_showcase_tab_viewed` (`tab`), `landing_section_viewed` (`section: online_payments`, uma vez por visita) e `landing_signup_submitted` (`result`: o status do pedido do link, sem nome nem e-mail) |
 
 ## Privacidade
 
