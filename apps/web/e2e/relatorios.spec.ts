@@ -171,7 +171,7 @@ test.describe("catálogo", () => {
     await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(1);
 
     // Pro travado: abre o convite e volta.
-    await page.getByPlaceholder("Buscar relatório").fill("churn");
+    await page.getByPlaceholder("Buscar relatório").fill("retenção");
     await page.getByRole("button", { name: "Disponível no Plano Pro" }).click();
     await expect(page.getByText("Relatórios Gerenciais Avançados")).toBeVisible();
     await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);

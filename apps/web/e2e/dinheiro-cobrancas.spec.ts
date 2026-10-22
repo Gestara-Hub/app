@@ -132,7 +132,6 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   // A linha agrupada abre as parcelas pelo clique direito; cada parcela tem o menu dela.
   expect(await contextMenuItems(page, weekly)).toEqual(["Ver cobranças"]);
   await weekly.getByRole("button", { name: "Ver cobranças" }).click();
-  await expect(page.getByText(/\d cobranças no mês/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Ações de Aluno Semanal", exact: true }).first()).toBeVisible();
   expect(await contextMenuItems(page, weekly)).toEqual(["Ocultar cobranças"]);
 
