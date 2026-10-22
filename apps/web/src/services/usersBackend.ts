@@ -174,7 +174,7 @@ export async function createUserAndInviteAction(
     if (existing) {
       return {
         success: false,
-        error: "Já existe um usuário cadastrado com este e-mail nesta organização.",
+        error: "Já existe um usuário com este e-mail.",
       };
     }
 

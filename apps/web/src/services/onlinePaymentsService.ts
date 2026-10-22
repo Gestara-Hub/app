@@ -557,7 +557,8 @@ export const onlinePaymentsServiceImpl = {
 
     // Conta real nunca entrega codigo de demonstracao ao aluno: avisa o motivo.
     const gatewayProvider = provided.provider ?? "mock";
-    if (gatewayProvider === "mock" && isSupabaseOrganization(store.organization.id)) {
+    // O servidor do e2e (E2E_NOW) roda sem Asaas e aceita o codigo simulado.
+    if (gatewayProvider === "mock" && isSupabaseOrganization(store.organization.id) && !process.env.E2E_NOW) {
       throw apiError(
         "NETWORK",
         `Não foi possível gerar ${method === "pix" ? "o Pix" : "o link"} no Asaas. ${provided.fallbackReason ?? ""}`.trim(),

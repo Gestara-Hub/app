@@ -41,6 +41,8 @@ export interface DialogDirtyRegistry {
   mount: (source: object) => void
   unmount: (source: object) => void
   update: (source: object, dirty: boolean) => void
+  /** Fecha pelo `close` do chamador (ex.: Cancelar do rodape), pedindo confirmacao se houver alteracao. */
+  guardClose: (close: () => void) => void
 }
 
 const DialogDirtyContext = React.createContext<DialogDirtyRegistry | null>(null)
@@ -60,11 +62,21 @@ export function useDiscardGuard(
   const [confirmDiscard, setConfirmDiscard] = React.useState(false)
   // Por formulario: quantos campos montados e se esta sujo.
   const sourcesRef = React.useRef(new Map<object, { fields: number; dirty: boolean }>())
+  // Fechamento pedido pelo rodape (Cancelar), feito ao confirmar o descarte.
+  const pendingCloseRef = React.useRef<(() => void) | null>(null)
 
   const registry = React.useMemo<DialogDirtyRegistry>(() => {
     const recompute = () =>
       setDirty([...sourcesRef.current.values()].some((s) => s.dirty))
     return {
+      guardClose(close) {
+        if ([...sourcesRef.current.values()].some((s) => s.dirty)) {
+          pendingCloseRef.current = close
+          setConfirmDiscard(true)
+          return
+        }
+        close()
+      },
       mount(source) {
         const entry = sourcesRef.current.get(source)
         if (entry) entry.fields += 1
@@ -112,11 +124,20 @@ export function useDiscardGuard(
     for (const entry of sourcesRef.current.values()) entry.dirty = false
     setDirty(false)
     setConfirmDiscard(false)
-    onOpenChange?.(false)
+    const pending = pendingCloseRef.current
+    pendingCloseRef.current = null
+    if (pending) pending()
+    else onOpenChange?.(false)
   }, [onOpenChange])
 
   const confirm = (
-    <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+    <AlertDialog
+      open={confirmDiscard}
+      onOpenChange={(next) => {
+        if (!next) pendingCloseRef.current = null
+        setConfirmDiscard(next)
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>

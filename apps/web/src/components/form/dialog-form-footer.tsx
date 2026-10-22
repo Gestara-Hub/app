@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogClose, DialogFooter, useDialogDirty } from "@/components/ui/dialog";
 
 export interface DialogFormFooterProps {
   isPending: boolean;
@@ -22,6 +22,8 @@ export function DialogFormFooter({
   className,
   onCancel,
 }: DialogFormFooterProps) {
+  // Cancelar com alteracao pede confirmacao, como o X e o Esc.
+  const guard = useDialogDirty();
   return (
     <DialogFooter className={className}>
       {onCancel ? (
@@ -29,7 +31,7 @@ export function DialogFormFooter({
           type="button"
           variant="outline"
           disabled={isPending}
-          onClick={onCancel}
+          onClick={() => (guard ? guard.guardClose(onCancel) : onCancel())}
         >
           {cancelLabel}
         </Button>
