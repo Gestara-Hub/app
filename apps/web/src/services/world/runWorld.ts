@@ -162,6 +162,9 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
     const value = store[collection.key];
     const objects = (collection.kind === "single" ? (value ? [value] : []) : ((value as Row[] | undefined) ?? [])) as Row[];
     const seen = new Set<string>();
+    // Linhas novas antes das alteradas: uma linha existente pode passar a
+    // apontar para uma nova da mesma tabela (pacote renovado -> renovacao).
+    const updates: WorldChanges["upserts"] = [];
     for (const object of objects) {
       const id = objectIdentity(collection, object);
       const loadedRow = id !== undefined ? loaded.raw.get(id) : undefined;
@@ -182,7 +185,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
         table === "organizations" &&
         canonical(world.organizationRow.certificate_template ?? null) !== canonical(row.certificate_template);
       if (!sameRow(table, before, row) || certificateChanged) {
-        changes.upserts.push({
+        updates.push({
           table,
           pk: schema.primaryKey,
           row,
@@ -190,6 +193,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
         });
       }
     }
+    changes.upserts.push(...updates);
     if (collection.appendOnly || collection.kind === "single") continue;
     for (const [id, row] of loaded.raw) {
       if (!seen.has(id)) changes.deletes.push({ table, pk: schema.primaryKey, key: String(row[schema.primaryKey]) });

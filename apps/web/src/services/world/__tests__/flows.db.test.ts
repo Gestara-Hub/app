@@ -145,6 +145,20 @@ describe("fluxos de turmas no servidor (doc 15, fatia 2)", () => {
     expect(sold.studentId).toBe(student.id);
     const { data: installments } = await admin.from("charges").select("id").eq("student_package_id", sold.id);
     expect(installments).toHaveLength(2);
+    // Vender o mesmo pacote de novo renova: o antigo aponta para o novo na mesma gravacao.
+    const renewal = await call<StudentPackageView>("packages.sellPackage", {
+      studentId: student.id,
+      packageId: pkg.id,
+      priceCents: 30000,
+      installments: 1,
+      firstDueDate: today(),
+    });
+    const { data: renewed } = await admin
+      .from("student_packages")
+      .select("status, renewed_into_id")
+      .eq("id", sold.id)
+      .single();
+    expect(renewed).toEqual({ status: "renewed", renewed_into_id: renewal.id });
 
     // Nota da turma.
     const assessment = await call<{ id: string }>("grades.create", { classGroupId: group.id, name: "Prova 1", date: today() });
