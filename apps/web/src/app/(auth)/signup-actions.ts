@@ -4,14 +4,8 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import type {
   Category,
-  ClassesBusinessSegment,
-  ClassBillingMode,
-  CustomSegmentProgression,
-  ModalityProgressionTrack,
-  OperationalModel,
   Organization,
   Unit,
-  User,
   UserProfile,
   UserView,
 } from "@gestarahub/contracts";
@@ -28,6 +22,7 @@ import {
 } from "@/lib/session";
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { getCurrentUser } from "@/features/auth/get-current-user";
+import { createOwnerAccount, loadSessionPayload } from "@/services/server/accountSetup";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -436,91 +431,12 @@ export async function completeSignupWithPassword(input: {
     }
 
     const nowIso = new Date().toISOString();
-    const orgId = randomUUID();
-    const unitId = randomUUID();
-
-    const organization: Organization = {
-      id: orgId,
-      name: "Academia X",
-      segment: "Academia",
-      model: "classes",
-      settings: {
-        defaultDueDay: 10,
-        onboardingCompleted: false,
-      },
-      subscription: { tier: "free" },
-      status: "active",
-    };
-
-    const unit: Unit = {
-      id: unitId,
-      organizationId: orgId,
-      name: "",
-      status: "active",
-      businessHours: [],
-    };
-
-    const userRecord: User = {
-      id: authUserId,
-      organizationId: orgId,
-      name: userName,
-      email: normalizedEmail,
-      profile: "owner",
-      status: "active",
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
-
-    // 2. Insere organizacao, unidade e usuario no Postgres
-    const { error: orgErr } = await admin.from("organizations").insert({
-      id: orgId,
-      name: organization.name,
-      segment: organization.segment,
-      model: organization.model,
-      settings: organization.settings,
-      subscription: organization.subscription,
-      status: organization.status,
-    });
-
-    if (orgErr) {
-      console.error("[signup] Erro ao criar organizacao:", orgErr);
-      return {
-        ok: false,
-        code: "error",
-        message: "Não foi possível preparar o espaço da sua conta. Tente novamente.",
-      };
+    // 2. Organizacao, unidade e dono no Postgres (comum ao Google).
+    const created = await createOwnerAccount(admin, { authUserId, email: normalizedEmail, name: userName });
+    if (!created.ok) {
+      return { ok: false, code: "error", message: created.message };
     }
-
-    const { error: unitErr } = await admin.from("units").insert({
-      id: unitId,
-      organization_id: orgId,
-      name: "",
-      status: "active",
-      business_hours: [],
-    });
-
-    if (unitErr) {
-      console.error("[signup] Erro ao criar unidade:", unitErr);
-    }
-
-    const { error: userInsertErr } = await admin.from("users").upsert({
-      id: authUserId,
-      auth_user_id: authUserId,
-      organization_id: orgId,
-      name: userName,
-      email: normalizedEmail,
-      profile: "owner",
-      status: "active",
-    });
-
-    if (userInsertErr) {
-      console.error("[signup] Erro ao criar public.users:", userInsertErr);
-      return {
-        ok: false,
-        code: "error",
-        message: "Não foi possível salvar os dados do usuário. Tente novamente.",
-      };
-    }
+    const { user: userRecord, organization, unit } = created;
 
     // 3. Marca o token como consumido e revoga eventuais outros tokens do e-mail
     const tokenHash = hashToken(input.token.trim());
@@ -667,80 +583,7 @@ export async function signInWithPasswordAction(input: {
       };
     }
 
-    const orgId = dbUser.organization_id as string;
-
-    const [{ data: dbOrg }, { data: dbUnits }, { data: dbCategories }] =
-      await Promise.all([
-        admin.from("organizations").select("*").eq("id", orgId).maybeSingle(),
-        admin
-          .from("units")
-          .select("*")
-          .eq("organization_id", orgId)
-          .order("created_at", { ascending: true })
-          .limit(1),
-        admin
-          .from("categories")
-          .select("*")
-          .eq("organization_id", orgId)
-          .order("created_at", { ascending: true }),
-      ]);
-
-    const organization: Organization = {
-      id: orgId,
-      name: (dbOrg?.name as string) ?? "Meu espaço",
-      segment: (dbOrg?.segment as string) ?? "Academia",
-      model: ((dbOrg?.model as OperationalModel) ?? "classes"),
-      classSegment: (dbOrg?.class_segment as ClassesBusinessSegment | undefined) ?? undefined,
-      customSegmentName: (dbOrg?.custom_segment_name as string | undefined) ?? undefined,
-      customSegmentProgression:
-        (dbOrg?.custom_segment_progression as CustomSegmentProgression | undefined) ?? undefined,
-      customSegmentBilling:
-        (dbOrg?.custom_segment_billing as ClassBillingMode | undefined) ?? undefined,
-      settings: (dbOrg?.settings as Organization["settings"]) ?? {
-        defaultDueDay: 10,
-      },
-      subscription: (dbOrg?.subscription as Organization["subscription"]) ?? {
-        tier: "free",
-      },
-      status: ((dbOrg?.status as Organization["status"]) ?? "active"),
-    };
-
-    const firstUnit = dbUnits?.[0];
-    const unit: Unit = {
-      id: (firstUnit?.id as string) ?? `unit-${orgId}`,
-      organizationId: orgId,
-      name: (firstUnit?.name as string) ?? "",
-      address: (firstUnit?.address as Unit["address"]) ?? undefined,
-      phone: (firstUnit?.phone as string | undefined) ?? undefined,
-      status: ((firstUnit?.status as Unit["status"]) ?? "active"),
-      businessHours: (firstUnit?.business_hours as Unit["businessHours"]) ?? [],
-    };
-
-    const categories: Category[] = (dbCategories ?? []).map((cat, idx) => ({
-      id: cat.id as string,
-      organizationId: orgId,
-      name: cat.name as string,
-      position: idx,
-      progressionTrack:
-        (cat.progression_track as ModalityProgressionTrack | undefined) ?? undefined,
-      status: (cat.status as Category["status"]) ?? "active",
-      createdAt: cat.created_at as string,
-      updatedAt: cat.updated_at as string,
-    }));
-
-    const userView: UserView = {
-      id: dbUser.id as string,
-      organizationId: orgId,
-      name: dbUser.name as string,
-      email: dbUser.email as string,
-      profile: dbUser.profile as UserProfile,
-      status: dbUser.status as User["status"],
-      professionalId: (dbUser.professional_id as string | undefined) ?? undefined,
-      termsAcceptedAt: (dbUser.terms_accepted_at as string | undefined) ?? undefined,
-      termsVersion: (dbUser.terms_version as string | undefined) ?? undefined,
-      createdAt: dbUser.created_at as string,
-      updatedAt: dbUser.updated_at as string,
-    };
+    const { user: userView, organization, unit, categories } = await loadSessionPayload(admin, dbUser);
 
     await setSessionCookie(userView);
 
@@ -832,4 +675,38 @@ export async function persistSetupToBackendAction(input: {
   } catch (err) {
     console.error("[setup] Erro ao persistir setup no Supabase:", err);
   }
+}
+
+/** "Continuar com Google" ligado no ambiente (app OAuth configurado, doc 16). */
+export async function googleSignInEnabled(): Promise<boolean> {
+  return process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
+}
+
+/**
+ * Abre o Google: devolve o endereco do consentimento para o navegador. A volta
+ * cai em `/auth/callback` (rota em app/auth/callback), que escolhe a conta. Com
+ * `invite`, a pessoa aceita o convite com a conta do Google do e-mail convidado.
+ */
+export async function startGoogleSignInAction(
+  input: { from?: string; invite?: string } = {},
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  if (!(await googleSignInEnabled())) {
+    return { ok: false, message: "Entrar com Google não está disponível." };
+  }
+  const callback = new URL("/auth/callback", await resolveAppBaseUrl());
+  const from = safeRedirectPath(input.from);
+  if (from) callback.searchParams.set("from", from);
+  if (input.invite) callback.searchParams.set("invite", input.invite);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    // Sempre pergunta a conta: quem tem varias contas Google escolhe a certa.
+    options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
+  });
+  if (error || !data.url) {
+    console.error("[auth] Erro ao abrir o Google:", error);
+    return { ok: false, message: "Não foi possível abrir o Google. Tente novamente." };
+  }
+  return { ok: true, url: data.url };
 }

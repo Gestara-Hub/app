@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import { ScrollReveal } from "./scroll-reveal";
 import { SignupForm, SignupLoginLink } from "./signup-form";
 
@@ -58,6 +59,10 @@ export function LandingSignupSection({ signedInName }: { signedInName?: string }
                     <div className="mb-6 space-y-1">
                       <h3 className="text-xl font-bold text-foreground">Crie sua conta</h3>
                       <p className="text-sm text-muted-foreground">Leva menos de um minuto.</p>
+                    </div>
+                    <div className="mb-5 space-y-5 empty:hidden">
+                      <GoogleSignInButton placement="signup" />
+                      <GoogleDivider />
                     </div>
                     <SignupForm idPrefix="signup" />
                   </div>

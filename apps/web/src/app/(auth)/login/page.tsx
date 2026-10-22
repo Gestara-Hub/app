@@ -14,9 +14,10 @@ export default async function LoginPage({
     from?: string;
     signup_token?: string;
     email?: string;
+    google_error?: string;
   }>;
 }) {
-  const { from, signup_token: signupToken, email: initialEmail } = await searchParams;
+  const { from, signup_token: signupToken, email: initialEmail, google_error: googleError } = await searchParams;
 
   // Se o usuario clicou num link de cadastro (?signup_token=...), valida o token
   // mesmo que exista um cookie de sessao anterior no navegador.
@@ -59,6 +60,7 @@ export default async function LoginPage({
         initialEmail={initialEmail}
         tokenValidation={tokenValidation}
         demoAvailable={Boolean(process.env.DEMO_PASSWORD)}
+        googleError={googleError}
       />
     </PublicAuthShell>
   );

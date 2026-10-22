@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userProfileLabel } from "@/lib/labels";
+import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import type { UserProfile } from "@gestarahub/contracts";
 import { acceptInvitationAction } from "@/services/usersBackend";
 
@@ -117,6 +118,10 @@ export function AcceptInviteForm({
             </Badge>
           </div>
         </div>
+
+        {/* Com a conta Google do e-mail convidado, sem criar senha. */}
+        <GoogleSignInButton invite={token} placement="invite" />
+        <GoogleDivider label="ou crie uma senha" />
 
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div className="space-y-1.5">

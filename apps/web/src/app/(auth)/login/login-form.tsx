@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { settingsService } from "@/services/settingsService";
+import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import {
   completeSignupWithPassword,
   requestSignupLink,
@@ -32,13 +33,27 @@ interface LoginFormProps {
   tokenValidation?: ValidateSignupTokenResult | null;
   /** Ambiente com o espaco de demonstracao no banco (DEMO_PASSWORD). */
   demoAvailable?: boolean;
+  /** Motivo da volta do Google sem entrar (`?google_error=`, rota /auth/callback). */
+  googleError?: string;
 }
+
+/** Mensagens da volta do Google (codigos de `resolveGoogleAccount` e da rota). */
+const GOOGLE_ERRORS: Record<string, string> = {
+  cancelled: "Você cancelou a entrada com Google.",
+  failed: "Não foi possível entrar com Google. Tente novamente.",
+  invite_invalid: "Este convite expirou ou já foi usado. Peça um novo ao responsável.",
+  invite_email_mismatch: "Entre com a conta Google do e-mail que recebeu o convite.",
+  email_in_use: "Este e-mail já tem uma conta. Entre com sua senha.",
+  inactive: "Sua conta está inativa. Procure o responsável pelo espaço.",
+  error: "Não foi possível concluir a entrada. Tente novamente.",
+};
 
 export function LoginForm({
   from,
   initialEmail,
   tokenValidation: initialTokenValidation = null,
   demoAvailable = false,
+  googleError,
 }: LoginFormProps) {
   const router = useRouter();
   const [tokenState, setTokenState] = useState<ValidateSignupTokenResult | null>(
@@ -448,6 +463,18 @@ export function LoginForm({
           </Link>
         </div>
       ) : null}
+
+      {googleError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs leading-relaxed text-destructive"
+        >
+          {GOOGLE_ERRORS[googleError] ?? GOOGLE_ERRORS.error}
+        </div>
+      ) : null}
+
+      <GoogleSignInButton from={from} placement="login" />
+      <GoogleDivider />
 
       <form onSubmit={handlePasswordSignIn} noValidate className="space-y-4">
         <div className="space-y-1.5">
