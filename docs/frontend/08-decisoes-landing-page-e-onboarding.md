@@ -53,7 +53,7 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 ## 3. Decisões da Landing Page (`apps/web/src/features/landing/`)
 
 ### 3.0. Ordem e navegação (17/10/2026)
-- Ordem: Hero → A parte chata → O sistema → Áreas → Recursos → Dúvidas → Cadastro → Rodapé (Planos fora por enquanto, seção 3.5). O cadastro passou para o fim: quem lê as dúvidas encontra o formulário logo abaixo, sem rolar de volta.
+- Ordem: Hero → A parte chata → O sistema → Pagamento online (22/10/2026, seção 3.14) → Áreas → Recursos → Dúvidas → Cadastro → Rodapé (Planos fora por enquanto, seção 3.5). O cadastro passou para o fim: quem lê as dúvidas encontra o formulário logo abaixo, sem rolar de volta.
 - Menu (topo e rodapé, mesma lista `LANDING_NAV_LINKS` em `landing-header.tsx`): *Parte chata* (`#parte-chata`), *O sistema* (`#o-sistema`), *Áreas* (`#areas`), *Recursos* (`#recursos`), *Dúvidas* (`#faq`). Os links levam `/` na frente para funcionar também em Termos e Privacidade. "Modalidades" saiu do menu: no sistema, modalidade é outra coisa.
 - O menu completo aparece a partir de `lg` (1024px); abaixo disso, menu do celular (com `aria-expanded` e rótulo "Abrir/Fechar menu"). Em 768px os 5 links não cabiam.
 - **Topo no celular** (17/10/2026): botão **"Criar conta"** sempre à vista ao lado do menu (antes ficava escondido dentro do menu); o botão de tema passou para dentro do menu ("Tema escuro" / "Tema claro"), junto do "Entrar".
@@ -156,6 +156,13 @@ O usuário tem diretrizes estéticas rigorosas que devem ser respeitadas em qual
 - **Telas reais, não mockups** (a regra da seção 2 proíbe mockup falso): capturas do próprio app com dados de demonstração, em `src/assets/landing/` (`*-light.png` e `*-dark.png`). A página mostra a do tema atual (`dark:hidden` / `hidden dark:block`).
 - **Recapturar** quando as telas mudarem (o app no ar em `:3000`), a partir de `apps/web`: `npx playwright test --config=scripts/landing-screenshots/playwright.config.ts`. O roteiro cria o "Espaço Movimento" pelo assistente (Lutas, com a trilha de faixas), grava alunos, turmas (Jiu-Jitsu, Muay Thai, Yoga), presenças e mensalidades em volta da data de hoje e captura as 3 telas nos 2 temas. Usa o relógio real: com o relógio congelado do e2e, servidor e navegador discordam da data, a hidratação falha e o menu lateral perde a cor.
 - As datas aparecem nas imagens (mês da competência, "Hoje"): recapturar de tempos em tempos.
+
+- **22/10/2026:** três abas (seis era extenso; o Painel saiu a pedido): **Chamada** (celular), **Cobranças** (*"Quem pagou, quem atrasou e o que entrou pelo Pix."*, com o selo "Pago online") e **Ficha do aluno** (*"Evolução, frequência e pagamentos do aluno."*). Painel, Financeiro e Calendário saíram das abas (seguem nos pilares). O roteiro agora monta o espaço no Supabase local pelos fixtures do e2e (lê o `.env.local`, cookies na porta 3000) e apaga o espaço no fim; captura também `pix-*.png` (seção 3.14). Na captura, o cartão "Plano Grátis" da barra lateral (cita taxa) e o quadro "Demonstração" do Pix ficam fora da imagem.
+
+### 3.14. Pagamento online (`landing-online-payments.tsx`, 22/10/2026)
+- Logo depois de "O sistema". Título *"Receba pelo Pix sem conferir extrato"*, quatro pontos curtos (Pix ou link de cartão; a cobrança baixa sozinha; o lembrete já leva o Pix; saque para o seu Pix) e o print da tela "Cobrar online".
+- **Decisões do usuário:** cobrança online também no plano grátis, opcional ("Você ativa quando quiser"); **sem valores de taxa** na página; o provedor aparece como *"parceiro de pagamentos regulado"*, sem o nome.
+- Reflexos: "A parte chata" cita o Pix no lembrete e na baixa; o pilar "Financeiro" virou "Financeiro e Pix"; duas dúvidas novas ("Como funciona o pagamento online? Tem custo?" e "Para onde vai o dinheiro?").
 
 ### 3.12. Análise de uso (17/10/2026)
 - PostHog na landing e no sistema (páginas, cliques, mapa de calor, gravação e funis). Detalhes, privacidade e variáveis: [../technical/09-analise-de-uso.md](../technical/09-analise-de-uso.md). Sem `NEXT_PUBLIC_POSTHOG_KEY`, nada é enviado.

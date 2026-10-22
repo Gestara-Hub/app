@@ -16,12 +16,12 @@ const CHORES = [
   {
     icon: MessageCircle,
     chore: "Cobrar aluno atrasado",
-    solution: "Lembrete pronto no WhatsApp, você só envia.",
+    solution: "Lembrete pronto no WhatsApp, já com o Pix.",
   },
   {
     icon: ReceiptText,
     chore: "Saber quem já pagou",
-    solution: "Mensalidades lançadas sozinhas. Quem atrasou aparece em vermelho.",
+    solution: "Mensalidades lançadas sozinhas e o Pix pago baixa sozinho.",
   },
   {
     icon: Calculator,

@@ -84,13 +84,13 @@ test.describe("landing page", () => {
     const features = page.locator("#recursos");
     await features.scrollIntoViewIfNeeded();
     await expect(features.getByRole("heading", { level: 3 })).toHaveText([
-      "Financeiro",
+      "Financeiro e Pix",
       "Turmas e aulas particulares",
       "Evolução dos alunos",
       "Comunicação",
     ]);
-    const finance = features.locator("div.group").filter({ has: page.getByRole("heading", { name: "Financeiro" }) });
-    await expect(finance.getByRole("listitem")).toHaveText(["Mensalidade", "Curso fechado", "Pacote de aulas", "Despesas fixas"]);
+    const finance = features.locator("div.group").filter({ has: page.getByRole("heading", { name: "Financeiro e Pix" }) });
+    await expect(finance.getByRole("listitem")).toHaveText(["Mensalidade", "Pix e cartão", "Curso fechado", "Pacote de aulas"]);
     // Sem promessa de reposicao (o modelo de turmas nao tem).
     expect((await page.locator("body").innerText()).toLowerCase()).not.toContain("reposi");
   });
@@ -150,12 +150,19 @@ test.describe("landing page", () => {
     const showcase = page.locator("#o-sistema");
     await showcase.scrollIntoViewIfNeeded();
     const tabs = showcase.getByRole("tab");
-    await expect(tabs).toHaveText(["Painel", "Cobranças", "Chamada", "Ficha do aluno", "Financeiro", "Calendário"]);
+    await expect(tabs).toHaveText(["Chamada", "Cobranças", "Ficha do aluno"]);
     await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
-    await expect(showcase.getByRole("img", { name: /Painel inicial/ }).first()).toBeVisible();
+    await expect(showcase.getByRole("img", { name: /Lista de chamada/ }).first()).toBeVisible();
     await showcase.getByRole("tab", { name: "Cobranças" }).click();
-    await expect(showcase.getByText("Quem pagou e quem atrasou, agrupado por aluno.")).toBeVisible();
+    await expect(showcase.getByText("Quem pagou, quem atrasou e o que entrou pelo Pix.")).toBeVisible();
     await expect(showcase.getByRole("img", { name: /Tela de cobranças/ }).first()).toBeVisible();
+    // Logo depois, o pagamento online: opcional no gratis, sem valores de taxa.
+    const online = page.locator("#pagamento-online");
+    await online.scrollIntoViewIfNeeded();
+    await expect(online.getByRole("heading", { name: "Receba pelo Pix sem conferir extrato" })).toBeVisible();
+    await expect(online).toContainText("Opcional, também no plano grátis.");
+    await expect(online).not.toContainText("R$");
+    await expect(online.getByRole("img", { name: /Cobrar online/ }).first()).toBeVisible();
     // O hero leva para esta secao.
     await expect(page.getByRole("link", { name: "Ver o sistema" })).toHaveAttribute("href", "#o-sistema");
   });

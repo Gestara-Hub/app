@@ -13,9 +13,9 @@ import { ScrollReveal } from "./scroll-reveal";
 const FEATURES = [
   {
     icon: Wallet,
-    title: "Financeiro",
-    description: "Entradas, saídas e o resultado do mês.",
-    chips: ["Mensalidade", "Curso fechado", "Pacote de aulas", "Despesas fixas"],
+    title: "Financeiro e Pix",
+    description: "Mensalidades, Pix e o resultado do mês.",
+    chips: ["Mensalidade", "Pix e cartão", "Curso fechado", "Pacote de aulas"],
     color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
   },
   {

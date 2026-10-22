@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { TypewriterText } from "./typewriter-text";
 
@@ -48,7 +49,7 @@ export function LandingHero() {
               asChild
               className="w-full sm:w-auto px-8 text-sm font-semibold shadow-md gap-2"
             >
-              <a href="#cadastro">
+              <a href="#cadastro" onClick={() => trackEvent("landing_signup_cta_clicked", { placement: "hero" })}>
                 <span>Criar conta grátis</span>
                 <ArrowRight className="size-4" />
               </a>
@@ -70,7 +71,7 @@ export function LandingHero() {
             </span>
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />
-              Sem limite de alunos ou horários
+              Pix com baixa automática
             </span>
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" />

@@ -4,6 +4,7 @@ import { LandingHeader } from "./landing-header";
 import { LandingHero } from "./landing-hero";
 import { LandingChores } from "./landing-chores";
 import { LandingShowcase } from "./landing-showcase";
+import { LandingOnlinePayments } from "./landing-online-payments";
 import { LandingSegments } from "./landing-segments";
 import { LandingFeatures } from "./landing-features";
 import { LandingSignupSection } from "./landing-signup-section";
@@ -18,6 +19,7 @@ export function LandingView({ signedInName }: { signedInName?: string }) {
         <LandingHero />
         <LandingChores />
         <LandingShowcase />
+        <LandingOnlinePayments />
         <LandingSegments />
         <LandingFeatures />
         <LandingFaq />

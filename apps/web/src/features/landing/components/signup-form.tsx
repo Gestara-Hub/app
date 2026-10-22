@@ -18,6 +18,7 @@ import {
 import { InputText } from "@/components/form";
 import { cn } from "@/lib/utils";
 import { requestSignupLink } from "@/app/(auth)/signup-actions";
+import { trackEvent } from "@/lib/analytics";
 import { signupSchema, type SignupValues } from "../signup-schema";
 
 function SubmitButton({ pending, className }: { pending: boolean; className?: string }) {
@@ -88,6 +89,7 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
 
     startTransition(async () => {
       const result = await requestSignupLink({ name, email, forceResend: false });
+      trackEvent("landing_signup_submitted", { result: result.status });
 
       if (result.status === "sent") {
         setSentToEmail(result.email);

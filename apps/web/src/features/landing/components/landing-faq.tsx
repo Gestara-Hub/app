@@ -58,6 +58,16 @@ const FAQS = [
     answer:
       "Não. Você cria a conta com nome e e-mail, sem cartão e sem cobrança automática.",
   },
+  {
+    question: "Como funciona o pagamento online? Tem custo?",
+    answer:
+      "É opcional, também no plano grátis. Você ativa uma conta de recebimento e gera Pix ou link de cartão em cada cobrança. Quando o aluno paga, a cobrança baixa sozinha. Há uma taxa só quando o aluno paga; sem pagamento, nada é cobrado.",
+  },
+  {
+    question: "Para onde vai o dinheiro?",
+    answer:
+      "Para a conta de recebimento do seu espaço, aberta em seu nome com um parceiro de pagamentos regulado. Você saca para o seu Pix quando quiser.",
+  },
 ];
 
 export function LandingFaq() {

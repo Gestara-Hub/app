@@ -8,11 +8,13 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import logoLightImage from "@/assets/logo-light.png";
 import logoDarkImage from "@/assets/logo-dark.png";
+import { trackEvent } from "@/lib/analytics";
 
 // Com "/" na frente, os links tambem funcionam nas paginas de Termos e Privacidade.
 export const LANDING_NAV_LINKS = [
   { href: "/#parte-chata", label: "Parte chata" },
   { href: "/#o-sistema", label: "O sistema" },
+  { href: "/#pagamento-online", label: "Pix" },
   { href: "/#areas", label: "Áreas" },
   { href: "/#recursos", label: "Recursos" },
   { href: "/#faq", label: "Dúvidas" },
@@ -118,7 +120,7 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
               </Button>
 
               <Button asChild className="gap-1.5 px-4 font-semibold shadow-xs">
-                <Link href="/#cadastro">
+                <Link href="/#cadastro" onClick={() => trackEvent("landing_signup_cta_clicked", { placement: "header" })}>
                   <span>Criar conta grátis</span>
                   <ArrowRight className="size-3.5" />
                 </Link>
@@ -131,7 +133,13 @@ export function LandingHeader({ signedIn = false }: { signedIn?: boolean }) {
         {/* No celular o botao de criar conta fica sempre a vista; o tema vai para o menu. */}
         <div className="flex items-center gap-2 lg:hidden">
           <Button asChild className="px-3 font-semibold">
-            <Link href={signedIn ? "/dashboard" : "/#cadastro"} onClick={() => setMobileMenuOpen(false)}>
+            <Link
+              href={signedIn ? "/dashboard" : "/#cadastro"}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                if (!signedIn) trackEvent("landing_signup_cta_clicked", { placement: "header_mobile" });
+              }}
+            >
               {signedIn ? "Ir para o painel" : "Criar conta"}
             </Link>
           </Button>

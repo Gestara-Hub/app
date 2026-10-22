@@ -4,6 +4,7 @@ import { PlusCircle } from "lucide-react";
 import { getAllSegmentPresets } from "@/lib/business-segment-presets";
 import { SEGMENT_ICONS } from "@/lib/business-segment-icons";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 import { ScrollReveal } from "./scroll-reveal";
 
 interface SegmentCard {
@@ -85,6 +86,7 @@ export function LandingSegments() {
                   {seg.isOther ? (
                     <a
                       href="#cadastro"
+                      onClick={() => trackEvent("landing_signup_cta_clicked", { placement: "segments" })}
                       className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0"
                     >
                       <span>Criar conta grátis</span>

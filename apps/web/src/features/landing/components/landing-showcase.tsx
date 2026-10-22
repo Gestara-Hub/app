@@ -2,18 +2,13 @@
 
 import { useState } from "react";
 import Image, { type StaticImageData } from "next/image";
-import dashboardLight from "@/assets/landing/dashboard-light.png";
-import dashboardDark from "@/assets/landing/dashboard-dark.png";
 import attendanceLight from "@/assets/landing/attendance-light.png";
 import attendanceDark from "@/assets/landing/attendance-dark.png";
-import calendarLight from "@/assets/landing/calendar-light.png";
-import calendarDark from "@/assets/landing/calendar-dark.png";
 import billingLight from "@/assets/landing/billing-light.png";
 import billingDark from "@/assets/landing/billing-dark.png";
-import financeLight from "@/assets/landing/finance-light.png";
-import financeDark from "@/assets/landing/finance-dark.png";
 import studentLight from "@/assets/landing/student-light.png";
 import studentDark from "@/assets/landing/student-dark.png";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 
@@ -31,58 +26,31 @@ interface Screen {
 // recapturar: scripts/landing-screenshots (doc 08, secao 3.11).
 const SCREENS: Screen[] = [
   {
-    key: "dashboard",
-    label: "Painel",
-    caption: "Aulas do dia, alunos sumindo e cobranças em atraso num só lugar.",
-    alt: "Painel inicial com as aulas de hoje, presenças, mensalidades recebidas e avisos do dia",
-    device: "desktop",
-    light: dashboardLight,
-    dark: dashboardDark,
-  },
-  {
-    key: "billing",
-    label: "Cobranças",
-    caption: "Quem pagou e quem atrasou, agrupado por aluno.",
-    alt: "Tela de cobranças do mês com o total recebido, os valores em atraso e a lista agrupada por aluno",
-    device: "desktop",
-    light: billingLight,
-    dark: billingDark,
-  },
-  {
     key: "attendance",
     label: "Chamada",
-    caption: "Presença em um toque, direto no celular.",
+    caption: "Presença em um toque, direto do celular.",
     alt: "Lista de chamada de uma aula de Jiu-Jitsu no celular, com alunos marcados como presentes",
     device: "phone",
     light: attendanceLight,
     dark: attendanceDark,
   },
   {
+    key: "billing",
+    label: "Cobranças",
+    caption: "Quem pagou, quem atrasou e o que entrou pelo Pix.",
+    alt: "Tela de cobranças do mês com o total recebido, os atrasos e alunos com o selo Pago online",
+    device: "desktop",
+    light: billingLight,
+    dark: billingDark,
+  },
+  {
     key: "student",
     label: "Ficha do aluno",
-    caption: "Faixa, frequência e pagamentos num lugar só.",
-    alt: "Ficha de um aluno com valor em aberto, frequência de 30 dias, faixa atual e turmas",
+    caption: "Evolução, frequência e pagamentos do aluno.",
+    alt: "Ficha de um aluno com a faixa atual, os registros de aula, a frequência e os pagamentos",
     device: "desktop",
     light: studentLight,
     dark: studentDark,
-  },
-  {
-    key: "finance",
-    label: "Financeiro",
-    caption: "Entradas, despesas e o pagamento de cada professor calculado.",
-    alt: "Tela do financeiro com o saldo do mês, entradas, saídas e contas a pagar dos professores",
-    device: "desktop",
-    light: financeLight,
-    dark: financeDark,
-  },
-  {
-    key: "calendar",
-    label: "Calendário",
-    caption: "Horários da semana, vagas e instrutores num quadro só.",
-    alt: "Calendário semanal de turmas com aulas de Jiu-Jitsu, Muay Thai e Yoga distribuídas pelos dias da semana",
-    device: "desktop",
-    light: calendarLight,
-    dark: calendarDark,
   },
 ];
 
@@ -124,7 +92,10 @@ export function LandingShowcase() {
                   id={`showcase-tab-${screen.key}`}
                   aria-selected={selected}
                   aria-controls="showcase-panel"
-                  onClick={() => setActiveKey(screen.key)}
+                  onClick={() => {
+                    setActiveKey(screen.key);
+                    trackEvent("landing_showcase_tab_viewed", { tab: screen.key });
+                  }}
                   className={cn(
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                     selected ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",

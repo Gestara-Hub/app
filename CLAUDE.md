@@ -23,6 +23,7 @@ Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/front
 - **Landing Page (`features/landing`)**:
   - "A parte chata, a gente resolve": 6 cards de tarefa chata ➔ solução (substituiu o Antes vs. Depois; sem blocos de passos ou métricas).
   - 11 cards de áreas (`LandingSegments`): ícone, nome e exemplos, vindos dos presets.
+  - "Veja o sistema por dentro" com 3 abas (Chamada, Cobranças, Ficha do aluno) e, logo depois, "Pagamento online" (`LandingOnlinePayments`): Pix opcional também no plano grátis, sem valores de taxa e com o provedor citado só como "parceiro de pagamentos regulado".
   - 4 Pilares da gestão (`LandingFeatures`).
   - Dúvidas, cadastro no fim e páginas `/terms` e `/privacy`. Sem Planos e sem citar o Pro até definir o preço e a cobrança do WhatsApp e do pagamento online (`LandingPlans` pronto, fora da página).
   - A página só promete o que o produto faz (sem "reposição", que o modelo de turmas não tem).

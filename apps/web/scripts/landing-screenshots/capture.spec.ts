@@ -1,13 +1,15 @@
-import { test, type Page } from "@playwright/test";
+import { test, type Locator, type Page } from "@playwright/test";
+import { removeCreatedTenants } from "../../e2e/db";
 import { editWorld } from "../../e2e/fixtures";
 import { freshTenant, OPEN_HOURS, ORG, readTenant, skipWelcomeDialog } from "../../e2e/areas-helpers";
 
 /**
  * Telas reais do app para a landing (doc 08, secao 3.11), nos temas claro e
- * escuro. Monta um espaco de demonstracao pelo proprio assistente (Lutas, para
- * vir com a trilha de faixas) e grava o resto direto no mundo do mock, com as
- * datas em volta de hoje. Usa o relogio real: com o relogio congelado, o
- * servidor e o navegador discordam da data e a hidratacao falha.
+ * escuro. Monta um espaco de demonstracao no Supabase local pelo proprio
+ * assistente (Lutas, para vir com a trilha de faixas) e grava o resto pelo
+ * servidor (fixtures do e2e), com as datas em volta de hoje; no fim apaga o
+ * espaco. Usa o relogio real: com o relogio congelado, o servidor e o
+ * navegador discordam da data e a hidratacao falha. Rodar com E2E_PORT=3000.
  */
 const OUT = `${__dirname}/../../src/assets/landing`;
 const TS = "2026-03-01T12:00:00.000Z";
@@ -48,6 +50,8 @@ const STUDENTS: [string, string, string, number][] = [
 const PLAN_OF: Record<string, [string, number]> = { "cg-jj": ["p-jj", 16000], "cg-mt": ["p-mt", 14000], "cg-yg": ["p-yg", 12000] };
 // Mensalidade do mes: paga, atrasada (venceu dia 10) ou em aberto (vence dia 25).
 const PAID = new Set(["s-lucas", "s-mariana", "s-camila", "s-rafael", "s-thiago", "s-helena", "s-diego"]);
+// Pagas pelo Pix online (baixa sozinha, selo "Pago online" em Cobrancas).
+const PAID_ONLINE = new Set(["s-camila", "s-diego", "s-helena", "s-mariana"]);
 
 async function buildDemo(page: Page) {
   await freshTenant(page);
@@ -69,6 +73,7 @@ async function buildDemo(page: Page) {
       defaultDueDay: 10,
       billingTiming: "prepaid",
       midMonthStrategy: "prorated",
+      onlinePayments: { enabled: true, defaultExpiresInMinutes: 1440 },
     };
     t.unit.businessHours = OPEN_HOURS;
     t.categories.push({ ...base, id: "m-yg", name: "Yoga", position: 2 });
@@ -157,7 +162,14 @@ async function buildDemo(page: Page) {
         periodEnd: lastDay,
         amountCents,
         status: paid ? "paid" : "pending",
-        ...(paid ? { paidAt: `${MONTH}-0${(i % 8) + 1}T14:00:00.000Z`, method: i % 3 ? "pix" : "cash", paidVia: "manual" } : {}),
+        // Parte paga pelo Pix online (baixa sozinha, selo "Pago online"), parte na mao.
+        ...(paid
+          ? {
+              paidAt: `${MONTH}-0${(i % 8) + 1}T14:00:00.000Z`,
+              method: PAID_ONLINE.has(id) || i % 3 ? "pix" : "cash",
+              paidVia: PAID_ONLINE.has(id) ? "online" : "manual",
+            }
+          : {}),
         createdAt: TS,
         updatedAt: TS,
       };
@@ -193,6 +205,40 @@ async function buildDemo(page: Page) {
         updatedAt: TS,
       },
     );
+    // Pix online: os pagos pelo Pix e um Pix em aberto do Pedro (tela "Cobrar online").
+    const pixCode = "00020126580014br.gov.bcb.pix0136espaco-movimento-demonstracao5204000053039865406160.005802BR6009SAO PAULO62070503***6304ABCD";
+    t.onlinePayments = t.charges
+      .filter((c: { paidVia?: string }) => c.paidVia === "online")
+      .map((c: { id: string; amountCents: number; paidAt: string }) => ({
+        id: `op-${c.id}`,
+        organizationId: ORG,
+        chargeId: c.id,
+        method: "pix",
+        amountCents: c.amountCents,
+        status: "paid",
+        paidMethod: "pix",
+        gatewayFeeCents: 199,
+        netAmountCents: c.amountCents - 199,
+        pixCopyPaste: pixCode,
+        gatewayProvider: "mock",
+        expiresAt: c.paidAt,
+        paidAt: c.paidAt,
+        createdAt: c.paidAt,
+      }));
+    t.onlinePayments.push({
+      id: "op-pedro",
+      organizationId: ORG,
+      chargeId: "ch-2",
+      method: "pix",
+      amountCents: 16000,
+      status: "awaiting",
+      gatewayFeeCents: 199,
+      netAmountCents: 16000 - 199,
+      pixCopyPaste: pixCode,
+      gatewayProvider: "mock",
+      expiresAt: new Date(NOW.getTime() + 20 * 3600_000).toISOString(),
+      createdAt: new Date(NOW.getTime() - 3600_000).toISOString(),
+    });
     // Financeiro: categorias de despesa, lancamentos do mes e regras dos professores.
     t.financialCategories.push(
       { ...base, id: "fc-rent", type: "expense", name: "Aluguel e estrutura" },
@@ -288,7 +334,8 @@ async function shoot(
   name: string,
   url: string,
   size: { width: number; height: number },
-  beforeShot?: (page: Page) => Promise<void>,
+  // Devolvendo um elemento, a captura e so dele (ex.: o dialogo do Pix).
+  beforeShot?: (page: Page) => Promise<void | Locator>,
 ) {
   if (ONLY && !ONLY.includes(name)) return;
   await page.setViewportSize(size);
@@ -298,14 +345,23 @@ async function shoot(
     await page.waitForLoadState("networkidle");
     // Some o selo de desenvolvimento do Next.
     await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+    // Cartao do plano na barra lateral cita taxa; a landing nao mostra valores.
+    await page.evaluate(() => {
+      for (const a of document.querySelectorAll('a[href="/plans"]')) {
+        if (a.textContent?.includes("Plano Grátis")) (a as HTMLElement).style.display = "none";
+      }
+    });
     await page.waitForTimeout(1200);
-    if (beforeShot) {
-      await beforeShot(page);
-      await page.waitForTimeout(400);
-    }
-    await page.screenshot({ path: `${OUT}/${name}-${theme}.png` });
+    const target = beforeShot ? await beforeShot(page) : undefined;
+    if (beforeShot) await page.waitForTimeout(400);
+    if (target) await target.screenshot({ path: `${OUT}/${name}-${theme}.png` });
+    else await page.screenshot({ path: `${OUT}/${name}-${theme}.png` });
   }
 }
+
+test.afterAll(async () => {
+  await removeCreatedTenants();
+});
 
 test("telas da landing", async ({ page }) => {
   // Dicas "Lista ou cards" e tour das abas ja vistos (como no fixture do e2e).
@@ -316,22 +372,11 @@ test("telas da landing", async ({ page }) => {
     localStorage.setItem("gestarahub_tour_plans_tabs", "1");
   });
   await buildDemo(page);
-  await shoot(
-    page,
-    "dashboard",
-    "/dashboard",
-    { width: 1280, height: 800 },
-    async (p) => {
-      const closeBtn = p.getByRole("button", { name: "Fechar", exact: true });
-      if (await closeBtn.isVisible()) await closeBtn.click();
-    },
-  );
   await shoot(page, "attendance", `/classes/sessions/${encodeURIComponent(`cg-jj~${TODAY}~${START}`)}`, { width: 390, height: 844 });
-  await shoot(page, "calendar", "/classes/calendar", { width: 1280, height: 800 });
   await shoot(
     page,
     "billing",
-    "/classes/billing",
+    "/classes/billing?status=all",
     { width: 1280, height: 800 },
     async (p) => {
       // Expande o Gustavo para mostrar o agrupamento de cobrancas por aluno aberto.
@@ -339,7 +384,27 @@ test("telas da landing", async ({ page }) => {
       if (await btn.isVisible()) await btn.click();
     },
   );
-  await shoot(page, "finance", "/finance", { width: 1280, height: 800 });
+  // Pix em aberto do Pedro: a tela "Cobrar online" com o QR e o copia e cola.
+  await shoot(page, "pix", "/classes/billing?status=all", { width: 1280, height: 800 }, async (p) => {
+    await p.getByRole("button", { name: "Ações de Pedro Henrique Alves", exact: true }).first().click();
+    await p.getByRole("menuitem", { name: "Cobrar online" }).click();
+    const dialog = p.getByRole("dialog", { name: "Cobrar online" });
+    await dialog.getByText("Pix", { exact: false }).first().waitFor();
+    // O QR da demonstracao e ilustrativo; o aviso disso nao entra no print.
+    await p.getByText("QR Code ilustrativo, não é lido por apps de banco.").evaluate((el) => el.remove()).catch(() => undefined);
+    // O quadro "Demonstracao" (simular pagamento) e do ambiente local, nao do produto.
+    await p
+      .getByText("Demonstração", { exact: true })
+      .evaluate((el) => el.closest(".border-dashed")?.remove())
+      .catch(() => undefined);
+    // Sem o "Fechar" do rodape: o print mostra so o Pix.
+    await dialog.evaluate((el) => {
+      for (const b of el.querySelectorAll("button")) {
+        if (!b.querySelector("svg") && b.textContent?.trim() === "Fechar") b.remove();
+      }
+    });
+    return dialog;
+  });
   // Ficha em sanfona: abre a evolucao (faixa, graus e pontos fortes).
   await shoot(page, "student", "/clients/s-lucas?tab=evolution", { width: 1280, height: 800 });
 });
