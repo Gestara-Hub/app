@@ -12,6 +12,7 @@ import type {
   PaymentLinkPayment,
   PixPayment,
 } from "./payments/types";
+import { forbiddenError } from "@gestarahub/core/api-error";
 import { getPaymentGateway } from "./payments/registry";
 import {
   cancelGatewayPayment,
@@ -28,52 +29,10 @@ import {
   listTransfers,
   receiveInCash,
 } from "@/lib/asaas";
+import { requireSameOrganization, requireTenant } from "./server/tenant";
+import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
 
-function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayment {
-  const expiresAt = row.expires_at
-    ? new Date(String(row.expires_at)).toISOString()
-    : new Date().toISOString();
-  let status = (row.status as OnlinePayment["status"]) || "awaiting";
-  if (status === "awaiting" && expiresAt <= new Date().toISOString()) {
-    status = "expired";
-  }
 
-  return {
-    id: String(row.id),
-    organizationId: String(row.organization_id),
-    chargeId: String(row.charge_id),
-    method: (row.method as OnlinePayment["method"]) || "pix",
-    status,
-    amountCents: typeof row.amount_cents === "number" ? row.amount_cents : 0,
-    splitAmountCents:
-      typeof row.split_amount_cents === "number" ? row.split_amount_cents : 0,
-    gatewayFeeCents:
-      typeof row.gateway_fee_cents === "number" ? row.gateway_fee_cents : 0,
-    paidMethod: (row.paid_method as OnlinePayment["paidMethod"]) ?? undefined,
-    netAmountCents:
-      typeof row.net_amount_cents === "number" ? row.net_amount_cents : 0,
-    gatewayProvider: row.gateway_provider
-      ? String(row.gateway_provider)
-      : undefined,
-    gatewayPaymentId: row.gateway_payment_id
-      ? String(row.gateway_payment_id)
-      : undefined,
-    pixCopyPaste: row.pix_copy_paste ? String(row.pix_copy_paste) : undefined,
-    pixQrCodeBase64: row.pix_qr_code_base64
-      ? String(row.pix_qr_code_base64)
-      : undefined,
-    linkUrl: row.link_url ? String(row.link_url) : undefined,
-    feePassedToCustomer: Boolean(row.fee_passed_to_customer),
-    canceledReason: row.canceled_reason ? String(row.canceled_reason) : undefined,
-    expiresAt,
-    paidAt: row.paid_at
-      ? new Date(String(row.paid_at)).toISOString()
-      : undefined,
-    createdAt: row.created_at
-      ? new Date(String(row.created_at)).toISOString()
-      : new Date().toISOString(),
-  };
-}
 
 export async function insertOnlinePaymentInDb(
   payment: OnlinePayment,
@@ -143,91 +102,6 @@ export async function listOnlinePaymentsForChargeFromDb(
   return (data || []).map(mapRowToOnlinePayment);
 }
 
-/** Forma gravada na cobranca do aluno quando o pagamento online e confirmado. */
-function chargeMethodOf(payment: OnlinePayment): "pix" | "card" | "other" {
-  const used = payment.paidMethod;
-  if (used === "pix") return "pix";
-  if (used === "creditCard" || used === "debitCard") return "card";
-  if (used === "boleto") return "other";
-  return payment.method === "pix" ? "pix" : payment.method === "link" ? "card" : "other";
-}
-
-export async function markOnlinePaymentPaidInDb(
-  gatewayPaymentId: string,
-  paidAtISO: string,
-  provider?: string,
-  /** Do webhook: valor liquido do Asaas (centavos) e o meio usado. Troca a tarifa estimada pela real. */
-  settlement?: { netValueCents?: number; paidMethod?: OnlinePayment["paidMethod"] },
-): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
-  const adminClient = createSupabaseAdminClient();
-
-  const real: Record<string, unknown> = {};
-  if (settlement?.paidMethod) real.paid_method = settlement.paidMethod;
-  if (typeof settlement?.netValueCents === "number") {
-    let lookup = adminClient
-      .from("online_payments")
-      .select("amount_cents, split_amount_cents")
-      .eq("gateway_payment_id", gatewayPaymentId);
-    if (provider) lookup = lookup.eq("gateway_provider", provider);
-    const { data: current } = await lookup.maybeSingle();
-    if (current) {
-      const amount = Number(current.amount_cents) || 0;
-      const split = Number(current.split_amount_cents) || 0;
-      // netValue do Asaas ja desconta a tarifa dele; o split sai depois, na liquidacao.
-      real.gateway_fee_cents = Math.max(0, amount - settlement.netValueCents);
-      real.net_amount_cents = Math.max(0, settlement.netValueCents - split);
-    }
-  }
-
-  // 1. Atualiza online_payments
-  let query = adminClient
-    .from("online_payments")
-    .update({
-      status: "paid",
-      paid_at: paidAtISO,
-      ...real,
-    })
-    .eq("gateway_payment_id", gatewayPaymentId);
-
-  if (provider) {
-    query = query.eq("gateway_provider", provider);
-  }
-
-  const { data: updatedPayment, error: paymentError } = await query
-    .select()
-    .maybeSingle();
-
-  if (paymentError || !updatedPayment) {
-    console.error(
-      "[onlinePaymentsBackend] Erro ao marcar online_payment como pago:",
-      paymentError,
-    );
-    return null;
-  }
-
-  const payment = mapRowToOnlinePayment(updatedPayment);
-
-  // 2. Atualiza a charge correspondente
-  const { error: chargeError } = await adminClient
-    .from("charges")
-    .update({
-      status: "paid",
-      // Meio real do webhook; sem ele, pela forma gerada (link e cartao, Pix e Pix, o resto outro).
-      method: chargeMethodOf(payment),
-      paid_via: "online",
-      paid_at: paidAtISO,
-    })
-    .eq("id", payment.chargeId);
-
-  if (chargeError) {
-    console.error(
-      "[onlinePaymentsBackend] Erro ao atualizar charge após pagamento online:",
-      chargeError,
-    );
-  }
-
-  return { payment, chargeId: payment.chargeId };
-}
 
 /**
  * Simula a liquidação de um pagamento online no Sandbox/banco local.
@@ -237,6 +111,8 @@ export async function markOnlinePaymentPaidInDb(
 export async function simulateOnlinePaidAction(
   onlinePaymentId: string,
 ): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
+  const ctx = await requireTenant();
+  ctx.require("billing:manage");
   const adminClient = createSupabaseAdminClient();
 
   // 1. Busca o pagamento online pelo ID
@@ -246,6 +122,7 @@ export async function simulateOnlinePaidAction(
     .eq("id", onlinePaymentId)
     .maybeSingle();
 
+  if (row && row.organization_id !== ctx.organizationId) throw forbiddenError();
   if (fetchErr || !row) {
     console.error(
       "[simulateOnlinePaidAction] Pagamento online não encontrado:",
@@ -344,58 +221,6 @@ export async function simulateOnlinePaidAction(
   return { payment, chargeId: String(row.charge_id) };
 }
 
-export async function expireOnlinePaymentInDb(
-  gatewayPaymentId: string,
-  provider?: string,
-): Promise<boolean> {
-  const adminClient = createSupabaseAdminClient();
-  let lookup = adminClient
-    .from("online_payments")
-    .select("id, organization_id, gateway_provider")
-    .eq("gateway_payment_id", gatewayPaymentId)
-    .eq("status", "awaiting");
-  if (provider) lookup = lookup.eq("gateway_provider", provider);
-  const { data: row } = await lookup.maybeSingle();
-  if (!row) return true;
-
-  // Venceu no Asaas, mas la ainda e pagavel: exclui, para "Expirado" valer nos dois lados.
-  let pending = false;
-  if (row.gateway_provider === "asaas") {
-    const key = await subaccountKeyOf(String(row.organization_id));
-    if (key) {
-      const result = await cancelGatewayPayment(gatewayPaymentId, key);
-      if (result === "paid") return true; // o webhook de pagamento da a baixa
-      pending = result === "failed";
-    }
-  }
-  const { error } = await adminClient
-    .from("online_payments")
-    .update({ status: "expired", ...(pending ? { gateway_cancel_pending: true } : {}) })
-    .eq("id", row.id)
-    .eq("status", "awaiting");
-  return !error;
-}
-
-export async function cancelOnlinePaymentByGatewayIdInDb(
-  gatewayPaymentId: string,
-  provider?: string,
-  reason: string = "Cancelado no gateway",
-): Promise<boolean> {
-  const adminClient = createSupabaseAdminClient();
-  let query = adminClient
-    .from("online_payments")
-    .update({ status: "canceled", canceled_reason: reason })
-    .eq("gateway_payment_id", gatewayPaymentId)
-    .eq("status", "awaiting");
-
-  if (provider) {
-    query = query.eq("gateway_provider", provider);
-  }
-
-  const { error } = await query;
-  return !error;
-}
-
 export async function cancelOnlinePaymentsForChargeInDb(
   chargeId: Id,
   organizationId: string,
@@ -459,6 +284,7 @@ export interface SetupSubaccountResult {
 export async function setupSubaccountAction(
   input: SetupSubaccountInput,
 ): Promise<SetupSubaccountResult> {
+  await requireSameOrganization(input.organizationId, { profiles: ["owner"] });
   const adminClient = createSupabaseAdminClient();
 
   try {
@@ -616,6 +442,7 @@ function stripGatewayFees<T extends Record<string, unknown>>(online: T): T {
  * Consulta o status do gateway da organização no banco de dados.
  */
 export async function getOrganizationGatewayAction(organizationId: string) {
+  await requireSameOrganization(organizationId);
   const adminClient = createSupabaseAdminClient();
   const { data } = await adminClient
     .from("organizations")
@@ -652,6 +479,7 @@ export async function updateOrganizationOnlineSettingsAction(
   organizationId: string,
   updates: Partial<OnlinePaymentSettings>,
 ): Promise<boolean> {
+  await requireSameOrganization(organizationId, { permissions: ["finance:manage"] });
   try {
     const adminClient = createSupabaseAdminClient();
     const { data: orgData } = await adminClient
@@ -702,6 +530,7 @@ export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
 ): Promise<PixPayment | { error: string }> {
+  const ctx = await requireTenant();
   try {
     let subaccountApiKey = input.subaccountApiKey;
     let splitAmountCents = input.splitAmountCents;
@@ -718,6 +547,9 @@ export async function createOnlinePixPaymentAction(
         .eq("id", input.chargeId)
         .maybeSingle();
 
+      if (charge && charge.organization_id !== ctx.organizationId) {
+        return { error: "Cobrança de outro espaço." };
+      }
       if (charge) {
         enrichedInput = {
           ...enrichedInput,
@@ -781,6 +613,7 @@ export async function createOnlineLinkPaymentAction(
   input: CreateLinkInput,
   provider?: string,
 ): Promise<PaymentLinkPayment | { error: string }> {
+  const ctx = await requireTenant();
   try {
     let subaccountApiKey = input.subaccountApiKey;
     let splitAmountCents = input.splitAmountCents;
@@ -796,6 +629,9 @@ export async function createOnlineLinkPaymentAction(
         .eq("id", input.chargeId)
         .maybeSingle();
 
+      if (charge && charge.organization_id !== ctx.organizationId) {
+        return { error: "Cobrança de outro espaço." };
+      }
       if (charge) {
         enrichedInput = {
           ...enrichedInput,
@@ -880,6 +716,7 @@ export interface SubaccountBalanceResult {
 export async function getSubaccountBalanceAction(
   organizationId: string,
 ): Promise<SubaccountBalanceResult> {
+  await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
   const adminClient = createSupabaseAdminClient();
   const { data: org } = await adminClient
     .from("organizations")
@@ -936,6 +773,8 @@ export async function requestSubaccountTransferAction(input: {
   amountCents: number;
   pixKey: string;
 }): Promise<TransferActionResult> {
+  // Tirar dinheiro da subconta: so o dono do espaco.
+  await requireSameOrganization(input.organizationId, { profiles: ["owner"] });
   if (input.amountCents <= 0) {
     return { success: false, error: "O valor deve ser maior que zero." };
   }
@@ -996,6 +835,7 @@ export interface SubaccountTransferItem {
 export async function listSubaccountTransfersAction(
   organizationId: string,
 ): Promise<SubaccountTransferItem[]> {
+  await requireSameOrganization(organizationId, { permissions: ["finance:view"] });
   const adminClient = createSupabaseAdminClient();
   const { data: org } = await adminClient
     .from("organizations")

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, decodeSession } from "@/lib/session";
+import { SESSION_COOKIE, decodeSession, isSupabaseOrganization } from "@/lib/session";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { store } from "@/mocks/store";
 import type { UserView } from "@gestarahub/contracts";
 
@@ -19,7 +20,14 @@ export async function getCurrentUser(): Promise<UserView | null> {
   if (!raw) return null;
 
   const claims = decodeSession(raw);
-  if (claims) return claims;
+  if (claims) {
+    // Conta real: o usuario ainda existe e esta ativo no espaco? Inativado ou
+    // removido, a sessao acaba (antes seguia navegando so com o cookie).
+    if (isSupabaseOrganization(claims.organizationId) && !(await isActiveInDb(claims.id, claims.organizationId))) {
+      return null;
+    }
+    return claims;
+  }
 
   // Legado: `raw` e um `userId` puro (nao base64 de claims).
   const user = store.users.find((u) => u.id === raw);
@@ -35,4 +43,19 @@ export async function getCurrentUser(): Promise<UserView | null> {
       ? { id: professional.id, name: professional.name, status: professional.status }
       : undefined,
   };
+}
+
+async function isActiveInDb(userId: string, organizationId: string): Promise<boolean> {
+  try {
+    const { data } = await createSupabaseAdminClient()
+      .from("users")
+      .select("status")
+      .eq("id", userId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    return data?.status === "active";
+  } catch {
+    // Sem banco (ambiente sem Supabase): nao derruba a sessao por isso.
+    return true;
+  }
 }

@@ -5,7 +5,7 @@ import {
   markOnlinePaymentPaidInDb,
   expireOnlinePaymentInDb,
   cancelOnlinePaymentByGatewayIdInDb,
-} from "@/services/onlinePaymentsBackend";
+} from "@/services/onlinePaymentsWebhook";
 import { recheckFeesAfterPayment } from "@/services/gatewayAccountBackend";
 
 /**

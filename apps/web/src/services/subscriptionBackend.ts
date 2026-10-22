@@ -13,6 +13,7 @@ import {
   receiveInCash,
 } from "@/lib/asaas";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
+import { requireSameOrganization } from "./server/tenant";
 
 export interface CreateSubscriptionInput {
   organizationId: string;
@@ -58,6 +59,7 @@ export async function updateOrganizationSubscriptionAction(
   organizationId: string,
   subscriptionOrTier: SubscriptionTier | Subscription,
 ): Promise<boolean> {
+  await requireSameOrganization(organizationId, { permissions: ["subscription:manage"] });
   try {
     const adminClient = createSupabaseAdminClient();
     const payload =

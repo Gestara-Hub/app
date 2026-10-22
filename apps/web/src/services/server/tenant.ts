@@ -55,3 +55,18 @@ export async function requireTenant(): Promise<TenantContext> {
     },
   };
 }
+
+/**
+ * Para actions antigas que recebem o espaco por parametro: confere que quem
+ * chama esta logado nesse espaco e tem uma das permissoes (ou o perfil pedido).
+ */
+export async function requireSameOrganization(
+  organizationId: string,
+  options: { permissions?: Permission[]; profiles?: UserProfile[] } = {},
+): Promise<TenantContext> {
+  const ctx = await requireTenant();
+  if (ctx.organizationId !== organizationId) throw forbiddenError();
+  if (options.permissions?.length) ctx.require(...options.permissions);
+  if (options.profiles?.length && !options.profiles.includes(ctx.profile)) throw forbiddenError();
+  return ctx;
+}

@@ -6,6 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
 import { userProfileLabel } from "@/lib/labels";
+import { can, canManageProfile } from "@/lib/permissions";
+import { requireTenant } from "./server/tenant";
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE,
@@ -19,6 +21,45 @@ import type {
 } from "@gestarahub/contracts";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Quem chama precisa estar logado no mesmo espaco (doc 15, fatia 3). Antes
+ * estas actions usavam a chave de servico com o espaco vindo do navegador, sem
+ * conferir sessao: qualquer um criava ou inativava usuario em qualquer espaco.
+ * Gravar pede `users:manage` e so mexe nos perfis que o usuario administra
+ * (dono: todos; gerente: atendente e profissional); a pessoa pode mudar o
+ * proprio nome e e-mail.
+ */
+async function guard(
+  organizationId: string,
+  opts: { manage?: boolean; targetProfile?: UserProfile; targetUserId?: string } = {},
+): Promise<string | null> {
+  let ctx;
+  try {
+    ctx = await requireTenant();
+  } catch {
+    return "Sua sessão expirou. Entre de novo.";
+  }
+  if (ctx.organizationId !== organizationId) return "Você não tem permissão para esta ação.";
+  if (!opts.manage) return null;
+  if (opts.targetUserId && opts.targetUserId === ctx.userId && !opts.targetProfile) return null;
+  if (!can(ctx.profile, "users:manage")) return "Você não tem permissão para esta ação.";
+  if (opts.targetProfile && !canManageProfile(ctx.profile, opts.targetProfile)) {
+    return "Você não tem permissão para gerenciar este perfil.";
+  }
+  if (opts.targetUserId) {
+    const { data } = await createSupabaseAdminClient()
+      .from("users")
+      .select("profile")
+      .eq("id", opts.targetUserId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (data && !canManageProfile(ctx.profile, data.profile as UserProfile) && opts.targetUserId !== ctx.userId) {
+      return "Você não tem permissão para gerenciar este perfil.";
+    }
+  }
+  return null;
+}
 
 function hashToken(rawToken: string): string {
   return createHash("sha256").update(rawToken).digest("hex");
@@ -44,6 +85,7 @@ async function resolveAppBaseUrl(): Promise<string> {
 export async function listUsersFromDb(
   organizationId: string,
 ): Promise<UserView[]> {
+  if (await guard(organizationId)) return [];
   try {
     const admin = createSupabaseAdminClient();
 
@@ -115,6 +157,8 @@ export async function createUserAndInviteAction(
   payload: CreateUser,
   sendInvite = true,
 ): Promise<{ success: boolean; user?: UserView; error?: string }> {
+  const denied = await guard(organizationId, { manage: true, targetProfile: payload.profile });
+  if (denied) return { success: false, error: denied };
   try {
     const admin = createSupabaseAdminClient();
     const normalizedEmail = payload.email.trim().toLowerCase();
@@ -247,6 +291,21 @@ export async function updateUserInDb(
   userId: string,
   payload: UpdateUser,
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await guard(organizationId, {
+    manage: true,
+    targetUserId: userId,
+    targetProfile: payload.profile !== undefined || payload.status !== undefined || payload.professionalId !== undefined
+      ? (payload.profile ?? undefined)
+      : undefined,
+  });
+  if (denied) return { success: false, error: denied };
+  // Mudar perfil, status ou vinculo de alguem pede `users:manage`, mesmo de si.
+  if (
+    (payload.status !== undefined || payload.professionalId !== undefined || payload.profile !== undefined) &&
+    (await guard(organizationId, { manage: true, targetUserId: userId, targetProfile: payload.profile ?? "attendant" }))
+  ) {
+    return { success: false, error: "Você não tem permissão para esta ação." };
+  }
   try {
     const admin = createSupabaseAdminClient();
     const updatePayload: Record<string, unknown> = {};
@@ -284,6 +343,8 @@ export async function inactivateUserInDb(
   organizationId: string,
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await guard(organizationId, { manage: true, targetUserId: userId, targetProfile: "attendant" });
+  if (denied) return { success: false, error: denied };
   try {
     const admin = createSupabaseAdminClient();
 
@@ -319,6 +380,8 @@ export async function resendInvitationAction(
   organizationId: string,
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await guard(organizationId, { manage: true, targetUserId: userId, targetProfile: "attendant" });
+  if (denied) return { success: false, error: denied };
   try {
     const admin = createSupabaseAdminClient();
 

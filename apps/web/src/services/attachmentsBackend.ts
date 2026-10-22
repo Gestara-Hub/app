@@ -2,7 +2,6 @@
 
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export interface AttachmentRecord {
   id: Id;
@@ -94,16 +93,3 @@ export async function getAttachmentRecord(
     uploadedAt: new Date(String(data.uploaded_at)).toISOString(),
   };
 }
-
-export async function downloadAttachmentFromStorage(
-  storagePath: string,
-): Promise<{ blob: Blob; contentType?: string } | null> {
-  const client = createSupabaseAdminClient();
-  const { data, error } = await client.storage.from("attachments").download(storagePath);
-  if (error || !data) {
-    console.error("[attachmentsBackend] Erro ao baixar arquivo do storage:", error);
-    return null;
-  }
-  return { blob: data, contentType: data.type };
-}
-
