@@ -119,7 +119,9 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     const objects: Row[] = [];
     for (const row of rows) {
       const id = identityOf(collection, row);
-      const object = fromRow(collection.table, row);
+      // Copia funda: o servico muda listas e objetos (jsonb) no lugar, e a
+      // comparacao com a linha carregada nao pode ver a mesma mudanca.
+      const object = structuredClone(fromRow(collection.table, row));
       raw.set(id, row);
       objects.push(object);
     }

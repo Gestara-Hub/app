@@ -4,6 +4,9 @@ import { unwrap } from "@/services/server/action";
 import { adminClient, createTestTenant, sessionClient, signInAs, type TestTenant } from "@/test/db";
 import { WORLD_SCHEMA } from "../schema.generated";
 import { serviceAction } from "../serviceActions";
+import { runInWorld } from "../runWorld";
+import { store } from "../store";
+import type { TenantContext } from "@/services/server/tenant";
 
 let tenant: TestTenant;
 
@@ -216,6 +219,27 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
     await call("billing.markPending", charge!.id);
     const { data } = await adminClient().from("charges").select("status, method, attachments").eq("id", charge!.id).single();
     expect(data).toEqual({ status: "pending", method: null, attachments: [] });
+  });
+
+  it("mudança dentro de lista ou objeto (jsonb) também é gravada", async () => {
+    const admin = adminClient();
+    await admin
+      .from("organizations")
+      .update({ settings: { billingTiming: "prepaid", defaultDueDay: 10 } })
+      .eq("id", tenant.organizationId)
+      .throwOnError();
+    const ctx = {
+      client: admin,
+      organizationId: tenant.organizationId,
+      userId: tenant.owner.id,
+      profile: "owner",
+      require: () => undefined,
+    } as unknown as TenantContext;
+    await runInWorld(ctx, async () => {
+      delete (store.organization.settings as Record<string, unknown>).billingTiming;
+    });
+    const { data } = await admin.from("organizations").select("settings").eq("id", tenant.organizationId).single();
+    expect(data?.settings).toEqual({ defaultDueDay: 10 });
   });
 });
 
