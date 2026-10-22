@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTheme } from "next-themes";
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { PREFERENCES_STORAGE_KEY } from "@/services/preferencesService";
@@ -143,6 +144,14 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     pendingRef.current = { ...DEFAULT_USER_PREFERENCES };
     await flushToServer();
   }, [flushToServer]);
+
+  // O tema escolhido nas preferencias (salvo na conta) vale no app: sem isso,
+  // um tema guardado antes no navegador (ex.: o botao da landing) ganhava do
+  // "Sistema" que o painel mostra.
+  const { theme: activeTheme, setTheme } = useTheme();
+  useEffect(() => {
+    if (preferences.theme && preferences.theme !== activeTheme) setTheme(preferences.theme);
+  }, [preferences.theme, activeTheme, setTheme]);
 
   // Carga inicial remota (hidratação silenciosa)
   useEffect(() => {

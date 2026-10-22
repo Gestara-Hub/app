@@ -110,9 +110,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
+        defaultTheme="system"
         storageKey="gestarahub:theme"
-        enableSystem={false}
+        enableSystem
         disableTransitionOnChange
       >
         {children}
