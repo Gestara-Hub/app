@@ -162,8 +162,10 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
     const value = store[collection.key];
     const objects = (collection.kind === "single" ? (value ? [value] : []) : ((value as Row[] | undefined) ?? [])) as Row[];
     const seen = new Set<string>();
-    // Linhas novas antes das alteradas: uma linha existente pode passar a
-    // apontar para uma nova da mesma tabela (pacote renovado -> renovacao).
+    // Alteradas antes das novas (cancelar a mensalidade antiga libera o indice
+    // unico para a nova), salvo a alterada que aponta para uma linha nova da
+    // mesma tabela (pacote renovado -> renovacao): essa vai depois.
+    const inserts: WorldChanges["upserts"] = [];
     const updates: WorldChanges["upserts"] = [];
     for (const object of objects) {
       const id = objectIdentity(collection, object);
@@ -177,7 +179,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
       }
       if (id !== undefined) seen.add(id);
       if (!loadedRow) {
-        changes.upserts.push({ table, pk: schema.primaryKey, row });
+        inserts.push({ table, pk: schema.primaryKey, row });
         continue;
       }
       const before = loaded.normalized.get(id!)!;
@@ -193,7 +195,16 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
         });
       }
     }
-    changes.upserts.push(...updates);
+    const insertedKeys = new Set(inserts.map((item) => String(item.row[schema.primaryKey])));
+    const pointsToNew = (item: WorldChanges["upserts"][number]) =>
+      Object.entries(item.row).some(
+        ([column, value]) => column !== schema.primaryKey && typeof value === "string" && insertedKeys.has(value),
+      );
+    changes.upserts.push(
+      ...updates.filter((item) => !pointsToNew(item)),
+      ...inserts,
+      ...updates.filter(pointsToNew),
+    );
     if (collection.appendOnly || collection.kind === "single") continue;
     for (const [id, row] of loaded.raw) {
       if (!seen.has(id)) changes.deletes.push({ table, pk: schema.primaryKey, key: String(row[schema.primaryKey]) });
@@ -217,6 +228,8 @@ async function applyChanges(ctx: TenantContext, changes: WorldChanges, version: 
   });
   if (!error) return;
   if (error.code === "40001" || error.code === "23505") {
+    // A tela so mostra "outra pessoa mudou"; o motivo fica no log do servidor.
+    console.warn(`[world] conflito na gravação: ${error.code} ${error.message}`);
     throw apiError("CONFLICT", CONFLICT_MESSAGE, { httpStatus: 409 });
   }
   if (error.code === "42501") {

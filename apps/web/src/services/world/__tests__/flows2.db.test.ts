@@ -178,7 +178,19 @@ describe("mais fluxos de turmas no servidor (doc 15, fatia 2)", () => {
 
     // Troca de plano: a mensalidade em aberto do plano antigo e substituida.
     await call("billing.listCharges", { competence });
-    await call("clients.update", first.id, { planId: planB.id, planStartDate: `${competence}-01` });
+    // Como a tela: a 1a cobranca do plano novo vai na mesma gravacao que cancela
+    // a antiga do mesmo periodo (indice unico da mensalidade).
+    const lastDay = new Date(Number(competence.slice(0, 4)), Number(competence.slice(5, 7)), 0).getDate();
+    await call("clients.update", first.id, {
+      planId: planB.id,
+      planStartDate: `${competence}-01`,
+      initialCharge: {
+        amountCents: 21000,
+        dueDate: `${competence}-01`,
+        periodStart: `${competence}-01`,
+        periodEnd: `${competence}-${String(lastDay).padStart(2, "0")}`,
+      },
+    });
     const { data: memberships } = await admin
       .from("charges")
       .select("plan_id, status")
