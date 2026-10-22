@@ -43,8 +43,8 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" }, testMatch: /mobile\.spec/ },
   ],
   webServer: {
-    // Chaves vazias: o e2e usa o gateway simulado e nao manda e-mail (Asaas e MailerSend de verdade, nunca).
-    command: `NEXT_DIST_DIR=.next-e2e E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= npx next dev -p ${PORT}`,
+    // Chaves vazias: gateway simulado, sem e-mail e sem PostHog (Asaas, MailerSend e analise de verdade, nunca).
+    command: `NEXT_DIST_DIR=.next-e2e E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY= npx next dev -p ${PORT}`,
     url: `${BASE_URL}/login`,
     reuseExistingServer: true,
     timeout: 120_000,
