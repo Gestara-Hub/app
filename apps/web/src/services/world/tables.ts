@@ -153,6 +153,12 @@ export function toRow(table: string, object: Row, ctx: RowContext): Row {
       row[column] = ctx.loaded?.unit_id ?? (schema.columns[column].nullable ? null : ctx.unitId);
     } else if (column === "created_at" || column === "updated_at") {
       if (ctx.loaded?.[column] !== undefined) row[column] = ctx.loaded[column];
+    } else if (!schema.columns[column].nullable) {
+      // Campo apagado em coluna obrigatoria: lista ou objeto vazio (jsonb), e
+      // nos outros tipos fica o valor atual (linha nova: o padrao do banco).
+      const current = ctx.loaded?.[column];
+      if (Array.isArray(current)) row[column] = [];
+      else if (current && typeof current === "object") row[column] = {};
     } else if (ctx.loaded || !schema.columns[column].hasDefault) {
       // Linha nova: coluna com padrao no banco fica com o padrao.
       row[column] = null;

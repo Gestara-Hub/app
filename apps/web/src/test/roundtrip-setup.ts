@@ -46,7 +46,15 @@ afterEach(() => {
     const value = world[key];
     const objects = (kind === "single" ? (value ? [value] : []) : ((value as Row[] | undefined) ?? [])) as Row[];
     for (const object of objects) {
-      const back = fromRow(table, toRow(table, object, { organizationId: "org", unitId: "unit" }));
+      const row = toRow(table, object, { organizationId: "org", unitId: "unit" });
+      // Linha ja existente (edicao): nenhuma coluna obrigatoria vai nula.
+      const edited = toRow(table, object, { organizationId: "org", unitId: "unit", loaded: row });
+      for (const [column, meta] of Object.entries(WORLD_SCHEMA[table].columns)) {
+        if (!meta.nullable && column in edited && edited[column] === null) {
+          problems.push(`${table}.${column}: null em coluna obrigatoria`);
+        }
+      }
+      const back = fromRow(table, row);
       for (const [field, original] of Object.entries(object)) {
         if (original === undefined) continue;
         if (!sameValue(table, field, original, back[field])) {

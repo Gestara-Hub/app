@@ -195,5 +195,27 @@ describe("espaço do banco no servidor (doc 15, fatia 2)", () => {
     expect(denied.ok).toBe(false);
     if (!denied.ok) expect(denied.error.code).toBe("FORBIDDEN");
   });
+
+  it("desfazer o pagamento grava a cobrança em aberto (coluna obrigatória de anexos)", async () => {
+    const created = await call<Client>("clients.create", { name: "Gil", phone: "11944443333", status: "active" });
+    const { data: charge } = await adminClient()
+      .from("charges")
+      .insert({
+        organization_id: tenant.organizationId,
+        student_id: created.id,
+        kind: "extra",
+        description: "Kimono",
+        due_date: "2026-10-10",
+        amount_cents: 25000,
+        status: "pending",
+      })
+      .select("id")
+      .single()
+      .throwOnError();
+    await call("billing.markPaid", charge!.id, "pix");
+    await call("billing.markPending", charge!.id);
+    const { data } = await adminClient().from("charges").select("status, method, attachments").eq("id", charge!.id).single();
+    expect(data).toEqual({ status: "pending", method: null, attachments: [] });
+  });
 });
 
