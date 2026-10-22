@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { BASE_URL, classGroup, completeOnboarding, enrollment, expect, loginAs, seedAcademy, student, test } from "./fixtures";
+import { BASE_URL, classGroup, enrollment, expect, loginAs, seedAcademy, signInWithForm, student, test } from "./fixtures";
 
 const pathOf = (page: Page) => new URL(page.url()).pathname;
 
@@ -24,8 +24,7 @@ test.describe("guarda de rota", () => {
 
   test("login ignora destino externo em ?from", async ({ page }) => {
     await page.goto("/login?from=//evil.com");
-    await completeOnboarding(page);
-    await page.getByRole("button", { name: /Ana Ribeiro/ }).click();
+    await signInWithForm(page);
     await page.waitForURL((url) => !url.pathname.startsWith("/login"));
     expect(new URL(page.url()).host).toBe(new URL(BASE_URL).host);
     // Destino invalido cai no padrao do login (Dashboard).
@@ -36,8 +35,7 @@ test.describe("guarda de rota", () => {
     await page.goto("/classes/calendar?instructor=x");
     await expect.poll(() => pathOf(page)).toBe("/login");
     expect(new URL(page.url()).searchParams.get("from")).toBe("/classes/calendar?instructor=x");
-    await completeOnboarding(page);
-    await page.getByRole("button", { name: /Ana Ribeiro/ }).click();
+    await signInWithForm(page);
     await page.waitForURL((url) => url.pathname === "/classes/calendar");
     expect(new URL(page.url()).search).toBe("?instructor=x");
   });

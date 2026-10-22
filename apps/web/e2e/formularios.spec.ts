@@ -1,7 +1,8 @@
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Dialog, Locator, Page, TestInfo } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { academyJson, currentAcademy, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { readAuditLog } from "./db";
 
 // Fluxos longos (login + varias telas): com o `pnpm dev` ocupado, 30 s nao bastam.
 test.describe.configure({ timeout: 60_000 });
@@ -67,14 +68,9 @@ const attachedItem = (scope: Locator, name: string) =>
 
 /** Eventos de auditoria do espaco com a acao e o tipo de alvo pedidos. */
 async function auditCount(page: Page, action: string, targetType: string): Promise<number> {
-  return page.evaluate(
-    ({ org, action, targetType }) => {
-      const world = JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}");
-      const log: { action: string; target: { type: string } }[] = world?.data?.tenants?.[org]?.auditLog ?? [];
-      return log.filter((e) => e.action === action && e.target.type === targetType).length;
-    },
-    { org: ORG, action, targetType },
-  );
+  void page;
+  const log = await readAuditLog(currentAcademy());
+  return log.filter((e) => e.action === action && e.target.type === targetType).length;
 }
 
 /**
@@ -255,7 +251,7 @@ test.describe("configurações: alterações não salvas", () => {
     await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
     await expectTabClean(page, /Geral/);
     await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("gestarahub:db")?.includes("Academia Nova")))
+      .poll(async () => (await academyJson()).includes("Academia Nova"))
       .toBe(true);
     await page.reload();
     expect(seen).toHaveLength(2);
@@ -296,13 +292,10 @@ test.describe("configurações: alterações não salvas", () => {
     await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
     await expectTabClean(page, /Horários/);
     await expect
-      .poll(() =>
-        page.evaluate((org) => {
-          const world = JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}");
-          const days: { weekday: number; closed: boolean }[] = world.data.tenants[org].unit.businessHours;
-          return days.find((d) => d.weekday === 1)?.closed;
-        }, ORG),
-      )
+      .poll(async () => {
+        const days: { weekday: number; closed: boolean }[] = (await readAcademy()).unit.businessHours;
+        return days.find((d) => d.weekday === 1)?.closed;
+      })
       .toBe(true);
     await page.goto("/dashboard");
     expect(seen).toEqual(["beforeunload"]);

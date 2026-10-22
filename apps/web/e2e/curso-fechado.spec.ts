@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { academyJson, classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
 
 /** Curso fechado (doc 20, fase B). Relogio fixo em 22/09/2026 (terca). */
 
@@ -27,7 +27,10 @@ const course = (id: string, over: Record<string, unknown> = {}) =>
 /** Espera o app gravar o mundo (senao o goto seguinte perde a escrita). */
 async function waitForStore(page: Page, predicate: (raw: string) => boolean) {
   await expect
-    .poll(async () => predicate((await page.evaluate(() => localStorage.getItem("gestarahub:db"))) ?? ""))
+    .poll(async () => {
+      void page;
+      return predicate(await academyJson());
+    })
     .toBe(true);
 }
 

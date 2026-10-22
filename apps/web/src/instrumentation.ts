@@ -4,6 +4,11 @@
  * navegador. O produto atende o Brasil; com fuso por organizacao no backend,
  * isto sai.
  */
-export function register(): void {
+export async function register(): Promise<void> {
   if (!process.env.TZ) process.env.TZ = "America/Sao_Paulo";
+  // Servidor dos testes do navegador: mesma data fixa do navegador.
+  if (process.env.E2E_NOW && process.env.NEXT_RUNTIME === "nodejs") {
+    const { installFixedClock } = await import("./lib/e2e-clock");
+    installFixedClock(process.env.E2E_NOW);
+  }
 }

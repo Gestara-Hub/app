@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 import {
   ADULT,
   MODULES_TRACK,
@@ -177,9 +177,7 @@ test.describe("modalidade", () => {
     await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Registros de aula" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Notas" })).toHaveCount(0);
-    const stored = await page.evaluate(
-      () => JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}").data.tenants["org-academia-x"].assessments.length,
-    );
+    const stored = ((await readAcademy()).assessments ?? []).length;
     expect(stored).toBe(1);
   });
 });

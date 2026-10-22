@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5 e
@@ -84,12 +84,7 @@ test.describe("envio assistido (grátis)", () => {
     // O registro "Aberto no WhatsApp" e gravado logo depois de abrir a aba;
     // espera chegar ao banco antes de trocar de pagina.
     await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const db = JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}");
-          return db.data?.tenants?.["org-academia-x"]?.messageLogs?.length ?? 0;
-        }),
-      )
+      .poll(async () => (await readAcademy()).messageLogs?.length ?? 0)
       .toBe(1);
     await page.goto("/communication");
     await expect(page.getByText("Abertas no WhatsApp").locator("..")).toContainText("1");
@@ -175,9 +170,9 @@ test.describe("WhatsApp oficial (Pro)", () => {
     });
 
     await page.goto("/settings?tab=plano");
-    await page.getByRole("button", { name: "Ativar Pro (demonstração)" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Ativar Pro" }).click();
-    await expect(page.getByText("Plano Pro ativado.")).toBeVisible();
+    await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Ativar Profissional" }).click();
+    await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
 
     await page.goto("/communication");
     // Pro sem conexao: ainda assistido, com o atalho para conectar.

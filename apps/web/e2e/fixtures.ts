@@ -1,7 +1,16 @@
 import { expect, test as base, type Locator, type Page } from "@playwright/test";
+import {
+  ACADEMY_ALIAS,
+  createAcademy,
+  editTenant,
+  readTenant,
+  removeCreatedTenants,
+  signInBrowser,
+  type E2ETenant,
+} from "./db";
 
 /** Origem do app nos testes (ver E2E_PORT no playwright.config). */
-export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3000}`;
+export const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? 3100}`;
 
 /**
  * Base dos testes de ponta a ponta.
@@ -19,7 +28,42 @@ type Tenant = Record<string, any>;
 /** Telas com alternancia Lista/Cards (chaves do `useViewMode`). */
 const VIEW_MODE_TIP_KEYS = ["clients", "turmas", "modalities", "plans", "professionals"] as const;
 
-export const test = base.extend<{ pageErrors: string[]; viewModeTipsSeen: boolean; viewModeTips: void }>({
+/**
+ * Espaco da academia do teste atual no banco (doc 15, fatia 5). Um teste por
+ * vez (workers: 1), entao basta um por processo; e apagado no fim do teste.
+ */
+let academy: E2ETenant | undefined;
+
+export function currentAcademy(): E2ETenant {
+  if (!academy) throw new Error("Sem academia neste teste: chame loginAs(page, \"Ana Ribeiro\") antes.");
+  return academy;
+}
+
+/** O espaco da academia como esta no banco (no lugar de ler o localStorage). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function readAcademy(): Promise<Record<string, any>> {
+  return (await readTenant(currentAcademy())) as unknown as Record<string, unknown>;
+}
+
+/** O espaco da academia em texto (para conferir se algo foi gravado). */
+export async function academyJson(): Promise<string> {
+  return JSON.stringify(await readAcademy());
+}
+
+export const test = base.extend<{
+  pageErrors: string[];
+  viewModeTipsSeen: boolean;
+  viewModeTips: void;
+  dbCleanup: void;
+}>({
+  dbCleanup: [
+    async ({}, use) => {
+      await use();
+      academy = undefined;
+      await removeCreatedTenants();
+    },
+    { auto: true },
+  ],
   /**
    * Dica "Lista ou cards" ja vista em todas as telas (ela aparece com o 1º
    * registro e cobriria cliques). Spec que testa a dica: `test.use({ viewModeTipsSeen: false })`.
@@ -99,12 +143,25 @@ const DEMO_USERS = {
 export async function loginAs(page: Page, name: keyof typeof DEMO_USERS): Promise<void> {
   await setSessionCookie(page, name);
   await page.goto("/dashboard");
-  await completeOnboarding(page);
+  if (name !== "Ana Ribeiro") await completeOnboarding(page);
   await page.goto("/dashboard");
 }
 
-/** So grava o cookie de sessao (sem concluir a configuracao inicial nem navegar). */
-export async function setSessionCookie(page: Page, name: keyof typeof DEMO_USERS): Promise<void> {
+/**
+ * So entra (sem navegar). A academia e um espaco de verdade no banco, criado
+ * para o teste (configuracao inicial ja concluida; `settings` sobrepoe); a
+ * barbearia segue no mock (modelo de agenda), pelo cookie de sessao.
+ */
+export async function setSessionCookie(
+  page: Page,
+  name: keyof typeof DEMO_USERS,
+  settings: Record<string, unknown> = {},
+): Promise<void> {
+  if (name === "Ana Ribeiro") {
+    academy ??= await createAcademy(settings);
+    await signInBrowser(page, academy, academy.owner, BASE_URL);
+    return;
+  }
   const claims = { ...DEMO_USERS[name], name, profile: "owner", status: "active", createdAt: TS, updatedAt: TS };
   await page.context().addCookies([
     {
@@ -118,10 +175,28 @@ export async function setSessionCookie(page: Page, name: keyof typeof DEMO_USERS
 }
 
 /**
+ * Entra pela tela de login (e-mail e senha da dona da academia do teste),
+ * para os cenarios que testam o proprio login. A pagina ja deve estar no /login.
+ */
+export async function signInWithForm(page: Page): Promise<void> {
+  academy ??= await createAcademy();
+  await page.getByLabel("E-mail").fill(academy.owner.email);
+  await page.getByLabel("Senha", { exact: true }).fill(academy.owner.password);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+}
+
+/**
  * Marca a configuracao inicial como concluida (e as modalidades revisadas) em
  * todos os espacos do mundo do mock. Espera o app gravar o mundo e recarrega.
  */
 export async function completeOnboarding(page: Page): Promise<void> {
+  if (academy) {
+    await editTenant(academy, (t) => {
+      t.organization.settings = { ...(t.organization.settings ?? {}), onboardingCompleted: true, modalitiesReviewed: true };
+    });
+    await page.reload();
+    return;
+  }
   await page.waitForFunction(() => localStorage.getItem("gestarahub:db") !== null);
   const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
   const world = JSON.parse(raw as string) as World;
@@ -141,6 +216,11 @@ export async function completeOnboarding(page: Page): Promise<void> {
  * mundo semeado no primeiro acesso, entao a versao do seed e respeitada.
  */
 export async function editWorld(page: Page, org: string, mutate: (t: Tenant) => void): Promise<void> {
+  if (org === ACADEMY_ALIAS) {
+    await editTenant(currentAcademy(), mutate);
+    await page.reload();
+    return;
+  }
   const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
   if (!raw) throw new Error("mundo do mock ainda nao foi gravado");
   const world = JSON.parse(raw) as World;
@@ -290,6 +370,8 @@ export function profileAlert(page: Page, title: string): Locator {
 
 /** Marca as boas-vindas do onboarding como respondidas (o modal nao cobre o dashboard). */
 export async function skipWelcome(page: Page, org = "org-academia-x"): Promise<void> {
+  // A academia do teste tem id real no banco.
+  if (org === ACADEMY_ALIAS && academy) org = academy.organizationId;
   await page.evaluate(
     (key) => localStorage.setItem(key, JSON.stringify({ seen: true, dismissed: false, tours: {} })),
     `gestarahub:onboarding:${org}`,

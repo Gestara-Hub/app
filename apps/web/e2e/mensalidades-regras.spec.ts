@@ -225,9 +225,9 @@ test.describe("cobrança online", () => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
 
     await page.goto("/settings?tab=plano");
-    await page.getByRole("button", { name: "Ativar Pro (demonstração)" }).click();
-    await page.getByRole("alertdialog", { name: "Ativar o Plano Pro?" }).getByRole("button", { name: "Ativar Pro" }).click();
-    await expect(page.getByText("Plano Pro ativado.")).toBeVisible();
+    await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
+    await page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" }).getByRole("button", { name: "Ativar Profissional" }).click();
+    await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
 
     await page.goto("/settings?tab=pagamento");
     await page.getByRole("switch", { name: "Cobrar online" }).click();

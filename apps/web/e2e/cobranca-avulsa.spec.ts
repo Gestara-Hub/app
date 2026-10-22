@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, student, test } from "./fixtures";
+import { academyJson, expect, seedAcademy, student, test } from "./fixtures";
 
 /** Cobranca avulsa (doc 20, fase A). Relogio fixo em 22/09/2026. */
 
@@ -160,7 +160,7 @@ test("Alunos: nova cobrança pelo menu do aluno, com o aluno fixo", async ({ pag
   await expect(page.getByText("Cobrança lançada.")).toBeVisible();
 
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem("gestarahub:db")?.includes("Exame de faixa") ?? false))
+    .poll(async () => (await academyJson()).includes("Exame de faixa"))
     .toBe(true);
   await page.goto("/classes/billing?kind=extra");
   const row = rowOf(page, "Aluno Ficha");

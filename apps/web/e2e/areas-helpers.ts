@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { editWorld, expect, loginAs, setSessionCookie } from "./fixtures";
+import { editWorld, expect, loginAs, readAcademy, setSessionCookie, skipWelcome } from "./fixtures";
 
 /**
  * Apoio dos testes por area do espaco (areas-setup, areas-settings e o
@@ -304,8 +304,8 @@ function emptyTenant(t: Tenant) {
 
 /** Le o tenant da academia gravado no localStorage. */
 export async function readTenant(page: Page): Promise<Tenant> {
-  const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
-  return JSON.parse(raw as string).data.tenants[ORG];
+  void page;
+  return (await readAcademy()) as Tenant;
 }
 
 /** Espera o app gravar o mundo (senao o goto seguinte perde a escrita). */
@@ -318,9 +318,8 @@ export async function waitForStore(page: Page, predicate: (t: Tenant) => boolean
  * a configuracao inicial: abre o assistente em /setup.
  */
 export async function freshTenant(page: Page): Promise<void> {
-  await setSessionCookie(page, "Ana Ribeiro");
+  await setSessionCookie(page, "Ana Ribeiro", { onboardingCompleted: false, modalitiesReviewed: false });
   await page.goto("/setup");
-  await page.waitForFunction(() => localStorage.getItem("gestarahub:db") !== null);
   await editWorld(page, ORG, (t) => {
     emptyTenant(t);
     t.organization.settings = {};
@@ -420,8 +419,5 @@ export async function readyTenant(page: Page, opts: ReadyOptions): Promise<void>
 
 /** Marca as boas-vindas como vistas (o modal nao cobre a tela). */
 export async function skipWelcomeDialog(page: Page): Promise<void> {
-  await page.evaluate(
-    (key) => localStorage.setItem(key, JSON.stringify({ seen: true, dismissed: false, tours: {} })),
-    `gestarahub:onboarding:${ORG}`,
-  );
+  await skipWelcome(page);
 }

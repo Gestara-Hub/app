@@ -1,4 +1,4 @@
-import { classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 import {
   TS,
   charge,
@@ -161,7 +161,7 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await waitForTenant(page, (t) => t.charges.find((c: { id: string }) => c.id === "k-3")?.status === "canceled");
 
   // O Pix da parcela cancelada tambem foi cancelado.
-  const tenant = await page.evaluate(() => JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}").data.tenants["org-academia-x"]);
+  const tenant = await readAcademy();
   expect(tenant.onlinePayments.find((p: { id: string }) => p.id === "op-3").status).toBe("canceled");
 
   await page.goto("/classes/billing?kind=course");

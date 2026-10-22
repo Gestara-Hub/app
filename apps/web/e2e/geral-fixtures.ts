@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { editWorld, expect, loginAs } from "./fixtures";
+import { editWorld, expect, loginAs, readAcademy } from "./fixtures";
 
 /**
  * Atalhos dos testes "gerais" (agenda do Modelo 1, usuarios e perfis,
@@ -87,6 +87,7 @@ export async function seedBarber(page: Page, extra?: (t: Tenant) => void): Promi
 
 /** Le uma colecao de um tenant no mundo gravado. */
 export async function worldField<T>(page: Page, org: string, field: string): Promise<T> {
+  if (org === "org-academia-x") return (await readAcademy())[field] as T;
   return page.evaluate(
     ([o, key]) => JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}").data?.tenants?.[o]?.[key],
     [org, field] as const,
@@ -97,6 +98,7 @@ export async function worldField<T>(page: Page, org: string, field: string): Pro
 export async function waitWorld(page: Page, org: string, check: (t: Tenant) => boolean): Promise<void> {
   await expect
     .poll(async () => {
+      if (org === "org-academia-x") return check((await readAcademy()) as Tenant);
       const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
       if (!raw) return false;
       const tenant = JSON.parse(raw).data?.tenants?.[org];

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, seedAcademy, setSessionCookie, test } from "./fixtures";
+import { expect, readAcademy, seedAcademy, setSessionCookie, test } from "./fixtures";
 
 type Org = {
   name: string;
@@ -11,9 +11,8 @@ type Org = {
 
 /** Organizacao e modalidades da academia gravadas no mundo do mock. */
 async function savedAcademy(page: Page) {
-  const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
-  const world = JSON.parse(raw as string);
-  const tenant = world.data.tenants["org-academia-x"];
+  void page;
+  const tenant = await readAcademy();
   return {
     organization: tenant.organization as Org,
     unitName: tenant.unit.name as string,

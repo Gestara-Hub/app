@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { BASE_URL, expect } from "./fixtures";
+import { BASE_URL, academyJson, expect, readAcademy } from "./fixtures";
 
 /**
  * Construtores e atalhos dos testes da ficha do aluno, das notas, da evolucao
@@ -174,16 +174,14 @@ export async function skipClientsCoachmark(page: Page): Promise<void> {
 /** Espera o app gravar o mundo (senao o goto seguinte perde a escrita). */
 export async function waitForStore(page: Page, predicate: (raw: string) => boolean): Promise<void> {
   await expect
-    .poll(async () => predicate((await page.evaluate(() => localStorage.getItem("gestarahub:db"))) ?? ""))
+    .poll(async () => predicate(await academyJson()))
     .toBe(true);
 }
 
 /** Le um campo do tenant da academia no mundo gravado. */
 export async function tenantField<T>(page: Page, field: string): Promise<T> {
-  return page.evaluate(
-    ([org, key]) => JSON.parse(localStorage.getItem("gestarahub:db") ?? "{}").data?.tenants?.[org]?.[key],
-    [ORG, field] as const,
-  );
+  void page;
+  return (await readAcademy())[field] as T;
 }
 
 /** Executa a acao que abre o WhatsApp (envio assistido) e devolve o link aberto. */

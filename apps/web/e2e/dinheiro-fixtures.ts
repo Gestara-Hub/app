@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { BASE_URL, classGroup, expect, student } from "./fixtures";
+import { BASE_URL, classGroup, expect, readAcademy, student } from "./fixtures";
 
 /**
  * Ajudantes dos testes de dinheiro (dinheiro-*.spec.ts): cobrancas de todos os
@@ -53,6 +53,7 @@ export async function pickSelect(page: Page, trigger: string, option: string | R
 
 /** Le o tenant da academia gravado no localStorage. */
 export async function tenantOf(page: Page, org = ORG): Promise<Tenant> {
+  if (org === ORG) return (await readAcademy()) as Tenant;
   const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
   return JSON.parse(raw ?? "{}").data.tenants[org] as Tenant;
 }
@@ -61,6 +62,7 @@ export async function tenantOf(page: Page, org = ORG): Promise<Tenant> {
 export async function waitForTenant(page: Page, predicate: (t: Tenant) => boolean, org = ORG) {
   await expect
     .poll(async () => {
+      if (org === ORG) return predicate((await readAcademy()) as Tenant);
       const raw = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
       if (!raw) return false;
       return predicate(JSON.parse(raw).data.tenants[org] as Tenant);

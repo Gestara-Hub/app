@@ -1,17 +1,30 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-// Porta do app nos testes. Padrao 3000 (reaproveita o `pnpm dev`). Com
-// E2E_PORT=3100 (ou outra), o Playwright sobe um servidor proprio nessa porta,
-// com pasta de build separada, e a 3000 fica livre para uso manual.
-const PORT = Number(process.env.E2E_PORT ?? 3000);
+// Os fixtures criam espacos no Supabase local (doc 15, fatia 5): as chaves vem
+// do .env.local (sem imprimir), como no `pnpm dev`.
+const ENV_FILE = resolve(__dirname, ".env.local");
+if (existsSync(ENV_FILE)) {
+  for (const line of readFileSync(ENV_FILE, "utf8").split("\n")) {
+    const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (match && process.env[match[1]] === undefined) process.env[match[1]] = match[2].trim().replace(/^"|"$/g, "");
+  }
+}
+
+// Porta do app nos testes: 3100, servidor proprio (pasta de build separada) com
+// a mesma data fixa do navegador (E2E_NOW), porque as regras rodam no servidor.
+// A 3000 fica livre para o `pnpm dev`.
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://localhost:${PORT}`;
 
 // Testes de ponta a ponta no navegador. Usa o Chrome instalado na maquina
-// (sem download de navegador) e reaproveita o `pnpm dev` se ja estiver no ar.
+// (sem download de navegador) e reaproveita o servidor da 3100 se ja estiver no ar.
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
-  workers: process.env.CI ? 2 : 3,
+  // Um teste por vez: os cenarios usam ids fixos (ex.: "m-jj") no mesmo banco.
+  fullyParallel: false,
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
@@ -27,7 +40,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"], channel: "chrome" }, testMatch: /mobile\.spec/ },
   ],
   webServer: {
-    command: PORT === 3000 ? "pnpm dev" : `NEXT_DIST_DIR=.next-e2e npx next dev -p ${PORT}`,
+    command: `NEXT_DIST_DIR=.next-e2e E2E_NOW=2026-09-22T12:00:00-03:00 npx next dev -p ${PORT}`,
     url: `${BASE_URL}/login`,
     reuseExistingServer: true,
     timeout: 120_000,

@@ -1,7 +1,7 @@
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Page, TestInfo } from "@playwright/test";
-import { editWorld, expect, seedAcademy, test } from "./fixtures";
+import { editWorld, expect, seedAcademy, skipWelcome, test } from "./fixtures";
 import { AREAS, CUSTOM_BILLINGS, CUSTOM_PROGRESSIONS, ORG, readTenant, waitForStore, type Tenant } from "./areas-helpers";
 
 /**
@@ -163,14 +163,14 @@ test.describe("Configurações: Outra área", () => {
     await page.goto("/settings");
     await chooseArea(page, "Outra área");
     await page.getByRole("button", { name: "Salvar configurações" }).click();
-    await expect(page.getByText("Informe o nome da área.")).toBeVisible();
+    await expect(page.getByText("Informe o que você ensina.")).toBeVisible();
     await expect(page.getByText("Revise os campos destacados.")).toBeVisible();
     await expect(page.getByLabel("O que você ensina?")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByText("Configurações salvas.")).toHaveCount(0);
     // So espacos tambem nao vale.
     await page.getByLabel("O que você ensina?").fill("   ");
     await page.getByRole("button", { name: "Salvar configurações" }).click();
-    await expect(page.getByText("Informe o nome da área.")).toBeVisible();
+    await expect(page.getByText("Informe o que você ensina.")).toBeVisible();
     expect((await readTenant(page)).organization.classSegment).not.toBe("custom");
   });
 
@@ -227,12 +227,16 @@ test("Regras da mensalidade: valem só para mensalidade e as dicas acompanham a 
 
 test("menu e tela \"Planos e pacotes\"", async ({ page }) => {
   await seedAcademy(page);
+  await skipWelcome(page);
   await page.goto("/dashboard");
+  // Cadastros ficam no contexto "Gestão" do menu.
+  await page.getByRole("button", { name: "Gestão" }).click();
   const link = page.getByRole("link", { name: "Planos e pacotes", exact: true });
   await expect(link).toBeVisible();
   await expect(page.getByRole("link", { name: "Planos", exact: true })).toHaveCount(0);
   await link.click();
-  await expect(page).toHaveURL(/\/classes\/plans$/);
+  // Primeira abertura da tela no servidor de dev compila a rota.
+  await expect(page).toHaveURL(/\/classes\/plans$/, { timeout: 20_000 });
   await expect(page.getByRole("heading", { name: "Planos e pacotes", level: 1 })).toBeVisible();
   await expect(page.getByText("Mensalidades e pacotes de aulas.")).toBeVisible();
 });
@@ -240,11 +244,11 @@ test("menu e tela \"Planos e pacotes\"", async ({ page }) => {
 /** Aba Plano GestaraHub: ativa o Pro (demonstracao) pela tela. */
 async function activatePro(page: Page) {
   await page.goto("/settings?tab=plano");
-  await page.getByRole("button", { name: "Ativar Pro (demonstração)" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Ativar o Plano Pro?" });
+  await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" });
   await expect(confirm).toContainText("Nenhuma cobrança é feita.");
-  await confirm.getByRole("button", { name: "Ativar Pro" }).click();
-  await expect(page.getByText("Plano Pro ativado.")).toBeVisible();
+  await confirm.getByRole("button", { name: "Ativar Profissional" }).click();
+  await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
   await waitForStore(page, (t) => t.organization.subscription?.tier === "pro");
 }
 
@@ -257,19 +261,19 @@ test("Plano GestaraHub: do Grátis ao Pro e de volta, com confirmação", async 
   await expect(panel.getByText("Certificado de conclusão do curso para imprimir ou salvar em PDF.")).toBeVisible();
 
   // Voltar na confirmacao nao troca.
-  await panel.getByRole("button", { name: "Ativar Pro (demonstração)" }).click();
-  await page.getByRole("alertdialog", { name: "Ativar o Plano Pro?" }).getByRole("button", { name: "Voltar" }).click();
-  await expect(panel.getByRole("button", { name: "Ativar Pro (demonstração)" })).toBeVisible();
+  await panel.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
+  await page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" }).getByRole("button", { name: "Voltar" }).click();
+  await expect(panel.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
   expect((await readTenant(page)).organization.subscription?.tier ?? "free").toBe("free");
 
   await activatePro(page);
-  await expect(panel).toContainText("Sua organização tem todos os recursos do Pro.");
+  await expect(panel).toContainText("Sua organização tem todos os recursos do Profissional.");
   await panel.getByRole("button", { name: "Voltar ao Grátis" }).click();
   const back = page.getByRole("alertdialog", { name: "Voltar ao Plano Grátis?" });
-  await expect(back).toContainText("Os recursos do Pro ficam bloqueados.");
+  await expect(back).toContainText("Os recursos do Profissional ficam bloqueados.");
   await back.getByRole("button", { name: "Voltar ao Grátis" }).click();
   await expect(page.getByText("Plano Grátis ativado.")).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Ativar Pro (demonstração)" })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
 });
 
 // ===========================================================================
@@ -317,7 +321,7 @@ test.describe("Configurações: Certificado", () => {
     await expect(cta).toHaveAttribute("href", "/settings?tab=plano");
     await cta.click();
     await expect(page).toHaveURL(/tab=plano/);
-    await expect(page.getByRole("button", { name: "Ativar Pro (demonstração)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
   });
 
   async function openEditor(page: Page) {
@@ -457,7 +461,7 @@ test.describe("Configurações: Certificado", () => {
 
     await input.setInputFiles(files.png);
     await expect(list).toContainText("PNG ·");
-    await expect(sheet.locator("img")).toHaveAttribute("src", /^blob:/);
+    await expect(sheet.locator("img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
   });
 
   test("Pro: salvar, recarregar, remover a logo e restaurar o padrão com confirmação", async ({ page }, testInfo) => {
@@ -497,7 +501,7 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByLabel("Título")).toHaveValue("Certificado de participação");
     await expect(panel.getByRole("switch", { name: "Mostrar frequência" })).not.toBeChecked();
     await expect(panel.getByText("Logo atual")).toBeVisible();
-    await expect(panel.locator("article.certificate-sheet img")).toHaveAttribute("src", /^blob:/);
+    await expect(panel.locator("article.certificate-sheet img")).toHaveAttribute("src", /^(blob:|\/api\/attachments\/)/);
     await expect(panel.getByText("Todas as alterações estão salvas")).toBeVisible();
 
     // Remover a logo so vale ao salvar.
