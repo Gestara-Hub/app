@@ -25,6 +25,7 @@ import {
   sortRoles,
   validateRolePayload,
 } from "./catalog/teamRules";
+import { encodeArgs } from "./world/transport";
 
 /**
  * Cargos da equipe. Conta real: tabela `roles` pelo servidor
@@ -126,7 +127,7 @@ export const rolesService = {
   update(id: Id, payload: UpdateRole): Promise<Role> {
     return writeOp(async () => {
       if (isRealAccount()) {
-        const { role, previousStatus } = await unwrap(updateRoleAction(id, payload));
+        const { role, previousStatus } = await unwrap(updateRoleAction(id, encodeArgs(payload) as typeof payload));
         cacheRoles([role]);
         recordUpdate(role, previousStatus);
         return role;

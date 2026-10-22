@@ -10,6 +10,7 @@ import { clone } from "./billingHelpers";
 import { normalizePackage, validatePackage } from "./billingValidation";
 import { createPackageAction, listPackagesAction, updatePackageAction } from "./catalogActions";
 import { sortByName } from "./planRules";
+import { encodeArgs } from "../world/transport";
 
 /**
  * Catalogo de pacotes. Conta real: banco pelo servidor (`catalogActions`,
@@ -108,7 +109,7 @@ export const lessonPackagesService = {
   updatePackage(id: Id, payload: UpdateLessonPackage): Promise<LessonPackage> {
     return writeOp(async () => {
       if (isRealAccount()) {
-        const { before, after } = await unwrap(updatePackageAction(id, payload));
+        const { before, after } = await unwrap(updatePackageAction(id, encodeArgs(payload) as typeof payload));
         cachePackages([after]);
         recordUpdated(id, before, after);
         return after;

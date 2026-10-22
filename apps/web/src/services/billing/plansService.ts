@@ -9,6 +9,7 @@ import { clone } from "./billingHelpers";
 import { validatePlan } from "./billingValidation";
 import { createPlanAction, listPlansAction, updatePlanAction } from "./catalogActions";
 import { activeStudentsInPlan, periodChangeError, sortByName } from "./planRules";
+import { encodeArgs } from "../world/transport";
 
 /**
  * Planos. Conta real: banco pelo servidor (`catalogActions`, doc 15, fatia
@@ -105,7 +106,7 @@ export const plansService = {
   updatePlan(id: Id, payload: UpdatePlan): Promise<Plan> {
     return writeOp(async () => {
       if (isRealAccount()) {
-        const { before, after } = await unwrap(updatePlanAction(id, payload));
+        const { before, after } = await unwrap(updatePlanAction(id, encodeArgs(payload) as typeof payload));
         cachePlans([after]);
         recordUpdated(id, before, after);
         return after;

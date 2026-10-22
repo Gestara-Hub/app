@@ -2,6 +2,7 @@ import { isSupabaseOrganization } from "@/lib/session";
 import { inServerWorld, store } from "./store";
 import { unwrap } from "../server/action";
 import { serviceAction } from "./serviceActions";
+import { encodeArgs } from "./transport";
 
 /**
  * Conta real no navegador: o servico nao roda aqui, vai para o servidor
@@ -44,7 +45,9 @@ export function delegateAll<T extends object, B extends keyof T & string = never
     }
     const method = value as (...args: unknown[]) => unknown;
     wrapped[name] = (...args: unknown[]) =>
-      delegatesToServer() ? unwrap(serviceAction(`${namespace}.${name}`, args)) : method.apply(service, args);
+      delegatesToServer()
+        ? unwrap(serviceAction(`${namespace}.${name}`, encodeArgs(args) as unknown[]))
+        : method.apply(service, args);
   }
   return wrapped as T;
 }

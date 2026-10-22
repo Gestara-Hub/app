@@ -15,6 +15,7 @@ import type {
 import { notFoundError } from "@gestarahub/core/api-error";
 import { textIncludes } from "@/lib/text";
 import { runAction, type ActionResult } from "../server/action";
+import { decodeArgs } from "../world/transport";
 import { requireTenant, type TenantContext } from "../server/tenant";
 import { normalizePackage, validatePackage, validatePlan } from "./billingValidation";
 import { lessonPackageFromRow, lessonPackageToRow, planFromRow } from "./catalogRows";
@@ -143,6 +144,7 @@ async function activeStudentsOfPlan(ctx: TenantContext, planId: Id): Promise<num
 
 export async function updatePlanAction(id: Id, payload: UpdatePlan): Promise<ActionResult<CatalogUpdate<Plan>>> {
   return runAction(async () => {
+    payload = decodeArgs(payload) as UpdatePlan;
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     const before = await fetchPlan(ctx, id);
@@ -211,6 +213,7 @@ export async function updatePackageAction(
   payload: UpdateLessonPackage,
 ): Promise<ActionResult<CatalogUpdate<LessonPackage>>> {
   return runAction(async () => {
+    payload = decodeArgs(payload) as UpdateLessonPackage;
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     const before = await fetchPackage(ctx, id);

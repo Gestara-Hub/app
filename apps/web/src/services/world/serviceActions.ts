@@ -5,6 +5,7 @@ import { runAction, type ActionResult } from "../server/action";
 import { requireTenant } from "../server/tenant";
 import { resolveServiceMethod } from "./registry";
 import { isConflict, runInWorld } from "./runWorld";
+import { decodeArgs } from "./transport";
 
 /** Tentativas quando outra gravacao entrou no meio (doc 15, fatia 3). */
 const ATTEMPTS = 3;
@@ -20,7 +21,7 @@ export async function serviceAction(method: string, args: unknown[]): Promise<Ac
     if (!resolved) throw forbiddenError();
     const ctx = await requireTenant();
     if (resolved.permissions.length > 0) ctx.require(...resolved.permissions);
-    const callArgs = Array.isArray(args) ? args : [];
+    const callArgs = Array.isArray(args) ? (decodeArgs(args) as unknown[]) : [];
     // Conflito de versao: roda de novo sobre o banco atual, para a regra
     // (vaga, horario, parcelas) valer sobre o estado mais novo. Metodo com
     // efeito externo antes da gravacao (gerar codigo no Asaas, enviar

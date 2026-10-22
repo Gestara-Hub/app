@@ -12,6 +12,7 @@ import type {
 import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
 import { unwrap } from "./server/action";
 import { serviceAction } from "./world/serviceActions";
+import { encodeArgs } from "./world/transport";
 import { defaultMessageTemplates } from "@/services/defaults";
 import { readOp, writeOp, validationError } from "@/services/world/ops";
 import { realAccountInBrowser } from "./world/delegate";
@@ -158,7 +159,7 @@ export { settingsServiceImpl };
 type SettingsMethod = Exclude<keyof typeof settingsServiceImpl, never>;
 
 function onServer<T>(method: SettingsMethod, ...args: unknown[]): Promise<T> {
-  return unwrap(serviceAction(`settings.${method}`, args)) as Promise<T>;
+  return unwrap(serviceAction(`settings.${method}`, encodeArgs(args) as unknown[])) as Promise<T>;
 }
 
 /** Guarda no cache do navegador o espaco que o servidor devolveu. */

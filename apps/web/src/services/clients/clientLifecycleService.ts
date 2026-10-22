@@ -26,9 +26,12 @@ export const clientLifecycleService = {
       current = store.clients[idx];
       validateClient(payload, { partial: true, current });
       const ts = nowIso();
+      // A 1a mensalidade do formulario vira cobranca abaixo; nao fica no cadastro.
+      const { initialCharge: _initialCharge, ...fields } = payload;
+      void _initialCharge;
       const updated: Client = {
         ...current,
-        ...payload,
+        ...fields,
         updatedAt: ts,
       };
       // Volta do aluno (reativado ou assinatura retomada): a cobranca recomeca

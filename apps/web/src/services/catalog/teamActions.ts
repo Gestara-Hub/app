@@ -15,6 +15,7 @@ import type {
 import { notFoundError } from "@gestarahub/core/api-error";
 import { textIncludes } from "@/lib/text";
 import { runAction, type ActionResult } from "../server/action";
+import { decodeArgs } from "../world/transport";
 import { loadUnit, UNIQUE_VIOLATION } from "../server/organization";
 import { requireTenant, type TenantContext } from "../server/tenant";
 import { professionalFromRow, roleFromRow } from "./catalogRows";
@@ -114,6 +115,7 @@ export interface RoleUpdateResult {
 
 export async function updateRoleAction(id: Id, payload: UpdateRole): Promise<ActionResult<RoleUpdateResult>> {
   return runAction(async () => {
+    payload = decodeArgs(payload) as UpdateRole;
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     const current = await fetchRole(ctx, id);
@@ -234,6 +236,7 @@ export async function updateProfessionalAction(
   payload: UpdateProfessional,
 ): Promise<ActionResult<ProfessionalUpdateResult>> {
   return runAction(async () => {
+    payload = decodeArgs(payload) as UpdateProfessional;
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     const current = await fetchProfessional(ctx, id);

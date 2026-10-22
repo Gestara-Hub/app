@@ -36,6 +36,7 @@ import {
   sortCategories,
   validateCategoryPayload,
 } from "./catalog/categoryRules";
+import { encodeArgs } from "./world/transport";
 
 /**
  * Modalidades (categorias). Conta real: le e grava pelo servidor
@@ -158,7 +159,7 @@ export const categoriesService = {
   update(id: Id, payload: UpdateCategory): Promise<Category> {
     return writeOp(async () => {
       if (isRealAccount()) {
-        const { category, reset } = await unwrap(updateCategoryAction(id, payload));
+        const { category, reset } = await unwrap(updateCategoryAction(id, encodeArgs(payload) as typeof payload));
         cacheCategories([category]);
         // O servidor ja marcou; a copia do espaco no navegador acompanha.
         const settings = store.organization.settings;

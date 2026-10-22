@@ -31,6 +31,7 @@ import {
   toProfessionalView,
   validateProfessionalPayload,
 } from "./catalog/teamRules";
+import { encodeArgs } from "./world/transport";
 
 /**
  * Equipe. Conta real: banco pelo servidor (`catalog/teamActions`, doc 15,
@@ -171,7 +172,7 @@ export const professionalsService = {
   update(id: Id, payload: UpdateProfessional): Promise<ProfessionalView> {
     return writeOp(async () => {
       if (isRealAccount()) {
-        const { professional, previousStatus } = await unwrap(updateProfessionalAction(id, payload));
+        const { professional, previousStatus } = await unwrap(updateProfessionalAction(id, encodeArgs(payload) as typeof payload));
         cacheProfessionals([professional]);
         recordUpdate(professional, previousStatus);
         return professional;

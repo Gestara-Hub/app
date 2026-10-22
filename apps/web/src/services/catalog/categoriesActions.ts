@@ -4,6 +4,7 @@ import type { Category, CategoryFilter, Client, CreateCategory, Id, UpdateCatego
 import { notFoundError } from "@gestarahub/core/api-error";
 import { textIncludes } from "@/lib/text";
 import { runAction, type ActionResult } from "../server/action";
+import { decodeArgs } from "../world/transport";
 import { loadOrganization, todayInSpace, UNIQUE_VIOLATION } from "../server/organization";
 import { requireTenant, type TenantContext } from "../server/tenant";
 import { categoryFromRow } from "./catalogRows";
@@ -109,6 +110,7 @@ export async function updateCategoryAction(
   payload: UpdateCategory,
 ): Promise<ActionResult<CategoryUpdateResult>> {
   return runAction(async () => {
+    payload = decodeArgs(payload) as UpdateCategory;
     const ctx = await requireTenant();
     ctx.require(...MANAGE);
     const org = await loadOrganization(ctx);
