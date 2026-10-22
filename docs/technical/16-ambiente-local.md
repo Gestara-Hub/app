@@ -47,6 +47,27 @@ pnpm tunnel
 
 Sobe um túnel público para `localhost:3000` e grava a URL em `ASAAS_WEBHOOK_URL`. O endereço muda a cada execução: rode o túnel antes do `pnpm dev`, ou reinicie o `pnpm dev` depois. Detalhes no [doc 19](../product/19-levantamento-pagamentos.md), seção 4.
 
+## Entrar com Google
+
+1. No Google Cloud, crie um cliente OAuth do tipo **Web application** (tela de consentimento em **Testing**, com o seu e-mail em **Test users**; escopos `openid`, `email` e `profile`):
+   - **Authorized JavaScript origins:** `http://localhost:3000`
+   - **Authorized redirect URIs:** `http://127.0.0.1:54321/auth/v1/callback` (quem recebe a volta do Google é o Supabase, não o app)
+2. Cole o Client ID e o Client secret em `apps/supabase/.env` (fora do git; modelo em `apps/supabase/.env.example`):
+   `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` e `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`.
+3. Reinicie o Supabase local para ler a configuração (os dados continuam): `pnpm supabase:stop` e `pnpm supabase:start`.
+4. Ligue o botão no app: `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` em `apps/web/.env.local` e reinicie o `pnpm dev`. Vazio, o botão não aparece (o e2e roda assim).
+
+**Como funciona (22/10/2026):** o botão "Continuar com Google" fica no cadastro da landing, no login e na tela de convite. O servidor abre o Google (`startGoogleSignInAction`) e a volta cai em `app/auth/callback/route.ts`, que troca o código pela sessão e escolhe a conta (`resolveGoogleAccount`, em `services/server/accountSetup.ts`):
+- veio do botão do convite: o e-mail do Google tem de ser o do convite (senão, recusa);
+- conta já ligada a esse usuário do Google: entra;
+- convidado pelo e-mail, ainda sem acesso: aceita o convite pendente;
+- e-mail já ligado a outra conta: recusa, nunca liga por e-mail;
+- ninguém com o e-mail: espaço novo, como no cadastro por e-mail, e segue para a configuração inicial.
+
+Quem entra pelo Google aceita os Termos no próprio app (o mesmo aviso de quem não aceitou). Falhas voltam ao login com o motivo (`?google_error=`). Testes no banco: `services/server/__tests__/googleAccount.db.test.ts`.
+
+O bloco `[auth.external.google]` do `apps/supabase/config.toml` lê essas duas variáveis (`skip_nonce_check = true`, exigido no local). Em produção, o mesmo cliente (ou outro) leva a origem do domínio e a URL de volta `https://<ref>.supabase.co/auth/v1/callback`, e as chaves vão no painel do Supabase (Authentication, Providers, Google).
+
 ## Comandos avulsos
 
 | Comando | Para quê |
