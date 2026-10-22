@@ -151,8 +151,8 @@ export async function refreshGatewayIfNeeded(row: {
   gateway_webhook_url?: unknown;
 }): Promise<void> {
   if (!realSubaccountKey(row.gateway_api_key)) return;
-  await expireDueOnlinePayments(row.id);
-  await retryPendingGatewayCancels(row.id);
+  // Vencidos e cancelamentos pendentes ficam com o cron de hora em hora
+  // (/api/cron/online-payments): aqui rodavam a cada leitura da organizacao.
   const fees = (row.gateway_fees ?? undefined) as GatewayAccountFees | undefined;
   if (areGatewayFeesStale(fees, new Date())) await syncGatewayFees(row.id);
   const url = process.env.ASAAS_WEBHOOK_URL?.trim();
@@ -229,8 +229,8 @@ export async function cancelGatewayPayment(gatewayPaymentId: string, apiKey: str
 }
 
 /**
- * Tenta de novo os cancelamentos que falharam (gateway_cancel_pending). Roda
- * junto com a atualizacao das tarifas, quando o app le a organizacao.
+ * Tenta de novo os cancelamentos que falharam (gateway_cancel_pending) de um
+ * espaco. O cron de hora em hora usa `retryAllPendingGatewayCancels`.
  */
 export async function retryPendingGatewayCancels(organizationId: string): Promise<void> {
   const admin = createSupabaseAdminClient();
@@ -260,8 +260,9 @@ export async function retryPendingGatewayCancels(organizationId: string): Promis
  * expiradas aqui e exclui no Asaas, para que "Expirado" signifique que nao da
  * mais para pagar nos dois lados (antes o Asaas so vencia a cobranca, que
  * seguia pagavel). Ja paga no Asaas: fica em aberto aqui e o webhook da a baixa.
- * Falha no Asaas: expira aqui e marca para tentar de novo. Roda quando o app le
- * a organizacao, o historico ou a cobranca. Devolve quantas expirou.
+ * Falha no Asaas: expira aqui e marca para tentar de novo. Roda ao abrir o
+ * "Cobrar online" e o historico de recebimentos (o cron de hora em hora cobre o
+ * resto, `expireAllDueOnlinePayments`). Devolve quantas expirou.
  */
 export async function expireDueOnlinePayments(organizationId: string): Promise<number> {
   const admin = createSupabaseAdminClient();
@@ -292,4 +293,84 @@ export async function expireDueOnlinePayments(organizationId: string): Promise<n
     await admin.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
   }
   return toExpire.length;
+}
+
+// --- Cron de hora em hora (todos os espacos) -------------------------------------
+
+/** Chaves das subcontas dos espacos informados, numa consulta so. */
+async function subaccountKeysOf(organizationIds: string[]): Promise<Map<string, string>> {
+  const keys = new Map<string, string>();
+  if (organizationIds.length === 0) return keys;
+  const { data } = await createSupabaseAdminClient()
+    .from("organizations")
+    .select("id, gateway_api_key")
+    .in("id", organizationIds);
+  for (const org of data ?? []) {
+    const key = realSubaccountKey(org.gateway_api_key);
+    if (key) keys.set(String(org.id), key);
+  }
+  return keys;
+}
+
+/**
+ * Expira os pagamentos online vencidos de todos os espacos (cron por hora,
+ * /api/cron/online-payments). Uma consulta so, pelo indice parcial da migracao
+ * 34: o custo acompanha quantos venceram, nao quantos espacos existem. Mesma
+ * regra de `expireDueOnlinePayments`. Devolve quantos expirou.
+ */
+export async function expireAllDueOnlinePayments(limit = 500): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  const { data: rows } = await admin
+    .from("online_payments")
+    .select("id, organization_id, gateway_provider, gateway_payment_id")
+    .eq("status", "awaiting")
+    .lte("expires_at", new Date().toISOString())
+    .order("expires_at", { ascending: true })
+    .limit(limit);
+  if (!rows?.length) return 0;
+
+  const asaasOrgs = [...new Set(rows.filter((r) => r.gateway_provider === "asaas").map((r) => String(r.organization_id)))];
+  const keys = await subaccountKeysOf(asaasOrgs);
+  const toExpire: string[] = [];
+  const pendingAtGateway: string[] = [];
+  for (const row of rows) {
+    const key = keys.get(String(row.organization_id));
+    if (row.gateway_provider === "asaas" && row.gateway_payment_id && key) {
+      const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
+      // Ja paga no Asaas: fica em aberto aqui e o webhook da a baixa.
+      if (result === "paid") continue;
+      if (result === "failed") pendingAtGateway.push(String(row.id));
+    }
+    toExpire.push(String(row.id));
+  }
+  if (toExpire.length > 0) {
+    await admin.from("online_payments").update({ status: "expired" }).in("id", toExpire).eq("status", "awaiting");
+  }
+  if (pendingAtGateway.length > 0) {
+    await admin.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
+  }
+  return toExpire.length;
+}
+
+/** Tenta de novo os cancelamentos que falharam, de todos os espacos (cron por hora). */
+export async function retryAllPendingGatewayCancels(limit = 200): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  const { data: rows } = await admin
+    .from("online_payments")
+    .select("id, organization_id, gateway_payment_id")
+    .eq("gateway_cancel_pending", true)
+    .limit(limit);
+  if (!rows?.length) return 0;
+  const keys = await subaccountKeysOf([...new Set(rows.map((r) => String(r.organization_id)))]);
+  let done = 0;
+  for (const row of rows) {
+    const key = keys.get(String(row.organization_id));
+    if (!row.gateway_payment_id || !key) continue;
+    const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
+    if (result !== "failed") {
+      await admin.from("online_payments").update({ gateway_cancel_pending: false }).eq("id", row.id);
+      done += 1;
+    }
+  }
+  return done;
 }

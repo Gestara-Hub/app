@@ -82,11 +82,21 @@ O bloco `[auth.external.google]` do `apps/supabase/config.toml` lê essas duas v
 
 ## Testar o cron na hora
 
-No banco local (Studio > SQL ou `psql`):
+Dois agendamentos no banco (`select jobname, schedule from cron.job;`):
+
+| Agendamento | Quando | Rota do app | O que faz |
+|---|---|---|---|
+| `daily` | todo dia, 9h UTC (6h de Brasília) | `/api/cron/daily` | mensalidades e lançamentos recorrentes de todos os espaços |
+| `online-payments-expiry` | de hora em hora, no minuto 5 | `/api/cron/online-payments` | expira Pix e links vencidos e cancela no Asaas (que aceita pagamento até 12 meses depois do vencimento); tenta de novo os cancelamentos que falharam |
+
+A expiração usa uma consulta só para todos os espaços, pelo índice parcial `idx_online_payments_awaiting_expiry` (migração 34): o custo acompanha quantos Pix venceram, não quantos espaços existem. As telas "Cobrar online" e o histórico de recebimentos ainda expiram na abertura (para nunca mostrar um código vencido antes do cron); a leitura da organização não expira mais.
+
+Para rodar na hora, no banco local (Studio > SQL ou `psql`):
 
 ```sql
-select public.run_membership_charges_cron();
+select public.run_membership_charges_cron();   -- diário
+select public.run_online_payments_cron();      -- pagamentos online
 select status_code, content from net._http_response order by id desc limit 1;
 ```
 
-A resposta esperada é 200, com o número de espaços, mensalidades e lançamentos criados.
+A resposta esperada é 200: no diário, o número de espaços, mensalidades e lançamentos criados; no de pagamentos online, quantos expiraram e quantos cancelamentos foram refeitos.
