@@ -1,6 +1,8 @@
 import { expect, test as base, type Locator, type Page } from "@playwright/test";
 import {
   ACADEMY_ALIAS,
+  addUser,
+  linkAuthUser,
   createAcademy,
   editTenant,
   readTenant,
@@ -33,6 +35,10 @@ const VIEW_MODE_TIP_KEYS = ["clients", "turmas", "modalities", "plans", "profess
  * vez (workers: 1), entao basta um por processo; e apagado no fim do teste.
  */
 let academy: E2ETenant | undefined;
+
+export function hasAcademy(): boolean {
+  return academy !== undefined;
+}
 
 export function currentAcademy(): E2ETenant {
   if (!academy) throw new Error("Sem academia neste teste: chame loginAs(page, \"Ana Ribeiro\") antes.");
@@ -141,7 +147,7 @@ const DEMO_USERS = {
  * todos os espacos (senao o proprietario vai para /setup). Termina no Dashboard.
  */
 export async function loginAs(page: Page, name: keyof typeof DEMO_USERS): Promise<void> {
-  await setSessionCookie(page, name);
+  await setSessionCookie(page, name, { onboardingCompleted: true, modalitiesReviewed: true });
   await page.goto("/dashboard");
   if (name !== "Ana Ribeiro") await completeOnboarding(page);
   await page.goto("/dashboard");
@@ -158,7 +164,8 @@ export async function setSessionCookie(
   settings: Record<string, unknown> = {},
 ): Promise<void> {
   if (name === "Ana Ribeiro") {
-    academy ??= await createAcademy(settings);
+    // Como no mock: so com o cookie, a configuracao inicial ainda nao foi feita.
+    academy ??= await createAcademy({ defaultDueDay: 10, ...settings });
     await signInBrowser(page, academy, academy.owner, BASE_URL);
     return;
   }
@@ -172,6 +179,30 @@ export async function setSessionCookie(
       sameSite: "Lax",
     },
   ]);
+}
+
+/** Mexe na academia do teste sem recarregar a pagina. */
+export async function editAcademy(mutate: (t: Tenant) => void): Promise<void> {
+  await editTenant(currentAcademy(), mutate);
+}
+
+/**
+ * Entra na academia do teste como outro perfil (professor, recepcao, gerente):
+ * cria o usuario de verdade no banco e entra com ele.
+ */
+export async function loginAsAcademyUser(
+  page: Page,
+  profile: "owner" | "manager" | "attendant" | "professional",
+  name: string,
+  professionalId?: string,
+  userId?: string,
+): Promise<void> {
+  const tenant = currentAcademy();
+  const user = userId
+    ? await linkAuthUser(tenant, userId, name, profile, professionalId)
+    : await addUser(tenant, profile, name, professionalId);
+  await page.context().clearCookies();
+  await signInBrowser(page, tenant, user, BASE_URL);
 }
 
 /**

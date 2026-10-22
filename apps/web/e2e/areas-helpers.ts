@@ -318,7 +318,7 @@ export async function waitForStore(page: Page, predicate: (t: Tenant) => boolean
  * a configuracao inicial: abre o assistente em /setup.
  */
 export async function freshTenant(page: Page): Promise<void> {
-  await setSessionCookie(page, "Ana Ribeiro", { onboardingCompleted: false, modalitiesReviewed: false });
+  await setSessionCookie(page, "Ana Ribeiro");
   await page.goto("/setup");
   await editWorld(page, ORG, (t) => {
     emptyTenant(t);

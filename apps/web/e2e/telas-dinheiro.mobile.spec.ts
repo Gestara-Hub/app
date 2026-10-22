@@ -105,7 +105,7 @@ async function seedMoney(page: Page) {
 
 test("Cobranças: lista, filtros e registrar pagamento cabem", async ({ page }) => {
   await seedMoney(page);
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(page.locator("div.group").filter({ hasText: "Bruna Lima" })).toBeVisible();
   await expect(page.locator("div.group").filter({ hasText: "Aluno Com Nome Bem Comprido da Silva" })).toBeVisible();
   await expectNoHorizontalScroll(page);

@@ -182,7 +182,7 @@ test.describe("configuração inicial por área", () => {
       await page.getByLabel("Não encontrou sua aula? Adicione abaixo:").fill("Aula Extra");
       await page.getByLabel("Não encontrou sua aula? Adicione abaixo:").press("Enter");
       await expect(page.getByText("3 selecionadas")).toBeVisible();
-      await pill(page, "Aula Extra").getByTitle("Remover").click();
+      await page.getByRole("button", { name: "Remover Aula Extra", exact: true }).click();
       await expect(pill(page, "Aula Extra")).toHaveCount(0);
       await expect(page.getByText("2 selecionadas")).toBeVisible();
 
@@ -244,7 +244,7 @@ test.describe("configuração inicial por área", () => {
     await pill(page, "Balé clássico").click();
     await pill(page, "Dança de Salão").click();
     await expect(page.getByText("0 selecionadas")).toBeVisible();
-    await expect(page.getByText("Nenhuma modalidade selecionada. Você poderá cadastrar turmas depois no painel.")).toBeVisible();
+    await expect(page.getByText("Nenhuma aula marcada. Dá para cadastrar depois.")).toBeVisible();
     await finishSetup(page);
     await waitForStore(page, (t) => t.organization.settings?.onboardingCompleted === true);
     const tenant = await readTenant(page);
@@ -298,7 +298,9 @@ test.describe("configuração inicial: Outra área", () => {
     await name.press("Enter");
     await expect(page.getByRole("heading", { name: "Quais aulas você oferece?" })).toBeVisible();
     await expect(page.getByText("Aulas de Robótica")).toBeVisible();
-    await expect(page.getByText("0 selecionadas")).toBeVisible();
+    // A propria area ja entra como a primeira aula, marcada.
+    await expect(page.getByText("1 selecionada")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Robótica", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
 
   // Cada trilha com uma forma de cobrar: as 4 de cada lado ficam cobertas.
@@ -325,6 +327,8 @@ test.describe("configuração inicial: Outra área", () => {
       await page.getByRole("button", { name: "Continuar" }).click();
 
       await expect(page.getByText("Aulas de Xadrez")).toBeVisible();
+      // A area entra como aula; o cenario troca por uma aula propria.
+      await page.getByRole("button", { name: "Remover Xadrez", exact: true }).click();
       await page.getByLabel("Não encontrou sua aula? Adicione abaixo:").fill("Xadrez Iniciante");
       await page.getByRole("button", { name: "Adicionar" }).click();
       await expect(page.getByText("1 selecionada")).toBeVisible();

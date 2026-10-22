@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { classGroup, editWorld, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
 import { loginAsUser, user } from "./ficha-notas-fixtures";
-import { waitWorld, type Tenant } from "./geral-fixtures";
+import { type Tenant } from "./geral-fixtures";
 
 /**
  * Usuarios e perfis (docs/product/06): CRUD de usuarios, o que cada perfil ve
@@ -18,8 +18,32 @@ const OWNER2 = user("usr-own2", "Otto Sócio", "owner");
 
 const pathOf = (page: Page) => new URL(page.url()).pathname;
 const sidebar = (page: Page) => page.locator("[data-sidebar=sidebar]").first();
-const navLinks = async (page: Page) =>
-  (await sidebar(page).getByRole("link").allInnerTexts()).map((t) => t.trim()).filter(Boolean);
+/**
+ * Links do menu nos dois contextos ("Dia a dia" e "Gestão"), sem o cartao do
+ * plano, em ordem alfabetica (o que importa e o que o perfil ve).
+ */
+const navLinks = async (page: Page) => {
+  const names = new Set<string>();
+  const contexts = ["Dia a dia", "Gestão"];
+  for (const context of contexts) {
+    const toggle = sidebar(page).getByRole("button", { name: context, exact: true });
+    if ((await toggle.count()) > 0) await toggle.click();
+    for (const text of await sidebar(page).getByRole("link").allInnerTexts()) {
+      const name = text.trim().split("\n")[0].trim();
+      if (name && !name.startsWith("Plano ")) names.add(name);
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "pt-BR"));
+};
+/** Nome no menu do usuario do topo (o botao mostra so as iniciais). */
+async function expectTopbarUser(page: Page, name: string, profile?: string): Promise<void> {
+  await page.locator("header").getByRole("button", { name: "Menu do usuário" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toContainText(name);
+  if (profile) await expect(menu).toContainText(profile);
+  await page.keyboard.press("Escape");
+}
+const sorted = (names: string[]) => [...names].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
 async function seedTeam(page: Page, extra?: (t: Tenant) => void) {
   await seedAcademy(page, {
@@ -144,20 +168,17 @@ test.describe("cadastro de usuários (proprietário)", () => {
   test("renomear a si mesmo atualiza o topo sem entrar de novo", async ({ page }) => {
     await seedTeam(page);
     await page.goto("/users");
-    const topbar = page.locator("header");
-    await expect(topbar.getByRole("button", { name: /Ana Ribeiro$/ })).toBeVisible();
+    await expectTopbarUser(page, "Ana Ribeiro");
     await page.getByRole("button", { name: "Ações de Ana Ribeiro", exact: true }).click();
     await page.getByRole("menuitem", { name: "Editar" }).click();
     const dialog = page.getByRole("dialog", { name: "Editar usuário" });
     await dialog.getByLabel("Nome").fill("Ana Ribeiro Lima");
     await dialog.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Usuário atualizado com sucesso.")).toBeVisible();
-    await expect(topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ })).toBeVisible();
+    await expectTopbarUser(page, "Ana Ribeiro Lima");
     // O cookie foi regravado: depois de recarregar continua o nome novo.
     await page.reload();
-    await expect(topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ })).toBeVisible();
-    await topbar.getByRole("button", { name: /Ana Ribeiro Lima$/ }).click();
-    await expect(page.getByRole("menu")).toContainText("Proprietário");
+    await expectTopbarUser(page, "Ana Ribeiro Lima", "Proprietário");
   });
 });
 
@@ -178,14 +199,14 @@ test.describe("menu e rotas por perfil (academia)", () => {
 
   test("proprietário vê tudo", async ({ page }) => {
     await seedTeam(page);
-    await expect.poll(() => navLinks(page)).toEqual([...ALL_CLASSES, "Usuários", "Auditoria", "Configurações"]);
+    await expect.poll(() => navLinks(page)).toEqual(sorted([...ALL_CLASSES, "Usuários", "Auditoria", "Configurações"]));
   });
 
   test("gerente: tudo menos Configurações", async ({ page }) => {
     await seedTeam(page);
     await loginAsUser(page, MANAGER);
     await page.goto("/dashboard");
-    await expect.poll(() => navLinks(page)).toEqual([...ALL_CLASSES, "Usuários", "Auditoria"]);
+    await expect.poll(() => navLinks(page)).toEqual(sorted([...ALL_CLASSES, "Usuários", "Auditoria"]));
     await page.goto("/settings");
     await expect.poll(() => pathOf(page)).toBe("/dashboard");
   });
@@ -196,7 +217,7 @@ test.describe("menu e rotas por perfil (academia)", () => {
     await page.goto("/classes");
     await expect
       .poll(() => navLinks(page))
-      .toEqual(["Calendário", "Turmas", "Alunos", "Comunicação", "Cobranças", "Relatórios", "Planos e pacotes", "Equipe"]);
+      .toEqual(sorted(["Calendário", "Turmas", "Alunos", "Comunicação", "Cobranças", "Relatórios", "Planos e pacotes", "Equipe"]));
     // Sem Dashboard, a primeira tela do perfil e o Calendario.
     for (const route of ["/dashboard", "/finance", "/classes/modalities", "/users", "/audit", "/settings"]) {
       await page.goto(route);
@@ -213,7 +234,7 @@ test.describe("menu e rotas por perfil (academia)", () => {
     await seedTeam(page);
     await loginAsUser(page, PROF, PROF_LINK);
     await page.goto("/classes/calendar");
-    await expect.poll(() => navLinks(page)).toEqual(["Calendário", "Turmas"]);
+    await expect.poll(() => navLinks(page)).toEqual(sorted(["Calendário", "Turmas"]));
     for (const route of ["/dashboard", "/clients", "/classes/billing", "/classes/plans", "/team", "/reports", "/communication", "/users"]) {
       await page.goto(route);
       await expect.poll(() => pathOf(page), { message: route }).toBe("/classes/calendar");
@@ -279,7 +300,7 @@ test.describe("sessão", () => {
     await seedTeam(page);
     await loginAsUser(page, MANAGER);
     await page.goto("/dashboard");
-    await expect(page.locator("header").getByRole("button", { name: /Gil Gerente/ })).toBeVisible();
+    await expectTopbarUser(page, "Gil Gerente");
     await waitStoreIdle(page);
     await editWorld(page, "org-academia-x", (t) => {
       t.users = t.users.filter((u: Tenant) => u.id !== "usr-mgr");
@@ -298,30 +319,14 @@ test.describe("sessão", () => {
     await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
   });
 
-  test("apagar dados da demonstração sai e derruba a sessão de quem foi apagado", async ({ page }) => {
-    test.slow();
+  test("fora da demonstração o menu do topo não troca de usuário", async ({ page }) => {
+    // A troca de perfil existe so no espaco de demonstracao do banco (pnpm demo:local).
     await seedTeam(page);
-    await page.goto("/settings?tab=dados");
-    await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
-    const confirm = page.getByRole("alertdialog", { name: "Apagar dados da demonstração?" });
-    await confirm.getByRole("button", { name: "Apagar tudo" }).click();
-    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
-    await waitWorld(page, "org-academia-x", (t) => t.users.length === 1 && t.clients.length === 0);
-
-    // O gerente que existia antes do reset nao entra com o cookie antigo.
-    await loginAsUser(page, MANAGER);
-    await page.goto("/dashboard");
-    await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
-  });
-
-  test("trocar de usuário pelo menu do topo", async ({ page }) => {
-    await seedTeam(page);
-    await page.locator("header").getByRole("button", { name: /Ana Ribeiro/ }).click();
+    await page.locator("header").getByRole("button", { name: "Menu do usuário" }).click();
     const menu = page.getByRole("menu");
-    await expect(menu).toContainText("Trocar usuário / organização (demo)");
-    await menu.getByRole("menuitem", { name: /Bia Recepção/ }).click();
-    await expect(page.locator("header").getByRole("button", { name: /Bia Recepção/ })).toBeVisible({ timeout: 15_000 });
-    await expect.poll(() => navLinks(page)).not.toContain("Painel");
+    await expect(menu).toContainText("Ana Ribeiro");
+    await expect(menu).not.toContainText("Ver a demonstração como");
   });
+
 });
 

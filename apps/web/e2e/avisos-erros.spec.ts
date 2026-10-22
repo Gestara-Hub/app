@@ -153,25 +153,30 @@ test.describe("erro de campo", () => {
   });
 
   test("recusa do service por campo vira erro no campo, sem aviso", async ({ page }) => {
-    // Plano com aluno ativo: mudar a periodicidade e recusado pelo service (422 com campo).
+    // Nome de modalidade repetido (sem acento nem caixa) so o servidor confere:
+    // a recusa (422 com campo) aparece no campo, sem aviso solto.
+    await seedAcademy(page);
+    await page.goto("/classes/modalities");
+    await page.getByRole("button", { name: "Nova modalidade" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Nova modalidade" });
+    const name = dialog.getByRole("textbox", { name: "Nome da modalidade" });
+    await name.fill("jiu-jitsu");
+    await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
+
+    await expectFieldError(page, name, "name", "Já existe uma modalidade com esse nome.");
+    await expect(dialog).toBeVisible();
+    await page.waitForTimeout(600);
+    await expect(errorToasts(page)).toHaveCount(0);
+  });
+
+  test("plano com aluno ativo trava a periodicidade e explica", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
     await page.goto("/classes/plans");
     await page.getByRole("button", { name: "Ações de Mensal Jiu-Jitsu", exact: true }).click();
     await page.getByRole("menuitem", { name: "Editar" }).click();
     const dialog = page.getByRole("dialog");
-    const period = dialog.getByRole("combobox", { name: "Periodicidade" });
-    await period.click();
-    await page.getByRole("menuitem", { name: "Semanal" }).click();
-    await dialog.getByRole("button", { name: "Salvar" }).click();
-
-    await expectFieldError(
-      page,
-      period,
-      "period",
-      "Não é possível mudar a periodicidade de um plano com alunos ativos. Crie um novo plano.",
-    );
-    await expect(dialog).toBeVisible();
-    await page.waitForTimeout(600);
-    await expect(errorToasts(page)).toHaveCount(0);
+    await expect(dialog.getByRole("combobox", { name: "Periodicidade" })).toBeDisabled();
+    await expect(dialog.getByText("Plano com alunos: para mudar, crie outro plano.")).toBeVisible();
   });
+
 });

@@ -72,14 +72,14 @@ test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho
     await expect(row.getByRole("link", { name: "Ver em Cobranças" })).toBeVisible();
   }
   // A cobranca cancelada nao entra (a avulsa soma so R$ 350).
-  await expect(page.getByText("5 lançamentos")).toBeVisible();
+  await expect(page.getByText("5 lançamentos", { exact: true })).toBeVisible();
 
   // O atalho abre Cobranças no mes e no tipo da linha.
   await entryRow(page, "Cursos de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
   await expect(page).toHaveURL(/\/classes\/billing\?month=2026-09&kind=course$/);
   await expect(rowOf(page, "Aluno 4")).toContainText("Curso Confeitaria");
   await expect(rowOf(page, "Aluno 5")).toContainText("Atrasado");
-  await expect(page.getByText("2 cobranças", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )2 cobranças$/)).toBeVisible();
 
   await page.goto("/finance?tab=lancamentos");
   await entryRow(page, "Pacotes de aulas de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
@@ -401,7 +401,7 @@ test("professor com \"% do que os alunos pagaram\": uma linha por origem, substi
   await waitForTenant(page, (t) => (t.teacherPayouts ?? []).some((p: { status: string }) => p.status === "closed"));
 
   // O pacote em aberto e quitado depois do fechamento.
-  await page.goto("/classes/billing?kind=package");
+  await page.goto("/classes/billing?status=all&kind=package");
   await stepMonth(page, "prev", "2026-08");
   await menuAction(page, "Aluna Devendo", "Marcar pago");
   const pay = page.getByRole("dialog", { name: "Registrar pagamento" });

@@ -37,7 +37,7 @@ test.describe("cadastro e geração de mensalidades", () => {
     await expect(page.getByText("Aluno criado com sucesso.")).toBeVisible();
 
     // Setembro (mes atual): depois do uso, nada a cobrar ainda.
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await expect(page.getByRole("button", { name: "Escolher mês (Setembro de 2026)" })).toBeVisible();
     await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
 
@@ -52,7 +52,7 @@ test.describe("operações de cobrança", () => {
   test.beforeEach(async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20"), student("c-b", "Aluno B20")]) });
     // As mensalidades do mes atual nascem sozinhas ao abrir a tela.
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await expect(rowOf(page, "Aluno A20")).toBeVisible();
     await expect(rowOf(page, "Aluno B20")).toBeVisible();
   });
@@ -99,7 +99,7 @@ test("cinco alunos com plano geram cinco mensalidades sozinhas", async ({ page }
   await seedAcademy(page, {
     extra: (t) => (t.clients = [1, 2, 3, 4, 5].map((n) => student(`c-${n}`, `Aluno ${n}`))),
   });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(page.getByText("5 cobranças")).toBeVisible();
 });
 
@@ -120,7 +120,7 @@ test("filtro de tipo separa aulas avulsas das mensalidades", async ({ page }) =>
   await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(page.getByText("Aluno avulso adicionado com cobrança gerada.")).toBeVisible();
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(rowOf(page, "Aluno A20")).toBeVisible();
   await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
   await page.getByRole("option", { name: "Aulas avulsas" }).click();
@@ -134,10 +134,7 @@ test("plano com alunos ativos não muda de periodicidade", async ({ page }) => {
   await page.getByRole("button", { name: "Ações de Mensal Jiu-Jitsu", exact: true }).click();
   await page.getByRole("menuitem", { name: "Editar" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("combobox", { name: /Periodicidade/ }).click();
-  await page.getByRole("menuitem", { name: "Semanal" }).click();
-  await dialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(
-    dialog.getByText("Não é possível mudar a periodicidade de um plano com alunos ativos. Crie um novo plano."),
-  ).toBeVisible();
+  // A tela ja trava a periodicidade e explica (o servidor tambem recusa).
+  await expect(dialog.getByRole("combobox", { name: /Periodicidade/ })).toBeDisabled();
+  await expect(dialog.getByText("Plano com alunos: para mudar, crie outro plano.")).toBeVisible();
 });

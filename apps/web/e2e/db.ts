@@ -7,7 +7,7 @@ import type { TenantWorld } from "../src/services/world/types";
 import type { TenantContext } from "../src/services/server/tenant";
 import { runInWorld } from "../src/services/world/runWorld";
 import { store } from "../src/services/world/store";
-import { WORLD_COLLECTIONS } from "../src/services/world/tables";
+import { fromRow, WORLD_COLLECTIONS } from "../src/services/world/tables";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "../src/services/defaults";
 
 /**
@@ -53,7 +53,9 @@ export function admin(): SupabaseClient {
 const created: E2ETenant[] = [];
 
 /** Espaco de turmas com unidade e dona (Ana Ribeiro), como a academia do seed antigo. */
-export async function createAcademy(settings: Record<string, unknown> = {}): Promise<E2ETenant> {
+export async function createAcademy(
+  settings: Record<string, unknown> = { defaultDueDay: 10, onboardingCompleted: true, modalitiesReviewed: true },
+): Promise<E2ETenant> {
   const db = admin();
   const { data: org, error } = await db
     .from("organizations")
@@ -61,7 +63,7 @@ export async function createAcademy(settings: Record<string, unknown> = {}): Pro
       name: "Academia X",
       segment: "Academia",
       model: "classes",
-      settings: { defaultDueDay: 10, onboardingCompleted: true, modalitiesReviewed: true, ...settings },
+      settings,
       subscription: { tier: "free" },
     })
     .select("id")
@@ -126,6 +128,50 @@ export async function addUser(
     })
     .throwOnError();
   return { id: data.user.id, name, email, password, profile, professionalId };
+}
+
+/**
+ * Da login de verdade a um usuario que o cenario ja gravou (id curto, ex.:
+ * "usr-att"): cria a conta no Supabase Auth e liga ao registro, sem trocar o id.
+ */
+export async function linkAuthUser(
+  tenant: E2ETenant,
+  userId: string,
+  name: string,
+  profile: E2EUser["profile"],
+  professionalId?: string,
+): Promise<E2EUser> {
+  const db = admin();
+  const email = `e2e-${randomUUID()}@gestarahub.test`;
+  const password = randomUUID();
+  const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !data.user) throw new Error(`Usuário de teste: ${error?.message}`);
+  tenant.authIds.push(data.user.id);
+  await db
+    .from("users")
+    .upsert({
+      id: userId,
+      auth_user_id: data.user.id,
+      organization_id: tenant.organizationId,
+      name,
+      email,
+      profile,
+      professional_id: professionalId ?? null,
+      status: "active",
+      terms_accepted_at: new Date().toISOString(),
+      terms_version: CURRENT_PLATFORM_TERMS_VERSION,
+    })
+    .throwOnError();
+  await db
+    .from("legal_consents")
+    .insert({
+      organization_id: tenant.organizationId,
+      user_id: userId,
+      consent_type: "platform_terms",
+      terms_version: CURRENT_PLATFORM_TERMS_VERSION,
+    })
+    .throwOnError();
+  return { id: userId, name, email, password, profile, professionalId };
 }
 
 /** Apaga os espacos criados neste processo (fim de cada teste). */
@@ -222,10 +268,77 @@ export async function editTenant(tenant: E2ETenant, mutate: (t: any) => void | P
       if (!uuid.test(entry.id)) entry.id = randomUUID();
     }
     for (const { key } of WORLD_COLLECTIONS) {
-      const value = (store as unknown as Record<string, unknown>)[key];
-      if (value !== undefined) resolveAliases(value, tenant);
+      const world = store as unknown as Record<string, unknown>;
+      const value = world[key];
+      // Copia antes de trocar os apelidos: os cenarios reaproveitam constantes
+      // (ex.: LOGS) entre testes, e cada teste tem o seu espaco.
+      if (value !== undefined) world[key] = resolveAliases(structuredClone(value), tenant);
     }
+    repairOrphans(store);
   });
+}
+
+
+/**
+ * Os cenarios escritos para o mock as vezes apontam para turma, pacote ou
+ * aluno que nao montaram (o mock aceitava). O banco tem chave estrangeira:
+ * referencia opcional sem alvo sai, pacote do aluno sem pacote no catalogo
+ * ganha um pacote equivalente e registro de aluno inexistente sai.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function repairOrphans(t: any): void {
+  const ids = (list: { id: string }[] | undefined) => new Set((list ?? []).map((x) => x.id));
+  const clients = ids(t.clients);
+  const groups = ids(t.classGroups);
+  const plans = ids(t.plans);
+  const enrollments = ids(t.enrollments);
+  t.studentPackages = (t.studentPackages ?? []).filter((p: { studentId: string }) => clients.has(p.studentId));
+  const packages = ids(t.lessonPackages);
+  for (const sp of t.studentPackages) {
+    if (!packages.has(sp.packageId)) {
+      t.lessonPackages = [
+        ...(t.lessonPackages ?? []),
+        {
+          id: sp.packageId,
+          organizationId: sp.organizationId,
+          name: sp.name ?? "Pacote",
+          lessons: sp.lessonsTotal ?? 10,
+          priceCents: sp.priceCents ?? 1,
+          classGroupIds: [],
+          modalityIds: sp.modalityIds ?? [],
+          absenceConsumes: sp.absenceConsumes ?? true,
+          status: "active",
+          createdAt: sp.createdAt,
+          updatedAt: sp.updatedAt,
+        },
+      ];
+      packages.add(sp.packageId);
+    }
+  }
+  const studentPackages = ids(t.studentPackages);
+  for (const sp of t.studentPackages) {
+    if (sp.renewedFromId && !studentPackages.has(sp.renewedFromId)) delete sp.renewedFromId;
+    if (sp.renewedIntoId && !studentPackages.has(sp.renewedIntoId)) delete sp.renewedIntoId;
+  }
+  t.charges = (t.charges ?? []).filter((c: { studentId: string }) => clients.has(c.studentId));
+  for (const c of t.charges) {
+    if (c.classGroupId && !groups.has(c.classGroupId)) delete c.classGroupId;
+    if (c.planId && !plans.has(c.planId)) delete c.planId;
+    if (c.enrollmentId && !enrollments.has(c.enrollmentId)) delete c.enrollmentId;
+    if (c.studentPackageId && !studentPackages.has(c.studentPackageId)) delete c.studentPackageId;
+  }
+  const charges = ids(t.charges);
+  for (const m of t.messageLogs ?? []) {
+    if (m.chargeId && !charges.has(m.chargeId)) delete m.chargeId;
+    if (m.clientId && !clients.has(m.clientId)) delete m.clientId;
+  }
+  t.onlinePayments = (t.onlinePayments ?? []).filter((p: { chargeId: string }) => charges.has(p.chargeId));
+  for (const key of ["enrollments", "attendances", "waitlist", "reservations"]) {
+    t[key] = (t[key] ?? []).filter(
+      (x: { studentId: string; classGroupId?: string }) =>
+        clients.has(x.studentId) && (x.classGroupId === undefined || groups.has(x.classGroupId)),
+    );
+  }
 }
 
 /** Copia do espaco do teste (leitura, como o cenario lia o localStorage). */
@@ -237,6 +350,15 @@ export async function readTenant(tenant: E2ETenant): Promise<TenantWorld> {
     }
     copy.certificateTemplate = store.certificateTemplate;
     return structuredClone(copy) as unknown as TenantWorld;
+  }).then(async (world) => {
+    // O log de auditoria nao vem no espaco carregado (so cresce): le do banco.
+    const { data } = await admin()
+      .from("audit_logs")
+      .select("*")
+      .eq("organization_id", tenant.organizationId)
+      .order("timestamp", { ascending: true });
+    world.auditLog = (data ?? []).map((row) => fromRow("audit_logs", row)) as unknown as TenantWorld["auditLog"];
+    return world;
   });
 }
 

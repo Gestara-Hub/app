@@ -199,7 +199,7 @@ test.describe("venda", () => {
     await waitForTenant(page, (t) => t.charges.filter((c: { kind: string }) => c.kind === "package").length === 3);
 
     // Cobranças > Pacotes: uma parcela por mes; pagar a primeira.
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await pickSelect(page, "Filtrar por tipo", "Pacotes");
     await expect(page).toHaveURL(/kind=package/);
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Pacote 10 aulas");
@@ -224,12 +224,12 @@ test.describe("venda", () => {
     await expect(row.first()).not.toContainText("Restam 10 de 10");
     await waitForTenant(page, (t) => t.studentPackages[0]?.status === "canceled");
 
-    await page.goto("/classes/billing?kind=package");
+    await page.goto("/classes/billing?status=all&kind=package");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Pago");
     await stepMonth(page, "next", "2026-10");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Encerrado");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Pacote cancelado");
-    await expect(rowOf(page, "Aluna Pacote").getByRole("button", { name: "Reverter" })).toBeDisabled();
+    await expect(rowOf(page, "Aluna Pacote").getByRole("button", { name: "Reverter" })).toHaveCount(0);
     await stepMonth(page, "next", "2026-11");
     await expect(rowOf(page, "Aluna Pacote")).toContainText("Encerrado");
     await stepMonth(page, "next", "2026-12");
@@ -502,7 +502,7 @@ test("Cobranças > Pacotes: compra à vista com a linha, pagar e desfazer", asyn
       t.charges = [charge("pk-1", "c-1", { kind: "package", description: "10 aulas", studentPackageId: "sp-1", amountCents: 50000, dueDate: "2026-09-20", createdAt: TS })];
     },
   });
-  await page.goto("/classes/billing?kind=package");
+  await page.goto("/classes/billing?status=all&kind=package");
   const row = rowOf(page, "Aluna Vista");
   await expect(row).toContainText("Pacote 10 aulas");
   await expect(row).not.toContainText("parcela");

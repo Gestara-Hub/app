@@ -76,6 +76,8 @@ test.describe("eventos das ações principais", () => {
     const planForm = page.getByRole("dialog");
     await planForm.getByLabel("Valor").fill("18000");
     await planForm.getByRole("button", { name: "Salvar" }).click();
+    // Mudar o valor de plano com aluno pede confirmacao.
+    await page.getByRole("alertdialog", { name: "Mudar o valor do plano?" }).getByRole("button", { name: "Mudar o valor" }).click();
     await expect(page.getByText("Plano atualizado.")).toBeVisible();
 
     await page.goto("/classes/modalities");
@@ -106,7 +108,7 @@ test.describe("eventos das ações principais", () => {
     test.slow();
     await seedAudit(page);
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
     await page.getByRole("menuitem", { name: "Marcar pago" }).click();
     const pay = page.getByRole("dialog", { name: "Registrar pagamento" });

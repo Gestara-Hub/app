@@ -102,19 +102,19 @@ test.describe("cadastro de turma", () => {
     // Uma linha de informacao: horarios, instrutor, cobranca e vagas.
     const meta = page.getByTestId("class-billing-summary");
     await expect(meta).toContainText("Paula Souza");
-    await expect(meta).toContainText("0 de 12 vagas");
+    await expect(meta).toContainText("0 de 12 alunos");
   });
 
   test("editar pelo detalhe muda a capacidade", async ({ page }) => {
     await seedClasses(page);
     await page.goto("/classes/cg-1");
-    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 10 vagas");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 10 alunos");
     await pageAction(page, "Mais ações da turma", "Editar turma");
     const edit = page.getByRole("dialog");
     await edit.getByLabel("Capacidade (vagas)").fill("20");
     await edit.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
-    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 20 vagas");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 20 alunos");
   });
 
   test("desativar e reativar com confirmação", async ({ page }) => {

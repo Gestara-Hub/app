@@ -68,7 +68,7 @@ test.describe("envio assistido (grátis)", () => {
     page,
   }) => {
     await seedAcademy(page, { extra: withStudent });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
 
     const link = await openedWhatsApp(page, () => chargeAction(page, "Aluno A20", "Lembrar no WhatsApp"));
@@ -141,7 +141,7 @@ test.describe("envio assistido (grátis)", () => {
     await page.reload();
     await expect(page.getByText("Ana Souza, sua mensalidade de R$ 150,00 venceu em 10/11. 🥋")).toBeVisible();
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
     const link = await openedWhatsApp(page, () => chargeAction(page, "Aluno A20", "Lembrar no WhatsApp"));
     expect(link.text).toBe("Aluno A20, sua mensalidade de R$ 55,00 venceu em 20/09. 🥋");

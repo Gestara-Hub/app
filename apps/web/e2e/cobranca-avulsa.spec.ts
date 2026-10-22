@@ -38,7 +38,7 @@ function extraCharge(id: string, studentId: string, over: Record<string, unknown
 
 test("Cobranças: nova cobrança com sugestão e 3 parcelas, filtro por tipo na URL", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [noPlan("c-e", "Aluno Extra")]) });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
 
   await page.getByRole("button", { name: "Nova cobrança" }).click();
@@ -104,7 +104,7 @@ test("Cobranças: marcar a avulsa como paga com Pix e cancelar outra com motivo"
       ];
     },
   });
-  await page.goto("/classes/billing?kind=extra");
+  await page.goto("/classes/billing?status=all&kind=extra");
   await expect(rowOf(page, "Aluno K1")).toContainText("Kimono");
   await expect(rowOf(page, "Aluno K1")).toContainText("parcela 1 de 2");
 
@@ -162,7 +162,7 @@ test("Alunos: nova cobrança pelo menu do aluno, com o aluno fixo", async ({ pag
   await expect
     .poll(async () => (await academyJson()).includes("Exame de faixa"))
     .toBe(true);
-  await page.goto("/classes/billing?kind=extra");
+  await page.goto("/classes/billing?status=all&kind=extra");
   const row = rowOf(page, "Aluno Ficha");
   await expect(row).toContainText("Exame de faixa");
   await expect(row).toContainText("R$ 80,00");

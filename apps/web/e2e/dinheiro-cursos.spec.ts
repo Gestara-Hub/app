@@ -96,10 +96,10 @@ test("lutas: curso pelo formulário (validação do fim), matrícula em lote com
   await waitForTenant(page, (t) => t.charges.filter((c: { kind: string }) => c.kind === "course").length === 4);
 
   // Cobranças > Cursos: uma parcela de cada aluno por mes (30/10 cai em outubro).
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await pickSelect(page, "Filtrar por tipo", "Cursos");
   await expect(page).toHaveURL(/kind=course/);
-  await expect(page.getByText("2 cobranças", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )2 cobranças$/)).toBeVisible();
   for (const name of ["Aluna Um", "Aluno Dois"]) {
     await expect(rowOf(page, name)).toContainText("Curso Defesa Pessoal Intensivo");
     await expect(rowOf(page, name)).toContainText("parcela 1 de 2");
@@ -164,7 +164,7 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   const tenant = await readAcademy();
   expect(tenant.onlinePayments.find((p: { id: string }) => p.id === "op-3").status).toBe("canceled");
 
-  await page.goto("/classes/billing?kind=course");
+  await page.goto("/classes/billing?status=all&kind=course");
   // Setembro: a vencida (15/09) continua em aberto, atrasada.
   await expect(rowOf(page, "Aluna Meio")).toContainText("parcela 2 de 4");
   await expect(rowOf(page, "Aluna Meio")).toContainText("Atrasado");
@@ -176,14 +176,14 @@ test("sair no meio do curso: paga fica, vencida continua, futuras e o Pix em abe
   await expect(october).toContainText("Encerrado");
   await expect(october).toContainText("Matrícula cancelada");
   // Cancelada pelo sistema: nao reabre (botao travado, sem menu de clique direito).
-  await expect(october.getByRole("button", { name: "Reverter" })).toBeDisabled();
+  await expect(october.getByRole("button", { name: "Reverter" })).toHaveCount(0);
   await october.click({ button: "right" });
   await expect(page.getByRole("menu")).toHaveCount(0);
   await stepMonth(page, "next", "2026-11");
   await expect(rowOf(page, "Aluna Meio")).toContainText("Encerrado");
   // Canceladas pelo sistema entram em "Canceladas" (nao sao substituidas).
   await pickSelect(page, "Filtrar por situação", /Canceladas/);
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
 });
 
 /** Curso de verao (seg 19h, 03/08 a 20/09) ja terminado, com 4 chamadas da aluna. */
@@ -285,7 +285,7 @@ test("lista de espera do curso: promover com valor ajustado à vista gera uma pa
   await expect(page.getByText("Aluno matriculado no curso.")).toBeVisible();
   await waitForTenant(page, (t) => t.charges.some((c: { studentId: string }) => c.studentId === "c-2"));
 
-  await page.goto("/classes/billing?kind=course");
+  await page.goto("/classes/billing?status=all&kind=course");
   const row = rowOf(page, "Aluna Esperando");
   await expect(row).toContainText("Curso Confeitaria");
   await expect(row).toContainText("R$ 600,00");

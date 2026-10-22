@@ -87,7 +87,7 @@ function mixedMonth(t: Record<string, unknown>) {
 
 test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação e os menus de cada estado", async ({ page }) => {
   await seedAcademy(page, { extra: mixedMonth });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
 
   // Linha de cada tipo.
   await expect(rowOf(page, "Aluno Mensal")).toContainText("Mensal Jiu-Jitsu");
@@ -163,11 +163,11 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   await pickSelect(page, "Filtrar por situação", /Isentas/);
   await expect(page).toHaveURL(/status=waived/);
   await expect(rowOf(page, "Aluna Bolsista")).toBeVisible();
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
   await pickSelect(page, "Filtrar por situação", /Canceladas/);
   await expect(rowOf(page, "Aluno Cancelado")).toBeVisible();
   await expect(rowOf(page, "Aluno Trocou")).toHaveCount(0);
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
   await pickSelect(page, "Filtrar por situação", /Substituídas/);
   await expect(page).toHaveURL(/status=replaced/);
   const replaced = rowOf(page, "Aluno Trocou");
@@ -188,7 +188,7 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
 
 test("mês sem cobranças: vazio geral e o vazio de cada tipo com \"Limpar filtros\"", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [noPlan("c-1", "Aluno Sem Nada")]) });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(page.getByText("Nenhuma cobrança nesta competência.")).toBeVisible();
   await expect(page.getByText("Nenhum aluno com mensalidade ou aula avulsa neste mês.")).toBeVisible();
   const empty: [string, string][] = [
@@ -242,7 +242,7 @@ test.describe("WhatsApp", () => {
     page,
   }) => {
     await seedAcademy(page, { extra: reminderMonth });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const remind = (name: string) => openedWhatsApp(page, () => menuAction(page, name, "Lembrar no WhatsApp"));
 
     // Mensalidade continua com o modelo da situacao (atrasada: "Em atraso").
@@ -293,7 +293,7 @@ test.describe("WhatsApp", () => {
     await expect(page.getByText("Configurações salvas.")).toBeVisible();
     await waitForTenant(page, (t) => t.organization.classSegment === "gastronomy");
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const link = await openedWhatsApp(page, () => menuAction(page, "Aluna Doce", "Lembrar no WhatsApp"));
     expect(link.text).toBe(
       "Olá, Aluna Doce! Lembrete da cobrança Avental de R$ 250,00 na Academia X, com vencimento em 25/09. Boas aulas!",
@@ -333,7 +333,7 @@ test.describe("Pro", () => {
         ];
       },
     });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     expect(await openMenuItems(page, "Aluna Kimono")).toContain("Cobrar online");
 
     // Texto pronto para mandar pelo WhatsApp, com o que esta sendo cobrado.
@@ -380,7 +380,7 @@ test.describe("Pro", () => {
         t.charges = [extra("x-1", "c-1")];
       },
     });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluna Kimono", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toHaveAttribute(
       "aria-disabled",
@@ -396,7 +396,7 @@ test.describe("Pro", () => {
         t.clients = [student("c-m", "Aluno Automático")];
       },
     });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await expect(rowOf(page, "Aluno Automático")).toContainText("Atrasado");
     await waitForTenant(page, (t) => t.charges.length === 1);
 
@@ -420,7 +420,7 @@ test.describe("Pro", () => {
     await expect(form).toContainText("Mensalidades até R$ 150,00 são pagas sozinhas no vencimento.");
     await waitForTenant(page, (t) => t.charges[0]?.paidVia === "recurring");
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const row = rowOf(page, "Aluno Automático");
     await expect(row).toContainText("Pago");
     await expect(row).toContainText("Pix Automático");
@@ -469,7 +469,7 @@ test.describe("Dashboard: cobranças em atraso", () => {
     await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");
     await expect(rowOf(page, "Aluna Kimono")).toContainText("Atrasado");
     await expect(rowOf(page, "Aluno Curso")).toContainText("Atrasado");
-    await expect(page.getByText("3 cobranças", { exact: true })).toBeVisible();
+    await expect(page.getByText(/(^|· )3 cobranças$/)).toBeVisible();
   });
 
   test("sem mensalidade atrasada, avulsa atrasada também cria a pendência", async ({ page }) => {

@@ -13,7 +13,7 @@ async function expectInsideViewport(page: Page, items: Locator) {
 test("mensalidades no celular: sem rolagem lateral e linha legível", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno Nome Comprido da Silva")]) });
   // A mensalidade do mes atual nasce sozinha ao abrir a tela.
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
 
   const row = page.locator("div.group").filter({ hasText: "Aluno Nome Comprido da Silva" });
   await expect(row).toBeVisible();

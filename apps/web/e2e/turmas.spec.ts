@@ -79,14 +79,14 @@ test("avulso gera cobrança e remover da aula pede confirmação e a cancela", a
   await confirm.getByRole("button", { name: "Remover" }).click();
   await expect(page.getByText("Aluno removido da aula.")).toBeVisible();
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
   await page.getByRole("option", { name: "Aulas avulsas" }).click();
   const row = page.locator("div.group").filter({ hasText: "Aluno Avulso" });
   await expect(row).toContainText("Encerrado");
   await expect(row).toContainText("Saiu da aula");
   // Encerrada pelo sistema (saida da aula): nao reabre, e o motivo fica no tooltip.
-  await expect(row.getByRole("button", { name: "Reverter" })).toBeDisabled();
+  await expect(row.getByRole("button", { name: "Reverter" })).toHaveCount(0);
   await expect(row.locator("span[title^='Encerrada automaticamente pelo sistema']")).toHaveCount(1);
 });
 

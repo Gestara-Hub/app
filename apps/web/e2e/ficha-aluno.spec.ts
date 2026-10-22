@@ -186,7 +186,7 @@ test.describe("por onde se chega na ficha", () => {
     await page.getByRole("menuitem", { name: "Abrir ficha", exact: true }).click();
     await expect(page).toHaveURL(PROFILE);
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await page.getByRole("link", { name: NAME }).click();
     await expect(page).toHaveURL(PROFILE);
     await expect(page.getByRole("heading", { level: 1, name: NAME })).toBeVisible();
@@ -490,7 +490,7 @@ test.describe("Editar e o menu ⋮ do aluno", () => {
 
     // A mensalidade cancelada fica no extrato como cancelada (reabrivel).
     await openProfileSection(page, "Cobranças");
-    await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+    await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
     await page.getByRole("combobox", { name: "Filtrar por situação" }).click();
     await page.getByRole("option", { name: /Canceladas/ }).click();
     const row = rowOf(page, "Mensalidade");
@@ -659,18 +659,18 @@ test.describe("seções", () => {
 
     await page.getByRole("button", { name: "Mostrar" }).click();
     await expect(page.getByRole("combobox", { name: "Filtrar por situação" })).toContainText("Substituídas");
-    await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+    await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
     await expect(rowOf(page, "Mensalidade 07/2026")).toContainText("Substituída");
 
     await page.getByRole("button", { name: "Limpar filtros" }).first().click();
     await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
     await page.getByRole("option", { name: "Cobranças avulsas" }).click();
-    await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+    await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
     await expect(rowOf(page, "Kimono")).toBeVisible();
 
     await page.getByRole("button", { name: "Limpar filtros" }).first().click();
     await page.getByLabel("Buscar cobrança").fill("08/2026");
-    await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+    await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
     // Desfazer o pagamento de agosto pede confirmacao.
     await rowOf(page, "Mensalidade 08/2026").getByTitle("Desfazer pagamento").click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Desfazer pagamento" }).click();

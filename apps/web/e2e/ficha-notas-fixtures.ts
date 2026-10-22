@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { BASE_URL, academyJson, expect, readAcademy } from "./fixtures";
+import { BASE_URL, academyJson, expect, hasAcademy, loginAsAcademyUser, readAcademy } from "./fixtures";
 
 /**
  * Construtores e atalhos dos testes da ficha do aluno, das notas, da evolucao
@@ -151,6 +151,13 @@ export async function loginAsUser(
   u: ReturnType<typeof user>,
   professional?: { id: string; name: string },
 ): Promise<void> {
+  if (hasAcademy()) {
+    // Academia no banco: o usuario do cenario ganha uma conta de verdade
+    // (Supabase Auth), mantendo o id que o cenario usa.
+    const professionalId = professional?.id ?? (u as { professionalId?: string }).professionalId;
+    await loginAsAcademyUser(page, u.profile, u.name, professionalId, u.id);
+    return;
+  }
   const claims = {
     ...u,
     ...(professional ? { professional: { ...professional, status: "active" } } : {}),

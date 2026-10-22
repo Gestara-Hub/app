@@ -28,7 +28,7 @@ test("Nova cobrança em 12x: erros de campo, parcela de R$ 0 recusada, conta lon
       t.clients = [noPlan("c-a", "Aluna Ativa"), noPlan("c-i", "Aluno Inativo", { status: "inactive" })];
     },
   });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await page.getByRole("button", { name: "Nova cobrança" }).click();
   const dialog = page.getByRole("dialog", { name: "Nova cobrança" });
   await expect(dialog).toContainText("Taxa, material, uniforme ou evento, à vista ou parcelado.");
@@ -115,10 +115,10 @@ test("gastronomia: sugestão \"Exame de graduação\" e nova cobrança pela fich
   await waitForTenant(page, (t) => t.charges.some((c: { description?: string }) => c.description === "Material"));
 
   // Em Cobranças, a busca acha pela descricao.
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await page.getByRole("textbox", { name: "Buscar aluno" }).fill("materi");
   await expect(rowOf(page, "Aluna Ficha")).toContainText("Material");
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
   await page.getByRole("textbox", { name: "Buscar aluno" }).fill("kimono");
   await expect(page.getByText("Nenhuma cobrança de “kimono” com estes filtros no mês.")).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros" }).first().click();
@@ -136,7 +136,7 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
       ];
     },
   });
-  await page.goto("/classes/billing?kind=extra");
+  await page.goto("/classes/billing?status=all&kind=extra");
   await expect(rowOf(page, "Aluno Atrasado")).toContainText("Atrasado");
   await expect(rowOf(page, "Aluno Aberto")).toContainText("Pendente");
 
@@ -206,12 +206,12 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
   // Filtro de situacao com contagem; "Canceladas" vazio mostra o aviso e limpa.
   await pickSelect(page, "Filtrar por situação", /Atrasadas/);
   await expect(page).toHaveURL(/status=overdue/);
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
   await pickSelect(page, "Filtrar por situação", /Canceladas/);
   await expect(page.getByText("Nenhuma cobrança com esta situação no mês.")).toBeVisible();
   await page.getByRole("button", { name: "Limpar filtros" }).first().click();
   await expect(page).not.toHaveURL(/status=|kind=/);
-  await expect(page.getByText("3 cobranças", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )3 cobranças$/)).toBeVisible();
 });
 
 test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a mensalidade; inativo não recebe cobrança", async ({
@@ -230,7 +230,7 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
   });
   await skipWelcome(page);
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(rowOf(page, "Aluno Saindo").filter({ hasText: "Mensal Jiu-Jitsu" })).toContainText("Atrasado");
   await waitForTenant(page, (t) => t.charges.some((c: { kind: string }) => c.kind === "membership"));
 
@@ -246,7 +246,7 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
   await waitForTenant(page, (t) => t.clients.find((c: { id: string }) => c.id === "c-1")?.status === "inactive");
 
   // As tres parcelas seguem em aberto; a mensalidade foi cancelada com o motivo.
-  await page.goto("/classes/billing?kind=extra");
+  await page.goto("/classes/billing?status=all&kind=extra");
   await expect(rowOf(page, "Aluno Saindo")).toContainText("parcela 1 de 3");
   await expect(rowOf(page, "Aluno Saindo")).toContainText("Pendente");
   await stepMonth(page, "next", "2026-10");
@@ -279,7 +279,7 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
   expect(items).not.toContain("Vender pacote");
   expect(items).toContain("Reativar");
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await page.getByRole("button", { name: "Nova cobrança" }).click();
   const create = page.getByRole("dialog", { name: "Nova cobrança" });
   await create.getByRole("combobox", { name: "Aluno" }).click();

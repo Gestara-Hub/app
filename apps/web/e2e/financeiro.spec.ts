@@ -142,7 +142,7 @@ test.describe("lançamentos", () => {
         ]),
     });
     await page.goto("/finance?tab=lancamentos");
-    await expect(page.getByText("2 lançamentos")).toBeVisible();
+    await expect(page.getByText("2 lançamentos", { exact: true })).toBeVisible();
 
     await entryAction(page, "Conta de luz", "Excluir");
     const confirm = page.getByRole("alertdialog", { name: "Excluir lançamento?" });

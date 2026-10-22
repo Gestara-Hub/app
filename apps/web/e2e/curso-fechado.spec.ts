@@ -98,7 +98,7 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   // Cobranças, tipo "Cursos": uma parcela por mês. O servidor do `pnpm dev`
   // usa a data real; abrir um mes pela URL pode descasar a hidratacao, entao
   // os meses sao trocados pela tela.
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await page.getByRole("button", { name: "Próximo mês" }).click();
   await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
   await page.getByRole("option", { name: "Cursos" }).click();
@@ -148,7 +148,7 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
   await waitForStore(page, (raw) => raw.includes("Matrícula cancelada"));
 
-  await page.goto("/classes/billing?kind=course");
+  await page.goto("/classes/billing?status=all&kind=course");
   await page.getByRole("button", { name: "Próximo mês" }).click();
   await expect(rowOf(page, "Aluna Curso")).toContainText("parcela 1 de 4");
   await expect(rowOf(page, "Aluna Curso")).toContainText("Pago");

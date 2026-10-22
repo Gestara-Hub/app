@@ -162,7 +162,7 @@ test.describe("envio assistido de vários lugares", () => {
         },
       ];
     });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Bruna Lima", exact: true }).click();
     const link = await openedWhatsApp(page, () => page.getByRole("menuitem", { name: "Lembrar no WhatsApp" }).click());
     expect(link.phone).toBe("5511988881111");
@@ -234,7 +234,7 @@ test.describe("histórico", () => {
     await openTab(page, "Histórico");
     const rows = page.getByRole("button", { name: /^Mensagem para / });
     await expect(rows).toHaveCount(3);
-    await expect(page.getByText("3 mensagens")).toBeVisible();
+    await expect(page.getByText("3 mensagens", { exact: true })).toBeVisible();
 
     await page.getByRole("combobox", { name: "Tipo" }).click();
     await page.getByRole("option", { name: "Relacionamento" }).click();

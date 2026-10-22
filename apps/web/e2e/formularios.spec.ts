@@ -422,7 +422,7 @@ test.describe("dialog: saída sem piscar", () => {
 
   test("cancelar cobrança: o texto fica na saída ao voltar e ao confirmar", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const confirm = await openCancelCharge(page);
     await recordDialogFrames(page, "alertdialog", "Cancelar a cobrança?");
     await confirm.getByRole("button", { name: "Voltar" }).click();
@@ -512,7 +512,7 @@ test.describe("confirmação com duplo clique", () => {
 
   test("cancelar cobrança: duplo clique cancela uma vez", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const confirm = await openCancelCharge(page);
     await confirm.getByRole("button", { name: "Cancelar cobrança" }).dblclick();
     await expect(page.getByText("Cobrança cancelada com sucesso.").first()).toBeVisible();

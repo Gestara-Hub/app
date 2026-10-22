@@ -137,14 +137,14 @@ async function seedReports(page: Page, opts: { pro?: boolean; extra?: (t: Tenant
 
 async function openReport(page: Page, type: string, period = "2026-09") {
   await page.goto(`/reports?type=${type}&period=${period}`);
-  await expect(page.getByRole("button", { name: "Voltar aos Relatórios" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voltar aos relatórios" })).toBeVisible();
 }
 
 /** Clica em exportar e devolve o nome e o conteudo do CSV baixado. */
 async function exportCsv(page: Page) {
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Exportar CSV / Excel" }).click(),
+    page.getByRole("button", { name: "Exportar CSV" }).click(),
   ]);
   const file = await download.path();
   const text = await readFile(file, "utf8");
@@ -157,21 +157,21 @@ test.describe("catálogo", () => {
     await seedReports(page);
     await page.goto("/reports");
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Todos os Relatórios (8)" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Visualizar & Exportar" })).toHaveCount(6);
+    await expect(page.getByRole("button", { name: "Todos (8)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Abrir" })).toHaveCount(6);
     await expect(page.getByRole("button", { name: "Disponível no Plano Pro" })).toHaveCount(2);
     // Sem palavra em ingles no filtro.
-    await expect(page.getByRole("button", { name: "Operacionais (Grátis)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Operacionais" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Financeiros (DRE)" }).click();
-    await expect(main(page).getByText("DRE Gerencial Completa", { exact: true })).toBeVisible();
-    await expect(main(page).getByText("Aniversariantes do Mês")).toHaveCount(0);
-    await page.getByRole("button", { name: "Todos os Relatórios (8)" }).click();
-    await page.getByPlaceholder("Buscar relatórios por nome...").fill("aniver");
-    await expect(page.getByRole("button", { name: "Visualizar & Exportar" })).toHaveCount(1);
+    await page.getByRole("button", { name: "Financeiros" }).click();
+    await expect(main(page).getByText("DRE gerencial", { exact: true })).toBeVisible();
+    await expect(main(page).getByText("Aniversariantes do mês")).toHaveCount(0);
+    await page.getByRole("button", { name: "Todos (8)" }).click();
+    await page.getByPlaceholder("Buscar relatório").fill("aniver");
+    await expect(page.getByRole("button", { name: "Abrir" })).toHaveCount(1);
 
     // Pro travado: abre o convite e volta.
-    await page.getByPlaceholder("Buscar relatórios por nome...").fill("churn");
+    await page.getByPlaceholder("Buscar relatório").fill("churn");
     await page.getByRole("button", { name: "Disponível no Plano Pro" }).click();
     await expect(page.getByText("Relatórios Gerenciais Avançados")).toBeVisible();
     await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);
@@ -182,11 +182,11 @@ test.describe("catálogo", () => {
   test("Pro libera todos e abre o relatório escolhido no catálogo", async ({ page }) => {
     await seedReports(page, { pro: true });
     await page.goto("/reports");
-    await expect(page.getByRole("button", { name: "Visualizar & Exportar" })).toHaveCount(8);
+    await expect(page.getByRole("button", { name: "Abrir" })).toHaveCount(8);
     await expect(page.getByRole("button", { name: "Disponível no Plano Pro" })).toHaveCount(0);
-    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do Mês" }).getByRole("button").click();
+    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
     await expect(main(page)).toContainText("Aniversariantes do Mês (Setembro)");
-    await page.getByRole("button", { name: "Voltar aos Relatórios" }).click();
+    await page.getByRole("button", { name: "Voltar aos relatórios" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
   });
 
@@ -311,8 +311,10 @@ test.describe("relatórios operacionais", () => {
   test("trocar o mês no catálogo vale para o relatório aberto", async ({ page }) => {
     await seedReports(page);
     await page.goto("/reports");
-    await page.locator("input[type=month]").fill("2026-11");
-    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do Mês" }).getByRole("button").click();
+    // Setembro -> novembro pelo seletor de mes do catalogo.
+    await page.getByRole("button", { name: "Próximo mês" }).click();
+    await page.getByRole("button", { name: "Próximo mês" }).click();
+    await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
     await expect(main(page)).toContainText("Aniversariantes do Mês (Novembro)");
     await expect(main(page)).toContainText("Competência 11/2026");
   });
@@ -380,11 +382,11 @@ test.describe("imprimir e permissões", () => {
         (window as unknown as { printed: number }).printed += 1;
       };
     });
-    await page.getByRole("button", { name: "Imprimir / Salvar em PDF" }).click();
+    await page.getByRole("button", { name: "Imprimir ou salvar PDF" }).click();
     expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
 
     await page.emulateMedia({ media: "print" });
-    await expect(page.getByRole("button", { name: "Exportar CSV / Excel" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Exportar CSV" })).toBeHidden();
     await expect(page.getByText("Assinatura do Responsável")).toBeVisible();
     await page.emulateMedia({ media: "screen" });
     await expect(page.getByText("Assinatura do Responsável")).toBeHidden();
@@ -395,8 +397,8 @@ test.describe("imprimir e permissões", () => {
     await loginAsUser(page, ATTENDANT);
     await openReport(page, "students_roster");
     await expect(main(page)).toContainText("Relação Geral de Alunos");
-    await expect(page.getByRole("button", { name: "Exportar CSV / Excel" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Imprimir / Salvar em PDF" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Exportar CSV" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Imprimir ou salvar PDF" })).toHaveCount(0);
   });
 
 });

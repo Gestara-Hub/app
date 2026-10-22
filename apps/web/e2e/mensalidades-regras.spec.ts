@@ -33,7 +33,7 @@ async function newStudentDialog(page: Page, name: string) {
 
 test("cancelar com motivo sugerido mostra o motivo na linha; reabrir limpa", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   const row = rowOf(page, "Aluno A20");
   await expect(row).toContainText("Atrasado");
 
@@ -63,7 +63,7 @@ test("bolsista integral pelo cadastro: linha \"Bolsista\", sem valor a cobrar e 
   await dialog.getByRole("button", { name: "Adicionar" }).click();
   await expect(page.getByText("Aluno criado com sucesso.")).toBeVisible();
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   const row = rowOf(page, "Aluna Bolsista");
   await expect(row).toContainText("Bolsista");
   await expect(row).toContainText("Bolsa integral");
@@ -95,7 +95,7 @@ test("bolsa parcial de 50%: cobra metade com o valor do plano riscado", async ({
   await dialog.getByRole("button", { name: "Adicionar" }).click();
   await expect(page.getByText("Aluno criado com sucesso.")).toBeVisible();
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   const row = rowOf(page, "Aluno Meia Bolsa");
   await expect(row).toContainText("Bolsa 50%");
   await expect(row.locator(".line-through")).toHaveText("R$ 150,00");
@@ -112,7 +112,7 @@ test("trocar o plano substitui a cobrança em aberto; \"Substituídas\" mostra a
     },
   });
   // A mensalidade de setembro nasce ao abrir a tela.
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(rowOf(page, "Aluno A20")).toContainText("Mensal Jiu-Jitsu");
   await expect(rowOf(page, "Aluno A20")).toContainText("R$ 150,00");
 
@@ -126,7 +126,7 @@ test("trocar o plano substitui a cobrança em aberto; \"Substituídas\" mostra a
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(page.getByText("Aluno atualizado com sucesso.")).toBeVisible();
 
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   const row = rowOf(page, "Aluno A20");
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("Mensal Plus");
@@ -157,7 +157,7 @@ test("filtros de situação e tipo vão para a URL e voltam com \"Limpar filtros
   await expect(page.getByRole("combobox", { name: "Filtrar por situação" })).toHaveText("Atrasadas");
   await expect(rowOf(page, "Aluno Atrasado")).toBeVisible();
   await expect(rowOf(page, "Aluno Em Dia")).toHaveCount(0);
-  await expect(page.getByText("1 cobrança", { exact: true })).toBeVisible();
+  await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();
 
   await pickFilter(page, "Filtrar por situação", "Pendentes");
   await expect(page).toHaveURL(/status=pending/);
@@ -186,7 +186,7 @@ test("filtros de situação e tipo vão para a URL e voltam com \"Limpar filtros
 // mesmo havendo mensalidades no mes. Ativar quando corrigido.
 test("filtro de tipo que esvazia a lista oferece \"Limpar filtros\"", async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-  await page.goto("/classes/billing");
+  await page.goto("/classes/billing?status=all");
   await expect(rowOf(page, "Aluno A20")).toBeVisible();
   await pickFilter(page, "Filtrar por tipo", "Aulas avulsas");
   await expect(page.getByRole("button", { name: "Limpar filtros" })).toBeVisible();
@@ -215,7 +215,7 @@ test("filtro de situação abre direto pela URL em outro mês", async ({ page })
 test.describe("cobrança online", () => {
   test("no Grátis, \"Cobrar online\" fica bloqueado com o motivo", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Cobrar online (Plano Pro)" })).toBeDisabled();
     await expect(page.getByRole("menuitem", { name: "Marcar pago" })).toBeEnabled();
@@ -234,7 +234,7 @@ test.describe("cobrança online", () => {
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Pagamento online salvo e ligado.")).toBeVisible();
 
-    await page.goto("/classes/billing");
+    await page.goto("/classes/billing?status=all");
     const row = rowOf(page, "Aluno A20");
     await rowAction(page, "Aluno A20", "Cobrar online");
     const dialog = page.getByRole("dialog", { name: "Cobrar online" });

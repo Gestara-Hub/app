@@ -46,7 +46,8 @@ test("dia de vencimento aceita de 1 a 31 (29 a 31 no último dia dos meses curto
   await expect(page.getByText("Nos meses mais curtos, vence no último dia.")).toBeVisible();
   await page.locator("input[name=defaultDueDay]").fill("35");
   await page.getByRole("button", { name: "Salvar configurações" }).click();
-  await expect(page.getByText("Use um dia de 1 a 31.")).toBeVisible();
+  // O erro aparece no campo (e repetido no resumo do cartao).
+  await expect(page.locator("#defaultDueDay-error")).toHaveText("Use um dia de 1 a 31.");
 });
 
 test("fechar um dia com aula avisa as turmas afetadas", async ({ page }) => {
@@ -222,23 +223,6 @@ test("horários: indicador de não salvo, confirmação ao trocar de aba e salva
   await page.getByRole("tab", { name: /Geral/ }).click();
   await expect(page).toHaveURL(/tab=geral/);
   await expect(confirm).toHaveCount(0);
-});
-
-test("aba Dados: apagar os dados da demonstração pede confirmação", async ({ page }) => {
-  await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-  await page.goto("/settings?tab=dados");
-  await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Apagar dados da demonstração?" });
-  await expect(confirm).toContainText("Esta ação não pode ser desfeita.");
-  await confirm.getByRole("button", { name: "Cancelar" }).click();
-  await expect(confirm).toBeHidden();
-
-  await page.getByRole("button", { name: "Apagar dados da demonstração" }).click();
-  await confirm.getByRole("button", { name: "Apagar tudo" }).click();
-  // Apagar encerra a sessao e o mundo volta ao inicial (sem o aluno).
-  await page.waitForURL((url) => url.pathname === "/login");
-  const hasStudent = await page.evaluate(() => (localStorage.getItem("gestarahub:db") ?? "").includes("Aluno A20"));
-  expect(hasStudent).toBe(false);
 });
 
 test("horários: 'Aplicar também a' lista os 7 dias com o dia em edição travado", async ({ page }) => {
