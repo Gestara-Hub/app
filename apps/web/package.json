@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
+    "test:roundtrip": "vitest run --config vitest.roundtrip.config.ts",
     "world:schema": "node scripts/gen-world-schema.mjs",
     "demo:seed": "vitest run --config vitest.seed.config.ts",
     "demo:local": "node scripts/dev-demo.mjs",
