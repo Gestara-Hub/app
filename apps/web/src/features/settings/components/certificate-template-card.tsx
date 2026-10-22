@@ -228,13 +228,16 @@ function CertificateTemplateForm({
     const body = form.getValues("body");
     const start = el?.selectionStart ?? body.length;
     const end = el?.selectionEnd ?? body.length;
-    form.setValue("body", `${body.slice(0, start)}${token}${body.slice(end)}`, {
+    const next = `${body.slice(0, start)}${token}${body.slice(end)}`;
+    form.setValue("body", next, {
       shouldDirty: true,
       shouldValidate: form.formState.isSubmitted,
     });
     requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(start + token.length, start + token.length);
+      // Digitou antes deste quadro: o cursor ja e o da pessoa.
+      if (!el || el.value !== next) return;
+      el.focus();
+      el.setSelectionRange(start + token.length, start + token.length);
     });
   }
 
