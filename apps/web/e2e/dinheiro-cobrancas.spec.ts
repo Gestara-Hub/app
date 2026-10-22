@@ -158,7 +158,7 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   await expect(page).not.toHaveURL(/kind=/);
 
   // Situação: isentas, canceladas (sem as substituidas) e substituidas.
-  await pickSelect(page, "Filtrar por situação", /Isentas/);
+  await pickSelect(page, "Filtrar por situação", /^Isentas( \d+)?$/);
   await expect(page).toHaveURL(/status=waived/);
   await expect(rowOf(page, "Aluna Bolsista")).toBeVisible();
   await expect(page.getByText(/(^|· )1 cobrança$/)).toBeVisible();

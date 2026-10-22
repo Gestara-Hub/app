@@ -61,6 +61,8 @@ async function expectMobileInputs(scope: Locator) {
 async function expectDialogFits(page: Page) {
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  // O painel entra deslizando: mede depois de parar dentro da tela.
+  await expect.poll(async () => { const b = await dialog.boundingBox(); return b ? b.x + b.width : 999; }).toBeLessThanOrEqual(375);
   const box = await dialog.boundingBox();
   expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
   expect((box?.x ?? 0) + (box?.width ?? 999)).toBeLessThanOrEqual(375);

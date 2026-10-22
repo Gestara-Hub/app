@@ -69,6 +69,8 @@ async function expectNoPageOverflow(page: Page) {
 
 /** O dialogo cabe na largura da tela e nao rola para o lado. */
 async function expectDialogFits(page: Page, dialog: Locator) {
+  // O painel entra deslizando: mede depois de parar dentro da tela.
+  await expect.poll(async () => { const b = await dialog.boundingBox(); return b ? b.x + b.width : 999; }).toBeLessThanOrEqual(375);
   const box = await dialog.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
