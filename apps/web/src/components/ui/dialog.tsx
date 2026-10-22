@@ -47,12 +47,15 @@ const DialogDirtyContext = React.createContext<DialogDirtyRegistry | null>(null)
 
 export const useDialogDirty = () => React.useContext(DialogDirtyContext)
 
-function Dialog({
-  open,
-  onOpenChange,
-  children,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+/**
+ * Guarda "Descartar alteracoes?" do Dialog e do Sheet: fechar com formulario
+ * sujo pede confirmacao. Devolve o registro (para os campos), o
+ * `onOpenChange` com a guarda e o alerta para renderizar ao lado do Root.
+ */
+export function useDiscardGuard(
+  open: boolean | undefined,
+  onOpenChange: ((open: boolean) => void) | undefined
+) {
   const [dirty, setDirty] = React.useState(false)
   const [confirmDiscard, setConfirmDiscard] = React.useState(false)
   // Por formulario: quantos campos montados e se esta sujo.
@@ -112,6 +115,41 @@ function Dialog({
     onOpenChange?.(false)
   }, [onOpenChange])
 
+  const confirm = (
+    <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+          <AlertDialogDescription>
+            O que você preencheu neste formulário será perdido.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={handleConfirmDiscard}
+          >
+            Descartar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  return { registry, handleOpenChange, confirm }
+}
+
+export const DialogDirtyProvider = DialogDirtyContext.Provider
+
+function Dialog({
+  open,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const { registry, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
+
   return (
     <DialogDirtyContext.Provider value={registry}>
       <DialogPrimitive.Root
@@ -122,25 +160,7 @@ function Dialog({
       >
         {children}
       </DialogPrimitive.Root>
-      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O que você preencheu neste formulário será perdido.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleConfirmDiscard}
-            >
-              Descartar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {confirm}
     </DialogDirtyContext.Provider>
   )
 }

@@ -5,9 +5,24 @@ import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { DialogDirtyProvider, useDiscardGuard } from "@/components/ui/dialog"
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+/** Mesmo "Descartar alteracoes?" do Dialog: formulario em painel lateral tambem pede confirmacao. */
+function Sheet({
+  open,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  const { registry, handleOpenChange, confirm } = useDiscardGuard(open, onOpenChange)
+  return (
+    <DialogDirtyProvider value={registry}>
+      <SheetPrimitive.Root data-slot="sheet" open={open} onOpenChange={handleOpenChange} {...props}>
+        {children}
+      </SheetPrimitive.Root>
+      {confirm}
+    </DialogDirtyProvider>
+  )
 }
 
 function SheetTrigger({
