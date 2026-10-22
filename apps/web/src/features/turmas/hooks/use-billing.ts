@@ -166,6 +166,15 @@ export function useOnlineCheckout(chargeId: Id | null) {
   });
 }
 
+/** Codigos em aberto do espaco: o "Lembrar no WhatsApp" manda o link junto. */
+export function useAwaitingOnlinePayments(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.onlinePayments.awaiting,
+    queryFn: () => onlinePaymentsService.listAwaiting(),
+    enabled,
+  });
+}
+
 export function useCreateOnlinePayment() {
   const qc = useQueryClient();
   return useMutation({

@@ -29,6 +29,7 @@ import { chargeReminder, useWhatsAppSend } from "@/features/communication";
 import { competenceLabel, openFileAttachment } from "@/features/finance";
 import {
   useActiveRecurringAuthorizations,
+  useAwaitingOnlinePayments,
   useCancelCharge,
   useMarkChargePaid,
   useMarkChargePending,
@@ -85,6 +86,14 @@ export function useChargeActions() {
     : !onlineEnabled
       ? "desligado nas Configurações"
       : null;
+
+  // Codigo em aberto da cobranca (Pix ou link): o lembrete manda o link junto.
+  const { data: awaitingOnline } = useAwaitingOnlinePayments(hasOnlineFeature && onlineEnabled && can("billing:view"));
+  const reminderValues = (c: ChargeView, values: Record<string, string>): Record<string, string> => {
+    const open = awaitingOnline?.find((p) => p.chargeId === c.id);
+    const link = open?.linkUrl ?? open?.pixCopyPaste;
+    return link ? { ...values, link_pagamento: link } : values;
+  };
 
   // Limite do Pix Automatico por aluno (so autorizacoes ativas).
   const { data: activeRecurring } = useActiveRecurringAuthorizations(hasOnlineFeature);
@@ -157,7 +166,7 @@ export function useChargeActions() {
               whatsapp.send({
                 trigger: reminder.trigger,
                 recipient: { name: c.studentName, phone: c.studentPhone, clientId: c.studentId },
-                values: reminder.values,
+                values: reminderValues(c, reminder.values),
                 chargeId: c.id,
               });
             },
@@ -397,5 +406,5 @@ export function useChargeActions() {
     </>
   );
 
-  return { canManage, overRecurringLimit, contextActions, withContextMenu, renderActions, dialogs };
+  return { canManage, overRecurringLimit, contextActions, withContextMenu, renderActions, dialogs, reminderValues };
 }

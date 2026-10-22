@@ -453,6 +453,14 @@ export const onlinePaymentsServiceImpl = {
     });
   },
 
+  /** Codigos em aberto do espaco (Pix ou link ainda valido), para o lembrete levar o link. */
+  listAwaiting(): Promise<OnlinePayment[]> {
+    return readOp(() => {
+      const now = nowIso();
+      return clone(store.onlinePayments.filter((p) => p.status === "awaiting" && p.expiresAt > now));
+    });
+  },
+
   /** Dados do dialogo "Cobrar online": aluno, telefone e os pagamentos da cobranca. */
   getCheckout(chargeId: Id): Promise<OnlineChargeCheckout> {
     return readOp(async () => {

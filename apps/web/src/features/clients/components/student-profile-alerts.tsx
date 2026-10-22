@@ -125,7 +125,12 @@ export function StudentProfileAlerts({
                 <Button
                   variant="outline"
                   onClick={() =>
-                    whatsapp.send({ trigger: reminder.trigger, recipient, values: reminder.values, chargeId: charge.id })
+                    whatsapp.send({
+                      trigger: reminder.trigger,
+                      recipient,
+                      values: chargeActions.reminderValues(charge, reminder.values),
+                      chargeId: charge.id,
+                    })
                   }
                 >
                   <MessageCircle className="size-4" />

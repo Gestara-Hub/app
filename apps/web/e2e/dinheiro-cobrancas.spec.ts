@@ -340,6 +340,12 @@ test.describe("Pro", () => {
     const link = await openedWhatsApp(page, () => dialog.getByRole("button", { name: "Enviar pelo WhatsApp" }).click());
     expect(link.text).toContain('Olá, Aluna! Segue a parcela 1 de 2 de "Kimono" da Academia X no valor de R$ 125,00, com vencimento em 25/09.');
     expect(link.text).toContain("Pix copia e cola:");
+    // Com o Pix em aberto, o lembrete pelo WhatsApp leva o codigo junto.
+    await dialog.getByRole("button", { name: "Fechar" }).last().click();
+    await expect(dialog).toBeHidden();
+    const reminder = await openedWhatsApp(page, () => menuAction(page, "Aluna Kimono", "Lembrar no WhatsApp"));
+    expect(reminder.text).toMatch(/Pague pelo link: \S+/);
+    await menuAction(page, "Aluna Kimono", "Cobrar online");
     await dialog.getByRole("button", { name: "Simular pagamento" }).click();
     await expect(page.getByText("Pagamento online confirmado.")).toBeVisible();
 

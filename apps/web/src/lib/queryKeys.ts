@@ -149,6 +149,7 @@ export const queryKeys = {
   onlinePayments: {
     all: ["onlinePayments"] as const,
     forCharge: (chargeId: Id) => ["onlinePayments", "charge", chargeId] as const,
+    awaiting: ["onlinePayments", "awaiting"] as const,
     recurring: (studentId: Id) => ["onlinePayments", "recurring", studentId] as const,
   },
   subscription: {
