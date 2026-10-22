@@ -37,19 +37,25 @@ export const TOUR_STEPS_DEFAULT: TourStep[] = [
  */
 export function tourStepsForClasses(billingMode: ClassBillingMode): TourStep[] {
   return [
+    // O menu tem duas abas: o tour explica a troca antes de mostrar cada uma.
+    {
+      target: '[data-tour="nav-context-switcher"]',
+      title: "Dia a dia e Gestão",
+      body: "Troque aqui entre a rotina das aulas e a gestão do espaço.",
+    },
     {
       target: '[data-tour="nav-group-operations"]',
-      title: "Operação diária",
-      body: "Calendário, turmas, alunos e mensagens do dia.",
+      title: "Dia a dia",
+      body: "Calendário, turmas, alunos, mensagens e cobranças.",
     },
     {
       target: '[data-tour="nav-group-financial"]',
-      title: "Financeiro",
-      body: "Cobranças, pagamentos e quem está em dia.",
+      title: "Gestão: financeiro",
+      body: "Entradas e saídas, recebimentos pelo Pix e relatórios.",
     },
     {
       target: '[data-tour="nav-group-catalog"]',
-      title: "Cadastros",
+      title: "Gestão: cadastros",
       body: "Modalidades, planos e pacotes, e a equipe.",
     },
     {
@@ -57,8 +63,8 @@ export function tourStepsForClasses(billingMode: ClassBillingMode): TourStep[] {
       title: "Configurações",
       body:
         billingMode === "membership"
-          ? "Horários, regras da mensalidade e usuários."
-          : "Horários de funcionamento e usuários.",
+          ? "Horários, regras da mensalidade e dados do espaço."
+          : "Horários de funcionamento e dados do espaço.",
     },
     {
       target: '[data-tour="onboarding-checklist"]',

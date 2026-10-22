@@ -138,7 +138,7 @@ export function AppSidebar() {
       const target = custom.detail?.target;
       if (target?.includes("financial") || target?.includes("catalog")) {
         setContext("management");
-      } else if (target?.includes("operations")) {
+      } else if (target?.includes("operations") || target?.includes("context-switcher")) {
         setContext("operations");
       }
     }
