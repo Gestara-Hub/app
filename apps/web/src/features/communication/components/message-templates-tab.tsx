@@ -118,7 +118,8 @@ export function MessageTemplatesTab() {
   const isMobile = useIsMobile();
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const official = connection?.mode === "official";
-  const withPaymentLink = hasFeature("online_payments");
+  // Link so quando o espaco cobra online (ligado em Recebimentos online), como no envio.
+  const withPaymentLink = hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
 
   if (isPending) {
     return (

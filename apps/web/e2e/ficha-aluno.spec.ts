@@ -890,9 +890,9 @@ test.describe("comunicação", () => {
     await expect(reminder).toContainText(
       "Olá, Ana Souza! Lembrete da parcela 2 de 4 do curso Confeitaria de R$ 150,00 na Academia X, com vencimento em 10/11.",
     );
-    // Pagamento online vale no Gratis: a previa preenche o link de exemplo.
+    // Cobranca online desligada no espaco: a frase do link sai, como no envio.
     await expect(reminder).not.toContainText("{link_pagamento}");
-    await expect(reminder).toContainText("Pague pelo link: https://pagar.gestarahub.com/c/abc123.");
+    await expect(reminder).not.toContainText("Pague pelo link");
     const ending = card("Pacote acabando");
     await expect(ending).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
 

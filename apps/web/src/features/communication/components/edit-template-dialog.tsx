@@ -98,7 +98,8 @@ function EditTemplateForm({
     }
   }
 
-  const preview = fillMessage(content, sampleValues(organization?.name, hasFeature("online_payments")));
+  const withPaymentLink = hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
+  const preview = fillMessage(content, sampleValues(organization?.name, withPaymentLink));
   // Variavel que o modelo nao conhece: a frase dela sumia sem aviso (ALU-39).
   const unknownVariables = [...new Set([...content.matchAll(/\{(\w+)\}/g)].map((m) => `{${m[1]}}`))].filter(
     (v) => !template.availableVariables.includes(v),
