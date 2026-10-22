@@ -201,13 +201,13 @@ test.describe("aula", () => {
     await dialog.getByRole("button", { name: "Confirmar alteração" }).click();
     await expect(page.getByText("Instrutor da aula atualizado com sucesso.")).toBeVisible();
     // O cabecalho diz quem da a aula e quem ele substitui.
-    await expect(page.getByRole("main")).toContainText("17:00 · Paula Souza (substituto)");
+    await expect(page.getByRole("main")).toContainText("17:00 · Paula Souza");
     await expect(page.getByText("Substitui Carlos Silva · Carlos em viagem")).toBeVisible();
 
     // As outras aulas seguem com o titular.
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-1~2026-09-22~17:00")}`);
     await expect(page.getByRole("main")).toContainText("Hoje, 17:00 · Carlos Silva");
-    await expect(page.getByText(/\(substituto\)/)).toHaveCount(0);
+    await expect(page.getByText(/Substitui /)).toHaveCount(0);
 
     await page.goto(SESSION_PAST);
     await page.getByRole("button", { name: "Mais ações da aula", exact: true }).click();
@@ -215,7 +215,7 @@ test.describe("aula", () => {
     await page.getByRole("menuitem", { name: "Restaurar titular", exact: true }).click();
     await expect(page.getByText("Instrutor titular restaurado com sucesso.")).toBeVisible();
     await expect(page.getByRole("main")).toContainText("17:00 · Carlos Silva");
-    await expect(page.getByText(/\(substituto\)/)).toHaveCount(0);
+    await expect(page.getByText(/Substitui /)).toHaveCount(0);
     await expect(page.getByText(/^Substitui /)).toHaveCount(0);
   });
 

@@ -11,6 +11,7 @@ import {
   noPlan,
   packageClass,
   pickField,
+  pickSelect,
   rowOf,
   stepMonth,
   studentPackage,
@@ -77,6 +78,10 @@ test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho
   // O atalho abre Cobranças no mes e no tipo da linha.
   await entryRow(page, "Cursos de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
   await expect(page).toHaveURL(/\/classes\/billing\?month=2026-09&kind=course$/);
+  // Cobranças abre em "A receber": so a parcela atrasada; a paga aparece em "Todos os status".
+  await expect(rowOf(page, "Aluno 5")).toContainText("Atrasado");
+  await expect(rowOf(page, "Aluno 4")).toHaveCount(0);
+  await pickSelect(page, "Filtrar por situação", /Todos os status/);
   await expect(rowOf(page, "Aluno 4")).toContainText("Curso Confeitaria");
   await expect(rowOf(page, "Aluno 5")).toContainText("Atrasado");
   await expect(page.getByText(/(^|· )2 cobranças$/)).toBeVisible();
@@ -84,6 +89,8 @@ test("Lançamentos: uma linha por tipo de cobrança, com as contagens e o atalho
   await page.goto("/finance?tab=lancamentos");
   await entryRow(page, "Pacotes de aulas de setembro").getByRole("link", { name: "Ver em Cobranças" }).click();
   await expect(page).toHaveURL(/kind=package/);
+  // O pacote esta pago: fora de "A receber".
+  await pickSelect(page, "Filtrar por situação", /Todos os status/);
   await expect(rowOf(page, "Aluno 5")).toContainText("Pacote 10 aulas");
 
   // As categorias automaticas nao aparecem no gerenciador de categorias de entrada.
@@ -150,11 +157,11 @@ test.describe("DRE (Pro)", () => {
     await expect(doc.locator("div.justify-between").filter({ hasText: /^\(=\) RESULTADO OPERACIONAL LÍQUIDO/ })).toContainText("R$ 1.000,00");
 
     // CSV com as receitas detalhadas.
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV / Excel" }).click()]);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
     const csv = await readDownload(download);
-    expect(csv).toContain("Receitas Detalhadas;Valor;%");
-    expect(csv).toContain('"Cursos";"200.00"');
-    expect(csv).toContain('"Pacotes de aulas";"500.00"');
+    expect(csv).toContain('"Receitas";"Valor";"%"');
+    expect(csv).toContain('"Cursos";"200,00"');
+    expect(csv).toContain('"Pacotes de aulas";"500,00"');
 
     // Agosto: a mensalidade de agosto foi paga em setembro, entao agosto fica vazio.
     await page.goto("/reports?type=financial_income_statement&period=2026-08");
@@ -224,11 +231,11 @@ test.describe("relatórios", () => {
     await expect(row.locator("td").nth(2)).toHaveText("0");
     await expect(row.locator("td").nth(3)).toHaveText("1");
 
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV / Excel" }).click()]);
-    expect(download.suggestedFilename()).toMatch(/^relatorio-course_summary-.*\.csv$/);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
+    expect(download.suggestedFilename()).toBe("relatorio-cursos-2026-09.csv");
     const csv = await readDownload(download);
-    expect(csv).toContain("Curso;Professor;Início;Fim;Matriculados;Concluídos;Cancelados;Contratado;Recebido;Em aberto");
-    expect(csv).toContain('"Confeitaria";"Carlos Silva";"2026-08-03";"2026-11-30";"1";"0";"1";"1000.00";"600.00";"400.00"');
+    expect(csv).toContain('"Curso";"Professor";"Início";"Fim";"Matriculados";"Concluídos";"Cancelados";"Contratado";"Recebido";"Em aberto"');
+    expect(csv).toContain('"Confeitaria";"Carlos Silva";"03/08/2026";"30/11/2026";"1";"0";"1";"1000,00";"600,00";"400,00"');
     await expect(page.getByText("Arquivo CSV exportado com sucesso.")).toBeVisible();
 
     // Dezembro: o curso acabou em novembro e nao ha parcela.
@@ -274,10 +281,10 @@ test.describe("relatórios", () => {
     const row = doc.locator("tbody tr").filter({ hasText: "10 aulas" });
     await expect(row.locator("td")).toHaveText(["10 aulas", "1", "10", "3", "10", "R$ 500,00"]);
 
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV / Excel" }).click()]);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
     const csv = await readDownload(download);
-    expect(csv).toContain("Pacote;Vendidos;Aulas vendidas;Aulas usadas;Saldo de aulas;Recebido");
-    expect(csv).toContain('"10 aulas";"1";"10";"3";"10";"500.00"');
+    expect(csv).toContain('"Pacote";"Vendidos";"Aulas vendidas";"Aulas usadas";"Saldo de aulas";"Recebido"');
+    expect(csv).toContain('"10 aulas";"1";"10";"3";"10";"500,00"');
 
     // Agosto: a venda antiga, 7 aulas e o recebido de agosto.
     await page.goto("/reports?type=package_summary&period=2026-08");

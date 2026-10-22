@@ -63,13 +63,15 @@ test("configuração inicial orienta cada passo e aceita uma área fora da lista
   await page.getByRole("radio", { name: "Níveis", exact: true }).click();
   await next.click();
 
-  // Passo 3: sem sugestoes na Outra area; a aula digitada entra marcada.
+  // Passo 3: na Outra area a propria area ja entra como aula marcada; a aula
+  // digitada entra marcada tambem.
   await expect(page.getByRole("heading", { name: "Quais aulas você oferece?" })).toBeVisible();
   await expect(page.getByText("Aulas de Xadrez")).toBeVisible();
-  await expect(page.getByText("0 selecionadas")).toBeVisible();
+  await expect(page.getByText("1 selecionada")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Xadrez", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Não encontrou sua aula? Adicione abaixo:").fill("Xadrez Iniciante");
   await page.getByRole("button", { name: "Adicionar" }).click();
-  await expect(page.getByText("1 selecionada")).toBeVisible();
+  await expect(page.getByText("2 selecionadas")).toBeVisible();
   await page.getByRole("button", { name: "Concluir" }).click();
   await page.waitForURL("**/dashboard");
 

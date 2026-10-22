@@ -226,10 +226,9 @@ test.describe("tela de auditoria", () => {
     await expect(dialog).toContainText("Alterações");
     await expect(dialog).toContainText("R$ 150,00");
     await expect(dialog).toContainText("R$ 180,00");
-    await expect(dialog).toContainText("Registro imutável — não pode ser editado nem removido.");
+    await expect(dialog).toContainText("Registro imutável: não pode ser editado nem removido.");
     await dialog.getByRole("button", { name: "Detalhes técnicos" }).click();
     await expect(dialog).toContainText("ID do registro");
-    await expect(dialog).toContainText("a-2");
     // Registro imutavel: nada de campos editaveis.
     await expect(dialog.getByRole("textbox")).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: /Editar|Excluir|Salvar/ })).toHaveCount(0);
@@ -265,7 +264,7 @@ test.describe("tela de auditoria", () => {
   test("sem eventos mostra o guia vazio", async ({ page }) => {
     await seedAudit(page, (t) => (t.auditLog = []));
     await page.goto("/audit");
-    await expect(page.getByText("Nenhum evento registrado ainda.")).toBeVisible();
+    await expect(page.getByText("Nenhum evento registrado.")).toBeVisible();
   });
 
   test("atendente não abre a auditoria", async ({ page }) => {

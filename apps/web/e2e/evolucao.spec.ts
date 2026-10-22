@@ -216,7 +216,7 @@ test.describe("registros de aula", () => {
     await expect(page.getByText("Chamada concluída.")).toBeVisible();
     await page.getByRole("button", { name: "Registrar a aula" }).click();
     const dialog = page.getByRole("dialog", { name: "Registrar a aula" });
-    await expect(dialog).toContainText("Jiu-Jitsu Adulto · ontem · 3 presentes");
+    await expect(dialog).toContainText("Jiu-Jitsu Adulto · 21/09 · 3 presentes");
     // So os presentes entram na lista.
     const list = dialog.getByRole("list", { name: "Presentes" });
     await expect(list.getByRole("listitem")).toHaveCount(3);

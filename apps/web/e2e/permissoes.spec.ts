@@ -27,7 +27,8 @@ import {
 
 /**
  * Quem pode o que nas notas, na ficha do aluno e no certificado:
- * - professor (Carlos Silva) lanca notas so nas turmas em que e o titular;
+ * - professor (Carlos Silva) ve e lanca notas so nas turmas em que e o
+ *   titular (escopo do professor, 18/10/2026: a turma dos outros nem abre);
  * - atendente ve, nao lanca nem cobra;
  * - gerente e dono fazem tudo;
  * - certificado e cobrar online so no Plano Pro.
@@ -105,7 +106,7 @@ async function openAssessments(page: Page, classId: string) {
 }
 
 test.describe("professor", () => {
-  test("lança notas só na própria turma; na dos outros só vê", async ({ page }) => {
+  test("lança notas só na própria turma; a dos outros não abre", async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, PROF, PROF_LINK);
 
@@ -126,28 +127,24 @@ test.describe("professor", () => {
     await form.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Avaliação criada.")).toBeVisible();
 
-    // Turma da Paula: ve a lista e a media, sem criar nem lancar.
-    await openAssessments(page, "cg-other");
-    const other = rowOf(page, "Prova Paula");
-    await expect(other).toContainText("1 de 1 lançadas");
-    await expect(page.getByRole("button", { name: "Nova avaliação" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Ações de Prova Paula", exact: true })).toHaveCount(0);
-    await other.click();
-    await expect(page.getByRole("dialog", { name: "Lançar notas" })).toHaveCount(0);
-    await other.click({ button: "right" });
-    await expect(page.getByRole("menuitem", { name: "Lançar notas" })).toHaveCount(0);
+    // Turma da Paula: fora do escopo do professor, nem aparece.
+    await page.goto("/classes/cg-other");
+    await expect(page.getByText("Turma não encontrada", { exact: true })).toBeVisible();
+    await expect(assessmentsTab(page)).toHaveCount(0);
+    await expect(page.getByText("Prova Paula")).toHaveCount(0);
   });
 
   test("vê o boletim dos alunos pela turma e pela chamada", async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, PROF, PROF_LINK);
-    await page.goto("/classes/cg-other");
-    await page.getByRole("button", { name: "Ações de Aluno Beta", exact: true }).click();
+    // So na turma dele (a da Paula nao abre para o professor).
+    await page.goto("/classes/cg-own");
+    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: "Cancelar matrícula" })).toHaveCount(0);
     await page.getByRole("menuitem", { name: "Notas" }).click();
     const dialog = page.getByRole("dialog", { name: "Notas" });
-    await expect(dialog).toContainText("Prova Paula");
-    await expect(dialog).toContainText("4");
+    await expect(dialog).toContainText("Prova Carlos");
+    await expect(dialog).toContainText("8");
     await page.keyboard.press("Escape");
 
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-own~2026-09-21~17:00")}`);
@@ -221,9 +218,10 @@ test.describe("atendente", () => {
     await expect(profileSection(page, "Pacotes")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Vender pacote" })).toHaveCount(0);
 
+    // Ve o boletim; registros de aula e graduacao pedem progression:manage (a atendente nao tem).
     await openProfileSection(page, "Evolução");
     await expect(page.getByRole("button", { name: "Notas" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Registros de aula" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Registros de aula" })).toHaveCount(0);
   });
 });
 
@@ -261,7 +259,8 @@ test.describe("Plano Pro", () => {
 
     await page.goto("/clients/c-a?tab=charges");
     await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "Cobrar online (Plano Pro)" })).toBeDisabled();
+    // Pagamento online vale no Gratis; sem ligar nas Configuracoes, fica travado.
+    await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
   });
 
   test("Pro: o certificado abre para imprimir, também para a atendente", async ({ page }) => {

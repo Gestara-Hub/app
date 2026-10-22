@@ -205,9 +205,9 @@ test.describe("aula", () => {
 
     await page.goto("/classes/calendar?view=list");
     const card = page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).filter({ hasText: "17:00" }).first();
-    await expect(card).toContainText("2/10 vagas");
+    await expect(card).toContainText("2 de 10 alunos");
     // Os outros dias da semana so tem o matriculado.
-    await expect(page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).nth(1)).toContainText("1/10 vagas");
+    await expect(page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).nth(1)).toContainText("1 de 10 alunos");
   });
 
   test("\"Todos vieram\" só marca quem está pendente", async ({ page }) => {

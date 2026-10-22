@@ -380,7 +380,8 @@ test.describe("avisos do topo", () => {
 
     const birthday = profileAlert(page, "Faz aniversário amanhã");
     await expect(birthday).toContainText("36 anos em 23/09");
-    await expect(birthday.getByRole("button", { name: "Mandar parabéns" })).toBeVisible();
+    // Os parabens so saem no dia (a mensagem diz "seu dia"): amanha, sem o botao.
+    await expect(birthday.getByRole("button", { name: "Mandar parabéns" })).toHaveCount(0);
 
     // 1 presenca em 4 chamadas: a linha da turma avisa.
     const classes = await openProfileSection(page, "Turmas");
@@ -395,7 +396,8 @@ test.describe("avisos do topo", () => {
     });
     await page.goto(PROFILE);
     await expect(profileSection(page, "Pacotes")).toContainText("Pacote 10 aulas · 1 aula restante");
-    const ending = profileAlert(page, "Pacote Pacote 10 aulas");
+    // Nome que ja comeca com "Pacote" nao repete a palavra (withKind).
+    const ending = profileAlert(page, "Pacote 10 aulas");
     await expect(ending).toContainText("Resta 1 aula");
     await expect(ending.getByRole("button", { name: "Avisar" })).toBeVisible();
 
@@ -702,7 +704,7 @@ test.describe("seções", () => {
     await expect(page.getByText("Presença", { exact: true })).toBeVisible();
 
     // Com aula usada nao cancela; renovar abre a venda com o pacote escolhido.
-    await page.getByRole("button", { name: "Ações do pacote Pacote 10 aulas", exact: true }).click();
+    await page.getByRole("button", { name: "Ações do Pacote 10 aulas", exact: true }).click();
 
     await expect(page.getByRole("menuitem", { name: "Cancelar pacote" })).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: "Ocultar aulas" })).toBeVisible();
@@ -735,10 +737,10 @@ test.describe("seções", () => {
     await expect(profileSection(page, "Cobranças")).toContainText("1 em aberto · R$ 400,00");
 
     await openProfileSection(page, "Pacotes");
-    await page.getByRole("button", { name: "Ações do pacote Pacote 10 aulas", exact: true }).click();
+    await page.getByRole("button", { name: "Ações do Pacote 10 aulas", exact: true }).click();
     await page.getByRole("menuitem", { name: "Cancelar pacote" }).click();
     const confirm = page.getByRole("alertdialog");
-    await expect(confirm).toContainText("O pacote Pacote 10 aulas é cancelado.");
+    await expect(confirm).toContainText("O Pacote 10 aulas é cancelado.");
     await confirm.getByRole("button", { name: "Cancelar pacote" }).click();
     await expect(page.getByText("Pacote cancelado.")).toBeVisible();
     await expect(profileSection(page, "Cobranças")).toContainText("Nada em aberto");
@@ -853,10 +855,9 @@ test.describe("seções", () => {
       t.clients[0].phone = "97777000";
     });
     await page.goto(`${PROFILE}?tab=messages`);
-    await page.getByRole("button", { name: "Nova mensagem" }).first().click();
-    const dialog = page.getByRole("dialog", { name: `Mensagem para ${NAME}` });
-    await expect(dialog.getByText("Este aluno não tem WhatsApp com DDD no cadastro.")).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Abrir no WhatsApp" })).toBeDisabled();
+    // Sem telefone com DDD, nem aparece "Nova mensagem": o vazio pede o telefone.
+    await expect(page.getByText("Cadastre um telefone com DDD para mandar mensagens.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Nova mensagem" })).toHaveCount(0);
   });
 
   test("Cadastro: dados, mensalidade e responsáveis; 'Editar' abre o formulário", async ({ page }) => {
@@ -889,9 +890,9 @@ test.describe("comunicação", () => {
     await expect(reminder).toContainText(
       "Olá, Ana Souza! Lembrete da parcela 2 de 4 do curso Confeitaria de R$ 150,00 na Academia X, com vencimento em 10/11.",
     );
-    // Sem pagamento online, a frase do link sai inteira.
+    // Pagamento online vale no Gratis: a previa preenche o link de exemplo.
     await expect(reminder).not.toContainText("{link_pagamento}");
-    await expect(reminder).not.toContainText("Pague pelo link");
+    await expect(reminder).toContainText("Pague pelo link: https://pagar.gestarahub.com/c/abc123.");
     const ending = card("Pacote acabando");
     await expect(ending).toContainText("Oi, Ana Souza! Sobre seu pacote 10 aulas na Academia X: resta 1 aula.");
 

@@ -131,10 +131,10 @@ test.describe("landing page", () => {
     await expect(signup.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/login");
     await signup.getByRole("link", { name: "Termos de uso" }).click();
     await expect(page).toHaveURL(`${BASE_URL}/terms`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Termos de uso");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Termos de Uso e Condições Gerais");
     await page.getByRole("contentinfo").getByRole("link", { name: "Privacidade" }).click();
     await expect(page).toHaveURL(`${BASE_URL}/privacy`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Política de privacidade");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Política de Privacidade e Proteção de Dados");
   });
 
   test("celular: campos do cadastro com 16px (sem zoom no iPhone)", async ({ page }) => {

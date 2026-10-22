@@ -147,12 +147,16 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
   await expect(card("Em atraso")).toContainText("R$ 50,00");
   await expect(card("Em atraso")).toContainText("1 em atraso");
 
-  // Em aberto: menu ⋮ e clique direito com as mesmas acoes (gratis: online travado).
-  const openActions = ["Marcar pago", "Lembrar no WhatsApp", "Cobrar online (Plano Pro)", "Cancelar cobrança"];
+  // Em aberto: menu ⋮ e clique direito com as mesmas acoes. O gratis tem cobranca
+  // online, mas ela vem desligada nas Configuracoes: fica travada.
+  const openActions = ["Marcar pago", "Lembrar no WhatsApp", "Cobrar online (desligado nas Configurações)", "Cancelar cobrança"];
   expect(await openMenuItems(page, "Aluno Aberto")).toEqual(openActions);
   expect(await contextMenuItems(page, rowOf(page, "Aluno Aberto"))).toEqual(openActions);
   await page.getByRole("button", { name: "Ações de Aluno Aberto", exact: true }).click();
-  await expect(page.getByRole("menuitem", { name: "Cobrar online (Plano Pro)" })).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
   await page.keyboard.press("Escape");
 
   // Pagar em dinheiro.
@@ -230,7 +234,8 @@ test("inativar mantém as avulsas em aberto (até as futuras) mesmo cancelando a
   });
   await skipWelcome(page);
   await page.evaluate(() => localStorage.setItem("gestarahub_coachmark_view_mode_clients", "1"));
-  await page.goto("/classes/billing?status=all");
+  // So mensalidades: com a avulsa no mesmo mes, o aluno vira uma linha consolidada.
+  await page.goto("/classes/billing?status=all&kind=membership");
   await expect(rowOf(page, "Aluno Saindo").filter({ hasText: "Mensal Jiu-Jitsu" })).toContainText("Atrasado");
   await waitForTenant(page, (t) => t.charges.some((c: { kind: string }) => c.kind === "membership"));
 

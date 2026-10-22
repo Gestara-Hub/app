@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { classGroup, editWorld, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
+import { admin } from "./db";
+import { classGroup, currentAcademy, enrollment, expect, rollCallRow, seedAcademy, student, test } from "./fixtures";
 import { loginAsUser, user } from "./ficha-notas-fixtures";
 import { type Tenant } from "./geral-fixtures";
 
@@ -73,7 +74,7 @@ test.describe("cadastro de usuários (proprietário)", () => {
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(dialog.getByText("Informe um e-mail válido.")).toBeVisible();
 
-    await dialog.getByLabel("E-mail").fill("ana@academiax.com");
+    await dialog.getByLabel("E-mail").fill(currentAcademy().owner.email);
     await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
     // Dono gerencia todos os perfis.
     for (const p of ["Proprietário", "Gerente", "Atendente", "Profissional"]) {
@@ -85,10 +86,10 @@ test.describe("cadastro de usuários (proprietário)", () => {
 
     await dialog.getByLabel("E-mail").fill("duda@academiax.com");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
-    await expect(page.getByText("Usuário criado com sucesso.")).toBeVisible();
+    await expect(page.getByText("Usuário cadastrado e convite de acesso enviado por e-mail!")).toBeVisible();
     await expect(dialog).toBeHidden();
     await expect(page.getByText("5 usuários cadastrados")).toBeVisible();
-    await expect(page.getByRole("button", { name: /^DR Duda Recepção Atendente Ativo/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^DR Duda Recepção Atendente Convite pendente/ })).toBeVisible();
   });
 
   test("perfil Profissional exige vínculo e o nome vem da equipe", async ({ page }) => {
@@ -108,9 +109,9 @@ test.describe("cadastro de usuários (proprietário)", () => {
     await dialog.getByRole("combobox", { name: "Profissional da equipe" }).click();
     await page.getByRole("option", { name: /Carlos Silva/ }).click();
     await expect(dialog.getByLabel("Nome")).toHaveValue("Carlos Silva");
-    await expect(dialog).toContainText("Vinculado ao profissional Carlos Silva");
+    await expect(dialog).toContainText("Vinculado a Carlos Silva, da equipe.");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
-    await expect(page.getByText("Usuário criado com sucesso.")).toBeVisible();
+    await expect(page.getByText("Usuário cadastrado e convite de acesso enviado por e-mail!")).toBeVisible();
     await expect(page.getByRole("button", { name: /^CS Carlos Silva Profissional Equipe/ })).toBeVisible();
   });
 
@@ -191,6 +192,7 @@ test.describe("menu e rotas por perfil (academia)", () => {
     "Comunicação",
     "Cobranças",
     "Financeiro",
+    "Recebimentos online",
     "Relatórios",
     "Modalidades",
     "Planos e pacotes",
@@ -269,31 +271,20 @@ test.describe("gerente x proprietário", () => {
 
   test("só o proprietário troca o plano: gerente vê o aviso", async ({ page }) => {
     await seedTeam(page);
-    await page.goto("/finance?tab=configuracoes");
+    // Certificado e recurso do Pro: o grátis ve o aviso de plano.
+    const certificate = "/classes/cg-1/certificate/e-1";
+    await page.goto(certificate);
     const owner = page.getByRole("main");
     await expect(owner.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);
 
+    // Sai da pagina antes de trocar a sessao (requisicao dela no meio da troca da 401).
+    await page.goto("about:blank");
     await loginAsUser(page, MANAGER);
-    await page.goto("/finance?tab=configuracoes");
+    await page.goto(certificate);
     await expect(page.getByText("Fale com o proprietário da conta para ativar o Plano Pro.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveCount(0);
   });
 });
-
-/** Espera o app parar de gravar o banco simulado (senao a gravacao dele desfaz a edicao do teste). */
-async function waitStoreIdle(page: Page): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const a = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
-        await page.waitForTimeout(400);
-        const b = await page.evaluate(() => localStorage.getItem("gestarahub:db"));
-        return a !== null && a === b;
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
-}
 
 test.describe("sessão", () => {
   test("usuário removido do mundo sai da sessão", async ({ page }) => {
@@ -301,10 +292,10 @@ test.describe("sessão", () => {
     await loginAsUser(page, MANAGER);
     await page.goto("/dashboard");
     await expectTopbarUser(page, "Gil Gerente");
-    await waitStoreIdle(page);
-    await editWorld(page, "org-academia-x", (t) => {
-      t.users = t.users.filter((u: Tenant) => u.id !== "usr-mgr");
-    });
+    const org = currentAcademy().organizationId;
+    await admin().from("legal_consents").delete().eq("organization_id", org).eq("user_id", "usr-mgr").throwOnError();
+    await admin().from("users").delete().eq("organization_id", org).eq("id", "usr-mgr").throwOnError();
+    await page.reload();
     await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
   });
 
@@ -312,10 +303,13 @@ test.describe("sessão", () => {
     await seedTeam(page);
     await loginAsUser(page, ATTENDANT);
     await page.goto("/classes");
-    await waitStoreIdle(page);
-    await editWorld(page, "org-academia-x", (t) => {
-      t.users.find((u: Tenant) => u.id === "usr-att").status = "inactive";
-    });
+    await admin()
+      .from("users")
+      .update({ status: "inactive" })
+      .eq("organization_id", currentAcademy().organizationId)
+      .eq("id", "usr-att")
+      .throwOnError();
+    await page.reload();
     await expect.poll(() => pathOf(page), { timeout: 15_000 }).toBe("/login");
   });
 

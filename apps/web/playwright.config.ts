@@ -26,6 +26,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
+  // Cada tela le e grava no banco pelo servidor de desenvolvimento, que compila a
+  // rota na primeira visita: 5 s nao bastam para a navegacao e o retorno.
+  expect: { timeout: 10_000 },
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
     baseURL: BASE_URL,

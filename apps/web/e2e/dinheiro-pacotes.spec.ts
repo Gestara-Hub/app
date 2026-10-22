@@ -62,7 +62,12 @@ async function remainingOf(page: Page, id: string): Promise<number> {
 
 test.describe("catálogo", () => {
   test("Planos e pacotes: criar com validação, editar, inativar, reativar, busca e situação", async ({ page }) => {
-    await seedAcademy(page);
+    // O pacote vale por turma (nao mais por modalidade): uma turma de mensalidade para escolher.
+    await seedAcademy(page, {
+      extra: (t) => {
+        t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")];
+      },
+    });
     await page.goto("/classes/plans");
     await expect(page.getByRole("button", { name: "Novo plano" })).toBeVisible();
     await page.getByRole("tab", { name: "Pacotes de aulas" }).click();
@@ -85,8 +90,8 @@ test.describe("catálogo", () => {
     await dialog.getByLabel("Quantidade de aulas").fill("10");
     await dialog.getByLabel("Valor").fill("50000");
     await pickField(page, dialog, "Validade", "30 dias");
-    await dialog.getByRole("combobox", { name: "Modalidades" }).click();
-    await page.getByRole("option", { name: "Jiu-Jitsu" }).click();
+    await dialog.getByRole("combobox", { name: "Turmas" }).click();
+    await page.getByRole("option", { name: "Jiu-Jitsu Adulto" }).click();
     await page.keyboard.press("Escape");
     await dialog.getByRole("switch", { name: "Falta sem justificativa gasta a aula" }).click();
     await dialog.getByRole("button", { name: "Adicionar" }).click();
@@ -96,12 +101,12 @@ test.describe("catálogo", () => {
     const row = rowOf(page, "10 aulas de Jiu-Jitsu");
     await expect(row).toContainText("Ativo");
     await expect(row).toContainText("Vale 30 dias");
-    await expect(row).toContainText("Jiu-Jitsu");
+    await expect(row).toContainText("Jiu-Jitsu Adulto");
     await expect(row).toContainText("Falta não gasta");
     await expect(row).toContainText("R$ 500,00");
     await expect(row).toContainText("10 aulas");
 
-    // Outro pacote, sem validade e de todas as modalidades: a lista ordena por aulas.
+    // Outro pacote, sem validade e de todas as turmas: a lista ordena por aulas.
     await page.getByRole("button", { name: "Novo pacote" }).first().click();
     const second = page.getByRole("dialog", { name: "Novo pacote" });
     await second.getByLabel("Nome").fill("Pacote 5");
@@ -111,7 +116,7 @@ test.describe("catálogo", () => {
     await expect(page.getByText("Pacote criado.")).toBeVisible();
     await expect(page.getByText("2 pacotes cadastrados")).toBeVisible();
     await expect(rowOf(page, "Pacote 5")).toContainText("Sem validade");
-    await expect(rowOf(page, "Pacote 5")).toContainText("Todas as modalidades");
+    await expect(rowOf(page, "Pacote 5")).toContainText("Todas as turmas");
     await expect(page.getByRole("tabpanel").locator("div.group").first()).toContainText("Pacote 5");
 
     // Editar pelo clique na linha: vale para as proximas vendas.

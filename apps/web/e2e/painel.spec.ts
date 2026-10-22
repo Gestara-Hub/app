@@ -39,5 +39,5 @@ test("dashboard: aula de hoje já encerrada conta como concluída", async ({ pag
   await skipWelcome(page);
   await page.goto("/dashboard");
   await expect(page.getByText("1 concluída · 1 agendada")).toBeVisible();
-  await expect(page.getByText(/1\/2 alunos \(1 vaga\)/)).toBeVisible();
+  await expect(page.getByText("1 de 2 alunos")).toBeVisible();
 });

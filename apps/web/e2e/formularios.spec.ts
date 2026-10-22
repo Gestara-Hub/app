@@ -142,7 +142,7 @@ async function openCancelCharge(page: Page) {
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
   await page.getByRole("menuitem", { name: "Cancelar cobrança" }).click();
   const confirm = page.getByRole("alertdialog", { name: "Cancelar a cobrança?" });
-  await expect(confirm).toContainText("cancelar a cobrança de Aluno A20");
+  await expect(confirm).toContainText("A cobrança de Aluno A20");
   return confirm;
 }
 
@@ -401,7 +401,7 @@ test.describe("dialog: descartar alterações", () => {
 // ===========================================================================
 test.describe("dialog: saída sem piscar", () => {
   const INACTIVATE_TEXT = ["Inativar aluno?", "“Aluno A20” deixará de ser sugerido"];
-  const CANCEL_TEXT = ["Cancelar cobrança", "cancelar a cobrança de Aluno A20", "no valor de R$ "];
+  const CANCEL_TEXT = ["Cancelar a cobrança?", "A cobrança de Aluno A20", "sai do total a receber"];
   const DELETE_TEXT = ["Excluir lançamento?", "“Conta de luz” (R$ 320,00) será apagado de vez"];
 
   test("inativar aluno: o texto fica na saída ao voltar e ao confirmar", async ({ page }) => {

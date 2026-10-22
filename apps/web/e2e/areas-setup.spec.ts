@@ -90,8 +90,15 @@ async function finishSetup(page: Page) {
   await page.waitForURL("**/dashboard");
 }
 
+/**
+ * Estado do passo "Cadastrar modalidades" logo depois do setup: "review" (criadas
+ * com trilha, falta revisar), "done" (criadas sem trilha, nada a revisar, o
+ * passo ja conta como feito) ou "none" (nenhuma criada).
+ */
+type ModalitiesStep = "review" | "done" | "none";
+
 /** Boas-vindas pela forma de cobranca e checklist com os passos da area. */
-async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modalitiesNeedReview: boolean) {
+async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modalities: ModalitiesStep) {
   const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
   await expect(welcome).toContainText(WELCOME_SETUP[billing]);
   await welcome.getByRole("button", { name: /Ir para os primeiros passos/ }).click();
@@ -100,11 +107,11 @@ async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modal
   const checklist = page.locator("[data-tour=onboarding-checklist]");
   await expect(checklist.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
   const { steps, absent, phase1 } = CHECKLIST[billing];
-  await expect(checklist).toContainText(`0 de ${steps.length} concluídos`);
+  await expect(checklist).toContainText(`${modalities === "done" ? 1 : 0} de ${steps.length} concluídos`);
   await expect(checklist).toContainText(phase1);
   for (const label of steps) await expect(checklist.getByText(label, { exact: true })).toBeVisible();
   for (const label of absent) await expect(checklist.getByText(label, { exact: true })).toHaveCount(0);
-  await expect(checklist.getByText("Falta revisar")).toHaveCount(modalitiesNeedReview ? 1 : 0);
+  await expect(checklist.getByText("Falta revisar")).toHaveCount(modalities === "review" ? 1 : 0);
   await expect(checklist).toContainText(billing === "course" ? "Fase 3: Cursos e matrículas" : "Fase 3: Turmas e matrículas");
 }
 
@@ -189,13 +196,16 @@ test.describe("configuração inicial por área", () => {
       await finishSetup(page);
       await waitForStore(page, (t) => t.categories.length === 2);
       const tenant = await readTenant(page);
+      // Area sem trilha (pilates, funcional) nao tem niveis a revisar (ONB-18).
+      const needsReview = Object.values(area.tracks).some((track) => track !== null);
       expect(tenant.organization).toMatchObject({
         name: spaceName,
         segment: area.label,
         classSegment: area.id,
         model: "classes",
-        settings: { onboardingCompleted: true, modalitiesReviewed: false },
+        settings: { onboardingCompleted: true },
       });
+      expect(tenant.organization.settings.modalitiesReviewed).toBe(needsReview ? false : undefined);
       expect(tenant.organization.customSegmentName).toBeUndefined();
       expect(tenant.organization.customSegmentProgression).toBeUndefined();
       expect(tenant.organization.customSegmentBilling).toBeUndefined();
@@ -208,7 +218,7 @@ test.describe("configuração inicial por área", () => {
         expectAssessments(category, area.assessments);
       }
 
-      await expectWelcomeAndChecklist(page, area.billing, true);
+      await expectWelcomeAndChecklist(page, area.billing, needsReview ? "review" : "done");
       await expectFormDefaults(page, area.billing, area.capacity, area.durationMinutes);
     });
   }
@@ -252,7 +262,7 @@ test.describe("configuração inicial por área", () => {
     expect(tenant.organization.settings.modalitiesReviewed).toBeUndefined();
     // Sem unidade informada, o nome da unidade fica vazio.
     expect(tenant.unit.name).toBe("");
-    await expectWelcomeAndChecklist(page, "membership", false);
+    await expectWelcomeAndChecklist(page, "membership", "none");
     await expect(page.getByText("Adicione as modalidades ou atividades oferecidas.")).toBeVisible();
   });
 });
@@ -349,7 +359,8 @@ test.describe("configuração inicial: Outra área", () => {
       expectTrack(category, progression.track);
       expectAssessments(category, false);
 
-      await expectWelcomeAndChecklist(page, billing.value, true);
+      // "Nao avancam" cria a modalidade sem trilha: nada a revisar.
+      await expectWelcomeAndChecklist(page, billing.value, progression.track ? "review" : "done");
       await expectFormDefaults(page, billing.value, 10, 60);
     });
   }

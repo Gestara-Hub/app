@@ -140,9 +140,10 @@ test.describe("palavras da trilha em espaço misto", () => {
       await page.keyboard.press("Escape");
       return texts;
     };
-    expect(await items("Aluno Violão")).toContain("Módulos");
-    expect(await items("Aluno Peixe")).toContain("Fases");
-    expect(await items("Aluna Mista")).toContain("Graduação");
+    // As modalidades chegam do banco depois da lista: espera a palavra da trilha.
+    await expect.poll(() => items("Aluno Violão")).toContain("Módulos");
+    await expect.poll(() => items("Aluno Peixe")).toContain("Fases");
+    await expect.poll(() => items("Aluna Mista")).toContain("Graduação");
   });
 
   test("módulos: avançar registra o próximo módulo e a ficha atualiza o card", async ({ page }) => {
@@ -229,7 +230,8 @@ test.describe("registros de aula e metas", () => {
     await page.getByRole("menuitem", { name: "Remover meta" }).click();
     await expect(page.getByText("Meta removida.")).toBeVisible();
     await expect(dialog.getByRole("button", { name: /Escala de dó maior/ })).toHaveCount(0);
-    await page.keyboard.press("Escape");
+    await dialog.getByRole("button", { name: "Fechar" }).last().click();
+    await expect(dialog).toBeHidden();
 
     // A ficha mostra o registro no card da modalidade.
     await expect(evolutionCard(page, "Violão")).toContainText("Troca de acordes mais limpa");
@@ -253,7 +255,7 @@ test.describe("registros de aula e metas", () => {
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Registrar a aula" }).click();
     const dialog = page.getByRole("dialog", { name: "Registrar a aula" });
-    await expect(dialog).toContainText("Violão Iniciante · ontem · 3 presentes");
+    await expect(dialog).toContainText("Violão Iniciante · 21/09 · 3 presentes");
     await dialog.getByRole("button", { name: "Evolução: Aluno Violão" }).click();
     await expect(dialog.getByText("1 aluno com registro")).toBeVisible();
     await dialog.getByRole("button", { name: "Salvar registros" }).click();

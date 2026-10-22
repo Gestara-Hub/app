@@ -18,7 +18,7 @@ async function rowAction(page: Page, name: string, action: string) {
 /** Escolhe uma opcao de um Select de filtro (as opcoes trazem a contagem ao lado). */
 async function pickFilter(page: Page, filter: string, option: string) {
   await page.getByRole("combobox", { name: filter }).click();
-  await page.getByRole("option", { name: new RegExp(`^${option}`) }).click();
+  await page.getByRole("option", { name: new RegExp(`^${option}( \\d+)?$`) }).click();
 }
 
 /** Abre "Novo aluno" com nome e telefone preenchidos. */
@@ -120,7 +120,7 @@ test("trocar o plano substitui a cobrança em aberto; \"Substituídas\" mostra a
   await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).first().click();
   await page.getByRole("menuitem", { name: "Editar cadastro" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: /Plano & Mensalidade/ }).click();
+  await dialog.getByRole("button", { name: /Plano e mensalidade/ }).click();
   await dialog.getByRole("combobox", { name: "Plano de acesso" }).click();
   await page.getByRole("option", { name: /Mensal Plus/ }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
@@ -213,26 +213,22 @@ test("filtro de situação abre direto pela URL em outro mês", async ({ page })
 });
 
 test.describe("cobrança online", () => {
-  test("no Grátis, \"Cobrar online\" fica bloqueado com o motivo", async ({ page }) => {
+  test("desligado nas Configurações, \"Cobrar online\" fica bloqueado com o motivo", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
     await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "Cobrar online (Plano Pro)" })).toBeDisabled();
+    await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
     await expect(page.getByRole("menuitem", { name: "Marcar pago" })).toBeEnabled();
   });
 
-  test("Pro: Pix gerado e pagamento simulado ficam \"Pago online\" sem desfazer", async ({ page }) => {
-    await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
-
-    await page.goto("/settings?tab=plano");
-    await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
-    await page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" }).getByRole("button", { name: "Ativar Profissional" }).click();
-    await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
-
-    await page.goto("/settings?tab=pagamento");
-    await page.getByRole("switch", { name: "Cobrar online" }).click();
-    await page.getByRole("button", { name: "Salvar" }).click();
-    await expect(page.getByText("Pagamento online salvo e ligado.")).toBeVisible();
+  test("Pix gerado e pagamento simulado ficam \"Pago online\" sem desfazer", async ({ page }) => {
+    await seedAcademy(page, {
+      extra: (t) => {
+        t.clients = [student("c-a", "Aluno A20")];
+        // Cobranca online vale no Gratis tambem; ligada nas configuracoes do espaco.
+        t.organization.settings = { ...t.organization.settings, onlinePayments: { enabled: true, defaultExpiresInMinutes: 1440 } };
+      },
+    });
 
     await page.goto("/classes/billing?status=all");
     const row = rowOf(page, "Aluno A20");
@@ -245,7 +241,6 @@ test.describe("cobrança online", () => {
     await expect(dialog.getByLabel("Código Pix copia e cola")).toBeVisible();
 
     await dialog.getByRole("button", { name: "Simular pagamento" }).click();
-    await page.getByRole("alertdialog", { name: "Simular pagamento?" }).getByRole("button", { name: "Simular pagamento" }).click();
     await expect(page.getByText("Pagamento online confirmado.")).toBeVisible();
     await expect(dialog).toBeHidden();
 

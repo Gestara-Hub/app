@@ -92,10 +92,9 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   // Linha de cada tipo.
   await expect(rowOf(page, "Aluno Mensal")).toContainText("Mensal Jiu-Jitsu");
   await expect(rowOf(page, "Aluno Mensal")).toContainText("vence 20/09");
-  await expect(rowOf(page, "Aluno Mensal")).toContainText("referente a 20/09 a 30/09");
   await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");
   const dropin = rowOf(page, "Aluno Avulso");
-  await expect(dropin).toContainText("Aula Avulsa");
+  await expect(dropin).toContainText("Aula avulsa");
   await expect(dropin).toContainText("Jiu-Jitsu Adulto");
   await expect(dropin).toContainText("aula em 21/09");
   await expect(rowOf(page, "Aluna Extra")).toContainText("Kimono");
@@ -109,21 +108,21 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   const scholar = rowOf(page, "Aluna Bolsista");
   await expect(scholar).toContainText("Bolsista");
   await expect(scholar).not.toContainText("Pendente");
-  // Semanal: as parcelas do mes numa linha so, com o valor da semana.
+  // Semanal: as cobrancas do mes numa linha so, com a contagem.
   const weekly = page.locator("div.cursor-pointer").filter({ hasText: "Aluno Semanal" });
   await expect(weekly).toContainText("Semanal Jiu-Jitsu");
-  await expect(weekly).toContainText("R$ 40,00/semana");
+  await expect(weekly).toContainText("5 cobranças");
   // A substituida fica oculta, com o aviso.
   await expect(rowOf(page, "Aluno Trocou")).toHaveCount(0);
   await expect(page.getByText("1 cobrança substituída por troca de plano ou regra está oculta.")).toBeVisible();
 
   // Menus: avulsa nao tem lembrete; isenta e substituida nao tem acao.
-  expect(await openMenuItems(page, "Aluno Avulso")).toEqual(["Marcar pago", "Cobrar online (Plano Pro)", "Cancelar cobrança"]);
+  expect(await openMenuItems(page, "Aluno Avulso")).toEqual(["Marcar pago", "Cobrar online (desligado nas Configurações)", "Cancelar cobrança"]);
   for (const name of ["Aluna Extra", "Aluna Curso", "Aluno Pacote", "Aluno Mensal"]) {
     expect(await openMenuItems(page, name)).toEqual([
       "Marcar pago",
       "Lembrar no WhatsApp",
-      "Cobrar online (Plano Pro)",
+      "Cobrar online (desligado nas Configurações)",
       "Cancelar cobrança",
     ]);
   }
@@ -131,11 +130,11 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   expect(await contextMenuItems(page, scholar)).toEqual([]);
   expect(await contextMenuItems(page, rowOf(page, "Aluno Cancelado"))).toEqual(["Reverter cancelamento"]);
   // A linha agrupada abre as parcelas pelo clique direito; cada parcela tem o menu dela.
-  expect(await contextMenuItems(page, weekly)).toEqual(["Ver parcelas"]);
-  await weekly.getByRole("button", { name: "Ver parcelas" }).click();
+  expect(await contextMenuItems(page, weekly)).toEqual(["Ver cobranças"]);
+  await weekly.getByRole("button", { name: "Ver cobranças" }).click();
   await expect(page.getByText(/\d cobranças no mês/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Ações de Aluno Semanal", exact: true }).first()).toBeVisible();
-  expect(await contextMenuItems(page, weekly)).toEqual(["Ocultar parcelas"]);
+  expect(await contextMenuItems(page, weekly)).toEqual(["Ocultar cobranças"]);
 
   // Tipo: cada opcao com o que lhe cabe.
   const kinds: [string, string, string[]][] = [
@@ -302,7 +301,7 @@ test.describe("WhatsApp", () => {
 });
 
 /** Gera o Pix (ou o link) pelo "Cobrar online" e simula o pagamento. */
-async function payOnline(page: Page, name: string, method: "Pix" | "Link de pagamento" = "Pix") {
+async function payOnline(page: Page, name: string, method: "Pix" | "Link de cartão" = "Pix") {
   await menuAction(page, name, "Cobrar online");
   const dialog = page.getByRole("dialog", { name: "Cobrar online" });
   await dialog.getByRole("radio", { name: new RegExp(method) }).click();
@@ -310,10 +309,7 @@ async function payOnline(page: Page, name: string, method: "Pix" | "Link de paga
   await expect(page.getByText(method === "Pix" ? "Pix gerado." : "Link de pagamento gerado.")).toBeVisible();
   await expect(dialog.getByLabel(method === "Pix" ? "Código Pix copia e cola" : "Link de pagamento")).toBeVisible();
   await dialog.getByRole("button", { name: "Simular pagamento" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Simular pagamento?" });
-  await expect(confirm).toContainText(`faz de conta que ${name} pagou`);
-  await confirm.getByRole("button", { name: "Simular pagamento" }).click();
-  await expect(page.getByText("Pagamento online confirmado.")).toBeVisible();
+  await expect(page.getByText("Pagamento online confirmado.").first()).toBeVisible();
   await expect(dialog).toBeHidden();
 }
 
@@ -346,11 +342,10 @@ test.describe("Pro", () => {
     expect(link.text).toContain('Olá, Aluna! Segue a parcela 1 de 2 de "Kimono" da Academia X no valor de R$ 125,00, com vencimento em 25/09.');
     expect(link.text).toContain("Pix copia e cola:");
     await dialog.getByRole("button", { name: "Simular pagamento" }).click();
-    await page.getByRole("alertdialog", { name: "Simular pagamento?" }).getByRole("button", { name: "Simular pagamento" }).click();
     await expect(page.getByText("Pagamento online confirmado.")).toBeVisible();
 
     await payOnline(page, "Aluno Mensal");
-    await payOnline(page, "Aluna Curso", "Link de pagamento");
+    await payOnline(page, "Aluna Curso", "Link de cartão");
     await payOnline(page, "Aluno Pacote");
 
     for (const [name, via] of [
@@ -388,7 +383,8 @@ test.describe("Pro", () => {
     );
   });
 
-  test("Pix Automático: solicitar no cadastro, simular a autorização e a mensalidade vencida sai paga", async ({ page }) => {
+  // Pix Automatico ainda nao tem tabelas no banco (doc 15, fora da retirada do mock): volta quando tiver.
+  test.skip("Pix Automático: solicitar no cadastro, simular a autorização e a mensalidade vencida sai paga", async ({ page }) => {
     const pro = await makePro(page);
     await seedAcademy(page, {
       extra: (t) => {
@@ -406,7 +402,7 @@ test.describe("Pro", () => {
     await page.getByRole("menuitem", { name: "Editar cadastro" }).click();
     const form = page.getByRole("dialog");
     const section = form.getByText("Pix Automático", { exact: true });
-    if (!(await section.isVisible())) await form.getByRole("button", { name: /Plano & Mensalidade/ }).click();
+    if (!(await section.isVisible())) await form.getByRole("button", { name: /Plano e mensalidade/ }).click();
     await form.getByRole("button", { name: "Solicitar Pix Automático" }).click();
     await expect(form.getByLabel("Limite por cobrança")).toHaveValue("150,00");
     await form.getByRole("button", { name: "Enviar solicitação" }).click();

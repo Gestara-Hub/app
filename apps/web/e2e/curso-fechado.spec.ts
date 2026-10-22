@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { academyJson, classGroup, enrollment, expect, seedAcademy, student, test } from "./fixtures";
+import { stepMonth } from "./dinheiro-fixtures";
+import { academyJson, classGroup, enrollment, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 
 /** Curso fechado (doc 20, fase B). Relogio fixo em 22/09/2026 (terca). */
 
@@ -23,6 +24,16 @@ const course = (id: string, over: Record<string, unknown> = {}) =>
     endDate: "2026-11-30",
     ...over,
   });
+
+/**
+ * Abre Cobrancas e espera a tela no mes do relogio do navegador (setembro): o
+ * servidor do `pnpm dev` usa a data real, e um clique em "Proximo mes" antes de
+ * a tela assumir o relogio do navegador se perde.
+ */
+async function openBilling(page: Page, query: string) {
+  await page.goto(`/classes/billing?${query}`);
+  await expect(page.getByRole("button", { name: "Escolher mês (Setembro de 2026)" })).toBeVisible();
+}
 
 /** Espera o app gravar o mundo (senao o goto seguinte perde a escrita). */
 async function waitForStore(page: Page, predicate: (raw: string) => boolean) {
@@ -98,8 +109,8 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   // Cobranças, tipo "Cursos": uma parcela por mês. O servidor do `pnpm dev`
   // usa a data real; abrir um mes pela URL pode descasar a hidratacao, entao
   // os meses sao trocados pela tela.
-  await page.goto("/classes/billing?status=all");
-  await page.getByRole("button", { name: "Próximo mês" }).click();
+  await openBilling(page, "status=all");
+  await stepMonth(page, "next", "2026-10");
   await page.getByRole("combobox", { name: "Filtrar por tipo" }).click();
   await page.getByRole("option", { name: "Cursos" }).click();
   await expect(page).toHaveURL(/kind=course/);
@@ -147,13 +158,19 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await confirm.getByRole("button", { name: "Cancelar matrícula" }).click();
   await expect(page.getByText("Matrícula cancelada.")).toBeVisible();
   await waitForStore(page, (raw) => raw.includes("Matrícula cancelada"));
+  // No banco: a 1a parcela segue paga e as 3 seguintes ficam canceladas.
+  const courseCharges = ((await readAcademy()).charges as { kind: string; cycleIndex?: number; status: string }[])
+    .filter((c) => c.kind === "course")
+    .sort((a, b) => (a.cycleIndex ?? 0) - (b.cycleIndex ?? 0))
+    .map((c) => c.status);
+  expect(courseCharges).toEqual(["paid", "canceled", "canceled", "canceled"]);
 
-  await page.goto("/classes/billing?status=all&kind=course");
-  await page.getByRole("button", { name: "Próximo mês" }).click();
+  await openBilling(page, "status=all&kind=course");
+  await stepMonth(page, "next", "2026-10");
   await expect(rowOf(page, "Aluna Curso")).toContainText("parcela 1 de 4");
   await expect(rowOf(page, "Aluna Curso")).toContainText("Pago");
-  await page.getByRole("button", { name: "Próximo mês" }).click();
-  await expect(rowOf(page, "Aluna Curso")).toContainText("Cancelado");
+  await stepMonth(page, "next", "2026-11");
+  await expect(rowOf(page, "Aluna Curso")).toContainText("Encerrado");
   await expect(rowOf(page, "Aluna Curso")).toContainText("Matrícula cancelada");
 });
 
