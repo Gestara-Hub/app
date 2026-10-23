@@ -11,6 +11,7 @@ import {
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { teacherPayServiceImpl } from "../finance";
 import { runInWorld } from "../world/runWorld";
+import { documentSlices } from "./documentSlices";
 import { store } from "../world/store";
 import { chargeLabelOf, competenceLabelOf } from "./paymentPage";
 import type { TenantContext } from "./tenant";
@@ -67,54 +68,60 @@ function studentOf(id: Id): Client {
 
 /** Recibo de uma cobranca paga. */
 export function buildPaymentRecord(ctx: TenantContext, chargeId: Id): Promise<DocumentModel> {
-  return runInWorld(ctx, async () => {
-    const charge = store.charges.find((c) => c.id === chargeId);
-    if (!charge) throw notFoundError("Cobrança não encontrada.");
-    if (charge.status !== "paid") {
-      throw apiError("VALIDATION", "O recibo sai depois que a cobrança é paga.", { httpStatus: 422 });
-    }
-    const student = studentOf(charge.studentId);
-    return paymentRecordDocument({
-      chargeId: charge.id,
-      organizationName: store.organization.name,
-      organizationDetails: organizationDetails(),
-      payer: payerOf(student),
-      studentName: student.name,
-      ...chargeReference(charge),
-      amountCents: charge.amountCents,
-      paidAt: charge.paidAt,
-      methodLabel: methodLabelOf(charge),
-      issuedAt: new Date().toISOString(),
-    });
+  return runInWorld(ctx, () => paymentRecordModel(chargeId), { fn: documentSlices.paymentRecord, args: [chargeId] });
+}
+
+/** O documento sobre o espaco ja carregado (o recorte e conferido nos testes). */
+export async function paymentRecordModel(chargeId: Id): Promise<DocumentModel> {
+  const charge = store.charges.find((c) => c.id === chargeId);
+  if (!charge) throw notFoundError("Cobrança não encontrada.");
+  if (charge.status !== "paid") {
+    throw apiError("VALIDATION", "O recibo sai depois que a cobrança é paga.", { httpStatus: 422 });
+  }
+  const student = studentOf(charge.studentId);
+  return paymentRecordDocument({
+    chargeId: charge.id,
+    organizationName: store.organization.name,
+    organizationDetails: organizationDetails(),
+    payer: payerOf(student),
+    studentName: student.name,
+    ...chargeReference(charge),
+    amountCents: charge.amountCents,
+    paidAt: charge.paidAt,
+    methodLabel: methodLabelOf(charge),
+    issuedAt: new Date().toISOString(),
   });
 }
 
 /** Declaracao dos pagamentos do aluno no ano (pelo dia em que pagou). */
 export function buildPaymentsStatement(ctx: TenantContext, studentId: Id, year: number): Promise<DocumentModel> {
-  return runInWorld(ctx, async () => {
-    const student = studentOf(studentId);
-    const rows = store.charges
-      .filter((c) => c.studentId === studentId && c.status === "paid" && c.paidAt && yearOf(c.paidAt) === year)
-      .sort((a, b) => String(a.paidAt).localeCompare(String(b.paidAt)))
-      .map((c) => {
-        const reference = chargeReference(c);
-        return {
-          paidAt: String(c.paidAt),
-          label: [reference.label, reference.competenceLabel].filter(Boolean).join(" · "),
-          methodLabel: methodLabelOf(c),
-          amountCents: c.amountCents,
-        };
-      });
-    return paymentsStatementDocument({
-      organizationName: store.organization.name,
-      organizationDetails: organizationDetails(),
-      studentName: student.name,
-      payer: payerOf(student),
-      year,
-      rows,
-      issuedAt: new Date().toISOString(),
-      fileKey: student.id.slice(0, 8),
+  return runInWorld(ctx, () => paymentsStatementModel(studentId, year), { fn: documentSlices.paymentsStatement, args: [studentId, year] });
+}
+
+/** O documento sobre o espaco ja carregado (o recorte e conferido nos testes). */
+export async function paymentsStatementModel(studentId: Id, year: number): Promise<DocumentModel> {
+  const student = studentOf(studentId);
+  const rows = store.charges
+    .filter((c) => c.studentId === studentId && c.status === "paid" && c.paidAt && yearOf(c.paidAt) === year)
+    .sort((a, b) => String(a.paidAt).localeCompare(String(b.paidAt)))
+    .map((c) => {
+      const reference = chargeReference(c);
+      return {
+        paidAt: String(c.paidAt),
+        label: [reference.label, reference.competenceLabel].filter(Boolean).join(" · "),
+        methodLabel: methodLabelOf(c),
+        amountCents: c.amountCents,
+      };
     });
+  return paymentsStatementDocument({
+    organizationName: store.organization.name,
+    organizationDetails: organizationDetails(),
+    studentName: student.name,
+    payer: payerOf(student),
+    year,
+    rows,
+    issuedAt: new Date().toISOString(),
+    fileKey: student.id.slice(0, 8),
   });
 }
 
@@ -127,30 +134,33 @@ const PAYOUT_STATUS_LABEL: Record<TeacherPayoutStatus, string> = {
 
 /** Demonstrativo do professor no mes (o mesmo detalhe da tela de pagamento). */
 export function buildTeacherStatement(ctx: TenantContext, professionalId: Id, competence: string): Promise<DocumentModel> {
-  return runInWorld(ctx, async () => {
-    const detail = await teacherPayServiceImpl.getPayoutPreview(professionalId, competence);
-    const payout = detail.payout;
-    return teacherStatementDocument({
-      organizationName: store.organization.name,
-      organizationDetails: organizationDetails(),
-      professionalName: detail.professionalName,
-      competence,
-      competenceLabel: competenceLongLabel(competence),
-      statusLabel: PAYOUT_STATUS_LABEL[detail.status],
-      ruleSummary: detail.ruleSummary,
-      dueDate: detail.dueDate,
-      paidAt: payout?.paidAt,
-      methodLabel: payout?.method ? paymentMethodLabel(payout.method) : undefined,
-      lines: detail.lines,
-      totalCents: detail.totalCents,
-      sessions: detail.sessions.map((s) => ({
-        date: s.date,
-        start: s.start,
-        className: s.className,
-        substituting: s.primaryInstructorId !== professionalId ? s.primaryInstructorName : undefined,
-      })),
-      issuedAt: new Date().toISOString(),
-      fileKey: professionalId.slice(0, 8),
-    });
+  return runInWorld(ctx, () => teacherStatementModel(professionalId, competence), { fn: documentSlices.teacherStatement, args: [professionalId, competence] });
+}
+
+/** O documento sobre o espaco ja carregado (o recorte e conferido nos testes). */
+export async function teacherStatementModel(professionalId: Id, competence: string): Promise<DocumentModel> {
+  const detail = await teacherPayServiceImpl.getPayoutPreview(professionalId, competence);
+  const payout = detail.payout;
+  return teacherStatementDocument({
+    organizationName: store.organization.name,
+    organizationDetails: organizationDetails(),
+    professionalName: detail.professionalName,
+    competence,
+    competenceLabel: competenceLongLabel(competence),
+    statusLabel: PAYOUT_STATUS_LABEL[detail.status],
+    ruleSummary: detail.ruleSummary,
+    dueDate: detail.dueDate,
+    paidAt: payout?.paidAt,
+    methodLabel: payout?.method ? paymentMethodLabel(payout.method) : undefined,
+    lines: detail.lines,
+    totalCents: detail.totalCents,
+    sessions: detail.sessions.map((s) => ({
+      date: s.date,
+      start: s.start,
+      className: s.className,
+      substituting: s.primaryInstructorId !== professionalId ? s.primaryInstructorName : undefined,
+    })),
+    issuedAt: new Date().toISOString(),
+    fileKey: professionalId.slice(0, 8),
   });
 }

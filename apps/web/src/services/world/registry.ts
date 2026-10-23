@@ -124,6 +124,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   reports: {
     load: async () => (await import("../reports")).reportsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../reports/reportSlices")).reportSlices,
     permissions: all(["getCatalog", "generateReport"], ["reports:view"]),
   },
   studentSummary: {

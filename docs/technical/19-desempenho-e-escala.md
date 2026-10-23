@@ -95,7 +95,8 @@ Caminho incremental, sem reescrever as regras (elas continuam as mesmas, testada
 1. **Relatórios e documentos com agregação no banco** (SQL `GROUP BY`/views): DRE, cobranças do mês, retenção, frequência; o PDF recebe só os números.
 2. **Histórico fora do caminho quente:** auditoria e mensagens só paginadas por data; índice de expressão em `audit_logs (organization_id, (target->>'type'), timestamp)`; índice em `attendances (organization_id, session_id)`.
 3. **Infraestrutura:** Vercel e Supabase na mesma região (São Paulo, `gru1`/`sa-east-1`); conexões pelo pooler do Supabase (Supavisor); `maxDuration` nas rotas longas; RLS com `(select current_organization_id())`.
-4. **Medir sempre:** log de tempo por ação (método, ms, linhas carregadas) e o teste de carga desta proposta (espaço de 1 ano) rodando antes de cada entrega grande, com a meta de 300 ms.
+4. **Levantamento geral de índices (decisão de 23/10/2026: no fim das fases):** com os recortes, os relatórios no banco e a concorrência por linha prontos, rodar `EXPLAIN ANALYZE` nas consultas reais sobre o espaço de 1 ano e criar numa migração só os índices que faltarem, removendo os que nenhuma consulta usa. Já se sabe de um: o GIN em `audit_logs.target` não atende `target->>'type' = 'financial_entry'` (carga parcial da auditoria em toda ação).
+5. **Medir sempre:** log de tempo por ação (método, ms, linhas carregadas) e o teste de carga desta proposta (espaço de 1 ano) rodando antes de cada entrega grande, com a meta de 300 ms.
 
 ## 5. O que esperar
 
@@ -196,6 +197,15 @@ O recorte de cobranças ainda cresce com alunos e cobranças (cerca de 12 por al
 
 Como o de cobranças, este recorte ainda cresce com cobranças e lançamentos (dezenas por aluno por ano), não com presenças. O próximo passo para ele é um recorte por período, junto com o de cobranças.
 
-**Próximos recortes, na ordem de uso:** relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
+**Relatórios e documentos** (`reports/reportSlices.ts`, `server/documentSlices.ts`): nenhum relatório lê mensagens nem avaliações, e só a lista de chamada lê presenças, as das aulas do mês. Cada documento lê só o que mostra: o recibo, a cobrança e o aluno; a declaração anual, as cobranças do aluno; o boletim, o aluno e as avaliações; o extrato online, os Pix e as cobranças deles; o demonstrativo do professor e o certificado, os recortes de `teacherPay.getPayoutPreview` e de `turmas.getCourseCertificate`. Os documentos não passam pelo `delegate`: o miolo de cada um virou uma função (`*Model`) e `server/__tests__/documentSlices.test.ts` chama a conferência direto, com cobrança paga, em aberto e inexistente e os 8 relatórios. Conferido em 22 chamadas de relatório, 26 de documento e 9 de certificado.
+
+**Falha real achada na medição:** o filtro `in` ia em lotes de 150 valores, e 150 ids de aula (`turma~data~hora`, mais de 50 caracteres cada) estouram a URL do PostgREST ("URI too long"). Com ids de verdade, a lista de aulas de um período com muitas turmas e a lista de chamada do mês caíam no espaço inteiro. Os lotes agora contam caracteres (`inChunks`, até 3.000 por lote), com teste de banco de 400 aulas que falhava antes da correção.
+
+| Espaço de 1 ano (35 mil presenças) | Espaço inteiro, sem cache | Recorte |
+| --- | --- | --- |
+| Cadastro de alunos | 1,35 a 1,38 s | **0,03 s** |
+| Lista de chamada do mês | 1,37 a 1,44 s | **0,12 a 0,14 s** |
+
+**Próximo passo:** concorrência por linha em vez da versão única do espaço. Depois, concorrência por linha em vez da versão única do espaço.
 
 **Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.

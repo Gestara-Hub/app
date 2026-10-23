@@ -99,4 +99,18 @@ describe("recorte da aula e da chamada no servidor", () => {
     forgetCachedWorld(tenant.organizationId);
     expect(cached).toBe(await snapshot());
   });
+
+  it("filtro longo (400 aulas) vai em lotes que cabem na URL", async () => {
+    // Id de aula de verdade (`turma~data~hora`, mais de 50 caracteres): 150 deles estouravam a URL.
+    const classId = sessionId.split("~")[0];
+    const ids = Array.from({ length: 399 }, (_, i) => `${classId}~2026-${String(1 + (i % 12)).padStart(2, "0")}-${String(1 + (i % 28)).padStart(2, "0")}~${String(i % 24).padStart(2, "0")}:00`);
+    ids.push(sessionId);
+    const found = await runInWorld(ctx, async () => store.attendances.map((a) => a.sessionId), {
+      fn: async (_args, load) => {
+        await load.where("attendances", "sessionId", ids);
+      },
+      args: [],
+    });
+    expect(found).toEqual([sessionId]);
+  });
 });

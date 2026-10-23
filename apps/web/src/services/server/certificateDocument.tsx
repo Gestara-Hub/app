@@ -4,6 +4,7 @@ import { CERTIFICATE_ACCENT_HEX, renderCertificate } from "@gestarahub/core/cert
 import { CertificatePdf } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
 import { runInWorld } from "../world/runWorld";
+import { documentSlices } from "./documentSlices";
 import { loadSpaceLogo } from "./documents";
 import type { TenantContext } from "./tenant";
 
@@ -16,7 +17,10 @@ export async function renderCertificatePdf(
   ctx: TenantContext,
   enrollmentId: Id,
 ): Promise<{ pdf: Buffer; fileName: string }> {
-  const sheet = await runInWorld(ctx, () => courseCertificateService.getCourseCertificate(enrollmentId));
+  const sheet = await runInWorld(ctx, () => courseCertificateService.getCourseCertificate(enrollmentId), {
+    fn: documentSlices.certificate,
+    args: [enrollmentId],
+  });
   const { certificate, template } = sheet;
   const text = renderCertificate(certificate, template);
   const logo = template.logoFileId ? await loadSpaceLogo(ctx.organizationId) : null;

@@ -70,18 +70,24 @@ const sessionWithStudent: MethodSlice = async ([input], load) => {
   return session(sessionId, load, [studentId]);
 };
 
+/** Ids das aulas das turmas entre duas datas (todas as turmas ou so uma). */
+export function sessionIdsInRange(groups: ClassGroup[], dateFrom: DateISO, dateTo: DateISO, classGroupId?: Id): Id[] {
+  const ids: Id[] = [];
+  for (const date of datesBetween(dateFrom, dateTo)) {
+    const wd = weekdayOf(date);
+    for (const g of groups) {
+      if (classGroupId && g.id !== classGroupId) continue;
+      for (const slot of meetingSlotsOn(g, date)) if (slot.weekday === wd) ids.push(makeSessionId(g.id, date, slot.start));
+    }
+  }
+  return ids;
+}
+
 /** Aulas de um periodo: as turmas e, dessas aulas, marcacoes, reservas e substituicoes. */
 async function sessionsInRange(filter: { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }, load: SliceLoader): Promise<void> {
   await catalog(load);
   const groups = (await load.all("classGroups")) as unknown as ClassGroup[];
-  const ids: Id[] = [];
-  for (const date of datesBetween(filter.dateFrom, filter.dateTo)) {
-    const wd = weekdayOf(date);
-    for (const g of groups) {
-      if (filter.classGroupId && g.id !== filter.classGroupId) continue;
-      for (const slot of meetingSlotsOn(g, date)) if (slot.weekday === wd) ids.push(makeSessionId(g.id, date, slot.start));
-    }
-  }
+  const ids = sessionIdsInRange(groups, filter.dateFrom, filter.dateTo, filter.classGroupId);
   await Promise.all([
     load.all("enrollments"),
     load.all("clients"),
@@ -157,6 +163,8 @@ export const classSlices: Record<string, MethodSlice> = {
   deactivate: async ([id], load) => classWithStudents(id as Id, load),
   reactivate: async ([id], load) => classWithStudents(id as Id, load),
   setEnrollmentPayment: classOfRow("enrollments"),
+  // Frequencia do aluno no curso: a turma da matricula e os seus alunos.
+  getCourseCertificate: classOfRow("enrollments"),
   promoteFromWaitlist: classOfRow("waitlist"),
   removeFromWaitlist: classOfRow("waitlist"),
 };

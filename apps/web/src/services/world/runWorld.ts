@@ -233,8 +233,31 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
   };
 }
 
-/** Valores por consulta no filtro `in` (a URL do PostgREST tem limite de tamanho). */
+/**
+ * Lotes do filtro `in`: a URL do PostgREST tem limite de tamanho, e o lote
+ * conta caracteres, nao so valores (o id de uma aula, `turma~data~hora`, tem
+ * mais de 50: 150 deles estouravam a URL).
+ */
 const IN_CHUNK = 150;
+const IN_CHUNK_CHARS = 3000;
+
+export function inChunks(values: string[]): string[][] {
+  const chunks: string[][] = [];
+  let current: string[] = [];
+  let chars = 0;
+  for (const value of values) {
+    const size = encodeURIComponent(value).length + 3;
+    if (current.length > 0 && (current.length >= IN_CHUNK || chars + size > IN_CHUNK_CHARS)) {
+      chunks.push(current);
+      current = [];
+      chars = 0;
+    }
+    current.push(value);
+    chars += size;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
 
 /**
  * Carrega so o recorte do metodo (doc 19, fase 2): as colecoes e linhas que ele
@@ -274,8 +297,7 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
       const column = columnOf(table, field);
       const wanted = presentValues(values);
       const rows: Row[] = [];
-      for (let i = 0; i < wanted.length; i += IN_CHUNK) {
-        const chunk = wanted.slice(i, i + IN_CHUNK);
+      for (const chunk of inChunks(wanted)) {
         const { data, error } = await selectAllRows(
           () => admin.from(table).select("*").eq(scopeColumn(table), ctx.organizationId).in(column, chunk),
           { tieBreaker: schemaOf(table).primaryKey },
