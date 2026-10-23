@@ -117,6 +117,37 @@ test.describe("cadastro de turma", () => {
     await expect(page.getByTestId("class-billing-summary")).toContainText("1 de 20 alunos");
   });
 
+  test("mudar o horário oferece avisar os alunos, com o horário novo na mensagem", async ({ page }) => {
+    await seedClasses(page);
+    await page.goto("/classes/cg-1");
+    await pageAction(page, "Mais ações da turma", "Editar turma");
+    const edit = page.getByRole("dialog");
+    await edit.getByLabel("Início do encontro").first().fill("20:00");
+    await edit.getByLabel("Fim do encontro").first().fill("21:00");
+    await edit.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
+
+    const ask = page.getByRole("dialog", { name: "Avisar os alunos?" });
+    await expect(ask).toContainText("mudou de horário. Avisar 1 aluno pelo WhatsApp?");
+    await ask.getByRole("button", { name: "Avisar alunos" }).click();
+    const sheet = page.getByRole("dialog", { name: "Enviar em sequência" });
+    await expect(sheet).toContainText("1 de 1");
+    await expect(sheet).toContainText("sua turma vai mudar de horário. Novo horário:");
+    await expect(sheet).toContainText("20:00");
+  });
+
+  test("editar sem mudar o horário não pergunta", async ({ page }) => {
+    await seedClasses(page);
+    await page.goto("/classes/cg-1");
+    await pageAction(page, "Mais ações da turma", "Editar turma");
+    const edit = page.getByRole("dialog");
+    await edit.getByLabel("Capacidade (vagas)").fill("15");
+    await edit.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Turma atualizada com sucesso.")).toBeVisible();
+    await page.waitForTimeout(1000);
+    await expect(page.getByRole("dialog", { name: "Avisar os alunos?" })).toHaveCount(0);
+  });
+
   test("desativar e reativar com confirmação", async ({ page }) => {
     await seedClasses(page);
     await page.goto("/classes");

@@ -50,6 +50,8 @@ import { useBusinessSegment, useUnit } from "@/features/settings";
 import { useCategories } from "@/features/categories";
 import { useProfessionals } from "@/features/professionals";
 import { useClassGroups, useCreateClassGroup, useUpdateClassGroup } from "../hooks/use-turmas";
+import { requestScheduleNotice, slotsChanged } from "../schedule-notice";
+import { slotsSummary } from "./turmas-view";
 import {
   getTurmaFormSchema,
   type TurmaFormValues,
@@ -949,6 +951,14 @@ export function TurmaForm({
       if (isEdit && turma) {
         await updateMut.mutateAsync({ id: turma.id, payload });
         toast.success("Turma atualizada com sucesso.");
+        // Horario novo: oferece avisar os alunos (doc product/25).
+        if (slotsChanged(turma.meetingSlots, payload.meetingSlots)) {
+          requestScheduleNotice({
+            classGroupId: turma.id,
+            className: payload.name ?? turma.name,
+            slotsText: slotsSummary(payload.meetingSlots),
+          });
+        }
         onSuccess?.();
       } else {
         const created = await createMut.mutateAsync(payload);

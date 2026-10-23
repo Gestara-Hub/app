@@ -78,7 +78,7 @@ function SequenceBody({ group, onClose }: { group: ReminderGroup; onClose: () =>
   }
 
   const hasPhone = Boolean(whatsappNumber(current.phone ?? ""));
-  const text = whatsapp.compose(current.trigger, current.values, current.studentName);
+  const text = current.content ?? whatsapp.compose(current.trigger, current.values, current.studentName);
   const next = () => setIndex((i) => i + 1);
 
   function sendCurrent() {
@@ -86,6 +86,7 @@ function SequenceBody({ group, onClose }: { group: ReminderGroup; onClose: () =>
       trigger: current.trigger,
       recipient: { name: current.studentName, phone: current.phone, clientId: current.studentId },
       values: current.values,
+      ...(current.content ? { content: current.content } : {}),
       ...(current.chargeId ? { chargeId: current.chargeId } : {}),
       // A pessoa ve o texto aqui: no oficial, envia sem perguntar de novo.
       reviewed: true,

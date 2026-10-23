@@ -29,8 +29,10 @@ export type ReminderGroupKey =
   | "birthday"
   | "welcome"
   | "level_up"
-  | "payment_received";
-export type ReminderCategory = "billing" | "relationship";
+  | "payment_received"
+  /** Aviso a uma turma (mudanca de horario): montado na hora, fora do motor. */
+  | "schedule_change";
+export type ReminderCategory = "billing" | "relationship" | "notice";
 
 export interface ReminderItem {
   /** Chave estavel (adiar/ignorar): `<grupo>:<cobranca ou aluno>`. */
@@ -41,6 +43,8 @@ export interface ReminderItem {
   trigger: MessageTrigger;
   /** Variaveis do modelo ({aluno} e {empresa} vem do envio). */
   values: Record<string, string>;
+  /** Texto pronto (no lugar do modelo), ex.: aviso com o horario novo. */
+  content?: string;
   chargeId?: Id;
   detail: string;
   amountCents?: number;

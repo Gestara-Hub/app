@@ -173,6 +173,7 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   level_up: { icon: <Award className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   welcome: { icon: <UserPlus className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   payment_received: { icon: <HandCoins className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  schedule_change: { icon: <CalendarClock className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
 };
 
 /** Rotulo do botao do WhatsApp pelo tipo de lembrete. */

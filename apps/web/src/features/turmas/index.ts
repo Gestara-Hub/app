@@ -23,3 +23,4 @@ export { ModalityFormDrawer } from "./components/modality-form-drawer";
 export { CourseCertificateView, CourseCertificateLocked } from "./components/course-certificate-view";
 export { useChargeActions } from "./components/use-charge-actions";
 export { pickNextSession } from "./next-session";
+export { ScheduleNoticeHost } from "./components/schedule-notice-host";

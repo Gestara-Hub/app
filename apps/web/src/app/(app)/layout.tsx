@@ -8,6 +8,7 @@ import { NavigationTracker } from "@/components/layout/navigation-tracker";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { BrowserErrorReporter, SecurityPromptHost } from "@/features/auth";
+import { ScheduleNoticeHost } from "@/features/turmas";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
 import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
@@ -59,6 +60,7 @@ export default async function AppLayout({
             <WhatsAppConfirmHost />
             <BrowserErrorReporter />
             <SecurityPromptHost />
+            <ScheduleNoticeHost />
             {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
             <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
               <AppTopbar />
