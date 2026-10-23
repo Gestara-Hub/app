@@ -452,9 +452,9 @@ function churnRetention(data: ChurnReportData, competence: string): DocumentMode
       },
       {
         type: "table",
-        title: "Por modalidade",
+        title: "Por turma",
         columns: [
-          { key: "name", label: "Modalidade", width: 2.4 },
+          { key: "name", label: "Turma", width: 2.4 },
           { key: "active", label: "Alunos ativos", format: "integer" },
           { key: "churn", label: "Cancelamento", format: "percent" },
           { key: "retention", label: "Retenção", format: "percent" },
@@ -468,7 +468,7 @@ function churnRetention(data: ChurnReportData, competence: string): DocumentMode
           },
           tones: { churn: m.churnRatePercent > 0 ? "negative" : "default" },
         })),
-        emptyText: "Nenhuma modalidade com alunos neste mês.",
+        emptyText: "Nenhuma turma com alunos neste mês.",
       },
     ],
   };

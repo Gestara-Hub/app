@@ -207,8 +207,8 @@ test.describe("relatórios operacionais", () => {
     await page.getByRole("combobox", { name: "Aula" }).click();
     await page.getByRole("option", { name: "seg, 21/09 · 17:00" }).click();
     await expect(sheet).toContainText("Jiu-Jitsu Adulto · Jiu-Jitsu · Carlos Silva · seg, 21/09 · 17:00");
-    await expect(sheet).toContainText("1 presente");
-    await expect(sheet).toContainText("1 falta");
+    await expect(sheet.getByText("Presentes", { exact: true }).locator("..")).toContainText("1");
+    await expect(sheet.getByText("Faltas", { exact: true }).locator("..")).toContainText("1");
     const rows = sheet.locator("tbody tr");
     await expect(rows).toHaveCount(2);
     await expect(rows.filter({ hasText: "Aluno A20" })).toContainText("Faixa Azul");
@@ -238,8 +238,8 @@ test.describe("relatórios operacionais", () => {
     await seedReports(page);
     await openReport(page, "students_roster");
     const sheet = main(page);
-    await expect(sheet).toContainText("2 Ativos");
-    await expect(sheet).toContainText("1 Inativos");
+    await expect(sheet.getByText("Ativos", { exact: true }).locator("..")).toContainText("2");
+    await expect(sheet.getByText("Inativos", { exact: true }).locator("..")).toContainText("1");
     await expect(sheet.locator("tbody tr").filter({ hasText: "Aluno Inativo" })).toContainText("Inativo");
     await expect(sheet.locator("tbody tr").filter({ hasText: "Aluno A20" })).toContainText("Mensal Jiu-Jitsu");
     await expect(sheet.locator("tbody tr").filter({ hasText: "Aluno A20" })).toContainText("Faixa Azul");
@@ -277,7 +277,7 @@ test.describe("relatórios operacionais", () => {
     await seedReports(page);
     await openReport(page, "monthly_birthdays");
     const sheet = main(page);
-    await expect(sheet).toContainText("2 Aniversariantes");
+    await expect(sheet).toContainText("2 alunos fazem aniversário neste mês.");
     await expect(sheet.locator("tbody tr").first()).toContainText("Bruna Lima");
     await expect(sheet.locator("tbody tr").last()).toContainText("Aluno A20");
     await expect(sheet).not.toContainText("Aluno Inativo");
@@ -286,7 +286,7 @@ test.describe("relatórios operacionais", () => {
 
     await openReport(page, "monthly_birthdays", "2026-11");
     await expect(main(page)).toContainText("Aniversariantes de novembro");
-    await expect(main(page)).toContainText("0 Aniversariantes");
+    await expect(main(page)).toContainText("Nenhum aluno faz aniversário neste mês.");
   });
 
   test("cursos e pacotes com dados e mês vazio", async ({ page }) => {
@@ -301,14 +301,14 @@ test.describe("relatórios operacionais", () => {
     await openReport(page, "package_summary");
     const pkg = main(page).locator("tbody tr").filter({ hasText: "10 aulas" });
     await expect(pkg).toBeVisible();
-    await expect(main(page).locator("span", { hasText: /^Aulas usadas$/ }).locator("..")).toContainText("1");
-    await expect(main(page).locator("span", { hasText: /^Saldo de aulas$/ }).locator("..")).toContainText("9");
+    await expect(main(page).getByText("Aulas usadas", { exact: true }).first().locator("..")).toContainText("1");
+    await expect(main(page).getByText("Saldo de aulas", { exact: true }).first().locator("..")).toContainText("9");
 
     await openReport(page, "course_summary", "2026-06");
     await expect(main(page)).toContainText("Nenhum curso com aulas ou parcelas neste mês.");
     await openReport(page, "package_summary", "2026-06");
     // O saldo de hoje vale para qualquer mes; sem vendas nem uso em junho.
-    await expect(main(page).locator("span", { hasText: /^Vendidos$/ }).locator("..")).toContainText("0");
+    await expect(main(page).getByText("Vendidos", { exact: true }).first().locator("..")).toContainText("0");
   });
 
   test("trocar o mês no catálogo vale para o relatório aberto", async ({ page }) => {
@@ -383,7 +383,7 @@ test.describe("relatórios Pro", () => {
     await expect(sheet.getByText("Alunos no início", { exact: true }).locator("..")).toContainText("0");
     await expect(sheet).not.toContainText("118");
     await expect(sheet).not.toContainText("No-Gi");
-    await expect(sheet.locator("tbody tr")).toHaveCount(0);
+    await expect(sheet).toContainText("Nenhuma turma com alunos neste mês.");
   });
 });
 
