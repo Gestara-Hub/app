@@ -569,6 +569,32 @@ test.describe("Dashboard: pacotes acabando", () => {
   const todoCard = (page: Page) =>
     page.locator("[data-slot=card]").filter({ has: page.getByText("Lembretes", { exact: true }) });
 
+  test("enviar em sequência: um aluno por vez com a mensagem pronta, pular e o painel marca o avisado", async ({ page }) => {
+    await seedEnding(page);
+    const row = todoCard(page).getByRole("listitem").filter({ has: page.getByText("4 pacotes acabando") }).first();
+    await row.getByRole("button", { name: "Ver" }).click();
+    await row.getByRole("button", { name: "Enviar em sequência (4)" }).click();
+    const sheet = page.getByRole("dialog", { name: "Enviar em sequência" });
+    await expect(sheet).toContainText("1 de 4");
+    await expect(sheet).toContainText("Aluna Venceu");
+    await expect(sheet).toContainText("Sobre seu pacote 10 aulas na Academia X: venceu em 18/09.");
+    await expect(sheet).toContainText("Próximo: Aluna Acabou");
+
+    const first = await openedWhatsApp(page, () => sheet.getByRole("button", { name: "Abrir WhatsApp" }).click());
+    expect(first.text).toContain("Oi, Aluna Venceu!");
+    await expect(sheet).toContainText("2 de 4");
+    await expect(sheet).toContainText("Aluna Acabou");
+    await sheet.getByRole("button", { name: "Pular" }).click();
+    await expect(sheet).toContainText("3 de 4");
+    await sheet.getByRole("button", { name: "Pular" }).click();
+    await sheet.getByRole("button", { name: "Pular" }).click();
+    await expect(sheet).toContainText("1 mensagem aberta no WhatsApp.");
+    await sheet.getByRole("button", { name: "Concluir" }).click();
+
+    await expect(row.locator("ul li").nth(0)).toContainText("Avisado hoje");
+    await expect(todoCard(page)).toContainText("3 pendências");
+  });
+
   test("lista na ordem certa, avisa pelo WhatsApp (\"Avisado hoje\") e vender tira o aluno da lista", async ({ page }) => {
     await seedEnding(page);
     const row = todoCard(page).getByRole("listitem").filter({ has: page.getByText("4 pacotes acabando") }).first();

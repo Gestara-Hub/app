@@ -25,7 +25,13 @@ import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
 import { StudentGraduationDialog } from "@/features/clients";
-import { useReminders, useWhatsAppSend, type ReminderGroup, type ReminderItem } from "@/features/communication";
+import {
+  ReminderSequenceDialog,
+  useReminders,
+  useWhatsAppSend,
+  type ReminderGroup,
+  type ReminderItem,
+} from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
 import { SellPackageDialog } from "@/features/turmas";
 import { useLevelChangePending } from "./use-level-change-pending";
@@ -44,6 +50,8 @@ function TodoRow({
   detail,
   action,
   href,
+  toolbar,
+  footer,
   children,
 }: {
   icon: ReactNode;
@@ -52,6 +60,10 @@ function TodoRow({
   detail: string;
   action: string;
   href?: string;
+  /** Acima da lista aberta (ex.: "Enviar em sequência"). */
+  toolbar?: ReactNode;
+  /** Abaixo da lista aberta (ex.: "e mais N", link da tela completa). */
+  footer?: ReactNode;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -86,7 +98,11 @@ function TodoRow({
         )}
       </div>
       {children && open ? (
-        <ul className="space-y-2.5 border-t border-border/60 bg-muted/20 px-4 py-3">{children}</ul>
+        <div className="space-y-2.5 border-t border-border/60 bg-muted/20 px-4 py-3">
+          {toolbar}
+          <ul className="space-y-2.5">{children}</ul>
+          {footer}
+        </div>
       ) : null}
     </li>
   );
@@ -177,6 +193,7 @@ export function DashboardTodo({ today }: { today: string }) {
   const can = useCan();
   const canSellPackage = can("billing:manage");
   const [selling, setSelling] = useState<{ id: string; name: string } | null>(null);
+  const [sequence, setSequence] = useState<ReminderGroup | null>(null);
 
   // Titulo do bloco: a palavra das modalidades listadas quando todas falam
   // igual, senao a da area. O botao de cada aluno segue a modalidade dele.
@@ -210,6 +227,33 @@ export function DashboardTodo({ today }: { today: string }) {
                 title={group.title}
                 detail={group.detail}
                 action="Ver"
+                toolbar={
+                  group.pending >= 2 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="text-xs"
+                      disabled={!whatsapp.ready}
+                      onClick={() => setSequence(group)}
+                    >
+                      <MessageCircle className="size-3.5" />
+                      Enviar em sequência ({group.pending})
+                    </Button>
+                  ) : undefined
+                }
+                footer={
+                  group.hidden > 0 || group.href ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {group.hidden > 0 ? <span>e mais {group.hidden}</span> : null}
+                      {group.href ? (
+                        <Link href={group.href} className="inline-flex items-center gap-1 font-medium text-primary">
+                          Abrir em Cobranças
+                          <ArrowUpRight className="size-3.5" />
+                        </Link>
+                      ) : null}
+                    </div>
+                  ) : undefined
+                }
               >
                 {group.items.map((item) => (
                   <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
@@ -244,17 +288,6 @@ export function DashboardTodo({ today }: { today: string }) {
                     />
                   </StudentLine>
                 ))}
-                {group.hidden > 0 || group.href ? (
-                  <li className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
-                    {group.hidden > 0 ? <span>e mais {group.hidden}</span> : null}
-                    {group.href ? (
-                      <Link href={group.href} className="inline-flex items-center gap-1 font-medium text-primary">
-                        Abrir em Cobranças
-                        <ArrowUpRight className="size-3.5" />
-                      </Link>
-                    ) : null}
-                  </li>
-                ) : null}
               </TodoRow>
             ))}
 
@@ -295,6 +328,13 @@ export function DashboardTodo({ today }: { today: string }) {
           if (!open) setGraduating(null);
         }}
         initialModalityId={graduating?.modalityId}
+      />
+      <ReminderSequenceDialog
+        group={sequence}
+        open={sequence !== null}
+        onOpenChange={(open) => {
+          if (!open) setSequence(null);
+        }}
       />
       <SellPackageDialog
         open={selling !== null}
