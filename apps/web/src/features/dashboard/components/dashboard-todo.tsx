@@ -194,7 +194,7 @@ function whatsAppLabel(item: ReminderItem): string {
  * Cada aluno: WhatsApp com o modelo pronto e, no menu, adiar ou nao lembrar.
  * O ja avisado aparece marcado e nao conta como pendencia.
  */
-export function DashboardTodo({ today }: { today: string }) {
+export function DashboardTodo({ today, bare = false }: { today: string; /** Sem o cartao (no painel do sino). */ bare?: boolean }) {
   const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
   const reminders = useReminders(today);
@@ -220,114 +220,124 @@ export function DashboardTodo({ today }: { today: string }) {
     ];
   }
 
+  const list = (
+    <ul className="divide-y divide-border/60">
+      {reminders.groups.map((group) => (
+        <TodoRow
+          key={group.key}
+          icon={GROUP_LOOK[group.key].icon}
+          tone={GROUP_LOOK[group.key].tone}
+          title={group.title}
+          detail={group.detail}
+          action="Ver"
+          toolbar={
+            group.pending >= 2 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="text-xs"
+                disabled={!whatsapp.ready}
+                onClick={() => setSequence(group)}
+              >
+                <MessageCircle className="size-3.5" />
+                Enviar em sequência ({group.pending})
+              </Button>
+            ) : undefined
+          }
+          footer={
+            group.hidden > 0 || group.href ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {group.hidden > 0 ? <span>e mais {group.hidden}</span> : null}
+                {group.href ? (
+                  <Link href={group.href} className="inline-flex items-center gap-1 font-medium text-primary">
+                    Abrir em Cobranças
+                    <ArrowUpRight className="size-3.5" />
+                  </Link>
+                ) : null}
+              </div>
+            ) : undefined
+          }
+        >
+          {group.items.map((item) => (
+            <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
+              <WhatsAppButton
+                label={whatsAppLabel(item)}
+                done={Boolean(item.done)}
+                disabled={!whatsapp.ready}
+                onClick={() =>
+                  whatsapp.send({
+                    trigger: item.trigger,
+                    recipient: { name: item.studentName, phone: item.phone, clientId: item.studentId },
+                    values: item.values,
+                    ...(item.chargeId ? { chargeId: item.chargeId } : {}),
+                  })
+                }
+              />
+              {group.key === "packages" && canSellPackage ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 text-xs"
+                  onClick={() => setSelling({ id: item.studentId, name: item.studentName })}
+                >
+                  Vender pacote
+                </Button>
+              ) : null}
+              <ListItemActionsMenu
+                actions={itemActions(item)}
+                title="Mais ações"
+                ariaLabel={`Mais ações de ${item.studentName}`}
+                variant="ghost"
+              />
+            </StudentLine>
+          ))}
+        </TodoRow>
+      ))}
+
+      {levelPending.length > 0 ? (
+        <TodoRow
+          icon={<ArrowUpCircle className="size-4" />}
+          tone="bg-amber-500/15 text-amber-700 dark:text-amber-400"
+          title={`${plural(levelPending.length, "aluno precisa", "alunos precisam")} trocar de ${levelWord} pela idade`}
+          detail={namesLine(levelPending.map((p) => p.client.name))}
+          action="Ver"
+        >
+          {levelPending.map((p) => (
+            <StudentLine
+              key={p.key}
+              name={p.client.name}
+              detail={`${p.levelName} · ${p.modalityName} · passou da idade`}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 text-xs"
+                onClick={() => setGraduating({ client: p.client, modalityId: p.modalityId })}
+              >
+                {vocabularyForTrack(p.track, areaVocabulary).promoteVerb}
+              </Button>
+            </StudentLine>
+          ))}
+        </TodoRow>
+      ) : null}
+    </ul>
+  );
+
   return (
     <>
-      {count > 0 ? (
+      {bare ? (
+        count > 0 ? (
+          list
+        ) : (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nada para lembrar agora.</p>
+        )
+      ) : count > 0 ? (
         <Card className="gap-0 py-0">
           <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
             <p className="text-sm font-semibold text-foreground">Lembretes</p>
             <span className="text-xs text-muted-foreground">{plural(count, "pendência", "pendências")}</span>
           </div>
-          <ul className="divide-y divide-border/60">
-            {reminders.groups.map((group) => (
-              <TodoRow
-                key={group.key}
-                icon={GROUP_LOOK[group.key].icon}
-                tone={GROUP_LOOK[group.key].tone}
-                title={group.title}
-                detail={group.detail}
-                action="Ver"
-                toolbar={
-                  group.pending >= 2 ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-xs"
-                      disabled={!whatsapp.ready}
-                      onClick={() => setSequence(group)}
-                    >
-                      <MessageCircle className="size-3.5" />
-                      Enviar em sequência ({group.pending})
-                    </Button>
-                  ) : undefined
-                }
-                footer={
-                  group.hidden > 0 || group.href ? (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {group.hidden > 0 ? <span>e mais {group.hidden}</span> : null}
-                      {group.href ? (
-                        <Link href={group.href} className="inline-flex items-center gap-1 font-medium text-primary">
-                          Abrir em Cobranças
-                          <ArrowUpRight className="size-3.5" />
-                        </Link>
-                      ) : null}
-                    </div>
-                  ) : undefined
-                }
-              >
-                {group.items.map((item) => (
-                  <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
-                    <WhatsAppButton
-                      label={whatsAppLabel(item)}
-                      done={Boolean(item.done)}
-                      disabled={!whatsapp.ready}
-                      onClick={() =>
-                        whatsapp.send({
-                          trigger: item.trigger,
-                          recipient: { name: item.studentName, phone: item.phone, clientId: item.studentId },
-                          values: item.values,
-                          ...(item.chargeId ? { chargeId: item.chargeId } : {}),
-                        })
-                      }
-                    />
-                    {group.key === "packages" && canSellPackage ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="shrink-0 text-xs"
-                        onClick={() => setSelling({ id: item.studentId, name: item.studentName })}
-                      >
-                        Vender pacote
-                      </Button>
-                    ) : null}
-                    <ListItemActionsMenu
-                      actions={itemActions(item)}
-                      title="Mais ações"
-                      ariaLabel={`Mais ações de ${item.studentName}`}
-                      variant="ghost"
-                    />
-                  </StudentLine>
-                ))}
-              </TodoRow>
-            ))}
-
-            {levelPending.length > 0 ? (
-              <TodoRow
-                icon={<ArrowUpCircle className="size-4" />}
-                tone="bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                title={`${plural(levelPending.length, "aluno precisa", "alunos precisam")} trocar de ${levelWord} pela idade`}
-                detail={namesLine(levelPending.map((p) => p.client.name))}
-                action="Ver"
-              >
-                {levelPending.map((p) => (
-                  <StudentLine
-                    key={p.key}
-                    name={p.client.name}
-                    detail={`${p.levelName} · ${p.modalityName} · passou da idade`}
-                  >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0 text-xs"
-                      onClick={() => setGraduating({ client: p.client, modalityId: p.modalityId })}
-                    >
-                      {vocabularyForTrack(p.track, areaVocabulary).promoteVerb}
-                    </Button>
-                  </StudentLine>
-                ))}
-              </TodoRow>
-            ) : null}
-          </ul>
+          {list}
         </Card>
       ) : null}
 
@@ -355,4 +365,11 @@ export function DashboardTodo({ today }: { today: string }) {
       />
     </>
   );
+}
+
+/** Pendencias dos lembretes mais a troca de nivel pela idade (o numero do sino). */
+export function useReminderCount(today: string): number {
+  const reminders = useReminders(today);
+  const levelPending = useLevelChangePending(today);
+  return reminders.pending + levelPending.length;
 }

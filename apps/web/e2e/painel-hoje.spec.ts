@@ -203,6 +203,24 @@ test("troca de faixa pela idade: 'Graduar' abre a graduação com a sugestão", 
   await expect(todoCard(page)).toContainText("4 pendências");
 });
 
+test("sino no topo: o número de pendências e a mesma lista num painel lateral, em qualquer tela", async ({ page }) => {
+  await seedTodo(page);
+  await page.goto("/classes");
+  const bell = page.getByRole("button", { name: "Lembretes: 4 lembretes pendentes" });
+  await expect(bell).toBeVisible();
+  await bell.click();
+  const sheet = page.getByRole("dialog", { name: "Lembretes" });
+  await expect(sheet).toContainText("4 pendências");
+  await expect(sheet).toContainText("1 cobrança em atraso");
+  await expect(sheet).toContainText("1 aniversariante hoje");
+  const row = sheet.getByRole("listitem").filter({ has: page.getByText("1 aniversariante hoje") }).first();
+  await row.getByRole("button", { name: "Ver" }).click();
+  await openedWhatsApp(page, () => row.getByRole("button", { name: "Mandar parabéns para Aluno Parabéns no WhatsApp" }).click());
+  await expect(row).toContainText("Parabéns enviado hoje");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Lembretes: 3 lembretes pendentes" })).toBeVisible();
+});
+
 test("sem pendências o bloco não aparece", async ({ page }) => {
   await seedAcademy(page, {
     extra: (t) => {
@@ -215,4 +233,6 @@ test("sem pendências o bloco não aparece", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.getByText("Nenhuma mensalidade gerada no mês")).toBeVisible();
   await expect(page.getByText("Lembretes", { exact: true })).toHaveCount(0);
+  // Sem pendencia, sem sino.
+  await expect(page.getByRole("button", { name: /^Lembretes:/ })).toHaveCount(0);
 });

@@ -29,6 +29,7 @@ import { useOrganization, useSubscription, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
+import { RemindersBell } from "@/features/dashboard";
 
 export function AppTopbar() {
   const user = useCurrentUser();
@@ -78,6 +79,7 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <RemindersBell />
         <Button
           asChild
           variant="outline"
