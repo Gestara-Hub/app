@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, CheckCircle2, Clock, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, Mail, RefreshCw, ShieldCheck, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +55,11 @@ interface SignupFormProps {
   /** Prefixo dos ids dos campos. */
   idPrefix: string;
   className?: string;
+  /**
+   * "Entrar" quando o e-mail ja tem conta. Na tela de login troca de aba sem
+   * sair da pagina; sem ele, o botao leva para o /login.
+   */
+  onSignIn?: (email: string) => void;
 }
 
 interface PendingLinkModalState {
@@ -70,9 +75,9 @@ interface PendingLinkModalState {
  *   uma modal informando que o link ja foi enviado e que expira em 24h, dando a
  *   opcao de gerar e enviar um novo link (expirando o anterior na hora).
  */
-export function SignupForm({ idPrefix, className }: SignupFormProps) {
+export function SignupForm({ idPrefix, className, onSignIn }: SignupFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [accountExistsEmail, setAccountExistsEmail] = useState<string | null>(null);
+  const [existingAccount, setExistingAccount] = useState<{ email: string; googleOnly: boolean } | null>(null);
   const [sentToEmail, setSentToEmail] = useState<string | null>(null);
   const [pendingModal, setPendingModal] = useState<PendingLinkModalState | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -85,7 +90,7 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
 
   const onSubmit = form.handleSubmit(({ name, email }) => {
     setSubmitError(null);
-    setAccountExistsEmail(null);
+    setExistingAccount(null);
 
     startTransition(async () => {
       const result = await requestSignupLink({ name, email, forceResend: false });
@@ -106,7 +111,7 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
       }
 
       if (result.status === "account_exists") {
-        setAccountExistsEmail(result.email);
+        setExistingAccount({ email: result.email, googleOnly: result.googleOnly });
         return;
       }
 
@@ -141,42 +146,32 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
 
   if (sentToEmail) {
     return (
-      <div
-        role="status"
-        className={cn(
-          "rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5 text-left space-y-3",
-          className,
-        )}
-      >
+      <div role="status" className={cn("space-y-4 text-left", className)}>
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="size-5" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+            <Mail className="size-5" aria-hidden />
           </div>
-          <div className="space-y-1 min-w-0">
-            <h3 className="text-base font-bold text-foreground">
-              Verifique seu e-mail para criar sua senha
-            </h3>
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-base font-semibold text-foreground">Confira seu e-mail</h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Enviamos um link de acesso para{" "}
-              <strong className="font-semibold text-foreground break-all">{sentToEmail}</strong>.
-              Clique no botão do e-mail para definir sua senha e configurar seu espaço.
+              Enviamos um link para{" "}
+              <strong className="font-semibold text-foreground break-all">{sentToEmail}</strong> para você criar
+              sua senha.
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Ele vale por 24 horas. Não chegou? Veja o spam.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          <Clock className="size-3.5 shrink-0" />
-          <span>Este link é válido por 24 horas. Verifique também a caixa de spam ou promoções.</span>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3 text-sm">
           <button
             type="button"
             onClick={() => {
               setSentToEmail(null);
               setSubmitError(null);
             }}
-            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline cursor-pointer"
+            className="cursor-pointer text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             Usar outro e-mail
           </button>
@@ -192,9 +187,9 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
                 email: sentToEmail,
               });
             }}
-            className="text-xs font-semibold text-primary underline-offset-4 hover:underline cursor-pointer disabled:opacity-50"
+            className="cursor-pointer font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-50"
           >
-            Não recebeu? Gerar novo link
+            Reenviar link
           </button>
         </div>
       </div>
@@ -235,18 +230,40 @@ export function SignupForm({ idPrefix, className }: SignupFormProps) {
             </div>
           </div>
 
-          {accountExistsEmail ? (
-            <div
-              role="alert"
-              className="rounded-lg border border-primary/30 bg-primary/5 px-3.5 py-2.5 text-sm text-foreground"
-            >
-              Já existe uma conta cadastrada com <strong>{accountExistsEmail}</strong>.{" "}
-              <Link
-                href={`/login?email=${encodeURIComponent(accountExistsEmail)}`}
-                className="font-semibold text-primary underline underline-offset-4"
-              >
-                Entrar na minha conta &rarr;
-              </Link>
+          {existingAccount ? (
+            <div role="alert" className="flex gap-3 rounded-xl border border-border bg-muted/50 p-4">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <UserCheck className="size-4" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold text-foreground">Você já tem conta</p>
+                  <p className="text-sm break-words text-muted-foreground">
+                    {existingAccount.googleOnly
+                      ? `${existingAccount.email} entra pelo Google.`
+                      : `${existingAccount.email} já está cadastrado.`}
+                  </p>
+                </div>
+                {onSignIn ? (
+                  <Button type="button" variant="outline" className="w-full gap-2" onClick={() => onSignIn(existingAccount.email)}>
+                    <LogIn className="size-4" aria-hidden />
+                    {existingAccount.googleOnly ? "Entrar com o Google" : "Entrar com este e-mail"}
+                  </Button>
+                ) : (
+                  <Button asChild variant="outline" className="w-full gap-2">
+                    <Link
+                      href={
+                        existingAccount.googleOnly
+                          ? "/login"
+                          : `/login?email=${encodeURIComponent(existingAccount.email)}`
+                      }
+                    >
+                      <LogIn className="size-4" aria-hidden />
+                      {existingAccount.googleOnly ? "Entrar com o Google" : "Entrar com este e-mail"}
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
           ) : null}
 

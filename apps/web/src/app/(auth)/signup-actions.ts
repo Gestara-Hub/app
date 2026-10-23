@@ -20,9 +20,9 @@ import {
   encodeSession,
   safeRedirectPath,
 } from "@/lib/session";
-import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { getCurrentUser } from "@/features/auth/get-current-user";
-import { createOwnerAccount, loadSessionPayload } from "@/services/server/accountSetup";
+import { createOwnerAccount } from "@/services/server/accountSetup";
+import { finishSignIn, needsSecondFactor } from "./sign-in-session";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,6 +43,49 @@ async function resolveAppBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
+const ACCOUNT_EXISTS_MESSAGE = 'Este e-mail já tem conta. Entre com ele ou use "Esqueci minha senha".';
+
+/** O login ja tem usuario no app (pelo `id` ou pelo `auth_user_id`)? */
+async function hasAppUser(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  authUserId: string,
+): Promise<boolean> {
+  const { data } = await admin
+    .from("users")
+    .select("id")
+    .or(`id.eq.${authUserId},auth_user_id.eq.${authUserId}`)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Conta de verdade com este e-mail no Auth, mesmo quando o e-mail do app
+ * ficou diferente do login: devolve o id do login. Sem isso o cadastro pelo
+ * link entrava em ciclo (recusa, "link expirado", novo link, recusa).
+ */
+async function linkedAuthUserIdByEmail(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  email: string,
+): Promise<string | null> {
+  const authUser = await findAuthUserByEmail(admin, email);
+  return authUser && (await hasAppUser(admin, authUser.id)) ? authUser.id : null;
+}
+
+/** Login do Auth pelo e-mail, em todas as paginas (a listagem vem paginada). */
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  email: string,
+): Promise<{ id: string } | null> {
+  const perPage = 1000;
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error || !data) return null;
+    const found = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (found) return { id: found.id };
+    if (data.users.length < perPage) return null;
+  }
+}
+
 async function setSessionCookie(user: UserView): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, encodeSession(user), {
@@ -61,7 +104,8 @@ export type RequestSignupLinkResult =
       name: string;
       expiresAt: string;
     }
-  | { status: "account_exists"; email: string }
+  /** `googleOnly`: a conta entra so pelo Google (nao tem senha). */
+  | { status: "account_exists"; email: string; googleOnly: boolean }
   | { status: "error"; message: string };
 
 /**
@@ -116,7 +160,7 @@ export async function requestSignupLink(input: {
     // 1. Verifica se ja existe conta concluida com este e-mail em public.users
     const { data: existingUsers, error: userErr } = await admin
       .from("users")
-      .select("id, email")
+      .select("id, email, auth_user_id")
       .ilike("email", normalizedEmail)
       .limit(1);
 
@@ -128,8 +172,14 @@ export async function requestSignupLink(input: {
       };
     }
 
-    if (existingUsers && existingUsers.length > 0) {
-      return { status: "account_exists", email: normalizedEmail };
+    const existingAuthUserId =
+      existingUsers && existingUsers.length > 0
+        ? existingUsers[0].auth_user_id
+        : await linkedAuthUserIdByEmail(admin, normalizedEmail);
+    if ((existingUsers && existingUsers.length > 0) || existingAuthUserId) {
+      // Conta criada pelo Google nao tem senha: a tela orienta a entrar pelo Google.
+      const googleOnly = await isGoogleOnlyAuthUser(admin, existingAuthUserId);
+      return { status: "account_exists", email: normalizedEmail, googleOnly };
     }
 
     // 2. Busca tokens pendentes para este e-mail
@@ -164,7 +214,8 @@ export async function requestSignupLink(input: {
     if (expiredIds.length > 0) {
       await admin
         .from("signup_tokens")
-        .update({ status: "expired" })
+        // A tabela so aceita pending, consumed e revoked: vencido vira revoked.
+        .update({ status: "revoked" })
         .in("id", expiredIds);
     }
 
@@ -177,22 +228,6 @@ export async function requestSignupLink(input: {
         name: activePending.name || trimmedName,
         expiresAt: activePending.expires_at,
       };
-    }
-
-    // 4. Revoga na hora qualquer link pendente anterior deste e-mail
-    if (pendingTokens && pendingTokens.length > 0) {
-      const activeIds = pendingTokens
-        .filter((row) => !expiredIds.includes(row.id))
-        .map((row) => row.id);
-      if (activeIds.length > 0) {
-        await admin
-          .from("signup_tokens")
-          .update({
-            status: "revoked",
-            consumed_at: now.toISOString(),
-          })
-          .in("id", activeIds);
-      }
     }
 
     // 5. Gera novo token (24h) e salva o hash SHA-256
@@ -227,10 +262,22 @@ export async function requestSignupLink(input: {
     });
 
     if (!emailResult.ok) {
+      // O e-mail nao saiu: o link novo nao vale (senao a proxima tentativa diria
+      // "link ja enviado") e o anterior, se houver, continua valendo.
+      await admin.from("signup_tokens").update({ status: "revoked", consumed_at: now.toISOString() }).eq("token_hash", tokenHash);
       return {
         status: "error",
         message: emailResult.error,
       };
+    }
+
+    // 7. Enviado: so agora revoga os links anteriores deste e-mail.
+    const previousIds = (pendingTokens ?? []).map((row) => row.id).filter((id) => !expiredIds.includes(id));
+    if (previousIds.length > 0) {
+      await admin
+        .from("signup_tokens")
+        .update({ status: "revoked", consumed_at: now.toISOString() })
+        .in("id", previousIds);
     }
 
     return { status: "sent", email: normalizedEmail };
@@ -299,13 +346,16 @@ export async function validateSignupToken(
     if (existingUser || row.status === "consumed") {
       return { status: "consumed", email: row.email };
     }
+    if (await linkedAuthUserIdByEmail(admin, String(row.email).trim().toLowerCase())) {
+      return { status: "consumed", email: row.email };
+    }
 
     const isPastExpiry = new Date(row.expires_at) <= new Date();
     if (row.status === "revoked" || row.status === "expired" || isPastExpiry) {
       if (row.status === "pending" && isPastExpiry) {
         await admin
           .from("signup_tokens")
-          .update({ status: "expired" })
+          .update({ status: "revoked" })
           .eq("id", row.id);
       }
       return {
@@ -369,6 +419,13 @@ export async function completeSignupWithPassword(input: {
       name: validation.name,
     };
   }
+  if (validation.status === "consumed") {
+    return {
+      ok: false,
+      code: "invalid",
+      message: ACCOUNT_EXISTS_MESSAGE,
+    };
+  }
   if (validation.status !== "valid") {
     return {
       ok: false,
@@ -410,16 +467,27 @@ export async function completeSignupWithPassword(input: {
     if (createAuthErr || !authUserId) {
       // Caso o usuario ja tenha sido criado no Auth em tentativa interrompida,
       // localiza pelo e-mail e atualiza a senha.
-      const { data: usersList } = await admin.auth.admin.listUsers();
-      const existingAuthUser = usersList?.users.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail,
-      );
+      const existingAuthUser = await findAuthUserByEmail(admin, normalizedEmail);
       if (!existingAuthUser) {
         console.error("[signup] Erro ao criar usuario no Auth:", createAuthErr);
         return {
           ok: false,
           code: "error",
           message: "Não foi possível criar sua conta. Tente novamente.",
+        };
+      }
+      // So e tentativa interrompida se o login ainda nao tem usuario no app.
+      // Com usuario (ex.: e-mail diferente em public.users), reaproveitar
+      // trocaria a senha e tiraria a pessoa do proprio espaco.
+      if (await hasAppUser(admin, existingAuthUser.id)) {
+        await admin
+          .from("signup_tokens")
+          .update({ status: "revoked", consumed_at: new Date().toISOString() })
+          .eq("token_hash", hashToken(input.token.trim()));
+        return {
+          ok: false,
+          code: "error",
+          message: ACCOUNT_EXISTS_MESSAGE,
         };
       }
       authUserId = existingAuthUser.id;
@@ -490,7 +558,8 @@ export async function completeSignupWithPassword(input: {
 
 export type SignInWithPasswordResult =
   | ({ ok: true; redirectTo: string } & HydratedTenantPayload)
-  | { ok: false; message: string };
+  /** `twoFactorRequired`: senha certa, falta o codigo do app (tela /two-factor). */
+  | { ok: false; message: string; twoFactorRequired?: boolean };
 
 /**
  * Entrar na demonstracao (doc 15, fatia 4): login de verdade no espaco de
@@ -518,6 +587,17 @@ async function signInAsDemo(profile: UserProfile, from?: string): Promise<SignIn
   const demoUser = DEMO_USERS.find((u) => u.profile === profile);
   if (!password || !demoUser) return { ok: false, message: "A demonstração não está disponível neste ambiente." };
   return signInWithPasswordAction({ email: demoUser.email, password, from });
+}
+
+/** Conta do Supabase Auth so com Google (sem senha). */
+async function isGoogleOnlyAuthUser(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  authUserId: unknown,
+): Promise<boolean> {
+  if (!authUserId) return false;
+  const { data } = await admin.auth.admin.getUserById(String(authUserId));
+  const providers = (data?.user?.identities ?? []).map((identity) => identity.provider);
+  return providers.includes("google") && !providers.includes("email");
 }
 
 /**
@@ -555,58 +635,37 @@ export async function signInWithPasswordAction(input: {
         password: input.password,
       });
 
+    const admin = createSupabaseAdminClient();
     if (authErr || !authData.user) {
+      // Conta so do Google nao tem senha: em vez de "senha incorreta", orienta.
+      const { data: googleUser } = await admin
+        .from("users")
+        .select("auth_user_id")
+        .ilike("email", normalizedEmail)
+        .limit(1)
+        .maybeSingle();
+      if (await isGoogleOnlyAuthUser(admin, googleUser?.auth_user_id)) {
+        return {
+          ok: false,
+          message: "Esta conta entra pelo Google. Use \"Continuar com Google\".",
+        };
+      }
       return {
         ok: false,
         message: "E-mail ou senha incorretos.",
       };
     }
 
-    const admin = createSupabaseAdminClient();
-    const { data: dbUser, error: userErr } = await admin
-      .from("users")
-      .select("*")
-      .eq("id", authData.user.id)
-      .maybeSingle();
-
-    if (userErr || !dbUser) {
-      return {
-        ok: false,
-        message: "Usuário não encontrado na organização.",
-      };
+    // Verificacao em duas etapas ligada (doc 17): a sessao do app so nasce
+    // depois do codigo, na tela /two-factor.
+    if (await needsSecondFactor(supabase)) {
+      await resetRateLimit(rateLimitKey);
+      return { ok: false, message: "", twoFactorRequired: true };
     }
 
-    if (dbUser.status === "inactive") {
-      return {
-        ok: false,
-        message: "Sua conta está inativa. Procure o responsável pelo espaço.",
-      };
-    }
-
-    const { user: userView, organization, unit, categories } = await loadSessionPayload(admin, dbUser);
-
-    await setSessionCookie(userView);
-
-    const needsSetup =
-      userView.profile === "owner" && !organization.settings?.onboardingCompleted;
-
-    const safeFrom = safeRedirectPath(input.from);
-    const redirectTo = needsSetup
-      ? "/setup"
-      : safeFrom && canAccessRoute(userView, safeFrom, organization.model)
-        ? safeFrom
-        : firstAllowedRoute(userView, organization.model);
-
-    await resetRateLimit(rateLimitKey);
-
-    return {
-      ok: true,
-      user: userView,
-      organization,
-      unit,
-      categories,
-      redirectTo,
-    };
+    const result = await finishSignIn(admin, authData.user.id, input.from);
+    if (result.ok) await resetRateLimit(rateLimitKey);
+    return result;
   } catch (err) {
     console.error("[auth] Erro em signInWithPasswordAction:", err);
     return {
