@@ -49,7 +49,7 @@ import { useOrganization, useUnit } from "../hooks/use-settings";
 import { UnsavedChangesStatus, useReportDirty } from "./unsaved-changes";
 
 /** Texto do upsell (uma linha, como os outros recursos do Pro). */
-export const CERTIFICATE_TEMPLATE_LOCKED_HINT = "Modelo de certificado no Plano Pro.";
+export const CERTIFICATE_TEMPLATE_LOCKED_HINT = "Modelo de certificado no Plano Profissional.";
 
 const BODY_ID = "certificate-body";
 
@@ -91,7 +91,7 @@ function toValues(template: CertificateTemplate): Values {
 }
 
 /**
- * Configuracoes -> "Certificado" (Plano Pro): o modelo do certificado de
+ * Configuracoes -> "Certificado" (Plano Profissional): o modelo do certificado de
  * conclusao do espaco, com previa ao vivo. Sem o recurso mostra o upsell.
  */
 export function CertificateTemplateCard({
@@ -104,13 +104,17 @@ export function CertificateTemplateCard({
   const query = useCertificateTemplate();
 
   if (!hasFeature("certificates")) {
+    // Bloqueado: na largura das outras abas (a aba aberta usa a largura da previa).
     return (
-      <FeatureLocked
-        title="Modelo de certificado"
-        description={CERTIFICATE_TEMPLATE_LOCKED_HINT}
-        icon={<Award className="size-7" aria-hidden />}
-        canManagePlan={can("subscription:manage")}
-      />
+      <div className="max-w-3xl">
+        <FeatureLocked
+          title="Modelo de certificado"
+          description={CERTIFICATE_TEMPLATE_LOCKED_HINT}
+          icon={<Award className="size-7" aria-hidden />}
+          canManagePlan={can("subscription:manage")}
+          align="start"
+        />
+      </div>
     );
   }
 

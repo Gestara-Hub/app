@@ -31,7 +31,7 @@ import {
  *   titular (escopo do professor, 18/10/2026: a turma dos outros nem abre);
  * - atendente ve, nao lanca nem cobra;
  * - gerente e dono fazem tudo;
- * - certificado e cobrar online so no Plano Pro.
+ * - certificado e cobrar online so no Plano Profissional.
  * Hoje e terca 22/09/2026.
  */
 
@@ -245,7 +245,7 @@ test.describe("gerente", () => {
   });
 });
 
-test.describe("Plano Pro", () => {
+test.describe("Plano Profissional", () => {
   test("grátis: certificado com cadeado na ficha e cobrar online bloqueado", async ({ page }) => {
     await seedSchool(page);
     await page.goto("/clients/c-a");
@@ -253,8 +253,8 @@ test.describe("Plano Pro", () => {
     await openProfileSection(page, "Turmas");
     await page.getByRole("button", { name: "Mostrar encerradas (1)" }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Inglês Intensivo", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
-    await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
+    await page.getByRole("menuitem", { name: "Certificado (Plano Profissional)" }).click();
+    await expect(page.getByText("Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
 
     await page.goto("/clients/c-a?tab=charges");

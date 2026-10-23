@@ -94,7 +94,7 @@ export function RecurringAuthorizationSection({
         <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <p>
           <span className="font-medium text-foreground">Pix Automático</span>: a
-          mensalidade é paga sozinha no vencimento. Disponível no Plano Pro.
+          mensalidade é paga sozinha no vencimento. Disponível no Plano Profissional.
           {can("subscription:manage") ? (
             <>
               {" "}
@@ -102,7 +102,7 @@ export function RecurringAuthorizationSection({
                 href={PLAN_SETTINGS_HREF}
                 className="font-medium text-primary hover:underline"
               >
-                Ver Plano Pro
+                Ver Plano Profissional
               </Link>
             </>
           ) : null}

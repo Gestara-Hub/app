@@ -3,7 +3,7 @@ import { sessionHasFeature } from "@/features/auth/get-subscription-tier";
 import { can } from "@/lib/permissions";
 import { CourseCertificateLocked, CourseCertificateView } from "@/features/turmas";
 
-/** Certificado de conclusao do curso (Plano Pro): quem ve a turma pode imprimir. */
+/** Certificado de conclusao do curso (Plano Profissional): quem ve a turma pode imprimir. */
 export default async function CourseCertificatePage({
   params,
 }: {

@@ -158,7 +158,7 @@ export function ReportsCatalogTab({
                       }`}
                     >
                       {isLocked ? <Lock className="size-2.5" /> : <Sparkles className="size-2.5" />}
-                      Plano Pro
+                      Plano Profissional
                     </Badge>
                   ) : null}
                 </div>
@@ -180,7 +180,7 @@ export function ReportsCatalogTab({
                   {isLocked ? (
                     <>
                       <Lock className="size-3" />
-                      Disponível no Plano Pro
+                      Disponível no Plano Profissional
                     </>
                   ) : (
                     "Abrir"

@@ -42,7 +42,7 @@ import { OnlineChargeDialog } from "./online-charge-dialog";
 import {
   CANCEL_REASON_SUGGESTIONS,
   EXTRA_CANCEL_REASON_SUGGESTIONS,
-  PAID_ONLINE_HINT,
+  OnlineSettlementPopover,
   PAID_RECURRING_HINT,
   getCycleTitle,
   isInstallmentKind,
@@ -83,7 +83,7 @@ export function useChargeActions() {
   const whatsapp = useWhatsAppSend();
   const onlineEnabled = Boolean(org?.settings?.onlinePayments?.enabled);
   const onlineBlockedReason = !hasOnlineFeature
-    ? "Plano Pro"
+    ? "Plano Profissional"
     : !onlineEnabled
       ? "desligado nas Configurações"
       : null;
@@ -272,7 +272,23 @@ export function useChargeActions() {
 
     if (c.status === "paid") {
       if (isPaidOnline(c)) {
-        const hint = c.paidVia === "recurring" ? PAID_RECURRING_HINT : PAID_ONLINE_HINT;
+        // Pago online: o (i) abre o mesmo quadro do selo (quando pagou, valores, saque, comprovante).
+        if (c.paidVia === "online") {
+          return (
+            <OnlineSettlementPopover charge={c}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title="Ver detalhes do pagamento online"
+                aria-label={`Ver detalhes do pagamento online de ${c.studentName}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Info className={iconCls} />
+              </Button>
+            </OnlineSettlementPopover>
+          );
+        }
+        const hint = PAID_RECURRING_HINT;
         return (
           <span
             title={hint}

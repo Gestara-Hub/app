@@ -587,9 +587,9 @@ test.describe("seções", () => {
     await expect(done).toContainText("Concluído");
     await expect(canceled).toContainText("Saiu em 05/09");
 
-    // Concluido: "Certificado" no menu, com o aviso do Plano Pro no gratis (como na turma).
+    // Concluido: "Certificado" no menu, com o aviso do Plano Profissional no gratis (como na turma).
     await page.getByRole("button", { name: "Ações da matrícula em Defesa Pessoal", exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "Certificado (Plano Pro)" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Certificado (Plano Profissional)" })).toBeVisible();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Ações da matrícula em Jiu-Jitsu Adulto", exact: true }).click();
     await expect(page.getByRole("menuitem", { name: /Certificado/ })).toHaveCount(0);
@@ -608,9 +608,9 @@ test.describe("seções", () => {
     await openProfileSection(page, "Turmas");
     await page.getByRole("button", { name: /^Mostrar encerradas/ }).click();
     await page.getByRole("button", { name: "Ações da matrícula em Defesa Pessoal", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
+    await page.getByRole("menuitem", { name: "Certificado (Plano Profissional)" }).click();
     await expect(page).toHaveURL("/classes/cg-course/certificate/e-course");
-    await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
+    await expect(page.getByText("Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
   });
 
   test("Turmas: só encerradas mostra 'Nenhuma turma em andamento.'", async ({ page }) => {

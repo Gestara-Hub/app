@@ -96,6 +96,7 @@ import { SetupCompleteDialog } from "./setup-complete-dialog";
 import { TurmaFormDrawer } from "./turma-form-drawer";
 import { PromoteToCourseDialog } from "./promote-to-course-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 type Tab = "enrolled" | "waitlist" | "assessments";
 
@@ -228,7 +229,7 @@ export function TurmaDetailView({
   // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
   const canOpenProfile = can("clients:view");
   const canManage = can("enrollment:manage");
-  // Certificado de conclusao: Plano Pro; no gratis o item abre o upsell.
+  // Certificado de conclusao: Plano Profissional; no gratis o item abre o upsell.
   const hasCertificates = useHasFeature()("certificates");
   const canEditTurma = can("classes:manage");
   const canMark = can("attendance:mark");
@@ -729,7 +730,7 @@ export function TurmaDetailView({
                       ? [
                           {
                             key: "certificate",
-                            label: hasCertificates ? "Certificado" : "Certificado (Plano Pro)",
+                            label: hasCertificates ? "Certificado" : "Certificado (Plano Profissional)",
                             icon: hasCertificates ? <Award className="size-4" /> : <Lock className="size-4" />,
                             onSelect: () => router.push(`/classes/${turma.id}/certificate/${e.id}`),
                           },
@@ -777,8 +778,7 @@ export function TurmaDetailView({
                               label: "Enviar autorização (WhatsApp)",
                               icon: <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />,
                               onSelect: () => {
-                                const origin = typeof window !== "undefined" ? window.location.origin : "";
-                                const url = `${origin}/consent/minor/${student.id}`;
+                                const url = minorConsentUrl(student.id);
                                 const guardian = student.guardians?.find((g) => Boolean(g.phone)) || student.guardians?.[0];
                                 const targetPhone = guardian?.phone || student.phone;
                                 const greeting = guardian?.name ? `, ${guardian.name}` : "";

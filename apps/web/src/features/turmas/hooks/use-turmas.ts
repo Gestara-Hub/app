@@ -93,7 +93,7 @@ export function useEnrollments(classGroupId: Id) {
   });
 }
 
-/** Certificado de conclusao do curso (Plano Pro; sem o recurso, FEATURE_NOT_IN_PLAN). */
+/** Certificado de conclusao do curso (Plano Profissional; sem o recurso, FEATURE_NOT_IN_PLAN). */
 export function useCourseCertificate(enrollmentId: Id) {
   return useQuery({
     queryKey: queryKeys.classes.certificate(enrollmentId),

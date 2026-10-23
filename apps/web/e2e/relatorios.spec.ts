@@ -159,7 +159,7 @@ test.describe("catálogo", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Todos (8)" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(6);
-    await expect(page.getByRole("button", { name: "Disponível no Plano Pro" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Disponível no Plano Profissional" })).toHaveCount(2);
     // Sem palavra em ingles no filtro.
     await expect(page.getByRole("button", { name: "Operacionais" })).toBeVisible();
 
@@ -172,9 +172,9 @@ test.describe("catálogo", () => {
 
     // Pro travado: abre o convite e volta.
     await page.getByPlaceholder("Buscar relatório").fill("retenção");
-    await page.getByRole("button", { name: "Disponível no Plano Pro" }).click();
+    await page.getByRole("button", { name: "Disponível no Plano Profissional" }).click();
     await expect(page.getByText("Relatórios Gerenciais Avançados")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);
+    await expect(page.getByRole("link", { name: "Ver Plano Profissional" })).toHaveAttribute("href", /\/settings\?tab=plano/);
     await page.getByRole("button", { name: "← Voltar ao Catálogo de Relatórios" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
   });
@@ -183,7 +183,7 @@ test.describe("catálogo", () => {
     await seedReports(page, { pro: true });
     await page.goto("/reports");
     await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(8);
-    await expect(page.getByRole("button", { name: "Disponível no Plano Pro" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Disponível no Plano Profissional" })).toHaveCount(0);
     await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
     await expect(main(page)).toContainText("Aniversariantes do Mês (Setembro)");
     await page.getByRole("button", { name: "Voltar aos relatórios" }).click();

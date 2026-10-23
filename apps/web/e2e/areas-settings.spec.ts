@@ -313,11 +313,11 @@ test.describe("Configurações: Certificado", () => {
     await seedAcademy(page);
     await page.goto("/settings?tab=certificado");
     const panel = page.locator("#settings-panel-certificado");
-    await expect(panel.getByText("Disponível no Plano Pro")).toBeVisible();
+    await expect(panel.getByText("Disponível no Plano Profissional")).toBeVisible();
     await expect(panel.getByRole("heading", { name: "Modelo de certificado" })).toBeVisible();
-    await expect(panel.getByText("Modelo de certificado no Plano Pro.")).toBeVisible();
+    await expect(panel.getByText("Modelo de certificado no Plano Profissional.")).toBeVisible();
     await expect(panel.getByRole("textbox")).toHaveCount(0);
-    const cta = panel.getByRole("link", { name: "Ver Plano Pro" });
+    const cta = panel.getByRole("link", { name: "Ver Plano Profissional" });
     await expect(cta).toHaveAttribute("href", "/settings?tab=plano");
     await cta.click();
     await expect(page).toHaveURL(/tab=plano/);

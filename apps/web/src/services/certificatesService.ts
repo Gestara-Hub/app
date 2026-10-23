@@ -19,7 +19,7 @@ import { assertFeature } from "./subscriptionService";
  * Modelo de certificado do espaco (doc 21, secao 1; recurso pago
  * `certificates`). Um por organizacao; sem modelo salvo vale o padrao. Ler e
  * livre (o Gratis ve a tela com cadeado); salvar, restaurar e enviar logo
- * exigem o Plano Pro. A logo segue o caminho dos anexos: o arquivo vai para o
+ * exigem o Plano Profissional. A logo segue o caminho dos anexos: o arquivo vai para o
  * armazenamento de arquivos (IndexedDB no mock, bucket privado no Supabase) e
  * o modelo guarda so o id. Na conta real o modelo vive em
  * `organizations.certificate_template` (doc 15, fatia 1); o store e so cache.

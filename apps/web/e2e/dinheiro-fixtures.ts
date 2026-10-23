@@ -175,7 +175,7 @@ export const courseClass = (id: string, name = "Confeitaria", over: Record<strin
     ...over,
   });
 
-/** Plano Pro com o pagamento online ligado (o tier tambem vai no cookie que o servidor le). */
+/** Plano Profissional com o pagamento online ligado (o tier tambem vai no cookie que o servidor le). */
 export async function makePro(page: Page, opts: { online?: boolean } = {}) {
   await page.context().addCookies([
     { name: "gestarahub_tier", value: `${ORG}:pro`, url: BASE_URL, sameSite: "Lax" },

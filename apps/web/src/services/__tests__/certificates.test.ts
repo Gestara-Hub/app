@@ -62,7 +62,7 @@ function setTier(tier: "free" | "pro" | "scale") {
 describe("certificado de conclusão", () => {
   beforeEach(() => resetAcademy());
 
-  it("é do Plano Pro: o grátis recebe FEATURE_NOT_IN_PLAN", async () => {
+  it("é do Plano Profissional: o grátis recebe FEATURE_NOT_IN_PLAN", async () => {
     const { enrollment } = await completedEnrollment();
     await expect(turmasService.getCourseCertificate(enrollment.id)).rejects.toMatchObject({
       code: "FEATURE_NOT_IN_PLAN",
@@ -139,7 +139,7 @@ describe("certificado de conclusão", () => {
   });
 });
 
-/** Modelo de certificado do espaco (doc 21, secao 1): Plano Pro, um por organizacao. */
+/** Modelo de certificado do espaco (doc 21, secao 1): Plano Profissional, um por organizacao. */
 function customTemplate(over: Partial<SaveCertificateTemplate> = {}): SaveCertificateTemplate {
   return {
     layout: "modern",
@@ -164,7 +164,7 @@ describe("modelo de certificado", () => {
     expect("updatedAt" in template).toBe(false);
   });
 
-  it("salvar e restaurar são do Plano Pro: o grátis recebe FEATURE_NOT_IN_PLAN", async () => {
+  it("salvar e restaurar são do Plano Profissional: o grátis recebe FEATURE_NOT_IN_PLAN", async () => {
     await expect(certificatesService.saveTemplate(customTemplate())).rejects.toMatchObject({
       code: "FEATURE_NOT_IN_PLAN",
       httpStatus: 403,

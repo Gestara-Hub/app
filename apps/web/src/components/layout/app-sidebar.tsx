@@ -65,7 +65,7 @@ function NavMenu({
             <SidebarMenuButton
               asChild
               isActive={item.href === activeHref}
-              tooltip={locked ? `${item.label} (Plano Pro)` : item.label}
+              tooltip={locked ? `${item.label} (Plano Profissional)` : item.label}
             >
               <Link
                 href={item.href}
@@ -80,7 +80,7 @@ function NavMenu({
                       aria-hidden
                       className="ml-auto size-3.5! text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden"
                     />
-                    <span className="sr-only">(disponível no Plano Pro)</span>
+                    <span className="sr-only">(disponível no Plano Profissional)</span>
                   </>
                 ) : null}
               </Link>

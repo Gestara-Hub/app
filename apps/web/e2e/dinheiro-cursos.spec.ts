@@ -206,7 +206,7 @@ function endedCourse(t: Record<string, unknown>) {
   t.attendances = [att("2026-08-03", "present"), att("2026-08-10", "present"), att("2026-08-17", "absent"), att("2026-08-24", "present")];
 }
 
-test("curso terminado no grátis: Concluído, sem matrícula nova e certificado travado no Plano Pro", async ({ page }) => {
+test("curso terminado no grátis: Concluído, sem matrícula nova e certificado travado no Plano Profissional", async ({ page }) => {
   await seedAcademy(page, { extra: endedCourse });
   await page.goto("/classes");
   const ended = rowOf(page, "Confeitaria de Verão");
@@ -219,9 +219,9 @@ test("curso terminado no grátis: Concluído, sem matrícula nova e certificado 
   await expect(page.getByRole("button", { name: "Matricular alunos" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Ações de Aluna Formada", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Certificado (Plano Pro)" }).click();
+  await page.getByRole("menuitem", { name: "Certificado (Plano Profissional)" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
-  await expect(page.getByText("Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
+  await expect(page.getByText("Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
   await page.getByRole("link", { name: "Voltar à turma" }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old$/);

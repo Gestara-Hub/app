@@ -158,7 +158,7 @@ export const queryKeys = {
   organization: {
     detail: ["organization"] as const,
   },
-  // Modelo de certificado do espaco (Plano Pro).
+  // Modelo de certificado do espaco (Plano Profissional).
   certificates: {
     template: ["certificates", "template"] as const,
   },

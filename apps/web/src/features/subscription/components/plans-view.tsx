@@ -218,7 +218,7 @@ export function PlansView() {
             </CardFooter>
           </Card>
 
-          {/* Plano Pro (Destaque) */}
+          {/* Plano Profissional (Destaque) */}
           <Card
             className={cn(
               "flex flex-col justify-between rounded-2xl border-2 transition-all duration-200 relative bg-card shadow-md",

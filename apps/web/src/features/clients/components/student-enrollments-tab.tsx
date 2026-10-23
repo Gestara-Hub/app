@@ -69,7 +69,7 @@ function StatusText({ e }: { e: StudentSummaryEnrollment }) {
  */
 export function StudentEnrollmentsTab({ enrollments }: { enrollments: StudentSummaryEnrollment[] }) {
   const router = useRouter();
-  // Certificado de conclusao: Plano Pro; no gratis o item abre o aviso do plano (como na turma).
+  // Certificado de conclusao: Plano Profissional; no gratis o item abre o aviso do plano (como na turma).
   const hasCertificates = useHasFeature()("certificates");
   const [showEnded, setShowEnded] = useState(false);
   const current = enrollments.filter((e) => e.state === "active" || e.state === "paused");
@@ -87,7 +87,7 @@ export function StudentEnrollmentsTab({ enrollments }: { enrollments: StudentSum
       ? [
           {
             key: "certificate",
-            label: hasCertificates ? "Certificado" : "Certificado (Plano Pro)",
+            label: hasCertificates ? "Certificado" : "Certificado (Plano Profissional)",
             icon: hasCertificates ? <Award className="size-4" /> : <Lock className="size-4" />,
             onSelect: () => router.push(`/classes/${e.classGroupId}/certificate/${e.id}`),
           },

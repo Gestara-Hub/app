@@ -12,7 +12,7 @@ import { CertificateSheet, useStoredFileUrl } from "@/features/certificates";
 import { useCourseCertificate } from "../hooks/use-turmas";
 
 /** Texto da tela de upsell (uma linha, como os outros recursos do Pro). */
-export const CERTIFICATE_LOCKED_HINT = "Faz parte do Plano Pro. Imprima ou salve em PDF no fim do curso.";
+export const CERTIFICATE_LOCKED_HINT = "Faz parte do Plano Profissional. Imprima ou salve em PDF no fim do curso.";
 
 function BackLink({ classGroupId }: { classGroupId: string }) {
   return (

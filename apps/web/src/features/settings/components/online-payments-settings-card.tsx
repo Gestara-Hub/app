@@ -99,6 +99,7 @@ export function OnlinePaymentsSettingsCard({
         benefits={BENEFITS}
         icon={<QrCode className="size-7" aria-hidden />}
         canManagePlan={can("subscription:manage")}
+        align="start"
       />
     );
   }
@@ -228,7 +229,7 @@ function OnlinePaymentsForm({
                         Conta de recebimentos ativa
                       </p>
                       <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
-                        Taxa por transação ativa • R$ 1,29 no Pro ou R$ 1,99 no Free por pagamento recebido
+                        Taxa do GestaraHub • R$ 1,99 no Grátis ou R$ 1,29 no Profissional por pagamento recebido, além da tarifa do parceiro
                       </p>
                     </div>
                   </div>
@@ -255,7 +256,7 @@ function OnlinePaymentsForm({
                         Ativar recebimentos online
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Receba por Pix e link com desconto automático da taxa (R$ 1,99 no Free ou R$ 1,29 no Pro).
+                        Receba por Pix e link com desconto automático das taxas (taxa do GestaraHub de R$ 1,99 no Grátis ou R$ 1,29 no Profissional, mais a tarifa do parceiro).
                       </p>
                     </div>
                   </div>

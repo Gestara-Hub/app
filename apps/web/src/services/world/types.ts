@@ -87,7 +87,7 @@ export interface TenantWorld {
   whatsAppConnection?: WhatsAppConnection;
   messageTemplates: MessageTemplate[];
   messageLogs: MessageLog[];
-  // Modelo de certificado do espaco (Plano Pro). Ausente = modelo padrao.
+  // Modelo de certificado do espaco (Plano Profissional). Ausente = modelo padrao.
   certificateTemplate?: CertificateTemplate;
   // Deprecated backward compatibility properties
   cobrancas?: Charge[];

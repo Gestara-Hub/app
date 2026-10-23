@@ -168,7 +168,7 @@ test.describe("DRE (Pro)", () => {
     await expect(page.getByText("Sem recebimentos nem despesas pagas neste mês.")).toBeVisible();
   });
 
-  test("no grátis, o DRE fica travado no Plano Pro", async ({ page }) => {
+  test("no grátis, o DRE fica travado no Plano Profissional", async ({ page }) => {
     await seedAcademy(page);
     await page.goto("/reports?type=financial_income_statement&period=2026-09");
     await expect(page.getByText("Relatórios Gerenciais Avançados")).toBeVisible();

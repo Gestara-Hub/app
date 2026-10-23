@@ -275,14 +275,14 @@ test.describe("gerente x proprietário", () => {
     const certificate = "/classes/cg-1/certificate/e-1";
     await page.goto(certificate);
     const owner = page.getByRole("main");
-    await expect(owner.getByRole("link", { name: "Ver Plano Pro" })).toHaveAttribute("href", /\/settings\?tab=plano/);
+    await expect(owner.getByRole("link", { name: "Ver Plano Profissional" })).toHaveAttribute("href", /\/settings\?tab=plano/);
 
     // Sai da pagina antes de trocar a sessao (requisicao dela no meio da troca da 401).
     await page.goto("about:blank");
     await loginAsUser(page, MANAGER);
     await page.goto(certificate);
-    await expect(page.getByText("Fale com o proprietário da conta para ativar o Plano Pro.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Ver Plano Pro" })).toHaveCount(0);
+    await expect(page.getByText("Fale com o proprietário da conta para ativar o Plano Profissional.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ver Plano Profissional" })).toHaveCount(0);
   });
 });
 

@@ -3,18 +3,22 @@ import Link from "next/link";
 import { Check, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 /** Destino padrao do botao: aba "Plano GestaraHub" das Configuracoes. */
 export const PLAN_SETTINGS_HREF = "/settings?tab=plano";
 
 /**
- * Tela de upsell de um recurso pago ("Disponível no Plano Pro"). Renderizada
+ * Tela de upsell de um recurso pago ("Disponível no Plano Profissional"). Renderizada
  * pela page server quando o perfil tem a permissao mas o tier do tenant nao tem
  * o recurso (ver docs/technical/05, secao 3.4). Sem imports de features: o
  * conteudo (titulo, beneficios) vem por props.
  *
  * `canManagePlan=false` (ex.: gerente, que nao abre Configuracoes) troca o
  * botao por um aviso para falar com o proprietario.
+ *
+ * `align="start"`: dentro de uma aba (Configuracoes), alinhado a esquerda e na
+ * largura do conteudo, como as outras abas. Padrao centralizado (tela inteira).
  */
 export function FeatureLocked({
   title,
@@ -23,7 +27,8 @@ export function FeatureLocked({
   icon,
   canManagePlan = true,
   href = PLAN_SETTINGS_HREF,
-  actionLabel = "Ver Plano Pro",
+  actionLabel = "Ver Plano Profissional",
+  align = "center",
 }: {
   /** Nome do recurso, ex.: "Financeiro". */
   title: string;
@@ -34,10 +39,17 @@ export function FeatureLocked({
   canManagePlan?: boolean;
   href?: string;
   actionLabel?: string;
+  align?: "center" | "start";
 }) {
+  const start = align === "start";
   return (
-    <Card className="mx-auto w-full max-w-xl border-dashed">
-      <CardContent className="flex flex-col items-center gap-5 py-12 text-center">
+    <Card className={cn("w-full border-dashed", !start && "mx-auto max-w-xl")}>
+      <CardContent
+        className={cn(
+          "flex flex-col gap-5",
+          start ? "items-start py-8 text-left" : "items-center py-12 text-center",
+        )}
+      >
         <div className="relative flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
           {icon ?? <Lock className="size-7" aria-hidden />}
           {icon ? (
@@ -49,11 +61,11 @@ export function FeatureLocked({
 
         <div className="space-y-1.5">
           <p className="text-xs font-semibold tracking-wider text-primary uppercase">
-            Disponível no Plano Pro
+            Disponível no Plano Profissional
           </p>
           <h2 className="text-xl font-semibold text-foreground">{title}</h2>
           {description ? (
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">{description}</p>
+            <p className={cn("max-w-md text-sm text-muted-foreground", !start && "mx-auto")}>{description}</p>
           ) : null}
         </div>
 
@@ -74,7 +86,7 @@ export function FeatureLocked({
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Fale com o proprietário da conta para ativar o Plano Pro.
+            Fale com o proprietário da conta para ativar o Plano Profissional.
           </p>
         )}
       </CardContent>
