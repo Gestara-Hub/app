@@ -2,6 +2,7 @@
 
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { logError } from "@/lib/log";
 
 export interface AttachmentRecord {
   id: Id;
@@ -37,7 +38,7 @@ export async function saveAttachmentInStorage(
     });
 
   if (uploadError) {
-    console.error("[attachmentsBackend] Erro ao fazer upload no Supabase Storage:", uploadError);
+    logError("[attachmentsBackend] Erro ao fazer upload no Supabase Storage:", uploadError);
     throw new Error(`Falha no upload do arquivo para o storage: ${uploadError.message}`);
   }
 
@@ -53,7 +54,7 @@ export async function saveAttachmentInStorage(
   });
 
   if (dbError) {
-    console.error("[attachmentsBackend] Erro ao salvar metadados do anexo:", dbError);
+    logError("[attachmentsBackend] Erro ao salvar metadados do anexo:", dbError);
     // Cleanup orphaned storage object
     await client.storage.from("attachments").remove([storagePath]);
     throw new Error("Falha ao registrar metadados do anexo no banco de dados.");

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import "./globals.css";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/log";
 
 // Erro no root layout: substitui o <html> inteiro (sem providers nem shell).
 export default function GlobalError({
@@ -13,8 +14,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Registra (doc technical/21) e mostra o codigo: a queixa leva a linha certa.
+  const [reference, setReference] = useState<string | null>(null);
   useEffect(() => {
-    console.error(error);
+    void reportError("render-root", error, { context: { digest: error.digest } }).then(setReference);
   }, [error]);
 
   return (
@@ -27,6 +30,9 @@ export default function GlobalError({
           <p className="max-w-md text-sm text-muted-foreground">
             Ocorreu um erro inesperado no GestaraHub. Tente novamente.
           </p>
+          {reference ? (
+            <p className="text-xs text-muted-foreground">Código do erro: {reference}</p>
+          ) : null}
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => reset()}>Tentar novamente</Button>
             <Button variant="outline" asChild>

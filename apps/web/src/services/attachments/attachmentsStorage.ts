@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 /**
  * Leitura do arquivo no storage pela chave de servico, so para a rota de anexos
@@ -11,7 +12,7 @@ export async function downloadAttachmentFromStorage(
   const client = createSupabaseAdminClient();
   const { data, error } = await client.storage.from("attachments").download(storagePath);
   if (error || !data) {
-    console.error("[attachmentsBackend] Erro ao baixar arquivo do storage:", error);
+    logError("[attachmentsBackend] Erro ao baixar arquivo do storage:", error);
     return null;
   }
   return { blob: data, contentType: data.type };

@@ -56,6 +56,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/18-documentos-pdf.md](technical/18-documentos-pdf.md) — **Documentos em PDF:** um layout só (`DocumentModel`) para relatórios, recibos, declaração, demonstrativo, certificado, termo, boletim e extrato; prévia na tela, PDF e CSV no servidor, logo do espaço com reserva do GestaraHub.
 - [technical/19-desempenho-e-escala.md](technical/19-desempenho-e-escala.md) — **Desempenho e escala:** medição com um espaço de 1 ano (1,4 s a 4 s por ação, crescendo com o histórico), gargalos (espaço inteiro por ação, versão única por espaço, corte em 1.000 linhas, chamadas demais do navegador, rotina diária) e proposta em 4 fases.
 - [technical/20-tempo-dos-testes.md](technical/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
+- [technical/21-registro-de-erros.md](technical/21-registro-de-erros.md) — **Registro de erros:** tabela `error_logs` no nosso banco (agrupada, mascarada, 120 dias), `logError`/`reportError` de `@/lib/log`, código do erro na mensagem ao usuário, erros do navegador e resumo diário por e-mail.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

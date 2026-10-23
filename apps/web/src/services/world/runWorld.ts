@@ -20,6 +20,7 @@ import {
   type Row,
   type WorldCollection,
 } from "./tables";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Roda um metodo de servico no servidor sobre o espaco carregado do banco e
@@ -574,7 +575,7 @@ export async function runInWorld<T>(
       return await runLoaded(ctx, fn, () => loadSlicedWorld(ctx, slice.fn, slice.args), slice.name);
     } catch (error) {
       if (!(error instanceof SliceMissError)) throw error;
-      console.error(`[world] recorte incompleto em ${slice.name ?? "método"}; refazendo com o espaço inteiro:`, error.message);
+      logWarn(`[world] recorte incompleto em ${slice.name ?? "método"}; refazendo com o espaço inteiro:`, error.message);
     }
   }
   return runLoaded(ctx, fn, () => loadWorld(ctx), slice?.name);
@@ -624,7 +625,7 @@ async function runLoaded<T>(
   logTiming(label, world, { load: loaded - started, run: ran - loaded, write: performance.now() - ran }, changed);
   // Efeitos externos so depois de gravar; falha neles nao desfaz a gravacao.
   for (const effect of effects) {
-    await effect().catch((err) => console.error("[world] Efeito depois da gravação falhou:", err));
+    await effect().catch((err) => logError("[world] Efeito depois da gravação falhou:", err));
   }
   // Resultado sai como objeto simples (sem referencia ao mundo da requisicao).
   return result === undefined ? result : structuredClone(result);

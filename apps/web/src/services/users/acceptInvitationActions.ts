@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
 import type { UserProfile, UserView } from "@gestarahub/contracts";
 import { hashToken } from "./userActionsShared";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Aceite do convite: validar o link e criar o acesso.
@@ -70,7 +71,7 @@ export async function validateInvitationTokenAction(
       profile: inv.profile as UserProfile,
     };
   } catch (err) {
-    console.error("[usersBackend] Erro ao validar token de convite:", err);
+    logError("[usersBackend] Erro ao validar token de convite:", err);
     return { status: "invalid" };
   }
 }
@@ -124,7 +125,7 @@ export async function acceptInvitationAction(input: {
         (u) => u.email?.toLowerCase() === normalizedEmail,
       );
       if (!match) {
-        console.error("[usersBackend] Erro ao criar conta de autenticação:", createAuthErr);
+        logError("[usersBackend] Erro ao criar conta de autenticação:", createAuthErr);
         return {
           ok: false,
           message: "Não foi possível configurar seu acesso. Tente novamente.",
@@ -164,7 +165,7 @@ export async function acceptInvitationAction(input: {
     });
 
     if (signInErr) {
-      console.warn("[usersBackend] Aviso no signInWithPassword após aceite:", signInErr);
+      logWarn("[usersBackend] Aviso no signInWithPassword após aceite:", signInErr);
     }
 
     // Seta também o cookie de sessão do GestaraHub
@@ -191,7 +192,7 @@ export async function acceptInvitationAction(input: {
 
     return { ok: true };
   } catch (err) {
-    console.error("[usersBackend] Erro ao aceitar convite:", err);
+    logError("[usersBackend] Erro ao aceitar convite:", err);
     return { ok: false, message: "Erro inesperado ao aceitar convite." };
   }
 }

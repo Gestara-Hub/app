@@ -18,6 +18,7 @@ import { readOp, writeOp, validationError } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../audit/auditLogService";
 import { getOrganizationGatewayAction } from "../onlinePayments/actions";
+import { logError } from "@/lib/log";
 
 /** Nome do espaco e da unidade. */
 const MAX_NAME = 80;
@@ -226,7 +227,7 @@ async function mergeGatewayIntoCache(): Promise<void> {
       persist();
     }
   } catch (err) {
-    console.error("[settingsService] Erro ao sincronizar organização:", err);
+    logError("[settingsService] Erro ao sincronizar organização:", err);
   }
 }
 

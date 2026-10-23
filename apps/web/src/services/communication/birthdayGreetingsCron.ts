@@ -5,6 +5,7 @@ import type { TenantContext } from "../server/tenant";
 import type { MethodSlice } from "../world/slices";
 import { runInWorld } from "../world/runWorld";
 import { runBirthdayGreetings } from "./communicationRules";
+import { reportError } from "@/lib/log";
 
 /**
  * Parabens automatico na rotina de hora em hora (doc 19, secao 12): antes rodava
@@ -72,7 +73,7 @@ export async function runAllBirthdayGreetings(deadline: number): Promise<{ sent:
       try {
         result.sent += await runBirthdayGreetingsFor(String(row.organization_id));
       } catch (err) {
-        console.error(`[cron:parabéns] Falhou no espaço ${String(row.organization_id)}:`, err);
+        await reportError("cron.hourly.parabens", err, { source: "cron", organizationId: String(row.organization_id) });
         result.failures += 1;
       }
     },

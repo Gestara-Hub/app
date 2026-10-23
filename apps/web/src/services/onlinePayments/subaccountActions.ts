@@ -10,6 +10,7 @@ import { createSubAccount } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { CURRENT_SUBACCOUNT_TERMS_VERSION } from "@gestarahub/contracts";
+import { logError } from "@/lib/log";
 
 /**
  * Subconta do espaco no parceiro: abertura, status e configuracao de Recebimentos online.
@@ -100,7 +101,7 @@ export async function setupSubaccountAction(
       walletId = res.walletId;
       apiKey = res.apiKey ?? res.accessToken?.apiKey ?? "";
       if (!apiKey) {
-        console.error("[setupSubaccountAction] Subconta criada sem chave de API na resposta:", accountId);
+        logError("[setupSubaccountAction] Subconta criada sem chave de API na resposta:", accountId);
       }
     } else {
       // Mock mode fallback
@@ -122,7 +123,7 @@ export async function setupSubaccountAction(
       .eq("id", input.organizationId);
 
     if (orgError) {
-      console.error(
+      logError(
         "[setupSubaccountAction] Erro ao gravar subconta na organização:",
         orgError,
       );
@@ -203,7 +204,7 @@ export async function setupSubaccountAction(
         });
       }
     } catch (consentErr) {
-      console.error(
+      logError(
         "[setupSubaccountAction] Erro ao registrar consentimento legal:",
         consentErr,
       );
@@ -218,7 +219,7 @@ export async function setupSubaccountAction(
   } catch (err: unknown) {
     const errorMsg =
       err instanceof Error ? err.message : "Erro ao processar ativação de subconta.";
-    console.error("[setupSubaccountAction] Erro:", err);
+    logError("[setupSubaccountAction] Erro:", err);
     return {
       success: false,
       error: errorMsg,
@@ -249,7 +250,7 @@ export async function getOrganizationGatewayAction(organizationId: string) {
   if (data) {
     after(() =>
       refreshGatewayIfNeeded(data).catch((err) =>
-        console.error("[getOrganizationGatewayAction] Erro ao atualizar a subconta:", err),
+        logError("[getOrganizationGatewayAction] Erro ao atualizar a subconta:", err),
       ),
     );
   }
@@ -299,7 +300,7 @@ export async function updateOrganizationOnlineSettingsAction(
       .eq("id", organizationId);
 
     if (error) {
-      console.error(
+      logError(
         "[updateOrganizationOnlineSettingsAction] Erro ao atualizar settings:",
         error,
       );
@@ -307,7 +308,7 @@ export async function updateOrganizationOnlineSettingsAction(
     }
     return true;
   } catch (err) {
-    console.error(
+    logError(
       "[updateOrganizationOnlineSettingsAction] Exceção ao atualizar settings:",
       err,
     );

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 export async function getClientIp(): Promise<string> {
   const headerStore = await headers();
@@ -35,14 +36,14 @@ export async function checkRateLimit(options: RateLimitOptions): Promise<boolean
     });
 
     if (error) {
-      console.error("[rate-limit] Erro ao verificar rate limit:", error);
+      logError("[rate-limit] Erro ao verificar rate limit:", error);
       // Fail-open in case of transient DB error so users are not locked out
       return true;
     }
 
     return Boolean(data);
   } catch (err) {
-    console.error("[rate-limit] Falha inesperada ao checar rate limit:", err);
+    logError("[rate-limit] Falha inesperada ao checar rate limit:", err);
     return true;
   }
 }
@@ -55,6 +56,6 @@ export async function resetRateLimit(key: string): Promise<void> {
     const admin = createSupabaseAdminClient();
     await admin.rpc("reset_rate_limit", { p_key: key });
   } catch (err) {
-    console.error("[rate-limit] Falha ao resetar rate limit:", err);
+    logError("[rate-limit] Falha ao resetar rate limit:", err);
   }
 }

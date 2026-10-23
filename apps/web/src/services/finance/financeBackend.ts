@@ -12,6 +12,7 @@ import type {
 import { randomUUID } from "node:crypto";
 import { addCompetence, materializeRecurrence, recurrenceDueDate } from "@gestarahub/core/finance";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 function mapRowToRecurrence(row: Record<string, unknown>): FinancialRecurrence {
   return {
@@ -63,7 +64,7 @@ export async function listFinancialRecurrencesFromDb(
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("[financeBackend] Erro ao listar recorrências:", error);
+    logError("[financeBackend] Erro ao listar recorrências:", error);
     throw new Error("Erro ao consultar recorrências financeiras no banco de dados.");
   }
 
@@ -101,7 +102,7 @@ export async function listFinancialEntriesFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[financeBackend] Erro ao listar lançamentos:", error);
+    logError("[financeBackend] Erro ao listar lançamentos:", error);
     throw new Error("Erro ao consultar lançamentos financeiros no banco de dados.");
   }
 
@@ -151,7 +152,7 @@ export async function materializeRecurrencesAction(organizationId: string): Prom
     p_rows: rows,
   });
   if (error) {
-    console.error("[materializeRecurrencesAction] Erro ao gravar lançamentos repetidos:", error);
+    logError("[materializeRecurrencesAction] Erro ao gravar lançamentos repetidos:", error);
     throw new Error("Não foi possível gerar os lançamentos repetidos.");
   }
   return Number(created) || 0;

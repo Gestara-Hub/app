@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
 import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "@/services/preferences/preferencesBackend";
 import { DEFAULT_USER_PREFERENCES } from "@gestarahub/contracts";
+import { logError } from "@/lib/log";
 
 export async function GET() {
   try {
@@ -17,7 +18,7 @@ export async function GET() {
     const preferences = await getUserPreferencesFromDb(session.id);
     return NextResponse.json({ preferences: preferences ?? DEFAULT_USER_PREFERENCES });
   } catch (error) {
-    console.error("[GET /api/preferences] Erro:", error);
+    logError("[GET /api/preferences] Erro:", error);
     return NextResponse.json({ preferences: DEFAULT_USER_PREFERENCES });
   }
 }
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     const updated = await saveUserPreferencesInDb(session.id, payload);
     return NextResponse.json({ success: true, preferences: updated });
   } catch (error) {
-    console.error("[POST /api/preferences] Erro ao salvar preferências:", error);
+    logError("[POST /api/preferences] Erro ao salvar preferências:", error);
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Erro ao salvar preferências." },
       { status: 500 },

@@ -4,6 +4,7 @@ import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSubaccountBalance, createTransfer, listTransfers } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
+import { logError } from "@/lib/log";
 
 /**
  * Saldo da subconta e saques via Pix.
@@ -84,7 +85,7 @@ export async function getSubaccountBalanceAction(
         availableForTransferCents: Math.max(0, balanceCents),
       };
     } catch (err) {
-      console.error("[getSubaccountBalanceAction] Erro no Asaas:", err);
+      logError("[getSubaccountBalanceAction] Erro no Asaas:", err);
     }
   }
 
@@ -158,7 +159,7 @@ export async function requestSubaccountTransferAction(input: {
         status: res.status,
       };
     } catch (err: unknown) {
-      console.error("[requestSubaccountTransferAction] Erro no Asaas:", err);
+      logError("[requestSubaccountTransferAction] Erro no Asaas:", err);
       const msg =
         err instanceof Error ? err.message : "Erro ao realizar transferência.";
       return { success: false, error: msg };
@@ -206,7 +207,7 @@ export async function listSubaccountTransfersAction(
         receiptUrl: t.transactionReceiptUrl,
       }));
     } catch (err) {
-      console.error("[listSubaccountTransfersAction] Erro no Asaas:", err);
+      logError("[listSubaccountTransfersAction] Erro no Asaas:", err);
     }
   }
 

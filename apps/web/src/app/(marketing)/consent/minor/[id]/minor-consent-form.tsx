@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { confirmMinorConsentAction } from "@/services/legalConsent/actions";
+import { logError } from "@/lib/log";
 
 interface MinorConsentFormProps {
   student: {
@@ -79,7 +80,7 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
       setIsConfirmed(true);
       toast.success("Autorização confirmada com sucesso!");
     } catch (err) {
-      console.error("[MinorConsentForm] Erro ao confirmar autorização:", err);
+      logError("[MinorConsentForm] Erro ao confirmar autorização:", err);
       toast.error("Ocorreu um erro ao processar. Tente novamente.");
       setIsSubmitting(false);
     }

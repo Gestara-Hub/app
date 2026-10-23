@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession, safeRedirectPath } from "@/lib/session";
 import { loadSessionPayload, resolveGoogleAccount } from "@/services/server/accountSetup";
 import { needsSecondFactor } from "@/app/(auth)/sign-in-session";
+import { logError } from "@/lib/log";
 
 /**
  * Volta do Google ("Continuar com Google", doc 16): troca o codigo pela sessao
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data.user?.email) {
-    console.error("[auth] Erro na volta do Google:", error);
+    logError("[auth] Erro na volta do Google:", error);
     return fail("failed");
   }
 

@@ -3,6 +3,7 @@
 import type { UserPreferences } from "@gestarahub/contracts";
 import { mergeUserPreferences } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
+import { logError } from "@/lib/log";
 
 export async function getUserPreferencesFromDb(
   userId: string,
@@ -16,14 +17,14 @@ export async function getUserPreferencesFromDb(
       .maybeSingle();
 
     if (error) {
-      console.error("[preferencesBackend] Erro ao buscar preferências do usuário:", error);
+      logError("[preferencesBackend] Erro ao buscar preferências do usuário:", error);
       return null;
     }
 
     if (!data?.preferences) return null;
     return mergeUserPreferences(null, data.preferences as Partial<UserPreferences>);
   } catch (err) {
-    console.error("[preferencesBackend] Falha ao consultar preferências:", err);
+    logError("[preferencesBackend] Falha ao consultar preferências:", err);
     return null;
   }
 }
@@ -49,7 +50,7 @@ export async function saveUserPreferencesInDb(
     );
 
   if (error) {
-    console.error("[preferencesBackend] Erro ao salvar preferências do usuário:", error);
+    logError("[preferencesBackend] Erro ao salvar preferências do usuário:", error);
     throw new Error("Erro ao salvar preferências no banco de dados.");
   }
 

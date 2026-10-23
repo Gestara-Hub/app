@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { INSTAGRAM_HANDLE, INSTAGRAM_URL, SUPPORT_EMAIL } from "@/config/site";
+import { logError, logWarn } from "@/lib/log";
 
 const MAILERSEND_API_URL = "https://api.mailersend.com/v1/email";
 
@@ -19,7 +20,7 @@ async function wasSuppressed(response: Response, context: string): Promise<boole
   } | null;
   const warnings = body?.warnings ?? [];
   if (warnings.length === 0) return false;
-  console.warn(`[mailersend] Avisos ao enviar ${context}:`, JSON.stringify(warnings));
+  logWarn(`[mailersend] Avisos ao enviar ${context}:`, JSON.stringify(warnings));
   return warnings.some((w) => w.type === "ALL_SUPPRESSED");
 }
 
@@ -240,9 +241,10 @@ export function buildSignupEmailText({
 function withoutApiKey(link: string): { ok: true } | { ok: false; error: string } {
   // E2E_NOW so existe no servidor dos e2e (tambem no modo producao, doc 20).
   if (process.env.NODE_ENV === "production" && !process.env.E2E_NOW) {
-    console.error("[mailersend] MAILERSEND_API_KEY ausente em producao: e-mail nao enviado.");
+    logError("[mailersend] MAILERSEND_API_KEY ausente em producao: e-mail nao enviado.");
     return { ok: false, error: "O envio de e-mails está fora do ar. Tente novamente mais tarde." };
   }
+  // Saida de proposito (em desenvolvimento o link e lido daqui): nao e erro, nao vai ao registro.
   console.warn("[mailersend] MAILERSEND_API_KEY ausente. Link gerado (so desenvolvimento):", link);
   return { ok: true };
 }
@@ -303,7 +305,7 @@ export async function sendSignupLinkEmail(
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error("[mailersend] Erro ao enviar e-mail:", response.status, errorBody);
+      logError("[mailersend] Erro ao enviar e-mail:", response.status, errorBody);
       return {
         ok: false,
         error: "Não foi possível enviar o e-mail de confirmação. Tente novamente em instantes.",
@@ -313,7 +315,7 @@ export async function sendSignupLinkEmail(
 
     return { ok: true };
   } catch (err) {
-    console.error("[mailersend] Falha de conexão ao enviar e-mail:", err);
+    logError("[mailersend] Falha de conexão ao enviar e-mail:", err);
     return {
       ok: false,
       error: "Não foi possível enviar o e-mail de confirmação. Verifique sua conexão e tente novamente.",
@@ -454,7 +456,7 @@ export async function sendOrganizationInvitationEmail(
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error("[mailersend] Erro ao enviar convite:", response.status, errorBody);
+      logError("[mailersend] Erro ao enviar convite:", response.status, errorBody);
       return {
         ok: false,
         error: "Não foi possível enviar o e-mail de convite. Tente novamente em instantes.",
@@ -464,7 +466,7 @@ export async function sendOrganizationInvitationEmail(
 
     return { ok: true };
   } catch (err) {
-    console.error("[mailersend] Falha de conexão ao enviar convite:", err);
+    logError("[mailersend] Falha de conexão ao enviar convite:", err);
     return {
       ok: false,
       error: "Falha ao conectar com o serviço de e-mail. Verifique a conexão.",
@@ -554,13 +556,13 @@ export async function sendPasswordResetEmail(
     });
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error("[mailersend] Erro ao enviar e-mail de nova senha:", response.status, errorBody);
+      logError("[mailersend] Erro ao enviar e-mail de nova senha:", response.status, errorBody);
       return { ok: false, error: "Não foi possível enviar o e-mail. Tente novamente em instantes." };
     }
     if (await wasSuppressed(response, "nova senha")) return { ok: false, error: SUPPRESSED_ERROR };
     return { ok: true };
   } catch (err) {
-    console.error("[mailersend] Falha de conexão ao enviar e-mail de nova senha:", err);
+    logError("[mailersend] Falha de conexão ao enviar e-mail de nova senha:", err);
     return { ok: false, error: "Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente." };
   }
 }
@@ -729,13 +731,83 @@ export async function sendWelcomeEmail(
     });
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error("[mailersend] Erro ao enviar boas-vindas:", response.status, errorBody);
+      logError("[mailersend] Erro ao enviar boas-vindas:", response.status, errorBody);
       return { ok: false, error: "Não foi possível enviar o e-mail de boas-vindas." };
     }
     if (await wasSuppressed(response, "boas-vindas")) return { ok: false, error: SUPPRESSED_ERROR };
     return { ok: true };
   } catch (err) {
-    console.error("[mailersend] Falha de conexão ao enviar boas-vindas:", err);
+    logError("[mailersend] Falha de conexão ao enviar boas-vindas:", err);
     return { ok: false, error: "Não foi possível enviar o e-mail de boas-vindas." };
+  }
+}
+
+export interface ErrorDigestItem {
+  event: string;
+  message: string;
+  count: number;
+  level: string;
+  source: string;
+  last_seen: string;
+  last_reference: string | null;
+  organization_id: string | null;
+  isNew: boolean;
+}
+
+/** Resumo diario dos erros (doc technical/21): para quem cuida do sistema, nao para o cliente. */
+export async function sendErrorDigestEmail(input: {
+  toEmail: string;
+  rows: ErrorDigestItem[];
+  total: number;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const apiKey = process.env.MAILERSEND_API_KEY;
+  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br";
+  const fromName = process.env.MAILERSEND_FROM_NAME || "GestaraHub";
+  const line = (r: ErrorDigestItem) =>
+    `${r.isNew ? "NOVO" : "voltou"} · ${r.count}x · ${r.source}/${r.event}${r.organization_id ? ` · espaço ${r.organization_id}` : ""}` +
+    `${r.last_reference ? ` · código ${r.last_reference}` : ""}\n  ${r.message.slice(0, 300)}`;
+  const text =
+    `${input.total} erro(s) novos ou que voltaram nas últimas 24 horas.\n\n` +
+    input.rows.map(line).join("\n\n") +
+    (input.total > input.rows.length ? `\n\n... e mais ${input.total - input.rows.length}.` : "") +
+    "\n\nDetalhes: tabela error_logs (busque pelo código).";
+  const html =
+    `<p>${input.total} erro(s) novos ou que voltaram nas últimas 24 horas.</p><ul>` +
+    input.rows
+      .map(
+        (r) =>
+          `<li><strong>${r.isNew ? "Novo" : "Voltou"}</strong> · ${r.count}x · ${escapeHtml(r.source)}/${escapeHtml(r.event)}` +
+          `${r.organization_id ? ` · espaço ${escapeHtml(r.organization_id)}` : ""}` +
+          `${r.last_reference ? ` · código <code>${escapeHtml(r.last_reference)}</code>` : ""}` +
+          `<br><span style="color:#555">${escapeHtml(r.message.slice(0, 300))}</span></li>`,
+      )
+      .join("") +
+    `</ul>${input.total > input.rows.length ? `<p>... e mais ${input.total - input.rows.length}.</p>` : ""}` +
+    "<p>Detalhes: tabela <code>error_logs</code> (busque pelo código).</p>";
+
+  if (!apiKey) {
+    // Desenvolvimento: o resumo sai no console (nao e erro).
+    console.info("[mailersend] MAILERSEND_API_KEY ausente. Resumo de erros (so desenvolvimento):\n" + text);
+    return { ok: true };
+  }
+  try {
+    const response = await fetch(MAILERSEND_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: { email: fromEmail, name: fromName },
+        to: [{ email: input.toEmail }],
+        subject: `GestaraHub: ${input.total} erro(s) nas últimas 24 horas`,
+        html,
+        text,
+      }),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      return { ok: false, error: `MailerSend ${response.status}: ${errorBody.slice(0, 300)}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

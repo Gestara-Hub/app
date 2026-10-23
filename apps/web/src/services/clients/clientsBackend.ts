@@ -8,6 +8,7 @@ import type {
   ClientFilter,
 } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 
 function mapRowToClient(row: Record<string, unknown>): Client {
@@ -76,7 +77,7 @@ export async function listClientsFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[clientsBackend] Erro ao listar clients:", error);
+    logError("[clientsBackend] Erro ao listar clients:", error);
     throw new Error("Erro ao consultar alunos no banco de dados.");
   }
 

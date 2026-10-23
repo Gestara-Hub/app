@@ -11,6 +11,7 @@ import {
   createOnlinePixPaymentAction,
   createOnlineLinkPaymentAction,
 } from "../onlinePayments/actions";
+import { logError } from "@/lib/log";
 
 export * from "./types";
 export { mockPaymentGateway } from "./adapters/mockAdapter";
@@ -32,7 +33,7 @@ export const paymentGateway: PaymentGateway = {
     } catch (err) {
       fallbackReason = err instanceof Error ? err.message : String(err);
     }
-    console.error("[PaymentGateway] Pix caiu na demonstração:", fallbackReason);
+    logError("[PaymentGateway] Pix caiu na demonstração:", fallbackReason);
     return { ...(await mockPaymentGateway.createPix(input)), provider: "mock", fallbackReason };
   },
 
@@ -45,7 +46,7 @@ export const paymentGateway: PaymentGateway = {
     } catch (err) {
       fallbackReason = err instanceof Error ? err.message : String(err);
     }
-    console.error("[PaymentGateway] link caiu na demonstração:", fallbackReason);
+    logError("[PaymentGateway] link caiu na demonstração:", fallbackReason);
     return { ...(await mockPaymentGateway.createLink(input)), provider: "mock", fallbackReason };
   },
 

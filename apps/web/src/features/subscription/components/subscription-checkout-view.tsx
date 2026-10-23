@@ -46,6 +46,7 @@ import {
   subscriptionCheckoutSchema,
   type SubscriptionCheckoutFormValues,
 } from "../subscription-checkout-schema";
+import { logWarn } from "@/lib/log";
 
 function maskCpfCnpj(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -169,7 +170,7 @@ export function SubscriptionCheckoutView() {
           toast.success("Pagamento confirmado via Asaas!");
         }
       } catch (err) {
-        console.warn("[SubscriptionCheckout] Erro no polling de status:", err);
+        logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
       }
     }, 3500);
 

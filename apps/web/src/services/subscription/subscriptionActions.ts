@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Subscription, SubscriptionTier } from "@gestarahub/contracts";
 import { cancelSubscription, getAsaasConfig } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
+import { logError } from "@/lib/log";
 
 /**
  * Plano do espaco no banco: trocar e cancelar a assinatura.
@@ -39,12 +40,12 @@ export async function updateOrganizationSubscriptionAction(
       .eq("id", organizationId);
 
     if (error) {
-      console.error("[updateOrganizationSubscriptionAction] Erro no Supabase:", error);
+      logError("[updateOrganizationSubscriptionAction] Erro no Supabase:", error);
       return false;
     }
     return true;
   } catch (err) {
-    console.error("[updateOrganizationSubscriptionAction] Exceção:", err);
+    logError("[updateOrganizationSubscriptionAction] Exceção:", err);
     return false;
   }
 }
@@ -64,7 +65,7 @@ export async function cancelAsaasSubscriptionAction(
     await cancelSubscription(subscriptionId);
     return true;
   } catch (err) {
-    console.error("[cancelAsaasSubscriptionAction] Erro ao cancelar:", err);
+    logError("[cancelAsaasSubscriptionAction] Erro ao cancelar:", err);
     return false;
   }
 }

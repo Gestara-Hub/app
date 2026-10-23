@@ -13,6 +13,7 @@ import { newId, nowIso, readOp, textIncludes } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { listAuditLogPage, recordAuditLogInDb } from "./auditLogBackend";
+import { logError } from "@/lib/log";
 
 /** Eventos por pagina na tela de auditoria. */
 export const AUDIT_PAGE_SIZE = 50;
@@ -80,7 +81,7 @@ export const auditLogService = {
       if (realAccountInBrowser()) {
         // So o que aconteceu; autor, espaco e hora o servidor tira da sessao.
         recordAuditLogInDb({ ...input, unitId: store.unit.id }).catch((err) => {
-          console.error("[auditLogService] Erro ao persistir log:", err);
+          logError("[auditLogService] Erro ao persistir log:", err);
         });
       }
     } catch {

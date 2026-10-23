@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/log";
 
 // Erro inesperado numa tela do app: mantem o shell e oferece nova tentativa.
 export default function AppError({
@@ -13,8 +14,10 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Registra (doc technical/21) e mostra o codigo: a queixa leva a linha certa.
+  const [reference, setReference] = useState<string | null>(null);
   useEffect(() => {
-    console.error(error);
+    void reportError("render", error, { context: { digest: error.digest } }).then(setReference);
   }, [error]);
 
   return (
@@ -27,6 +30,9 @@ export default function AppError({
         Não foi possível carregar esta tela. Tente novamente ou volte para o
         início.
       </p>
+      {reference ? (
+        <p className="text-xs text-muted-foreground">Código do erro: {reference}</p>
+      ) : null}
       <div className="flex flex-wrap justify-center gap-2">
         <Button onClick={() => reset()}>
           <RotateCw className="size-4" />

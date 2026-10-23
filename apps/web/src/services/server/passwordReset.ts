@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/log";
 
 /**
  * "Esqueci minha senha" (migracao 36): link de 1 hora para quem tem senha. Quem
@@ -62,7 +63,7 @@ export async function createPasswordResetToken(
     expires_at: new Date(now.getTime() + PASSWORD_RESET_TTL_MS).toISOString(),
   });
   if (error) {
-    console.error("[password-reset] Erro ao criar o link:", error);
+    logError("[password-reset] Erro ao criar o link:", error);
     return null;
   }
   return { token, email, name: account.name };
@@ -112,7 +113,7 @@ export async function resetPasswordWithToken(
 
   const { error } = await admin.auth.admin.updateUserById(check.authUserId, { password });
   if (error) {
-    console.error("[password-reset] Erro ao trocar a senha:", error);
+    logError("[password-reset] Erro ao trocar a senha:", error);
     return { ok: false, code: "error" };
   }
   const nowIso = now.toISOString();

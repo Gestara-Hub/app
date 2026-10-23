@@ -13,6 +13,7 @@ import { listChargesFromDb, listPlansFromDb } from "./billingBackend";
 import { chargeToDbRow } from "./billingRows";
 import { listClientsFromDb } from "../clients/clientsBackend";
 import { listClassGroupsFromDb, listEnrollmentsFromDb } from "../classes/turmasBackend";
+import { logError } from "@/lib/log";
 
 /**
  * Mensalidades automaticas no servidor (doc 15, fatia 1). Le alunos, planos,
@@ -66,7 +67,7 @@ export async function generateMembershipChargesAction(
     p_rows: rows,
   });
   if (error) {
-    console.error("[generateMembershipChargesAction] Erro ao gravar mensalidades:", error);
+    logError("[generateMembershipChargesAction] Erro ao gravar mensalidades:", error);
     throw new Error("Não foi possível gerar as mensalidades.");
   }
   return Number(created) || 0;

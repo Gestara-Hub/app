@@ -5,6 +5,7 @@ import type {
   WhatsAppErrorResponse,
   WhatsAppMessageResponse,
 } from "./types";
+import { logError } from "@/lib/log";
 
 export function getWhatsAppConfig(): WhatsAppConfig {
   const apiUrl = process.env.WHATSAPP_API_URL || "https://graph.facebook.com/v21.0";
@@ -90,7 +91,7 @@ export async function sendWhatsAppTextMessage(
   if (!res.ok) {
     const err = data as WhatsAppErrorResponse;
     const msg = err.error?.message || "Erro desconhecido ao enviar mensagem pelo WhatsApp.";
-    console.error("[WhatsApp Cloud API Error]:", err);
+    logError("[WhatsApp Cloud API Error]:", err);
     throw new WhatsAppApiError(msg, err.error?.code || res.status, err.error?.type || "ApiError", err.error?.fbtrace_id);
   }
 
@@ -151,7 +152,7 @@ export async function sendWhatsAppTemplateMessage(
   if (!res.ok) {
     const err = data as WhatsAppErrorResponse;
     const msg = err.error?.message || "Erro desconhecido ao enviar template de WhatsApp.";
-    console.error("[WhatsApp Cloud API Error]:", err);
+    logError("[WhatsApp Cloud API Error]:", err);
     throw new WhatsAppApiError(msg, err.error?.code || res.status, err.error?.type || "ApiError", err.error?.fbtrace_id);
   }
 

@@ -13,6 +13,7 @@ import {
   type UserView,
 } from "@gestarahub/contracts";
 import { computeTermsDocumentHash, resolveAppBaseUrl, sendWelcomeOnFirstAcceptance } from "./consentShared";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Aceite dos termos da plataforma: registrar e conferir.
@@ -76,7 +77,7 @@ export async function recordLegalConsentAction(
     .single();
 
   if (error || !data) {
-    console.error(
+    logError(
       "[recordLegalConsentAction] Erro ao gravar consentimento:",
       error,
     );
@@ -97,7 +98,7 @@ export async function recordLegalConsentAction(
         })
         .eq("id", userId);
     } catch (updateErr) {
-      console.warn(
+      logWarn(
         "[recordLegalConsentAction] Aviso ao atualizar public.users:",
         updateErr,
       );
@@ -119,7 +120,7 @@ export async function recordLegalConsentAction(
           maxAge: SESSION_MAX_AGE,
         });
       } catch (cookieErr) {
-        console.warn(
+        logWarn(
           "[recordLegalConsentAction] Aviso ao atualizar cookie de sessão:",
           cookieErr,
         );

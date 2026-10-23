@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { CreateLinkInput, CreatePixInput, PaymentLinkPayment, PixPayment } from "../payments/types";
 import { getPaymentGateway } from "../payments/registry";
 import { requireTenant } from "../server/tenant";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Gera o Pix ou o link de pagamento de uma cobranca no gateway ativo.
@@ -67,7 +68,7 @@ export async function createOnlinePixPaymentAction(
     }
 
     } catch (lookupError) {
-      console.warn("[createOnlinePixPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
+      logWarn("[createOnlinePixPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
     }
 
     const gateway = getPaymentGateway(provider);
@@ -88,7 +89,7 @@ export async function createOnlinePixPaymentAction(
     return { ...result, provider: gateway.provider };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
+    logError("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
     return { error: message };
   }
 }
@@ -149,7 +150,7 @@ export async function createOnlineLinkPaymentAction(
     }
 
     } catch (lookupError) {
-      console.warn("[createOnlineLinkPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
+      logWarn("[createOnlineLinkPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
     }
 
     const gateway = getPaymentGateway(provider);
@@ -170,7 +171,7 @@ export async function createOnlineLinkPaymentAction(
     return { ...result, provider: gateway.provider };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:", error);
+    logError("[createOnlineLinkPaymentAction] Erro ao gerar Link no gateway:", error);
     return { error: message };
   }
 }

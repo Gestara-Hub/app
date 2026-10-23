@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
 import { saveAttachmentInStorage } from "@/services/attachments/attachmentsBackend";
 import type { FileAttachment } from "@gestarahub/contracts";
+import { logError } from "@/lib/log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ attachments: results });
   } catch (error) {
-    console.error("[POST /api/attachments] Erro no upload:", error);
+    logError("[POST /api/attachments] Erro no upload:", error);
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Erro interno no upload." },
       { status: 500 },

@@ -10,6 +10,7 @@ import {
   discardPasswordResetToken,
   resetPasswordWithToken,
 } from "@/services/server/passwordReset";
+import { logError } from "@/lib/log";
 
 async function resolveAppBaseUrl(): Promise<string> {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
@@ -57,7 +58,7 @@ export async function requestPasswordResetAction(input: {
     }
     return { ok: true };
   } catch (err) {
-    console.error("[password-reset] Erro ao pedir o link:", err);
+    logError("[password-reset] Erro ao pedir o link:", err);
     return { ok: false, message: "Não foi possível enviar agora. Tente novamente." };
   }
 }

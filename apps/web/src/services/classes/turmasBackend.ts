@@ -10,6 +10,7 @@ import type {
   Id,
 } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 // =============================================================================
 // Row Mappers
@@ -86,7 +87,7 @@ export async function listClassGroupsFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[turmasBackend] Erro ao listar turmas:", error);
+    logError("[turmasBackend] Erro ao listar turmas:", error);
     throw new Error("Erro ao consultar turmas no banco de dados.");
   }
 
@@ -124,7 +125,7 @@ export async function listEnrollmentsFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[turmasBackend] Erro ao listar matrículas:", error);
+    logError("[turmasBackend] Erro ao listar matrículas:", error);
     throw new Error("Erro ao consultar matrículas no banco de dados.");
   }
 

@@ -1,6 +1,7 @@
 import type { PaymentGateway } from "./types";
 import { mockPaymentGateway } from "./adapters/mockAdapter";
 import { asaasPaymentGateway } from "./adapters/asaasAdapter";
+import { logWarn } from "@/lib/log";
 
 /**
  * Registro de Gateways de Pagamento (Hexagonal Architecture / Adapters Registry).
@@ -24,7 +25,7 @@ export function getPaymentGateway(provider?: string): PaymentGateway {
 
   const gateway = GATEWAY_REGISTRY[selectedKey];
   if (!gateway) {
-    console.warn(
+    logWarn(
       `[PaymentGatewayRegistry] Gateway "${provider}" não encontrado. Utilizando fallback "mock".`,
     );
     return mockPaymentGateway;

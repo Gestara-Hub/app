@@ -8,6 +8,7 @@ import {
 import { createWebhook, getAccountFees, getAccountInfo, listWebhooks, updateWebhook } from "@/lib/asaas";
 import type { AsaasWebhookConfig } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Subconta do espaco no Asaas: tarifas e webhook (doc 19, secao 4, decisao de
@@ -56,7 +57,7 @@ export async function syncGatewayFees(organizationId: string): Promise<GatewayAc
     if (error) throw error;
     return fees;
   } catch (err) {
-    console.error("[gatewayAccount] Não foi possível buscar as tarifas da subconta:", err);
+    logError("[gatewayAccount] Não foi possível buscar as tarifas da subconta:", err);
     return null;
   }
 }
@@ -70,7 +71,7 @@ async function masterAccountEmail(): Promise<string | undefined> {
     const info = await getAccountInfo();
     cachedMasterEmail = typeof info.email === "string" && info.email ? info.email : undefined;
   } catch (err) {
-    console.error("[gatewayAccount] Não foi possível ler o e-mail da conta principal:", err);
+    logError("[gatewayAccount] Não foi possível ler o e-mail da conta principal:", err);
   }
   return cachedMasterEmail;
 }
@@ -88,7 +89,7 @@ export async function ensureSubaccountWebhook(
   const authToken = process.env.ASAAS_WEBHOOK_SECRET?.trim();
   if (!url || !authToken) {
     const reason = "ASAAS_WEBHOOK_URL ou ASAAS_WEBHOOK_SECRET não configuradas.";
-    console.warn(`[gatewayAccount] Webhook da subconta não cadastrado: ${reason}`);
+    logWarn(`[gatewayAccount] Webhook da subconta não cadastrado: ${reason}`);
     return { configured: false, reason };
   }
 
@@ -106,7 +107,7 @@ export async function ensureSubaccountWebhook(
   const email = process.env.ASAAS_WEBHOOK_EMAIL?.trim() || (await masterAccountEmail());
   if (!email) {
     const reason = "Sem e-mail para o webhook: defina ASAAS_WEBHOOK_EMAIL.";
-    console.warn(`[gatewayAccount] Webhook da subconta não cadastrado: ${reason}`);
+    logWarn(`[gatewayAccount] Webhook da subconta não cadastrado: ${reason}`);
     return { configured: false, reason };
   }
 
@@ -130,7 +131,7 @@ export async function ensureSubaccountWebhook(
     return { configured: true };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    console.error("[gatewayAccount] Não foi possível cadastrar o webhook da subconta:", err);
+    logError("[gatewayAccount] Não foi possível cadastrar o webhook da subconta:", err);
     return { configured: false, reason };
   }
 }

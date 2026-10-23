@@ -4,6 +4,8 @@ import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { materializeRecurrencesAction } from "@/services/finance/financeBackend";
 import { generateMembershipChargesAction } from "@/services/billing/membershipBackend";
+import { reportError } from "@/lib/log";
+import { sendDailyErrorDigest } from "@/services/server/errorDigest";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
     admin.from("organizations").select("id").eq("model", "classes").eq("status", "active"),
   );
   if (error) {
-    console.error("[cron:daily] Erro ao listar os espaços:", error);
+    void reportError("cron.daily", error, { source: "cron", context: { step: "listar espaços" } });
     return NextResponse.json({ error: "Erro ao listar os espaços." }, { status: 500 });
   }
 
@@ -50,17 +52,25 @@ export async function POST(req: Request) {
     try {
       result.membershipCharges += await generateMembershipChargesAction(id);
     } catch (err) {
-      console.error(`[cron:daily] Mensalidades falharam no espaço ${id}:`, err);
+      await reportError("cron.daily.mensalidades", err, { source: "cron", organizationId: id });
       result.failures += 1;
     }
     try {
       result.recurrenceEntries += await materializeRecurrencesAction(id);
     } catch (err) {
-      console.error(`[cron:daily] Recorrências falharam no espaço ${id}:`, err);
+      await reportError("cron.daily.recorrencias", err, { source: "cron", organizationId: id });
       result.failures += 1;
     }
   }, { deadline });
   result.skipped = run.skipped;
+
+  // Resumo dos erros novos ou que voltaram (doc technical/21).
+  try {
+    const digest = await sendDailyErrorDigest();
+    Object.assign(result, { errorDigest: digest });
+  } catch (err) {
+    await reportError("cron.daily.resumo-erros", err, { source: "cron" });
+  }
 
   console.info("[cron:daily]", JSON.stringify(result));
   return NextResponse.json(result);

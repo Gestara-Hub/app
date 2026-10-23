@@ -12,6 +12,7 @@ import {
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { updateOrganizationSubscriptionAction } from "./subscriptionActions";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Pagamento do plano no Asaas: gerar o checkout, conferir e simular o pago.
@@ -189,7 +190,7 @@ export async function createAsaasSubscriptionCheckoutAction(
       },
     };
   } catch (err: unknown) {
-    console.error("[createAsaasSubscriptionCheckoutAction] Erro:", err);
+    logError("[createAsaasSubscriptionCheckoutAction] Erro:", err);
     return {
       success: false,
       subscriptionId: "",
@@ -223,7 +224,7 @@ export async function checkAsaasSubscriptionPaymentAction(
     );
     return { status: payment.status, isPaid };
   } catch (err) {
-    console.error("[checkAsaasSubscriptionPaymentAction] Erro:", err);
+    logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
     return { status: "ERROR", isPaid: false };
   }
 }
@@ -247,7 +248,7 @@ export async function simulateAsaasSubscriptionPaymentAction(
       try {
         await receiveInCash(paymentId, todayIso, priceConfig.value);
       } catch (asaasErr) {
-        console.warn(
+        logWarn(
           "[simulateAsaasSubscriptionPaymentAction] Aviso no receiveInCash:",
           asaasErr,
         );
@@ -266,7 +267,7 @@ export async function simulateAsaasSubscriptionPaymentAction(
 
     return { success: true };
   } catch (err) {
-    console.error("[simulateAsaasSubscriptionPaymentAction] Erro:", err);
+    logError("[simulateAsaasSubscriptionPaymentAction] Erro:", err);
     return {
       success: false,
       error:

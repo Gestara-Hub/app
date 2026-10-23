@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { finishSignIn, type SignInSessionResult } from "./sign-in-session";
+import { logError } from "@/lib/log";
 
 /**
  * Verificacao em duas etapas com aplicativo autenticador (doc 17, entrega 1),
@@ -62,7 +63,7 @@ export async function verifyTwoFactorSignInAction(input: {
 
     return await finishSignIn(createSupabaseAdminClient(), user.id, input.from);
   } catch (err) {
-    console.error("[two-factor] Erro ao conferir o codigo do login:", err);
+    logError("[two-factor] Erro ao conferir o codigo do login:", err);
     return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
   }
 }
@@ -126,7 +127,7 @@ export async function startTotpEnrollmentAction(): Promise<TotpEnrollment> {
     issuer: "GestaraHub",
   });
   if (error || !data) {
-    console.error("[two-factor] Erro ao comecar o cadastro:", error);
+    logError("[two-factor] Erro ao comecar o cadastro:", error);
     return { ok: false, message: "Não foi possível começar agora. Tente novamente." };
   }
   return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
@@ -171,7 +172,7 @@ export async function disableTotpAction(input: {
 
   const { error } = await supabase.auth.mfa.unenroll({ factorId: verified.id });
   if (error) {
-    console.error("[two-factor] Erro ao desligar:", error);
+    logError("[two-factor] Erro ao desligar:", error);
     return { ok: false, message: "Não foi possível desligar agora. Tente novamente." };
   }
   return { ok: true };

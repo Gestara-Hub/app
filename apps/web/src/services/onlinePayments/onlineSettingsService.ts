@@ -7,6 +7,7 @@ import { realAccountInBrowser } from "../world/delegate";
 import { updateOrganizationOnlineSettingsAction } from "./actions";
 import { clone, currentSettings, validateSettings } from "./onlinePaymentRules";
 import type { UpdateOnlinePaymentSettings } from "./onlinePaymentRules";
+import { logError } from "@/lib/log";
 
 /** Configuracao de Recebimentos online do espaco. */
 export const onlineSettingsService = {
@@ -89,7 +90,7 @@ export const onlineSettingsService = {
             acceptedMethods: next.acceptedMethods,
           });
         } catch (dbErr) {
-          console.error(
+          logError(
             "[onlinePaymentsService] Erro ao sincronizar settings com Supabase:",
             dbErr,
           );

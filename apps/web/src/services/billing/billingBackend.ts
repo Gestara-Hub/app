@@ -11,6 +11,7 @@ import type {
   PlanFilter,
 } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 // =============================================================================
 // Row Mappers
@@ -92,7 +93,7 @@ export async function listPlansFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[billingBackend] Erro ao listar planos:", error);
+    logError("[billingBackend] Erro ao listar planos:", error);
     throw new Error("Erro ao consultar planos no banco de dados.");
   }
 
@@ -130,7 +131,7 @@ export async function listChargesFromDb(
 
   const { data, error } = await selectAllRows(build);
   if (error) {
-    console.error("[billingBackend] Erro ao listar cobranças:", error);
+    logError("[billingBackend] Erro ao listar cobranças:", error);
     throw new Error("Erro ao consultar cobranças no banco de dados.");
   }
 

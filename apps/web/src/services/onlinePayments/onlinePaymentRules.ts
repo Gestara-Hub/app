@@ -15,6 +15,7 @@ import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { afterWorldCommit } from "../world/effects";
 import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "./actions";
+import { logError } from "@/lib/log";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de
@@ -223,7 +224,7 @@ export function cancelOnlinePaymentsForCharge(chargeId: Id, reason?: string): nu
   // retentado depois. Repetir para a mesma cobranca nao tem efeito.
   if (realAccountInBrowser()) {
     void cancelOnlinePaymentsForChargeInDb(chargeId, store.organization.id, reason).catch((err) =>
-      console.error("[onlinePaymentsService] Erro ao cancelar a cobrança online no banco e no Asaas:", err),
+      logError("[onlinePaymentsService] Erro ao cancelar a cobrança online no banco e no Asaas:", err),
     );
   }
   return count;

@@ -3,6 +3,7 @@ import { mapWithConcurrency } from "@/lib/concurrency";
 import { settleAsaasPayment } from "./asaasSettlement";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { realSubaccountKey } from "./gatewaySetup";
+import { logError } from "@/lib/log";
 
 /**
  * Subconta do espaco no Asaas: tarifas e webhook (doc 19, secao 4, decisao de
@@ -57,7 +58,7 @@ export async function cancelGatewayPayment(gatewayPaymentId: string, apiKey: str
     } catch (lookupError) {
       if ((lookupError as { status?: number }).status === 404) return "canceled";
     }
-    console.error("[gatewayAccount] Não foi possível cancelar a cobrança no Asaas:", deleteError);
+    logError("[gatewayAccount] Não foi possível cancelar a cobrança no Asaas:", deleteError);
     return "failed";
   }
 }
@@ -200,7 +201,7 @@ async function settlePaidAtGateway(gatewayPaymentId: string, apiKey: string): Pr
     const payment = await getPayment(gatewayPaymentId, apiKey);
     await settleAsaasPayment(payment, payment.status === "RECEIVED" || payment.status === "RECEIVED_IN_CASH");
   } catch (error) {
-    console.error("[gatewayAccount] Não foi possível dar baixa no pagamento já pago no Asaas:", error);
+    logError("[gatewayAccount] Não foi possível dar baixa no pagamento já pago no Asaas:", error);
   }
 }
 

@@ -19,6 +19,7 @@ import {
   resetThemeCustomizerState,
   subscribeToThemeCustomizer,
 } from "@/lib/theme-customizer";
+import { logWarn } from "@/lib/log";
 
 interface UserPreferencesContextValue {
   preferences: UserPreferences;
@@ -78,7 +79,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         keepalive: true,
       });
     } catch (err) {
-      console.warn("[UserPreferencesProvider] Falha ao sincronizar preferências com o servidor:", err);
+      logWarn("[UserPreferencesProvider] Falha ao sincronizar preferências com o servidor:", err);
     }
   }, []);
 

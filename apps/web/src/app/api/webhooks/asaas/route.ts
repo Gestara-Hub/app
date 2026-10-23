@@ -6,6 +6,7 @@ import {
   cancelOnlinePaymentByGatewayIdInDb,
 } from "@/services/onlinePayments/onlinePaymentsWebhook";
 import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
+import { logError, logWarn, reportError } from "@/lib/log";
 
 export async function POST(req: Request) {
   try {
@@ -16,11 +17,11 @@ export async function POST(req: Request) {
     if (webhookSecret) {
       const headerToken = req.headers.get("asaas-access-token");
       if (headerToken !== webhookSecret) {
-        console.warn("[Asaas Webhook] Token de autenticação ausente ou inválido.");
+        logWarn("[Asaas Webhook] Token de autenticação ausente ou inválido.");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     } else if (process.env.NODE_ENV === "production") {
-      console.error("[Asaas Webhook] ASAAS_WEBHOOK_SECRET não configurada; recusando.");
+      logError("[Asaas Webhook] ASAAS_WEBHOOK_SECRET não configurada; recusando.");
       return NextResponse.json({ error: "Webhook não configurado." }, { status: 503 });
     }
 
@@ -53,14 +54,14 @@ export async function POST(req: Request) {
               paidMethod: paid.paidMethod,
               chargedCents: paid.amountCents,
               realFeeCents: paid.gatewayFeeCents,
-            }).catch((err) => console.error("[Asaas Webhook] Erro ao conferir as tarifas:", err)),
+            }).catch((err) => logError("[Asaas Webhook] Erro ao conferir as tarifas:", err)),
           );
         }
         console.log(
           `[Asaas Webhook] Pagamento online e cobrança ${result.chargeId} marcados como pagos via Asaas!`,
         );
       } else {
-        console.warn(
+        logWarn(
           `[Asaas Webhook] Pagamento ${payment.id} não encontrado na base local do GestaraHub.`,
         );
       }
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
     // Outros eventos (ex: PAYMENT_CREATED) são reconhecidos sem erro
     return NextResponse.json({ success: true, ignored: true });
   } catch (error) {
-    console.error("[Asaas Webhook] Erro ao processar webhook:", error);
+    await reportError("webhook.asaas", error, { source: "webhook" });
     return NextResponse.json(
       { error: "Erro interno ao processar webhook." },
       { status: 500 },

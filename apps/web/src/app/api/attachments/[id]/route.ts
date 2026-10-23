@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
 import { getAttachmentRecord } from "@/services/attachments/attachmentsBackend";
 import { downloadAttachmentFromStorage } from "@/services/attachments/attachmentsStorage";
+import { logError } from "@/lib/log";
 
 export async function GET(
   req: NextRequest,
@@ -42,7 +43,7 @@ export async function GET(
       headers,
     });
   } catch (error) {
-    console.error("[GET /api/attachments/:id] Erro:", error);
+    logError("[GET /api/attachments/:id] Erro:", error);
     return NextResponse.json(
       { message: "Erro ao carregar arquivo." },
       { status: 500 },

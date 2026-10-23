@@ -66,6 +66,7 @@ All user-facing texts **must be in Portuguese**:
   - Dialogs: `@/components/shared/confirm-action-dialog` (`useConfirmAction`, `ConfirmActionDialog`).
   - Form helpers: `@/components/form` (`DialogFormFooter`, `InputCurrency`, `InputText`, `SelectField`, `ComboboxField`, `SegmentedChoiceField`, `SwitchField`, `FileDropField` + `filesSchema` from `@/lib/files`, `PaymentMethodField`, `InputPhone` (country selector, Brazil +55 default, stores E.164; helpers in `@gestarahub/core/phone`), etc.) and `@/lib/form-errors.ts` (`handleFormApiError`). Payment registration uses `@/components/shared/payment-dialog` (`PaymentDialog`, a right-side drawer like the other forms: method, "Pago em" date and receipts, returned as `PaymentDialogResult`).
   - No ellipsis on names or values: wrap with `min-w-0 break-words` (doc 07 "Ajustes da Prioridade 3"); names with a kind prefix use `withKind` from `@/lib/text` ("Pacote Pacote" never).
+  - Errors: never `console.error`/`console.warn` for errors; use `logError`/`logWarn`/`reportError` from `@/lib/log` (masked, grouped in `error_logs`, error code shown to the user; doc `docs/technical/21-registro-de-erros.md`).
   - Teacher scope: services check `@/services/classes/teacherScope` (professional sees and acts only in own classes and substituted sessions; `progression:manage` for graduation and records).
 - **Navigation**: `apps/web/src/components/layout/nav.ts` (`MAIN_NAV`, `FOOTER_NAV`, filtered by operational model and permission).
 - **Boundaries** (enforced by `apps/web/eslint.config.mjs`):

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runAllBirthdayGreetings } from "@/services/communication/birthdayGreetingsCron";
 import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
+import { reportError } from "@/lib/log";
 
 /**
  * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
@@ -26,13 +27,13 @@ export async function POST(req: Request) {
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
-    console.error("[cron:online-payments] Expiração falhou:", err);
+    await reportError("cron.hourly.expiracao", err, { source: "cron" });
     result.failures += 1;
   }
   try {
     result.retriedCancels = await retryAllPendingGatewayCancels();
   } catch (err) {
-    console.error("[cron:online-payments] Nova tentativa de cancelamento falhou:", err);
+    await reportError("cron.hourly.cancelamentos", err, { source: "cron" });
     result.failures += 1;
   }
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     result.birthdayGreetings = greetings.sent;
     result.failures += greetings.failures;
   } catch (err) {
-    console.error("[cron:online-payments] Parabéns falharam:", err);
+    await reportError("cron.hourly.parabens", err, { source: "cron" });
     result.failures += 1;
   }
 

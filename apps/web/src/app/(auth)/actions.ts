@@ -20,6 +20,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { discardUnstartedOwnerAccount } from "@/services/server/accountSetup";
+import { logError } from "@/lib/log";
 
 /**
  * Grava as claims do usuario no cookie de sessao. O client passa o `UserView`
@@ -106,7 +107,7 @@ export async function declineTermsAndSignOut(): Promise<void> {
       await discardUnstartedOwnerAccount(createSupabaseAdminClient(), data.user.id);
     }
   } catch (err) {
-    console.error("[auth] Erro ao descartar conta recusada:", err);
+    logError("[auth] Erro ao descartar conta recusada:", err);
   }
   await signOut();
 }

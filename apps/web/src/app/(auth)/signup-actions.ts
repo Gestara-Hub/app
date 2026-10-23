@@ -23,6 +23,7 @@ import {
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createOwnerAccount } from "@/services/server/accountSetup";
 import { finishSignIn, needsSecondFactor } from "./sign-in-session";
+import { logError } from "@/lib/log";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -165,7 +166,7 @@ export async function requestSignupLink(input: {
       .limit(1);
 
     if (userErr) {
-      console.error("[signup] Erro ao consultar users:", userErr);
+      logError("[signup] Erro ao consultar users:", userErr);
       return {
         status: "error",
         message: "Não foi possível verificar o e-mail. Tente novamente.",
@@ -191,7 +192,7 @@ export async function requestSignupLink(input: {
       .order("created_at", { ascending: false });
 
     if (tokenQueryErr) {
-      console.error("[signup] Erro ao consultar signup_tokens:", tokenQueryErr);
+      logError("[signup] Erro ao consultar signup_tokens:", tokenQueryErr);
       return {
         status: "error",
         message: "Não foi possível processar o cadastro. Tente novamente.",
@@ -244,7 +245,7 @@ export async function requestSignupLink(input: {
     });
 
     if (insertErr) {
-      console.error("[signup] Erro ao criar signup_token:", insertErr);
+      logError("[signup] Erro ao criar signup_token:", insertErr);
       return {
         status: "error",
         message: "Não foi possível gerar o link de acesso. Tente novamente.",
@@ -282,7 +283,7 @@ export async function requestSignupLink(input: {
 
     return { status: "sent", email: normalizedEmail };
   } catch (err) {
-    console.error("[signup] Erro inesperado em requestSignupLink:", err);
+    logError("[signup] Erro inesperado em requestSignupLink:", err);
     return {
       status: "error",
       message: "Não foi possível enviar o link de cadastro. Tente novamente.",
@@ -373,7 +374,7 @@ export async function validateSignupToken(
       expiresAt: row.expires_at,
     };
   } catch (err) {
-    console.error("[signup] Erro ao validar token:", err);
+    logError("[signup] Erro ao validar token:", err);
     return { status: "invalid" };
   }
 }
@@ -469,7 +470,7 @@ export async function completeSignupWithPassword(input: {
       // localiza pelo e-mail e atualiza a senha.
       const existingAuthUser = await findAuthUserByEmail(admin, normalizedEmail);
       if (!existingAuthUser) {
-        console.error("[signup] Erro ao criar usuario no Auth:", createAuthErr);
+        logError("[signup] Erro ao criar usuario no Auth:", createAuthErr);
         return {
           ok: false,
           code: "error",
@@ -547,7 +548,7 @@ export async function completeSignupWithPassword(input: {
       categories: [],
     };
   } catch (err) {
-    console.error("[signup] Erro inesperado em completeSignupWithPassword:", err);
+    logError("[signup] Erro inesperado em completeSignupWithPassword:", err);
     return {
       ok: false,
       code: "error",
@@ -667,7 +668,7 @@ export async function signInWithPasswordAction(input: {
     if (result.ok) await resetRateLimit(rateLimitKey);
     return result;
   } catch (err) {
-    console.error("[auth] Erro em signInWithPasswordAction:", err);
+    logError("[auth] Erro em signInWithPasswordAction:", err);
     return {
       ok: false,
       message: "Não foi possível entrar agora. Tente novamente.",
@@ -732,7 +733,7 @@ export async function persistSetupToBackendAction(input: {
       }
     }
   } catch (err) {
-    console.error("[setup] Erro ao persistir setup no Supabase:", err);
+    logError("[setup] Erro ao persistir setup no Supabase:", err);
   }
 }
 
@@ -764,7 +765,7 @@ export async function startGoogleSignInAction(
     options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
   });
   if (error || !data.url) {
-    console.error("[auth] Erro ao abrir o Google:", error);
+    logError("[auth] Erro ao abrir o Google:", error);
     return { ok: false, message: "Não foi possível abrir o Google. Tente novamente." };
   }
   return { ok: true, url: data.url };

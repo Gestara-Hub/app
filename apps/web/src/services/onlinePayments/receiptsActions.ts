@@ -4,6 +4,7 @@ import { selectAllRows } from "@/lib/supabase/select-all";
 import type { OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { expireDueOnlinePayments } from "./gateway";
+import { logError } from "@/lib/log";
 
 /**
  * Extrato de recebimentos online da subconta (filtros, resumo e paginas).
@@ -97,7 +98,7 @@ export async function listSubaccountReceiptsAction(
   const client = await getClientForTenant();
   // Vencidas pela validade: expira aqui e exclui no Asaas antes de listar.
   await expireDueOnlinePayments(query.organizationId).catch((err) =>
-    console.error("[listSubaccountReceiptsAction] Erro ao expirar cobranças vencidas:", err),
+    logError("[listSubaccountReceiptsAction] Erro ao expirar cobranças vencidas:", err),
   );
   const statuses = STATUS_FILTER_VALUES[query.status];
 
@@ -151,7 +152,7 @@ export async function listSubaccountReceiptsAction(
     summary: { count: 0, paidCount: 0, grossCents: 0, feeCents: 0, netCents: 0, releasedNetCents: 0, pendingNetCents: 0 },
   };
   if (pageRes.error || !pageRes.data) {
-    console.error("[listSubaccountReceiptsAction] Erro ao listar recebimentos:", pageRes.error);
+    logError("[listSubaccountReceiptsAction] Erro ao listar recebimentos:", pageRes.error);
     return empty;
   }
 

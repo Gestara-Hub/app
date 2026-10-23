@@ -14,6 +14,7 @@ import type {
   AsaasSubscriptionRequest,
   AsaasSubscriptionResponse,
 } from "./types";
+import { logError, logWarn } from "@/lib/log";
 
 export interface AsaasConfig {
   apiUrl: string;
@@ -29,7 +30,7 @@ export function getAsaasConfig(): AsaasConfig {
   const masterWalletId = process.env.ASAAS_MASTER_WALLET_ID;
 
   if (!masterApiKey) {
-    console.warn(
+    logWarn(
       "[Asaas] Atenção: ASAAS_API_KEY não configurada no ambiente.",
     );
   }
@@ -105,7 +106,7 @@ async function asaasFetch<T>(
       data?.message ||
       `Erro na chamada ao Asaas (HTTP ${response.status})`;
 
-    console.error(`[Asaas] Erro em ${options.method || "GET"} ${endpoint}:`, {
+    logError(`[Asaas] Erro em ${options.method || "GET"} ${endpoint}:`, {
       status: response.status,
       errors: errorList,
     });

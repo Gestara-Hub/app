@@ -35,6 +35,7 @@ import { useOrganization } from "@/features/settings";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { useSubscriptionCheckout } from "../hooks/use-subscription-checkout";
+import { logWarn } from "@/lib/log";
 
 interface SubscriptionCheckoutDialogProps {
   open: boolean;
@@ -98,7 +99,7 @@ function SubscriptionCheckoutContent({
           toast.success("Pagamento confirmado via Asaas!");
         }
       } catch (err) {
-        console.warn("[SubscriptionCheckout] Erro no polling de status:", err);
+        logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
       }
     }, 3500);
 

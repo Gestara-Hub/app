@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email/mailersend";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Apoio dos aceites (so servidor): hash do texto aceito, endereco do app e boas-vindas no primeiro aceite.
@@ -49,8 +50,8 @@ export async function sendWelcomeOnFirstAcceptance(userId: string, appUrl: strin
       toName: (dbUser.name as string) || "",
       appUrl,
     });
-    if (!sent.ok) console.warn("[recordLegalConsentAction] Boas-vindas não enviadas:", sent.error);
+    if (!sent.ok) logWarn("[recordLegalConsentAction] Boas-vindas não enviadas:", sent.error);
   } catch (err) {
-    console.error("[recordLegalConsentAction] Erro ao enviar boas-vindas:", err);
+    logError("[recordLegalConsentAction] Erro ao enviar boas-vindas:", err);
   }
 }

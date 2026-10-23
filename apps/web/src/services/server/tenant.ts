@@ -1,6 +1,7 @@
 import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
 import { can } from "@/lib/permissions";
+import { setErrorScope } from "@/lib/log/server-sink";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
@@ -44,6 +45,8 @@ export async function requireTenant(): Promise<TenantContext> {
   if (error || !row) throw unauthorized();
 
   const profile = row.profile as UserProfile;
+  // Erros registrados dentro desta requisicao saem com o espaco e o usuario da sessao.
+  setErrorScope({ organizationId: String(row.organization_id), userId: String(row.id) });
   return {
     client,
     organizationId: String(row.organization_id),

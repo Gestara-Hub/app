@@ -21,6 +21,7 @@ import {
   type SubscriptionCheckoutResult,
 } from "./actions";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Plano GestaraHub (assinatura) do tenant ativo. Na demonstracao o proprietario
@@ -86,7 +87,7 @@ export const subscriptionService = {
             store.organization.subscription.asaasSubscriptionId,
           );
         } catch (err) {
-          console.warn("[subscriptionService] Erro ao cancelar assinatura no Asaas:", err);
+          logWarn("[subscriptionService] Erro ao cancelar assinatura no Asaas:", err);
         }
       }
 
@@ -103,7 +104,7 @@ export const subscriptionService = {
         try {
           await updateOrganizationSubscriptionAction(store.organization.id, tier);
         } catch (dbErr) {
-          console.error(
+          logError(
             "[subscriptionService] Erro ao sincronizar tier com Supabase:",
             dbErr,
           );
@@ -210,7 +211,7 @@ export const subscriptionService = {
         try {
           await updateOrganizationSubscriptionAction(store.organization.id, newSub);
         } catch (dbErr) {
-          console.error(
+          logError(
             "[subscriptionService] Erro ao sincronizar tier com Supabase:",
             dbErr,
           );

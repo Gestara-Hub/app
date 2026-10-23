@@ -3,6 +3,7 @@ import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
 import { realAccountInBrowser } from "../world/delegate";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
 import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
+import { logError } from "@/lib/log";
 
 /**
  * Envio e leitura de anexos (comprovantes, notas, boletos, logos).
@@ -45,7 +46,7 @@ export const attachmentsService = {
         );
         return data.attachments;
       } catch (err) {
-        console.error("[attachmentsService] Erro no upload via storage, caindo no fallback local:", err);
+        logError("[attachmentsService] Erro no upload via storage, caindo no fallback local:", err);
       }
     }
 

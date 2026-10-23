@@ -8,6 +8,7 @@ import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "
 import { receiveInCash } from "@/lib/asaas";
 import { requireTenant } from "../server/tenant";
 import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
+import { logError, logWarn } from "@/lib/log";
 
 /**
  * Codigos de pagamento online no banco: gravar, listar, simular o pago e cancelar (aqui e no Asaas).
@@ -44,7 +45,7 @@ export async function insertOnlinePaymentInDb(
     .single();
 
   if (error) {
-    console.error(
+    logError(
       "[onlinePaymentsBackend] Erro ao inserir pagamento online:",
       error,
     );
@@ -61,7 +62,7 @@ export async function listOnlinePaymentsForChargeFromDb(
   const client = await getClientForTenant();
   // A modal Cobrar online mostra o codigo em aberto: o vencido expira antes (e sai do Asaas).
   await expireDueOnlinePayments(organizationId).catch((err) =>
-    console.error("[listOnlinePaymentsForChargeFromDb] Erro ao expirar cobranças vencidas:", err),
+    logError("[listOnlinePaymentsForChargeFromDb] Erro ao expirar cobranças vencidas:", err),
   );
   const { data, error } = await client
     .from("online_payments")
@@ -71,7 +72,7 @@ export async function listOnlinePaymentsForChargeFromDb(
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error(
+    logError(
       "[onlinePaymentsBackend] Erro ao listar pagamentos da cobrança:",
       error,
     );
@@ -102,7 +103,7 @@ export async function simulateOnlinePaidAction(
 
   if (row && row.organization_id !== ctx.organizationId) throw forbiddenError();
   if (fetchErr || !row) {
-    console.error(
+    logError(
       "[simulateOnlinePaidAction] Pagamento online não encontrado:",
       onlinePaymentId,
       fetchErr,
@@ -124,7 +125,7 @@ export async function simulateOnlinePaidAction(
     .maybeSingle();
 
   if (paymentError || !updatedPayment) {
-    console.error(
+    logError(
       "[simulateOnlinePaidAction] Erro ao atualizar status do online_payment:",
       paymentError,
     );
@@ -152,7 +153,7 @@ export async function simulateOnlinePaidAction(
     .eq("id", row.charge_id);
 
   if (chargeError) {
-    console.error(
+    logError(
       "[simulateOnlinePaidAction] Erro ao atualizar charge após simulação:",
       chargeError,
     );
@@ -188,7 +189,7 @@ export async function simulateOnlinePaidAction(
         `[simulateOnlinePaidAction] Baixa confirmada no Asaas Sandbox para o pagamento ${row.gateway_payment_id}!`,
       );
     } catch (asaasErr) {
-      console.warn(
+      logWarn(
         "[simulateOnlinePaidAction] Não foi possível liquidar no Asaas Sandbox (ignorado):",
         asaasErr,
       );

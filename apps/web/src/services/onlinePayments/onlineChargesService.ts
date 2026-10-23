@@ -38,6 +38,7 @@ import {
   cancelOnlinePaymentsForCharge,
 } from "./onlinePaymentRules";
 import type { OnlineChargeCheckout } from "./onlinePaymentRules";
+import { logError } from "@/lib/log";
 
 /** Pix e link de uma cobranca: listar, gerar, simular o pago e cancelar. */
 export const onlineChargesService = {
@@ -222,7 +223,7 @@ export const onlineChargesService = {
           );
           await insertOnlinePaymentInDb(payment, c.studentId);
         } catch (dbErr) {
-          console.error("[onlinePaymentsService] Erro ao salvar online_payment no banco:", dbErr);
+          logError("[onlinePaymentsService] Erro ao salvar online_payment no banco:", dbErr);
         }
       }
 

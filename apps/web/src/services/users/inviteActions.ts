@@ -6,6 +6,7 @@ import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
 import { userProfileLabel } from "@/lib/labels";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { SEVEN_DAYS_MS, guard, hashToken, resolveAppBaseUrl } from "./userActionsShared";
+import { logError } from "@/lib/log";
 
 /**
  * Convite de usuario: criar com convite e reenviar.
@@ -73,7 +74,7 @@ export async function createUserAndInviteAction(
       .single();
 
     if (insertUserErr || !insertedUser) {
-      console.error("[usersBackend] Erro ao inserir usuário:", insertUserErr);
+      logError("[usersBackend] Erro ao inserir usuário:", insertUserErr);
       return {
         success: false,
         error: "Não foi possível criar o usuário no banco de dados.",
@@ -103,7 +104,7 @@ export async function createUserAndInviteAction(
       });
 
       if (inviteInsertErr) {
-        console.error("[usersBackend] Erro ao criar convite:", inviteInsertErr);
+        logError("[usersBackend] Erro ao criar convite:", inviteInsertErr);
         inviteError = "Não foi possível gerar o convite.";
       } else {
         const baseUrl = await resolveAppBaseUrl();
@@ -159,7 +160,7 @@ export async function createUserAndInviteAction(
 
     return { success: true, user: userView, inviteSent, inviteError };
   } catch (err) {
-    console.error("[usersBackend] Erro inesperado em createUserAndInviteAction:", err);
+    logError("[usersBackend] Erro inesperado em createUserAndInviteAction:", err);
     return {
       success: false,
       error: "Ocorreu um erro ao cadastrar e convidar o usuário.",
@@ -218,7 +219,7 @@ export async function resendInvitationAction(
     });
 
     if (inviteInsertErr) {
-      console.error("[usersBackend] Erro ao criar convite:", inviteInsertErr);
+      logError("[usersBackend] Erro ao criar convite:", inviteInsertErr);
       return { success: false, error: "Não foi possível gerar o convite." };
     }
 
@@ -251,7 +252,7 @@ export async function resendInvitationAction(
 
     return { success: true };
   } catch (err) {
-    console.error("[usersBackend] Erro ao reenviar convite:", err);
+    logError("[usersBackend] Erro ao reenviar convite:", err);
     return { success: false, error: "Não foi possível reenviar o convite." };
   }
 }

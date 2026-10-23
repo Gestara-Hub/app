@@ -13,6 +13,7 @@ import type {
   UserProfile,
   UserView,
 } from "@gestarahub/contracts";
+import { logError } from "@/lib/log";
 
 /**
  * Criacao e carga da conta no banco, comuns ao cadastro por e-mail e ao
@@ -86,7 +87,7 @@ export async function createOwnerAccount(
     status: organization.status,
   });
   if (orgErr) {
-    console.error("[signup] Erro ao criar organizacao:", orgErr);
+    logError("[signup] Erro ao criar organizacao:", orgErr);
     return { ok: false, message: "Não foi possível preparar o espaço da sua conta. Tente novamente." };
   }
 
@@ -98,7 +99,7 @@ export async function createOwnerAccount(
     business_hours: [],
   });
   if (unitErr) {
-    console.error("[signup] Erro ao criar unidade:", unitErr);
+    logError("[signup] Erro ao criar unidade:", unitErr);
   }
 
   const { error: userInsertErr } = await admin.from("users").upsert({
@@ -111,7 +112,7 @@ export async function createOwnerAccount(
     status: "active",
   });
   if (userInsertErr) {
-    console.error("[signup] Erro ao criar public.users:", userInsertErr);
+    logError("[signup] Erro ao criar public.users:", userInsertErr);
     return { ok: false, message: "Não foi possível salvar os dados do usuário. Tente novamente." };
   }
 
@@ -140,11 +141,11 @@ export async function discardUnstartedOwnerAccount(admin: SupabaseClient, authUs
   // A organizacao leva unidade, usuario e o resto em cascata.
   const { error: orgErr } = await admin.from("organizations").delete().eq("id", orgId);
   if (orgErr) {
-    console.error("[signup] Erro ao apagar espaco recusado:", orgErr);
+    logError("[signup] Erro ao apagar espaco recusado:", orgErr);
     return false;
   }
   const { error: authErr } = await admin.auth.admin.deleteUser(authUserId);
-  if (authErr) console.error("[signup] Erro ao apagar acesso recusado:", authErr);
+  if (authErr) logError("[signup] Erro ao apagar acesso recusado:", authErr);
   return true;
 }
 

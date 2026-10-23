@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireTenant } from "../server/tenant";
 import { auditLogPageFor } from "./auditLogPage";
 import type { RecordAuditInput } from "./auditLogService";
+import { logError } from "@/lib/log";
 
 /** Limites do que vem do navegador (texto livre na auditoria). */
 const MAX_TEXT = 500;
@@ -53,9 +54,9 @@ export async function recordAuditLogInDb(input: RecordAuditInput & { unitId?: st
       changes: Array.isArray(input.changes) && input.changes.length > 0 ? input.changes.slice(0, MAX_CHANGES) : null,
       security: input.security === true,
     });
-    if (error) console.error("[auditLogBackend] Erro ao gravar audit log:", error.message);
+    if (error) logError("[auditLogBackend] Erro ao gravar audit log:", error.message);
   } catch (err) {
-    console.error("[auditLogBackend] Erro ao gravar audit log no Postgres:", err);
+    logError("[auditLogBackend] Erro ao gravar audit log no Postgres:", err);
   }
 }
 

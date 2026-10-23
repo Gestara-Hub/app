@@ -2,6 +2,7 @@ import type { OnlinePayment } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cancelGatewayPayment, subaccountKeyOf } from "./gateway";
 import { chargeMethodOf, mapRowToOnlinePayment } from "./onlinePaymentsRows";
+import { logError } from "@/lib/log";
 
 /**
  * Baixa, expiracao e cancelamento vindos do webhook do Asaas (app/api/webhooks).
@@ -83,7 +84,7 @@ export async function markOnlinePaymentPaidInDb(
     .maybeSingle();
 
   if (paymentError || !updatedPayment) {
-    console.error(
+    logError(
       "[onlinePaymentsBackend] Erro ao marcar online_payment como pago:",
       paymentError,
     );
@@ -105,7 +106,7 @@ export async function markOnlinePaymentPaidInDb(
     .eq("id", payment.chargeId);
 
   if (chargeError) {
-    console.error(
+    logError(
       "[onlinePaymentsBackend] Erro ao atualizar charge após pagamento online:",
       chargeError,
     );

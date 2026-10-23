@@ -6,6 +6,7 @@ import { isApiError } from "@gestarahub/contracts";
 import { DocumentPdf, type DocumentLogo } from "@/lib/documents/document-pdf";
 import { documentToCsv } from "@/lib/documents/csv";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 /**
  * Documentos no servidor (PDF com @react-pdf e CSV) a partir do mesmo
@@ -62,7 +63,7 @@ export async function loadSpaceLogo(organizationId: string): Promise<DocumentLog
       }
     }
   } catch (error) {
-    console.error("[documents] Erro ao carregar a logo do espaço:", error);
+    logError("[documents] Erro ao carregar a logo do espaço:", error);
   }
   return null;
 }
@@ -115,7 +116,7 @@ export function documentErrorResponse(error: unknown): Response {
       { status: apiError.httpStatus ?? (apiError.code === "NOT_FOUND" ? 404 : 400) },
     );
   }
-  console.error("[documents] Erro ao gerar documento:", error);
+  logError("[documents] Erro ao gerar documento:", error);
   return Response.json({ message: "Não foi possível gerar o documento." }, { status: 500 });
 }
 

@@ -32,6 +32,7 @@ import { declineTermsAndSignOut } from "@/app/(auth)/actions";
 import { cn } from "@/lib/utils";
 import { useLegalConsent } from "../hooks/use-legal-consent";
 import { useCurrentUser } from "../session-provider";
+import { logError } from "@/lib/log";
 
 type LegalTab = "lgpd" | "payments" | "audit";
 
@@ -89,7 +90,7 @@ export function LegalConsentDialog() {
         "Termos aceitos com sucesso! Seja bem-vindo ao GestaraHub.",
       );
     } catch (err) {
-      console.error("[LegalConsentDialog] Erro ao aceitar termos:", err);
+      logError("[LegalConsentDialog] Erro ao aceitar termos:", err);
       toast.error("Ocorreu um erro ao salvar o aceite. Tente novamente.");
     }
   };

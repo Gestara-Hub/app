@@ -3,6 +3,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { UpdateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { guard } from "./userActionsShared";
+import { logError } from "@/lib/log";
 
 /**
  * Usuarios do espaco no banco: listar, editar e inativar.
@@ -37,7 +38,7 @@ export async function listUsersFromDb(
     ]);
 
     if (usersRes.error) {
-      console.error("[usersBackend] Erro ao listar usuários:", usersRes.error);
+      logError("[usersBackend] Erro ao listar usuários:", usersRes.error);
       return [];
     }
 
@@ -74,7 +75,7 @@ export async function listUsersFromDb(
       };
     });
   } catch (err) {
-    console.error("[usersBackend] Erro inesperado em listUsersFromDb:", err);
+    logError("[usersBackend] Erro inesperado em listUsersFromDb:", err);
     return [];
   }
 }
@@ -121,13 +122,13 @@ export async function updateUserInDb(
       .eq("organization_id", organizationId);
 
     if (error) {
-      console.error("[usersBackend] Erro ao atualizar usuário:", error);
+      logError("[usersBackend] Erro ao atualizar usuário:", error);
       return { success: false, error: "Erro ao atualizar usuário no banco." };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[usersBackend] Erro inesperado em updateUserInDb:", err);
+    logError("[usersBackend] Erro inesperado em updateUserInDb:", err);
     return { success: false, error: "Falha na comunicação com o banco." };
   }
 }
@@ -158,13 +159,13 @@ export async function inactivateUserInDb(
       .eq("organization_id", organizationId);
 
     if (error) {
-      console.error("[usersBackend] Erro ao inativar usuário:", error);
+      logError("[usersBackend] Erro ao inativar usuário:", error);
       return { success: false, error: "Não foi possível inativar o usuário." };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[usersBackend] Erro inesperado em inactivateUserInDb:", err);
+    logError("[usersBackend] Erro inesperado em inactivateUserInDb:", err);
     return { success: false, error: "Falha ao inativar usuário." };
   }
 }

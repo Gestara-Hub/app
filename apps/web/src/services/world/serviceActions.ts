@@ -39,5 +39,5 @@ export async function serviceAction(method: string, args: unknown[]): Promise<Ac
         console.warn(`[world] ${method}: conflito na tentativa ${attempt}; tentando de novo`);
       }
     }
-  });
+  }, method);
 }
