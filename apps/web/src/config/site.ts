@@ -15,4 +15,4 @@ export const INSTAGRAM_HANDLE = "gestarahub";
 export const INSTAGRAM_URL = "https://www.instagram.com/gestarahub/";
 
 /** Data da versao atual dos Termos de uso e da Politica de privacidade. */
-export const LEGAL_UPDATED_AT = "20/10/2026";
+export const LEGAL_UPDATED_AT = "22/10/2026";

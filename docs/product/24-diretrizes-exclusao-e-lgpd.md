@@ -81,6 +81,7 @@ Quando uma pessoa física vinculada ao espaço solicita o "direito ao esquecimen
   * Dados cadastrais e pessoais supérfluos são **eliminados permanentemente**: foto de perfil, telefone, e-mail, restrições médicas, histórico de avaliações físicas e endereço.
   * Dados financeiros históricos são **anonimizados**: o registro de pagamento continua existindo para o caixa da academia bater, mas o nome é mascarado para `Aluno Anonimizado #ID` e o CPF é destruído (`***.***.***-**`).
   * As matrículas e cobranças futuras são canceladas.
+  * **CPF (22/10/2026):** o do aluno (`clients.cpf`) e o do responsável financeiro (`guardians[].cpf`) existem só para a cobrança online (o parceiro de pagamentos exige o CPF de quem paga). Na anonimização os dois são destruídos.
 
 ### 3.2. Professor / Instrutor
 * **Travas de Bloqueio:**

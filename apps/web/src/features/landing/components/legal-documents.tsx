@@ -68,7 +68,7 @@ export function TermsOfUse() {
           </li>
           <li>
             <strong>Planos Pagos e Módulos Opcionais:</strong> A contratação de
-            planos superiores (ex.: planos Pro ou Scale) ou módulos opcionais
+            planos superiores (ex.: planos Profissional ou Expansão) ou módulos opcionais
             (como automações de WhatsApp e relatórios avançados) é facultativa,
             com valores, limites e periodicidades de faturamento expressamente
             informados antes da contratação.
@@ -114,6 +114,21 @@ export function TermsOfUse() {
             de contestação de compra (chargeback) ou cancelamento por parte do seu
             aluno, a responsabilidade civil e financeira é exclusiva do seu
             estabelecimento perante o aluno e o gateway de pagamento.
+          </li>
+          <li>
+            <strong>Dados para Abrir a Conta de Recebimento:</strong> Para
+            ativar o recebimento online, Você informa dados verídicos do titular
+            (nome ou razão social, CPF ou CNPJ, e-mail, celular, endereço, renda
+            ou faturamento mensal e, para pessoa física, a data de nascimento),
+            enviados à instituição parceira para abertura e validação da conta.
+          </li>
+          <li>
+            <strong>CPF de Quem Paga:</strong> A instituição parceira exige o
+            CPF de quem paga cada cobrança online: o do aluno, quando maior de
+            idade, ou o do responsável financeiro, quando menor. Cabe a Você
+            cadastrar esse dado e informar ao aluno ou responsável que nome,
+            CPF, e-mail, telefone e endereço seguem para a instituição parceira
+            para emitir a cobrança.
           </li>
         </ul>
       </LegalSection>
@@ -189,8 +204,7 @@ export function TermsOfUse() {
       <LegalSection title="8. Nível de Serviço (SLA) e Disponibilidade">
         <p>
           A GestaraHub emprega práticas de ponta e infraestrutura em nuvem
-          escalável para assegurar alta disponibilidade contínua (meta de SLA de
-          99,5% do tempo no ar).
+          escalável para manter a plataforma disponível de forma contínua.
         </p>
         <p>
           Não configuram inadimplemento contratual pausas programadas para
@@ -210,8 +224,7 @@ export function TermsOfUse() {
         </p>
         <p>
           <strong>Como Encerrar:</strong> O encerramento pode ser solicitado
-          diretamente no painel de configurações do sistema (&ldquo;Configurações &gt;
-          Encerrar Organização&rdquo;) ou pelo e-mail de suporte oficial.
+          pelo e-mail de suporte oficial ({SUPPORT_EMAIL}).
         </p>
         <p>
           <strong>Exportação de Dados:</strong> Recomenda-se que o Contratante
@@ -305,8 +318,10 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Dados dos Alunos e Responsáveis:</strong> Nome completo, CPF,
-            data de nascimento, telefone de contato, histórico de presenças e
-            registros de mensalidades/pagamentos. <em>Finalidade:</em> controle de
+            data de nascimento, telefone de contato, e-mail, endereço, histórico de
+            presenças e registros de mensalidades/pagamentos. O CPF identifica quem
+            paga a cobrança online: o próprio aluno, quando maior de idade, ou o
+            responsável financeiro, quando menor. <em>Finalidade:</em> controle de
             matrícula, emissão de cobranças Pix/boleto/cartão e comunicação via
             WhatsApp.
           </li>
@@ -350,7 +365,10 @@ export function PrivacyPolicy() {
           <li>
             <strong>Instituições Financeiras e Gateways:</strong> Compartilhamento
             com a Asaas Gestão Financeira IP S.A. para processamento, validação e
-            liquidação de transações Pix, boletos e cartões de crédito.
+            liquidação de transações Pix, boletos e cartões de crédito. Somente
+            quando o espaço gera uma cobrança online, seguem os dados de quem paga
+            (nome, CPF, e-mail, telefone e endereço), exigidos pela instituição para
+            emitir a cobrança e prevenir fraudes.
           </li>
           <li>
             <strong>Infraestrutura em Nuvem:</strong> Servidores em nuvem de alta
@@ -361,7 +379,9 @@ export function PrivacyPolicy() {
           <li>
             <strong>Serviços de Comunicação:</strong> Provedores homologados de
             mensageria (Meta/WhatsApp Cloud API) para disparo de notificações e
-            lembretes autorizados pelo usuário.
+            lembretes autorizados pelo usuário, e provedor de e-mail transacional
+            (MailerSend) para o envio de links de cadastro, convites, troca de senha
+            e boas-vindas, com nome e e-mail do destinatário.
           </li>
           <li>
             <strong>Determinação Judicial ou Fiscal:</strong> Em caso de ordem
