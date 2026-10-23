@@ -28,7 +28,11 @@ export async function serviceAction(method: string, args: unknown[]): Promise<Ac
     // WhatsApp) nao repete sozinho: devolve o conflito para a tela.
     for (let attempt = 1; ; attempt++) {
       try {
-        return await runInWorld(ctx, () => resolved.run(...callArgs));
+        return await runInWorld(
+          ctx,
+          () => resolved.run(...callArgs),
+          resolved.slice ? { fn: resolved.slice, args: callArgs, name: method } : undefined,
+        );
       } catch (error) {
         if (!isConflict(error) || resolved.noRetry || attempt >= ATTEMPTS) throw error;
       }

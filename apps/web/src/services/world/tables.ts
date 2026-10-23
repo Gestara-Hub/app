@@ -104,6 +104,13 @@ function camel(column: string): string {
   return column.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 }
 
+/** Coluna do banco de um campo do contrato ("classGroupId" -> "class_group_id"). */
+export function columnOf(table: string, field: string): string {
+  const column = Object.keys(schemaOf(table).columns).find((c) => camel(c) === field);
+  if (!column) throw new Error(`world: ${table} não tem o campo ${field}`);
+  return column;
+}
+
 /** Linha do banco -> objeto do contrato (null some, data e hora em ISO). */
 export function fromRow(table: string, row: Row): Row {
   const schema = schemaOf(table);

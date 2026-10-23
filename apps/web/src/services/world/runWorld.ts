@@ -5,8 +5,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { TenantContext } from "../server/tenant";
 import type { WorldEffect } from "./effects";
 import { runScoped } from "./scope";
+import { presentValues, SINGLE_KEYS, SliceMissError, sliceWorld, type MethodSlice } from "./slices";
+import { selectAllRows } from "@/lib/supabase/select-all";
 import {
   canonical,
+  columnOf,
   fromRow,
   sameRow,
   schemaOf,
@@ -39,6 +42,14 @@ interface LoadedWorld {
   unitId: string;
   collections: LoadedCollection[];
   organizationRow: Row;
+}
+
+/**
+ * Mesma ordem das linhas em qualquer caminho (leitura do banco, cache
+ * avancado depois de gravar, recorte): por identidade, comparando o texto.
+ */
+function byIdentity<T>(map: Map<string, T>): Map<string, T> {
+  return new Map([...map].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 function identityOf(collection: WorldCollection, row: Row): string {
@@ -156,8 +167,9 @@ async function loadCollections(ctx: TenantContext, version: number): Promise<Cac
   let unitId = "";
   let rows = 0;
   WORLD_COLLECTIONS.forEach((collection, index) => {
-    const raw = new Map<string, Row>();
-    for (const row of tables[index]) raw.set(identityOf(collection, row), row);
+    const unordered = new Map<string, Row>();
+    for (const row of tables[index]) unordered.set(identityOf(collection, row), row);
+    const raw = byIdentity(unordered);
     rows += tables[index].length;
     if (collection.table === "organizations") organizationRow = tables[index][0];
     if (collection.table === "units") unitId = String(tables[index][0]?.id ?? "");
@@ -218,6 +230,89 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     collections: entry.collections,
     organizationRow: entry.organizationRow,
   };
+}
+
+/** Valores por consulta no filtro `in` (a URL do PostgREST tem limite de tamanho). */
+const IN_CHUNK = 150;
+
+/**
+ * Carrega so o recorte do metodo (doc 19, fase 2): as colecoes e linhas que ele
+ * declarou, direto do banco, sempre filtradas pelo espaco da sessao. O custo
+ * segue o tamanho do recorte, nao o historico. Colecao fora do recorte nao
+ * existe no espaco montado (`SliceMissError`).
+ */
+async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unknown[]): Promise<LoadedWorld> {
+  const version = await loadVersion(ctx);
+  const admin = createSupabaseAdminClient();
+  const raws = new Map<string, Map<string, Row>>();
+  const collectionOf = (key: string) => {
+    const collection = WORLD_COLLECTIONS.find((c) => c.key === key);
+    if (!collection) throw new Error(`world: coleção desconhecida no recorte: ${key}`);
+    return collection;
+  };
+  const keep = (key: string, rows: Row[]): Row[] => {
+    const collection = collectionOf(key);
+    const raw = raws.get(key) ?? new Map<string, Row>();
+    for (const row of rows) raw.set(identityOf(collection, row), row);
+    raws.set(key, raw);
+    return rows.map((row) => fromRow(collection.table, row));
+  };
+  const scopeColumn = (table: string) => (table === "organizations" ? "id" : "organization_id");
+
+  await Promise.all(
+    SINGLE_KEYS.map(async (key) => keep(key, await loadRows(ctx, collectionOf(key).table))),
+  );
+  await slice(args, {
+    async all(key) {
+      return keep(key, await loadRows(ctx, collectionOf(key).table));
+    },
+    async where(key, field, values) {
+      const table = collectionOf(key).table;
+      const column = columnOf(table, field);
+      const wanted = presentValues(values);
+      const rows: Row[] = [];
+      for (let i = 0; i < wanted.length; i += IN_CHUNK) {
+        const chunk = wanted.slice(i, i + IN_CHUNK);
+        const { data, error } = await selectAllRows(
+          () => admin.from(table).select("*").eq(scopeColumn(table), ctx.organizationId).in(column, chunk),
+          { tieBreaker: schemaOf(table).primaryKey },
+        );
+        if (error) throw new Error(`world: leitura de ${table}: ${error.message}`);
+        rows.push(...(data as Row[]));
+      }
+      if (!raws.has(key)) raws.set(key, new Map());
+      return keep(key, rows);
+    },
+    none(key) {
+      if (!raws.has(key)) raws.set(key, new Map());
+    },
+  });
+
+  const organizationRow = [...(raws.get("organization")?.values() ?? [])][0];
+  if (!organizationRow) throw apiError("NOT_FOUND", "Espaço não encontrado.", { httpStatus: 404 });
+  const unitId = String([...(raws.get("unit")?.values() ?? [])][0]?.id ?? "");
+  const collections: LoadedCollection[] = [];
+  const objects = new Map<string, Row[] | Row | undefined>();
+  for (const collection of WORLD_COLLECTIONS) {
+    const unordered = raws.get(collection.key);
+    if (!unordered) continue;
+    const raw = byIdentity(unordered);
+    const normalized = new Map<string, Row>();
+    const list: Row[] = [];
+    for (const [id, row] of raw) {
+      list.push(structuredClone(fromRow(collection.table, row)));
+      normalized.set(
+        id,
+        toRow(collection.table, fromRow(collection.table, row), { organizationId: ctx.organizationId, unitId, loaded: row }),
+      );
+    }
+    collections.push({ collection, raw, normalized });
+    objects.set(collection.key, collection.kind === "single" ? list[0] : list);
+  }
+  const store = sliceWorld(objects, {
+    certificateTemplate: (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined,
+  });
+  return { store, version, unitId, collections, organizationRow };
 }
 
 interface WorldChanges {
@@ -391,6 +486,11 @@ function advanceCachedWorld(ctx: TenantContext, world: LoadedWorld, changes: Wor
     );
     if (table === "organizations") organizationRow = row;
   }
+  for (const loaded of collections) {
+    if (!touched.has(loaded.collection.table)) continue;
+    loaded.raw = byIdentity(loaded.raw);
+    loaded.normalized = byIdentity(loaded.normalized);
+  }
   const rows = collections.reduce((total, loaded) => total + loaded.raw.size, 0);
   // `loadedAt` fica o da carga: a validade curta continua valendo para a corrente de gravacoes.
   rememberWorld(ctx.organizationId, { ...entry, version: Number(applied.version), rows, organizationRow, collections });
@@ -401,9 +501,29 @@ export function isConflict(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: string }).code === "CONFLICT";
 }
 
-/** Roda `fn` no espaco do banco e grava o que mudou. */
-export async function runInWorld<T>(ctx: TenantContext, fn: () => Promise<T>): Promise<T> {
-  const [world, actor] = await Promise.all([loadWorld(ctx), actorOf(ctx)]);
+/**
+ * Roda `fn` no espaco do banco e grava o que mudou. Com `slice`, carrega so o
+ * recorte declarado do metodo (doc 19, fase 2); se o recorte faltar a alguma
+ * regra (`SliceMissError`, um erro nosso), registra e refaz com o espaco inteiro.
+ */
+export async function runInWorld<T>(
+  ctx: TenantContext,
+  fn: () => Promise<T>,
+  slice?: { fn: MethodSlice; args: unknown[]; name?: string },
+): Promise<T> {
+  if (slice) {
+    try {
+      return await runLoaded(ctx, fn, () => loadSlicedWorld(ctx, slice.fn, slice.args));
+    } catch (error) {
+      if (!(error instanceof SliceMissError)) throw error;
+      console.error(`[world] recorte incompleto em ${slice.name ?? "método"}; refazendo com o espaço inteiro:`, error.message);
+    }
+  }
+  return runLoaded(ctx, fn, () => loadWorld(ctx));
+}
+
+async function runLoaded<T>(ctx: TenantContext, fn: () => Promise<T>, load: () => Promise<LoadedWorld>): Promise<T> {
+  const [world, actor] = await Promise.all([load(), actorOf(ctx)]);
   const effects: WorldEffect[] = [];
   const result = await runScoped({ store: world.store, actor, effects }, fn);
   const changes = diffWorld(ctx, world);

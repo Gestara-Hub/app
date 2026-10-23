@@ -1,4 +1,5 @@
 import type { Permission } from "@gestarahub/contracts";
+import type { MethodSlice } from "./slices";
 
 /**
  * Metodos de servico que a conta real roda no servidor (doc 15, fatia 2), com
@@ -16,6 +17,8 @@ interface ServiceNamespace {
   browserOnly?: string[];
   /** Metodos com efeito externo antes da gravacao: nao repetem em conflito. */
   noRetry?: string[];
+  /** Recorte por metodo (doc 19, fase 2): carrega so o que o metodo le. */
+  slices?: () => Promise<Record<string, MethodSlice>>;
 }
 
 const MANAGE_CLIENTS: Permission[] = ["clients:manage"];
@@ -41,6 +44,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   turmas: {
     load: async () => (await import("../classes")).turmasServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../classes/classSlices")).classSlices,
     permissions: {
       ...all(["create", "update", "deactivate", "reactivate", "substituteInstructor", "restorePrimaryInstructor"], MANAGE_CLASSES),
       ...all(
@@ -160,6 +164,16 @@ export interface ResolvedMethod {
   run: (...args: unknown[]) => Promise<unknown>;
   permissions: Permission[];
   noRetry: boolean;
+  /** Recorte do metodo; ausente = espaco inteiro. */
+  slice?: MethodSlice;
+}
+
+/** Recorte declarado para "namespace.metodo" (servidor e conferencia dos testes). */
+export async function sliceFor(name: string): Promise<MethodSlice | undefined> {
+  const [namespace, method] = name.split(".");
+  const entry = SERVICE_NAMESPACES[namespace];
+  if (!entry?.slices || !method) return undefined;
+  return (await entry.slices())[method];
 }
 
 export async function resolveServiceMethod(name: string): Promise<ResolvedMethod | undefined> {
@@ -173,5 +187,6 @@ export async function resolveServiceMethod(name: string): Promise<ResolvedMethod
     run: (...args) => (fn as (...a: unknown[]) => Promise<unknown>).apply(service, args),
     permissions: entry.permissions[method] ?? [],
     noRetry: entry.noRetry?.includes(method) ?? false,
+    slice: await sliceFor(name),
   };
 }

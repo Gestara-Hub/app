@@ -151,3 +151,26 @@ Medição do tempo de uma ação num espaço de 1 ano (200 alunos, 35,6 mil pres
 | 10 leituras ao mesmo tempo | 7,1 s | 2,3 s |
 
 O que sobra (cerca de 0,23 s) é montar a cópia de trabalho do espaço inteiro, e ainda cresce com o histórico: a fase 2 continua sendo o que zera o problema. Em produção o ganho tende a ser maior, porque a ida ao banco (a parte cortada) inclui a latência entre Vercel e Supabase. O cache vale por instância do servidor: com o Fluid Compute da Vercel as instâncias são reaproveitadas, mas a primeira ação numa instância nova paga a leitura completa.
+
+## 8. Fase 2: recorte por método (23/10/2026, começando pela chamada)
+
+Cada método pode declarar o **recorte** que lê (`services/world/slices.ts`): coleções pequenas inteiras (turmas, modalidades, profissionais, planos) e, das que crescem, só as linhas necessárias (as presenças, reservas e substituição **daquela aula**, as matrículas **daquela turma**, os alunos, cobranças e pacotes **daqueles alunos**). No servidor, `runInWorld` busca só isso no banco (`loadSlicedWorld`, sempre filtrando pelo espaço), e o custo passa a seguir o tamanho do recorte, não o histórico.
+
+**Segurança:**
+- Coleção fora do recorte não existe no espaço montado: ler ou gravar nela falha na hora (`SliceMissError`). No servidor, essa falha é registrada e a ação é refeita com o espaço inteiro (nunca calcula com dado faltando).
+- `WORLD_SLICE_CHECK=1` no Vitest: cada chamada de método com recorte roda também com o espaço inteiro (ids gerados iguais nas duas rodadas) e exige o mesmo resultado, o mesmo erro e as mesmas gravações (`services/world/sliceCheck.ts`). Na primeira passada, apontou que desmarcar devolve a aula a um pacote já encerrado (o recorte passou a trazer todos os pacotes dos alunos da aula).
+- Teste de banco (`slices.db.test.ts`): aula pelo recorte igual à aula pelo espaço inteiro, gravações iguais e cache igual ao banco depois de gravar pelo recorte.
+- A gravação continua conferindo a versão do espaço; o cache avança com as linhas devolvidas, como nas gravações com o espaço inteiro.
+
+**Métodos no recorte:** `turmas.getSession`, `markAttendance`, `markManyAttendance`, `clearAttendance` (`services/classes/classSlices.ts`). Conferidos em 165 chamadas dos testes.
+
+**Números (espaço de 1 ano, banco local):**
+
+| Ação | Espaço inteiro, sem cache | Espaço inteiro, com cache | Recorte |
+| --- | --- | --- | --- |
+| Abrir a aula (chamada) | 1,5 s | 0,23 s | **0,05 s** |
+| Marcar presença | 1,55 s | 0,25 s | **0,06 s** |
+
+**Próximos recortes, na ordem de uso:** o resto da tela da aula (lista de alunos ativos, lista de espera), cobranças do mês, ficha do aluno, turmas, financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
+
+**Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.

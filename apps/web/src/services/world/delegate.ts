@@ -22,6 +22,18 @@ export function realAccountInBrowser(organizationId: string = store.organization
   return isSupabaseOrganization(organizationId) && !inServerWorld();
 }
 
+/**
+ * Conferencia do recorte (doc 19, fase 2): os testes ligam com
+ * `WORLD_SLICE_CHECK=1` (src/test/setup.ts). Antes de rodar um metodo local,
+ * roda a mesma chamada com o espaco inteiro e com o recorte e compara.
+ */
+type SliceChecker = (name: string, args: unknown[], call: () => Promise<unknown>) => Promise<void>;
+let sliceChecker: SliceChecker | null = null;
+
+export function setSliceChecker(checker: SliceChecker | null): void {
+  sliceChecker = checker;
+}
+
 /** Os metodos que vao para o servidor precisam ser assincronos. */
 type AsyncOnly<T> = {
   [K in keyof T]: T[K] extends (...args: never[]) => unknown ? (...args: never[]) => Promise<unknown> : T[K];
@@ -44,10 +56,14 @@ export function delegateAll<T extends object, B extends keyof T & string = never
       continue;
     }
     const method = value as (...args: unknown[]) => unknown;
-    wrapped[name] = (...args: unknown[]) =>
-      delegatesToServer()
-        ? unwrap(serviceAction(`${namespace}.${name}`, encodeArgs(args) as unknown[]))
-        : method.apply(service, args);
+    wrapped[name] = (...args: unknown[]) => {
+      if (delegatesToServer()) return unwrap(serviceAction(`${namespace}.${name}`, encodeArgs(args) as unknown[]));
+      if (sliceChecker && !inServerWorld()) {
+        const call = () => Promise.resolve(method.apply(service, args));
+        return sliceChecker(`${namespace}.${name}`, args, call).then(call);
+      }
+      return method.apply(service, args);
+    };
   }
   return wrapped as T;
 }
