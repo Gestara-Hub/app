@@ -40,6 +40,7 @@ function all(methods: string[], permissions: Permission[]): Record<string, Permi
 export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   clients: {
     load: async () => (await import("../clients")).clientsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../clients/clientSlices")).clientSlices,
     permissions: all(["create", "update", "remove"], MANAGE_CLIENTS),
   },
   turmas: {
@@ -66,6 +67,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   billing: {
     load: async () => (await import("../billing")).billingServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../billing/billingSlices")).billingSlices,
     permissions: {
       ...all(["listCharges", "listChargesPaginated"], VIEW_BILLING),
       ...all(

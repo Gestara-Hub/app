@@ -22,7 +22,7 @@ async function catalog(load: SliceLoader): Promise<void> {
 }
 
 /** Tudo de uma aula: matriculas da turma, marcacoes, reservas, substituicao e os alunos. */
-async function session(sessionId: Id, load: SliceLoader): Promise<void> {
+async function session(sessionId: Id, load: SliceLoader, extraStudents: Id[] = []): Promise<void> {
   const parsed = parseSessionId(sessionId);
   await catalog(load);
   if (!parsed) return;
@@ -39,6 +39,7 @@ async function session(sessionId: Id, load: SliceLoader): Promise<void> {
     ...attendances.map((a) => a.studentId),
     ...reservations.map((r) => r.studentId),
     ...packages.map((p) => p.studentId),
+    ...extraStudents,
   ] as string[];
   // Todos os pacotes dos alunos (desmarcar devolve a aula a um pacote que ja tinha acabado).
   await Promise.all([
@@ -49,12 +50,39 @@ async function session(sessionId: Id, load: SliceLoader): Promise<void> {
   load.none("auditLog");
 }
 
+/** Uma turma: matriculas e lista de espera dela, com os alunos. */
+async function classGroup(classGroupId: Id, load: SliceLoader): Promise<void> {
+  await catalog(load);
+  const [enrollments, waitlist] = await Promise.all([
+    load.where("enrollments", "classGroupId", [classGroupId]),
+    load.where("waitlist", "classGroupId", [classGroupId]),
+  ]);
+  await load.where("clients", "id", [...enrollments, ...waitlist].map((row) => row.studentId as string));
+  load.none("auditLog");
+}
+
 const sessionOf: MethodSlice = async ([id], load) => session(id as Id, load);
 const sessionOfInput: MethodSlice = async ([input], load) => session((input as { sessionId: Id }).sessionId, load);
+/** Aula com um aluno que ainda nao esta nela (reservar, cancelar reserva). */
+const sessionWithStudent: MethodSlice = async ([input], load) => {
+  const { sessionId, studentId } = input as { sessionId: Id; studentId: Id };
+  return session(sessionId, load, [studentId]);
+};
 
 export const classSlices: Record<string, MethodSlice> = {
   getSession: sessionOf,
   markAttendance: sessionOfInput,
   markManyAttendance: sessionOfInput,
   clearAttendance: sessionOfInput,
+  reserveSession: sessionWithStudent,
+  cancelReservation: sessionWithStudent,
+  cancelReserva: sessionWithStudent,
+  // Professor ocupado: confere as substituicoes de todas as turmas no mesmo dia (sao poucas).
+  substituteInstructor: async ([id], load) => {
+    await session(id as Id, load);
+    await load.all("sessionOverrides");
+  },
+  restorePrimaryInstructor: sessionOf,
+  getById: async ([id], load) => classGroup(id as Id, load),
+  listWaitlist: async ([id], load) => classGroup(id as Id, load),
 };

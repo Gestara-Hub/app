@@ -43,6 +43,11 @@ function identityOf(key: string, row: Row): string {
 /** Linhas novas, mudadas e apagadas de uma colecao (id -> texto canonico; null = apagada). */
 function changesOf(key: string, before: unknown, after: unknown): Map<string, string | null> {
   const changes = new Map<string, string | null>();
+  // Lista que ainda nao existia no mock (a regra cria na hora) conta como vazia.
+  if (WORLD_COLLECTIONS.find((c) => c.key === key)?.kind === "list") {
+    before = before ?? [];
+    after = after ?? [];
+  }
   if (!Array.isArray(before) || !Array.isArray(after)) {
     if (canonical(before ?? null) !== canonical(after ?? null)) changes.set("(linha única)", canonical(after ?? null));
     return changes;

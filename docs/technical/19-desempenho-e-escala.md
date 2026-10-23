@@ -171,6 +171,16 @@ Cada método pode declarar o **recorte** que lê (`services/world/slices.ts`): c
 | Abrir a aula (chamada) | 1,5 s | 0,23 s | **0,05 s** |
 | Marcar presença | 1,55 s | 0,25 s | **0,06 s** |
 
-**Próximos recortes, na ordem de uso:** o resto da tela da aula (lista de alunos ativos, lista de espera), cobranças do mês, ficha do aluno, turmas, financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
+**Resto da tela da aula** (mesmo commit da cobrança): `turmas.getById`, `listWaitlist`, `reserveSession`, `cancelReservation`, `substituteInstructor`, `restorePrimaryInstructor` e `clients.list`/`listPaginated`. A conferência pegou um caso real: a checagem de "professor já dá aula nesse horário" olha as substituições de todas as turmas no mesmo dia; o recorte da substituição carrega todas (são poucas).
+
+**Cobranças** (`services/billing/billingSlices.ts`): a leitura de cobranças gera as mensalidades que faltam, aplica o Pix Automático e o "em atraso" vale para todos os meses; o recorte é o espaço **sem o histórico que cobrança não usa** (presenças, mensagens, avaliações, lançamentos e regras do financeiro, lista de espera, substituições). Vale para listar, gerar, cobrança avulsa, limpar, pagar, desfazer, cancelar e reabrir. Conferido em 298 chamadas.
+
+| Espaço de 1 ano | Espaço inteiro, sem cache | Espaço inteiro, com cache | Recorte |
+| --- | --- | --- | --- |
+| Cobranças do mês | 1,2 a 1,5 s | 0,38 s | **0,17 s** |
+
+O recorte de cobranças ainda cresce com alunos e cobranças (cerca de 12 por aluno por ano), bem mais devagar que as presenças; um recorte por linha (o mês e os em aberto) fica para depois de mover a geração de mensalidades e o Pix Automático para fora da leitura.
+
+**Próximos recortes, na ordem de uso:** ficha do aluno, turmas (lista e detalhe completo), financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
 
 **Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.
