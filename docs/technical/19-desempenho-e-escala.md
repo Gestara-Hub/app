@@ -87,7 +87,7 @@ Caminho incremental, sem reescrever as regras (elas continuam as mesmas, testada
 
 1. **Leituras direto no banco.** Listas e detalhes viram consultas SQL específicas (com filtro, paginação e ordenação no banco), por exemplo views/RPC por tela: chamada da aula, cobranças do mês, ficha do aluno, mensagens e auditoria paginadas. O custo passa a seguir o tamanho do resultado, não o do histórico. As leituras são a maioria das chamadas: é o maior ganho.
 2. **Gravações com carga parcial.** Cada método de gravação declara o recorte de que precisa (ex.: marcar presença precisa da turma, das matrículas dela, das presenças daquela aula e dos pacotes do aluno). O `runInWorld` carrega só esse recorte e compara só ele. A regra continua igual; muda o que é carregado.
-3. **Concorrência por registro, não por espaço.** A versão única do espaço sai; o controle passa a ser por linha (o `updated_at` por linha já é conferido em `apply_world_changes`) ou por agregado (aula, aluno). Dois professores em turmas diferentes deixam de conflitar.
+3. **Concorrência por registro, não por espaço (feito, seção 9).** A versão única do espaço sai; o controle passa a ser por linha (o `updated_at` por linha já é conferido em `apply_world_changes`) ou por agregado (aula, aluno). Dois professores em turmas diferentes deixam de conflitar.
 4. **Ordem sugerida, pelo uso:** chamada e aula → cobranças → ficha do aluno → turmas → financeiro → relatórios e documentos.
 
 ### Fase 3: relatórios, histórico e infraestrutura
@@ -206,6 +206,30 @@ Como o de cobranças, este recorte ainda cresce com cobranças e lançamentos (d
 | Cadastro de alunos | 1,35 a 1,38 s | **0,03 s** |
 | Lista de chamada do mês | 1,37 a 1,44 s | **0,12 a 0,14 s** |
 
-**Próximo passo:** concorrência por linha em vez da versão única do espaço. Depois, concorrência por linha em vez da versão única do espaço.
+**Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte. Filtro por um campo novo entra também em `SCOPE_FIELDS` (`world/scopes.ts`, seção 9).
 
-**Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.
+## 9. Concorrência pelo que a ação leu (23/10/2026, migração 42)
+
+Antes, toda gravação exigia a mesma versão do espaço da leitura: duas ações ao mesmo tempo no mesmo espaço conflitavam mesmo sem mexer nas mesmas coisas, e a perdedora recarregava e tentava de novo (até 3 vezes) antes de mostrar "Outra pessoa mudou esses dados agora".
+
+**Como ficou** (`services/world/scopes.ts`, migração 42):
+- O que um recorte lê vira **baldes** (hash de coleção, campo e valor): ler as presenças da aula X lê o balde (presenças, aula, X); ler uma coleção inteira lê o balde dela. Cada linha gravada marca os baldes dos campos de filtro (antes e depois) e o da coleção inteira.
+- `world_buckets` guarda, por espaço e balde, a versão da última gravação que o marcou. A gravação com recorte só conflita se um balde que ela leu foi marcado **depois da leitura**. São 65.536 baldes por espaço: dois escopos podem cair no mesmo balde, o que só dá um conflito a mais, nunca um a menos.
+- Os campos pelos quais um recorte pode filtrar ficam em `SCOPE_FIELDS`; filtrar por um campo fora da lista falha na hora (servidor e conferência dos testes), para nenhum conflito passar sem ser visto.
+- **Gravação direta** (fora do motor: webhook do Asaas, rotinas, configurações) não sabe dos baldes: o gatilho da migração 40 passa a marcar `world_versions.direct_version`, e ela conflita com toda ação com recorte lida antes dela, como antes.
+- **Ação sem recorte** (espaço inteiro) segue a regra de antes: qualquer gravação no meio conflita. Mesmo assim, ela marca os baldes do que grava, e quem leu pelo recorte vê.
+- As gravações de um espaço continuam uma por vez no banco (trava curta na linha de `world_versions`); muda quem precisa **tentar de novo**. O cache avança quando está na versão logo antes da gravação (antes exigia a versão lida, que com recorte pode ser mais antiga).
+- O `updated_at` por linha continua conferido em toda atualização.
+
+**Testes de banco** (`world/__tests__/concurrency.db.test.ts`, as duas ações intercaladas de propósito): chamadas de turmas diferentes gravam as duas; a mesma aula conflita; gravação direta, ou com o espaço inteiro, no que o recorte leu conflita; com o espaço inteiro em outra turma, não conflita. Com a regra antiga, os casos de turmas diferentes falham.
+
+| 10 professores marcando chamada ao mesmo tempo, turmas diferentes | Gravadas | Conflitos | Tempo |
+| --- | --- | --- | --- |
+| Versão única do espaço (antes) | 3 de 10 (7 viram "Outra pessoa mudou") | 24 | 0,24 s |
+| Pelo que a ação leu | **10 de 10** | **0** | **0,15 s** |
+
+**Ainda vale saber:**
+- Cobranças e financeiro leem coleções inteiras (cobranças, alunos, matrículas): conflitam com qualquer gravação nelas, como antes. Diminui quando esses recortes forem por período.
+- `world_buckets` cresce com os escopos tocados (no máximo 65.536 linhas por espaço). Se pesar, dá para reduzir os baldes ou limpar os antigos.
+
+**Fase 2 concluída.** Próximo: fase 3 (relatórios somando no banco, histórico fora do caminho quente, infraestrutura) e, no fim, o levantamento geral de índices.

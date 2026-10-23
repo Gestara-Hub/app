@@ -2,6 +2,7 @@ import type { AuditActor } from "@gestarahub/contracts";
 import { getCurrentActor } from "./actor";
 import { runScoped } from "./scope";
 import { canonical, matchesPartialLoad, WORLD_COLLECTIONS, type Row } from "./tables";
+import { assertScopeField } from "./scopes";
 import { presentValues, SINGLE_KEYS, sliceWorld, type MethodSlice, type SliceLoader } from "./slices";
 import { store } from "./store";
 
@@ -78,6 +79,7 @@ function memoryLoader(full: Record<string, unknown>, loaded: Map<string, Row[] |
       return merge(key, structuredClone(rows));
     },
     async where(key, field, values) {
+      assertScopeField(key, field);
       const wanted = new Set(presentValues(values));
       const rows = ((full[key] as Row[] | undefined) ?? []).filter((row) => wanted.has(String(row[field])));
       return merge(key, structuredClone(rows));

@@ -6,6 +6,7 @@ import type { TenantContext } from "../server/tenant";
 import type { WorldEffect } from "./effects";
 import { runScoped } from "./scope";
 import { presentValues, SINGLE_KEYS, SliceMissError, sliceWorld, type MethodSlice } from "./slices";
+import { assertScopeField, bucketOf, rowBuckets, wholeBucket, wholeReadBucket } from "./scopes";
 import { selectAllRows } from "@/lib/supabase/select-all";
 import {
   canonical,
@@ -40,6 +41,11 @@ interface LoadedWorld {
   store: TenantWorld;
   /** Versao do espaco na leitura (world_versions); a gravacao confere. */
   version: number;
+  /**
+   * Baldes lidos (recorte, `scopes.ts`): a gravacao so conflita se um deles
+   * mudou depois da leitura. Sem eles (espaco inteiro), qualquer gravacao conflita.
+   */
+  readBuckets?: number[];
   unitId: string;
   collections: LoadedCollection[];
   organizationRow: Row;
@@ -282,6 +288,7 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
     return rows.map((row) => fromRow(collection.table, row));
   };
   const scopeColumn = (table: string) => (table === "organizations" ? "id" : "organization_id");
+  const readBuckets = new Set<number>(SINGLE_KEYS.map((key) => wholeBucket(key)));
 
   await Promise.all(
     SINGLE_KEYS.map(async (key) => keep(key, await loadRows(ctx, collectionOf(key).table))),
@@ -290,12 +297,15 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
     async all(key) {
       // Colecao que so acrescenta: so a parte que uma regra le (ex.: auditoria dos lancamentos).
       const collection = collectionOf(key);
+      readBuckets.add(wholeReadBucket(collection));
       return keep(key, await loadRows(ctx, collection.table, collection.appendOnly ? collection.partialLoad : undefined));
     },
     async where(key, field, values) {
+      assertScopeField(key, field);
       const table = collectionOf(key).table;
       const column = columnOf(table, field);
       const wanted = presentValues(values);
+      for (const value of wanted) readBuckets.add(bucketOf(key, field, value));
       const rows: Row[] = [];
       for (const chunk of inChunks(wanted)) {
         const { data, error } = await selectAllRows(
@@ -337,7 +347,7 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
   const store = sliceWorld(objects, {
     certificateTemplate: (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined,
   });
-  return { store, version, unitId, collections, organizationRow };
+  return { store, version, unitId, collections, organizationRow, readBuckets: [...readBuckets] };
 }
 
 interface WorldChanges {
@@ -345,8 +355,10 @@ interface WorldChanges {
   deletes: { table: string; pk: string; key: string }[];
 }
 
-function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
+/** Mudancas e os baldes que elas marcam (linha antes e depois). */
+function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges & { buckets: number[] } {
   const changes: WorldChanges = { upserts: [], deletes: [] };
+  const buckets = new Set<number>();
   const store = world.store as unknown as Record<string, unknown>;
   for (const loaded of world.collections) {
     const { collection } = loaded;
@@ -373,6 +385,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
       if (id !== undefined) seen.add(id);
       if (!loadedRow) {
         inserts.push({ table, pk: schema.primaryKey, row });
+        rowBuckets(collection, row, buckets);
         continue;
       }
       const before = loaded.normalized.get(id!)!;
@@ -380,6 +393,8 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
         table === "organizations" &&
         canonical(world.organizationRow.certificate_template ?? null) !== canonical(row.certificate_template);
       if (!sameRow(table, before, row) || certificateChanged) {
+        rowBuckets(collection, loadedRow, buckets);
+        rowBuckets(collection, row, buckets);
         updates.push({
           table,
           pk: schema.primaryKey,
@@ -400,11 +415,14 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges {
     );
     if (collection.appendOnly || collection.kind === "single") continue;
     for (const [id, row] of loaded.raw) {
-      if (!seen.has(id)) changes.deletes.push({ table, pk: schema.primaryKey, key: String(row[schema.primaryKey]) });
+      if (!seen.has(id)) {
+        changes.deletes.push({ table, pk: schema.primaryKey, key: String(row[schema.primaryKey]) });
+        rowBuckets(collection, row, buckets);
+      }
     }
   }
   changes.deletes.reverse();
-  return changes;
+  return { ...changes, buckets: [...buckets] };
 }
 
 const CONFLICT_MESSAGE = "Outra pessoa mudou esses dados agora. Atualize a tela e tente de novo.";
@@ -420,11 +438,18 @@ interface AppliedChanges {
   rows: { table: string; row: Row | null }[];
 }
 
-async function applyChanges(ctx: TenantContext, changes: WorldChanges, version: number): Promise<AppliedChanges> {
+async function applyChanges(
+  ctx: TenantContext,
+  changes: WorldChanges,
+  world: LoadedWorld,
+  writeBuckets: number[],
+): Promise<AppliedChanges> {
   const { data, error } = await createSupabaseAdminClient().rpc("apply_world_changes_returning", {
     p_organization_id: ctx.organizationId,
-    p_changes: changes,
-    p_expected_version: version,
+    p_changes: { upserts: changes.upserts, deletes: changes.deletes },
+    p_expected_version: world.version,
+    p_read_buckets: world.readBuckets ?? null,
+    p_write_buckets: writeBuckets,
   });
   if (!error) return data as AppliedChanges;
   if (error.code === "40001" || error.code === "23505") {
@@ -456,15 +481,16 @@ const CASCADE_PARENTS = new Set([
 /**
  * Depois de gravar: o espaco em cache passa para a versao nova com as linhas
  * que o banco devolveu, sem reler tudo (a gravacao mais comum e seguida de uma
- * leitura da mesma tela). So quando o cache era o da versao lida e a gravacao
- * avancou exatamente uma versao; senao descarta e a proxima le do banco.
+ * leitura da mesma tela). So quando o cache e o da versao logo antes desta
+ * gravacao (nenhuma outra entrou entre o cache e ela); senao descarta e a
+ * proxima le do banco. Com recorte, a versao lida pode ser mais antiga que a do
+ * cache (gravacoes que nao mexeram no que esta leu): vale a do cache.
  */
-function advanceCachedWorld(ctx: TenantContext, world: LoadedWorld, changes: WorldChanges, applied: AppliedChanges): void {
+function advanceCachedWorld(ctx: TenantContext, changes: WorldChanges, applied: AppliedChanges): void {
   const entry = worldCache.get(ctx.organizationId);
   if (
     !entry ||
-    entry.version !== world.version ||
-    Number(applied.version) !== world.version + 1 ||
+    entry.version !== Number(applied.version) - 1 ||
     changes.deletes.some((removed) => CASCADE_PARENTS.has(removed.table))
   ) {
     forgetCachedWorld(ctx.organizationId);
@@ -542,11 +568,11 @@ async function runLoaded<T>(ctx: TenantContext, fn: () => Promise<T>, load: () =
   const [world, actor] = await Promise.all([load(), actorOf(ctx)]);
   const effects: WorldEffect[] = [];
   const result = await runScoped({ store: world.store, actor, effects }, fn);
-  const changes = diffWorld(ctx, world);
+  const { buckets, ...changes } = diffWorld(ctx, world);
   if (changes.upserts.length > 0 || changes.deletes.length > 0) {
     try {
-      const applied = await applyChanges(ctx, changes, world.version);
-      if (worldCacheEnabled()) advanceCachedWorld(ctx, world, changes, applied);
+      const applied = await applyChanges(ctx, changes, world, buckets);
+      if (worldCacheEnabled()) advanceCachedWorld(ctx, changes, applied);
     } catch (error) {
       // Conflito: a proxima tentativa le do banco, nao do cache.
       if (isConflict(error)) forgetCachedWorld(ctx.organizationId);
