@@ -20,6 +20,13 @@ O usuário vai deixar esta sessão rodando e validar na volta. Então:
    - Salve capturas com `page.screenshot` em `docs/qa/capturas/2026-10-xx/` e registre o console com `page.on("console")` e `page.on("pageerror")`.
    - Os scripts são descartáveis: **apague a pasta `e2e/zz-teste-geral` no fim** e não a inclua em commit (as capturas em `docs/qa/capturas/` ficam).
 5. **Nada de produção:** só o banco local e o sandbox do Asaas.
+6. **Banco local: pode limpar se precisar** (autorizado pelo usuário em 23/10/2026). Por padrão, **não precisa**: o `pnpm demo:local` recria a demonstração e os espaços que sobram dos e2e são apagados sozinhos. Faça o reset só se algo atrapalhar de verdade (dados velhos confundindo o teste, migração da Parte A que precisa reaplicar do zero):
+   ```bash
+   pnpm setup:local:reset
+   ```
+   Ele apaga tudo do banco local, reaplica as migrações, recria o Vault e a demonstração. Depois: reinicie o `pnpm dev` e entre de novo.
+   - **Nunca depois de criar a subconta do sandbox** (seção B.3): a chave dela fica no banco (`organizations.gateway_api_key`) e o reset perde a ligação; o teste do pagamento online teria de recomeçar. Se for limpar, limpe **no começo da Parte B**, antes da subconta.
+   - Anote no arquivo de achados se fez o reset e por quê.
 
 ## 0. Antes de começar (obrigatório)
 
