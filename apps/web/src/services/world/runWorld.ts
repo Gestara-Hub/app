@@ -358,7 +358,11 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
 }
 
 interface WorldChanges {
-  upserts: { table: string; pk: string; row: Row; expected?: string }[];
+  /**
+   * `op`: nova ou alterada. O banco grava em grupos seguidos da mesma tabela e
+   * do mesmo `op` (migracao 45), na ordem desta lista.
+   */
+  upserts: { table: string; pk: string; op: "insert" | "update"; row: Row; expected?: string }[];
   deletes: { table: string; pk: string; key: string }[];
 }
 
@@ -391,7 +395,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges & { buc
       }
       if (id !== undefined) seen.add(id);
       if (!loadedRow) {
-        inserts.push({ table, pk: schema.primaryKey, row });
+        inserts.push({ table, pk: schema.primaryKey, op: "insert", row });
         rowBuckets(collection, row, buckets);
         continue;
       }
@@ -405,6 +409,7 @@ function diffWorld(ctx: TenantContext, world: LoadedWorld): WorldChanges & { buc
         updates.push({
           table,
           pk: schema.primaryKey,
+          op: "update",
           row,
           ...(loadedRow.updated_at ? { expected: String(loadedRow.updated_at) } : {}),
         });

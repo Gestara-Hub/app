@@ -265,3 +265,17 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 **Segunda falha de segurança na auditoria, corrigida em seguida** (migração 44): a gravação de eventos das ações que rodam no navegador aceitava o evento inteiro vindo dele, inclusive o autor, e a política de inserção de `audit_logs` só conferia o espaço. Quem estivesse logado podia gravar no próprio espaço um evento em nome de outra pessoa, pela ação ou direto pelo cliente do Supabase. Agora o navegador manda só o que aconteceu (ação, alvo, frase sem o autor, mudanças); autor, espaço, unidade (conferida), hora e id saem da sessão no servidor, que grava com a chave de serviço. A sessão não insere mais em `audit_logs`. Teste de banco em `rules.db.test.ts` (falha com a política antiga).
 
 **Falta da fase 3:** o levantamento geral de índices (item 4), combinado para o fim.
+
+## 11. Gravação em lote no motor (23/10/2026, migração 45)
+
+**Por que:** toda chamada ao banco pelo servidor tem limite de 8 s (`statement_timeout` do PostgREST). O motor gravava linha por linha, com 3 consultas por linha, e a busca "essa linha já existe?" comparava `id::text`, o que impede o uso do índice da chave: cada linha percorria a tabela inteira. Resultado: de 1,5 a 3 ms por linha, crescendo com a tabela. Uma gravação de alguns milhares de linhas (as mensalidades de um espaço grande, por exemplo) falhava inteira, e as outras gravações do espaço esperavam atrás dela.
+
+**Como ficou:** `apply_world_changes` separa as mudanças em grupos seguidos da mesma tabela e do mesmo tipo (o app manda `op`: nova ou alterada), numa consulta só, e grava cada grupo com um comando (`world_upsert_batch`, `world_delete_batch`). Os ids são comparados no tipo da coluna (uuid ou texto), com o índice. As regras não mudaram: linha do espaço da sessão, id de outro espaço recusado (42501), `expected` conferido (40001), atualização só das colunas que vieram, inserção com os padrões do banco e a ordem entre os grupos que o app mandou. A volta das linhas gravadas também é uma consulta por tabela.
+
+| 6.000 linhas numa gravação | Antes | Agora |
+| --- | --- | --- |
+| Inserir | passa de 8 s (falha) | **0,36 s** |
+| Alterar | passa de 8 s (falha) | **0,37 s** |
+| Apagar | passa de 8 s (falha) | **1,1 s** |
+
+Testes de banco: `world/__tests__/batchWrites.db.test.ts` (6.000 linhas: inserir, alterar só o status e apagar; linha de outro espaço no meio do lote não grava nada) e os 72 de antes.
