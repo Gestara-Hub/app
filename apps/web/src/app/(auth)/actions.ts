@@ -17,6 +17,9 @@ import {
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
 import { getCurrentUser } from "@/features/auth/get-current-user";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { discardUnstartedOwnerAccount } from "@/services/server/accountSetup";
 
 /**
  * Grava as claims do usuario no cookie de sessao. O client passa o `UserView`
@@ -90,7 +93,23 @@ export async function syncSubscriptionTier(
   });
 }
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+/**
+ * "Recusar e sair" do aviso de termos. Conta recem-criada (Google ou e-mail)
+ * que recusa antes da configuracao inicial e apagada; as demais so saem.
+ */
+export async function declineTermsAndSignOut(): Promise<void> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    // Identidade conferida no Supabase Auth, nao no cookie do app.
+    const { data } = await supabase.auth.getUser();
+    if (data.user) {
+      await discardUnstartedOwnerAccount(createSupabaseAdminClient(), data.user.id);
+    }
+  } catch (err) {
+    console.error("[auth] Erro ao descartar conta recusada:", err);
+  }
+  await signOut();
+}
 
 /** Logout: encerra a sessao do Supabase Auth, limpa o cookie de sessao e volta para o login. */
 export async function signOut(): Promise<void> {

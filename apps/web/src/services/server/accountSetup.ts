@@ -44,7 +44,9 @@ export async function createOwnerAccount(
 
   const organization: Organization = {
     id: orgId,
-    name: "Academia X",
+    // Sem nome ate a configuracao inicial: quem recusar os termos antes dela
+    // nao deixa um espaco com nome inventado.
+    name: "",
     segment: "Academia",
     model: "classes",
     settings: {
@@ -114,6 +116,36 @@ export async function createOwnerAccount(
   }
 
   return { ok: true, user: userRecord, organization, unit, categories: [] };
+}
+
+/**
+ * Recusou os termos logo apos criar a conta: apaga o espaco e o acesso, como se
+ * o cadastro nao tivesse acontecido. So vale para conta que nunca aceitou os
+ * termos, nao concluiu a configuracao inicial e e a unica do espaco; nos demais
+ * casos devolve false e a pessoa so sai.
+ */
+export async function discardUnstartedOwnerAccount(admin: SupabaseClient, authUserId: string): Promise<boolean> {
+  const { data: dbUser } = await admin.from("users").select("*").eq("auth_user_id", authUserId).maybeSingle();
+  if (!dbUser || dbUser.profile !== "owner" || dbUser.terms_accepted_at) return false;
+
+  const orgId = dbUser.organization_id as string;
+  const [{ data: dbOrg }, { count: userCount }, { count: consentCount }] = await Promise.all([
+    admin.from("organizations").select("settings").eq("id", orgId).maybeSingle(),
+    admin.from("users").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
+    admin.from("legal_consents").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
+  ]);
+  const settings = (dbOrg?.settings ?? {}) as NonNullable<Organization["settings"]>;
+  if (!dbOrg || settings.onboardingCompleted || userCount !== 1 || (consentCount ?? 0) > 0) return false;
+
+  // A organizacao leva unidade, usuario e o resto em cascata.
+  const { error: orgErr } = await admin.from("organizations").delete().eq("id", orgId);
+  if (orgErr) {
+    console.error("[signup] Erro ao apagar espaco recusado:", orgErr);
+    return false;
+  }
+  const { error: authErr } = await admin.auth.admin.deleteUser(authUserId);
+  if (authErr) console.error("[signup] Erro ao apagar acesso recusado:", authErr);
+  return true;
 }
 
 /** Organizacao, primeira unidade, modalidades e o usuario na forma da sessao. */

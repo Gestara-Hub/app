@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -27,13 +28,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { signOut } from "@/app/(auth)/actions";
+import { declineTermsAndSignOut } from "@/app/(auth)/actions";
 import { cn } from "@/lib/utils";
 import { useLegalConsent } from "../hooks/use-legal-consent";
 import { useCurrentUser } from "../session-provider";
 
 type LegalTab = "lgpd" | "payments" | "audit";
+
+const LEGAL_TABS: { value: LegalTab; label: string; icon: typeof FileText }[] = [
+  { value: "lgpd", label: "LGPD", icon: FileText },
+  { value: "payments", label: "Pagamentos", icon: Wallet },
+  { value: "audit", label: "Direitos", icon: Scale },
+];
 
 export function LegalConsentDialog() {
   const user = useCurrentUser();
@@ -52,7 +58,7 @@ export function LegalConsentDialog() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOut();
+      await declineTermsAndSignOut();
     } catch {
       setIsSigningOut(false);
     }
@@ -95,74 +101,56 @@ export function LegalConsentDialog() {
         closeOnInteractOutside={false}
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        className="sm:max-w-3xl max-h-[92vh] flex flex-col p-6 gap-4"
+        className="flex h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:h-[88vh] sm:max-w-3xl"
       >
-        <DialogHeader className="space-y-2 text-left">
-          <div className="flex items-center gap-2">
+        <DialogHeader className="shrink-0 gap-3 border-b border-border/40 p-4 text-left sm:p-6 sm:pb-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge
               variant="outline"
-              className="gap-1 border-primary/30 bg-primary/10 text-primary px-2.5 py-0.5 font-medium"
+              className="hidden gap-1 border-primary/30 bg-primary/10 px-2.5 py-0.5 font-medium text-primary sm:inline-flex"
             >
               <ShieldCheck className="size-3.5" />
               Conformidade LGPD & Marco Civil
             </Badge>
             <span className="text-xs text-muted-foreground">
-              Versão Vigente: v1.0-2026-10
+              Versão v1.0-2026-10
             </span>
           </div>
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+          <DialogTitle className="text-lg font-bold leading-snug tracking-tight text-foreground sm:text-xl">
             Termos de Uso e Política de Privacidade
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-            Olá, <strong className="text-foreground">{user.name}</strong>. Para
-            garantir a segurança jurídica da sua organização e cumprir as
-            normas da ANPD e do Marco Civil da Internet, revise e confirme o
-            aceite antes de acessar o sistema.
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+            Olá, <strong className="text-foreground">{user.name}</strong>.
+            Revise e aceite para acessar o sistema.
           </DialogDescription>
+
+          {/* Navegação entre seções dos termos */}
+          <div className="grid grid-cols-3 gap-1 rounded-lg border bg-muted/40 p-1 text-xs">
+            {LEGAL_TABS.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value)}
+                className={cn(
+                  "flex min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-2 font-medium transition-colors",
+                  activeTab === value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="size-3.5 shrink-0 max-sm:hidden" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </DialogHeader>
 
-        {/* Navegação entre seções dos termos */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-lg border bg-muted/40 p-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab("lgpd")}
-            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 font-medium transition-colors cursor-pointer ${
-              activeTab === "lgpd"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <FileText className="size-3.5" />
-            <span>LGPD e Dados</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("payments")}
-            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 font-medium transition-colors cursor-pointer ${
-              activeTab === "payments"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Wallet className="size-3.5" />
-            <span>Pagamentos</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("audit")}
-            className={`flex items-center justify-center gap-1.5 rounded-md px-3 py-2 font-medium transition-colors cursor-pointer ${
-              activeTab === "audit"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Scale className="size-3.5" />
-            <span>Auditoria & Direitos</span>
-          </button>
-        </div>
-
-        {/* Conteúdo rolável com textos jurídicos formais e completos */}
-        <ScrollArea className="h-72 sm:h-80 rounded-lg border bg-muted/15 p-4 text-xs leading-relaxed text-muted-foreground">
+        {/* Só o texto rola; a key volta a rolagem ao topo ao trocar de aba */}
+        <DialogBody
+          key={activeTab}
+          scrollCueLabel="Continuar lendo"
+          className="p-4 text-sm leading-relaxed text-muted-foreground sm:p-6"
+        >
           {activeTab === "lgpd" && (
             <div className="space-y-4">
               <div className="border-b border-border/50 pb-2">
@@ -170,12 +158,12 @@ export function LegalConsentDialog() {
                   <CheckCircle2 className="size-4 text-primary" />
                   CLÁUSULA 1ª – DO TRATAMENTO DE DADOS PESSOAIS E PAPÉIS CONTRATUAIS (LEI Nº 13.709/2018 - LGPD)
                 </h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Acordo de Processamento de Dados (DPA) aplicável às operações realizadas no ambiente GestaraHub.
                 </p>
               </div>
 
-              <div className="space-y-2 text-foreground/90">
+              <div className="space-y-3 text-foreground/90">
                 <p>
                   <strong>1.1. Qualificação das Partes e Responsabilidades Regulatórias:</strong> Para todos os fins e efeitos da Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018), a Organização Contratante é e permanece como a única e exclusiva <strong>Controladora</strong> (Art. 5º, inciso VI), competindo-lhe tomar as decisões referentes ao tratamento de dados pessoais de seus alunos, alunas, pais, responsáveis legais, instrutores e colaboradores. A <strong>GestaraHub</strong> atua estritamente na qualidade de <strong>Operadora de Tecnologia</strong> (Art. 5º, inciso VII), limitando-se a realizar o tratamento automatizado dos dados pessoais única e exclusivamente em nome da Controladora, sob suas instruções lícitas e no estrito limite das funcionalidades contratadas.
                 </p>
@@ -205,12 +193,12 @@ export function LegalConsentDialog() {
                   <Wallet className="size-4 text-primary" />
                   CLÁUSULA 2ª – DA INTERMEDIAÇÃO FINANCEIRA, PROCESSAMENTO E SUBCONTAS (BACEN / SPB)
                 </h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Regramento operacional e de conformidade aplicável aos módulos de cobranças online, Pix e split.
                 </p>
               </div>
 
-              <div className="space-y-2 text-foreground/90">
+              <div className="space-y-3 text-foreground/90">
                 <p>
                   <strong>2.1. Instituições de Pagamento Homologadas e Arranjo Regulatório:</strong> O processamento, conciliação e liquidação financeira de recebimentos via Pix (QR Code dinâmico e estático), boletos bancários registrados e cobranças recorrentes no cartão de crédito são realizados mediante integração sistêmica com instituições de pagamento homologadas, supervisionadas e autorizadas a funcionar pelo Banco Central do Brasil (BACEN), notadamente a <strong>Asaas Gestão Financeira IP S.A.</strong> (ou outros arranjos financeiros devidamente credenciados no Sistema de Pagamentos Brasileiro - SPB).
                 </p>
@@ -237,16 +225,16 @@ export function LegalConsentDialog() {
                   <Scale className="size-4 text-primary" />
                   CLÁUSULA 3ª – DA TRILHA DE AUDITORIA, REGISTROS LEGAIS, RESCISÃO E FORO
                 </h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Eficácia probatória do consentimento eletrônico, prazos legais de guarda e encerramento de conta.
                 </p>
               </div>
 
-              <div className="space-y-2 text-foreground/90">
+              <div className="space-y-3 text-foreground/90">
                 <p>
                   <strong>3.1. Eficácia e Plena Validade Probatória do Consentimento Eletrônico:</strong> Nos termos do Art. 10 da Medida Provisória nº 2.200-2/2001 e do Art. 8º §2º da Lei nº 13.709/2018 (LGPD), as partes reconhecem como plenamente válida, eficaz, íntegra e exigível a manifestação de vontade expressa por meio eletrônico. Para assegurar a inquestionabilidade, autenticidade e fé probatória do aceite perante a ANPD, PROCON, Poder Judiciário e órgãos fiscalizadores, o ato de confirmação registra de modo indelével na trilha de auditoria:
                 </p>
-                <div className="rounded-md border bg-muted/30 p-2.5 text-[11px] space-y-1 font-mono">
+                <div className="rounded-md border bg-muted/30 p-2.5 text-xs space-y-1 font-mono">
                   <p className="text-foreground">I. Endereço IP público e porta lógica de conexão no momento do aceite;</p>
                   <p className="text-foreground">II. Identificador completo do navegador e dispositivo utilizado (User-Agent);</p>
                   <p className="text-foreground">III. Carimbo de tempo oficial sincronizado em Tempo Universal Coordenado (UTC);</p>
@@ -268,111 +256,106 @@ export function LegalConsentDialog() {
               </div>
             </div>
           )}
-        </ScrollArea>
 
-        {/* Alerta de transparência probatória */}
-        <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p className="leading-relaxed">
-            Ao confirmar, seu aceite eletrônico será auditado e arquivado nos
-            termos dos Arts. 10 e 15 da Lei 12.965/2014 (Marco Civil) e do Art.
-            8º §2º da Lei 13.709/2018 (LGPD).
-          </p>
-        </div>
-
-        {/* Checkbox de aceite obrigatório */}
-        <div className="space-y-1.5">
-          <div
-            className={cn(
-              "flex items-start gap-3 rounded-lg border p-3 shadow-xs transition-colors",
-              hasError
-                ? "border-destructive bg-destructive/5 ring-1 ring-destructive/40"
-                : "border-border bg-card",
-            )}
-          >
-            <Checkbox
-              id="terms-consent-checkbox"
-              checked={agreed}
-              onCheckedChange={(val) => {
-                const checked = Boolean(val);
-                setAgreed(checked);
-                if (checked) {
-                  setHasError(false);
-                }
-              }}
-              className={cn("mt-0.5 shrink-0", hasError && "border-destructive")}
-            />
-            <Label
-              htmlFor="terms-consent-checkbox"
-              className="block flex-1 text-xs font-normal leading-relaxed text-foreground cursor-pointer select-none"
-            >
-              Declaro que li, compreendi e concordo integralmente com os{" "}
-              <Link
-                href="/terms"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 inline-flex items-center gap-0.5"
-              >
-                Termos de Uso
-                <ExternalLink className="size-2.5" />
-              </Link>{" "}
-              e a{" "}
-              <Link
-                href="/privacy"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 inline-flex items-center gap-0.5"
-              >
-                Política de Privacidade
-                <ExternalLink className="size-2.5" />
-              </Link>{" "}
-              da GestaraHub.
-            </Label>
-          </div>
-          {hasError && (
-            <p className="flex items-center gap-1.5 text-xs font-medium text-destructive animate-in fade-in slide-in-from-top-1 px-1">
-              <AlertCircle className="size-3.5 shrink-0" />
-              É necessário marcar a caixa de seleção para aceitar os termos e continuar.
+          {/* Alerta de transparência probatória */}
+          <div className="flex items-start gap-2.5 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p className="leading-relaxed">
+              Ao confirmar, seu aceite eletrônico será auditado e arquivado nos
+              termos dos Arts. 10 e 15 da Lei 12.965/2014 (Marco Civil) e do
+              Art. 8º §2º da Lei 13.709/2018 (LGPD).
             </p>
-          )}
-        </div>
+          </div>
+        </DialogBody>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between items-center gap-3 pt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            disabled={isSigningOut || isSubmitting}
-            className="w-full sm:w-auto text-xs text-muted-foreground hover:text-destructive gap-1.5"
-          >
-            {isSigningOut ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <LogOut className="size-3.5" />
+        <div className="shrink-0 space-y-3 border-t border-border/40 p-4 sm:px-6">
+          {/* Checkbox de aceite obrigatório */}
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="terms-consent-checkbox"
+                checked={agreed}
+                onCheckedChange={(val) => {
+                  const checked = Boolean(val);
+                  setAgreed(checked);
+                  if (checked) {
+                    setHasError(false);
+                  }
+                }}
+                aria-invalid={hasError}
+                className={cn("mt-0.5 shrink-0", hasError && "border-destructive")}
+              />
+              <Label
+                htmlFor="terms-consent-checkbox"
+                className="block flex-1 cursor-pointer select-none text-sm font-normal leading-relaxed text-foreground"
+              >
+                Li e aceito os{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  Termos de Uso
+                  <ExternalLink className="ml-0.5 inline size-3 align-baseline" />
+                </Link>{" "}
+                e a{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  Política de Privacidade
+                  <ExternalLink className="ml-0.5 inline size-3 align-baseline" />
+                </Link>
+                .
+              </Label>
+            </div>
+            {hasError && (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-destructive animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="size-3.5 shrink-0" />
+                Marque a caixa para aceitar os termos.
+              </p>
             )}
-            Recusar e sair
-          </Button>
+          </div>
 
-          <Button
-            type="button"
-            onClick={handleAccept}
-            disabled={isSubmitting || isSigningOut}
-            className="w-full sm:w-auto gap-2 font-medium"
-          >
-            {isSubmitting ? (
-              <>
+          <DialogFooter className="max-sm:p-0 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSignOut}
+              disabled={isSigningOut || isSubmitting}
+              className="gap-1.5"
+            >
+              {isSigningOut ? (
                 <Loader2 className="size-4 animate-spin" />
-                Registrando aceite…
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="size-4" />
-                Aceitar e continuar
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+              ) : (
+                <LogOut className="size-4 max-sm:hidden" />
+              )}
+              Recusar e sair
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleAccept}
+              disabled={isSubmitting || isSigningOut}
+              className="gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Registrando…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-4 max-sm:hidden" />
+                  Aceitar e continuar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
