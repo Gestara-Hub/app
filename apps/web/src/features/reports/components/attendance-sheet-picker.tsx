@@ -8,12 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-/** "seg, 21/09 · 06:00". */
-export function sessionOptionLabel(date: string, start: string): string {
-  const weekday = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][new Date(`${date}T12:00:00`).getDay()];
-  return `${weekday}, ${date.slice(8, 10)}/${date.slice(5, 7)} · ${start}`;
-}
+import { sessionOptionLabel } from "@/lib/documents/report-documents";
 
 /** Lista de presenca: turma e aula escolhidas acima da previa (fora do documento). */
 export function AttendanceSheetPicker({

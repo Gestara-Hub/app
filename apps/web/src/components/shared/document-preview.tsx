@@ -39,7 +39,10 @@ function TablePreview({ block }: { block: DocumentTableBlock }) {
             <tr className="border-b border-border">
               {block.numbered ? <th className="w-8 px-2 py-2 text-center">#</th> : null}
               {block.columns.map((column) => (
-                <th key={column.key} className={cn("px-2.5 py-2", alignClass(column))}>
+                <th
+                  key={column.key}
+                  className={cn("px-2.5 py-2", alignClass(column), column.key === "signature" && "border-l border-border")}
+                >
                   {column.label}
                 </th>
               ))}
@@ -68,7 +71,7 @@ function TablePreview({ block }: { block: DocumentTableBlock }) {
                         "px-2.5 py-2 break-words",
                         alignClass(column),
                         TONE_CLASS[row.tones?.[column.key] ?? "default"],
-                        column.key === "signature" && "min-w-32 border-l border-border",
+                        column.key === "signature" && "h-11 min-w-32 border-l border-border",
                       )}
                     >
                       {column.key === "signature" ? null : displayCell(row.cells[column.key], column.format)}

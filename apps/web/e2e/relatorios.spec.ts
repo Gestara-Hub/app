@@ -185,7 +185,7 @@ test.describe("catálogo", () => {
     await expect(page.getByRole("button", { name: "Abrir", exact: true })).toHaveCount(8);
     await expect(page.getByRole("button", { name: "Disponível no Plano Profissional" })).toHaveCount(0);
     await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
-    await expect(main(page)).toContainText("Aniversariantes do Mês (Setembro)");
+    await expect(main(page)).toContainText("Aniversariantes de setembro");
     await page.getByRole("button", { name: "Voltar aos relatórios" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
   });
@@ -223,7 +223,7 @@ test.describe("relatórios operacionais", () => {
 
     const csv = await exportCsv(page);
     expect(csv.name).toBe("relatorio-lista-de-presenca-2026-09-21.csv");
-    expect(csv.text).toContain('"Turma";"Jiu-Jitsu Adulto"');
+    expect(csv.text).toContain('"Lista de presença";"Jiu-Jitsu Adulto');
     expect(csv.text).toContain('"Aluno A20";"Faixa Azul";"Presente"');
   });
 
@@ -246,7 +246,7 @@ test.describe("relatórios operacionais", () => {
     await expect(sheet.locator("tbody tr").filter({ hasText: "Aluno A20" })).toContainText("Faixa Azul");
     await expect(sheet).not.toContainText("Alergia");
     const csv = await exportCsv(page);
-    expect(csv.text.split("\n")[0]).toContain('"Aluno";"Telefone";"Plano";"Vencimento";"Situação"');
+    expect(csv.text).toContain('"Aluno";"Telefone";"Plano";"Vencimento";"Situação"');
     expect(csv.text).toContain('"Aluno Inativo"');
   });
 
@@ -286,7 +286,7 @@ test.describe("relatórios operacionais", () => {
     expect(csv.text).toContain('"25";"Aluno A20"');
 
     await openReport(page, "monthly_birthdays", "2026-11");
-    await expect(main(page)).toContainText("Aniversariantes do Mês (Novembro)");
+    await expect(main(page)).toContainText("Aniversariantes de novembro");
     await expect(main(page)).toContainText("0 Aniversariantes");
   });
 
@@ -319,7 +319,7 @@ test.describe("relatórios operacionais", () => {
     await page.getByRole("button", { name: "Próximo mês" }).click();
     await page.getByRole("button", { name: "Próximo mês" }).click();
     await page.locator("div[data-slot=card]").filter({ hasText: "Aniversariantes do mês" }).getByRole("button").click();
-    await expect(main(page)).toContainText("Aniversariantes do Mês (Novembro)");
+    await expect(main(page)).toContainText("Aniversariantes de novembro");
     await expect(main(page)).toContainText("Competência 11/2026");
   });
 });
@@ -358,7 +358,7 @@ test.describe("relatórios Pro", () => {
     await openReport(page, "churn_retention");
     const sheet = main(page);
     await expect(sheet.getByText("Alunos no início", { exact: true }).locator("..")).toContainText("3");
-    await expect(sheet.getByText("Saíram", { exact: true }).locator("..")).toContainText("-1");
+    await expect(sheet.getByText("Saíram", { exact: true }).locator("..")).toContainText("1");
     const jj = sheet.locator("tbody tr").filter({ hasText: "Jiu-Jitsu Adulto" });
     // 2 ativos e 1 matricula cancelada no mes: 33,3% de churn na turma.
     await expect(jj).toContainText("2");
@@ -366,7 +366,7 @@ test.describe("relatórios Pro", () => {
     await expect(jj).toContainText("66,7%");
     await expect(sheet.getByRole("columnheader", { name: "Turma" })).toBeVisible();
     const csv = await exportCsv(page);
-    expect(csv.text).toContain('"Retenção de alunos";"Competência 09/2026"');
+    expect(csv.text).toContain('"Período";"Competência 09/2026"');
     expect(csv.text).toContain('"Saíram";"1"');
   });
 
@@ -389,7 +389,7 @@ test.describe("relatórios Pro", () => {
 });
 
 test.describe("imprimir e permissões", () => {
-  test("layout de impressão esconde a barra e mostra a assinatura", async ({ page }) => {
+  test("layout de impressão esconde a barra e mostra o documento", async ({ page }) => {
     await seedReports(page);
     await openReport(page, "students_roster");
     await page.evaluate(() => {
@@ -398,23 +398,22 @@ test.describe("imprimir e permissões", () => {
         (window as unknown as { printed: number }).printed += 1;
       };
     });
-    await page.getByRole("button", { name: "Imprimir ou salvar PDF" }).click();
+    await page.getByRole("button", { name: "Baixar PDF" }).click();
     expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
 
     await page.emulateMedia({ media: "print" });
     await expect(page.getByRole("button", { name: "Exportar CSV" })).toBeHidden();
-    await expect(page.getByText("Assinatura do Responsável")).toBeVisible();
+    await expect(main(page)).toContainText("Relação de alunos");
     await page.emulateMedia({ media: "screen" });
-    await expect(page.getByText("Assinatura do Responsável")).toBeHidden();
   });
 
   test("atendente vê os relatórios mas não exporta", async ({ page }) => {
     await seedReports(page, { extra: (t) => t.users.push(ATTENDANT) });
     await loginAsUser(page, ATTENDANT);
     await openReport(page, "students_roster");
-    await expect(main(page)).toContainText("Relação Geral de Alunos");
+    await expect(main(page)).toContainText("Relação de alunos");
     await expect(page.getByRole("button", { name: "Exportar CSV" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Imprimir ou salvar PDF" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Baixar PDF" })).toHaveCount(0);
   });
 
 });

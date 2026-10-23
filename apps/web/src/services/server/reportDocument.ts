@@ -16,7 +16,7 @@ export async function buildReportDocument(
   ctx: TenantContext,
   type: ReportType,
   filter: ReportFilter,
-): Promise<DocumentModel | null> {
+): Promise<DocumentModel> {
   return runInWorld(ctx, async () => {
     const report = await reportsServiceImpl.generateReport(type, filter);
     const org = store.organization;

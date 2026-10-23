@@ -98,6 +98,9 @@ const styles = StyleSheet.create({
   headRow: { backgroundColor: COLOR.soft },
   totalsRow: { backgroundColor: COLOR.softer },
   cell: { paddingVertical: 5, paddingHorizontal: 6 },
+  // Lista com assinatura: linha mais alta para assinar e coluna separada.
+  signingCell: { paddingVertical: 10 },
+  signatureCell: { borderLeftWidth: 1, borderLeftColor: COLOR.border },
   headCell: {
     fontFamily: "Helvetica-Bold",
     fontSize: 7.5,
@@ -186,6 +189,7 @@ function FieldsBlock({ block }: { block: DocumentFieldsBlock }) {
 
 function TableBlock({ block }: { block: DocumentTableBlock }) {
   const lastIndex = block.rows.length - 1;
+  const signing = block.columns.some((column) => column.key === "signature");
   return (
     <View>
       {block.title ? <Text style={styles.blockTitle}>{block.title}</Text> : null}
@@ -195,7 +199,12 @@ function TableBlock({ block }: { block: DocumentTableBlock }) {
           {block.columns.map((column) => (
             <Text
               key={column.key}
-              style={[styles.cell, styles.headCell, { flex: column.width ?? 1, textAlign: alignOf(column) }]}
+              style={[
+                styles.cell,
+                styles.headCell,
+                column.key === "signature" ? styles.signatureCell : {},
+                { flex: column.width ?? 1, textAlign: alignOf(column) },
+              ]}
             >
               {column.label}
             </Text>
@@ -210,12 +219,16 @@ function TableBlock({ block }: { block: DocumentTableBlock }) {
               wrap={false}
               style={[styles.row, index === lastIndex && !block.totals ? styles.rowLast : {}]}
             >
-              {block.numbered ? <Text style={[styles.cell, styles.numberCell]}>{index + 1}</Text> : null}
+              {block.numbered ? (
+                <Text style={[styles.cell, signing ? styles.signingCell : {}, styles.numberCell]}>{index + 1}</Text>
+              ) : null}
               {block.columns.map((column) => (
                 <Text
                   key={column.key}
                   style={[
                     styles.cell,
+                    signing ? styles.signingCell : {},
+                    column.key === "signature" ? styles.signatureCell : {},
                     {
                       flex: column.width ?? 1,
                       textAlign: alignOf(column),

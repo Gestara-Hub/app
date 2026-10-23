@@ -12,7 +12,6 @@ import { useCan, useCurrentUser } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import { useModalityVocabulary, useSegmentVocabulary } from "@/features/settings";
 import { AttendanceSheetPicker } from "./attendance-sheet-picker";
-import { ReportDocumentView } from "./report-document-view";
 
 interface ReportDocumentScreenProps {
   report: GeneratedReportData;
@@ -72,10 +71,6 @@ export function ReportDocumentScreen({ report, onBack, onSheetChange, competence
     levelLabel: vocabulary.level,
     levelLabelForModality: () => sheetVocabulary.level,
   });
-  if (!model) {
-    return <ReportDocumentView report={report} onBack={onBack} onSheetChange={onSheetChange} competence={competence} />;
-  }
-
   return (
     <div className="space-y-6">
       <div className="print:hidden flex flex-col justify-between gap-4 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-center">

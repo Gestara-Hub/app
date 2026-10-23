@@ -21,7 +21,7 @@ function currentCompetence(): string {
  */
 export async function GET(request: Request, { params }: { params: Promise<{ type: string }> }) {
   const { type } = await params;
-  if (!(type in REPORT_FILE_SLUG)) {
+  if (!Object.hasOwn(REPORT_FILE_SLUG, type)) {
     return Response.json({ message: "Relatório não encontrado." }, { status: 404 });
   }
   const url = new URL(request.url);
@@ -36,7 +36,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
     ctx.require("reports:view");
     ctx.require("reports:export");
     const model = await buildReportDocument(ctx, type as ReportType, filter);
-    if (!model) return Response.json({ message: "Relatório ainda sem documento." }, { status: 404 });
     return documentResponse(model, formatFromRequest(url), ctx.organizationId);
   } catch (error) {
     return documentErrorResponse(error);

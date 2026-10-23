@@ -140,8 +140,7 @@ test.describe("DRE (Pro)", () => {
     });
     await page.goto("/reports?type=financial_income_statement&period=2026-09");
     const doc = page.locator("main");
-    await expect(doc).toContainText("Demonstrativo de Resultado do Exercício (DRE)");
-    await expect(doc).toContainText("(+) RECEITA BRUTA OPERACIONAL");
+    await expect(doc).toContainText("DRE do mês");
     // A mensalidade de agosto paga em setembro entra em setembro (e so nele).
     for (const [line, amount] of [
       ["Mensalidades de Alunos", "R$ 300,00"],
@@ -150,18 +149,20 @@ test.describe("DRE (Pro)", () => {
       ["Cursos", "R$ 200,00"],
       ["Pacotes de aulas", "R$ 500,00"],
     ]) {
-      await expect(doc.locator("div.py-2").filter({ hasText: line }).first()).toContainText(amount);
+      await expect(doc.locator("tbody tr").filter({ hasText: line }).first()).toContainText(amount);
     }
-    await expect(doc.locator("div.justify-between").filter({ hasText: /^\(\+\) RECEITA BRUTA OPERACIONAL/ })).toContainText("R$ 1.140,00");
-    await expect(doc.locator("div.justify-between").filter({ hasText: /^\(-\) DESPESAS OPERACIONAIS/ })).toContainText("R$ 140,00");
-    await expect(doc.locator("div.justify-between").filter({ hasText: /^\(=\) RESULTADO OPERACIONAL LÍQUIDO/ })).toContainText("R$ 1.000,00");
+    const field = (label: string) => doc.locator("dl > div").filter({ has: page.getByText(label, { exact: true }) });
+    await expect(field("Receita bruta")).toContainText("R$ 1.140,00");
+    await expect(field("Despesas operacionais")).toContainText("R$ 140,00");
+    await expect(field("Resultado operacional")).toContainText("R$ 1.000,00");
 
     // CSV com as receitas detalhadas.
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
     const csv = await readDownload(download);
-    expect(csv).toContain('"Receitas";"Valor";"%"');
-    expect(csv).toContain('"Cursos";"200,00"');
-    expect(csv).toContain('"Pacotes de aulas";"500,00"');
+    expect(csv).toContain('"Receitas por origem"');
+    expect(csv).toContain('"Categoria";"%";"Valor"');
+    expect(csv).toMatch(/"Cursos";"[^"]*";"200,00"/);
+    expect(csv).toMatch(/"Pacotes de aulas";"[^"]*";"500,00"/);
 
     // Agosto: a mensalidade de agosto foi paga em setembro, entao agosto fica vazio.
     await page.goto("/reports?type=financial_income_statement&period=2026-08");
@@ -226,10 +227,11 @@ test.describe("relatórios", () => {
     await expect(kpi("Recebido no mês")).toContainText("R$ 200,00");
     const row = doc.locator("tbody tr").filter({ hasText: "Confeitaria" });
     await expect(row).toContainText("Carlos Silva");
-    await expect(row).toContainText("03/08/2026 a 30/11/2026");
-    await expect(row.locator("td").nth(1)).toHaveText("1");
-    await expect(row.locator("td").nth(2)).toHaveText("0");
-    await expect(row.locator("td").nth(3)).toHaveText("1");
+    await expect(row.locator("td").nth(2)).toHaveText("03/08/2026");
+    await expect(row.locator("td").nth(3)).toHaveText("30/11/2026");
+    await expect(row.locator("td").nth(4)).toHaveText("1");
+    await expect(row.locator("td").nth(5)).toHaveText("0");
+    await expect(row.locator("td").nth(6)).toHaveText("1");
 
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
     expect(download.suggestedFilename()).toBe("relatorio-cursos-2026-09.csv");
