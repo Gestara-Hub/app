@@ -19,7 +19,7 @@ Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: P
    ```
    - **O túnel é obrigatório para o webhook do Asaas** (o pagamento online confirmado no Asaas volta para o app por ele). Sem o túnel, o pagamento no sandbox não chega ao app e parece bug. Detalhes na seção B.3.
    - O `pnpm tunnel` usa o `cloudflared` (já instalado em `/opt/homebrew/bin`), grava a URL pública em `ASAAS_WEBHOOK_URL` no `.env.local` e fica no ar até Ctrl+C. **A URL muda a cada vez que o túnel sobe:** sempre que reiniciar o túnel, reinicie o `pnpm dev` (o Next só lê o `.env.local` ao iniciar).
-   - A porta 3000 pode estar ocupada por outro projeto do usuário. Não mate o processo: suba o app em outra porta e **aponte o túnel para a mesma porta**:
+   - **Use a porta 3000** (padrão do projeto; o túnel já aponta para ela). Só se ela estiver ocupada (o usuário tem outro projeto que às vezes usa a 3000; confira com `lsof -iTCP:3000 -sTCP:LISTEN`), não mate o outro processo: suba o app em outra porta e **aponte o túnel para a mesma porta**:
      ```bash
      PORT=3005 pnpm tunnel
      pnpm --filter @gestarahub/web exec next dev -p 3005
@@ -160,7 +160,7 @@ Testar **de fato** todos os fluxos do sistema, tela por tela, no desktop e no ce
 
 ### B.2 Preparação
 
-1. `pnpm demo:local` recria o espaço de demonstração (Academia X, datas relativas a hoje). Depois suba o túnel e o app como na seção 0 (`pnpm tunnel` e, em seguida, `pnpm dev`).
+1. `pnpm demo:local` recria o espaço de demonstração (Academia X, datas relativas a hoje). Depois suba o túnel e o app como na seção 0 (`pnpm tunnel` e, em seguida, `pnpm dev`, na porta 3000).
 2. No login, "Entrar na demonstração". No topo, dá para ver como **dono, gerente, recepção e professor**. Faça os fluxos como **dono**; depois repita os principais com **professor**, **recepção** e **gerente** (seção B.5, item Perfis).
 3. **Crie também um espaço novo do zero** pelo "Criar conta" do login (o link de confirmação aparece no terminal do `pnpm dev`): a configuração inicial, o espaço vazio, os guias de "primeiros passos" e o primeiro cadastro de tudo só aparecem assim.
 4. Navegador: o navegador integrado do Claude ou Playwright. Tamanhos:
