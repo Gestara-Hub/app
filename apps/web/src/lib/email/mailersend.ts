@@ -238,7 +238,8 @@ export function buildSignupEmailText({
  * o fluxo segue. Em producao e falha: nunca dizer que enviou sem enviar.
  */
 function withoutApiKey(link: string): { ok: true } | { ok: false; error: string } {
-  if (process.env.NODE_ENV === "production") {
+  // E2E_NOW so existe no servidor dos e2e (tambem no modo producao, doc 20).
+  if (process.env.NODE_ENV === "production" && !process.env.E2E_NOW) {
     console.error("[mailersend] MAILERSEND_API_KEY ausente em producao: e-mail nao enviado.");
     return { ok: false, error: "O envio de e-mails está fora do ar. Tente novamente mais tarde." };
   }

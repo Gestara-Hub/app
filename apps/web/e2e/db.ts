@@ -179,7 +179,9 @@ export async function removeCreatedTenants(): Promise<void> {
   const db = admin();
   while (created.length > 0) {
     const tenant = created.pop()!;
-    await db.from("organizations").delete().eq("id", tenant.organizationId);
+    const { error } = await db.from("organizations").delete().eq("id", tenant.organizationId);
+    // Falha calada deixava o espaco no banco e contaminava o proximo teste (doc 20).
+    if (error) console.error(`[e2e] Espaço de teste não apagado (${tenant.organizationId}): ${error.message}`);
     for (const id of tenant.authIds) await db.auth.admin.deleteUser(id);
   }
 }

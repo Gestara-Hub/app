@@ -201,6 +201,9 @@ export async function loginAsAcademyUser(
   const user = userId
     ? await linkAuthUser(tenant, userId, name, profile, professionalId)
     : await addUser(tenant, profile, name, professionalId);
+  // Sai da pagina do usuario anterior antes de trocar os cookies: o que ela ainda
+  // buscasse sairia sem sessao (401 "sessao expirou" no console; doc 20).
+  await page.goto("about:blank");
   await page.context().clearCookies();
   await signInBrowser(page, tenant, user, BASE_URL);
 }
