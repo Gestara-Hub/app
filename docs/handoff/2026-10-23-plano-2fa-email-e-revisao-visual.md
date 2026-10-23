@@ -11,12 +11,19 @@ Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: P
    - **Git:** não faça `push`. Commit só se o usuário pedir. Deixe as mudanças na árvore e diga o que mudou.
    - **Testes locais:** typecheck + lint + Vitest a cada mudança; testes de banco (`test:db`) só da área mexida (aqui, sim: a Parte A mexe no banco e no login). E2E só a área `acesso` no fim da Parte A (`pnpm --filter @gestarahub/web e2e:area acesso`), nunca a suíte completa.
    - Nunca escreva em código, log ou doc: senha, token, chave, CPF.
-3. Ambiente:
+3. Ambiente, **nesta ordem**, cada comando no seu terminal e os dois últimos rodando o tempo todo:
    ```bash
    pnpm setup:local
+   pnpm tunnel
    pnpm dev
    ```
-   - A porta 3000 pode estar ocupada por outro projeto do usuário. Não mate o processo: suba em outra porta, por exemplo `pnpm --filter @gestarahub/web exec next dev -p 3005`.
+   - **O túnel é obrigatório para o webhook do Asaas** (o pagamento online confirmado no Asaas volta para o app por ele). Sem o túnel, o pagamento no sandbox não chega ao app e parece bug. Detalhes na seção B.3.
+   - O `pnpm tunnel` usa o `cloudflared` (já instalado em `/opt/homebrew/bin`), grava a URL pública em `ASAAS_WEBHOOK_URL` no `.env.local` e fica no ar até Ctrl+C. **A URL muda a cada vez que o túnel sobe:** sempre que reiniciar o túnel, reinicie o `pnpm dev` (o Next só lê o `.env.local` ao iniciar).
+   - A porta 3000 pode estar ocupada por outro projeto do usuário. Não mate o processo: suba o app em outra porta e **aponte o túnel para a mesma porta**:
+     ```bash
+     PORT=3005 pnpm tunnel
+     pnpm --filter @gestarahub/web exec next dev -p 3005
+     ```
    - Sem `MAILERSEND_API_KEY` no `.env.local`, os e-mails não saem: o link (e, depois da Parte A, o código) aparece no terminal do `pnpm dev`, só em desenvolvimento.
 
 ---
@@ -153,7 +160,7 @@ Testar **de fato** todos os fluxos do sistema, tela por tela, no desktop e no ce
 
 ### B.2 Preparação
 
-1. `pnpm demo:local` recria o espaço de demonstração (Academia X, datas relativas a hoje). Depois `pnpm dev` (ou a porta 3005, ver seção 0).
+1. `pnpm demo:local` recria o espaço de demonstração (Academia X, datas relativas a hoje). Depois suba o túnel e o app como na seção 0 (`pnpm tunnel` e, em seguida, `pnpm dev`).
 2. No login, "Entrar na demonstração". No topo, dá para ver como **dono, gerente, recepção e professor**. Faça os fluxos como **dono**; depois repita os principais com **professor**, **recepção** e **gerente** (seção B.5, item Perfis).
 3. **Crie também um espaço novo do zero** pelo "Criar conta" do login (o link de confirmação aparece no terminal do `pnpm dev`): a configuração inicial, o espaço vazio, os guias de "primeiros passos" e o primeiro cadastro de tudo só aparecem assim.
 4. Navegador: o navegador integrado do Claude ou Playwright. Tamanhos:
@@ -168,7 +175,9 @@ Testar **de fato** todos os fluxos do sistema, tela por tela, no desktop e no ce
 O usuário autorizou criar uma subconta para este teste. **Só no sandbox do Asaas:**
 
 1. Confira no `apps/web/.env.local` que `ASAAS_API_URL` aponta para `https://sandbox.asaas.com/api/v3`. **Se apontar para produção, pare e avise o usuário.** Não mostre nem copie a chave (`ASAAS_API_KEY`) em lugar nenhum.
-2. Para o webhook (confirmação do pagamento voltar ao app): rode `pnpm tunnel` **antes** do `pnpm dev` (doc technical/16, seção "Webhook do Asaas"). Sem o túnel, o pagamento no sandbox não volta sozinho para o app: anote isso no teste.
+2. **Túnel do webhook ligado** (seção 0): `pnpm tunnel` rodando e o `pnpm dev` iniciado **depois** dele (mesma porta nos dois). Doc technical/16, seção "Webhook do Asaas", e doc product/19, seção 4.
+   - No próximo acesso ao espaço depois de reiniciar o `pnpm dev`, o app recadastra o webhook na subconta com a URL nova (`services/onlinePayments/gatewaySetup.ts`). Se o túnel cair ou for reiniciado no meio do teste, reinicie o `pnpm dev` e abra o app de novo antes de pagar.
+   - Para confirmar que está funcionando: no terminal do túnel aparecem as chamadas `POST /api/webhooks/asaas`; no do `pnpm dev`, a rota respondendo. Se o pagamento não voltar ao app, confira primeiro o túnel e a URL antes de registrar como bug. Se o túnel estava certo e ainda assim não voltou, aí é achado `alta`.
 3. No app: Recebimentos online → **Ativar conta de recebimentos**. Preencha com **dados fictícios de teste**: nome de empresa inventado, um CPF ou CNPJ **gerado para teste** (válido no formato, de ninguém real; o sandbox aceita), data de nascimento, um e-mail de teste e um celular de teste. Nunca use documento de pessoa real. Anote no arquivo de achados qual tipo (CPF ou CNPJ) e o nome usado, **sem** o número do documento.
 4. Depois de ativar (e da janela de segurança que aparece nesse momento: teste "Agora não" e, em outra vez, "Ativar agora"), teste o ciclo completo:
    - cadastrar o CPF de teste num aluno maior de idade e de um responsável financeiro de um aluno menor;
