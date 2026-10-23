@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { format, parseISO } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-import { formatCents } from "@gestarahub/core/format";
+import { formatCents, formatDate } from "@gestarahub/core/format";
 import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarahub/contracts";
 import { withKind } from "@/lib/text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -76,23 +78,54 @@ export function PaidViaBadge({ charge }: { charge: ChargeView }) {
   if (charge.paidVia === "recurring") return <span className={PAID_VIA_CLASS}>Pix Automático</span>;
   if (charge.paidVia !== "online") return null;
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Ver quanto o aluno pagou, as taxas e quanto entrou"
-          className={cn(PAID_VIA_CLASS, "cursor-pointer hover:bg-primary/20")}
-          onClick={(event) => event.stopPropagation()}
-        >
-          Pago online
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 text-xs" onClick={(event) => event.stopPropagation()}>
+    <OnlineSettlementPopover charge={charge}>
+      <button
+        type="button"
+        aria-label="Ver quando o aluno pagou, as taxas e quanto entrou"
+        className={cn(PAID_VIA_CLASS, "cursor-pointer hover:bg-primary/20")}
+        onClick={(event) => event.stopPropagation()}
+      >
+        Pago online
+      </button>
+    </OnlineSettlementPopover>
+  );
+}
+
+/**
+ * Quadro do pagamento online (selo "Pago online" e o (i) da linha): quando
+ * pagou, valores, liberacao para saque e comprovante. `children` e o gatilho.
+ */
+export function OnlineSettlementPopover({ charge, children }: { charge: ChargeView; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      {/* Fundo escurecido e desfocado, como nos dialogos: o foco fica no quadro.
+          Clicar ou tocar fora fecha (so este quadro; dialogos seguem como estao). */}
+      {open
+        ? createPortal(
+            <div
+              aria-hidden
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm duration-200 animate-in fade-in-0"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(false);
+              }}
+              onClick={(event) => event.stopPropagation()}
+            />,
+            document.body,
+          )
+        : null}
+      <PopoverContent align="end" className="w-80 text-xs" onClick={(event) => event.stopPropagation()}>
         <OnlineSettlement charge={charge} />
       </PopoverContent>
     </Popover>
   );
 }
+
+/** "22/10/2026 às 14:32", no fuso de quem olha. */
+const dateTimeLabel = (iso: string) => format(parseISO(iso), "dd/MM/yyyy 'às' HH:mm");
 
 const USED_METHOD_LABEL: Record<string, string> = {
   pix: "Pix",
@@ -117,10 +150,38 @@ function OnlineSettlement({ charge }: { charge: ChargeView }) {
       ? "Pix"
       : undefined;
   const row = "flex items-center justify-between gap-3";
+  const today = new Date().toISOString().slice(0, 10);
+  const release = paid.fundsReleased
+    ? paid.creditDate
+      ? `Disponível para saque desde ${formatDate(paid.creditDate)}`
+      : "Disponível para saque"
+    : paid.creditDate
+      ? paid.creditDate <= today
+        ? `Liberação prevista para ${formatDate(paid.creditDate)}`
+        : `Disponível para saque em ${formatDate(paid.creditDate)}`
+      : "Liberação para saque: aguardando o Asaas";
   return (
     <div className="space-y-2.5">
       <p className="text-sm font-medium text-foreground">Pagamento online</p>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
+        {paid.paidAt ? (
+          <div className={row}>
+            <span className="text-muted-foreground">Pago em</span>
+            <span className="font-medium text-foreground">{dateTimeLabel(paid.paidAt)}</span>
+          </div>
+        ) : null}
+        {paid.openedAt ? (
+          <div className={row}>
+            <span className="text-muted-foreground">Aluno abriu o link em</span>
+            <span className="text-foreground">{dateTimeLabel(paid.openedAt)}</span>
+          </div>
+        ) : null}
+        <div className={row}>
+          <span className="text-muted-foreground">Cobrança gerada em</span>
+          <span className="text-foreground">{dateTimeLabel(paid.createdAt)}</span>
+        </div>
+      </div>
+      <div className="space-y-1.5 border-t border-border/50 pt-2">
         <div className={row}>
           <span className="text-muted-foreground">Aluno pagou{used ? ` (${used})` : ""}</span>
           <span className="font-medium text-foreground">{formatCents(paid.amountCents)}</span>
@@ -144,6 +205,22 @@ function OnlineSettlement({ charge }: { charge: ChargeView }) {
           : "Taxas absorvidas: saíram do valor da cobrança."}
         {asaasFee > 0 && !paid.paidMethod && paid.method !== "pix" ? " Tarifa estimada; o Asaas não informou o meio usado." : ""}
       </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2">
+        <span className={cn(paid.fundsReleased ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+          {release}
+        </span>
+        {paid.receiptUrl ? (
+          <a
+            href={paid.receiptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+          >
+            Ver comprovante
+          </a>
+        ) : null}
+      </div>
+      <p className="text-[11px] text-muted-foreground">Pago online não se desfaz: seria um estorno.</p>
     </div>
   );
 }
