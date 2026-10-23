@@ -64,9 +64,17 @@ Sobe um túnel público para `localhost:3000` e grava a URL em `ASAAS_WEBHOOK_UR
 - e-mail já ligado a outra conta: recusa, nunca liga por e-mail;
 - ninguém com o e-mail: espaço novo, como no cadastro por e-mail, e segue para a configuração inicial.
 
-Quem entra pelo Google aceita os Termos no próprio app (o mesmo aviso de quem não aceitou). Falhas voltam ao login com o motivo (`?google_error=`). Testes no banco: `services/server/__tests__/googleAccount.db.test.ts`.
+Quem entra pelo Google aceita os Termos no próprio app (o mesmo aviso de quem não aceitou). O espaço novo nasce sem nome até a configuração inicial. Quem recusa os Termos antes de concluir a configuração inicial tem a conta apagada (espaço, usuário e acesso do Auth), como se o cadastro não tivesse acontecido; conta que já aceitou ou já configurou o espaço só sai (`discardUnstartedOwnerAccount`). Falhas voltam ao login com o motivo (`?google_error=`). Testes no banco: `services/server/__tests__/googleAccount.db.test.ts`.
 
 O bloco `[auth.external.google]` do `apps/supabase/config.toml` lê essas duas variáveis (`skip_nonce_check = true`, exigido no local). Em produção, o mesmo cliente (ou outro) leva a origem do domínio e a URL de volta `https://<ref>.supabase.co/auth/v1/callback`, e as chaves vão no painel do Supabase (Authentication, Providers, Google).
+
+## Esqueci minha senha
+
+"Esqueci minha senha" no login leva a `/forgot-password`: quem tem senha (cadastro por e-mail ou convite) recebe pelo MailerSend um link de 1 hora para `/reset-password`, que vale uma vez só (tabela `password_reset_tokens`, migração 36; lógica em `services/server/passwordReset.ts`). Quem entra só pelo Google não recebe link, e a tela responde igual com ou sem conta, para não revelar quais e-mails existem. Sem `MAILERSEND_API_KEY`, o link aparece no terminal do `pnpm dev` ("Link de nova senha gerado"). Depois de trocar, o login abre com o e-mail preenchido e o aviso "Senha alterada".
+
+**Boas-vindas.** No primeiro aceite dos Termos, o dono do espaço recebe pelo MailerSend "Bem-vindo ao GestaraHub" com o botão "Continuar" (vai ao login, que leva à configuração inicial ou ao Painel) e "Dúvidas? Responda este e-mail". As respostas vão para `MAILERSEND_REPLY_TO_EMAIL` (padrão `SUPPORT_EMAIL` de `config/site.ts`, `contato@gestarahub.com.br`). Sai depois da resposta (`after` do Next), sem atrasar nem travar a entrada. Não recebem: quem aceita uma versão nova dos Termos, convidados (gerente, recepção, professor) e e-mails de domínio reservado (`.test`, `.example`, `.invalid`, `.localhost`, da demonstração e do e2e). Código: `sendWelcomeEmail` em `lib/email/mailersend.ts`, disparo em `services/legalConsentBackend.ts`. Envio com aviso do MailerSend (ex.: destinatário bloqueado, `ALL_SUPPRESSED`) vai para o log com `[mailersend] Avisos ao enviar` e conta como falha.
+
+**Layout dos e-mails.** Todos (cadastro, convite, nova senha e boas-vindas) usam a mesma moldura, `renderEmailLayout` em `lib/email/mailersend.ts`: faixa com o gradiente da marca, topo escuro com logo, título e uma linha de introdução, corpo branco e rodapé cinza. Botão, aviso de prazo e "se o botão não abrir" também são peças comuns (`emailButton`, `emailNotice`, `emailFallbackLink`). E-mail novo entra só com o conteúdo.
 
 ## Comandos avulsos
 
