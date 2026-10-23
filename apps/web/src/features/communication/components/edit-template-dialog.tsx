@@ -7,14 +7,16 @@ import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -179,7 +181,7 @@ function EditTemplateForm({
           <MessageBubble text={preview} />
         </div>
       </DialogBody>
-      <DialogFooter className="shrink-0 border-t border-border/40 px-6 py-4">
+      <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
         <Button type="button" variant="outline" onClick={onClose} disabled={updateMut.isPending}>
           Cancelar
         </Button>
@@ -204,18 +206,23 @@ export function EditTemplateDialog({
 }) {
   const template = useRetainedValue(templateProp);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-14">
-          <DialogTitle>{template ? TRIGGER_META[template.trigger].label : "Mensagem"}</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-lg"
+        onInteractOutside={(event) => event.preventDefault()}>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">
+            {template ? TRIGGER_META[template.trigger].label : "Mensagem"}
+          </SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {template
               ? official && !isManualTrigger(template.trigger)
                 ? automationTiming(template)
                 : TRIGGER_META[template.trigger].where
               : ""}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         {template ? (
           <EditTemplateForm
             key={template.id}
@@ -224,7 +231,7 @@ export function EditTemplateDialog({
             onClose={() => onOpenChange(false)}
           />
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

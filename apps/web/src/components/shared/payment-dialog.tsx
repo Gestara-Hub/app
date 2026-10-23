@@ -7,15 +7,15 @@ import { format } from "date-fns";
 import type { DateISO, PaymentMethod } from "@gestarahub/contracts";
 import { DateField, FileDropField, PaymentMethodField } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { DialogBody } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogBody,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { RECEIPT_FILE_RULES } from "@/lib/files";
 import { paymentFormSchema, type PaymentFormValues } from "@/lib/payment-form";
 
@@ -43,9 +43,9 @@ interface PaymentDialogProps {
 
 /**
  * Registrar pagamento (RHF + Zod): resumo, forma de pagamento obrigatoria, dia
- * do pagamento (padrao hoje) e comprovantes opcionais (imagem ou PDF). O
- * proprio modal e a confirmacao da acao com dinheiro. Usado por Cobrancas,
- * Lancamentos e Professores.
+ * do pagamento (padrao hoje) e comprovantes opcionais (imagem ou PDF). Abre em
+ * drawer, como os outros formularios. O proprio drawer e a confirmacao da acao
+ * com dinheiro. Usado por Cobrancas, Lancamentos e Professores.
  */
 export function PaymentDialog({
   open,
@@ -77,12 +77,16 @@ export function PaymentDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[88vh] flex-col overflow-hidden p-0 sm:max-w-md">
-        <DialogHeader className="shrink-0 p-6 pb-2 pr-12">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">{title}</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">{description}</SheetDescription>
+        </SheetHeader>
 
         <FormProvider {...form}>
           <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -104,19 +108,19 @@ export function PaymentDialog({
             </DialogBody>
 
             <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border/40 bg-background p-6 pt-4 sm:flex sm:justify-end">
-              {/* DialogClose (e nao onOpenChange direto): passa pelo "Descartar alterações?". */}
-              <DialogClose asChild>
+              {/* SheetClose (e nao onOpenChange direto): passa pelo "Descartar alterações?". */}
+              <SheetClose asChild>
                 <Button type="button" variant="outline" disabled={isPending}>
                   Cancelar
                 </Button>
-              </DialogClose>
+              </SheetClose>
               <Button type="submit" disabled={isPending || !method}>
                 {isPending ? "Registrando..." : confirmLabel}
               </Button>
             </div>
           </form>
         </FormProvider>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

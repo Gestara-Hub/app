@@ -50,18 +50,16 @@ export function AppointmentFormDialog({
             Selecione cliente, profissional, serviço, data e horário.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto">
-          <AppointmentForm
-            key={`${appointment?.id ?? "new"}-${defaultProfessionalId ?? ""}-${defaultDate ?? ""}-${defaultStart ?? ""}-${String(open)}`}
-            appointment={appointment}
-            defaultProfessionalId={defaultProfessionalId}
-            defaultDate={defaultDate}
-            defaultStart={defaultStart}
-            formId="appointment-form-drawer"
-            onSuccess={() => onOpenChange(false)}
-            onCancel={() => onOpenChange(false)}
-          />
-        </div>
+        <AppointmentForm
+          key={`${appointment?.id ?? "new"}-${defaultProfessionalId ?? ""}-${defaultDate ?? ""}-${defaultStart ?? ""}-${String(open)}`}
+          appointment={appointment}
+          defaultProfessionalId={defaultProfessionalId}
+          defaultDate={defaultDate}
+          defaultStart={defaultStart}
+          formId="appointment-form-drawer"
+          onSuccess={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );

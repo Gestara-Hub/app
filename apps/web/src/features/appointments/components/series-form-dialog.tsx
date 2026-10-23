@@ -12,15 +12,14 @@ import {
   TimeField,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { frequencyLabel } from "@/lib/labels";
 import type { CreateRecurrenceSeries, Frequency } from "@gestarahub/contracts";
@@ -119,79 +118,81 @@ function SeriesForm({
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <ComboboxField<SeriesFormValues>
-          name="clientId"
-          label="Cliente"
-          placeholder="Selecione o cliente"
-          searchPlaceholder="Buscar cliente..."
-          emptyMessage="Nenhum cliente."
-          options={clientOptions}
-          required
-          disabled={pending}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form id={formId} onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
           <ComboboxField<SeriesFormValues>
-            name="professionalId"
-            label="Profissional"
-            placeholder="Selecione"
-            searchPlaceholder="Buscar profissional..."
-            emptyMessage="Nenhum profissional."
-            options={professionalOptions}
+            name="clientId"
+            label="Cliente"
+            placeholder="Selecione o cliente"
+            searchPlaceholder="Buscar cliente..."
+            emptyMessage="Nenhum cliente."
+            options={clientOptions}
             required
             disabled={pending}
           />
-          <MultiSelectField<SeriesFormValues>
-            name="serviceIds"
-            label="Serviços"
-            placeholder="Selecione"
-            searchPlaceholder="Buscar serviço..."
-            emptyMessage="Nenhum serviço."
-            options={serviceOptions}
-            required
-            disabled={pending}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <SelectField<SeriesFormValues>
-            name="frequency"
-            label="Frequência"
-            options={FREQUENCY_OPTIONS}
-            required
-            disabled={pending}
-          />
-          <DateField<SeriesFormValues> id="ser-date" name="startDate" label="Início" required disabled={pending} />
-          <TimeField<SeriesFormValues> id="ser-time" name="time" label="Horário" required disabled={pending} />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField<SeriesFormValues>
-            name="endMode"
-            label="Terminar por"
-            options={END_MODE_OPTIONS}
-            disabled={pending}
-          />
-          {endMode === "count" ? (
-            <InputNumber<SeriesFormValues>
-              name="untilOccurrences"
-              label="Ocorrências"
-              min={1}
-              max={52}
-              disabled={pending}
-            />
-          ) : (
-            <DateField<SeriesFormValues>
-              id="ser-until"
-              name="untilDate"
-              label="Data final"
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <ComboboxField<SeriesFormValues>
+              name="professionalId"
+              label="Profissional"
+              placeholder="Selecione"
+              searchPlaceholder="Buscar profissional..."
+              emptyMessage="Nenhum profissional."
+              options={professionalOptions}
               required
               disabled={pending}
             />
-          )}
-        </div>
+            <MultiSelectField<SeriesFormValues>
+              name="serviceIds"
+              label="Serviços"
+              placeholder="Selecione"
+              searchPlaceholder="Buscar serviço..."
+              emptyMessage="Nenhum serviço."
+              options={serviceOptions}
+              required
+              disabled={pending}
+            />
+          </div>
 
-        <DialogFooter>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <SelectField<SeriesFormValues>
+              name="frequency"
+              label="Frequência"
+              options={FREQUENCY_OPTIONS}
+              required
+              disabled={pending}
+            />
+            <DateField<SeriesFormValues> id="ser-date" name="startDate" label="Início" required disabled={pending} />
+            <TimeField<SeriesFormValues> id="ser-time" name="time" label="Horário" required disabled={pending} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField<SeriesFormValues>
+              name="endMode"
+              label="Terminar por"
+              options={END_MODE_OPTIONS}
+              disabled={pending}
+            />
+            {endMode === "count" ? (
+              <InputNumber<SeriesFormValues>
+                name="untilOccurrences"
+                label="Ocorrências"
+                min={1}
+                max={52}
+                disabled={pending}
+              />
+            ) : (
+              <DateField<SeriesFormValues>
+                id="ser-until"
+                name="untilDate"
+                label="Data final"
+                required
+                disabled={pending}
+              />
+            )}
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="shrink-0 border-t border-border/40 bg-background p-6 pt-4">
           <DialogClose asChild>
             <Button type="button" variant="outline" disabled={pending}>
               Cancelar
@@ -216,26 +217,25 @@ export function SeriesFormDialog({
   onOpenChange,
 }: SeriesFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-xl"
         onInteractOutside={(event) => event.preventDefault()}
-        expandable
-        storageKey="appointment-series"
       >
-        <DialogHeader className="pr-14">
-          <DialogTitle>Nova série recorrente</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Nova série recorrente</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             Repete um compromisso (mesmo cliente, profissional e serviço).
             Ocorrências em conflito não são criadas.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <SeriesForm
           key={String(open)}
           formId="series-form"
           onSuccess={() => onOpenChange(false)}
         />
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

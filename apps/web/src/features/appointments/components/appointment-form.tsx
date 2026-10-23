@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { DialogClose, DialogFooter } from "@/components/ui/dialog";
+import { DialogClose, DialogFooter, DialogBody } from "@/components/ui/dialog";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { isPastSlot } from "@gestarahub/core/date";
 import { format, parseISO } from "date-fns";
@@ -265,98 +265,100 @@ export function AppointmentForm({
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        {missingPrereqs.length > 0 ? (
-          <div className="flex items-start gap-3 rounded-md border border-dashed bg-muted/40 p-3">
-            <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">Antes de agendar, cadastre</p>
-                <p className="text-xs text-muted-foreground">
-                  Um agendamento precisa de cliente, profissional e serviço.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {missingPrereqs.map((prereq) => (
-                  <Button
-                    key={prereq.key}
-                    type="button"
-                    variant="outline"
-                    asChild
-                  >
-                    <Link href={prereq.href}>
-                      <Plus className="size-3.5" />
-                      {prereq.label}
-                    </Link>
-                  </Button>
-                ))}
+      <form id={formId} onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          {missingPrereqs.length > 0 ? (
+            <div className="flex items-start gap-3 rounded-md border border-dashed bg-muted/40 p-3">
+              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Antes de agendar, cadastre</p>
+                  <p className="text-xs text-muted-foreground">
+                    Um agendamento precisa de cliente, profissional e serviço.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {missingPrereqs.map((prereq) => (
+                    <Button
+                      key={prereq.key}
+                      type="button"
+                      variant="outline"
+                      asChild
+                    >
+                      <Link href={prereq.href}>
+                        <Plus className="size-3.5" />
+                        {prereq.label}
+                      </Link>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <ComboboxField<AppointmentFormValues>
-          name="clientId"
-          label="Cliente"
-          placeholder={noClients ? "Nenhum cliente cadastrado" : "Selecione o cliente"}
-          searchPlaceholder="Buscar cliente..."
-          emptyMessage="Nenhum cliente."
-          options={clientOptions}
-          required
-          disabled={pending || noClients}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ComboboxField<AppointmentFormValues>
-            name="professionalId"
-            label="Profissional"
-            placeholder={noProfessionals ? "Nenhum profissional cadastrado" : "Selecione"}
-            searchPlaceholder="Buscar profissional..."
-            emptyMessage="Nenhum profissional."
-            options={professionalOptions}
+            name="clientId"
+            label="Cliente"
+            placeholder={noClients ? "Nenhum cliente cadastrado" : "Selecione o cliente"}
+            searchPlaceholder="Buscar cliente..."
+            emptyMessage="Nenhum cliente."
+            options={clientOptions}
             required
-            disabled={pending || noProfessionals}
+            disabled={pending || noClients}
           />
-          <MultiSelectField<AppointmentFormValues>
-            name="serviceIds"
-            label="Serviços"
-            placeholder={noServices ? "Nenhum serviço cadastrado" : "Selecione"}
-            searchPlaceholder="Buscar serviço..."
-            emptyMessage="Nenhum serviço."
-            options={serviceOptions}
-            hint={endHint}
-            required
-            disabled={pending || noServices}
-          />
-        </div>
 
-        {/* Editar cuida dos DADOS; mover no tempo (data/horário/profissional) é
-            responsabilidade do Remarcar, que registra a trilha da remarcação. Por
-            isso os campos de data/horário só aparecem ao criar. */}
-        {appointment ? (
-          <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            Agendado para{" "}
-            <span className="font-medium text-foreground">
-              {format(parseISO(appointment.date), "dd/MM/yyyy")} ·{" "}
-              {appointment.start}–{appointment.end}
-            </span>
-            . Para mudar a data ou o horário, use{" "}
-            <span className="font-medium text-foreground">Remarcar</span>.
-          </div>
-        ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DateField<AppointmentFormValues> name="date" label="Data" required disabled={pending} />
-            <TimeField<AppointmentFormValues> name="start" label="Horário" required disabled={pending} />
+            <ComboboxField<AppointmentFormValues>
+              name="professionalId"
+              label="Profissional"
+              placeholder={noProfessionals ? "Nenhum profissional cadastrado" : "Selecione"}
+              searchPlaceholder="Buscar profissional..."
+              emptyMessage="Nenhum profissional."
+              options={professionalOptions}
+              required
+              disabled={pending || noProfessionals}
+            />
+            <MultiSelectField<AppointmentFormValues>
+              name="serviceIds"
+              label="Serviços"
+              placeholder={noServices ? "Nenhum serviço cadastrado" : "Selecione"}
+              searchPlaceholder="Buscar serviço..."
+              emptyMessage="Nenhum serviço."
+              options={serviceOptions}
+              hint={endHint}
+              required
+              disabled={pending || noServices}
+            />
           </div>
-        )}
 
-        <TextArea<AppointmentFormValues>
-          name="notes"
-          label="Observações"
-          placeholder="Detalhes do agendamento (opcional)"
-          disabled={pending}
-        />
+          {/* Editar cuida dos DADOS; mover no tempo (data/horário/profissional) é
+              responsabilidade do Remarcar, que registra a trilha da remarcação. Por
+              isso os campos de data/horário só aparecem ao criar. */}
+          {appointment ? (
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Agendado para{" "}
+              <span className="font-medium text-foreground">
+                {format(parseISO(appointment.date), "dd/MM/yyyy")} ·{" "}
+                {appointment.start}–{appointment.end}
+              </span>
+              . Para mudar a data ou o horário, use{" "}
+              <span className="font-medium text-foreground">Remarcar</span>.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DateField<AppointmentFormValues> name="date" label="Data" required disabled={pending} />
+              <TimeField<AppointmentFormValues> name="start" label="Horário" required disabled={pending} />
+            </div>
+          )}
 
+          <TextArea<AppointmentFormValues>
+            name="notes"
+            label="Observações"
+            placeholder="Detalhes do agendamento (opcional)"
+            disabled={pending}
+          />
+
+        </DialogBody>
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           {onCancel ? (
             <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>

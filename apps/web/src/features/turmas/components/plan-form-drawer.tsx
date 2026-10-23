@@ -45,15 +45,13 @@ export function PlanFormDrawer({
               : "Será usado para cobrar as mensalidades nas turmas."}
           </SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto p-6">
-          <PlanForm
-            key={plan?.id ?? (open ? "open" : "closed")}
-            plan={plan}
-            formId="plan-form-drawer"
-            onSuccess={() => onOpenChange(false)}
-            onCancel={() => onOpenChange(false)}
-          />
-        </div>
+        <PlanForm
+          key={plan?.id ?? (open ? "open" : "closed")}
+          plan={plan}
+          formId="plan-form-drawer"
+          onSuccess={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );

@@ -256,7 +256,7 @@ Lista de quais acoes confirmam em [`../frontend/06-decisoes-de-interface.md`](..
 | Inativar / reativar plano | "Inativar plano?" / "Reativar plano?" | `plans-view.tsx` |
 | Inativar / reativar modalidade | "Inativar modalidade?" / "Reativar modalidade?" | `features/turmas` |
 | Inativar / reativar aluno | "Inativar aluno?" / "Reativar aluno?" | `features/clients` |
-| Descartar formulario de aluno | "Descartar alterações?" | `client-form-dialog.tsx` |
+| Descartar formulario de aluno | "Descartar alterações?" | `client-form-drawer.tsx` |
 | Salvar horario que deixa aulas fora | "Há aulas fora do novo horário" (botao "Salvar mesmo assim") | `business-hours-card.tsx` |
 
 Sem confirmacao (um clique): marcar presenca (Presente / Faltou / Justificada) e restaurar o instrutor titular.

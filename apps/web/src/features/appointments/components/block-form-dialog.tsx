@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ComboboxField, DateField, TextArea, TimeField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
+  DialogBody,
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -79,28 +80,30 @@ function BlockForm({
 
   return (
     <FormProvider {...form}>
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <ComboboxField<BlockFormValues>
-          name="professionalId"
-          label="Profissional"
-          placeholder="Selecione"
-          searchPlaceholder="Buscar profissional..."
-          emptyMessage="Nenhum profissional."
-          options={professionalOptions}
-          required
-          disabled={pending}
-        />
-        <DateField<BlockFormValues> id="blk-date" name="date" label="Data" required disabled={pending} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TimeField<BlockFormValues> id="blk-start" name="start" label="Início" required disabled={pending} />
-          <TimeField<BlockFormValues> id="blk-end" name="end" label="Fim" required disabled={pending} />
-        </div>
-        <TextArea<BlockFormValues>
-          name="reason"
-          label="Motivo"
-          placeholder="Ex.: Almoço, folga (opcional)"
-          disabled={pending}
-        />
+      <form id={formId} onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          <ComboboxField<BlockFormValues>
+            name="professionalId"
+            label="Profissional"
+            placeholder="Selecione"
+            searchPlaceholder="Buscar profissional..."
+            emptyMessage="Nenhum profissional."
+            options={professionalOptions}
+            required
+            disabled={pending}
+          />
+          <DateField<BlockFormValues> id="blk-date" name="date" label="Data" required disabled={pending} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TimeField<BlockFormValues> id="blk-start" name="start" label="Início" required disabled={pending} />
+            <TimeField<BlockFormValues> id="blk-end" name="end" label="Fim" required disabled={pending} />
+          </div>
+          <TextArea<BlockFormValues>
+            name="reason"
+            label="Motivo"
+            placeholder="Ex.: Almoço, folga (opcional)"
+            disabled={pending}
+          />
+        </DialogBody>
         <DialogFooter className="p-6 pt-4 border-t border-border/40 shrink-0 bg-background">
           {onCancel ? (
             <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
@@ -144,14 +147,12 @@ export function BlockFormDialog({
             O horário bloqueado não aceita agendamento e aparece destacado na Agenda.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto p-6">
-          <BlockForm
-            key={String(open)}
-            formId="block-form-drawer"
-            onSuccess={() => onOpenChange(false)}
-            onCancel={() => onOpenChange(false)}
-          />
-        </div>
+        <BlockForm
+          key={String(open)}
+          formId="block-form-drawer"
+          onSuccess={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );

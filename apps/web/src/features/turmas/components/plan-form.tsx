@@ -15,6 +15,7 @@ import type { CreatePlan, PlanPeriod, Plan } from "@gestarahub/contracts";
 import { useCreatePlan, useUpdatePlan } from "../hooks/use-billing";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useClients } from "@/features/clients";
+import { DialogBody } from "@/components/ui/dialog";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome do plano."),
@@ -100,37 +101,40 @@ export function PlanForm({
   return (
     <FormProvider {...form}>
       {confirmDialog}
-      <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
-        <InputText<PlanFormValues>
-          name="name"
-          label="Nome"
-          placeholder="Digite o nome"
-          required
-          disabled={pending}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField<PlanFormValues>
-            name="period"
-            label="Periodicidade"
-            options={PERIOD_OPTIONS}
-            clearable={false}
-            required
-            disabled={pending || studentsInPlan > 0}
-            hint={studentsInPlan > 0 ? "Plano com alunos: para mudar, crie outro plano." : undefined}
-          />
-          <InputCurrency<PlanFormValues>
-            name="priceCents"
-            label="Valor"
+      <form id={formId} onSubmit={onSubmit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <DialogBody className="space-y-4">
+          <InputText<PlanFormValues>
+            name="name"
+            label="Nome"
+            placeholder="Digite o nome"
             required
             disabled={pending}
           />
-        </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectField<PlanFormValues>
+              name="period"
+              label="Periodicidade"
+              options={PERIOD_OPTIONS}
+              clearable={false}
+              required
+              disabled={pending || studentsInPlan > 0}
+              hint={studentsInPlan > 0 ? "Plano com alunos: para mudar, crie outro plano." : undefined}
+            />
+            <InputCurrency<PlanFormValues>
+              name="priceCents"
+              label="Valor"
+              required
+              disabled={pending}
+            />
+          </div>
+        </DialogBody>
         <DialogFormFooter
           isPending={pending}
           isEdit={isEdit}
           createLabel="Adicionar"
           editLabel="Salvar"
           onCancel={onCancel}
+          className="shrink-0 border-t border-border/40 bg-background p-6 pt-4"
         />
       </form>
     </FormProvider>

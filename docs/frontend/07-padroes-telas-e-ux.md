@@ -179,6 +179,16 @@ Todos os modais de cadastro e edição usam **exclusivamente** este trio de labe
 
 Aplicado em 21/10/2026 em: detalhe e remarcação do agendamento, detalhe da auditoria, graduação, registros e notas do aluno, registrar a aula, avaliação e lançar notas, substituição de instrutor, nova mensagem, editar modelo, detalhe da mensagem, checkout da assinatura, cobrar online, matricular alunos, cancelar cobrança e inativar aluno.
 
+### 2.7. Formulário em drawer: rodapé sempre no fim (22/10/2026)
+
+Formulário de cadastro e edição abre em drawer (`Sheet` à direita). O rodapé fica preso no fim do drawer, mesmo com poucos campos; nunca logo abaixo dos inputs.
+- `SheetContent` com `flex h-full flex-col gap-0 overflow-hidden p-0`; o `<form>` é filho direto, com `flex min-h-0 flex-1 flex-col overflow-hidden`.
+- Campos dentro de `<DialogBody className="space-y-4">` (só eles rolam).
+- Rodapé (`DialogFormFooter` ou `DialogFooter`) com `shrink-0 border-t border-border/40 bg-background p-6 pt-4`, fora do `DialogBody`.
+- Nunca envolver o formulário num `div` com `flex-1 overflow-y-auto`: o rodapé passa a rolar junto e fica colado nos campos.
+- Exemplos: `sell-package-dialog.tsx`, `plan-form.tsx`, `components/shared/payment-dialog.tsx`.
+- Em 22/10/2026 também viraram drawer: matricular da lista de espera (curso), editar mensagem automática, ativar conta de recebimento, transferir saldo (Pix), pagamento do mês do professor e nova série recorrente. Continuam modal: ações de um ou dois campos, janelas empilhadas sobre um drawer (gerenciar categorias, termos de intermediação, nova meta), fluxos guiados e telas só de leitura.
+
 ## 3. Usabilidade Mobile (iOS Safari & iOS/Android Chrome)
 
 O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As seguintes regras técnicas evitam bugs clássicos de WebKit / WKWebView (Chrome e Safari no iOS):

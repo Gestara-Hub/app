@@ -6,14 +6,16 @@ import type { ClassGroupView, WaitlistEntryView } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { usePromoteWaitlist } from "../hooks/use-turmas";
 import {
   applyCourseErrors,
@@ -25,7 +27,7 @@ import {
 
 /**
  * Promover da lista de espera para um curso: pede o pagamento (valor, parcelas
- * e 1o vencimento), como a matricula. O proprio dialogo e a confirmacao.
+ * e 1o vencimento), como a matricula. Abre em drawer; o proprio drawer e a confirmacao.
  */
 export function PromoteToCourseDialog({
   turma,
@@ -63,14 +65,17 @@ export function PromoteToCourseDialog({
   };
 
   return (
-    <Dialog open={entry !== null} onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="shrink-0 p-6 pb-2 pr-14">
-          <DialogTitle>Matricular da lista de espera</DialogTitle>
-          <DialogDescription>
+    <Sheet open={entry !== null} onOpenChange={(open) => (open ? undefined : close())}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-lg"
+        onInteractOutside={(event) => event.preventDefault()}>
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Matricular da lista de espera</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
             {shown?.studentName} entra no curso {turma.name}, mesmo que ele esteja lotado.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <DialogBody className="space-y-4">
           <CoursePaymentFields form={form} turma={turma} disabled={promoteMut.isPending} />
         </DialogBody>
@@ -82,7 +87,7 @@ export function PromoteToCourseDialog({
             {promoteMut.isPending ? "Salvando..." : "Matricular"}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

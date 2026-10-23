@@ -31,14 +31,13 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
   DialogBody,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,9 +102,10 @@ export function TeacherPayoutDetailDialog({
   const { data, isLoading, isError, refetch } = useTeacherPayoutPreview(shownId, competence);
 
   return (
-    <Dialog open={professionalId !== null} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[88vh] flex-col overflow-hidden p-0 sm:max-w-lg"
+    <Sheet open={professionalId !== null} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-lg"
         showCloseButton={false}
         // Nao fecha por clique fora: evita perder o ajuste sendo digitado.
         onInteractOutside={(event) => event.preventDefault()}
@@ -134,8 +134,8 @@ export function TeacherPayoutDetailDialog({
             onConfigure={onConfigure}
           />
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -321,7 +321,7 @@ function DetailContent({
 
   return (
     <>
-      <DialogHeader className="shrink-0 p-6 pb-3">
+      <DialogHeader className="shrink-0 border-b border-border/40 p-6 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <InitialsAvatar name={data.professionalName} className="size-11" />
