@@ -8,6 +8,17 @@ import { reportBrowserErrorAction } from "@/services/server/browserErrors";
 const REPEAT_MS = 60_000;
 
 /**
+ * Avisos do navegador que chegam como erro da pagina e nao sao defeito: o
+ * ResizeObserver avisa quando adia uma medida (benigno), e "Script error." e o
+ * erro sem detalhes de um script de outro dominio (extensao, terceiro).
+ */
+const BENIGN = [/ResizeObserver loop/i, /^Script error\.?$/i];
+
+function isBenign(message: string): boolean {
+  return BENIGN.some((pattern) => pattern.test(message));
+}
+
+/**
  * Liga o registro de erros do navegador (doc technical/21): `logError` e
  * `reportError` no navegador, erro sem tratamento e promessa rejeitada sem
  * `catch` vao para o servidor, que grava com o espaco e o usuario da sessao.
@@ -30,6 +41,7 @@ export function BrowserErrorReporter() {
       });
     });
     const onError = (event: ErrorEvent) => {
+      if (isBenign(String(event.message ?? ""))) return;
       void reportError("unhandled", event.error ?? event.message, {
         context: { file: event.filename, line: event.lineno, column: event.colno },
       });
