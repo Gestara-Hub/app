@@ -129,7 +129,11 @@ export async function checkSlice(name: string, slice: MethodSlice, args: unknown
   for (const key of SINGLE_KEYS) loaded.set(key, structuredClone(base[key]) as Row | undefined);
   await slice(structuredClone(args), memoryLoader(base, loaded));
   const sliceBefore = new Map([...loaded].map(([key, value]) => [key, structuredClone(value)]));
-  const slicedWorld = sliceWorld(loaded, { certificateTemplate: structuredClone(base.certificateTemplate) }) as unknown as Record<string, unknown>;
+  // Colecoes so do mock (agenda, Pix Automatico): iguais as do espaco inteiro (no servidor sao vazias).
+  const mockOnly = Object.fromEntries(
+    ["services", "appointments", "timeBlocks", "series", "recurringAuthorizations", "certificateTemplate"].map((key) => [key, structuredClone(base[key])]),
+  );
+  const slicedWorld = sliceWorld(loaded, mockOnly) as unknown as Record<string, unknown>;
   const sliceOutcome = await run(slicedWorld, call);
 
   const where = `[recorte] ${name}`;

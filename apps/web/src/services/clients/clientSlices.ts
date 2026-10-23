@@ -1,14 +1,40 @@
-import type { MethodSlice } from "../world/slices";
+import type { Id } from "@gestarahub/contracts";
+import type { MethodSlice, SliceLoader } from "../world/slices";
 
 /**
  * Recortes dos metodos de alunos (doc 19, fase 2). A lista de alunos so le o
- * cadastro dos alunos (sem presencas, cobrancas ou mensagens).
+ * cadastro dos alunos (sem presencas, cobrancas ou mensagens); o resumo da
+ * ficha le so o que e daquele aluno.
  */
 const clientsOnly: MethodSlice = async (_args, load) => {
   await load.all("clients");
 };
 
+/** Tudo de um aluno: cadastro, matriculas, presencas, cobrancas, pacotes, mensagens e reservas. */
+export async function oneStudent(studentId: Id, load: SliceLoader): Promise<void> {
+  await Promise.all([
+    load.all("classGroups"),
+    load.all("categories"),
+    load.all("professionals"),
+    load.all("plans"),
+    load.all("lessonPackages"),
+    load.all("users"),
+    load.where("clients", "id", [studentId]),
+    load.where("enrollments", "studentId", [studentId]),
+    load.where("attendances", "studentId", [studentId]),
+    load.where("charges", "studentId", [studentId]),
+    load.where("studentPackages", "studentId", [studentId]),
+    load.where("messageLogs", "clientId", [studentId]),
+    load.where("reservations", "studentId", [studentId]),
+  ]);
+  load.none("auditLog");
+}
+
 export const clientSlices: Record<string, MethodSlice> = {
   list: clientsOnly,
   listPaginated: clientsOnly,
+};
+
+export const studentSummarySlices: Record<string, MethodSlice> = {
+  getStudentSummary: async ([id], load) => oneStudent(id as Id, load),
 };

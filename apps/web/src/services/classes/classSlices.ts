@@ -1,6 +1,7 @@
-import type { Id } from "@gestarahub/contracts";
+import type { ClassGroup, DateISO, Id } from "@gestarahub/contracts";
+import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import type { MethodSlice, SliceLoader } from "../world/slices";
-import { parseSessionId } from "./classShared";
+import { datesBetween, makeSessionId, parseSessionId } from "./classShared";
 
 /**
  * Recortes dos metodos de turmas (doc 19, fase 2): a aula e a chamada leem so
@@ -69,7 +70,74 @@ const sessionWithStudent: MethodSlice = async ([input], load) => {
   return session(sessionId, load, [studentId]);
 };
 
+/** Aulas de um periodo: as turmas e, dessas aulas, marcacoes, reservas e substituicoes. */
+async function sessionsInRange(filter: { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }, load: SliceLoader): Promise<void> {
+  await catalog(load);
+  const groups = (await load.all("classGroups")) as unknown as ClassGroup[];
+  const ids: Id[] = [];
+  for (const date of datesBetween(filter.dateFrom, filter.dateTo)) {
+    const wd = weekdayOf(date);
+    for (const g of groups) {
+      if (filter.classGroupId && g.id !== filter.classGroupId) continue;
+      for (const slot of meetingSlotsOn(g, date)) if (slot.weekday === wd) ids.push(makeSessionId(g.id, date, slot.start));
+    }
+  }
+  await Promise.all([
+    load.all("enrollments"),
+    load.all("clients"),
+    load.all("studentPackages"),
+    load.all("sessionOverrides"),
+    load.where("attendances", "sessionId", ids),
+    load.where("reservations", "sessionId", ids),
+  ]);
+}
+
+/**
+ * Uma turma com os seus alunos (matriculados e na espera): o historico deles
+ * (presencas, cobrancas, pacotes, reservas, Pix e links), nao o do espaco.
+ */
+export async function classWithStudents(classGroupId: Id, load: SliceLoader): Promise<void> {
+  await catalog(load);
+  // Reservas e cobrancas da turma (avulsas de aulas futuras de quem nao e matriculado).
+  const [enrollments, waitlist, reservations] = await Promise.all([
+    load.where("enrollments", "classGroupId", [classGroupId]),
+    load.where("waitlist", "classGroupId", [classGroupId]),
+    load.where("reservations", "classGroupId", [classGroupId]),
+    load.where("charges", "classGroupId", [classGroupId]),
+    load.all("sessionOverrides"),
+  ]);
+  const students = [...enrollments, ...waitlist, ...reservations].map((row) => row.studentId as string);
+  const [, , charges] = await Promise.all([
+    load.where("clients", "id", students),
+    load.where("attendances", "studentId", students),
+    load.where("charges", "studentId", students),
+    load.where("studentPackages", "studentId", students),
+    load.where("reservations", "studentId", students),
+    load.where("enrollments", "studentId", students),
+  ]);
+  const classCharges = (await load.where("charges", "classGroupId", [classGroupId])) as { id: string }[];
+  await load.where("onlinePayments", "chargeId", [...charges, ...classCharges].map((c) => c.id as string));
+  load.none("auditLog");
+}
+
+/** Turma de uma linha (matricula, lista de espera) pelo id da linha. */
+function classOfRow(key: "enrollments" | "waitlist"): MethodSlice {
+  return async ([id], load) => {
+    const [row] = await load.where(key, "id", [id as Id]);
+    if (row) await classWithStudents(row.classGroupId as Id, load);
+    else await catalog(load);
+  };
+}
+
+/** Lista de turmas: o catalogo, as matriculas e a lista de espera (sem o historico). */
+const classList: MethodSlice = async (_args, load) => {
+  await catalog(load);
+  await Promise.all([load.all("enrollments"), load.all("waitlist"), load.all("clients")]);
+};
+
 export const classSlices: Record<string, MethodSlice> = {
+  listSessions: async ([filter], load) => sessionsInRange(filter as { classGroupId?: Id; dateFrom: DateISO; dateTo: DateISO }, load),
+  list: classList,
   getSession: sessionOf,
   markAttendance: sessionOfInput,
   markManyAttendance: sessionOfInput,
@@ -85,4 +153,10 @@ export const classSlices: Record<string, MethodSlice> = {
   restorePrimaryInstructor: sessionOf,
   getById: async ([id], load) => classGroup(id as Id, load),
   listWaitlist: async ([id], load) => classGroup(id as Id, load),
+  listEnrollments: async ([id], load) => classWithStudents(id as Id, load),
+  deactivate: async ([id], load) => classWithStudents(id as Id, load),
+  reactivate: async ([id], load) => classWithStudents(id as Id, load),
+  setEnrollmentPayment: classOfRow("enrollments"),
+  promoteFromWaitlist: classOfRow("waitlist"),
+  removeFromWaitlist: classOfRow("waitlist"),
 };

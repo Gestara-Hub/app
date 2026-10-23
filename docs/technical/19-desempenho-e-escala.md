@@ -181,6 +181,13 @@ Cada método pode declarar o **recorte** que lê (`services/world/slices.ts`): c
 
 O recorte de cobranças ainda cresce com alunos e cobranças (cerca de 12 por aluno por ano), bem mais devagar que as presenças; um recorte por linha (o mês e os em aberto) fica para depois de mover a geração de mensalidades e o Pix Automático para fora da leitura.
 
-**Próximos recortes, na ordem de uso:** ficha do aluno, turmas (lista e detalhe completo), financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
+**Ficha do aluno e turmas** (`clients/clientSlices.ts`, `classes/classSlices.ts` e os recortes de pacotes, mensagens, Pix Automático e notas): a ficha lê o catálogo e só o histórico **daquele aluno** (matrículas, presenças, cobranças, pacotes, reservas e mensagens); a turma lê as matrículas, a lista de espera, as reservas e as cobranças dela e o histórico **dos alunos dela**. Vale para `studentSummary.getStudentSummary`, `packages.listStudentPackages`, `communication.listLogs`/`listLogsPaginated`, `onlinePayments.getRecurringForStudent`, `turmas.list`, `listSessions` (só as marcações das aulas do período), `listEnrollments`, `deactivate`, `reactivate`, `setEnrollmentPayment`, `promoteFromWaitlist`, `removeFromWaitlist` e `grades.listClassAssessments`. A conferência pegou dois casos: inativar a turma cancela reservas e cobranças avulsas de quem não é matriculado (o recorte traz as reservas e cobranças da turma) e a lista de aulas conta vagas de pacote (traz os pacotes).
+
+| Espaço de 1 ano (35 mil presenças) | Espaço inteiro, sem cache | Recorte |
+| --- | --- | --- |
+| Ficha do aluno | 1,5 a 1,6 s | **0,035 s** |
+| Matrículas da turma | 1,5 a 1,6 s | **0,12 a 0,14 s** |
+
+**Próximos recortes, na ordem de uso:** financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
 
 **Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.

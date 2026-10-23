@@ -79,6 +79,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   packages: {
     load: async () => (await import("../billing")).packagesServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../billing/packageSlices")).packageSlices,
     permissions: {
       listStudentPackages: VIEW_BILLING,
       ...all(["sellPackage", "cancelStudentPackage"], MANAGE_BILLING),
@@ -104,10 +105,12 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   grades: {
     load: async () => (await import("../grades")).gradesServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../grades/gradeSlices")).gradeSlices,
     permissions: all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
   },
   communication: {
     load: async () => (await import("../communication")).communicationServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../communication/communicationSlices")).communicationSlices,
     permissions: {
       ...all(
         ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
@@ -123,10 +126,12 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   studentSummary: {
     load: async () => (await import("../clients/studentSummaryService")).studentSummaryServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../clients/clientSlices")).studentSummarySlices,
     permissions: {},
   },
   onlinePayments: {
     load: async () => (await import("../onlinePayments")).onlinePaymentsServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../onlinePayments/onlinePaymentSlices")).onlinePaymentSlices,
     permissions: {
       ...all(["listForCharge", "listAwaiting", "getCheckout"], VIEW_BILLING),
       ...all(["createForCharge", "cancelForCharge"], MANAGE_BILLING),
