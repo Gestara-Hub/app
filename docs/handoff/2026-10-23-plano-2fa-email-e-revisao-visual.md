@@ -2,6 +2,25 @@
 
 Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: Parte A inteira, depois a Parte B** (a Parte B é a mais demorada).
 
+## Como rodar sozinho (o usuário não estará acompanhando)
+
+O usuário vai deixar esta sessão rodando e validar na volta. Então:
+
+1. **Não pare para perguntar.** Diante de uma dúvida, siga o padrão deste plano, anote a dúvida e a escolha feita numa seção **"Perguntas para o usuário"** no fim do arquivo de achados (Parte B) ou da doc 17 (Parte A), e continue.
+2. **Grave o progresso aos poucos:** marque cada item feito no arquivo de achados assim que terminar (não só no fim). Se a sessão cair ou for resumida, retome do primeiro item não marcado.
+3. **Se a Parte A travar** (teste que não passa depois de tentar de verdade), registre o que ficou pendente na doc 17 e **siga para a Parte B** mesmo assim.
+4. **Navegador:** no VS Code não há o navegador integrado. Use o **Playwright do projeto** (Chrome do sistema, sem janela), com scripts temporários em `apps/web/e2e/zz-teste-geral/`:
+   - **Aponte para o `pnpm dev` de verdade (porta 3000, com o túnel):** rode sempre com `E2E_PORT=3000`. Assim o Playwright reaproveita o servidor que já está no ar, em vez de subir o servidor de teste da porta 3100, que tem o **relógio fixo em 22/09/2026** e o **Asaas e o e-mail desligados** (serviria para os e2e, não para este teste).
+     ```bash
+     E2E_PORT=3000 pnpm --filter @gestarahub/web exec playwright test e2e/zz-teste-geral --project=desktop
+     E2E_PORT=3000 pnpm --filter @gestarahub/web exec playwright test e2e/zz-teste-geral --project=mobile
+     ```
+     O projeto `mobile` só pega arquivos `*.mobile.spec.ts`; o `desktop` pega os outros.
+   - **Importe `test` e `expect` de `@playwright/test`, não de `e2e/fixtures.ts`:** os ajudantes dos e2e congelam o relógio do navegador em 22/09/2026 e falham com qualquer erro no console (aqui o erro é achado a registrar, não motivo para parar). Para entrar, use o botão "Entrar na demonstração" e a troca de perfil no topo, ou o formulário de login com a conta criada no teste.
+   - Salve capturas com `page.screenshot` em `docs/qa/capturas/2026-10-xx/` e registre o console com `page.on("console")` e `page.on("pageerror")`.
+   - Os scripts são descartáveis: **apague a pasta `e2e/zz-teste-geral` no fim** e não a inclua em commit (as capturas em `docs/qa/capturas/` ficam).
+5. **Nada de produção:** só o banco local e o sandbox do Asaas.
+
 ## 0. Antes de começar (obrigatório)
 
 1. Leia o `CLAUDE.md` da raiz (regras de código, UI, testes e git) e o `docs/README.md` (índice).
@@ -182,7 +201,17 @@ O usuário autorizou criar uma subconta para este teste. **Só no sandbox do Asa
 4. Depois de ativar (e da janela de segurança que aparece nesse momento: teste "Agora não" e, em outra vez, "Ativar agora"), teste o ciclo completo:
    - cadastrar o CPF de teste num aluno maior de idade e de um responsável financeiro de um aluno menor;
    - **cobrar online** uma mensalidade, uma avulsa e uma parcela de curso: gerar Pix e link de pagamento; abrir o link público `/p/[code]` no celular;
-   - **pagar no sandbox:** confirmar o pagamento pelo painel do sandbox do Asaas ou pela API de sandbox (consulte a documentação do Asaas pelo MCP de docs do projeto, `.mcp.json`; **só leitura**, nunca a ferramenta que executa chamadas);
+   - **pagar no sandbox, sem o painel do Asaas** (o painel pede o login do usuário). O sandbox tem chamadas próprias, feitas com a chave da **subconta**, que fica em `organizations.gateway_api_key` no banco local. Leia a chave direto para a variável, **sem imprimir**, e chame:
+     ```bash
+     KEY=$(docker exec supabase_db_gestarahub psql -U postgres -At -c "select gateway_api_key from organizations where id = '<id do espaço>'")
+     # Confirmar o pagamento de uma cobrança (id do Asaas em online_payments.gateway_payment_id):
+     curl -s -X POST "https://sandbox.asaas.com/api/v3/sandbox/payment/<gateway_payment_id>/confirm" -H "access_token: $KEY" -H "Content-Type: application/json"
+     # Forçar o vencimento (para testar cobrança vencida):
+     curl -s -X POST "https://sandbox.asaas.com/api/v3/sandbox/payment/<gateway_payment_id>/overdue" -H "access_token: $KEY" -H "Content-Type: application/json"
+     # Se a subconta ficar "em análise" e não receber, aprove no sandbox:
+     curl -s -X POST "https://sandbox.asaas.com/api/v3/sandbox/myAccount/approve" -H "access_token: $KEY" -H "Content-Type: application/json"
+     ```
+     Só para `sandbox.asaas.com`. Detalhes de cada chamada na documentação do Asaas pelo MCP de docs do projeto (`.mcp.json`; **só leitura**: `search`, `search-endpoints`, `get-endpoint`; nunca a ferramenta que executa chamadas). Não grave a chave em arquivo, log ou achado;
    - conferir que a cobrança vira **Paga** no app (cobranças, ficha, financeiro, relatórios, extrato online), com recibo e o lembrete "pagamento para agradecer";
    - cobrança online vencida (expiração) e cancelamento;
    - extrato e saldo em Recebimentos online; documento "Extrato" em PDF.
