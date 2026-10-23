@@ -1,5 +1,6 @@
 "use server";
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type { OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { expireDueOnlinePayments } from "./gateway";
@@ -124,26 +125,24 @@ export async function listSubaccountReceiptsAction(
       { count: "exact" },
     )
     .eq("organization_id", query.organizationId);
-  let totalsQuery = client
-    .from("online_payments")
-    .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, funds_released")
-    .eq("organization_id", query.organizationId);
-  if (period) {
-    pageQuery = pageQuery.or(period);
-    totalsQuery = totalsQuery.or(period);
-  }
-  if (statuses) {
-    pageQuery = pageQuery.in("status", statuses);
-    totalsQuery = totalsQuery.in("status", statuses);
-  }
-  if (query.method !== "all") {
-    pageQuery = pageQuery.eq("method", query.method);
-    totalsQuery = totalsQuery.eq("method", query.method);
-  }
+  // Totais do filtro inteiro: todas as paginas (a consulta para em 1.000 linhas; doc 19, fase 0).
+  const totalsQuery = () => {
+    let totals = client
+      .from("online_payments")
+      .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, funds_released")
+      .eq("organization_id", query.organizationId);
+    if (period) totals = totals.or(period);
+    if (statuses) totals = totals.in("status", statuses);
+    if (query.method !== "all") totals = totals.eq("method", query.method);
+    return totals;
+  };
+  if (period) pageQuery = pageQuery.or(period);
+  if (statuses) pageQuery = pageQuery.in("status", statuses);
+  if (query.method !== "all") pageQuery = pageQuery.eq("method", query.method);
 
   const [pageRes, totalsRes] = await Promise.all([
     pageQuery.order("created_at", { ascending: false }).range(offset, offset + query.pageSize - 1),
-    totalsQuery,
+    selectAllRows(totalsQuery),
   ]);
 
   const empty: SubaccountReceiptsPage = {

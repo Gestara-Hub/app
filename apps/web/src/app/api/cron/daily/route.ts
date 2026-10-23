@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { materializeRecurrencesAction } from "@/services/finance/financeBackend";
 import { generateMembershipChargesAction } from "@/services/billing/membershipBackend";
@@ -22,11 +23,9 @@ export async function POST(req: Request) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { data: orgs, error } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("model", "classes")
-    .eq("status", "active");
+  const { data: orgs, error } = await selectAllRows(() =>
+    admin.from("organizations").select("id").eq("model", "classes").eq("status", "active"),
+  );
   if (error) {
     console.error("[cron:daily] Erro ao listar os espaços:", error);
     return NextResponse.json({ error: "Erro ao listar os espaços." }, { status: 500 });

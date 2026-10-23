@@ -2,6 +2,7 @@
 // cliente administrativo. Sem "use server" de proposito: nao e action, entao o
 // navegador nao chama com um organizationId qualquer (doc 15, fatia 2).
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type {
   ClassGroup,
   ClassGroupFilter,
@@ -63,23 +64,27 @@ export async function listClassGroupsFromDb(
   filter?: ClassGroupFilter,
 ): Promise<ClassGroup[]> {
   const client = createSupabaseAdminClient();
-  let query = client
-    .from("class_groups")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("name", { ascending: true });
+  // Todas as paginas: a consulta para em 1.000 linhas (doc 19, fase 0).
+  const build = () => {
+    let query = client
+      .from("class_groups")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true });
 
-  if (filter?.status) {
-    query = query.eq("status", filter.status);
-  }
-  if (filter?.modalityId) {
-    query = query.eq("modality_id", filter.modalityId);
-  }
-  if (filter?.instructorId) {
-    query = query.eq("instructor_id", filter.instructorId);
-  }
+    if (filter?.status) {
+      query = query.eq("status", filter.status);
+    }
+    if (filter?.modalityId) {
+      query = query.eq("modality_id", filter.modalityId);
+    }
+    if (filter?.instructorId) {
+      query = query.eq("instructor_id", filter.instructorId);
+    }
+    return query;
+  };
 
-  const { data, error } = await query;
+  const { data, error } = await selectAllRows(build);
   if (error) {
     console.error("[turmasBackend] Erro ao listar turmas:", error);
     throw new Error("Erro ao consultar turmas no banco de dados.");
@@ -103,17 +108,21 @@ export async function listEnrollmentsFromDb(
   classGroupId?: Id,
 ): Promise<Enrollment[]> {
   const client = createSupabaseAdminClient();
-  let query = client
-    .from("enrollments")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("enrolled_at", { ascending: true });
+  // Todas as paginas: a consulta para em 1.000 linhas (doc 19, fase 0).
+  const build = () => {
+    let query = client
+      .from("enrollments")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("enrolled_at", { ascending: true });
 
-  if (classGroupId) {
-    query = query.eq("class_group_id", classGroupId);
-  }
+    if (classGroupId) {
+      query = query.eq("class_group_id", classGroupId);
+    }
+    return query;
+  };
 
-  const { data, error } = await query;
+  const { data, error } = await selectAllRows(build);
   if (error) {
     console.error("[turmasBackend] Erro ao listar matrículas:", error);
     throw new Error("Erro ao consultar matrículas no banco de dados.");

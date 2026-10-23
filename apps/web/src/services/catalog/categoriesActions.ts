@@ -1,5 +1,6 @@
 "use server";
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type { Category, CategoryFilter, Client, CreateCategory, Id, UpdateCategory } from "@gestarahub/contracts";
 import { notFoundError } from "@gestarahub/core/api-error";
 import { textIncludes } from "@/lib/text";
@@ -157,10 +158,9 @@ export async function updateCategoryAction(
 
 /** Grava as graduacoes dos alunos que a trilha nova moveu. */
 async function resetStudentsToTrack(ctx: TenantContext, category: Category): Promise<number> {
-  const { data, error } = await ctx.client
-    .from("clients")
-    .select("id, birth_date, progressions")
-    .eq("organization_id", ctx.organizationId);
+  const { data, error } = await selectAllRows(() =>
+    ctx.client.from("clients").select("id, birth_date, progressions").eq("organization_id", ctx.organizationId),
+  );
   if (error) throw new Error(error.message);
   const clients = (data ?? [])
     .filter((row) => Boolean((row.progressions as Record<string, unknown> | null)?.[category.id]))

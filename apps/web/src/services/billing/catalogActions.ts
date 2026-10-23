@@ -1,5 +1,6 @@
 "use server";
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type {
   ClassGroup,
   CreateLessonPackage,
@@ -110,12 +111,14 @@ export async function createPlanAction(payload: CreatePlan): Promise<ActionResul
 async function activeStudentsOfPlan(ctx: TenantContext, planId: Id): Promise<number> {
   const org = ctx.organizationId;
   const [clients, enrollments, groups] = await Promise.all([
-    ctx.client.from("clients").select("id, status, plan_id").eq("organization_id", org).eq("status", "active"),
-    ctx.client
-      .from("enrollments")
-      .select("status, class_group_id, student_id, pays_with_package")
-      .eq("organization_id", org)
-      .eq("status", "active"),
+    selectAllRows(() => ctx.client.from("clients").select("id, status, plan_id").eq("organization_id", org).eq("status", "active")),
+    selectAllRows(() =>
+      ctx.client
+        .from("enrollments")
+        .select("status, class_group_id, student_id, pays_with_package")
+        .eq("organization_id", org)
+        .eq("status", "active"),
+    ),
     ctx.client.from("class_groups").select("id, plan_id, billing_mode").eq("organization_id", org),
   ]);
   for (const r of [clients, enrollments, groups]) if (r.error) throw new Error(r.error.message);

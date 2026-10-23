@@ -2,6 +2,7 @@
 // cliente administrativo. Sem "use server" de proposito: nao e action, entao o
 // navegador nao chama com um organizationId qualquer (doc 15, fatia 2).
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type {
   Charge,
   ChargeFilter,
@@ -76,16 +77,20 @@ export async function listPlansFromDb(
   filter?: PlanFilter,
 ): Promise<Plan[]> {
   const client = createSupabaseAdminClient();
-  let query = client
-    .from("plans")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("name", { ascending: true });
+  // Todas as paginas: a consulta para em 1.000 linhas (doc 19, fase 0).
+  const build = () => {
+    let query = client
+      .from("plans")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true });
 
-  if (filter?.period) query = query.eq("period", filter.period);
-  if (filter?.status) query = query.eq("status", filter.status);
+    if (filter?.period) query = query.eq("period", filter.period);
+    if (filter?.status) query = query.eq("status", filter.status);
+    return query;
+  };
 
-  const { data, error } = await query;
+  const { data, error } = await selectAllRows(build);
   if (error) {
     console.error("[billingBackend] Erro ao listar planos:", error);
     throw new Error("Erro ao consultar planos no banco de dados.");
@@ -108,18 +113,22 @@ export async function listChargesFromDb(
   filter?: ChargeFilter,
 ): Promise<Charge[]> {
   const client = createSupabaseAdminClient();
-  let query = client
-    .from("charges")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("due_date", { ascending: true });
+  // Todas as paginas: a consulta para em 1.000 linhas (doc 19, fase 0).
+  const build = () => {
+    let query = client
+      .from("charges")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("due_date", { ascending: true });
 
-  if (filter?.competence) query = query.eq("competence", filter.competence);
-  if (filter?.kind) query = query.eq("kind", filter.kind);
-  if (filter?.status) query = query.eq("status", filter.status);
-  if (filter?.studentId) query = query.eq("student_id", filter.studentId);
+    if (filter?.competence) query = query.eq("competence", filter.competence);
+    if (filter?.kind) query = query.eq("kind", filter.kind);
+    if (filter?.status) query = query.eq("status", filter.status);
+    if (filter?.studentId) query = query.eq("student_id", filter.studentId);
+    return query;
+  };
 
-  const { data, error } = await query;
+  const { data, error } = await selectAllRows(build);
   if (error) {
     console.error("[billingBackend] Erro ao listar cobranças:", error);
     throw new Error("Erro ao consultar cobranças no banco de dados.");

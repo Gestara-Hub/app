@@ -2,6 +2,7 @@
 // cliente administrativo. Sem "use server" de proposito: nao e action, entao o
 // navegador nao chama com um organizationId qualquer (doc 15, fatia 2).
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import type {
   FileAttachment,
   FinancialEntry,
@@ -74,27 +75,31 @@ export async function listFinancialEntriesFromDb(
   filter?: FinancialEntryFilter,
 ): Promise<FinancialEntry[]> {
   const client = createSupabaseAdminClient();
-  let query = client
-    .from("financial_entries")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("due_date", { ascending: false });
+  // Todas as paginas: a consulta para em 1.000 linhas (doc 19, fase 0).
+  const build = () => {
+    let query = client
+      .from("financial_entries")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("due_date", { ascending: false });
 
-  if (filter?.type) {
-    query = query.eq("type", filter.type);
-  }
-  if (filter?.categoryId) {
-    query = query.eq("category_id", filter.categoryId);
-  }
-  if (filter?.competence) {
-    const start = `${filter.competence}-01`;
-    const [y, m] = filter.competence.split("-").map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    const end = `${filter.competence}-${String(lastDay).padStart(2, "0")}`;
-    query = query.gte("due_date", start).lte("due_date", end);
-  }
+    if (filter?.type) {
+      query = query.eq("type", filter.type);
+    }
+    if (filter?.categoryId) {
+      query = query.eq("category_id", filter.categoryId);
+    }
+    if (filter?.competence) {
+      const start = `${filter.competence}-01`;
+      const [y, m] = filter.competence.split("-").map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${filter.competence}-${String(lastDay).padStart(2, "0")}`;
+      query = query.gte("due_date", start).lte("due_date", end);
+    }
+    return query;
+  };
 
-  const { data, error } = await query;
+  const { data, error } = await selectAllRows(build);
   if (error) {
     console.error("[financeBackend] Erro ao listar lançamentos:", error);
     throw new Error("Erro ao consultar lançamentos financeiros no banco de dados.");

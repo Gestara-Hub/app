@@ -1,5 +1,6 @@
 "use server";
 
+import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSubaccountBalance, createTransfer, listTransfers } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
@@ -41,12 +42,14 @@ async function pendingRelease(
   adminClient: ReturnType<typeof createSupabaseAdminClient>,
   organizationId: string,
 ): Promise<{ awaitingCents: number; nextCreditDate?: string }> {
-  const { data } = await adminClient
-    .from("online_payments")
-    .select("net_amount_cents, credit_date")
-    .eq("organization_id", organizationId)
-    .eq("status", "paid")
-    .eq("funds_released", false);
+  const { data } = await selectAllRows(() =>
+    adminClient
+      .from("online_payments")
+      .select("net_amount_cents, credit_date")
+      .eq("organization_id", organizationId)
+      .eq("status", "paid")
+      .eq("funds_released", false),
+  );
   const rows = data ?? [];
   const dates = rows.map((r) => (r.credit_date ? String(r.credit_date).slice(0, 10) : "")).filter(Boolean).sort();
   return {
@@ -86,12 +89,14 @@ export async function getSubaccountBalanceAction(
   }
 
   // Fallback: calcula a partir dos pagamentos online pagos no banco
-  const { data: payments } = await adminClient
-    .from("online_payments")
-    .select("net_amount_cents, status")
-    .eq("organization_id", organizationId)
-    .eq("status", "paid")
-    .eq("funds_released", true);
+  const { data: payments } = await selectAllRows(() =>
+    adminClient
+      .from("online_payments")
+      .select("net_amount_cents, status")
+      .eq("organization_id", organizationId)
+      .eq("status", "paid")
+      .eq("funds_released", true),
+  );
 
   const totalNet = (payments || []).reduce(
     (acc, p) => acc + (p.net_amount_cents || 0),
