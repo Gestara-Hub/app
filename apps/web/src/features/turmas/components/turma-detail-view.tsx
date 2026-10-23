@@ -215,7 +215,7 @@ export function TurmaDetailView({
 }) {
   const [celebrateEnroll, setCelebrateEnroll] = useState(false);
   const { data: turma, isLoading, isError, error, refetch } = useClassGroup(id);
-  const { data: enrollments } = useEnrollments(id);
+  const { data: enrollments, isPending: enrollmentsPending } = useEnrollments(id);
   const { data: clients } = useClients({ status: "active" });
   const { data: categories } = useCategories();
   const { data: waitlist } = useWaitlist(id);
@@ -680,7 +680,15 @@ export function TurmaDetailView({
 
       {activeTab === "enrolled" ? (
         <section role={showTabs ? "tabpanel" : undefined} className="space-y-3">
-          {enrolledCount === 0 ? (
+          {enrollmentsPending ? (
+            // A turma chega antes das matriculas: sem isto, "Nenhum aluno" piscava
+            // (com um segundo "Matricular alunos") numa turma cheia.
+            <div className="space-y-2 rounded-lg border p-4" aria-busy="true">
+              <Skeleton className="h-5 w-1/3" />
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-5 w-2/5" />
+            </div>
+          ) : enrolledCount === 0 ? (
             <div className="rounded-lg border">
               <ModuleEmptyGuide
                 icon={<GraduationCap className="size-8" />}

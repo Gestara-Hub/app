@@ -313,7 +313,7 @@ test.describe("lista de espera", () => {
   test("turma lotada: pôr na espera, promover e remover", async ({ page }) => {
     await seedFull(page);
     await page.goto("/classes/cg-1");
-    await page.getByRole("button", { name: "Matricular alunos" }).first().click();
+    await page.getByRole("button", { name: "Matricular alunos", exact: true }).first().click();
     const dialog = page.getByRole("dialog", { name: "Matricular alunos" });
     await expect(dialog).toContainText("turma lotada");
     await dialog.getByRole("option", { name: /Bruno Lima/ }).click();
@@ -347,7 +347,7 @@ test.describe("lista de espera", () => {
   test("matricular acima da capacidade pede o botão explícito", async ({ page }) => {
     await seedFull(page);
     await page.goto("/classes/cg-1");
-    await page.getByRole("button", { name: "Matricular alunos" }).click();
+    await page.getByRole("button", { name: "Matricular alunos", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Matricular alunos" });
     await dialog.getByRole("option", { name: /Bruno Lima/ }).click();
     await dialog.getByRole("button", { name: "Matricular mesmo assim (1)" }).click();
