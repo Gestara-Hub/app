@@ -184,6 +184,8 @@ export const queryKeys = {
     // Pagina do historico (mesma raiz: gravar mensagem invalida as duas).
     logsPage: (filter?: MessageLogFilter) => ["communication", "logs", "page", filter] as const,
     metrics: ["communication", "metrics"] as const,
+    // Lembretes (doc product/25): mudam com mensagens, cobrancas e presencas.
+    reminders: ["communication", "reminders"] as const,
   },
   reports: {
     all: ["reports"] as const,

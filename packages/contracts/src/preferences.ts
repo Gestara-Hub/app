@@ -27,6 +27,8 @@ export interface UserPreferences {
     completedStepIds: string[];
   };
   dismissedAlertKeys: string[];
+  /** Lembretes adiados ou ignorados (doc product/25): chave -> "yyyy-MM-dd" ou "never". */
+  reminderSnoozes?: Record<string, string>;
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
   themeStyling?: ThemeStylingPreferences;

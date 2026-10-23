@@ -13,7 +13,7 @@ Quem entra com senha pode ligar a verificação em duas etapas. Depois da senha,
 - **Entrega 2: código por e-mail e aviso no painel.**
   - Código por e-mail como alternativa ao app, feito por nós: código de 6 dígitos, 10 minutos, só o hash no banco, envio pelo MailerSend. É o mesmo padrão do "Esqueci minha senha" (migração 36).
   - "Lembrar este dispositivo por 30 dias".
-  - Aviso discreto e dispensável no painel, só para o dono e só depois que ele ativar o pagamento online.
+  - Aviso para ligar: janela em quatro momentos (pagamento online ativado, primeiro convite, senha nova, 7 dias de uso), para dono e gerente, decidido em 23/10/2026 (doc product/25, seção 5). Substitui o aviso discreto no painel.
 - **Contas só do Google ficam de fora.** O Google já tem a verificação em duas etapas dele. A tela de Segurança explica isso e não oferece o app.
 - **Opcional por enquanto.** Exigir o 2FA para ações sensíveis, como trocar a conta de recebimento, fica para depois.
 

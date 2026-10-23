@@ -2,49 +2,38 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
   ArrowUpCircle,
   ArrowUpRight,
+  BellOff,
   Cake,
+  CalendarClock,
   ChevronDown,
+  Clock,
   HeartHandshake,
   MessageCircle,
   Ticket,
 } from "lucide-react";
 import type { Client } from "@gestarahub/contracts";
-import { relativeDateLabel } from "@gestarahub/core/date";
-import { formatCents, plural } from "@gestarahub/core/format";
+import { plural } from "@gestarahub/core/format";
 import { InitialsAvatar } from "@/components/shared/list";
+import { ListItemActionsMenu, type ListItemAction } from "@/components/shared/list-item-actions-menu";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { sharedVocabularyFor, vocabularyForTrack } from "@/lib/business-segment-presets";
 import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
-import { StudentGraduationDialog, useClients } from "@/features/clients";
-import { packageRemainingText, useMessageLogs, useWhatsAppSend } from "@/features/communication";
+import { StudentGraduationDialog } from "@/features/clients";
+import { useReminders, useWhatsAppSend, type ReminderGroup, type ReminderItem } from "@/features/communication";
 import { useSegmentVocabulary } from "@/features/settings";
-import { SellPackageDialog, useAbsenceStreaks, useCharges, useStudentPackages } from "@/features/turmas";
-import { selectEndingPackages } from "@/lib/package-ending";
-import { useMonthBirthdays } from "./birthdays-card";
+import { SellPackageDialog } from "@/features/turmas";
 import { useLevelChangePending } from "./use-level-change-pending";
 
 /** Ate 3 nomes e "e mais N". */
 function namesLine(names: string[]): string {
   const shown = names.slice(0, 3).join(", ");
   return names.length > 3 ? `${shown} e mais ${names.length - 3}` : shown;
-}
-
-/** Dia (local) em que cada aluno recebeu a ultima mensagem do tipo. */
-function lastMessageDay(logs: { clientId?: string; sentAt: string }[]): Map<string, string> {
-  const last = new Map<string, string>();
-  for (const log of logs) {
-    if (!log.clientId) continue;
-    const day = format(parseISO(log.sentAt), "yyyy-MM-dd");
-    if ((last.get(log.clientId) ?? "") < day) last.set(log.clientId, day);
-  }
-  return last;
 }
 
 /** Linha de pendencia: quantidade, quem e a acao (link ou abrir a lista ali mesmo). */
@@ -155,192 +144,119 @@ function WhatsAppButton({
   );
 }
 
+const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }> = {
+  overdue: { icon: <AlertCircle className="size-4" />, tone: "bg-destructive/15 text-destructive" },
+  due_today: { icon: <CalendarClock className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  due_soon: { icon: <CalendarClock className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  packages: { icon: <Ticket className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  absence: { icon: <HeartHandshake className="size-4" />, tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
+  birthday: { icon: <Cake className="size-4" />, tone: "bg-pink-500/15 text-pink-700 dark:text-pink-300" },
+};
+
+/** Rotulo do botao do WhatsApp pelo tipo de lembrete. */
+function whatsAppLabel(item: ReminderItem): string {
+  if (item.trigger === "birthday_greeting") return `Mandar parabéns para ${item.studentName} no WhatsApp`;
+  if (item.trigger === "package_ending") return `Avisar ${item.studentName} no WhatsApp`;
+  if (item.chargeId) return `Cobrar ${item.studentName} no WhatsApp`;
+  return `Mandar mensagem para ${item.studentName} no WhatsApp`;
+}
+
 /**
- * "Para fazer hoje": as pendencias do Dashboard num bloco so, no topo (sem
- * precisar rolar). Uma linha por pendencia, so as que tem algo: cobrancas em
- * atraso (de todos os meses e tipos: a divida nao some na virada do mes), pacotes acabando, alunos com 3 faltas seguidas, aniversariantes
- * do dia e troca de faixa pela idade. As listas abrem na propria linha, com a acao.
+ * "Lembretes" (doc product/25): o que lembrar hoje, do motor de lembretes, do
+ * mais importante para o menos (atraso, vence hoje, vence logo, pacote
+ * acabando, faltas seguidas, aniversario), mais a troca de nivel pela idade.
+ * Cada aluno: WhatsApp com o modelo pronto e, no menu, adiar ou nao lembrar.
+ * O ja avisado aparece marcado e nao conta como pendencia.
  */
 export function DashboardTodo({ today }: { today: string }) {
   const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
-  const { data: streaks = [] } = useAbsenceStreaks();
-  const { data: absenceLogs = [] } = useMessageLogs({ trigger: "absence_alert" });
-  const { data: greetingLogs = [] } = useMessageLogs({ trigger: "birthday_greeting" });
-  const { birthdays } = useMonthBirthdays(today);
+  const reminders = useReminders(today);
   const levelPending = useLevelChangePending(today);
   const [graduating, setGraduating] = useState<{ client: Client; modalityId: string } | null>(null);
   const can = useCan();
   const canSellPackage = can("billing:manage");
-  const { data: studentPackages = [] } = useStudentPackages();
-  const { data: activeClients = [] } = useClients({ status: "active" });
-  const { data: packageLogs = [] } = useMessageLogs({ trigger: "package_ending" });
   const [selling, setSelling] = useState<{ id: string; name: string } | null>(null);
-  const { data: overdueCharges = [] } = useCharges({ status: "overdue" });
-  const overdueCount = overdueCharges.length;
-  const overdueCents = overdueCharges.reduce((sum, c) => sum + c.amountCents, 0);
-  const overdueMonths = new Set(overdueCharges.map((c) => c.competence ?? c.dueDate.slice(0, 7))).size;
 
-  const birthdaysToday = birthdays.filter((b) => b.isToday);
-  const lastAbsenceMessage = lastMessageDay(absenceLogs);
-  const lastGreeting = lastMessageDay(greetingLogs);
-  const lastPackageMessage = lastMessageDay(packageLogs);
-  // So aluno ativo (o telefone vem do cadastro).
-  const clientById = new Map(activeClients.map((c) => [c.id, c]));
-  const packagesEnding = selectEndingPackages(studentPackages, today).filter((p) => clientById.has(p.pkg.studentId));
   // Titulo do bloco: a palavra das modalidades listadas quando todas falam
   // igual, senao a da area. O botao de cada aluno segue a modalidade dele.
   const levelWord = sharedVocabularyFor(
     levelPending.map((p) => p.track),
     areaVocabulary,
   ).level.toLowerCase();
-  const count =
-    (overdueCount > 0 ? 1 : 0) +
-    (packagesEnding.length > 0 ? 1 : 0) +
-    (streaks.length > 0 ? 1 : 0) +
-    (birthdaysToday.length > 0 ? 1 : 0) +
-    (levelPending.length > 0 ? 1 : 0);
+  const count = reminders.pending + levelPending.length;
+
+  function itemActions(item: ReminderItem): ListItemAction[] {
+    return [
+      { key: "snooze", label: "Lembrar amanhã", icon: <Clock className="size-4" />, onSelect: () => reminders.snooze(item.key) },
+      { key: "ignore", label: "Não lembrar deste", icon: <BellOff className="size-4" />, onSelect: () => reminders.ignore(item.key) },
+    ];
+  }
 
   return (
     <>
       {count > 0 ? (
         <Card className="gap-0 py-0">
           <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-            <p className="text-sm font-semibold text-foreground">Para fazer hoje</p>
+            <p className="text-sm font-semibold text-foreground">Lembretes</p>
             <span className="text-xs text-muted-foreground">{plural(count, "pendência", "pendências")}</span>
           </div>
           <ul className="divide-y divide-border/60">
-            {overdueCount > 0 ? (
+            {reminders.groups.map((group) => (
               <TodoRow
-                icon={<AlertCircle className="size-4" />}
-                tone="bg-destructive/15 text-destructive"
-                title={plural(overdueCount, "cobrança em atraso", "cobranças em atraso")}
-                detail={
-                  overdueMonths > 1
-                    ? `${formatCents(overdueCents)} até hoje, de ${overdueMonths} meses`
-                    : `${formatCents(overdueCents)} até hoje`
-                }
-                action="Cobrar"
-                href="/classes/billing?overdue=all"
-              />
-            ) : null}
-
-            {packagesEnding.length > 0 ? (
-              <TodoRow
-                icon={<Ticket className="size-4" />}
-                tone="bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                title={plural(packagesEnding.length, "pacote acabando", "pacotes acabando")}
-                detail={namesLine(packagesEnding.map((p) => p.pkg.studentName))}
+                key={group.key}
+                icon={GROUP_LOOK[group.key].icon}
+                tone={GROUP_LOOK[group.key].tone}
+                title={group.title}
+                detail={group.detail}
                 action="Ver"
               >
-                {packagesEnding.map(({ pkg }) => {
-                  const client = clientById.get(pkg.studentId);
-                  const messagedOn = lastPackageMessage.get(pkg.studentId);
-                  const messaged = Boolean(messagedOn && messagedOn >= pkg.purchasedAt);
-                  const remaining = packageRemainingText(pkg, today);
-                  return (
-                    <StudentLine
-                      key={pkg.id}
-                      name={pkg.studentName}
-                      detail={`${pkg.name} · ${remaining}`}
-                      done={messaged && messagedOn ? `Avisado ${relativeDateLabel(messagedOn)}` : undefined}
-                    >
-                      <WhatsAppButton
-                        label={`Avisar ${pkg.studentName} no WhatsApp`}
-                        done={messaged}
-                        disabled={!whatsapp.ready}
-                        onClick={() =>
-                          whatsapp.send({
-                            trigger: "package_ending",
-                            recipient: { name: pkg.studentName, phone: client?.phone, clientId: pkg.studentId },
-                            values: { pacote: pkg.name, restante: remaining },
-                          })
-                        }
-                      />
-                      {canSellPackage ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="shrink-0 text-xs"
-                          onClick={() => setSelling({ id: pkg.studentId, name: pkg.studentName })}
-                        >
-                          Vender pacote
-                        </Button>
-                      ) : null}
-                    </StudentLine>
-                  );
-                })}
+                {group.items.map((item) => (
+                  <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
+                    <WhatsAppButton
+                      label={whatsAppLabel(item)}
+                      done={Boolean(item.done)}
+                      disabled={!whatsapp.ready}
+                      onClick={() =>
+                        whatsapp.send({
+                          trigger: item.trigger,
+                          recipient: { name: item.studentName, phone: item.phone, clientId: item.studentId },
+                          values: item.values,
+                          ...(item.chargeId ? { chargeId: item.chargeId } : {}),
+                        })
+                      }
+                    />
+                    {group.key === "packages" && canSellPackage ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0 text-xs"
+                        onClick={() => setSelling({ id: item.studentId, name: item.studentName })}
+                      >
+                        Vender pacote
+                      </Button>
+                    ) : null}
+                    <ListItemActionsMenu
+                      actions={itemActions(item)}
+                      title="Mais ações"
+                      ariaLabel={`Mais ações de ${item.studentName}`}
+                      variant="ghost"
+                    />
+                  </StudentLine>
+                ))}
+                {group.hidden > 0 || group.href ? (
+                  <li className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
+                    {group.hidden > 0 ? <span>e mais {group.hidden}</span> : null}
+                    {group.href ? (
+                      <Link href={group.href} className="inline-flex items-center gap-1 font-medium text-primary">
+                        Abrir em Cobranças
+                        <ArrowUpRight className="size-3.5" />
+                      </Link>
+                    ) : null}
+                  </li>
+                ) : null}
               </TodoRow>
-            ) : null}
-
-            {streaks.length > 0 ? (
-              <TodoRow
-                icon={<HeartHandshake className="size-4" />}
-                tone="bg-violet-500/15 text-violet-700 dark:text-violet-300"
-                title={plural(streaks.length, "aluno com 3 faltas seguidas", "alunos com 3 faltas seguidas")}
-                detail={namesLine(streaks.map((s) => s.studentName))}
-                action="Ver"
-              >
-                {streaks.map((s) => {
-                  const messagedOn = lastAbsenceMessage.get(s.studentId);
-                  const messaged = Boolean(messagedOn && messagedOn >= s.since);
-                  return (
-                    <StudentLine
-                      key={s.studentId}
-                      name={s.studentName}
-                      detail={`${s.streak} faltas seguidas · desde ${relativeDateLabel(s.since)}${s.classGroupNames.length ? ` · ${s.classGroupNames.join(", ")}` : ""}`}
-                      done={messaged && messagedOn ? `Avisado ${relativeDateLabel(messagedOn)}` : undefined}
-                    >
-                      <WhatsAppButton
-                        label={`Mandar mensagem para ${s.studentName} no WhatsApp`}
-                        done={messaged}
-                        disabled={!whatsapp.ready}
-                        onClick={() =>
-                          whatsapp.send({
-                            trigger: "absence_alert",
-                            recipient: { name: s.studentName, phone: s.phone, clientId: s.studentId },
-                          })
-                        }
-                      />
-                    </StudentLine>
-                  );
-                })}
-              </TodoRow>
-            ) : null}
-
-            {birthdaysToday.length > 0 ? (
-              <TodoRow
-                icon={<Cake className="size-4" />}
-                tone="bg-pink-500/15 text-pink-700 dark:text-pink-300"
-                title={plural(birthdaysToday.length, "aniversariante hoje", "aniversariantes hoje")}
-                detail={namesLine(birthdaysToday.map((b) => b.item.name))}
-                action="Ver"
-              >
-                {birthdaysToday.map(({ item, ageTurning }) => {
-                  const greeted = lastGreeting.get(item.id) === today;
-                  return (
-                    <StudentLine
-                      key={item.id}
-                      name={item.name}
-                      detail={ageTurning > 0 ? `Faz ${ageTurning} anos` : "Aniversário"}
-                      done={greeted ? "Parabéns enviado" : undefined}
-                    >
-                      <WhatsAppButton
-                        label={`Mandar parabéns para ${item.name} no WhatsApp`}
-                        done={greeted}
-                        disabled={!whatsapp.ready}
-                        onClick={() =>
-                          whatsapp.send({
-                            trigger: "birthday_greeting",
-                            recipient: { name: item.name, phone: item.phone, clientId: item.id },
-                          })
-                        }
-                      />
-                    </StudentLine>
-                  );
-                })}
-              </TodoRow>
-            ) : null}
+            ))}
 
             {levelPending.length > 0 ? (
               <TodoRow

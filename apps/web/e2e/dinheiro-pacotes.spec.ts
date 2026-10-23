@@ -567,7 +567,7 @@ test.describe("Dashboard: pacotes acabando", () => {
   }
 
   const todoCard = (page: Page) =>
-    page.locator("[data-slot=card]").filter({ has: page.getByText("Para fazer hoje", { exact: true }) });
+    page.locator("[data-slot=card]").filter({ has: page.getByText("Lembretes", { exact: true }) });
 
   test("lista na ordem certa, avisa pelo WhatsApp (\"Avisado hoje\") e vender tira o aluno da lista", async ({ page }) => {
     await seedEnding(page);

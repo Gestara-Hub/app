@@ -4,6 +4,7 @@ import { listMessageLogPage } from "./messagesBackend";
 import { connectionService } from "./connectionService";
 import { templatesService } from "./templatesService";
 import { messagesService } from "./messagesService";
+import { remindersService } from "./remindersService";
 
 export { connectionService, templatesService, messagesService };
 export { messageKindMatches } from "./messagesService";
@@ -13,6 +14,7 @@ export const communicationServiceImpl = {
   ...connectionService,
   ...templatesService,
   ...messagesService,
+  ...remindersService,
 };
 
 /** Conta real no navegador: roda no servidor sobre o banco (doc 15, fatia 2). */

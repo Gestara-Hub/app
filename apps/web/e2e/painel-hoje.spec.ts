@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { classGroup, enrollment, expect, seedAcademy, skipWelcome, student, test } from "./fixtures";
 
 /**
- * Dashboard "Para fazer hoje": um bloco no topo so com as pendencias do dia
+ * Dashboard "Lembretes" (doc product/25): um bloco no topo so com as pendencias do dia
  * (cobranças em atraso de todos os meses, 3 faltas seguidas, aniversariantes de hoje e troca
  * de faixa pela idade). Hoje e terca 22/09/2026.
  */
@@ -98,15 +98,15 @@ async function seedTodo(page: Page) {
   await page.goto("/dashboard");
 }
 
-/** O bloco "Para fazer hoje" (card com o titulo). */
+/** O bloco "Lembretes" (card com o titulo; doc product/25). */
 const todoCard = (page: Page) =>
-  page.locator("[data-slot=card]").filter({ has: page.getByText("Para fazer hoje", { exact: true }) });
+  page.locator("[data-slot=card]").filter({ has: page.getByText("Lembretes", { exact: true }) });
 
 /** Linha de pendencia pelo titulo. */
 const todoRow = (page: Page, title: string | RegExp) =>
   todoCard(page).getByRole("listitem").filter({ has: page.getByText(title) }).first();
 
-test("para fazer hoje: uma linha por pendência, com o contador", { tag: "@smoke" }, async ({ page }) => {
+test("lembretes: uma linha por tipo, com o contador de pendências", { tag: "@smoke" }, async ({ page }) => {
   await seedTodo(page);
   const card = todoCard(page);
   await expect(card).toContainText("4 pendências");
@@ -118,7 +118,10 @@ test("para fazer hoje: uma linha por pendência, com o contador", { tag: "@smoke
   // Quem voltou a treinar (presenca depois das faltas) nao entra.
   await expect(card).not.toContainText("Aluno Voltou");
 
-  await todoRow(page, "1 cobrança em atraso").getByRole("link", { name: "Cobrar" }).click();
+  const overdue = todoRow(page, "1 cobrança em atraso");
+  await overdue.getByRole("button", { name: "Ver" }).click();
+  await expect(overdue).toContainText("Aluno A20");
+  await overdue.getByRole("link", { name: "Abrir em Cobranças" }).click();
   await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
   await expect(page.locator("div.group").filter({ hasText: "Aluno A20" })).toContainText("Atrasado");
 });
@@ -209,5 +212,5 @@ test("sem pendências o bloco não aparece", async ({ page }) => {
   await skipWelcome(page);
   await page.goto("/dashboard");
   await expect(page.getByText("Nenhuma mensalidade gerada no mês")).toBeVisible();
-  await expect(page.getByText("Para fazer hoje")).toHaveCount(0);
+  await expect(page.getByText("Lembretes", { exact: true })).toHaveCount(0);
 });

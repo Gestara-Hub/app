@@ -115,7 +115,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../communication/communicationSlices")).communicationSlices,
     permissions: {
       ...all(
-        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
+        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "getReminderSources", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
         VIEW_COMMUNICATION,
       ),
       ...all(["connectOfficial", "disconnectOfficial", "updateConnectionSettings", "updateTemplate"], MANAGE_COMMUNICATION),

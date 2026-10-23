@@ -451,7 +451,7 @@ test.describe("Dashboard: cobranças em atraso", () => {
   const todoRow = (page: Page, title: string) =>
     page
       .locator("[data-slot=card]")
-      .filter({ has: page.getByText("Para fazer hoje", { exact: true }) })
+      .filter({ has: page.getByText("Lembretes", { exact: true }) })
       .getByRole("listitem")
       .filter({ has: page.getByText(title) })
       .first();
@@ -461,7 +461,7 @@ test.describe("Dashboard: cobranças em atraso", () => {
     await page.goto("/dashboard");
   }
 
-  test("cobranças atrasadas de todos os tipos entram no bloco; \"Cobrar\" abre todos os atrasos", async ({
+  test("cobranças atrasadas de todos os tipos entram no bloco; \"Abrir em Cobranças\" abre todos os atrasos", async ({
     page,
   }) => {
     await seedAcademy(page, {
@@ -479,7 +479,8 @@ test.describe("Dashboard: cobranças em atraso", () => {
     // O bloco conta todos os tipos e todos os meses (a divida nao some na virada).
     const row = todoRow(page, "3 cobranças em atraso");
     await expect(row).toContainText("até hoje");
-    await row.getByRole("link", { name: "Cobrar" }).click();
+    await row.getByRole("button", { name: "Ver" }).click();
+    await row.getByRole("link", { name: "Abrir em Cobranças" }).click();
     await expect(page).toHaveURL(/\/classes\/billing\?overdue=all$/);
     // Em Cobranças, as tres atrasadas.
     await expect(rowOf(page, "Aluno Mensal")).toContainText("Atrasado");

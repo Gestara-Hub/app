@@ -64,6 +64,10 @@ export function createQueryClient(): QueryClient {
     mutationCache: new MutationCache({
       onSuccess: () => {
         void client.invalidateQueries({ queryKey: queryKeys.audit.all });
+        // Lembretes (doc product/25): pagar, vender pacote, marcar presenca,
+        // mandar mensagem... quase toda escrita muda a lista. Leitura com recorte
+        // (barata); relida so se estiver na tela (painel, sino).
+        void client.invalidateQueries({ queryKey: queryKeys.communication.reminders });
         // Marcos do "Descubra o dia a dia" e passos da configuracao inicial viram
         // "Feito" na hora (refaz so se montado). Com tudo feito, nao rele mais:
         // cada releitura carrega o espaco inteiro no servidor (doc 19, fase 1).

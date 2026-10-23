@@ -1,4 +1,8 @@
-import type { Id } from "@gestarahub/contracts";
+import type { ClassGroup, Id } from "@gestarahub/contracts";
+import { addDays, format, subDays } from "date-fns";
+import { billingWorld } from "../billing/billingSlices";
+import { sessionIdsInRange } from "../classes/classSlices";
+import { REMINDER_TRIGGERS } from "./remindersService";
 import type { MethodSlice } from "../world/slices";
 
 /**
@@ -14,7 +18,31 @@ const logs: MethodSlice = async ([filter], load) => {
   else await load.all("messageLogs");
 };
 
+/** Faltas seguidas: so as marcacoes das aulas dos ultimos 120 dias (muda so uma sequencia de mais de 4 meses). */
+const STREAK_WINDOW_DAYS = 120;
+
+/**
+ * Lembretes (doc product/25): o espaco das cobrancas, as presencas recentes,
+ * as mensagens dos tipos com lembrete e os modelos.
+ */
+const reminderSources: MethodSlice = async (_args, load) => {
+  await billingWorld(load);
+  const groups = (await load.all("classGroups")) as unknown as ClassGroup[];
+  const today = new Date();
+  const ids = sessionIdsInRange(
+    groups,
+    format(subDays(today, STREAK_WINDOW_DAYS), "yyyy-MM-dd"),
+    format(addDays(today, 1), "yyyy-MM-dd"),
+  );
+  await Promise.all([
+    load.where("attendances", "sessionId", ids),
+    load.where("messageLogs", "trigger", REMINDER_TRIGGERS),
+    load.all("messageTemplates"),
+  ]);
+};
+
 export const communicationSlices: Record<string, MethodSlice> = {
   listLogs: logs,
   listLogsPaginated: logs,
+  getReminderSources: reminderSources,
 };

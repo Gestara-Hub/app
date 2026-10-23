@@ -94,3 +94,4 @@ As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills
 ## Princípio de Documentação
 
 Cada documento prioriza decisões claras, contexto, escopo, fora de escopo, regras e estabilidade. A documentação é mantida para consumo ágil por engenheiros e agentes de inteligência artificial.
+- [product/25-lembretes-e-seguranca.md](product/25-lembretes-e-seguranca.md) — **Lembretes inteligentes e aviso de segurança:** um motor de lembretes a partir dos modelos de mensagem (cobrança, pacote, faltas, aniversário, relacionamento, avisos), prioridade, sem repetir, adiar, envio em sequência, sino no topo; janela da verificação em duas etapas em quatro momentos.

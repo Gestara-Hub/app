@@ -24,6 +24,7 @@ export * from "./report";
 export * from "./student-summary";
 export * from "./onboarding";
 export * from "./pagination";
+export * from "./reminders";
 export * from "./preferences";
 export * from "./legal";
 export * from "./document";
