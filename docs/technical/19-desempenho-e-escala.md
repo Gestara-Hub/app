@@ -95,7 +95,7 @@ Caminho incremental, sem reescrever as regras (elas continuam as mesmas, testada
 1. **Relatórios e documentos com agregação no banco** (SQL `GROUP BY`/views): DRE, cobranças do mês, retenção, frequência; o PDF recebe só os números.
 2. **Histórico fora do caminho quente:** auditoria e mensagens só paginadas por data; índice de expressão em `audit_logs (organization_id, (target->>'type'), timestamp)`; índice em `attendances (organization_id, session_id)`.
 3. **Infraestrutura:** Vercel e Supabase na mesma região (São Paulo, `gru1`/`sa-east-1`); conexões pelo pooler do Supabase (Supavisor); `maxDuration` nas rotas longas; RLS com `(select current_organization_id())`.
-4. **Levantamento geral de índices (decisão de 23/10/2026: no fim das fases):** com os recortes, os relatórios no banco e a concorrência por linha prontos, rodar `EXPLAIN ANALYZE` nas consultas reais sobre o espaço de 1 ano e criar numa migração só os índices que faltarem, removendo os que nenhuma consulta usa. Já se sabe de um: o GIN em `audit_logs.target` não atende `target->>'type' = 'financial_entry'` (carga parcial da auditoria em toda ação).
+4. **Levantamento geral de índices (feito, seção 13; decisão de 23/10/2026: no fim das fases):** com os recortes, os relatórios no banco e a concorrência por linha prontos, rodar `EXPLAIN ANALYZE` nas consultas reais sobre o espaço de 1 ano e criar numa migração só os índices que faltarem, removendo os que nenhuma consulta usa. Já se sabe de um: o GIN em `audit_logs.target` não atende `target->>'type' = 'financial_entry'` (carga parcial da auditoria em toda ação).
 5. **Medir sempre (log feito, seção 10):** log de tempo por ação (método, ms, linhas carregadas) e o teste de carga desta proposta (espaço de 1 ano) rodando antes de cada entrega grande, com a meta de 300 ms.
 
 ## 5. O que esperar
@@ -268,9 +268,9 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 
 ## 11. Gravação em lote no motor (23/10/2026, migração 45)
 
-**Por que:** toda chamada ao banco pelo servidor tem limite de 8 s (`statement_timeout` do PostgREST). O motor gravava linha por linha, com 3 consultas por linha, e a busca "essa linha já existe?" comparava `id::text`, o que impede o uso do índice da chave: cada linha percorria a tabela inteira. Resultado: de 1,5 a 3 ms por linha, crescendo com a tabela. Uma gravação de alguns milhares de linhas (as mensalidades de um espaço grande, por exemplo) falhava inteira, e as outras gravações do espaço esperavam atrás dela.
+**Por que:** toda chamada ao banco pelo servidor tem limite de 8 s (`statement_timeout` do PostgREST). O motor gravava linha por linha: 4 a 5 consultas montadas na hora (`EXECUTE`) por linha, o que dava de 1,5 a 3 ms por linha. Na `audit_logs`, a única tabela do motor com chave uuid, a busca "essa linha já existe?" comparava `id::text`, o que impede o índice: cada evento gravado percorria a tabela inteira, e o custo crescia com o histórico (correção de 23/10/2026: nas outras tabelas a chave é texto e a conversão não atrapalhava o índice). Uma gravação de alguns milhares de linhas (as mensalidades de um espaço grande, por exemplo) falhava inteira, e as outras gravações do espaço esperavam atrás dela.
 
-**Como ficou:** `apply_world_changes` separa as mudanças em grupos seguidos da mesma tabela e do mesmo tipo (o app manda `op`: nova ou alterada), numa consulta só, e grava cada grupo com um comando (`world_upsert_batch`, `world_delete_batch`). Os ids são comparados no tipo da coluna (uuid ou texto), com o índice. As regras não mudaram: linha do espaço da sessão, id de outro espaço recusado (42501), `expected` conferido (40001), atualização só das colunas que vieram, inserção com os padrões do banco e a ordem entre os grupos que o app mandou. A volta das linhas gravadas também é uma consulta por tabela.
+**Como ficou:** `apply_world_changes` separa as mudanças em grupos seguidos da mesma tabela e do mesmo tipo (o app manda `op`: nova ou alterada), numa consulta só, e grava cada grupo com um comando (`world_upsert_batch`, `world_delete_batch`). Os ids são comparados no tipo da coluna (uuid ou texto), sempre com o índice. As regras não mudaram: linha do espaço da sessão, id de outro espaço recusado (42501), `expected` conferido (40001), atualização só das colunas que vieram, inserção com os padrões do banco e a ordem entre os grupos que o app mandou. A volta das linhas gravadas também é uma consulta por tabela.
 
 | 6.000 linhas numa gravação | Antes | Agora |
 | --- | --- | --- |
@@ -292,3 +292,31 @@ Testes de banco: `world/__tests__/batchWrites.db.test.ts` (6.000 linhas: inserir
 - Tirar da leitura faria a cobrança desses casos aparecer só no dia seguinte: mudança de comportamento com mais risco que ganho.
 
 **Produção:** região (Vercel `gru1`, Supabase `sa-east-1`) e pooler ficam no checklist de publicação, junto com a ordem das migrações 40 a 45 e a conferência das rotinas do pg_cron.
+
+## 13. Levantamento geral de índices (23/10/2026, migração 46)
+
+**Como foi feito:** um espaço de 1 ano no banco local (200 alunos, 12 turmas, 28 mil presenças, 2 mil cobranças, 6 mil mensagens, 300 lançamentos, 30 mil eventos de auditoria). Com as estatísticas zeradas, as ações reais do app rodaram três vezes: carga do espaço inteiro sem cache, aula e chamada, aulas da semana, turmas, cobranças do mês, financeiro, alunos, ficha, mensagens por aluno e por gatilho, relatórios, páginas de auditoria e de mensagens, declaração anual e as rotinas (mensalidades, recorrências, parabéns). Depois, `pg_stat_statements` para as consultas que mais pesaram e `EXPLAIN ANALYZE` de cada uma.
+
+**Cuidado na leitura:** no banco local, esse espaço tem quase todas as linhas, então o Postgres prefere o índice só por espaço para tudo, e a contagem de uso local não prova que um índice é inútil em produção. Os índices seguem a forma das consultas do código, conferida com a varredura sequencial também desligada.
+
+**O que mudou:**
+1. **(organization_id, id) em todas as 25 tabelas do espaço**, no lugar do índice só de `organization_id`, que vira prefixo dele. A carga do espaço inteiro e o `load.all` dos recortes leem "linhas do espaço, por id, de mil em mil": sem esse índice, cada página ordenava todas as linhas do espaço (nas presenças, ordenação em disco).
+2. **Paginação pela chave** em `loadRows` (`world/runWorld.ts`): "depois do último id" em vez de "pular N linhas". Antes, a página 28 das presenças percorria as 27 mil anteriores.
+3. **Auditoria:** `(organization_id, (target->>'type'), timestamp DESC, id DESC)` atende a carga parcial dos lançamentos (em toda carga do espaço) e a página por tipo; a página geral ganha o `id` no índice de data. Sai o GIN em `target`: nenhuma consulta usa "contém", e ele pesava em toda gravação da tabela que mais cresce.
+4. **Mensagens:** página com `(organization_id, sent_at DESC, id DESC)` e leitura por gatilho (painel) com `(organization_id, trigger)`.
+5. **Duplicados que saíram:** presenças por aula e substituições por aula, cobertos pelos índices únicos `(organization_id, session_id, ...)`.
+
+| Consulta (espaço de 1 ano) | Antes | Depois |
+| --- | --- | --- |
+| Presenças, página 28 da carga do espaço | 33 ms (ordenação em disco) | 17 ms pelo índice; constante com a paginação pela chave |
+| Carga parcial da auditoria | 13,5 ms | 2,7 ms |
+| Presenças das aulas de uma semana | 20,6 ms | 0,6 ms |
+| Página de mensagens | 1,4 ms | 0,17 ms |
+| Página da auditoria por tipo | 0,08 ms | 0,03 ms |
+| **Carga do espaço inteiro, sem cache (app)** | **1,17 s** | **0,63 s** |
+
+As ações com recorte (cobranças, financeiro, mensagens, relatórios) já liam pouco e ficaram iguais, dentro da variação. O que sobra na carga do espaço inteiro é trazer as 28 mil presenças pela rede, que só acontece sem cache e nas ações sem recorte.
+
+**Mantidos de propósito:** os índices por campo que o código filtra (aluno, turma, aula, situação, vencimento, competência, recorrência) e os únicos, que protegem regras (mensalidade por período, lançamento por competência da recorrência, presença por aula e aluno). Alguns, como cobranças por tipo ou situação, separam pouco dentro de um espaço, mas pesam pouco na gravação; sem prova de que sobram, ficam. Revisar com `pg_stat_user_indexes` em produção, depois de alguns meses de uso real.
+
+**Produção:** a migração cria os índices sem `CONCURRENTLY` (roda em transação e, na primeira publicação, as tabelas estão vazias). Para recriar com dados, rodar à mão com `CREATE INDEX CONCURRENTLY`.

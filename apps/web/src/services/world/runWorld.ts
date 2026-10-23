@@ -87,17 +87,21 @@ async function loadRows(
   filter?: { column: string; value: string },
 ): Promise<Row[]> {
   const scopeColumn = table === "organizations" ? "id" : "organization_id";
+  const pk = schemaOf(table).primaryKey;
   const admin = createSupabaseAdminClient();
   const rows: Row[] = [];
-  for (let from = 0; ; from += PAGE) {
+  // Pagina pela chave ("depois do ultimo id"), com o indice (organization_id, id)
+  // da migracao 46: cada pagina custa o mesmo. Pular N linhas (`range`) fazia a
+  // pagina 28 das presencas percorrer as 27 mil anteriores (doc 19, secao 13).
+  for (let last: unknown = undefined; ; ) {
     let query = admin.from(table).select("*").eq(scopeColumn, ctx.organizationId);
     if (filter) query = query.eq(filter.column, filter.value);
-    const { data, error } = await query
-      .order(schemaOf(table).primaryKey, { ascending: true })
-      .range(from, from + PAGE - 1);
+    if (last !== undefined) query = query.gt(pk, last);
+    const { data, error } = await query.order(pk, { ascending: true }).limit(PAGE);
     if (error) throw new Error(`world: leitura de ${table}: ${error.message}`);
     rows.push(...((data ?? []) as Row[]));
     if (!data || data.length < PAGE) return rows;
+    last = (data[data.length - 1] as Row)[pk];
   }
 }
 
