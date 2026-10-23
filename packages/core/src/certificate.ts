@@ -131,6 +131,16 @@ export const CERTIFICATE_ACCENT_COLORS = [
   "purple",
 ] as const satisfies readonly CertificateAccentColor[];
 
+/** Cor de cada opcao (tela, impressao e PDF). */
+export const CERTIFICATE_ACCENT_HEX: Record<CertificateAccentColor, string> = {
+  graphite: "#3f3f46",
+  navy: "#1e3a8a",
+  green: "#166534",
+  wine: "#881337",
+  gold: "#a16207",
+  purple: "#5b21b6",
+};
+
 /** Variaveis aceitas no titulo, no texto e nos nomes das assinaturas. */
 export const CERTIFICATE_VARIABLES = [
   "aluno",

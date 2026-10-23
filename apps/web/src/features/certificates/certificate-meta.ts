@@ -4,16 +4,16 @@ import type {
   CourseCertificate,
   DateISO,
 } from "@gestarahub/contracts";
-import type { CertificateVariable } from "@gestarahub/core/certificate";
+import { CERTIFICATE_ACCENT_HEX, type CertificateVariable } from "@gestarahub/core/certificate";
 
 /** Cores da paleta (tons escuros: legiveis no papel branco e na impressao). */
 export const ACCENT_COLORS: Record<CertificateAccentColor, { label: string; hex: string }> = {
-  graphite: { label: "Grafite", hex: "#3f3f46" },
-  navy: { label: "Azul-marinho", hex: "#1e3a8a" },
-  green: { label: "Verde", hex: "#166534" },
-  wine: { label: "Vinho", hex: "#881337" },
-  gold: { label: "Dourado", hex: "#a16207" },
-  purple: { label: "Roxo", hex: "#5b21b6" },
+  graphite: { label: "Grafite", hex: CERTIFICATE_ACCENT_HEX.graphite },
+  navy: { label: "Azul-marinho", hex: CERTIFICATE_ACCENT_HEX.navy },
+  green: { label: "Verde", hex: CERTIFICATE_ACCENT_HEX.green },
+  wine: { label: "Vinho", hex: CERTIFICATE_ACCENT_HEX.wine },
+  gold: { label: "Dourado", hex: CERTIFICATE_ACCENT_HEX.gold },
+  purple: { label: "Roxo", hex: CERTIFICATE_ACCENT_HEX.purple },
 };
 
 export const LAYOUT_OPTIONS: { value: CertificateLayout; label: string; description: string }[] = [

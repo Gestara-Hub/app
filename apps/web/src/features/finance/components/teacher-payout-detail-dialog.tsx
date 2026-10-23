@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  FileText,
   Lock,
   MoreVertical,
   Plus,
@@ -38,6 +39,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { isSupabaseOrganization } from "@/lib/session";
+import { useCurrentUser } from "@/features/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -318,6 +321,8 @@ function DetailContent({
   const hasMenu = canManage && (data.status === "closed" || data.status === "paid" || Boolean(data.rule));
 
   const hasFooter = canManage && (isOpen || data.status === "closed");
+  // Demonstrativo em PDF: gerado no servidor (conta real).
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
 
   return (
     <>
@@ -334,6 +339,19 @@ function DetailContent({
             </div>
           </div>
           <div className="-mt-1 -mr-1 flex shrink-0 items-center gap-0.5">
+            {serverDocuments ? (
+              <Button variant="ghost" size="icon-sm" asChild>
+                <a
+                  href={`/api/documents/teacher-pay/${data.professionalId}?competencia=${data.competence}`}
+                  target="_blank"
+                  rel="noopener"
+                  title="Baixar demonstrativo em PDF"
+                  aria-label="Baixar demonstrativo em PDF"
+                >
+                  <FileText className="size-4" />
+                </a>
+              </Button>
+            ) : null}
             {hasMenu ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

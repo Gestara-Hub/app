@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, RotateCw, Wallet } from "lucide-react";
+import { AlertCircle, FileText, RotateCw, Wallet } from "lucide-react";
 import {
   ListContainer,
   ListEmptyState,
@@ -11,6 +11,12 @@ import {
 } from "@/components/shared/list";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -19,7 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { isSupabaseOrganization } from "@/lib/session";
 import { normalizeText } from "@/lib/text";
+import { useCan, useCurrentUser } from "@/features/auth";
 import type { ChargeKind, ChargeView, Id } from "@gestarahub/contracts";
 import { useCharges } from "../hooks/use-billing";
 import {
@@ -54,12 +62,58 @@ function matchesSearch(c: ChargeView, query: string): boolean {
  * Extrato do aluno (ficha do aluno, aba Cobranças): todas as cobranças de todos
  * os meses e tipos, da mais nova. Mesmas linhas, selos e ações da tela Cobranças.
  */
+/** Anos com pagamento do aluno (do mais recente), para a declaracao. */
+function paidYears(charges: ChargeView[]): number[] {
+  const years = new Set<number>();
+  for (const c of charges) {
+    if (c.status === "paid" && c.paidAt) years.add(Number(c.paidAt.slice(0, 4)));
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
+/** Declaracao de pagamentos do ano em PDF (gerada no servidor). */
+function PaymentsStatementButton({ studentId, years }: { studentId: Id; years: number[] }) {
+  const url = (year: number) => `/api/documents/students/${studentId}/payments?ano=${year}`;
+  if (years.length === 1) {
+    return (
+      <Button variant="outline" asChild className="shrink-0">
+        <a href={url(years[0])} target="_blank" rel="noopener">
+          <FileText className="size-4" />
+          Declaração {years[0]}
+        </a>
+      </Button>
+    );
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="shrink-0">
+          <FileText className="size-4" />
+          Declaração de pagamentos
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {years.map((year) => (
+          <DropdownMenuItem key={year} asChild>
+            <a href={url(year)} target="_blank" rel="noopener">
+              Pagamentos de {year}
+            </a>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function StudentChargesPanel({ studentId }: { studentId: Id }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [kindFilter, setKindFilter] = useState<"all" | ChargeKind>("all");
   const { data, isPending, isError, refetch } = useCharges({ studentId });
   const actions = useChargeActions();
+  const can = useCan();
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId) && can("billing:view");
+  const years = serverDocuments ? paidYears(data ?? []) : [];
 
   const all = [...(data ?? [])].sort(newestFirst);
   const ofKind = all.filter((c) => kindFilter === "all" || c.kind === kindFilter);
@@ -144,6 +198,7 @@ export function StudentChargesPanel({ studentId }: { studentId: Id }) {
             </SelectContent>
           </Select>
         </div>
+        {years.length > 0 ? <PaymentsStatementButton studentId={studentId} years={years} /> : null}
       </div>
 
       {!isError ? (

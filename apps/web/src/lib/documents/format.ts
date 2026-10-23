@@ -19,6 +19,18 @@ export function documentDate(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: TIME_ZONE }).format(new Date(iso));
 }
 
+const MONTHS = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+/** "2026-10" -> "Outubro de 2026". */
+export function competenceLongLabel(competence: string): string {
+  const [year, month] = competence.split("-");
+  const name = MONTHS[Number(month) - 1];
+  return name ? `${name[0].toUpperCase()}${name.slice(1)} de ${year}` : competence;
+}
+
 /** "21/09/2026, 14:05" no horario do Brasil. */
 export function documentDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {

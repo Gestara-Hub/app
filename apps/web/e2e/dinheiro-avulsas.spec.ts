@@ -171,7 +171,7 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
   await expect(paid).toContainText("Pago");
   await expect(paid).toContainText("pago via Dinheiro");
   await expect(card("Recebido")).toContainText("R$ 120,00");
-  expect(await contextMenuItems(page, paid)).toEqual(["Desfazer pagamento"]);
+  expect(await contextMenuItems(page, paid)).toEqual(["Baixar recibo", "Desfazer pagamento"]);
 
   // Desfazer pelo botao da linha.
   await paid.getByRole("button", { name: "Desfazer pagamento" }).click();

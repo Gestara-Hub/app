@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Award, ChevronLeft, Printer } from "lucide-react";
+import { Award, ChevronLeft, FileText, Printer } from "lucide-react";
 import { isApiError, type CourseCertificateDocument } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeatureLocked } from "@/components/shared/feature-locked";
-import { useCan } from "@/features/auth";
+import { isSupabaseOrganization } from "@/lib/session";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { CertificateSheet, useStoredFileUrl } from "@/features/certificates";
 import { useCourseCertificate } from "../hooks/use-turmas";
 
@@ -60,8 +61,8 @@ function TemplateCertificateSheet({ sheet }: { sheet: CourseCertificateDocument 
 }
 
 /**
- * Certificado de conclusao do curso, para imprimir ou salvar em PDF pelo
- * navegador (sem biblioteca de PDF). A barra some na impressao.
+ * Certificado de conclusao do curso: na conta real o PDF sai do servidor
+ * (mesmo modelo da folha); na demonstracao, pela impressao do navegador.
  */
 export function CourseCertificateView({
   classGroupId,
@@ -71,6 +72,8 @@ export function CourseCertificateView({
   enrollmentId: string;
 }) {
   const can = useCan();
+  // Conta real: o PDF sai do servidor; na demonstracao, pela impressao do navegador.
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   const { data: sheet, isPending, error } = useCourseCertificate(enrollmentId);
 
   if (isApiError(error) && error.code === "FEATURE_NOT_IN_PLAN") {
@@ -83,7 +86,14 @@ export function CourseCertificateView({
       <style>{"@media print { @page { size: A4 landscape; margin: 10mm; } }"}</style>
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <BackLink classGroupId={classGroupId} />
-        {sheet ? (
+        {sheet && serverDocuments ? (
+          <Button asChild className="gap-1.5">
+            <a href={`/api/documents/certificates/${enrollmentId}`} target="_blank" rel="noopener">
+              <FileText className="size-4" />
+              Baixar PDF
+            </a>
+          </Button>
+        ) : sheet ? (
           <Button type="button" className="gap-1.5" onClick={() => window.print()}>
             <Printer className="size-4" />
             Imprimir ou salvar em PDF

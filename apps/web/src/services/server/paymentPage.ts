@@ -50,7 +50,7 @@ const PAID_METHOD_LABEL: Record<string, string> = {
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 /** "2026-10" -> "out/2026" (curto: cabe numa linha ao lado do rotulo). */
-function competenceLabelOf(competence: string | null | undefined): string | undefined {
+export function competenceLabelOf(competence: string | null | undefined): string | undefined {
   const match = /^(\d{4})-(\d{2})/.exec(competence ?? "");
   if (!match) return undefined;
   const month = MONTHS_SHORT[Number(match[2]) - 1];
@@ -60,7 +60,8 @@ function competenceLabelOf(competence: string | null | undefined): string | unde
 /** Formato do codigo gerado pelo app (`newPublicCode`) e do preenchimento da migracao. */
 const CODE_RE = /^[A-Za-z0-9]{8,20}$/;
 
-function labelOf(kind: ChargeKind, description: string | null): string {
+/** O que e cobrado: "Mensalidade", "Curso Confeitaria"... (pagina, comprovante e recibo). */
+export function chargeLabelOf(kind: ChargeKind, description: string | null): string {
   const what = description?.trim();
   switch (kind) {
     case "membership":
@@ -152,7 +153,7 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
     contactWhatsapp,
     state: paid ? "paid" : gone ? "expired" : "open",
     organizationName: String(org?.name ?? "o espaço"),
-    label: labelOf((charge?.kind ?? "extra") as ChargeKind, (charge?.description as string | null) ?? null),
+    label: chargeLabelOf((charge?.kind ?? "extra") as ChargeKind, (charge?.description as string | null) ?? null),
     amountCents: Number(payment.amount_cents) || 0,
     method: payment.method as OnlinePaymentMethod,
     expiresAt: new Date(String(payment.expires_at)).toISOString(),

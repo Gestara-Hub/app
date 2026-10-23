@@ -157,7 +157,7 @@ test.describe("DRE (Pro)", () => {
     await expect(field("Resultado operacional")).toContainText("R$ 1.000,00");
 
     // CSV com as receitas detalhadas.
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Exportar CSV" }).click()]);
     const csv = await readDownload(download);
     expect(csv).toContain('"Receitas por origem"');
     expect(csv).toContain('"Categoria";"%";"Valor"');
@@ -233,12 +233,11 @@ test.describe("relatórios", () => {
     await expect(row.locator("td").nth(5)).toHaveText("0");
     await expect(row.locator("td").nth(6)).toHaveText("1");
 
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Exportar CSV" }).click()]);
     expect(download.suggestedFilename()).toBe("relatorio-cursos-2026-09.csv");
     const csv = await readDownload(download);
     expect(csv).toContain('"Curso";"Professor";"Início";"Fim";"Matriculados";"Concluídos";"Cancelados";"Contratado";"Recebido";"Em aberto"');
     expect(csv).toContain('"Confeitaria";"Carlos Silva";"03/08/2026";"30/11/2026";"1";"0";"1";"1000,00";"600,00";"400,00"');
-    await expect(page.getByText("Arquivo CSV exportado com sucesso.")).toBeVisible();
 
     // Dezembro: o curso acabou em novembro e nao ha parcela.
     await page.goto("/reports?type=course_summary&period=2026-12");
@@ -283,7 +282,7 @@ test.describe("relatórios", () => {
     const row = doc.locator("tbody tr").filter({ hasText: "10 aulas" });
     await expect(row.locator("td")).toHaveText(["10 aulas", "1", "10", "3", "10", "R$ 500,00"]);
 
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Exportar CSV" }).click()]);
     const csv = await readDownload(download);
     expect(csv).toContain('"Pacote";"Vendidos";"Aulas vendidas";"Aulas usadas";"Saldo de aulas";"Recebido"');
     expect(csv).toContain('"10 aulas";"1";"10";"3";"10";"500,00"');

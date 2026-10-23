@@ -32,12 +32,11 @@ async function gestaraHubLogo(): Promise<DocumentLogo | null> {
 }
 
 /**
- * Logo do espaco (a do modelo de certificado, unica cadastrada hoje); sem ela,
- * ou em formato que o PDF nao le, a do GestaraHub. Le com a chave de servico,
- * sempre filtrando pelo espaco.
+ * Logo do espaco (a do modelo de certificado, unica cadastrada hoje), ou null
+ * sem ela ou em formato que o PDF nao le. Le com a chave de servico, sempre
+ * filtrando pelo espaco.
  */
-export async function loadDocumentLogo(organizationId?: string): Promise<DocumentLogo | null> {
-  if (!organizationId) return gestaraHubLogo();
+export async function loadSpaceLogo(organizationId: string): Promise<DocumentLogo | null> {
   try {
     const admin = createSupabaseAdminClient();
     const { data: org } = await admin
@@ -65,12 +64,28 @@ export async function loadDocumentLogo(organizationId?: string): Promise<Documen
   } catch (error) {
     console.error("[documents] Erro ao carregar a logo do espaço:", error);
   }
-  return gestaraHubLogo();
+  return null;
+}
+
+/** Logo dos documentos: a do espaco; sem ela, a do GestaraHub. */
+export async function loadDocumentLogo(organizationId?: string): Promise<DocumentLogo | null> {
+  return (organizationId ? await loadSpaceLogo(organizationId) : null) ?? gestaraHubLogo();
 }
 
 export async function renderDocumentPdf(model: DocumentModel, organizationId?: string): Promise<Buffer> {
   const logo = await loadDocumentLogo(organizationId);
   return renderToBuffer(<DocumentPdf model={model} logo={logo} />);
+}
+
+/** PDF pronto (abre no navegador). */
+export function pdfResponse(pdf: Buffer, fileName: string): Response {
+  return new Response(new Uint8Array(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${fileName}.pdf"`,
+      "Cache-Control": "private, no-store",
+    },
+  });
 }
 
 /** Resposta de download: PDF (abre no navegador) ou CSV (baixa). */
@@ -88,14 +103,7 @@ export async function documentResponse(
       },
     });
   }
-  const pdf = await renderDocumentPdf(model, organizationId);
-  return new Response(new Uint8Array(pdf), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${model.fileName}.pdf"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+  return pdfResponse(await renderDocumentPdf(model, organizationId), model.fileName);
 }
 
 /** Erro da regra (sem permissao, fora do plano, sem sessao) vira JSON com o status certo. */

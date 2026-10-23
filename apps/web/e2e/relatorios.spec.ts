@@ -140,15 +140,14 @@ async function openReport(page: Page, type: string, period = "2026-09") {
   await expect(page.getByRole("button", { name: "Voltar aos relatórios" })).toBeVisible();
 }
 
-/** Clica em exportar e devolve o nome e o conteudo do CSV baixado. */
+/** Clica em exportar (CSV gerado no servidor) e devolve o nome e o conteudo baixado. */
 async function exportCsv(page: Page) {
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Exportar CSV" }).click(),
+    page.getByRole("link", { name: "Exportar CSV" }).click(),
   ]);
   const file = await download.path();
   const text = await readFile(file, "utf8");
-  await expect(page.getByText("Arquivo CSV exportado com sucesso.")).toBeVisible();
   return { name: download.suggestedFilename(), text };
 }
 
@@ -389,20 +388,18 @@ test.describe("relatórios Pro", () => {
 });
 
 test.describe("imprimir e permissões", () => {
-  test("layout de impressão esconde a barra e mostra o documento", async ({ page }) => {
+  test("PDF sai do servidor e a impressão esconde a barra", async ({ page }) => {
     await seedReports(page);
     await openReport(page, "students_roster");
-    await page.evaluate(() => {
-      (window as unknown as { printed: number }).printed = 0;
-      window.print = () => {
-        (window as unknown as { printed: number }).printed += 1;
-      };
-    });
-    await page.getByRole("button", { name: "Baixar PDF" }).click();
-    expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
+    // PDF gerado no servidor, com os mesmos filtros da tela, em outra aba.
+    const pdf = page.getByRole("link", { name: "Baixar PDF" });
+    await expect(pdf).toHaveAttribute("href", "/api/documents/reports/students_roster?competencia=2026-09");
+    await expect(pdf).toHaveAttribute("target", "_blank");
+    const response = await page.request.get("/api/documents/reports/students_roster?competencia=2026-09");
+    expect(response.headers()["content-type"]).toBe("application/pdf");
 
     await page.emulateMedia({ media: "print" });
-    await expect(page.getByRole("button", { name: "Exportar CSV" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "Exportar CSV" })).toBeHidden();
     await expect(main(page)).toContainText("Relação de alunos");
     await page.emulateMedia({ media: "screen" });
   });
@@ -412,8 +409,10 @@ test.describe("imprimir e permissões", () => {
     await loginAsUser(page, ATTENDANT);
     await openReport(page, "students_roster");
     await expect(main(page)).toContainText("Relação de alunos");
-    await expect(page.getByRole("button", { name: "Exportar CSV" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Baixar PDF" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Exportar CSV" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Baixar PDF" })).toHaveCount(0);
+    const denied = await page.request.get("/api/documents/reports/students_roster?competencia=2026-09");
+    expect(denied.status()).toBe(403);
   });
 
 });

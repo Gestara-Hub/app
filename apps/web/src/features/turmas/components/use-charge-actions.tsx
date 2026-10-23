@@ -4,7 +4,7 @@ import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Ban, CheckCircle2, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
+import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
 import {
   ConfirmActionDialog,
   useConfirmAction,
@@ -19,12 +19,13 @@ import { Input } from "@/components/ui/input";
 import { paymentMethodLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { paymentPageUrl } from "@/lib/payment-page";
+import { isSupabaseOrganization } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import { whatsappDigits } from "@gestarahub/core/phone";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ChargeView } from "@gestarahub/contracts";
-import { useCan, useHasFeature } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { chargeReminder, useWhatsAppSend } from "@/features/communication";
 import { competenceLabel, openFileAttachment } from "@/features/finance";
@@ -75,6 +76,8 @@ export function useChargeActions() {
 
   const can = useCan();
   const canManage = can("billing:manage");
+  // Recibo em PDF: gerado no servidor (conta real).
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
 
   // Cobrar online: billing:manage + recurso do plano + opcao ligada.
   const hasOnlineFeature = useHasFeature()("online_payments");
@@ -190,10 +193,20 @@ export function useChargeActions() {
     },
   ];
 
-  // Comprovantes anexados ao registrar o pagamento.
+  // Recibo do espaco e comprovantes anexados ao registrar o pagamento.
   const receiptActions = (c: ChargeView): ListItemAction[] => {
     const files = c.attachments ?? [];
-    return files.map((file, i) => ({
+    const receipt: ListItemAction[] = serverDocuments
+      ? [
+          {
+            key: "receipt-pdf",
+            label: "Baixar recibo",
+            icon: <FileText className="size-4" />,
+            onSelect: () => window.open(`/api/documents/charges/${c.id}/receipt`, "_blank", "noopener"),
+          },
+        ]
+      : [];
+    return [...receipt, ...files.map((file, i) => ({
       key: `receipt-${file.id}`,
       label: files.length > 1 ? `Ver comprovante ${i + 1}` : "Ver comprovante",
       icon: <Paperclip className="size-4" />,
@@ -201,7 +214,7 @@ export function useChargeActions() {
         void openFileAttachment(file.id).then((ok) => {
           if (!ok) toast.error("Não foi possível abrir o arquivo.");
         }),
-    }));
+    }))];
   };
 
   // Clique direito: espelha o que a linha oferece (menu, desfazer ou reverter).
@@ -313,7 +326,7 @@ export function useChargeActions() {
           />
         );
       }
-      return (
+      const undoButton = (
         <Button
           variant="ghost"
           size="icon-sm"
@@ -322,6 +335,24 @@ export function useChargeActions() {
         >
           <RotateCcw className={iconCls} />
         </Button>
+      );
+      if (!serverDocuments) return undoButton;
+      return (
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon-sm" asChild>
+            <a
+              href={`/api/documents/charges/${c.id}/receipt`}
+              target="_blank"
+              rel="noopener"
+              title="Baixar recibo"
+              aria-label={`Baixar recibo de ${c.studentName}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <FileText className={iconCls} />
+            </a>
+          </Button>
+          {undoButton}
+        </div>
       );
     }
 
