@@ -197,8 +197,10 @@ test("troca de faixa pela idade: 'Graduar' abre a graduação com a sugestão", 
   await dialog.getByRole("button", { name: "Confirmar graduação" }).click();
   await expect(page.getByText("Registrado: Faixa Azul.")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(todoCard(page)).toContainText("3 pendências");
+  // Graduou: sai a troca pela idade e entra o lembrete de parabenizar pelo avanço (doc product/25).
   await expect(todoCard(page)).not.toContainText("trocar de faixa pela idade");
+  await expect(todoCard(page)).toContainText("1 aluno avançou de nível");
+  await expect(todoCard(page)).toContainText("4 pendências");
 });
 
 test("sem pendências o bloco não aparece", async ({ page }) => {

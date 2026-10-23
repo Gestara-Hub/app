@@ -6,14 +6,17 @@ import {
   AlertCircle,
   ArrowUpCircle,
   ArrowUpRight,
+  Award,
   BellOff,
   Cake,
   CalendarClock,
   ChevronDown,
   Clock,
+  HandCoins,
   HeartHandshake,
   MessageCircle,
   Ticket,
+  UserPlus,
 } from "lucide-react";
 import type { Client } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
@@ -167,12 +170,18 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   packages: { icon: <Ticket className="size-4" />, tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
   absence: { icon: <HeartHandshake className="size-4" />, tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
   birthday: { icon: <Cake className="size-4" />, tone: "bg-pink-500/15 text-pink-700 dark:text-pink-300" },
+  level_up: { icon: <Award className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
+  welcome: { icon: <UserPlus className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  payment_received: { icon: <HandCoins className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
 };
 
 /** Rotulo do botao do WhatsApp pelo tipo de lembrete. */
 function whatsAppLabel(item: ReminderItem): string {
   if (item.trigger === "birthday_greeting") return `Mandar parabéns para ${item.studentName} no WhatsApp`;
   if (item.trigger === "package_ending") return `Avisar ${item.studentName} no WhatsApp`;
+  if (item.trigger === "payment_received") return `Agradecer ${item.studentName} no WhatsApp`;
+  if (item.trigger === "level_up") return `Parabenizar ${item.studentName} pelo avanço no WhatsApp`;
+  if (item.trigger === "welcome_student") return `Dar boas-vindas a ${item.studentName} no WhatsApp`;
   if (item.chargeId) return `Cobrar ${item.studentName} no WhatsApp`;
   return `Mandar mensagem para ${item.studentName} no WhatsApp`;
 }

@@ -91,7 +91,7 @@ function reminderSuggestions(charges: ChargeView[], today: DateISO): MessageSugg
 }
 
 /** "mensalidade de outubro"; as outras cobrancas usam a referencia do lembrete. */
-function paidReference(charge: ChargeView): string {
+export function paidReference(charge: ChargeView): string {
   if (charge.kind === "membership" && charge.competence) {
     return `mensalidade de ${format(parseISO(`${charge.competence}-01`), "MMMM", { locale: ptBR })}`;
   }

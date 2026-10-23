@@ -5,7 +5,8 @@ import { formatCents, plural } from "@gestarahub/core/format";
 import { ageTurningThisYear, daysUntilBirthday } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
 import { chargeReminder, packageRemainingText } from "./message-values";
-import { BIRTHDAY_LATE_DAYS } from "./message-suggestions";
+import { levelWithSubLevel } from "@/lib/progression-tracks";
+import { BIRTHDAY_LATE_DAYS, PAYMENT_WINDOW_DAYS, WELCOME_WINDOW_DAYS, paidReference } from "./message-suggestions";
 
 /**
  * Motor de lembretes (doc product/25): a partir dos dados do espaco
@@ -19,7 +20,16 @@ import { BIRTHDAY_LATE_DAYS } from "./message-suggestions";
  * - Adiar e ignorar ficam nas preferencias do usuario (`snoozes`).
  */
 
-export type ReminderGroupKey = "overdue" | "due_today" | "due_soon" | "packages" | "absence" | "birthday";
+export type ReminderGroupKey =
+  | "overdue"
+  | "due_today"
+  | "due_soon"
+  | "packages"
+  | "absence"
+  | "birthday"
+  | "welcome"
+  | "level_up"
+  | "payment_received";
 export type ReminderCategory = "billing" | "relationship";
 
 export interface ReminderItem {
@@ -291,6 +301,70 @@ export function buildReminders(
     .filter(keep)
     .map(withPhone);
 
+  // --- Relacionamento: boas-vindas, avanco de nivel e pagamento recebido ---
+  const studentName = new Map(src.students.map((s) => [s.id, s.name]));
+  const welcomeSince = format(subDays(parseISO(today), WELCOME_WINDOW_DAYS), "yyyy-MM-dd");
+  const welcome = src.students
+    .filter((s) => localDay(s.createdAt) >= welcomeSince)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((s): ReminderItem => {
+      const sent = lastSent(src.logs, (log) => log.trigger === "welcome_student" && log.clientId === s.id);
+      return {
+        key: `welcome:${s.id}`,
+        studentId: s.id,
+        studentName: s.name,
+        trigger: "welcome_student",
+        values: {},
+        detail: `Cadastrado ${relativeDateLabel(localDay(s.createdAt))}`,
+        ...doneFields(sent, today, "Boas-vindas enviadas"),
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
+  const levelUp = src.promotions
+    .filter((p) => studentName.has(p.studentId))
+    .sort((a, b) => b.lastAdvancedAt.localeCompare(a.lastAdvancedAt))
+    .map((p): ReminderItem => {
+      const level = levelWithSubLevel(p.levelName, p.subLevel, p.trackStyle);
+      const sent = lastSent(
+        src.logs,
+        (log) => log.trigger === "level_up" && log.clientId === p.studentId && localDay(log.sentAt) >= p.lastAdvancedAt,
+      );
+      return {
+        key: `level_up:${p.studentId}:${p.modalityId}:${p.lastAdvancedAt}`,
+        studentId: p.studentId,
+        studentName: studentName.get(p.studentId)!,
+        trigger: "level_up",
+        values: { nivel: level },
+        detail: `${level} · ${p.modalityName} · ${relativeDateLabel(p.lastAdvancedAt)}`,
+        ...doneFields(sent, today, "Parabéns enviado"),
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
+  const paidSince = format(subDays(parseISO(today), PAYMENT_WINDOW_DAYS), "yyyy-MM-dd");
+  const paymentReceived = src.charges
+    .filter((c) => c.status === "paid" && c.paidAt && localDay(c.paidAt) >= paidSince)
+    .sort((a, b) => String(b.paidAt).localeCompare(String(a.paidAt)))
+    .map((c): ReminderItem => {
+      const sent = lastSent(src.logs, (log) => log.trigger === "payment_received" && log.chargeId === c.id);
+      return {
+        key: `payment_received:${c.id}`,
+        studentId: c.studentId,
+        studentName: c.studentName,
+        trigger: "payment_received",
+        values: { valor: formatCents(c.amountCents), referencia: paidReference(c) },
+        chargeId: c.id,
+        detail: `${formatCents(c.amountCents)} · pago ${relativeDateLabel(localDay(String(c.paidAt)))}`,
+        amountCents: c.amountCents,
+        ...doneFields(sent, today, "Agradecido"),
+      };
+    })
+    .filter(keep)
+    .map(withPhone);
+
   const names = (items: ReminderItem[]) => namesLine(items.map((i) => i.studentName));
   // Atraso: o total e de quantos meses (a divida nao some na virada do mes).
   const overdueMonths = new Set(
@@ -319,6 +393,9 @@ export function buildReminders(
       (n) => (allToday ? plural(n, "aniversariante hoje", "aniversariantes hoje") : plural(n, "aniversariante na semana", "aniversariantes na semana")),
       names,
     ),
+    group("level_up", "relationship", levelUp, (n) => plural(n, "aluno avançou de nível", "alunos avançaram de nível"), names),
+    group("welcome", "relationship", welcome, (n) => plural(n, "aluno novo para dar boas-vindas", "alunos novos para dar boas-vindas"), names),
+    group("payment_received", "relationship", paymentReceived, (n) => plural(n, "pagamento para agradecer", "pagamentos para agradecer"), moneyDetail),
   ].filter((g): g is ReminderGroup => g !== null);
 }
 

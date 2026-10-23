@@ -1,5 +1,5 @@
 import type { ChargeView, Id, MessageTrigger, ReminderSources } from "@gestarahub/contracts";
-import { subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { can } from "@/lib/permissions";
 import { getCurrentActor } from "@/services/world/actor";
 import { readOp } from "@/services/world/ops";
@@ -7,6 +7,7 @@ import { store } from "@/services/world/store";
 import { chargesService } from "../billing/chargesService";
 import { studentPackagesService } from "../billing/studentPackagesService";
 import { attendanceService } from "../classes/attendanceService";
+import { levelsOf } from "../clients/studentSummaryRules";
 import { actorTeacherId } from "../classes/teacherScope";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
 
@@ -34,6 +35,8 @@ export const REMINDER_TRIGGERS: MessageTrigger[] = [
 /** Mensagens consideradas (atraso volta a lembrar depois de 7 dias; 60 cobre a semana do aniversario e o pacote). */
 const LOG_WINDOW_DAYS = 60;
 const PAID_WINDOW_DAYS = 7;
+/** "Parabéns pelo avanço" ate 14 dias depois (o mesmo da ficha). */
+const PROMOTION_WINDOW_DAYS = 14;
 
 export const remindersService = {
   getReminderSources(): Promise<ReminderSources> {
@@ -84,6 +87,25 @@ export const remindersService = {
         : [];
       const absenceStreaks = (await attendanceService.listAbsenceStreaks(3)).filter((s) => active.has(s.studentId));
 
+      // Avanco de nivel registrado ha pouco (graduacao), para o "Parabéns pelo avanço".
+      const today = format(new Date(), "yyyy-MM-dd");
+      const promotedSince = format(subDays(new Date(), PROMOTION_WINDOW_DAYS), "yyyy-MM-dd");
+      const promotions = store.clients
+        .filter((c) => active.has(c.id) && c.progressions && Object.keys(c.progressions).length > 0)
+        .flatMap((c) =>
+          levelsOf(c, [], today)
+            .filter((l) => l.lastAdvancedAt && l.lastAdvancedAt >= promotedSince)
+            .map((l) => ({
+              studentId: c.id,
+              modalityId: l.modalityId,
+              modalityName: l.modalityName,
+              levelName: l.levelName,
+              subLevel: l.subLevel,
+              trackStyle: l.trackStyle,
+              lastAdvancedAt: l.lastAdvancedAt as string,
+            })),
+        );
+
       const since = subDays(new Date(), LOG_WINDOW_DAYS).toISOString();
       const triggers = new Set(REMINDER_TRIGGERS);
       const logs = ensureLogs()
@@ -98,7 +120,7 @@ export const remindersService = {
         .filter((t) => triggers.has(t.trigger))
         .map((t) => ({ trigger: t.trigger, enabled: t.enabled, daysOffset: t.daysOffset }));
 
-      return { canBilling, students, charges, packages, absenceStreaks, logs, templates };
+      return { canBilling, students, charges, packages, absenceStreaks, promotions, logs, templates };
     });
   },
 };

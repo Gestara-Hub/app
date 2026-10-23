@@ -31,6 +31,7 @@ function sources(over: Partial<ReminderSources> = {}): ReminderSources {
     charges: [],
     packages: [],
     absenceStreaks: [],
+    promotions: [],
     logs: [],
     templates: [{ trigger: "billing_before_due", enabled: true, daysOffset: -3 }],
     ...over,
@@ -63,7 +64,7 @@ describe("motor de lembretes", () => {
       }),
       { today: TODAY },
     );
-    expect(keys(groups)).toEqual(["overdue", "due_today", "due_soon", "birthday"]);
+    expect(keys(groups)).toEqual(["overdue", "due_today", "due_soon", "birthday", "payment_received"]);
     const overdue = groups[0];
     expect(overdue.items.map((i) => i.chargeId)).toEqual(["ch-late-old", "ch-late-new"]);
     expect(overdue.items[0]).toMatchObject({ trigger: "billing_critical", phone: "11988880000" });
@@ -124,5 +125,31 @@ describe("motor de lembretes", () => {
     expect(buildReminders(src, { today: TODAY, snoozes: { [key]: "2026-09-23" } })).toEqual([]);
     expect(buildReminders(src, { today: "2026-09-23", snoozes: { [key]: "2026-09-23" } })).toHaveLength(1);
     expect(buildReminders(src, { today: "2026-09-23", snoozes: { [key]: "never" } })).toEqual([]);
+  });
+
+  it("relacionamento: boas-vindas (até 7 dias), avanço de nível (até 14) e pagamento para agradecer (até 7)", () => {
+    const groups = buildReminders(
+      sources({
+        students: [
+          { id: "c-nova", name: "Nova", createdAt: "2026-09-20T12:00:00.000Z" },
+          { id: "c-antiga", name: "Antiga", createdAt: "2026-08-01T12:00:00.000Z" },
+        ],
+        promotions: [
+          { studentId: "c-antiga", modalityId: "m-jj", modalityName: "Jiu-Jitsu", levelName: "Faixa Azul", subLevel: 1, trackStyle: "belt", lastAdvancedAt: "2026-09-18" },
+        ],
+        charges: [
+          charge("ch-paga", { studentId: "c-antiga", studentName: "Antiga", status: "paid", dueDate: "2026-09-10", paidAt: "2026-09-21T12:00:00.000Z" }),
+          charge("ch-paga-antes", { studentId: "c-antiga", studentName: "Antiga", status: "paid", dueDate: "2026-08-10", paidAt: "2026-08-10T12:00:00.000Z" }),
+        ],
+        logs: [{ trigger: "welcome_student", clientId: "c-nova", sentAt: "2026-09-21T12:00:00.000Z" }],
+      }),
+      { today: TODAY },
+    );
+    const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
+    // Boas-vindas ja enviadas ontem: o grupo some (nada pendente, nada feito hoje).
+    expect(byKey.welcome).toBeUndefined();
+    expect(byKey.level_up.items[0]).toMatchObject({ trigger: "level_up", values: { nivel: "Faixa Azul · 1º grau" } });
+    expect(byKey.payment_received.items.map((i) => i.chargeId)).toEqual(["ch-paga"]);
+    expect(byKey.payment_received.items[0].values.referencia).toBe("mensalidade de setembro");
   });
 });

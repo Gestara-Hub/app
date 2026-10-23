@@ -1,4 +1,5 @@
 import type { ChargeView } from "./billing";
+import type { ProgressionTrackStyle } from "./category";
 import type { AbsenceStreakView } from "./class";
 import type { DateISO, DateTimeISO, Id } from "./common";
 import type { MessageTrigger } from "./communication";
@@ -28,6 +29,17 @@ export interface ReminderLog {
   sentAt: DateTimeISO;
 }
 
+/** Avanco de nivel registrado nos ultimos 14 dias (para o "Parabéns pelo avanço"). */
+export interface ReminderPromotion {
+  studentId: Id;
+  modalityId: Id;
+  modalityName: string;
+  levelName: string;
+  subLevel: number;
+  trackStyle: ProgressionTrackStyle;
+  lastAdvancedAt: DateISO;
+}
+
 export interface ReminderTemplate {
   trigger: MessageTrigger;
   enabled: boolean;
@@ -44,6 +56,7 @@ export interface ReminderSources {
   charges: ChargeView[];
   packages: StudentPackageView[];
   absenceStreaks: AbsenceStreakView[];
+  promotions: ReminderPromotion[];
   /** Mensagens dos ultimos 60 dias, so dos tipos que tem lembrete. */
   logs: ReminderLog[];
   templates: ReminderTemplate[];
