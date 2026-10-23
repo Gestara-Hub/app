@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   ArrowUpRight,
   CheckCircle2,
+  FileText,
   QrCode,
   Settings2,
   Wallet,
@@ -14,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { competenceLongLabel } from "@/lib/documents/format";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
@@ -126,6 +134,8 @@ export function OnlinePaymentsView() {
                 Conta ativa
               </Badge>
 
+              {can("finance:view") ? <StatementMenu /> : null}
+
               {canManage ? (
                 <Button
                   size="sm"
@@ -220,5 +230,37 @@ export function OnlinePaymentsView() {
         </div>
       )}
     </>
+  );
+}
+
+/** Ultimos 6 meses ("2026-10", "2026-09"...), do atual para tras. */
+function recentCompetences(count = 6): string[] {
+  const now = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+/** Extrato da conta de recebimento em PDF, por mes (gerado no servidor). */
+function StatementMenu() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="gap-1.5">
+          <FileText className="size-4" />
+          Extrato em PDF
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {recentCompetences().map((competence) => (
+          <DropdownMenuItem key={competence} asChild>
+            <a href={`/api/documents/online-payments?competencia=${competence}`} target="_blank" rel="noopener">
+              {competenceLongLabel(competence)}
+            </a>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

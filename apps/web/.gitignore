@@ -48,3 +48,6 @@ next-env.d.ts
 
 # servidor dos testes do navegador em outra porta (E2E_PORT)
 /.next-e2e/
+
+# servidor local de conferencia dos documentos
+/.next-docs/

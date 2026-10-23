@@ -233,3 +233,83 @@ export function teacherStatementDocument(input: TeacherStatementInput): Document
     ],
   };
 }
+
+export interface OnlineStatementRow {
+  paidAt: string;
+  studentName: string;
+  label: string;
+  methodLabel: string;
+  amountCents: number;
+  feeCents: number;
+  netCents: number;
+  /** "Disponível" ou "Libera em 21/11/2026" (cartao). */
+  availability: string;
+}
+
+export interface OnlineStatementInput {
+  organizationName: string;
+  organizationDetails?: string;
+  competence: string;
+  competenceLabel: string;
+  rows: OnlineStatementRow[];
+  issuedAt: string;
+}
+
+/** Extrato da conta de recebimento: pagamentos online do mes, taxas e liquido. */
+export function onlineStatementDocument(input: OnlineStatementInput): DocumentModel {
+  const sum = (pick: (row: OnlineStatementRow) => number) => input.rows.reduce((total, row) => total + pick(row), 0);
+  const paid = sum((r) => r.amountCents);
+  const fees = sum((r) => r.feeCents);
+  const net = sum((r) => r.netCents);
+  return {
+    fileName: `extrato-recebimentos-online-${input.competence}`,
+    title: "Extrato de recebimentos online",
+    subtitle: `Pagamentos confirmados em ${input.competenceLabel.toLowerCase()}.`,
+    header: { organizationName: input.organizationName, details: input.organizationDetails },
+    meta: [
+      { label: "Período", value: input.competenceLabel },
+      { label: "Emitido em", value: documentDateTime(input.issuedAt) },
+    ],
+    landscape: true,
+    blocks: [
+      {
+        type: "kpis",
+        items: [
+          { label: "Pagamentos", value: input.rows.length, format: "integer" },
+          { label: "Recebido", value: paid, format: "money" },
+          { label: "Taxas", value: fees, format: "money", tone: fees > 0 ? "negative" : "default" },
+          { label: "Líquido", value: net, format: "money", tone: "positive" },
+        ],
+      },
+      {
+        type: "table",
+        columns: [
+          { key: "paidAt", label: "Pago em", format: "datetime", width: 1.2 },
+          { key: "student", label: "Aluno", width: 1.7 },
+          { key: "label", label: "Referente a", width: 1.7 },
+          { key: "method", label: "Forma", width: 1 },
+          { key: "amount", label: "Valor", format: "money" },
+          { key: "fee", label: "Taxas", format: "money" },
+          { key: "net", label: "Líquido", format: "money" },
+          { key: "availability", label: "Saldo", width: 1.3 },
+        ],
+        rows: input.rows.map((r) => ({
+          cells: {
+            paidAt: r.paidAt,
+            student: r.studentName,
+            label: r.label,
+            method: r.methodLabel,
+            amount: r.amountCents,
+            fee: r.feeCents,
+            net: r.netCents,
+            availability: r.availability,
+          },
+          tones: { fee: r.feeCents > 0 ? "negative" : "default", net: "positive" },
+        })),
+        totals: { student: "Total", amount: paid, fee: fees, net },
+        emptyText: "Nenhum pagamento online neste mês.",
+      },
+    ],
+    footnote: "Valores do parceiro de pagamentos regulado. Taxas incluem a tarifa do parceiro e a do GestaraHub.",
+  };
+}

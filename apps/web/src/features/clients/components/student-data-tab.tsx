@@ -21,6 +21,8 @@ import { useConfirmPaperMinorConsent } from "../hooks/use-clients";
 import { brDate, PERIOD_SHORT, TIMING_LABEL } from "./student-profile-parts";
 import { ageLabel } from "@/lib/birthdays";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
+import { isSupabaseOrganization } from "@/lib/session";
+import { useCurrentUser } from "@/features/auth";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -69,6 +71,8 @@ export function StudentDataTab({
   const address = addressText(student.address);
   const { data: organization } = useOrganization();
   const confirmPaperMutation = useConfirmPaperMinorConsent();
+  // Termo em PDF: gerado no servidor (conta real).
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
 
   const handleCopyLink = () => {
     const url = minorConsentUrl(student.id);
@@ -257,6 +261,19 @@ export function StudentDataTab({
                   >
                     <FileText className="size-3.5" />
                     Registrar termo impresso
+                  </Button>
+                ) : null}
+                {serverDocuments ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <a href={`/api/documents/students/${student.id}/consent`} target="_blank" rel="noopener">
+                      <FileText className="size-3.5" />
+                      Baixar termo
+                    </a>
                   </Button>
                 ) : null}
               </div>

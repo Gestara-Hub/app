@@ -4,7 +4,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, FileText } from "lucide-react";
 import type { Id, ReportCardModality } from "@gestarahub/contracts";
 import {
   DialogBody,
@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
+import { isSupabaseOrganization } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/features/auth";
+import { Button } from "@/components/ui/button";
 import { useCategories } from "@/features/categories";
 import { useModalityVocabulary } from "@/features/settings";
 import { useStudentReportCard } from "../hooks/use-grades";
@@ -166,6 +169,8 @@ export function StudentGradesDialog({
 }) {
   const client = useRetainedValue(clientProp);
   const present = useDialogPresence(open);
+  // Boletim em PDF: gerado no servidor (conta real).
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
   if (!client) return null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -177,6 +182,14 @@ export function StudentGradesDialog({
         <SheetHeader className="shrink-0 p-6 pb-3 pr-16 text-left border-b border-border/40">
           <SheetTitle className="text-lg font-semibold text-foreground">Notas</SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">{client.name}</SheetDescription>
+          {serverDocuments ? (
+            <Button variant="outline" asChild className="mt-2 w-fit gap-1.5">
+              <a href={`/api/documents/students/${client.id}/report-card`} target="_blank" rel="noopener">
+                <FileText className="size-4" />
+                Baixar boletim
+              </a>
+            </Button>
+          ) : null}
         </SheetHeader>
         <DialogBody className="pb-6">
           {present ? <ReportCardContent studentId={client.id} initialModalityId={initialModalityId} /> : null}
