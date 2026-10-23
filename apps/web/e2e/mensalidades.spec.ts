@@ -18,7 +18,7 @@ async function payWith(page: Page, method: string) {
 }
 
 test.describe("cadastro e geração de mensalidades", () => {
-  test("depois do uso + proporcional: 1ª cobrança em 10/10 e nada em setembro", async ({ page }) => {
+  test("depois do uso + proporcional: 1ª cobrança em 10/10 e nada em setembro", { tag: "@smoke" }, async ({ page }) => {
     await seedAcademy(page, { timing: "postpaid", strategy: "prorated" });
 
     await page.goto("/clients");
@@ -57,7 +57,7 @@ test.describe("operações de cobrança", () => {
     await expect(rowOf(page, "Aluno B20")).toBeVisible();
   });
 
-  test("marcar pago exige a forma de pagamento e desfazer pede confirmação", async ({ page }) => {
+  test("marcar pago exige a forma de pagamento e desfazer pede confirmação", { tag: "@smoke" }, async ({ page }) => {
     const row = rowOf(page, "Aluno A20");
     await expect(row).toContainText("Atrasado");
     await rowAction(page, "Aluno A20", "Marcar pago");

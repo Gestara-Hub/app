@@ -13,7 +13,7 @@ test.describe("guarda de rota", () => {
     }
   });
 
-  test("academia não abre agenda nem serviços", async ({ page }) => {
+  test("academia não abre agenda nem serviços", { tag: "@smoke" }, async ({ page }) => {
     await loginAs(page, "Ana Ribeiro");
     for (const route of ["/schedule", "/services", "/appointments"]) {
       await page.goto(route);
@@ -31,7 +31,7 @@ test.describe("guarda de rota", () => {
     expect(pathOf(page)).toBe("/dashboard");
   });
 
-  test("sem sessão vai ao login e volta com a query", async ({ page }) => {
+  test("sem sessão vai ao login e volta com a query", { tag: "@smoke" }, async ({ page }) => {
     await page.goto("/classes/calendar?instructor=x");
     await expect.poll(() => pathOf(page)).toBe("/login");
     expect(new URL(page.url()).searchParams.get("from")).toBe("/classes/calendar?instructor=x");

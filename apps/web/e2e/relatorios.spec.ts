@@ -152,7 +152,7 @@ async function exportCsv(page: Page) {
 }
 
 test.describe("catálogo", () => {
-  test("grátis: 8 relatórios, os de gestão travados no Pro", async ({ page }) => {
+  test("grátis: 8 relatórios, os de gestão travados no Pro", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page);
     await page.goto("/reports");
     await expect(page.getByRole("heading", { level: 1, name: "Relatórios" })).toBeVisible();
@@ -197,7 +197,7 @@ test.describe("catálogo", () => {
 });
 
 test.describe("relatórios operacionais", () => {
-  test("lista de presença da turma: presença do mês e faixa salva", async ({ page }) => {
+  test("lista de presença da turma: presença do mês e faixa salva", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page);
     await openReport(page, "attendance_sheet");
     const sheet = main(page);
@@ -388,7 +388,7 @@ test.describe("relatórios Pro", () => {
 });
 
 test.describe("imprimir e permissões", () => {
-  test("PDF sai do servidor e a impressão esconde a barra", async ({ page }) => {
+  test("PDF sai do servidor e a impressão esconde a barra", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page);
     await openReport(page, "students_roster");
     // PDF gerado no servidor, com os mesmos filtros da tela, em outra aba.
@@ -404,7 +404,7 @@ test.describe("imprimir e permissões", () => {
     await page.emulateMedia({ media: "screen" });
   });
 
-  test("atendente vê os relatórios mas não exporta", async ({ page }) => {
+  test("atendente vê os relatórios mas não exporta", { tag: "@smoke" }, async ({ page }) => {
     await seedReports(page, { extra: (t) => t.users.push(ATTENDANT) });
     await loginAsUser(page, ATTENDANT);
     await openReport(page, "students_roster");

@@ -33,7 +33,7 @@ const installment = (id: string, studentId: string, i: number, total: number, ov
     ...over,
   });
 
-test("lutas: curso pelo formulário (validação do fim), matrícula em lote com valor ajustado e filtro Cursos", async ({
+test("lutas: curso pelo formulário (validação do fim), matrícula em lote com valor ajustado e filtro Cursos", { tag: "@smoke" }, async ({
   page,
 }) => {
   await seedAcademy(page, {
@@ -227,7 +227,7 @@ test("curso terminado no grátis: Concluído, sem matrícula nova e certificado 
   await expect(page).toHaveURL(/\/classes\/cg-old$/);
 });
 
-test("curso terminado no Pro: o certificado mostra a aluna, as aulas e a frequência, e imprime", async ({ page }) => {
+test("curso terminado no Pro: o certificado mostra a aluna, as aulas e a frequência, e imprime", { tag: "@smoke" }, async ({ page }) => {
   const pro = await makePro(page);
   await seedAcademy(page, {
     extra: (t) => {

@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     // Build do servidor dos testes do navegador em outra porta (E2E_PORT).
     ".next-e2e/**",
+    ".next-e2e-prod/**",
+    ".next-docs/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

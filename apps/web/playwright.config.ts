@@ -17,11 +17,15 @@ if (existsSync(ENV_FILE)) {
 // A 3000 fica livre para o `pnpm dev`.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://localhost:${PORT}`;
+const PROD_SERVER = process.env.E2E_SERVER === "prod";
+const E2E_ENV = "E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY=";
 
 // Testes de ponta a ponta no navegador. Usa o Chrome instalado na maquina
 // (sem download de navegador) e reaproveita o servidor da 3100 se ja estiver no ar.
 export default defineConfig({
   testDir: "./e2e",
+  // Apaga sobras de rodadas interrompidas antes de comecar (ids fixos nos cenarios).
+  globalSetup: "./e2e/global-setup.ts",
   // Um teste por vez: os cenarios usam ids fixos (ex.: "m-jj") no mesmo banco.
   fullyParallel: false,
   workers: 1,
@@ -44,9 +48,14 @@ export default defineConfig({
   ],
   webServer: {
     // Chaves vazias: gateway simulado, sem e-mail e sem PostHog (Asaas, MailerSend e analise de verdade, nunca).
-    command: `NEXT_DIST_DIR=.next-e2e E2E_NOW=2026-09-22T12:00:00-03:00 ASAAS_API_KEY= MAILERSEND_API_KEY= NEXT_PUBLIC_POSTHOG_KEY= npx next dev -p ${PORT}`,
+    // E2E_SERVER=prod: build de producao e `next start` (rodadas grandes: sem compilar
+    // rota na primeira visita, menos falha instavel; doc 20). Padrao: `next dev`.
+    command: PROD_SERVER
+      ? `${E2E_ENV} NEXT_DIST_DIR=.next-e2e-prod sh -c "npx next build && npx next start -p ${PORT}"`
+      : `${E2E_ENV} NEXT_DIST_DIR=.next-e2e npx next dev -p ${PORT}`,
     url: `${BASE_URL}/login`,
     reuseExistingServer: true,
-    timeout: 120_000,
+    // O build de producao leva alguns minutos na primeira vez.
+    timeout: PROD_SERVER ? 600_000 : 120_000,
   },
 });

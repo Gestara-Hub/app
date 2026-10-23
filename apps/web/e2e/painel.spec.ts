@@ -10,7 +10,7 @@ test("boas-vindas: título sem emoji", async ({ page }) => {
   expect(title).not.toMatch(/\p{Extended_Pictographic}/u);
 });
 
-test("dashboard: mês sem mensalidade avisa que nada foi gerado", async ({ page }) => {
+test("dashboard: mês sem mensalidade avisa que nada foi gerado", { tag: "@smoke" }, async ({ page }) => {
   // Com aluno e turma (sem isso o Dashboard mostra os "Primeiros passos"), mas sem plano.
   await seedAcademy(page, {
     extra: (t) => {

@@ -329,7 +329,7 @@ test.describe("topo e resumos das seções", () => {
 });
 
 test.describe("avisos do topo", () => {
-  test("atraso único: o aviso diz o que é, 'Cobrar' abre o WhatsApp e 'Marcar pago' tira o aviso", async ({ page }) => {
+  test("atraso único: o aviso diz o que é, 'Cobrar' abre o WhatsApp e 'Marcar pago' tira o aviso", { tag: "@smoke" }, async ({ page }) => {
     await seedProfile(page);
     await page.goto(PROFILE);
     const overdue = profileAlert(page, "Mensalidade de setembro atrasada");
@@ -411,7 +411,7 @@ test.describe("avisos do topo", () => {
 });
 
 test.describe("Editar e o menu ⋮ do aluno", () => {
-  test("Editar salva e a ficha mostra o nome novo", async ({ page }) => {
+  test("Editar salva e a ficha mostra o nome novo", { tag: "@smoke" }, async ({ page }) => {
     await seedProfile(page);
     await page.goto(PROFILE);
     await page.getByRole("button", { name: "Editar", exact: true }).first().click();
@@ -423,7 +423,7 @@ test.describe("Editar e o menu ⋮ do aluno", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Aluna Ficha Editada" })).toBeVisible();
   });
 
-  test("Nova cobrança com a aluna fixa entra no extrato e no resumo de Cobranças", async ({ page }) => {
+  test("Nova cobrança com a aluna fixa entra no extrato e no resumo de Cobranças", { tag: "@smoke" }, async ({ page }) => {
     await seedProfile(page);
     await page.goto(`${PROFILE}?tab=charges`);
     await moreAction(page, "Nova cobrança");
@@ -625,7 +625,7 @@ test.describe("seções", () => {
     await expect(classes.getByRole("button", { name: "Abrir turma Jiu-Jitsu Adulto" })).toContainText("Saiu em 05/09");
   });
 
-  test("Cobranças: extrato de todos os tipos, filtros, busca e substituídas com 'Mostrar'", async ({ page }) => {
+  test("Cobranças: extrato de todos os tipos, filtros, busca e substituídas com 'Mostrar'", { tag: "@smoke" }, async ({ page }) => {
     await seedProfile(page, (t) => {
       t.charges = [
         charge("ch-kimono", { kind: "extra", description: "Kimono", competence: "2026-09" }),

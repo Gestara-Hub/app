@@ -33,7 +33,7 @@ const TYPEWRITER_WORDS = [
 ];
 
 test.describe("landing page", () => {
-  test("selo do plano grátis, sem \"para sempre\" em lugar nenhum", async ({ page }) => {
+  test("selo do plano grátis, sem \"para sempre\" em lugar nenhum", { tag: "@smoke" }, async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText("Plano grátis • Sem cartão de crédito")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Chega de caderno e planilha.");

@@ -45,7 +45,7 @@ async function openTab(page: Page, name: "Mensagens" | "Histórico" | "Conexão"
 }
 
 test.describe("envio assistido (grátis)", () => {
-  test("grátis usa o envio assistido e mostra o oficial como recurso do Pro", async ({ page }) => {
+  test("grátis usa o envio assistido e mostra o oficial como recurso do Pro", { tag: "@smoke" }, async ({ page }) => {
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/communication");
     await expect(page.getByText("Mensagens prontas que abrem no WhatsApp do seu espaço.")).toBeVisible();
@@ -64,7 +64,7 @@ test.describe("envio assistido (grátis)", () => {
     await expect(page.getByRole("switch")).toHaveCount(0);
   });
 
-  test("lembrete de mensalidade atrasada abre o WhatsApp com o texto pronto e vai para o Histórico", async ({
+  test("lembrete de mensalidade atrasada abre o WhatsApp com o texto pronto e vai para o Histórico", { tag: "@smoke" }, async ({
     page,
   }) => {
     await seedAcademy(page, { extra: withStudent });

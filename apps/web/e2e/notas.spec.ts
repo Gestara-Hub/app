@@ -183,7 +183,7 @@ test.describe("modalidade", () => {
 });
 
 test.describe("avaliações da turma", () => {
-  test("criar (sugestão, peso decimal, módulo), editar, buscar e excluir", async ({ page }) => {
+  test("criar (sugestão, peso decimal, módulo), editar, buscar e excluir", { tag: "@smoke" }, async ({ page }) => {
     await seedSchool(page);
     await openAssessments(page);
     await expect(page.getByText("Nenhuma avaliação ainda.")).toBeVisible();
@@ -275,7 +275,7 @@ test.describe("avaliações da turma", () => {
 });
 
 test.describe("lançar notas", () => {
-  test("0 a 10: vírgula, abaixo da mínima, média ao vivo, faltou, sem nota e nota inválida", async ({ page }) => {
+  test("0 a 10: vírgula, abaixo da mínima, média ao vivo, faltou, sem nota e nota inválida", { tag: "@smoke" }, async ({ page }) => {
     await seedSchool(page, {
       extra: (t) => {
         t.assessments = [assessment("as-1", "cg-ing", "m-ing", "Prova 1", { levelId: "lvl-mod-basic" })];

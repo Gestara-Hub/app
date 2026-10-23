@@ -62,7 +62,7 @@ async function openFromClients(page: Page, name: string, item: "Graduação" | "
 }
 
 test.describe("graduação", () => {
-  test("dar o próximo grau registra quem graduou na jornada", async ({ page }) => {
+  test("dar o próximo grau registra quem graduou na jornada", { tag: "@smoke" }, async ({ page }) => {
     await seedStudent(page, { progressions: { "m-jj": progression() } });
     const dialog = await openFromClients(page, "Aluno Adulto", "Graduação");
     await expect(dialog.getByRole("heading", { name: "Graduação" })).toBeVisible();
@@ -193,7 +193,7 @@ test.describe("registros de aula", () => {
     await expect(dialog.getByText("hoje · Ana Ribeiro")).toBeVisible();
   });
 
-  test("registrar a aula em lote pela chamada (presentes, tons e anotação da turma)", async ({ page }) => {
+  test("registrar a aula em lote pela chamada (presentes, tons e anotação da turma)", { tag: "@smoke" }, async ({ page }) => {
     const SESSION = "cg-1~2026-09-21~17:00";
     await seedAcademy(page, {
       extra: (t) => {

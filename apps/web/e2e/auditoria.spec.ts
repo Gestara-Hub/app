@@ -104,7 +104,7 @@ test.describe("eventos das ações principais", () => {
     await expect(auditRow(page, "Ana Ribeiro inativou o aluno Aluno Saindo")).toContainText("Ana Ribeiro · Proprietário");
   });
 
-  test("dinheiro: pagamento de mensalidade e venda de pacote", async ({ page }) => {
+  test("dinheiro: pagamento de mensalidade e venda de pacote", { tag: "@smoke" }, async ({ page }) => {
     test.slow();
     await seedAudit(page);
 

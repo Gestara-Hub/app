@@ -1,6 +1,6 @@
 # 20. Tempo dos testes: plano para esperar o mínimo
 
-Data: 2026-10-23. Status: proposta (medições feitas, nada mudado).
+Data: 2026-10-23. Status: etapa 1 feita (seção 6); etapas 2 a 4 propostas.
 
 ## 1. Onde estamos
 
@@ -58,3 +58,17 @@ Medido no Vitest: sem isolar arquivos (`--isolate=false`), **6 s em vez de 20 s*
 ## 5. Ordem sugerida
 
 Etapa 1 (itens 1 a 4) agora; etapa 2 quando o repositório for para o GitHub Actions; etapas 3 e 4 conforme as falhas instáveis e o tempo do CI.
+
+## 6. Etapa 1 feita (23/10/2026)
+
+| Comando | O que roda | Tempo medido |
+| --- | --- | --- |
+| `pnpm --filter @gestarahub/web test` | Vitest em dois grupos (`rapido` sem isolar; `isolado` para arquivos com `vi.mock`, detectados sozinhos) | **4 s** (era 20 s); estável com ordem embaralhada |
+| `pnpm --filter @gestarahub/web e2e:smoke` | 42 testes marcados `@smoke` em 20 arquivos | **4 min** |
+| `pnpm --filter @gestarahub/web e2e:area turmas` | Só os specs da área (sem área: lista as áreas) | 1 a 8 min, conforme a área |
+| `pnpm --filter @gestarahub/web e2e:prod` | Qualquer seleção sobre build de produção (`E2E_SERVER=prod`) | smoke em 3,4 min contando o build |
+
+Achados no caminho (corrigidos):
+- **Sobras entre testes:** os cenários usam ids fixos e `apply_world_changes` procurava a linha só pelo id; um id que existia em outro espaço de teste era trazido para o espaço novo, a exclusão no fim do teste falhava calada e o lixo crescia (127 espaços). Migração 41: a gravação recusa linha de outro espaço. `e2e/global-setup.ts` apaga as sobras antes de cada rodada (só usuários `e2e-…@gestarahub.test`) e a limpeza de cada teste avisa quando falha.
+- **Troca de usuário no meio do teste:** a página anterior seguia buscando sem sessão ("sessão expirou" no console, só visível no modo produção); o helper sai da página antes de trocar os cookies.
+- **E-mail sem chave no modo produção dos e2e:** o servidor de teste (com `E2E_NOW`) registra o link como no desenvolvimento.

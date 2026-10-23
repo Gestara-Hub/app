@@ -109,9 +109,12 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
 ```
 - Full suites, only when the user asks:
 ```bash
-pnpm test                                # billing engine (node --test) + services (Vitest)
-pnpm e2e                                 # browser flows (Playwright, system Chrome, reuses `pnpm dev`)
+pnpm test                                # billing engine (node --test) + services (Vitest, ~4 s)
+pnpm --filter @gestarahub/web e2e:smoke  # 42 critical browser flows (@smoke), ~4 min
+pnpm --filter @gestarahub/web e2e:area turmas  # only the specs of one area (no area: lists them)
+pnpm e2e                                 # all browser flows (Playwright, one at a time, 30-45 min); E2E_SERVER=prod for a production build
 ```
+- Test tooling and timings: `docs/technical/20-tempo-dos-testes.md`.
 - Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`.
 
 ---

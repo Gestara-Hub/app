@@ -20,7 +20,7 @@ async function savedAcademy(page: Page) {
   };
 }
 
-test("configuração inicial orienta cada passo e aceita uma área fora da lista", async ({ page }) => {
+test("configuração inicial orienta cada passo e aceita uma área fora da lista", { tag: "@smoke" }, async ({ page }) => {
   await setSessionCookie(page, "Ana Ribeiro");
   await page.goto("/setup");
 

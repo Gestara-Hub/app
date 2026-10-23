@@ -106,7 +106,7 @@ const todoCard = (page: Page) =>
 const todoRow = (page: Page, title: string | RegExp) =>
   todoCard(page).getByRole("listitem").filter({ has: page.getByText(title) }).first();
 
-test("para fazer hoje: uma linha por pendência, com o contador", async ({ page }) => {
+test("para fazer hoje: uma linha por pendência, com o contador", { tag: "@smoke" }, async ({ page }) => {
   await seedTodo(page);
   const card = todoCard(page);
   await expect(card).toContainText("4 pendências");

@@ -59,7 +59,7 @@ async function seedTeam(page: Page, extra?: (t: Tenant) => void) {
 }
 
 test.describe("cadastro de usuários (proprietário)", () => {
-  test("validações, e-mail repetido e novo atendente", async ({ page }) => {
+  test("validações, e-mail repetido e novo atendente", { tag: "@smoke" }, async ({ page }) => {
     await seedTeam(page);
     await page.goto("/users");
     await page.getByRole("button", { name: "Novo usuário" }).click();

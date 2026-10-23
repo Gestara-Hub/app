@@ -85,7 +85,7 @@ function mixedMonth(t: Record<string, unknown>) {
   ];
 }
 
-test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação e os menus de cada estado", async ({ page }) => {
+test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação e os menus de cada estado", { tag: "@smoke" }, async ({ page }) => {
   await seedAcademy(page, { extra: mixedMonth });
   await page.goto("/classes/billing?status=all");
 
@@ -313,7 +313,7 @@ async function payOnline(page: Page, name: string, method: "Pix" | "Link de cart
 }
 
 test.describe("Pro", () => {
-  test("Cobrar online em mensalidade, avulsa, curso e pacote: Pix ou link, simular e \"Pago online\" sem desfazer", async ({
+  test("Cobrar online em mensalidade, avulsa, curso e pacote: Pix ou link, simular e \"Pago online\" sem desfazer", { tag: "@smoke" }, async ({
     page,
   }) => {
     const pro = await makePro(page);

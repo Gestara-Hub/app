@@ -56,7 +56,7 @@ async function entryAction(page: Page, description: string, action: string) {
 }
 
 test.describe("lançamentos", () => {
-  test("despesa que se repete aparece neste mês, no próximo e no Resumo", async ({ page }) => {
+  test("despesa que se repete aparece neste mês, no próximo e no Resumo", { tag: "@smoke" }, async ({ page }) => {
     await seedAcademy(page);
     await page.goto("/finance?tab=lancamentos");
     await expect(page.getByText("Nenhum lançamento em setembro de 2026")).toBeVisible();
@@ -94,7 +94,7 @@ test.describe("lançamentos", () => {
     await expect(page.getByText("+ R$ 1.500,00 a pagar até o fim do mês")).toBeVisible();
   });
 
-  test("marcar pago exige a forma e desfazer pede confirmação; depois não exclui mais", async ({ page }) => {
+  test("marcar pago exige a forma e desfazer pede confirmação; depois não exclui mais", { tag: "@smoke" }, async ({ page }) => {
     await seedAcademy(page, {
       extra: (t) => (t.financialEntries = [entry("fe-kimonos", "Kimonos para revenda")]),
     });
@@ -224,7 +224,7 @@ test("seletor de mês: \"Hoje\" só fora do mês atual e o mês vai para a URL",
   await expect(page.getByRole("button", { name: "Escolher mês (Dezembro de 2026)" })).toBeVisible();
 });
 
-test("professor: regra, ajuste, fechar o mês, pagar via Pix e desfazer", async ({ page }) => {
+test("professor: regra, ajuste, fechar o mês, pagar via Pix e desfazer", { tag: "@smoke" }, async ({ page }) => {
   await seedAcademy(page);
   // Agosto ja terminou: pode fechar sem o aviso de mes em andamento.
   await page.goto("/finance?tab=professores&month=2026-08");

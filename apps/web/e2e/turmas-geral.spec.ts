@@ -69,7 +69,7 @@ async function openNewClass(page: Page) {
 }
 
 test.describe("cadastro de turma", () => {
-  test("criar, editar pela lista e ver o detalhe", async ({ page }) => {
+  test("criar, editar pela lista e ver o detalhe", { tag: "@smoke" }, async ({ page }) => {
     await seedClasses(page);
     const dialog = await openNewClass(page);
     await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();
@@ -219,7 +219,7 @@ test.describe("aula", () => {
     await expect(page.getByText(/^Substitui /)).toHaveCount(0);
   });
 
-  test("chamada: presente, falta, justificada e desmarcar", async ({ page }) => {
+  test("chamada: presente, falta, justificada e desmarcar", { tag: "@smoke" }, async ({ page }) => {
     await seedClasses(page, (t) => {
       t.enrollments.push(enrollment("e-2", "cg-1", "c-b"), enrollment("e-3", "cg-1", "c-c"));
     });
@@ -272,7 +272,7 @@ test.describe("aula", () => {
     await expect(bruno).toHaveAccessibleName("Bruno Lima: sem marcação");
   });
 
-  test("aula experimental e avulso com valor na aula", async ({ page }) => {
+  test("aula experimental e avulso com valor na aula", { tag: "@smoke" }, async ({ page }) => {
     await seedClasses(page);
     await page.goto(SESSION_PAST);
     await pageAction(page, "Mais ações da aula", "Adicionar aluno nesta aula");
@@ -310,7 +310,7 @@ test.describe("lista de espera", () => {
     });
   }
 
-  test("turma lotada: pôr na espera, promover e remover", async ({ page }) => {
+  test("turma lotada: pôr na espera, promover e remover", { tag: "@smoke" }, async ({ page }) => {
     await seedFull(page);
     await page.goto("/classes/cg-1");
     await page.getByRole("button", { name: "Matricular alunos", exact: true }).first().click();

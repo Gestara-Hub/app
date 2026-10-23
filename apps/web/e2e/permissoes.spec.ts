@@ -106,7 +106,7 @@ async function openAssessments(page: Page, classId: string) {
 }
 
 test.describe("professor", () => {
-  test("lança notas só na própria turma; a dos outros não abre", async ({ page }) => {
+  test("lança notas só na própria turma; a dos outros não abre", { tag: "@smoke" }, async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, PROF, PROF_LINK);
 
@@ -193,7 +193,7 @@ test.describe("atendente", () => {
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova Carlos");
   });
 
-  test("ficha: vê cobranças sem ações, edita o cadastro, não cobra nem vende", async ({ page }) => {
+  test("ficha: vê cobranças sem ações, edita o cadastro, não cobra nem vende", { tag: "@smoke" }, async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, ATTENDANT);
     await page.goto("/clients/c-a");
@@ -263,7 +263,7 @@ test.describe("Plano Profissional", () => {
     await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
   });
 
-  test("Pro: o certificado abre com o PDF, também para a atendente", async ({ page }) => {
+  test("Pro: o certificado abre com o PDF, também para a atendente", { tag: "@smoke" }, async ({ page }) => {
     await seedSchool(page, (t) => {
       t.organization.subscription = { tier: "pro" };
     });

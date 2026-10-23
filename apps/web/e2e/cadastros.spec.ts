@@ -1,6 +1,6 @@
 import { expect, loginAs, seedAcademy, student, test } from "./fixtures";
 
-test("reativar aluno pede confirmação", async ({ page }) => {
+test("reativar aluno pede confirmação", { tag: "@smoke" }, async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-x", "Aluno Inativo", { status: "inactive" })]) });
   await page.goto("/clients");
   // A lista abre so com os ativos.
@@ -25,7 +25,7 @@ test("plano não aceita valor zero", async ({ page }) => {
   await expect(dialog.getByText("Informe um valor maior que zero.")).toBeVisible();
 });
 
-test("busca de aluno por telefone formatado", async ({ page }) => {
+test("busca de aluno por telefone formatado", { tag: "@smoke" }, async ({ page }) => {
   await seedAcademy(page, { extra: (t) => (t.clients = [student("c-m", "Maria", { phone: "11977776603" })]) });
   await page.goto("/clients");
   await page.getByPlaceholder("Buscar por nome ou telefone...").fill("97777-6603");

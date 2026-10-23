@@ -167,7 +167,7 @@ test.describe("catálogo", () => {
 });
 
 test.describe("venda", () => {
-  test("vender com valor editado e 3x, selo na lista, cobranças em Pacotes e cancelar o pacote", async ({ page }) => {
+  test("vender com valor editado e 3x, selo na lista, cobranças em Pacotes e cancelar o pacote", { tag: "@smoke" }, async ({ page }) => {
     await seedAcademy(page, {
       extra: (t) => {
         t.clients = [noPlan("c-1", "Aluna Pacote"), noPlan("c-2", "Aluno Dois"), noPlan("c-3", "Aluno Três")];
@@ -397,7 +397,7 @@ test.describe("chamada", () => {
     await expect(rosterRow(page, "Aluna Última")).toContainText("Última aula");
   });
 
-  test("\"Todos vieram\" gasta uma aula de cada pacote", async ({ page }) => {
+  test("\"Todos vieram\" gasta uma aula de cada pacote", { tag: "@smoke" }, async ({ page }) => {
     await seedRollCall(page);
     await page.getByRole("button", { name: "Todos vieram" }).click();
     await expect(page.getByText("Presença marcada para todos os alunos pendentes.")).toBeVisible();
