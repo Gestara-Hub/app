@@ -1,0 +1,81 @@
+import type { DocumentCellFormat, DocumentCellValue } from "@gestarahub/contracts";
+import { formatCents, formatPhone } from "@gestarahub/core/format";
+
+/**
+ * Formatacao das celulas do documento (`DocumentModel`). A tela e o PDF usam
+ * `displayCell`; o CSV usa `csvCell` (numeros que o Excel em pt-BR le como
+ * numero: "250,00", "12,5%"). Valor vazio vira "—" na tela e "" no CSV.
+ */
+
+const EMPTY = "—";
+
+/** Horario dos documentos: o do Brasil, tambem no servidor (que roda em UTC). */
+const TIME_ZONE = "America/Sao_Paulo";
+
+/** "21/09/2026" (dia ISO fica como esta; instante vai para o horario do Brasil). */
+export function documentDate(iso: string): string {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (day) return `${day[3]}/${day[2]}/${day[1]}`;
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: TIME_ZONE }).format(new Date(iso));
+}
+
+/** "21/09/2026, 14:05" no horario do Brasil. */
+export function documentDateTime(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function isEmpty(value: DocumentCellValue): value is null | undefined | "" {
+  return value === null || value === undefined || value === "";
+}
+
+/** "12,5%". */
+function percentText(value: number): string {
+  return `${String(Math.round(value * 10) / 10).replace(".", ",")}%`;
+}
+
+export function displayCell(value: DocumentCellValue, format: DocumentCellFormat = "text"): string {
+  if (isEmpty(value)) return EMPTY;
+  switch (format) {
+    case "money":
+      return formatCents(Number(value) || 0);
+    case "integer":
+      return new Intl.NumberFormat("pt-BR").format(Number(value) || 0);
+    case "percent":
+      return percentText(Number(value) || 0);
+    case "date":
+      return documentDate(String(value));
+    case "datetime":
+      return documentDateTime(String(value));
+    case "phone":
+      return formatPhone(String(value));
+    default:
+      return String(value);
+  }
+}
+
+export function csvCell(value: DocumentCellValue, format: DocumentCellFormat = "text"): string {
+  if (isEmpty(value)) return "";
+  switch (format) {
+    case "money":
+      return ((Number(value) || 0) / 100).toFixed(2).replace(".", ",");
+    case "integer":
+      return String(Number(value) || 0);
+    case "percent":
+      return percentText(Number(value) || 0);
+    case "date":
+      return documentDate(String(value));
+    case "datetime":
+      return documentDateTime(String(value));
+    case "phone":
+      return formatPhone(String(value));
+    default:
+      return String(value);
+  }
+}

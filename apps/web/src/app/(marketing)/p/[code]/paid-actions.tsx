@@ -5,15 +5,17 @@ import { Check, Copy, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * "Salvar comprovante": imprime a propria pagina (no celular e no computador o
- * navegador oferece "Salvar como PDF"). Vale para todo pagamento, com ou sem o
- * comprovante do parceiro. Os botoes nao vao para o papel.
+ * "Salvar comprovante": o PDF gerado no servidor (layout dos documentos), que
+ * o navegador abre e deixa salvar. Vale para todo pagamento, com ou sem o
+ * comprovante do parceiro.
  */
-export function SaveReceiptButton() {
+export function SaveReceiptButton({ code }: { code: string }) {
   return (
-    <Button type="button" onClick={() => window.print()} className="w-full gap-2 print:hidden">
-      <Download className="size-4" aria-hidden />
-      Salvar comprovante
+    <Button asChild className="w-full gap-2 print:hidden">
+      <a href={`/p/${encodeURIComponent(code)}/comprovante`} target="_blank" rel="noopener noreferrer">
+        <Download className="size-4" aria-hidden />
+        Salvar comprovante
+      </a>
     </Button>
   );
 }

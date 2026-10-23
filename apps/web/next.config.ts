@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // Pacotes de workspace consumidos como fonte TS (sem build separado).
   transpilePackages: ["@gestarahub/contracts", "@gestarahub/core"],
+  // PDF dos documentos: o @react-pdf roda no Node, fora do bundle.
+  serverExternalPackages: ["@react-pdf/renderer"],
+  // A logo de reserva (public/documents) e lida do disco pelas rotas de documento.
+  outputFileTracingIncludes: {
+    "/api/documents/**": ["./public/documents/**"],
+    "/p/**": ["./public/documents/**"],
+  },
   // Esconde o indicador flutuante do Next em dev.
   devIndicators: false,
   allowedDevOrigins: ["192.168.1.2"],

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useHasFeature } from "@/features/auth";
 import { useReportData } from "../hooks/use-reports";
-import { ReportDocumentView } from "./report-document-view";
+import { ReportDocumentScreen } from "./report-document-screen";
 import { ReportsCatalogTab } from "./reports-catalog-tab";
 
 interface ReportsViewProps {
@@ -102,7 +102,7 @@ export function ReportsView({
           Gerando relatório e consolidando indicadores da competência...
         </Card>
       ) : reportResult ? (
-        <ReportDocumentView
+        <ReportDocumentScreen
           report={reportResult}
           onBack={() => openReport(null)}
           onSheetChange={setSheet}

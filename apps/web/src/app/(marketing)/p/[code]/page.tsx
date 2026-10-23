@@ -173,7 +173,7 @@ function PaidBody({ view }: { view: PaymentPageView }) {
       </dl>
 
       <div className="space-y-2 print:hidden">
-        <SaveReceiptButton />
+        <SaveReceiptButton code={view.code} />
         {view.contactWhatsapp ? (
           <a
             href={`https://wa.me/${view.contactWhatsapp}?text=${contactText}`}

@@ -13,6 +13,8 @@ export type PaymentPageState = "open" | "paid" | "expired";
 
 export interface PaymentPageView {
   state: PaymentPageState;
+  /** Espaco (logo do comprovante em PDF); nao vai para a tela. */
+  organizationId: string;
   organizationName: string;
   /** O que e cobrado: "Mensalidade", "Aula avulsa", "Curso Confeitaria"... */
   label: string;
@@ -144,6 +146,7 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
   const contactWhatsapp = whatsappDigits((units?.[0]?.phone as string | undefined) ?? undefined) ?? undefined;
 
   return {
+    organizationId: String(payment.organization_id),
     code,
     paid: paidInfo,
     contactWhatsapp,
