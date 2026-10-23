@@ -27,7 +27,10 @@ let secret = content.match(/^CRON_SECRET=(.+)$/m)?.[1]?.trim();
 let created = false;
 if (!secret) {
   secret = randomBytes(24).toString("hex");
-  content = `${content.replace(/\n*$/, "\n")}\n# Supabase Cron -> /api/cron/* (gerado por pnpm cron:local)\nCRON_SECRET=${secret}\n`;
+  // Linha vazia (modelo do .env.example): preenche no lugar; sem a linha, acrescenta.
+  content = /^CRON_SECRET=.*$/m.test(content)
+    ? content.replace(/^CRON_SECRET=.*$/m, `CRON_SECRET=${secret}`)
+    : `${content.replace(/\n*$/, "\n")}\n# Supabase Cron -> /api/cron/* (gerado por pnpm cron:local)\nCRON_SECRET=${secret}\n`;
   writeFileSync(ENV_FILE, content);
   created = true;
 }

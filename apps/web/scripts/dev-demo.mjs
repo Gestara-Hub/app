@@ -23,7 +23,10 @@ let content = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8") : "";
 const created = !/^DEMO_PASSWORD=.+$/m.test(content);
 if (created) {
   const password = randomBytes(18).toString("base64url");
-  content = `${content.replace(/\n*$/, "\n")}\n# Senha dos usuarios da demonstracao (gerado por pnpm demo:local)\nDEMO_PASSWORD=${password}\n`;
+  // Linha vazia (modelo do .env.example): preenche no lugar; sem a linha, acrescenta.
+  content = /^DEMO_PASSWORD=.*$/m.test(content)
+    ? content.replace(/^DEMO_PASSWORD=.*$/m, `DEMO_PASSWORD=${password}`)
+    : `${content.replace(/\n*$/, "\n")}\n# Senha dos usuarios da demonstracao (gerado por pnpm demo:local)\nDEMO_PASSWORD=${password}\n`;
   writeFileSync(ENV_FILE, content);
 }
 
