@@ -12,3 +12,4 @@ export { LandingFooter } from "./components/landing-footer";
 export { TypewriterText } from "./components/typewriter-text";
 export { LandingSignupSection } from "./components/landing-signup-section";
 export { ScrollReveal } from "./components/scroll-reveal";
+export { SignupForm } from "./components/signup-form";

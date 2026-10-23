@@ -5,6 +5,7 @@ import { firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
 import { safeRedirectPath } from "@/lib/session";
 import { validateSignupToken } from "../signup-actions";
+import { AuthPanel } from "./auth-panel";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -15,9 +16,18 @@ export default async function LoginPage({
     signup_token?: string;
     email?: string;
     google_error?: string;
+    reset?: string;
+    modo?: string;
   }>;
 }) {
-  const { from, signup_token: signupToken, email: initialEmail, google_error: googleError } = await searchParams;
+  const {
+    from,
+    signup_token: signupToken,
+    email: initialEmail,
+    google_error: googleError,
+    reset,
+    modo,
+  } = await searchParams;
 
   // Se o usuario clicou num link de cadastro (?signup_token=...), valida o token
   // mesmo que exista um cookie de sessao anterior no navegador.
@@ -35,32 +45,48 @@ export default async function LoginPage({
 
   const target = safeRedirectPath(from) ?? "/dashboard";
 
-  const title =
-    tokenValidation?.status === "valid"
-      ? "Crie sua senha"
-      : tokenValidation?.status === "expired"
-        ? "Link expirado"
-        : tokenValidation?.status === "consumed"
-          ? "Senha já cadastrada"
-          : "Entrar";
+  // Link de cadastro (criar a senha): so o formulario, sem as abas.
+  if (tokenValidation) {
+    const title =
+      tokenValidation.status === "valid"
+        ? "Crie sua senha"
+        : tokenValidation.status === "expired"
+          ? "Link expirado"
+          : tokenValidation.status === "consumed"
+            ? "Senha já cadastrada"
+            : "Entrar";
 
-  const subtitle =
-    tokenValidation?.status === "valid"
-      ? `Olá, ${tokenValidation.name.split(/\s+/)[0]}! Defina sua senha para concluir o cadastro e configurar seu espaço.`
-      : tokenValidation?.status === "expired"
-        ? "O link de criação de conta tem validade de 24 horas."
-        : tokenValidation?.status === "consumed"
-          ? "Sua conta já está criada. Digite sua senha para entrar."
-          : "Acesse o painel da sua organização.";
+    const subtitle =
+      tokenValidation.status === "valid"
+        ? `Olá, ${tokenValidation.name.split(/\s+/)[0]}! Defina sua senha para concluir o cadastro e configurar seu espaço.`
+        : tokenValidation.status === "expired"
+          ? "O link de criação de conta tem validade de 24 horas."
+          : tokenValidation.status === "consumed"
+            ? "Sua conta já está criada. Digite sua senha para entrar."
+            : "Acesse o painel do seu espaço.";
+
+    return (
+      <PublicAuthShell title={title} subtitle={subtitle}>
+        <LoginForm
+          from={target}
+          initialEmail={initialEmail}
+          tokenValidation={tokenValidation}
+          demoAvailable={Boolean(process.env.DEMO_PASSWORD)}
+          googleError={googleError}
+        />
+      </PublicAuthShell>
+    );
+  }
 
   return (
-    <PublicAuthShell title={title} subtitle={subtitle}>
-      <LoginForm
+    <PublicAuthShell>
+      <AuthPanel
         from={target}
+        initialMode={modo === "criar" ? "signup" : "login"}
         initialEmail={initialEmail}
-        tokenValidation={tokenValidation}
         demoAvailable={Boolean(process.env.DEMO_PASSWORD)}
         googleError={googleError}
+        passwordReset={reset === "ok"}
       />
     </PublicAuthShell>
   );
