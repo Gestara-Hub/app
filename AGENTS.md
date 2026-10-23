@@ -1,7 +1,5 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
-> **Current work (18/10/2026):** read [`docs/qa/roteiros/CONTEXTO-PARA-AGENTE.md`](docs/qa/roteiros/CONTEXTO-PARA-AGENTE.md) first. It has the project state, the manual test scripts the user is running and how to validate the JSON they send. `CLAUDE.md` has the full, current rules (this file is a summary).
-
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
 - **Monorepo**: pnpm workspaces (`apps/web`, `packages/contracts`, `packages/core`).
@@ -76,7 +74,6 @@ pnpm --filter @gestarahub/web lint       # eslint (0 errors, 0 warnings)
   - `packages/contracts/src/`
   - `packages/core/src/`
   - `docs/`
-
 
 ## 7. Asaas Documentation via MCP
 - The Asaas API docs are available as an MCP server (`https://docs.asaas.com/mcp`, public, HTTP). Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`) and VS Code (`.vscode/mcp.json`) pick it up from the repo; Antigravity, Codex and Claude Desktop need a one-time user config. Setup per tool and the usage rule in [`docs/technical/14-asaas-mcp.md`](docs/technical/14-asaas-mcp.md).
