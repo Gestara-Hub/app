@@ -90,9 +90,58 @@ async function loadVersion(ctx: TenantContext): Promise<number> {
   return Number(data?.version ?? 0);
 }
 
-async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
-  // A versao e lida antes das tabelas: gravacao que entrar depois dela aborta.
-  const version = await loadVersion(ctx);
+/**
+ * Cache do servidor por (espaco, versao) (doc 19). A versao avanca em toda
+ * gravacao nas tabelas do espaco (apply_world_changes e o gatilho da migracao
+ * 40, que pega webhook, mensalidades, configuracoes...), entao versao igual =
+ * banco igual. Guarda as linhas lidas e os mapas de comparacao, que ninguem
+ * altera; cada requisicao monta a sua copia de trabalho a partir deles. Uma
+ * leitura com o espaco em cache custa 1 consulta (a versao) em vez de 30 ou mais.
+ * Conflito na gravacao descarta o espaco do cache. `WORLD_CACHE=off` desliga.
+ */
+interface CachedWorld {
+  version: number;
+  loadedAt: number;
+  rows: number;
+  unitId: string;
+  organizationRow: Row;
+  collections: LoadedCollection[];
+}
+
+const WORLD_CACHE_TTL_MS = 5 * 60_000;
+/** Limite de linhas guardadas somando todos os espacos (sai o menos usado). */
+const WORLD_CACHE_MAX_ROWS = 400_000;
+const worldCache = new Map<string, CachedWorld>();
+const worldCacheCounters = { hits: 0, misses: 0, advances: 0 };
+
+/** Contadores do cache (acertos, cargas do banco, avancos depois de gravar): para medir. */
+export function worldCacheStats(): { hits: number; misses: number; advances: number } {
+  return { ...worldCacheCounters };
+}
+
+function worldCacheEnabled(): boolean {
+  return process.env.WORLD_CACHE !== "off";
+}
+
+/** Tira o espaco do cache (conflito na gravacao ou leitura que precisa ser do banco). */
+export function forgetCachedWorld(organizationId: string): void {
+  worldCache.delete(organizationId);
+}
+
+function rememberWorld(organizationId: string, entry: CachedWorld): void {
+  worldCache.delete(organizationId);
+  worldCache.set(organizationId, entry);
+  let total = 0;
+  for (const cached of worldCache.values()) total += cached.rows;
+  // Map guarda a ordem de uso: o primeiro e o menos usado.
+  for (const [id, cached] of worldCache) {
+    if (total <= WORLD_CACHE_MAX_ROWS || worldCache.size === 1) break;
+    worldCache.delete(id);
+    total -= cached.rows;
+  }
+}
+
+async function loadCollections(ctx: TenantContext, version: number): Promise<CachedWorld> {
   const tables = await Promise.all(
     WORLD_COLLECTIONS.map(async (collection) =>
       collection.appendOnly
@@ -102,33 +151,17 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
         : loadRows(ctx, collection.table),
     ),
   );
-  const store: Record<string, unknown> = {
-    services: [],
-    appointments: [],
-    timeBlocks: [],
-    series: [],
-    recurringAuthorizations: [],
-  };
   const collections: LoadedCollection[] = [];
   let organizationRow: Row | undefined;
   let unitId = "";
+  let rows = 0;
   WORLD_COLLECTIONS.forEach((collection, index) => {
-    const rows = tables[index];
     const raw = new Map<string, Row>();
-    const normalized = new Map<string, Row>();
-    const objects: Row[] = [];
-    for (const row of rows) {
-      const id = identityOf(collection, row);
-      // Copia funda: o servico muda listas e objetos (jsonb) no lugar, e a
-      // comparacao com a linha carregada nao pode ver a mesma mudanca.
-      const object = structuredClone(fromRow(collection.table, row));
-      raw.set(id, row);
-      objects.push(object);
-    }
-    if (collection.table === "organizations") organizationRow = rows[0];
-    if (collection.table === "units") unitId = String(rows[0]?.id ?? "");
-    collections.push({ collection, raw, normalized });
-    store[collection.key] = collection.kind === "single" ? objects[0] : objects;
+    for (const row of tables[index]) raw.set(identityOf(collection, row), row);
+    rows += tables[index].length;
+    if (collection.table === "organizations") organizationRow = tables[index][0];
+    if (collection.table === "units") unitId = String(tables[index][0]?.id ?? "");
+    collections.push({ collection, raw, normalized: new Map() });
   });
   if (!organizationRow) throw apiError("NOT_FOUND", "Espaço não encontrado.", { httpStatus: 404 });
 
@@ -145,8 +178,46 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
       );
     }
   }
-  store.certificateTemplate = (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined;
-  return { store: store as unknown as TenantWorld, version, unitId, collections, organizationRow };
+  return { version, loadedAt: Date.now(), rows, unitId, organizationRow, collections };
+}
+
+async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
+  // A versao e lida antes das tabelas: gravacao que entrar depois dela aborta.
+  const version = await loadVersion(ctx);
+  let entry = worldCacheEnabled() ? worldCache.get(ctx.organizationId) : undefined;
+  if (!entry || entry.version !== version || Date.now() - entry.loadedAt > WORLD_CACHE_TTL_MS) {
+    worldCacheCounters.misses += 1;
+    entry = await loadCollections(ctx, version);
+    if (worldCacheEnabled()) rememberWorld(ctx.organizationId, entry);
+  } else {
+    worldCacheCounters.hits += 1;
+    rememberWorld(ctx.organizationId, entry);
+  }
+
+  const store: Record<string, unknown> = {
+    services: [],
+    appointments: [],
+    timeBlocks: [],
+    series: [],
+    recurringAuthorizations: [],
+  };
+  for (const loaded of entry.collections) {
+    const objects: Row[] = [];
+    for (const row of loaded.raw.values()) {
+      // Copia funda: o servico muda listas e objetos (jsonb) no lugar, e a
+      // comparacao com a linha carregada (e o cache) nao pode ver a mesma mudanca.
+      objects.push(structuredClone(fromRow(loaded.collection.table, row)));
+    }
+    store[loaded.collection.key] = loaded.collection.kind === "single" ? objects[0] : objects;
+  }
+  store.certificateTemplate = (entry.organizationRow.certificate_template as CertificateTemplate | null) ?? undefined;
+  return {
+    store: store as unknown as TenantWorld,
+    version,
+    unitId: entry.unitId,
+    collections: entry.collections,
+    organizationRow: entry.organizationRow,
+  };
 }
 
 interface WorldChanges {
@@ -222,13 +293,20 @@ const CONFLICT_MESSAGE = "Outra pessoa mudou esses dados agora. Atualize a tela 
  * Grava com a chave de servico: a sessao e a permissao do metodo ja foram
  * conferidas e cada linha segue presa ao espaco da sessao (doc 15, fatia 3).
  */
-async function applyChanges(ctx: TenantContext, changes: WorldChanges, version: number): Promise<void> {
-  const { error } = await createSupabaseAdminClient().rpc("apply_world_changes", {
+interface AppliedChanges {
+  /** Versao do espaco depois desta gravacao. */
+  version: number;
+  /** Linhas gravadas como ficaram no banco (updated_at e padroes do banco). */
+  rows: { table: string; row: Row | null }[];
+}
+
+async function applyChanges(ctx: TenantContext, changes: WorldChanges, version: number): Promise<AppliedChanges> {
+  const { data, error } = await createSupabaseAdminClient().rpc("apply_world_changes_returning", {
     p_organization_id: ctx.organizationId,
     p_changes: changes,
     p_expected_version: version,
   });
-  if (!error) return;
+  if (!error) return data as AppliedChanges;
   if (error.code === "40001" || error.code === "23505") {
     // A tela so mostra "outra pessoa mudou"; o motivo fica no log do servidor.
     console.warn(`[world] conflito na gravação: ${error.code} ${error.message}`);
@@ -245,6 +323,80 @@ async function actorOf(ctx: TenantContext): Promise<AuditActor> {
   return { userId: ctx.userId, name: String(data?.name ?? "Usuário"), profile: ctx.profile };
 }
 
+/**
+ * Tabelas cuja exclusao apaga ou limpa linhas filhas no banco (ON DELETE
+ * CASCADE / SET NULL): o cache nao ve essas mudancas, entao excluir nelas
+ * descarta o espaco do cache. Excluir presenca, lista de espera e afins avanca.
+ */
+const CASCADE_PARENTS = new Set([
+  "categories", "charges", "class_groups", "clients", "enrollments", "financial_recurrences",
+  "organizations", "plans", "professionals", "roles", "student_packages", "units", "users",
+]);
+
+/** Linha da carga parcial (`partialLoad`, ex.: auditoria so dos lancamentos)? */
+function matchesPartialLoad(collection: WorldCollection, row: Row): boolean {
+  const filter = collection.partialLoad;
+  if (!filter) return true;
+  const [column, key] = filter.column.split("->>");
+  const value = key ? (row[column] as Record<string, unknown> | null)?.[key] : row[column];
+  return String(value ?? "") === filter.value;
+}
+
+/**
+ * Depois de gravar: o espaco em cache passa para a versao nova com as linhas
+ * que o banco devolveu, sem reler tudo (a gravacao mais comum e seguida de uma
+ * leitura da mesma tela). So quando o cache era o da versao lida e a gravacao
+ * avancou exatamente uma versao; senao descarta e a proxima le do banco.
+ */
+function advanceCachedWorld(ctx: TenantContext, world: LoadedWorld, changes: WorldChanges, applied: AppliedChanges): void {
+  const entry = worldCache.get(ctx.organizationId);
+  if (
+    !entry ||
+    entry.version !== world.version ||
+    Number(applied.version) !== world.version + 1 ||
+    changes.deletes.some((removed) => CASCADE_PARENTS.has(removed.table))
+  ) {
+    forgetCachedWorld(ctx.organizationId);
+    return;
+  }
+  const touched = new Set([...changes.deletes.map((d) => d.table), ...applied.rows.map((r) => r.table)]);
+  const collections = entry.collections.map((loaded) =>
+    touched.has(loaded.collection.table)
+      ? { collection: loaded.collection, raw: new Map(loaded.raw), normalized: new Map(loaded.normalized) }
+      : loaded,
+  );
+  const byTable = new Map(collections.map((loaded) => [loaded.collection.table, loaded]));
+  for (const removed of changes.deletes) {
+    const loaded = byTable.get(removed.table);
+    if (!loaded) continue;
+    for (const [id, row] of loaded.raw) {
+      if (String(row[removed.pk]) !== removed.key) continue;
+      loaded.raw.delete(id);
+      loaded.normalized.delete(id);
+    }
+  }
+  let organizationRow = entry.organizationRow;
+  for (const { table, row } of applied.rows) {
+    const loaded = byTable.get(table);
+    if (!loaded || !row) {
+      forgetCachedWorld(ctx.organizationId);
+      return;
+    }
+    if (!matchesPartialLoad(loaded.collection, row)) continue;
+    const id = identityOf(loaded.collection, row);
+    loaded.raw.set(id, row);
+    loaded.normalized.set(
+      id,
+      toRow(table, fromRow(table, row), { organizationId: ctx.organizationId, unitId: entry.unitId, loaded: row }),
+    );
+    if (table === "organizations") organizationRow = row;
+  }
+  const rows = collections.reduce((total, loaded) => total + loaded.raw.size, 0);
+  // `loadedAt` fica o da carga: a validade curta continua valendo para a corrente de gravacoes.
+  rememberWorld(ctx.organizationId, { ...entry, version: Number(applied.version), rows, organizationRow, collections });
+  worldCacheCounters.advances += 1;
+}
+
 export function isConflict(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: string }).code === "CONFLICT";
 }
@@ -255,7 +407,16 @@ export async function runInWorld<T>(ctx: TenantContext, fn: () => Promise<T>): P
   const effects: WorldEffect[] = [];
   const result = await runScoped({ store: world.store, actor, effects }, fn);
   const changes = diffWorld(ctx, world);
-  if (changes.upserts.length > 0 || changes.deletes.length > 0) await applyChanges(ctx, changes, world.version);
+  if (changes.upserts.length > 0 || changes.deletes.length > 0) {
+    try {
+      const applied = await applyChanges(ctx, changes, world.version);
+      if (worldCacheEnabled()) advanceCachedWorld(ctx, world, changes, applied);
+    } catch (error) {
+      // Conflito: a proxima tentativa le do banco, nao do cache.
+      if (isConflict(error)) forgetCachedWorld(ctx.organizationId);
+      throw error;
+    }
+  }
   // Efeitos externos so depois de gravar; falha neles nao desfaz a gravacao.
   for (const effect of effects) {
     await effect().catch((err) => console.error("[world] Efeito depois da gravação falhou:", err));

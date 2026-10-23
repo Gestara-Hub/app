@@ -54,6 +54,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/16-ambiente-local.md](technical/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
 - [technical/17-verificacao-em-duas-etapas.md](technical/17-verificacao-em-duas-etapas.md) — **Verificação em duas etapas:** aplicativo autenticador (MFA do Supabase) para quem entra com senha, tela `/two-factor` no login; código por e-mail na entrega 2.
 - [technical/18-documentos-pdf.md](technical/18-documentos-pdf.md) — **Documentos em PDF:** um layout só (`DocumentModel`) para relatórios, recibos, declaração, demonstrativo, certificado, termo, boletim e extrato; prévia na tela, PDF e CSV no servidor, logo do espaço com reserva do GestaraHub.
+- [technical/19-desempenho-e-escala.md](technical/19-desempenho-e-escala.md) — **Desempenho e escala:** medição com um espaço de 1 ano (1,4 s a 4 s por ação, crescendo com o histórico), gargalos (espaço inteiro por ação, versão única por espaço, corte em 1.000 linhas, chamadas demais do navegador, rotina diária) e proposta em 4 fases.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
