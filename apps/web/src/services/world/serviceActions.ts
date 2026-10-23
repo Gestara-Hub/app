@@ -31,10 +31,12 @@ export async function serviceAction(method: string, args: unknown[]): Promise<Ac
         return await runInWorld(
           ctx,
           () => resolved.run(...callArgs),
-          resolved.slice ? { fn: resolved.slice, args: callArgs, name: method } : undefined,
+          // Sem recorte, o nome so serve ao log de tempo.
+          resolved.slice ? { fn: resolved.slice, args: callArgs, name: method } : { name: method },
         );
       } catch (error) {
         if (!isConflict(error) || resolved.noRetry || attempt >= ATTEMPTS) throw error;
+        console.warn(`[world] ${method}: conflito na tentativa ${attempt}; tentando de novo`);
       }
     }
   });

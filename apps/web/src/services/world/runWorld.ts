@@ -49,6 +49,9 @@ interface LoadedWorld {
   unitId: string;
   collections: LoadedCollection[];
   organizationRow: Row;
+  /** De onde veio e quantas linhas (log de tempo por acao). */
+  source: "recorte" | "cache" | "banco";
+  rows: number;
 }
 
 /**
@@ -204,7 +207,8 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
   // A versao e lida antes das tabelas: gravacao que entrar depois dela aborta.
   const version = await loadVersion(ctx);
   let entry = worldCacheEnabled() ? worldCache.get(ctx.organizationId) : undefined;
-  if (!entry || entry.version !== version || Date.now() - entry.loadedAt > WORLD_CACHE_TTL_MS) {
+  const cached = Boolean(entry && entry.version === version && Date.now() - entry.loadedAt <= WORLD_CACHE_TTL_MS);
+  if (!entry || !cached) {
     worldCacheCounters.misses += 1;
     entry = await loadCollections(ctx, version);
     if (worldCacheEnabled()) rememberWorld(ctx.organizationId, entry);
@@ -236,6 +240,8 @@ async function loadWorld(ctx: TenantContext): Promise<LoadedWorld> {
     unitId: entry.unitId,
     collections: entry.collections,
     organizationRow: entry.organizationRow,
+    source: cached ? "cache" : "banco",
+    rows: entry.rows,
   };
 }
 
@@ -347,7 +353,8 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
   const store = sliceWorld(objects, {
     certificateTemplate: (organizationRow.certificate_template as CertificateTemplate | null) ?? undefined,
   });
-  return { store, version, unitId, collections, organizationRow, readBuckets: [...readBuckets] };
+  const rows = collections.reduce((total, loaded) => total + loaded.raw.size, 0);
+  return { store, version, unitId, collections, organizationRow, readBuckets: [...readBuckets], source: "recorte", rows };
 }
 
 interface WorldChanges {
@@ -551,23 +558,48 @@ export function isConflict(error: unknown): boolean {
 export async function runInWorld<T>(
   ctx: TenantContext,
   fn: () => Promise<T>,
-  slice?: { fn: MethodSlice; args: unknown[]; name?: string },
+  slice?: { fn: MethodSlice; args: unknown[]; name?: string } | { name: string },
 ): Promise<T> {
-  if (slice) {
+  if (slice && "fn" in slice) {
     try {
-      return await runLoaded(ctx, fn, () => loadSlicedWorld(ctx, slice.fn, slice.args));
+      return await runLoaded(ctx, fn, () => loadSlicedWorld(ctx, slice.fn, slice.args), slice.name);
     } catch (error) {
       if (!(error instanceof SliceMissError)) throw error;
       console.error(`[world] recorte incompleto em ${slice.name ?? "método"}; refazendo com o espaço inteiro:`, error.message);
     }
   }
-  return runLoaded(ctx, fn, () => loadWorld(ctx));
+  return runLoaded(ctx, fn, () => loadWorld(ctx), slice?.name);
 }
 
-async function runLoaded<T>(ctx: TenantContext, fn: () => Promise<T>, load: () => Promise<LoadedWorld>): Promise<T> {
+/** Acima disto a acao sai no log mesmo sem `WORLD_TIMING=1` (meta da doc 19). */
+const SLOW_ACTION_MS = 300;
+
+/**
+ * Log de tempo por acao (doc 19, fase 3): metodo, de onde leu, linhas e as
+ * tres etapas. Sai sempre que passa de 300 ms; com `WORLD_TIMING=1`, em toda acao.
+ */
+function logTiming(label: string | undefined, world: LoadedWorld, times: { load: number; run: number; write: number }, changed: number): void {
+  const total = times.load + times.run + times.write;
+  if (process.env.WORLD_TIMING !== "1" && total < SLOW_ACTION_MS) return;
+  const line =
+    `[world] ${label ?? "ação"} ${Math.round(total)} ms (${world.source}, ${world.rows} linhas; ` +
+    `ler ${Math.round(times.load)}, regra ${Math.round(times.run)}, gravar ${Math.round(times.write)}; ${changed} mudanças)`;
+  if (total >= SLOW_ACTION_MS) console.warn(line);
+  else console.info(line);
+}
+
+async function runLoaded<T>(
+  ctx: TenantContext,
+  fn: () => Promise<T>,
+  load: () => Promise<LoadedWorld>,
+  label?: string,
+): Promise<T> {
+  const started = performance.now();
   const [world, actor] = await Promise.all([load(), actorOf(ctx)]);
+  const loaded = performance.now();
   const effects: WorldEffect[] = [];
   const result = await runScoped({ store: world.store, actor, effects }, fn);
+  const ran = performance.now();
   const { buckets, ...changes } = diffWorld(ctx, world);
   if (changes.upserts.length > 0 || changes.deletes.length > 0) {
     try {
@@ -579,6 +611,8 @@ async function runLoaded<T>(ctx: TenantContext, fn: () => Promise<T>, load: () =
       throw error;
     }
   }
+  const changed = changes.upserts.length + changes.deletes.length;
+  logTiming(label, world, { load: loaded - started, run: ran - loaded, write: performance.now() - ran }, changed);
   // Efeitos externos so depois de gravar; falha neles nao desfaz a gravacao.
   for (const effect of effects) {
     await effect().catch((err) => console.error("[world] Efeito depois da gravação falhou:", err));

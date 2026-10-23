@@ -147,8 +147,6 @@ function SkeletonRows() {
   ));
 }
 
-const BATCH_SIZE = 20;
-
 type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "custom";
 
 export function AuditLogList() {
@@ -160,8 +158,6 @@ export function AuditLogList() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
-
-  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
 
   // Calcula datas para o filtro
   const { dateFrom, dateTo } = useMemo(() => {
@@ -208,45 +204,39 @@ export function AuditLogList() {
     [search, entityType, actorId, dateFrom, dateTo],
   );
 
-  const { data, isPending, isError, refetch } = useAuditLog(filter);
-  const entries = useMemo(() => data ?? [], [data]);
+  const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useAuditLog(filter);
+  const entries = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data]);
 
   // Busca lista de usuários para o filtro de responsáveis
   const { data: usersData } = useUsers();
   const actorOptions = useMemo(() => {
     const map = new Map<string, string>();
     (usersData ?? []).forEach((u) => map.set(u.id, u.name));
-    (data ?? []).forEach((e) => {
+    entries.forEach((e) => {
       if (e.actor?.userId && !map.has(e.actor.userId)) {
         map.set(e.actor.userId, e.actor.name);
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [usersData, data]);
+  }, [usersData, entries]);
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
-    setVisibleCount(BATCH_SIZE);
   };
   const handleEntityTypeChange = (val: "all" | AuditEntityType) => {
     setEntityType(val);
-    setVisibleCount(BATCH_SIZE);
   };
   const handleActorIdChange = (val: string) => {
     setActorId(val);
-    setVisibleCount(BATCH_SIZE);
   };
   const handleDatePresetChange = (val: DatePreset) => {
     setDatePreset(val);
-    setVisibleCount(BATCH_SIZE);
   };
   const handleCustomFromChange = (val: string) => {
     setCustomFrom(val);
-    setVisibleCount(BATCH_SIZE);
   };
   const handleCustomToChange = (val: string) => {
     setCustomTo(val);
-    setVisibleCount(BATCH_SIZE);
   };
 
   const hasSearch = Boolean(filter.search);
@@ -259,7 +249,6 @@ export function AuditLogList() {
 
   const clearSearch = () => {
     setSearch("");
-    setVisibleCount(BATCH_SIZE);
   };
   const clearAll = () => {
     setSearch("");
@@ -268,15 +257,12 @@ export function AuditLogList() {
     setDatePreset("all");
     setCustomFrom("");
     setCustomTo("");
-    setVisibleCount(BATCH_SIZE);
   };
 
-  const totalCount = entries.length;
-  const visibleEntries = useMemo(
-    () => entries.slice(0, visibleCount),
-    [entries, visibleCount],
-  );
-  const hasMore = visibleCount < totalCount;
+  // Total do banco (com os filtros); a lista traz uma pagina por vez.
+  const totalCount = data?.pages[0]?.total ?? 0;
+  const visibleEntries = entries;
+  const hasMore = Boolean(hasNextPage);
 
   let items: ReactNode[] = [];
   let emptyState: ReactNode = null;
@@ -435,14 +421,17 @@ export function AuditLogList() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setVisibleCount((prev) => prev + BATCH_SIZE)}
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
                 className="gap-2 text-xs font-medium"
               >
                 <ChevronDown className="size-3.5" />
-                Carregar mais eventos ({visibleEntries.length} de {totalCount})
+                {isFetchingNextPage
+                  ? "Carregando..."
+                  : `Carregar mais eventos (${visibleEntries.length} de ${totalCount})`}
               </Button>
             </div>
-          ) : totalCount > BATCH_SIZE ? (
+          ) : (data?.pages.length ?? 0) > 1 ? (
             <p className="text-center text-xs text-muted-foreground pt-2 pb-4">
               Você chegou ao fim dos eventos deste período ({totalCount} eventos).
             </p>

@@ -1,16 +1,21 @@
-import type {
-  AuditAction,
-  AuditChange,
-  AuditLogEntry,
-  AuditLogFilter,
-  AuditTarget,
-  UserProfile,
+import {
+  paginateArray,
+  type AuditAction,
+  type AuditChange,
+  type AuditLogEntry,
+  type AuditLogFilter,
+  type AuditTarget,
+  type PaginatedResult,
+  type UserProfile,
 } from "@gestarahub/contracts";
 import { getCurrentActor } from "@/services/world/actor";
 import { newId, nowIso, readOp, textIncludes } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
-import { listAuditLogsFromDb, recordAuditLogInDb } from "./auditLogBackend";
+import { listAuditLogPage, recordAuditLogInDb } from "./auditLogBackend";
+
+/** Eventos por pagina na tela de auditoria. */
+export const AUDIT_PAGE_SIZE = 50;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -82,14 +87,19 @@ export const auditLogService = {
     }
   },
 
-  /** Lista o log visivel para o `viewer`, mais recente primeiro. */
-  list(filter: AuditLogFilter | undefined, viewer: UserProfile): Promise<AuditLogEntry[]> {
+  /**
+   * Uma pagina do log visivel, mais recente primeiro (doc 19, fase 3). Conta
+   * real: filtros, visibilidade e paginacao no banco, com o perfil da sessao
+   * (`viewer` so vale no espaco local).
+   */
+  listPage(
+    filter: AuditLogFilter | undefined,
+    viewer: UserProfile,
+    page = 1,
+    pageSize = AUDIT_PAGE_SIZE,
+  ): Promise<PaginatedResult<AuditLogEntry>> {
     return readOp(async () => {
-      if (realAccountInBrowser()) {
-        const dbLogs = await listAuditLogsFromDb(store.organization.id, filter);
-        const filtered = dbLogs.filter((e) => canView(e, viewer));
-        return clone(filtered);
-      }
+      if (realAccountInBrowser()) return listAuditLogPage(filter, page, pageSize);
 
       let result = store.auditLog.filter((e) => canView(e, viewer));
       if (filter?.entityType) {
@@ -111,8 +121,8 @@ export const auditLogService = {
         const term = filter.search;
         result = result.filter((e) => textIncludes(e.summary, term));
       }
-      const sorted = [...result].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-      return clone(sorted);
+      const sorted = [...result].sort((a, b) => b.timestamp.localeCompare(a.timestamp) || b.id.localeCompare(a.id));
+      return clone(paginateArray(sorted, page, pageSize));
     });
   },
 };

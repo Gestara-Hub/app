@@ -96,7 +96,7 @@ Caminho incremental, sem reescrever as regras (elas continuam as mesmas, testada
 2. **Histórico fora do caminho quente:** auditoria e mensagens só paginadas por data; índice de expressão em `audit_logs (organization_id, (target->>'type'), timestamp)`; índice em `attendances (organization_id, session_id)`.
 3. **Infraestrutura:** Vercel e Supabase na mesma região (São Paulo, `gru1`/`sa-east-1`); conexões pelo pooler do Supabase (Supavisor); `maxDuration` nas rotas longas; RLS com `(select current_organization_id())`.
 4. **Levantamento geral de índices (decisão de 23/10/2026: no fim das fases):** com os recortes, os relatórios no banco e a concorrência por linha prontos, rodar `EXPLAIN ANALYZE` nas consultas reais sobre o espaço de 1 ano e criar numa migração só os índices que faltarem, removendo os que nenhuma consulta usa. Já se sabe de um: o GIN em `audit_logs.target` não atende `target->>'type' = 'financial_entry'` (carga parcial da auditoria em toda ação).
-5. **Medir sempre:** log de tempo por ação (método, ms, linhas carregadas) e o teste de carga desta proposta (espaço de 1 ano) rodando antes de cada entrega grande, com a meta de 300 ms.
+5. **Medir sempre (log feito, seção 10):** log de tempo por ação (método, ms, linhas carregadas) e o teste de carga desta proposta (espaço de 1 ano) rodando antes de cada entrega grande, com a meta de 300 ms.
 
 ## 5. O que esperar
 
@@ -233,3 +233,33 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 - `world_buckets` cresce com os escopos tocados (no máximo 65.536 linhas por espaço). Se pesar, dá para reduzir os baldes ou limpar os antigos.
 
 **Fase 2 concluída.** Próximo: fase 3 (relatórios somando no banco, histórico fora do caminho quente, infraestrutura) e, no fim, o levantamento geral de índices.
+
+## 10. Fase 3 (23/10/2026)
+
+**Feito:**
+- **Auditoria no banco** (`audit/auditLogPage.ts`, `listAuditLogPage`): filtros (tipo, autor, período, busca), visibilidade por perfil e paginação de 50 em 50 rodam na consulta, com o total de verdade. Antes, a tela trazia os 1.000 eventos mais recentes e filtrava depois: num espaço com histórico, o filtro por tipo escondia eventos antigos que existiam. A tela pede a próxima página em "Carregar mais eventos" (`useInfiniteQuery`).
+- **Falha de segurança corrigida no caminho:** o perfil de quem vê a auditoria vinha do navegador. Um Gerente que chamasse a ação com "owner" via os eventos que são só do Dono. Agora o perfil sai da sessão no servidor, e a ação pede `audit:view`. Teste de banco: `audit/__tests__/auditLogPage.db.test.ts` (1.104 eventos: total, ordem, filtro que antes sumia, busca com `%` e `_`, visibilidade do Gerente).
+- **Log de tempo por ação** (`world/runWorld.ts`): toda ação acima de 300 ms sai no log do servidor com o método, de onde leu (recorte, cache ou banco), linhas e o tempo de ler, aplicar a regra e gravar. Com `WORLD_TIMING=1`, sai em toda ação. Conflitos que fazem a ação tentar de novo também saem (`serviceActions.ts`).
+- **RLS com `(select …)`** (migração 43): as 63 políticas que chamavam `current_organization_id()`/`current_user_profile()` passam a calcular uma vez por consulta, não por linha. Conferido: o texto de todas as 64 políticas é o mesmo de antes, tirando o embrulho.
+- **Limpeza dos baldes** (migração 43): `world_buckets.updated_at` e a rotina `world-buckets-prune-daily` (pg_cron, 03:30 de Brasília) apagam os baldes sem mudança há mais de 1 dia. Um balde só importa enquanto uma ação leu e ainda não gravou (no máximo os 5 minutos de uma rota); a tabela fica com o que mudou nas últimas 24 h.
+
+**Medição com histórico realista** (1 ano: 28 mil presenças, 2 mil cobranças, 6 mil mensagens, 300 lançamentos; banco local, sem cache):
+
+| Ação | Tempo |
+| --- | --- |
+| Cobranças do mês | 0,13 a 0,14 s |
+| Resumo do financeiro | 0,13 a 0,14 s |
+| Histórico de mensagens (todas) | 0,20 s |
+| Mensagens de um aluno | 0,01 a 0,02 s |
+| Extrato de cobranças (relatório) | 0,11 a 0,13 s |
+| Ficha do aluno | 0,01 a 0,03 s |
+
+**Decidido não fazer agora (com o motivo):**
+- **Relatórios somando no banco (item 1):** os relatórios saem em 0,03 a 0,14 s pelo recorte. Reescrever as regras em SQL duplicaria regra testada sem ganho visível. Volta quando o log de tempo mostrar relatório acima de 300 ms.
+- **Mensagens paginadas no banco:** a leitura do histórico também dispara as felicitações de aniversário (grava), então não é uma consulta simples. Hoje 0,2 s com 6 mil mensagens; cresce com o histórico (cerca de 0,6 s em 3 anos). Próximo candidato quando passar de 300 ms: separar as felicitações da leitura e paginar como a auditoria.
+- **`maxDuration` nas rotas de documento:** com o Fluid Compute da Vercel, o padrão já é 300 s, e os documentos saem em menos de 0,2 s. As rotinas (rotas longas de verdade) já tinham `maxDuration`.
+- **Região e pooler:** é configuração do deploy, não código. Vercel em `gru1` e Supabase em `sa-east-1`. O app fala com o banco pelo PostgREST (supabase-js), que já usa o pool do Supabase; o pooler (Supavisor) só importa para conexão direta ao Postgres, que o app não usa.
+
+**Achado (registrado, não corrigido):** cada linha gravada pelo motor custa de 1,5 a 3 ms no banco (`apply_world_changes` faz 3 consultas por linha). No uso normal não aparece (gerar as mensalidades de 200 alunos são 200 linhas, cerca de 0,5 s), mas uma gravação de milhares de linhas de uma vez, como importação em massa, passa do tempo limite da consulta. Se a importação vier, o caminho é gravar por tabela em lote (`INSERT ... SELECT FROM jsonb_to_recordset`) em vez de linha a linha.
+
+**Falta da fase 3:** o levantamento geral de índices (item 4), combinado para o fim.
