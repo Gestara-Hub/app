@@ -4,6 +4,7 @@ import { SESSION_COOKIE, decodeSession } from "@/lib/session";
 import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "@/services/preferences/preferencesBackend";
 import { DEFAULT_USER_PREFERENCES } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";
+import { isApiError } from "@gestarahub/contracts";
 
 export async function GET() {
   try {
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest) {
     const updated = await saveUserPreferencesInDb(session.id, payload);
     return NextResponse.json({ success: true, preferences: updated });
   } catch (error) {
+    // Sem sessao do banco (demonstracao): as preferencias ficam so no navegador.
+    if (isApiError(error) && error.code === "FORBIDDEN") {
+      return NextResponse.json({ message: "Sem sessão." }, { status: 401 });
+    }
     logError("[POST /api/preferences] Erro ao salvar preferências:", error);
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Erro ao salvar preferências." },

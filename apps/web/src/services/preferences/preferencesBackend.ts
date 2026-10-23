@@ -1,7 +1,7 @@
 "use server";
 
 import type { UserPreferences } from "@gestarahub/contracts";
-import { mergeUserPreferences } from "@gestarahub/contracts";
+import { isApiError, mergeUserPreferences } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { logError } from "@/lib/log";
 
@@ -24,6 +24,8 @@ export async function getUserPreferencesFromDb(
     if (!data?.preferences) return null;
     return mergeUserPreferences(null, data.preferences as Partial<UserPreferences>);
   } catch (err) {
+    // Sem sessao do banco (demonstracao, antes do login): caso esperado, nao e erro.
+    if (isApiError(err) && err.code === "FORBIDDEN") return null;
     logError("[preferencesBackend] Falha ao consultar preferências:", err);
     return null;
   }

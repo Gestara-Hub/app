@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useUserPreferences } from "@/features/preferences";
 import { getTwoFactorStatusAction } from "@/app/(auth)/two-factor-actions";
-import { useCurrentUser } from "../session-provider";
+import { useCurrentUser, useModel } from "../session-provider";
 import {
   canAskSecurity,
   onSecurityPromptRequest,
@@ -47,7 +47,7 @@ function markAsked(): void {
 /**
  * Aviso da verificacao em duas etapas (doc product/25, secao 5): pagamento
  * online ativado, primeiro convite, senha nova e 7 dias de uso. Só dono e
- * gerente; nunca na configuracao inicial, nunca para conta só do Google nem
+ * gerente do modelo de turmas; nunca na configuracao inicial, nunca para conta só do Google nem
  * para quem ja ligou. "Agora não" volta em 30 dias, no maximo 3 vezes.
  */
 export function SecurityPromptHost() {
@@ -59,7 +59,9 @@ export function SecurityPromptHost() {
   const checking = useRef(false);
   const today = format(new Date(), "yyyy-MM-dd");
   const state = preferences.securityPrompt;
-  const eligibleProfile = user.profile === "owner" || user.profile === "manager";
+  // So conta de verdade (modelo de turmas no banco): a barbearia segue no modo demonstracao, sem login real.
+  const model = useModel();
+  const eligibleProfile = model === "classes" && (user.profile === "owner" || user.profile === "manager");
   const inSetup = pathname?.startsWith("/setup") ?? false;
 
   // Primeiro dia no app (conta os 7 dias). So depois das preferencias do
