@@ -51,6 +51,7 @@ import {
 import { ASAAS_FEES, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
+import { requestSecurityPrompt } from "@/features/auth";
 
 function maskCpfCnpj(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -207,6 +208,8 @@ export function ActivateSubaccountDialog({
       }
 
       toast.success("Conta de recebimentos ativada com sucesso!");
+      // A conta passa a receber dinheiro: momento de proteger o acesso (doc product/25).
+      requestSecurityPrompt("online_payments");
       onOpenChange(false);
     } catch {
       toast.error("Erro inesperado ao ativar a conta de recebimentos.");

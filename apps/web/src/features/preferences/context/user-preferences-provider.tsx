@@ -27,6 +27,8 @@ interface UserPreferencesContextValue {
   updatePreferences: (partial: Partial<UserPreferences>) => void;
   resetPreferences: () => Promise<void>;
   isDirty: boolean;
+  /** As preferencias do servidor ja chegaram (ou falharam): decidir so depois disto o que depende delas. */
+  remoteLoaded: boolean;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextValue | null>(null);
@@ -50,6 +52,7 @@ const MAX_WAIT_MS = 180_000; // teto máximo de 3 minutos
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(getInitialPreferences);
   const [isDirty, setIsDirty] = useState(false);
+  const [remoteLoaded, setRemoteLoaded] = useState(false);
 
   const pendingRef = useRef<Partial<UserPreferences>>({});
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -179,6 +182,8 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // ignora se offline
+      } finally {
+        if (active) setRemoteLoaded(true);
       }
     }
 
@@ -359,6 +364,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         updatePreferences,
         resetPreferences,
         isDirty,
+        remoteLoaded,
       }}
     >
       {children}
@@ -376,6 +382,8 @@ export function useUserPreferences(): UserPreferencesContextValue {
       updatePreferences: () => {},
       resetPreferences: async () => {},
       isDirty: false,
+      // Fora do provider nao ha carga remota a esperar.
+      remoteLoaded: true,
     };
   }
   return ctx;

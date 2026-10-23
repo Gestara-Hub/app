@@ -77,7 +77,16 @@ function CodeField({
  * duas etapas com aplicativo autenticador. Conta so do Google nao usa: a
  * verificacao fica na conta Google.
  */
-export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function TwoFactorDialog({
+  open,
+  onOpenChange,
+  startOnOpen = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Ja comeca o cadastro (QR code) ao abrir, quando esta desligada (aviso de seguranca). */
+  startOnOpen?: boolean;
+}) {
   const [view, setView] = useState<View>({ kind: "loading" });
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +99,18 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
       if (!alive) return;
       if (!status.ok) setView({ kind: "error", message: status.message });
       else if (status.googleOnly) setView({ kind: "google" });
+      else if (!status.enabled && startOnOpen) {
+        // Aviso de seguranca: ja vai para o QR code.
+        void startTotpEnrollmentAction().then((result) => {
+          if (!alive) return;
+          if (!result.ok) {
+            toast.error(result.message);
+            setView({ kind: "off" });
+            return;
+          }
+          setView({ kind: "enroll", factorId: result.factorId, qrCode: result.qrCode, secret: result.secret });
+        });
+      }
       else setView({ kind: status.enabled ? "on" : "off" });
     });
     return () => {
@@ -98,7 +119,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
       setCode("");
       setError(null);
     };
-  }, [open]);
+  }, [open, startOnOpen]);
 
   const go = (next: View) => {
     setCode("");
@@ -111,6 +132,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
       const result = await startTotpEnrollmentAction();
       if (!result.ok) {
         toast.error(result.message);
+        go({ kind: "off" });
         return;
       }
       go({ kind: "enroll", factorId: result.factorId, qrCode: result.qrCode, secret: result.secret });

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { completePasswordResetAction } from "../password-reset-actions";
+import { rememberPasswordReset } from "@/features/auth";
 
 /** Nova senha pelo link do e-mail; depois, o login ja vem com o e-mail preenchido. */
 export function ResetPasswordForm({ token, email }: { token: string; email: string }) {
@@ -27,6 +28,8 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
     startTransition(async () => {
       const result = await completePasswordResetAction({ token, password });
       if (result.ok) {
+        // Ao entrar de novo, o aviso da verificacao em duas etapas (doc product/25).
+        rememberPasswordReset();
         router.push(`/login?email=${encodeURIComponent(result.email)}&reset=ok`);
         return;
       }

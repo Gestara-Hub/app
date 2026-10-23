@@ -29,6 +29,14 @@ export interface UserPreferences {
   dismissedAlertKeys: string[];
   /** Lembretes adiados ou ignorados (doc product/25): chave -> "yyyy-MM-dd" ou "never". */
   reminderSnoozes?: Record<string, string>;
+  /** Aviso da verificacao em duas etapas (doc product/25, secao 5). */
+  securityPrompt?: {
+    /** Primeiro dia no app (conta os 7 dias de uso). */
+    firstSeenAt?: string;
+    /** "Agora não" (no maximo 3; depois, so o selo em Seguranca). */
+    dismissCount?: number;
+    lastDismissedAt?: string;
+  };
   lastUnitId?: string;
   defaultCalendarView?: "day" | "week" | "month";
   themeStyling?: ThemeStylingPreferences;

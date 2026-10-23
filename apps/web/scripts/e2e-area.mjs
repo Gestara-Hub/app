@@ -8,7 +8,7 @@
 import { spawnSync } from "node:child_process";
 
 const AREAS = {
-  acesso: ["acesso", "usuarios-perfis", "permissoes"],
+  acesso: ["acesso", "usuarios-perfis", "permissoes", "seguranca-aviso"],
   configuracao: ["configuracao-inicial", "areas-setup", "areas-settings", "configuracoes", "vocabulario-modalidade"],
   turmas: ["turmas", "turmas-geral", "curso-fechado"],
   chamada: ["turmas-geral", "turmas", "dinheiro-pacotes", "evolucao-areas"],

@@ -25,7 +25,7 @@ import { userProfileLabel } from "@/lib/labels";
 import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { manageableProfiles } from "@/lib/permissions";
 import { useProfessionals } from "@/features/professionals";
-import { useCurrentUser } from "@/features/auth";
+import { requestSecurityPrompt, useCurrentUser } from "@/features/auth";
 import { useCreateUser, useUpdateUser, useUsers } from "../hooks/use-users";
 import { userFormSchema, type UserFormValues } from "../user-schema";
 
@@ -126,8 +126,14 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
         await updateMut.mutateAsync({ id: user.id, payload });
         toast.success("Usuário atualizado com sucesso.");
       } else {
+        // Primeira pessoa da equipe com acesso (alem do dono): aviso de seguranca.
+        const firstInvite = (activeUsers ?? []).every((u) => u.profile === "owner");
         const created = await createMut.mutateAsync(payload);
-        if (created.inviteSent) toast.success("Usuário cadastrado e convite de acesso enviado por e-mail!");
+        if (created.inviteSent) {
+          toast.success("Usuário cadastrado e convite de acesso enviado por e-mail!");
+          // Mais gente com acesso aos dados: momento de proteger a conta (doc product/25).
+          if (firstInvite) requestSecurityPrompt("first_invite");
+        }
         else
           toast.warning("Usuário cadastrado, mas o convite não foi enviado.", {
             description: `${created.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" na lista.`,
