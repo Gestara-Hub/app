@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_EMAIL } from "@/config/site";
 import { isAnalyticsConfigured, reviewAnalyticsConsent } from "@/lib/analytics";
 import { LandingLegalPage, LegalSection } from "./landing-legal-page";
 
@@ -480,17 +481,10 @@ export function PrivacyPolicy() {
           requisições sobre o tratamento de dados pessoais, entre em contato com
           nosso Encarregado pelo e-mail{" "}
           <a
-            href="mailto:privacidade@gestarahub.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="font-medium text-foreground underline underline-offset-4"
           >
-            privacidade@gestarahub.com
-          </a>{" "}
-          ou através do canal geral de suporte em{" "}
-          <a
-            href="mailto:suporte@gestarahub.com"
-            className="font-medium text-foreground underline underline-offset-4"
-          >
-            suporte@gestarahub.com
+            {SUPPORT_EMAIL}
           </a>
           .
         </p>
