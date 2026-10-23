@@ -1,7 +1,7 @@
 import type { AuditActor } from "@gestarahub/contracts";
 import { getCurrentActor } from "./actor";
 import { runScoped } from "./scope";
-import { canonical, WORLD_COLLECTIONS, type Row } from "./tables";
+import { canonical, matchesPartialLoad, WORLD_COLLECTIONS, type Row } from "./tables";
 import { presentValues, SINGLE_KEYS, sliceWorld, type MethodSlice, type SliceLoader } from "./slices";
 import { store } from "./store";
 
@@ -73,7 +73,9 @@ function memoryLoader(full: Record<string, unknown>, loaded: Map<string, Row[] |
   };
   return {
     async all(key) {
-      return merge(key, structuredClone((full[key] as Row[] | undefined) ?? []));
+      const collection = WORLD_COLLECTIONS.find((c) => c.key === key);
+      const rows = ((full[key] as Row[] | undefined) ?? []).filter((row) => !collection?.appendOnly || matchesPartialLoad(collection, row));
+      return merge(key, structuredClone(rows));
     },
     async where(key, field, values) {
       const wanted = new Set(presentValues(values));

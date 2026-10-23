@@ -88,6 +88,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   finance: {
     load: async () => (await import("../finance")).financeServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../finance/financeSlices")).financeSlices,
     permissions: {
       ...all(["getSummary", "getMonthlySeries", "getByCategory", "getUpcoming", "listEntries", "listCategories"], VIEW_FINANCE),
       ...all(
@@ -98,6 +99,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   },
   teacherPay: {
     load: async () => (await import("../finance")).teacherPayServiceImpl as unknown as ServiceObject,
+    slices: async () => (await import("../finance/financeSlices")).teacherPaySlices,
     permissions: {
       ...all(["listTeachers", "listRules", "listPayouts", "getPayoutPreview"], VIEW_FINANCE),
       ...all(["saveRule", "saveAdjustments", "closePayout", "reopenPayout", "markPayoutPaid", "markPayoutUnpaid"], MANAGE_FINANCE),

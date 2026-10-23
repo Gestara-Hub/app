@@ -188,6 +188,14 @@ O recorte de cobranças ainda cresce com alunos e cobranças (cerca de 12 por al
 | Ficha do aluno | 1,5 a 1,6 s | **0,035 s** |
 | Matrículas da turma | 1,5 a 1,6 s | **0,12 a 0,14 s** |
 
-**Próximos recortes, na ordem de uso:** financeiro, relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
+**Financeiro e pagamento de professores** (`finance/financeSlices.ts`): o caixa soma cobranças, lançamentos e pagamentos de professor, a prévia do professor conta matrículas, avulsas e pacotes, e a recorrência gera mensalidades e aplica o Pix Automático; nada disso usa presenças, mensagens, avaliações nem a lista de espera, que ficam fora. Vale para todos os métodos de `finance` e `teacherPay`. A conferência pegou um caso: excluir um lançamento pago e depois desfeito é recusado pela auditoria ("já foi pago uma vez"); o recorte traz só a auditoria dos lançamentos (a mesma carga parcial do espaço inteiro, `partialLoad`), agora também no carregador do recorte. Conferido em 252 chamadas (sem chamada nos testes: `getMonthlySeries`, `listTeachers`, `listRules`, `applyRecurringAutoPayments`).
+
+| Espaço de 1 ano (35 mil presenças) | Espaço inteiro, sem cache | Recorte |
+| --- | --- | --- |
+| Resumo do financeiro do mês | 1,45 a 1,48 s | **0,04 s** |
+
+Como o de cobranças, este recorte ainda cresce com cobranças e lançamentos (dezenas por aluno por ano), não com presenças. O próximo passo para ele é um recorte por período, junto com o de cobranças.
+
+**Próximos recortes, na ordem de uso:** relatórios e documentos. Depois, concorrência por linha em vez da versão única do espaço.
 
 **Como acrescentar um recorte:** declarar em `<domínio>/<domínio>Slices.ts`, registrar `slices` no namespace em `world/registry.ts`, rodar `WORLD_SLICE_CHECK=1 pnpm --filter @gestarahub/web test` e, se a conferência apontar uma coleção ou linha que faltou, ampliar o recorte.

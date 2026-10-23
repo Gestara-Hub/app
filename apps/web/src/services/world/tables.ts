@@ -218,3 +218,12 @@ export function sameRow(table: string, a: Row, b: Row): boolean {
     .filter((c) => c !== "updated_at" && c !== "created_at")
     .every((c) => canonical(a[c]) === canonical(b[c]));
 }
+
+/** Linha da carga parcial (`partialLoad`, ex.: auditoria so dos lancamentos)? */
+export function matchesPartialLoad(collection: WorldCollection, row: Row): boolean {
+  const filter = collection.partialLoad;
+  if (!filter) return true;
+  const [column, key] = filter.column.split("->>");
+  const value = key ? (row[column] as Record<string, unknown> | null)?.[key] : row[column];
+  return String(value ?? "") === filter.value;
+}

@@ -11,6 +11,7 @@ import {
   canonical,
   columnOf,
   fromRow,
+  matchesPartialLoad,
   sameRow,
   schemaOf,
   toRow,
@@ -264,7 +265,9 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
   );
   await slice(args, {
     async all(key) {
-      return keep(key, await loadRows(ctx, collectionOf(key).table));
+      // Colecao que so acrescenta: so a parte que uma regra le (ex.: auditoria dos lancamentos).
+      const collection = collectionOf(key);
+      return keep(key, await loadRows(ctx, collection.table, collection.appendOnly ? collection.partialLoad : undefined));
     },
     async where(key, field, values) {
       const table = collectionOf(key).table;
@@ -427,15 +430,6 @@ const CASCADE_PARENTS = new Set([
   "categories", "charges", "class_groups", "clients", "enrollments", "financial_recurrences",
   "organizations", "plans", "professionals", "roles", "student_packages", "units", "users",
 ]);
-
-/** Linha da carga parcial (`partialLoad`, ex.: auditoria so dos lancamentos)? */
-function matchesPartialLoad(collection: WorldCollection, row: Row): boolean {
-  const filter = collection.partialLoad;
-  if (!filter) return true;
-  const [column, key] = filter.column.split("->>");
-  const value = key ? (row[column] as Record<string, unknown> | null)?.[key] : row[column];
-  return String(value ?? "") === filter.value;
-}
 
 /**
  * Depois de gravar: o espaco em cache passa para a versao nova com as linhas
