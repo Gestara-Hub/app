@@ -1,6 +1,6 @@
-# Plano para o agente: 2FA por e-mail e revisão visual geral
+# Plano para o agente: 2FA por e-mail e teste geral do sistema
 
-Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: Parte A inteira, depois a Parte B.**
+Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: Parte A inteira, depois a Parte B** (a Parte B é a mais demorada).
 
 ## 0. Antes de começar (obrigatório)
 
@@ -143,84 +143,120 @@ Tudo com RLS ligado e **sem políticas** (só a chave de serviço), como a migra
 
 ---
 
-## Parte B: revisão visual geral (desktop e celular)
+## Parte B: teste geral do sistema, tela por tela (desktop e celular)
 
 ### B.1 Objetivo e regra de ouro
 
-Passar por **todas as telas** do app, no desktop e no celular, e **só registrar** o que precisa de ajuste. **Não corrija nada**, nem o que parecer trivial: o usuário vai ler a lista no fim e decidir o que pedir. A entrega é um arquivo de achados.
+Testar **de fato** todos os fluxos do sistema, tela por tela, no desktop e no celular: não só olhar, mas **executar** cada ação (criar, editar, inativar, reativar, pagar, desfazer, cancelar, gerar documento, enviar mensagem) e conferir o resultado nas outras telas que dependem dela. O usuário pediu (23/10/2026): **testar tudo, para não deixar passar nada**.
+
+**Não corrija nada**, nem o que parecer trivial. Registre cada problema (visual, de texto, de regra, de dado, erro no console) no arquivo de achados (seção B.6). O usuário lê a lista no fim e decide o que pedir.
 
 ### B.2 Preparação
 
 1. `pnpm demo:local` recria o espaço de demonstração (Academia X, datas relativas a hoje). Depois `pnpm dev` (ou a porta 3005, ver seção 0).
-2. No login, "Entrar na demonstração". No topo, dá para ver como **dono, gerente, recepção e professor**. Revise como **dono** primeiro; depois passe rápido pelas telas principais com **professor** e **recepção** (o que cada um vê e não vê).
-3. Navegador: use o navegador integrado do Claude (ferramentas de navegador) ou Playwright. Tamanhos:
+2. No login, "Entrar na demonstração". No topo, dá para ver como **dono, gerente, recepção e professor**. Faça os fluxos como **dono**; depois repita os principais com **professor**, **recepção** e **gerente** (seção B.5, item Perfis).
+3. **Crie também um espaço novo do zero** pelo "Criar conta" do login (o link de confirmação aparece no terminal do `pnpm dev`): a configuração inicial, o espaço vazio, os guias de "primeiros passos" e o primeiro cadastro de tudo só aparecem assim.
+4. Navegador: o navegador integrado do Claude ou Playwright. Tamanhos:
    - **Desktop:** 1280 × 900 (e uma conferida em 1440).
-   - **Celular:** 375 × 812 (iPhone pequeno) e 390 × 844.
+   - **Celular:** 375 × 812 e 390 × 844.
    - **Tema claro e escuro** nas telas principais (painel, alunos, ficha, turmas, chamada, cobranças, financeiro).
-4. Arquivo de achados: crie `docs/qa/2026-10-xx-revisao-visual.md` (data do dia) com o formato da seção B.5.
+5. Arquivo de achados: crie `docs/qa/2026-10-xx-teste-geral.md` (data do dia), formato na seção B.6.
+6. Abra o console do navegador e o terminal do `pnpm dev` durante todo o teste: anote todo erro ou aviso que aparecer (texto, tela e o que você fez antes). Os erros do servidor também ficam na tabela `error_logs` (doc technical/21): no fim, liste o que entrou nela durante o teste.
 
-### B.3 O que conferir em toda tela (critérios do projeto)
+### B.3 Subconta de recebimentos (pagamento online de verdade, no sandbox)
+
+O usuário autorizou criar uma subconta para este teste. **Só no sandbox do Asaas:**
+
+1. Confira no `apps/web/.env.local` que `ASAAS_API_URL` aponta para `https://sandbox.asaas.com/api/v3`. **Se apontar para produção, pare e avise o usuário.** Não mostre nem copie a chave (`ASAAS_API_KEY`) em lugar nenhum.
+2. Para o webhook (confirmação do pagamento voltar ao app): rode `pnpm tunnel` **antes** do `pnpm dev` (doc technical/16, seção "Webhook do Asaas"). Sem o túnel, o pagamento no sandbox não volta sozinho para o app: anote isso no teste.
+3. No app: Recebimentos online → **Ativar conta de recebimentos**. Preencha com **dados fictícios de teste**: nome de empresa inventado, um CPF ou CNPJ **gerado para teste** (válido no formato, de ninguém real; o sandbox aceita), data de nascimento, um e-mail de teste e um celular de teste. Nunca use documento de pessoa real. Anote no arquivo de achados qual tipo (CPF ou CNPJ) e o nome usado, **sem** o número do documento.
+4. Depois de ativar (e da janela de segurança que aparece nesse momento: teste "Agora não" e, em outra vez, "Ativar agora"), teste o ciclo completo:
+   - cadastrar o CPF de teste num aluno maior de idade e de um responsável financeiro de um aluno menor;
+   - **cobrar online** uma mensalidade, uma avulsa e uma parcela de curso: gerar Pix e link de pagamento; abrir o link público `/p/[code]` no celular;
+   - **pagar no sandbox:** confirmar o pagamento pelo painel do sandbox do Asaas ou pela API de sandbox (consulte a documentação do Asaas pelo MCP de docs do projeto, `.mcp.json`; **só leitura**, nunca a ferramenta que executa chamadas);
+   - conferir que a cobrança vira **Paga** no app (cobranças, ficha, financeiro, relatórios, extrato online), com recibo e o lembrete "pagamento para agradecer";
+   - cobrança online vencida (expiração) e cancelamento;
+   - extrato e saldo em Recebimentos online; documento "Extrato" em PDF.
+5. Ao terminar, **deixe a subconta** (o usuário decide depois se apaga). Registre no arquivo de achados que ela foi criada.
+
+### B.4 O que conferir em toda tela (critérios do projeto)
 
 Base: `docs/frontend/07-padroes-telas-e-ux.md` e `docs/frontend/08-decisoes-landing-page-e-onboarding.md`.
 
-- **Layout:** botão principal de criar no canto superior direito do cabeçalho; no máximo 4 cards de resumo no topo; lista com busca + filtros + barra de resumo (`ListSummaryBar`) acima; toda linha com menu ⋮ e menu de clique direito.
-- **Texto:** nada cortado com reticências (`...`) em nome ou valor; frases curtas (6 a 8 palavras); sem jargão ou inglês na tela ("setup", "2FA", "dashboard" escrito para o usuário); nada de "Ex.: ..." em placeholder; rótulos `Nome*` colados; sem lista de seleção repetida na mesma tela.
-- **Botões:** altura única (36 px); botões só de ícone com tamanho de ícone; rodapé de formulário "Adicionar" (criar) / "Salvar" (editar) / "Cancelar".
-- **Formulários e janelas:** cabeçalho e rodapé fixos, campos rolando no meio; drawer à direita como os outros; mensagens de erro em português, perto do campo.
-- **Celular:** nada de rolagem lateral; campos com letra de 16 px (sem zoom do iPhone); sem foco automático em campo ao abrir; botões ao alcance; tabelas viram lista ou cards legíveis.
-- **Estados:** carregando (esqueleto), vazio (guia com ação), erro (mensagem + tentar de novo).
+- **Funciona:** a ação faz o que promete; o resultado aparece nas outras telas (painel, ficha, cobranças, financeiro, relatórios, auditoria, lembretes); desfazer volta como estava; mensagem de sucesso e de erro corretas.
+- **Regra:** valores, datas, vencimentos, proporcional, bolsa, parcelas, contagem de vagas, presença, pacote (aulas restantes), atraso; o que pode e o que não pode por perfil.
+- **Layout:** botão principal de criar no canto superior direito do cabeçalho; no máximo 4 cards de resumo; lista com busca + filtros + barra de resumo; toda linha com menu ⋮ e menu de clique direito.
+- **Texto:** nada cortado com reticências (`...`) em nome ou valor; frases curtas (6 a 8 palavras); sem jargão ou inglês na tela ("setup", "2FA", "dashboard"); nada de "Ex.: ..." em placeholder; rótulos `Nome*` colados; sem lista de seleção repetida na mesma tela.
+- **Botões:** altura única (36 px); botões só de ícone com tamanho de ícone; rodapé "Adicionar" (criar) / "Salvar" (editar) / "Cancelar".
+- **Formulários e janelas:** cabeçalho e rodapé fixos, campos rolando no meio; drawer à direita; erros em português, perto do campo; fechar com alteração pergunta se descarta.
+- **Celular:** sem rolagem lateral; campos com letra de 16 px (sem zoom do iPhone); sem foco automático ao abrir; botões ao alcance; listas legíveis.
+- **Estados:** carregando (esqueleto), vazio (guia com ação), erro (mensagem + tentar de novo; erro inesperado mostra "Código do erro").
 - **Tema escuro:** contraste, textos ilegíveis, fundos brancos sobrando.
-- **Console do navegador:** anote erros e avisos que aparecerem (texto e tela).
 
-### B.4 Roteiro de telas
+### B.5 Fluxos, tela por tela
 
-Para cada tela: abrir, olhar no desktop e no celular, abrir os diálogos principais (criar, editar, ações do ⋮), testar busca e filtros, anotar.
+Para cada item: execute no desktop, repita o essencial no celular, anote. Marque no arquivo de achados cada item como feito.
 
-**Entrada e configuração**
-1. `/login` (entrar, criar conta, "Esqueci minha senha"), `/forgot-password`, `/reset-password` (com link do terminal), `/two-factor` (depois da Parte A).
-2. `/setup` (configuração inicial, 3 passos: Espaço, Área, Aulas). Para ver do zero, crie uma conta nova pelo "Criar conta" (link no terminal).
-3. Site: `/` (landing page inteira, rolagem, cards de áreas, abas "Veja o sistema por dentro"), `/terms`, `/privacy`, `/plans` e `/plans/checkout`.
+**Entrada e conta**
+1. Criar conta (e-mail; link no terminal), entrar, sair, "Esqueci minha senha" (`/forgot-password` → link no terminal → `/reset-password` → entrar de novo: aparece o aviso de segurança), login com senha errada, conta inativa.
+2. Verificação em duas etapas (depois da Parte A): ligar por app e por e-mail, entrar com código, "lembrar este dispositivo", esquecer dispositivo, desligar.
+3. Convite: em Usuários, convidar alguém (primeiro convite mostra o aviso de segurança); abrir `/accept-invite` com o link do terminal; entrar como o convidado.
+4. Configuração inicial `/setup` (conta nova): os 3 passos, cada área (Lutas, Pilates e yoga, Música, Idiomas, Outra área...), voltar, erros ao avançar sem o obrigatório, Enter avança.
+5. Site: `/` (landing inteira), `/terms`, `/privacy`, `/plans`, `/plans/checkout` (assinatura: só até a tela de pagamento; não conclua compra real).
+
+**Cadastros**
+6. Modalidades `/classes/modalities`: criar, editar, trilha de níveis/faixas, avaliações (notas), inativar.
+7. Equipe `/team`: criar professor, editar, horários, inativar/reativar.
+8. Planos e pacotes `/classes/plans`: criar plano (mensal, quinzenal, semanal), pacote de aulas, editar, inativar.
+9. Turmas `/classes`: criar turma (horários, vagas, aula avulsa, curso com fim e parcelas), editar, **mudar o horário** (pergunta "Avisar os alunos?" → envio em sequência), inativar/reativar, lista e cards, filtros.
+10. Alunos `/clients`: criar aluno sem plano, com plano (proporcional, ciclo cheio, pré e pós), bolsista (integral e parcial), com pacote, menor com responsáveis (financeiro), endereço, anexos; editar, trocar de plano, pausar, inativar e reativar; busca e filtros; paginação.
 
 **Dia a dia**
-4. `/dashboard`: bloco **Lembretes** (novo: grupos, "Ver", WhatsApp, ⋮ "Lembrar amanhã"/"Não lembrar", "Enviar em sequência"), **sino no topo** (número, painel lateral), cards, aniversariantes, próximas aulas.
-5. `/classes/calendar` (dia, semana, mês; lista no celular).
-6. `/classes` (lista e cards), `/classes/[id]` (detalhe: alunos, aulas, cobranças, ações; **editar o horário** e ver a pergunta "Avisar os alunos?" e o envio em sequência), `/classes/sessions/[sessionId]` (aula e **chamada**: marcar presença, "Todos vieram", menu do aluno, barra de baixo no celular), certificado `/classes/[id]/certificate/[enrollmentId]` (curso terminado).
-7. `/clients` (lista, filtros, novo aluno com plano, bolsista, pacote, responsáveis), `/clients/[id]` (**ficha**: alertas, seções em acordeão, cobranças, presenças, evolução/graduação, notas, mensagens, documentos em PDF).
-8. `/communication`: abas de mensagens, **Histórico** (agora paginado no banco: troca de página, filtros de status e tipo, busca), modelos (editar), conexão do WhatsApp.
+11. Matricular aluno na turma, lista de espera (turma lotada), promover da espera, remover; matrícula em curso com parcelas.
+12. Calendário `/classes/calendar`: dia, semana, mês; lista no celular; trocar professor de uma aula (substituto) e voltar.
+13. Aula e chamada `/classes/sessions/[id]`: marcar presente, falta, justificada, "Todos vieram", desmarcar; aula avulsa (reserva e cobrança), aluno de pacote (gasta aula), três faltas seguidas (vira lembrete).
+14. Ficha do aluno `/clients/[id]`: alertas, cada seção do acordeão, cobranças, presenças, evolução (graduar, registros, metas), notas e boletim em PDF, mensagens (enviar pela ficha), documentos (termo do responsável, declaração anual, recibo).
+15. Notas: lançar notas (0 a 10, 0 a 100, conceito), "Faltou/Sem nota", boletim.
+16. Certificado: curso terminado → certificado na turma e o PDF.
+17. **Lembretes (novo):** no painel e no **sino no topo**: cada grupo (atraso, vence hoje, vence logo, pacote acabando, faltas, aniversário, avanço de nível, boas-vindas, pagamento para agradecer), "Ver", WhatsApp (abre com o texto certo), ⋮ "Lembrar amanhã" e "Não lembrar deste", "Enviar em sequência" (pular, concluir). Conferir que pagar, graduar e mandar mensagem mudam a lista na hora.
 
 **Dinheiro**
-9. `/classes/billing` (cobranças: mês, filtros, atraso, registrar pagamento, cobrança avulsa, parcelas, recibo, cobrar online).
-10. `/finance` (resumo, lançamentos, novo lançamento, recorrência, categorias, pagamento de professores).
-11. `/online-payments` (recebimentos online: ativação da conta de recebimentos, extrato).
-12. `/reports` (catálogo, cada relatório, prévia e PDF).
-13. `/classes/plans` (planos e pacotes).
+18. Cobranças `/classes/billing`: gerar mensalidades, filtros (mês, status, tipo, atraso), registrar pagamento (método, data, anexo), desfazer pagamento, cancelar e reabrir, cobrança avulsa (com parcelas), recibo, lembrete de WhatsApp, cobrar online (seção B.3).
+19. Financeiro `/finance`: resumo, lançamento de entrada e saída, pagar e desfazer, recorrência (gerar o mês, encerrar), categorias, anexos; pagamento de professores (regras, prévia, fechar, pagar, reabrir, demonstrativo em PDF).
+20. Recebimentos online `/online-payments`: seção B.3.
+21. Relatórios `/reports`: cada relatório do catálogo, filtros (mês, turma, aula), prévia, PDF e CSV; os do plano Profissional aparecem bloqueados no Grátis.
 
-**Estrutura e administração**
-14. `/classes/modalities` (modalidades, trilha de níveis/faixas), `/team` (equipe), `/users` (usuários, convite, perfis), `/audit` (**auditoria**: agora carrega 50 por vez com "Carregar mais eventos"; filtros por tipo, autor, período, busca), `/settings` (todas as abas).
-15. Menu do usuário no topo: Preferências, **Segurança** (janela da verificação em duas etapas), trocar perfil (demonstração), sair.
+**Comunicação**
+22. `/communication`: mensagens (avulsa para um aluno e para vários), **Histórico** (troca de página, filtros de status e tipo, busca por nome, telefone e texto, abrir mensagem), modelos (editar, variáveis, prévia), conexão do WhatsApp (assistido; o oficial é Pro).
 
-**Perfis**
-16. Como **professor**: o que aparece no menu, painel, turmas (só as dele), chamada, ficha (sem cobranças), sino/lembretes (só alunos das turmas dele, sem cobrança).
-17. Como **recepção** e **gerente**: menu, cobranças, auditoria (gerente não vê eventos de dono).
+**Administração**
+23. Usuários `/users`: criar cada perfil, convite, editar perfil, inativar/reativar, reenviar convite.
+24. Auditoria `/audit`: eventos das ações feitas no teste aparecem; "Carregar mais eventos"; filtros por tipo, autor, período e busca; detalhe do evento.
+25. Configurações `/settings`: todas as abas (espaço, unidade e horários, cobrança, pagamento online, certificados, plano/assinatura, preferências); salvar, descartar ao sair com alteração.
+26. Menu do usuário: Preferências (tema, densidade, cores), Segurança, trocar perfil (demonstração), sair.
 
-**Fora do foco (só uma olhada, sem detalhar):** modelo de agendamento/barbearia (`/schedule`, `/appointments`, `/services`): está no modo demonstração e fora do foco atual.
+**Perfis** (com o espaço de demonstração, trocando no topo)
+27. **Professor:** só as turmas dele, chamada só nas aulas dele (e nas que substitui), ficha sem cobranças, lembretes só dos alunos dele e sem cobrança, menu reduzido; tentar abrir pela URL uma tela proibida (ex.: `/finance`) deve barrar.
+28. **Recepção** e **gerente:** o que cada um vê no menu, cobranças, usuários, auditoria (gerente não vê eventos só do dono).
 
-### B.5 Formato do arquivo de achados
+**Fora do foco (só uma olhada, sem detalhar):** modelo de agendamento/barbearia (`/schedule`, `/appointments`, `/services`): segue no modo demonstração.
 
-Uma tabela por área, mais um resumo no topo. Cada achado em uma linha:
+### B.6 Formato do arquivo de achados
 
-| # | Tela | Onde | Tamanho/tema | O que está errado | Por que importa | Sugestão (curta) | Gravidade |
+No topo: quantos achados por gravidade, as 5 coisas mais importantes, a lista dos itens da seção B.5 feitos (e os não feitos, com o motivo) e as linhas novas da tabela `error_logs`. Depois, uma tabela por área:
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Ficha do aluno | aba Cobranças | celular 375, claro | valor quebra em duas linhas e empurra o botão | botão fica fora da tela | valor numa linha, botão embaixo | média |
+| 1 | Ficha do aluno | aba Cobranças | celular 375, claro | o valor quebra em duas linhas e empurra o botão para fora | valor numa linha, botão visível | abrir a ficha de um aluno com 3 cobranças | média |
 
-- **Gravidade:** `alta` (impede usar, dado errado, erro no console, quebra no celular), `média` (feio ou confuso, mas usa), `baixa` (detalhe de acabamento).
-- Anexe capturas de tela quando ajudarem: salve em `docs/qa/capturas/2026-10-xx/` com nome curto (`ficha-cobrancas-375.png`) e cite na linha.
-- No topo do arquivo: quantos achados por gravidade e as 5 coisas mais importantes.
-- **Não corrija nada.** Se achar um bug de verdade (não visual), registre como `alta` e descreva os passos para repetir.
+- **Gravidade:** `alta` (impede usar, dado ou valor errado, erro no console ou no servidor, quebra no celular, falha de permissão), `média` (confuso ou feio, mas usa), `baixa` (acabamento).
+- Capturas quando ajudarem: `docs/qa/capturas/2026-10-xx/` com nome curto (`ficha-cobrancas-375.png`), citadas na linha.
+- **Não corrija nada.** Bug de verdade: `alta`, com os passos para repetir.
 
-### B.6 Pronto quando
+### B.7 Pronto quando
 
-- [ ] Todas as telas da seção B.4 vistas no desktop e no celular, e as principais no tema escuro.
-- [ ] Perfis professor, recepção e gerente conferidos nas telas principais.
-- [ ] Arquivo `docs/qa/2026-10-xx-revisao-visual.md` com os achados no formato da seção B.5.
+- [ ] Todos os itens da seção B.5 executados no desktop e o essencial no celular; as telas principais no tema escuro.
+- [ ] Subconta criada no sandbox e o ciclo do pagamento online testado (seção B.3).
+- [ ] Perfis professor, recepção e gerente conferidos.
+- [ ] Arquivo `docs/qa/2026-10-xx-teste-geral.md` com os achados no formato da seção B.6.
 - [ ] Nenhuma correção feita; nada commitado sem o usuário pedir; nada de push.
