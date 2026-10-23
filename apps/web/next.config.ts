@@ -18,10 +18,16 @@ const nextConfig: NextConfig = {
             key: "X-DNS-Prefetch-Control",
             value: "on",
           },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
+          // So em producao: no `pnpm dev` (http) o navegador nao deve guardar
+          // "sempre https" para o localhost, senao links locais abrem em https e falham.
+          ...(process.env.NODE_ENV === "production"
+            ? [
+                {
+                  key: "Strict-Transport-Security",
+                  value: "max-age=63072000; includeSubDomains; preload",
+                },
+              ]
+            : []),
           {
             key: "X-Frame-Options",
             value: "DENY",

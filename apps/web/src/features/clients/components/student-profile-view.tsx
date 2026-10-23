@@ -65,6 +65,7 @@ import { StudentProfileAlerts } from "./student-profile-alerts";
 import { brDate } from "./student-profile-parts";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
 import { ageLabel } from "@/lib/birthdays";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 type ProfileSectionId = "classes" | "charges" | "packages" | "evolution" | "messages" | "data";
 
@@ -303,8 +304,7 @@ export function StudentProfileView({ id }: { id: Id }) {
     student.minorConsentStatus === "pending";
 
   const handleSendConsentWhatsApp = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/consent/minor/${student.id}`;
+    const url = minorConsentUrl(student.id);
     const guardian = student.guardians?.find((g) => Boolean(g.phone)) || student.guardians?.[0];
     const targetPhone = guardian?.phone || student.phone;
     const greeting = guardian?.name ? `, ${guardian.name}` : "";

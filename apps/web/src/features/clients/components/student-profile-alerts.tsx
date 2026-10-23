@@ -22,6 +22,7 @@ import {
 } from "@/features/communication";
 import { useAbsenceStreaks, useChargeActions, useCharges } from "@/features/turmas";
 import { withKind } from "@/lib/text";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 interface StudentAlert {
   key: string;
@@ -244,8 +245,7 @@ export function StudentProfileAlerts({
           <Button
             variant="outline"
             onClick={() => {
-              const origin = typeof window !== "undefined" ? window.location.origin : "";
-              const url = `${origin}/consent/minor/${student.id}`;
+              const url = minorConsentUrl(student.id);
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(url);
                 toast.success("Link copiado para a área de transferência.");
@@ -259,8 +259,7 @@ export function StudentProfileAlerts({
             <Button
               variant="outline"
               onClick={() => {
-                const origin = typeof window !== "undefined" ? window.location.origin : "";
-                const url = `${origin}/consent/minor/${student.id}`;
+                const url = minorConsentUrl(student.id);
                 const msg = `Olá, ${targetName}! Segue o link de autorização de matrícula e LGPD do aluno(a) ${student.name}: ${url}\n\nPor favor, confirme no link acima.`;
                 const cleanPhone = targetPhone.replace(/\D/g, "");
                 const phoneWithCountry = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;

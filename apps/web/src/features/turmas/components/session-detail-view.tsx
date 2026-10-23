@@ -85,6 +85,7 @@ import {
 import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
 import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 /**
  * Saldo do pacote de quem paga a aula com pacote: "7 de 10 aulas", "Última
@@ -625,8 +626,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
                             label: "Enviar autorização (WhatsApp)",
                             icon: <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />,
                             onSelect: () => {
-                              const origin = typeof window !== "undefined" ? window.location.origin : "";
-                              const url = `${origin}/consent/minor/${student.id}`;
+                              const url = minorConsentUrl(student.id);
                               const guardian =
                                 student.guardians?.find((g) => Boolean(g.phone)) || student.guardians?.[0];
                               const targetPhone = guardian?.phone || student.phone;

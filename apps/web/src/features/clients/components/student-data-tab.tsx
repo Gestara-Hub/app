@@ -20,6 +20,7 @@ import { useOrganization } from "@/features/settings";
 import { useConfirmPaperMinorConsent } from "../hooks/use-clients";
 import { brDate, PERIOD_SHORT, TIMING_LABEL } from "./student-profile-parts";
 import { ageLabel } from "@/lib/birthdays";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -70,8 +71,7 @@ export function StudentDataTab({
   const confirmPaperMutation = useConfirmPaperMinorConsent();
 
   const handleCopyLink = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/consent/minor/${student.id}`;
+    const url = minorConsentUrl(student.id);
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
       toast.success("Link de autorização copiado para a área de transferência.");
@@ -79,8 +79,7 @@ export function StudentDataTab({
   };
 
   const handleSendWhatsApp = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const url = `${origin}/consent/minor/${student.id}`;
+    const url = minorConsentUrl(student.id);
     const primaryGuardian = guardians[0];
     const targetPhone = primaryGuardian?.phone || student.phone;
     const guardianGreeting = primaryGuardian?.name ? `, ${primaryGuardian.name}` : "";

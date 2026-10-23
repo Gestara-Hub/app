@@ -80,6 +80,7 @@ import {
 } from "@/features/turmas";
 import { usePaginatedClients } from "../hooks/use-clients";
 import { useUserPreferences } from "@/features/preferences";
+import { minorConsentUrl } from "@/lib/minor-consent-link";
 
 const PERIOD_SHORT: Record<PlanPeriod, string> = {
   monthly: "mês",
@@ -353,8 +354,7 @@ function minorConsentAction(client: Client): ListItemAction | null {
     label: "Enviar autorização (WhatsApp)",
     icon: <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />,
     onSelect: () => {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const url = `${origin}/consent/minor/${client.id}`;
+      const url = minorConsentUrl(client.id);
       const guardian = client.guardians?.find((g) => Boolean(g.phone)) || client.guardians?.[0];
       const targetPhone = guardian?.phone || client.phone;
       const greeting = guardian?.name ? `, ${guardian.name}` : "";
