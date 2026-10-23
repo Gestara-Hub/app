@@ -475,7 +475,7 @@ test.describe("comemoração da configuração inicial", () => {
     const checklist = page.locator("[data-tour=onboarding-checklist]");
     await expect(checklist).toContainText("5 de 6 concluídos");
     await createClass(page, "Xadrez Sábado", "Xadrez Iniciante");
-    await expect(party(page)).toContainText("A turma “Xadrez Sábado” foi criada.");
+    await expect(party(page)).toContainText("Agora matricule os alunos da turma “Xadrez Sábado”.");
     await waitForStore(page, (t) => t.classGroups.length === 1);
     expect((await readTenant(page)).classGroups[0].billingMode).toBe("package");
   });
@@ -507,7 +507,7 @@ test.describe("comemoração da configuração inicial", () => {
     await page.goto("/dashboard");
     await expect(page.locator("[data-tour=onboarding-checklist]")).toContainText("4 de 5 concluídos");
     await createClass(page, "Xadrez Livre", "Xadrez Iniciante");
-    await expect(party(page)).toContainText("A turma “Xadrez Livre” foi criada.");
+    await expect(party(page)).toContainText("Agora matricule os alunos da turma “Xadrez Livre”.");
     await waitForStore(page, (t) => t.classGroups.length === 1);
     expect((await readTenant(page)).classGroups[0].billingMode).toBe("free");
   });

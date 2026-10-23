@@ -240,8 +240,9 @@ test("curso terminado no Pro: o certificado mostra a aluna, as aulas e a frequê
   await page.getByRole("menuitem", { name: "Certificado", exact: true }).click();
   await expect(page).toHaveURL(/\/classes\/cg-old\/certificate\/e-1$/);
 
-  const print = page.getByRole("button", { name: "Imprimir ou salvar em PDF" });
-  await expect(print).toBeVisible();
+  // Conta real: o PDF sai do servidor, no mesmo modelo da folha.
+  const pdf = page.getByRole("link", { name: "Baixar PDF" });
+  await expect(pdf).toHaveAttribute("href", "/api/documents/certificates/e-1");
   const sheet = page.locator("main");
   await expect(sheet).toContainText("Aluna Formada");
   await expect(sheet).toContainText("Confeitaria de Verão");
@@ -251,15 +252,8 @@ test("curso terminado no Pro: o certificado mostra a aluna, as aulas e a frequê
   await expect(sheet).toContainText("7 aulas");
   await expect(sheet).toContainText("75%");
 
-  // Imprimir usa a impressao do navegador.
-  await page.evaluate(() => {
-    (window as unknown as { printed: number }).printed = 0;
-    window.print = () => {
-      (window as unknown as { printed: number }).printed += 1;
-    };
-  });
-  await print.click();
-  expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
+  const response = await page.request.get("/api/documents/certificates/e-1");
+  expect(response.headers()["content-type"]).toBe("application/pdf");
 });
 
 test("lista de espera do curso: promover com valor ajustado à vista gera uma parcela só", async ({ page }) => {

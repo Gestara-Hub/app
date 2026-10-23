@@ -246,8 +246,8 @@ test.describe("cobrança online", () => {
 
     await expect(row).toContainText("Pago online");
     await expect(row).toContainText("pago online via Pix");
-    // Pago online nao se desfaz (seria estorno): so o aviso no lugar do botao.
+    // Pago online nao se desfaz (seria estorno): so o (i) com o detalhe no lugar do botao.
     await expect(row.getByTitle("Desfazer pagamento")).toHaveCount(0);
-    await expect(row.getByRole("img", { name: /Pago online: não pode ser desfeito/ })).toBeVisible();
+    await expect(row.getByRole("button", { name: /Ver detalhes do pagamento online/ })).toBeVisible();
   });
 });

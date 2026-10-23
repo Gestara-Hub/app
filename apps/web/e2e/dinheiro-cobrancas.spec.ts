@@ -379,7 +379,7 @@ test.describe("Pro", () => {
       await expect(row).toContainText(via);
       // Pago online nao se desfaz (seria estorno): sem botao e sem menu de clique direito.
       await expect(row.getByRole("button", { name: "Desfazer pagamento" })).toHaveCount(0);
-      await expect(row.getByRole("img", { name: /Pago online: não pode ser desfeito/ })).toBeVisible();
+      await expect(row.getByRole("button", { name: /Ver detalhes do pagamento online/ })).toBeVisible();
       expect(await contextMenuItems(page, row)).toEqual([]);
     }
     const card = page.locator("div.rounded-xl.shadow-2xs").filter({ has: page.getByText("Recebido", { exact: true }) });

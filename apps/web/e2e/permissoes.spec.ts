@@ -263,7 +263,7 @@ test.describe("Plano Profissional", () => {
     await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
   });
 
-  test("Pro: o certificado abre para imprimir, também para a atendente", async ({ page }) => {
+  test("Pro: o certificado abre com o PDF, também para a atendente", async ({ page }) => {
     await seedSchool(page, (t) => {
       t.organization.subscription = { tier: "pro" };
     });
@@ -273,11 +273,11 @@ test.describe("Plano Profissional", () => {
     await page.getByRole("button", { name: "Ações da matrícula em Inglês Intensivo", exact: true }).click();
     await page.getByRole("menuitem", { name: "Certificado", exact: true }).click();
     await expect(page).toHaveURL("/classes/cg-course/certificate/e-course");
-    await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Baixar PDF" })).toBeVisible();
     await expect(page.getByRole("main")).toContainText("Aluno Alfa");
 
     await loginAsUser(page, ATTENDANT);
     await page.goto("/classes/cg-course/certificate/e-course");
-    await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Baixar PDF" })).toBeVisible();
   });
 });

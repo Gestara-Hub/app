@@ -101,7 +101,7 @@ test("curso: criar pelo padrão da área, matricular em 4x, pagar uma parcela e 
   await enroll.getByRole("button", { name: "Matricular 1 aluno" }).click();
   await expect(page.getByText("Aluno matriculado.")).toBeVisible();
   // A 1a matricula do curso fecha a configuracao inicial: agora comemora.
-  await expect(party).toContainText("Alunos matriculados no curso");
+  await expect(party).toContainText("Os alunos já estão no curso");
   await party.getByRole("button", { name: "Agora não" }).click();
   await expect(party).toBeHidden();
   await waitForStore(page, (raw) => raw.includes('"kind":"course"'));
