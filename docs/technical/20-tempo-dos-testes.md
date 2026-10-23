@@ -1,0 +1,60 @@
+# 20. Tempo dos testes: plano para esperar o mínimo
+
+Data: 2026-10-23. Status: proposta (medições feitas, nada mudado).
+
+## 1. Onde estamos
+
+| Suíte | Testes | Tempo hoje | Como roda |
+| --- | --- | --- | --- |
+| Vitest (regras e serviços) | 955 | 20 s | Isola cada arquivo: 5 s rodando testes e o resto recarregando módulos |
+| Vitest de banco (`*.db.test.ts`) | 57 | ~1 min | Um arquivo por vez (espaços no mesmo banco local) |
+| e2e Playwright (desktop + celular) | 341 | 30 a 45 min | **Um teste por vez** (`workers: 1`), sobre o `next dev` |
+
+Por que o e2e demora:
+1. **Um por vez.** Os cenários usam ids fixos (`c-a`, `cg-1`, `m-jj`) e a chave primária das tabelas é global: dois testes ao mesmo tempo gravam o mesmo id e colidem. Por isso `fullyParallel: false` e `workers: 1`.
+2. **Cada teste custa ~5 s:** criar o espaço, entrar com usuário de verdade, semear dados, navegar e esperar as ações do servidor.
+3. **Servidor de desenvolvimento:** medido no `turmas-geral` (13 testes), o build de produção levou 53 s contra ~66 s no `next dev`: ganho de ~20% e menos falha instável de compilação, mas não é o gargalo.
+4. **Falhas instáveis de navegação** (URL que não troca a tempo) obrigam a rodar de novo.
+
+Medido no Vitest: sem isolar arquivos (`--isolate=false`), **6 s em vez de 20 s**; só 7 testes (arquivos com `vi.mock`) dependem do isolamento.
+
+## 2. Meta
+
+- **Dia a dia (cada mudança):** menos de 1 minuto de espera local.
+- **Antes de publicar:** e2e completo em **10 a 15 minutos**, rodando fora do Mac.
+
+## 3. Plano
+
+### Etapa 1: rápido de fazer (meio dia), ganho imediato no dia a dia
+
+1. **Vitest em dois grupos:** os arquivos sem `vi.mock` rodam sem isolar (`isolate: false`); os 6 com `vi.mock` seguem isolados. 20 s → ~7 s.
+2. **e2e "smoke" (`pnpm e2e:smoke`):** cerca de 40 testes críticos marcados com `@smoke` (entrar, configuração inicial, criar turma, matricular, chamada, cobrar e dar baixa, cobrança online, relatório em PDF, ficha do aluno, permissões). ~3 a 4 min. Roda a cada mudança de tela.
+3. **e2e por área (`pnpm e2e:area turmas`):** atalhos para rodar só os specs da área mexida (como tenho feito à mão).
+4. **Modo produção opcional (`E2E_SERVER=prod`):** `next build` + `next start` na 3100 para rodadas grandes (menos instabilidade, ~20% mais rápido).
+
+### Etapa 2: e2e completo fora do Mac (1 a 2 dias)
+
+5. **GitHub Actions** (o repositório ainda não tem): a cada push/PR, Vitest + typecheck + lint (~2 min) e o e2e completo **dividido em 4 máquinas** (`--shard=1/4` ... `4/4`), cada uma com o seu Supabase local (`supabase start` no runner). Como cada máquina tem banco próprio, os ids fixos não colidem. Estimativa: **10 a 15 min** no total, sem ocupar o seu computador; o relatório e os traces das falhas ficam anexados ao PR.
+6. **Nova tentativa só no CI** (`retries: 1`, já configurado) e lista das instáveis no relatório, para corrigir as que mais repetem.
+
+### Etapa 3: atacar o custo por teste (contínuo)
+
+7. **Corrigir as esperas instáveis** (navegação e filtros na URL, troca de mês e de semana): menos reexecução e menos falso alarme.
+8. **Semear direto no banco** onde hoje o teste passa pelo motor (`editTenant` monta o espaço inteiro por gravação): inserção em lote, mais rápida.
+9. **Login reaproveitado** por arquivo (`storageState`) quando o teste não depende de entrar.
+
+### Etapa 4 (só se ainda precisar): paralelo no próprio Mac
+
+10. **Ids únicos por teste:** os cenários passam a usar `id("c-a")`, que vira um id próprio do espaço do teste, e as URLs esperadas idem. Libera 4 ou mais workers locais (~4x). É uma mudança grande em 38 specs; só vale se o CI da etapa 2 não bastar.
+
+## 4. Como fica a rotina
+
+| Momento | O que roda | Espera |
+| --- | --- | --- |
+| A cada mudança | typecheck + lint + Vitest | ~30 s |
+| Mudança de tela | + e2e da área ou smoke | 3 a 5 min |
+| Antes de publicar / PR | e2e completo no GitHub Actions | 10 a 15 min, fora do Mac |
+
+## 5. Ordem sugerida
+
+Etapa 1 (itens 1 a 4) agora; etapa 2 quando o repositório for para o GitHub Actions; etapas 3 e 4 conforme as falhas instáveis e o tempo do CI.
