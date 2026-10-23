@@ -1,5 +1,6 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
+> **Current work (23/10/2026):** read [`docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`](docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md) first. Part A (two-step verification by email + remember device) comes before Part B (visual review: record findings only, fix nothing). `CLAUDE.md` has the full, current rules (this file is a summary).
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
 - **Monorepo**: pnpm workspaces (`apps/web`, `packages/contracts`, `packages/core`).
