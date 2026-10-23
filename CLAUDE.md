@@ -114,7 +114,7 @@ pnpm --filter @gestarahub/web e2e:smoke  # 42 critical browser flows (@smoke), ~
 pnpm --filter @gestarahub/web e2e:area turmas  # only the specs of one area (no area: lists them)
 pnpm e2e                                 # all browser flows (Playwright, one at a time, 30-45 min); E2E_SERVER=prod for a production build
 ```
-- Test tooling and timings: `docs/technical/20-tempo-dos-testes.md`.
+- Test tooling and timings: `docs/technical/20-tempo-dos-testes.md`. Local rule (2026-10-23): only the necessary checks (typecheck, lint, Vitest; db tests only for engine/migration/DB changes, only that area); e2e only when the user asks, then the area or smoke. The full e2e moves to GitHub Actions (doc 20, step 2) before going to production.
 - Business rules are covered by `apps/web/src/services/__tests__` and `packages/core/test`; UI flows by `apps/web/e2e`.
 
 ---

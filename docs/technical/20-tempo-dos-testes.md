@@ -32,7 +32,20 @@ Medido no Vitest: sem isolar arquivos (`--isolate=false`), **6 s em vez de 20 s*
 3. **e2e por área (`pnpm e2e:area turmas`):** atalhos para rodar só os specs da área mexida (como tenho feito à mão).
 4. **Modo produção opcional (`E2E_SERVER=prod`):** `next build` + `next start` na 3100 para rodadas grandes (menos instabilidade, ~20% mais rápido).
 
-### Etapa 2: e2e completo fora do Mac (1 a 2 dias)
+### Etapa 2: e2e completo fora do Mac (1 a 2 dias) — **adiada para a ida a produção**
+
+> Decisão de 23/10/2026: fica para quando formos publicar (antes do primeiro deploy, ver o checklist de produção). Até lá, localmente rodam só as checagens rápidas (seção 7).
+
+**Como vai funcionar.** Um arquivo em `.github/workflows/` faz o GitHub rodar, em máquinas dele, a cada push e PR:
+- **Checagens rápidas (~2 a 3 min):** typecheck, lint, Vitest e os testes do `packages/core`.
+- **e2e completo em 4 máquinas ao mesmo tempo (~10 a 15 min):** cada uma instala as dependências, sobe o próprio Supabase local (`supabase start` + migrações), gera o build de produção e roda 1/4 dos testes (`--shard=1/4` ... `4/4`). Banco próprio por máquina: os ids fixos dos cenários não colidem. Os relatórios das 4 se juntam num só, com vídeo, captura e trace de cada falha anexados ao PR.
+
+**Custo e requisitos.**
+- Repositório público (`Gestara-Hub/app` em 23/10/2026): minutos do GitHub Actions gratuitos nas máquinas padrão. Se virar privado, cada rodada completa gasta ~60 minutos de máquina (4 × 15) da franquia do plano; nesse caso, e2e completo só nos PRs para a `main` e o smoke (`@smoke`) a cada push.
+- Nenhum segredo de verdade: Supabase local da própria máquina, Asaas e e-mail desligados (como no e2e local).
+- Depois de ligar: proteger a `main` exigindo os testes passando (configuração do repositório, com quem cuida do GitHub).
+
+**Itens:**
 
 5. **GitHub Actions** (o repositório ainda não tem): a cada push/PR, Vitest + typecheck + lint (~2 min) e o e2e completo **dividido em 4 máquinas** (`--shard=1/4` ... `4/4`), cada uma com o seu Supabase local (`supabase start` no runner). Como cada máquina tem banco próprio, os ids fixos não colidem. Estimativa: **10 a 15 min** no total, sem ocupar o seu computador; o relatório e os traces das falhas ficam anexados ao PR.
 6. **Nova tentativa só no CI** (`retries: 1`, já configurado) e lista das instáveis no relatório, para corrigir as que mais repetem.
@@ -72,3 +85,10 @@ Achados no caminho (corrigidos):
 - **Sobras entre testes:** os cenários usam ids fixos e `apply_world_changes` procurava a linha só pelo id; um id que existia em outro espaço de teste era trazido para o espaço novo, a exclusão no fim do teste falhava calada e o lixo crescia (127 espaços). Migração 41: a gravação recusa linha de outro espaço. `e2e/global-setup.ts` apaga as sobras antes de cada rodada (só usuários `e2e-…@gestarahub.test`) e a limpeza de cada teste avisa quando falha.
 - **Troca de usuário no meio do teste:** a página anterior seguia buscando sem sessão ("sessão expirou" no console, só visível no modo produção); o helper sai da página antes de trocar os cookies.
 - **E-mail sem chave no modo produção dos e2e:** o servidor de teste (com `E2E_NOW`) registra o link como no desenvolvimento.
+
+## 7. Regra para o desenvolvimento local (23/10/2026)
+
+Para dar velocidade ao desenvolvimento, localmente rodam **só as checagens necessárias**:
+- **Sempre, depois de cada mudança:** typecheck, lint e Vitest (segundos). Teste novo de regra no Vitest quando a regra muda.
+- **Testes de banco** (`test:db`): só quando a mudança mexe no motor, em migração ou em leitura/gravação no banco, e só os arquivos da área.
+- **e2e (Playwright):** **não roda por padrão.** Só quando pedido, e então o da área (`e2e:area`) ou o smoke; o completo fica para o CI (etapa 2). Fluxos de tela novos ou mudados vão para a lista de testes pendentes.
