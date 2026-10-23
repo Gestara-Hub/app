@@ -78,7 +78,8 @@ export const auditLogService = {
       store.auditLog.push(entry);
 
       if (realAccountInBrowser()) {
-        recordAuditLogInDb(entry).catch((err) => {
+        // So o que aconteceu; autor, espaco e hora o servidor tira da sessao.
+        recordAuditLogInDb({ ...input, unitId: store.unit.id }).catch((err) => {
           console.error("[auditLogService] Erro ao persistir log:", err);
         });
       }

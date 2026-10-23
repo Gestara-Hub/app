@@ -262,4 +262,6 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 
 **Achado (registrado, não corrigido):** cada linha gravada pelo motor custa de 1,5 a 3 ms no banco (`apply_world_changes` faz 3 consultas por linha). No uso normal não aparece (gerar as mensalidades de 200 alunos são 200 linhas, cerca de 0,5 s), mas uma gravação de milhares de linhas de uma vez, como importação em massa, passa do tempo limite da consulta. Se a importação vier, o caminho é gravar por tabela em lote (`INSERT ... SELECT FROM jsonb_to_recordset`) em vez de linha a linha.
 
+**Segunda falha de segurança na auditoria, corrigida em seguida** (migração 44): a gravação de eventos das ações que rodam no navegador aceitava o evento inteiro vindo dele, inclusive o autor, e a política de inserção de `audit_logs` só conferia o espaço. Quem estivesse logado podia gravar no próprio espaço um evento em nome de outra pessoa, pela ação ou direto pelo cliente do Supabase. Agora o navegador manda só o que aconteceu (ação, alvo, frase sem o autor, mudanças); autor, espaço, unidade (conferida), hora e id saem da sessão no servidor, que grava com a chave de serviço. A sessão não insere mais em `audit_logs`. Teste de banco em `rules.db.test.ts` (falha com a política antiga).
+
 **Falta da fase 3:** o levantamento geral de índices (item 4), combinado para o fim.

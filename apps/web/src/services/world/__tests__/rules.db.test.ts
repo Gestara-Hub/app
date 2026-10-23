@@ -153,21 +153,47 @@ describe("regras no servidor (doc 15, fatia 3)", () => {
 
     signOut();
     // O backend engole o erro (auditoria nunca derruba a operacao); o que vale e nao gravar.
-    await (
-      recordAuditLogInDb({
-        id: crypto.randomUUID(),
-        organizationId: tenant.organizationId,
-        unitId: tenant.unitId,
-        timestamp: new Date().toISOString(),
-        actor: { userId: "x", name: "Falso", profile: "owner" },
-        action: "created",
-        target: { type: "client", label: "x" },
-        summary: "Falso criou",
-        security: false,
-      })
-    ).catch(() => undefined);
-    const { data: logs } = await adminClient().from("audit_logs").select("summary").eq("summary", "Falso criou");
+    await recordAuditLogInDb({ action: "created", target: { type: "client", label: "x" }, predicate: "criou sem sessão" }).catch(
+      () => undefined,
+    );
+    const { data: logs } = await adminClient().from("audit_logs").select("summary").ilike("summary", "%criou sem sessão");
     expect(logs).toEqual([]);
   });
-});
 
+  it("auditoria vinda do navegador: autor, espaço e hora saem da sessão; inserir direto é recusado", async () => {
+    const attendant = await tenant.addUser("attendant");
+    await signInAs(attendant);
+    await recordAuditLogInDb({
+      action: "created",
+      target: { type: "client", id: "c-1", label: "Aluno" },
+      predicate: "cadastrou o aluno Aluno",
+      unitId: "unidade-de-outro-espaco",
+      // Campos que o navegador mandava antes e agora o servidor ignora.
+      ...({ actor: { userId: "x", name: "Dono Falso", profile: "owner" }, organizationId: "outro", summary: "Dono Falso criou" } as object),
+    });
+    const { data: rows } = await adminClient()
+      .from("audit_logs")
+      .select("organization_id, unit_id, actor, summary")
+      .eq("organization_id", tenant.organizationId)
+      .ilike("summary", "%cadastrou o aluno Aluno");
+    expect(rows).toHaveLength(1);
+    const row = rows![0];
+    expect(row.actor).toMatchObject({ userId: attendant.id, profile: "attendant" });
+    expect(row.summary).toBe(`${(row.actor as { name: string }).name} cadastrou o aluno Aluno`);
+    expect(row.summary).not.toContain("Falso");
+    expect(row.unit_id).toBeNull();
+
+    // Direto pelo cliente da sessao (como o navegador faria): recusado pela RLS.
+    const { error } = await sessionClient().from("audit_logs").insert({
+      id: crypto.randomUUID(),
+      organization_id: tenant.organizationId,
+      timestamp: new Date().toISOString(),
+      actor: { userId: "x", name: "Dono Falso", profile: "owner" },
+      action: "created",
+      target: { type: "client", label: "x" },
+      summary: "Dono Falso criou",
+      security: false,
+    });
+    expect(error?.code).toBe("42501");
+  });
+});
