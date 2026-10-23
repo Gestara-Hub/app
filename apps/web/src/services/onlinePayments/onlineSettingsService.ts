@@ -1,10 +1,10 @@
 import type { OnlinePaymentSettings } from "@gestarahub/contracts";
 import { readOp, writeOp, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { assertFeature } from "../subscriptionService";
+import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { realAccountInBrowser } from "../world/delegate";
-import { updateOrganizationOnlineSettingsAction } from "../onlinePaymentsBackend";
+import { updateOrganizationOnlineSettingsAction } from "./actions";
 import { clone, currentSettings, validateSettings } from "./onlinePaymentRules";
 import type { UpdateOnlinePaymentSettings } from "./onlinePaymentRules";
 

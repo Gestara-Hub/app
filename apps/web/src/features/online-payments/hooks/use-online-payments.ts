@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import {
   onlinePaymentsService,
   type UpdateOnlinePaymentSettings,
-} from "@/services/onlinePaymentsService";
+} from "@/services/onlinePayments";
 import {
   setupSubaccountAction,
   getSubaccountBalanceAction,
@@ -14,7 +14,7 @@ import {
   listSubaccountReceiptsAction,
   type SetupSubaccountInput,
   type SubaccountReceiptsQuery,
-} from "@/services/onlinePaymentsBackend";
+} from "@/services/onlinePayments/actions";
 
 /**
  * Grava a configuração do pagamento online (fica em

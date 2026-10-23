@@ -1,7 +1,7 @@
 import type { DiscoveryMilestones } from "@gestarahub/contracts";
 import { store } from "@/services/world/store";
 import { readOp } from "@/services/world/ops";
-import { delegateAll } from "./world/delegate";
+import { delegateAll } from "../world/delegate";
 
 /**
  * Leituras do onboarding que nao cabem num service de entidade. Hoje: os

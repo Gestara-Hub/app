@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
-import { usersService } from "@/services/usersService";
+import { usersService } from "@/services/users";
 import { createInstructor, resetAcademy } from "@/test/academy";
 
 const SELF_MESSAGE = "Você não pode alterar o seu próprio perfil ou status.";

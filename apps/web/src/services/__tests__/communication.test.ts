@@ -1,9 +1,9 @@
 import type { SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { communicationService } from "@/services/communicationService";
+import { billingService } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { communicationService } from "@/services/communication";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { fillMessage } from "@/lib/whatsapp";
 import { chargeReminder, packageRemainingText } from "@/features/communication/message-values";

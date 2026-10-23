@@ -3,7 +3,7 @@ import { describeCharge } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { packageState } from "@gestarahub/core/packages";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { className, planOf, studentName, todayISO } from "./billingHelpers";
 
 /**

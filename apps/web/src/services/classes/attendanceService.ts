@@ -8,7 +8,7 @@ import type {
 } from "@gestarahub/contracts";
 import { apiError, newId, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { assertTeacherSession } from "../teacherScope";
+import { assertTeacherSession } from "./teacherScope";
 import { syncAttendanceUsage, auditPackageUsage } from "./attendancePackageUsage";
 import { todayISO, parseSessionId, resolveSession } from "./classShared";
 

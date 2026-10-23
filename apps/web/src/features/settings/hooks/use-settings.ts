@@ -17,7 +17,7 @@ import {
   settingsService,
   type UpdateOrganization,
   type UpdateUnit,
-} from "@/services/settingsService";
+} from "@/services/settings/settingsService";
 
 export function useOrganization() {
   return useQuery({

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@/features/auth";
 import { queryKeys } from "@/lib/queryKeys";
-import { auditLogService } from "@/services/auditLogService";
+import { auditLogService } from "@/services/audit/auditLogService";
 import type { AuditLogFilter } from "@gestarahub/contracts";
 
 /**

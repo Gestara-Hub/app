@@ -13,11 +13,11 @@ import type {
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { queryKeys } from "@/lib/queryKeys";
 import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
-import { billingService } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { communicationService } from "@/services/communicationService";
-import { studentSummaryService } from "@/services/studentSummaryService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { communicationService } from "@/services/communication";
+import { studentSummaryService } from "@/services/clients/studentSummaryService";
+import { turmasService } from "@/services/classes";
 import { useOrganization } from "@/features/settings";
 import { confirmOfficialSend } from "../components/whatsapp-confirm-host";
 import { ABSENCE_STREAK, messageSuggestions } from "../message-suggestions";

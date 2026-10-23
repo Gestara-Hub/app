@@ -3,8 +3,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { subscriptionService } from "@/services/subscriptionService";
-import type { CreateSubscriptionInput } from "@/services/subscriptionBackend";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
+import type { CreateSubscriptionInput } from "@/services/subscription/actions";
 
 export function useSubscriptionCheckout() {
   const qc = useQueryClient();

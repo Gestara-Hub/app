@@ -97,11 +97,11 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     },
   },
   grades: {
-    load: async () => (await import("../gradesService")).gradesServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../grades")).gradesServiceImpl as unknown as ServiceObject,
     permissions: all(["create", "update", "remove", "setGrades"], MANAGE_GRADES),
   },
   communication: {
-    load: async () => (await import("../communicationService")).communicationServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../communication")).communicationServiceImpl as unknown as ServiceObject,
     permissions: {
       ...all(
         ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
@@ -112,15 +112,15 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     noRetry: ["sendMessage", "retryFailedMessage", "connectOfficial", "disconnectOfficial"],
   },
   reports: {
-    load: async () => (await import("../reportsService")).reportsServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../reports")).reportsServiceImpl as unknown as ServiceObject,
     permissions: all(["getCatalog", "generateReport"], ["reports:view"]),
   },
   studentSummary: {
-    load: async () => (await import("../studentSummaryService")).studentSummaryServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../clients/studentSummaryService")).studentSummaryServiceImpl as unknown as ServiceObject,
     permissions: {},
   },
   onlinePayments: {
-    load: async () => (await import("../onlinePaymentsService")).onlinePaymentsServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../onlinePayments")).onlinePaymentsServiceImpl as unknown as ServiceObject,
     permissions: {
       ...all(["listForCharge", "listAwaiting", "getCheckout"], VIEW_BILLING),
       ...all(["createForCharge", "cancelForCharge"], MANAGE_BILLING),
@@ -139,18 +139,18 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     ],
   },
   settings: {
-    load: async () => (await import("../settingsService")).settingsServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../settings/settingsService")).settingsServiceImpl as unknown as ServiceObject,
     permissions: {
       ...all(["updateOrganization", "updateUnit"], ["settings:view"]),
       markModalitiesReviewed: ["classes:manage", "services:manage"],
     },
   },
   onboarding: {
-    load: async () => (await import("../onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../settings/onboardingService")).onboardingServiceImpl as unknown as ServiceObject,
     permissions: {},
   },
   certificates: {
-    load: async () => (await import("../certificatesService")).certificatesServiceImpl as unknown as ServiceObject,
+    load: async () => (await import("../settings/certificatesService")).certificatesServiceImpl as unknown as ServiceObject,
     permissions: all(["saveTemplate", "resetTemplate"], MANAGE_CLASSES),
     browserOnly: ["uploadLogo"],
   },

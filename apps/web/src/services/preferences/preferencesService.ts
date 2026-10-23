@@ -1,7 +1,7 @@
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { readOp, writeOp } from "@/services/world/ops";
-import { realAccountInBrowser } from "./world/delegate";
+import { realAccountInBrowser } from "../world/delegate";
 import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "./preferencesBackend";
 
 export const PREFERENCES_STORAGE_KEY = "gestarahub_user_preferences";

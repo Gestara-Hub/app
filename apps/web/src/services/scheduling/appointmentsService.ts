@@ -29,7 +29,7 @@ import {
   type SlotContext,
 } from "@gestarahub/core/scheduling";
 import { appointmentStatusLabel } from "@/lib/labels";
-import { auditLogService } from "./auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import type { AuditChange } from "@gestarahub/contracts";
 
 function clone<T>(value: T): T {

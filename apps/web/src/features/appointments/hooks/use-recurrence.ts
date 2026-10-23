@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { recurrenceService } from "@/services/recurrenceService";
+import { recurrenceService } from "@/services/scheduling/recurrenceService";
 import type { CreateRecurrenceSeries } from "@gestarahub/contracts";
 
 export function useCreateSeries() {

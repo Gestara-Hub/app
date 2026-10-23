@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { userProfileLabel } from "@/lib/labels";
 import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import type { UserProfile } from "@gestarahub/contracts";
-import { acceptInvitationAction } from "@/services/usersBackend";
+import { acceptInvitationAction } from "@/services/users/actions";
 
 const acceptInviteSchema = z
   .object({

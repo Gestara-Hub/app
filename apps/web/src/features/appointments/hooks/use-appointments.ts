@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { appointmentsService } from "@/services/appointmentsService";
+import { appointmentsService } from "@/services/scheduling/appointmentsService";
 import type {
   AppointmentFilter,
   AppointmentStatus,

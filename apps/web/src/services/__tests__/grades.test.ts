@@ -3,9 +3,9 @@ import { PROGRESSION_TEMPLATES } from "@/lib/progression-tracks";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
-import { categoriesService } from "@/services/categoriesService";
-import { gradesService } from "@/services/gradesService";
-import { turmasService } from "@/services/turmasService";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { gradesService } from "@/services/grades";
+import { turmasService } from "@/services/classes";
 import { createInstructor, createStudent, resetAcademy } from "@/test/academy";
 
 const summaries = () => store.auditLog.map((e) => e.summary);

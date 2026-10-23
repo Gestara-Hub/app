@@ -2,9 +2,9 @@ import type { ClassGroupView, CreateClassGroup, ProfessionalView, UserProfile } 
 import { beforeEach, describe, expect, it } from "vitest";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { store } from "@/mocks/store";
-import { clientsService } from "@/services/clientsService";
-import { reportsService } from "@/services/reportsService";
-import { turmasService } from "@/services/turmasService";
+import { clientsService } from "@/services/clients";
+import { reportsService } from "@/services/reports";
+import { turmasService } from "@/services/classes";
 import { createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 /**

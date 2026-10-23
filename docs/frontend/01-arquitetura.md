@@ -329,7 +329,7 @@ export type Frequency = "weekly" | "biweekly" | "monthly";
 ```ts
 // packages/contracts/src/appointment.ts -> contrato (Appointment, AppointmentFilter, ...)
 
-// apps/web/src/services/appointmentsService.ts -> async tipado (unico que toca o store)
+// apps/web/src/services/scheduling/appointmentsService.ts -> async tipado (unico que toca o store)
 export const appointmentsService = {
   list(filter?: AppointmentFilter): Promise<AppointmentView[]> { /* simulateRead(...) */ },
   // create, update, reschedule, setStatus, cancel, markNoShow, ...

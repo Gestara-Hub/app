@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { professionalsService } from "@/services/professionalsService";
+import { professionalsService } from "@/services/catalog/professionalsService";
 import type {
   CreateProfessional,
   Id,

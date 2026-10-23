@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SubscriptionTier } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { subscriptionService } from "@/services/subscriptionService";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
 
 /** Plano GestaraHub do tenant (assinatura). */
 export function useSubscription() {

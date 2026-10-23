@@ -27,7 +27,7 @@ import { userProfileLabel } from "@/lib/labels";
 import { TwoFactorDialog, useCurrentUser } from "@/features/auth";
 import { useOrganization, useSubscription, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
-import { settingsService } from "@/services/settingsService";
+import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 
 export function AppTopbar() {

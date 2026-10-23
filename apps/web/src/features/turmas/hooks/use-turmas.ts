@@ -7,7 +7,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { turmasService } from "@/services/turmasService";
+import { turmasService } from "@/services/classes";
 import type {
   AttendanceStatus,
   ClassGroupFilter,

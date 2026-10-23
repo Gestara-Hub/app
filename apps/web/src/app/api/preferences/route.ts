@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
-import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "@/services/preferencesBackend";
+import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "@/services/preferences/preferencesBackend";
 import { DEFAULT_USER_PREFERENCES } from "@gestarahub/contracts";
 
 export async function GET() {

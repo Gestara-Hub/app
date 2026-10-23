@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { turmasService } from "@/services/classes";
 import { createClass, createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 // Hoje (22/09/2026) e terca; 28/09 e a proxima segunda.

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { legalConsentService } from "@/services/legalConsentService";
+import { legalConsentService } from "@/services/legalConsent/legalConsentService";
 import { useCurrentUser } from "../session-provider";
 import type { RecordLegalConsentInput } from "@gestarahub/contracts";
 

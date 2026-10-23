@@ -2,8 +2,8 @@ import type { Id, ManualPaymentDetails, PaymentMethod, TeacherPayout } from "@ge
 import { formatCents } from "@gestarahub/core/format";
 import { PAYMENT_METHODS, paymentMethodLabel } from "@/lib/labels";
 import { nowIso, writeOp, validationError } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
-import { paidAtFromDate, paidOnNote } from "../payment-date";
+import { auditLogService } from "../audit/auditLogService";
+import { paidAtFromDate, paidOnNote } from "../billing/payment-date";
 import { clone, competenceLabel, conflict, findPayout, payoutLabel, professionalName } from "./teacherPayHelpers";
 
 export const teacherPayPaymentsService = {

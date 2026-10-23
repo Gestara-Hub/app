@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
-import { expireAllDueOnlinePayments } from "../gatewayAccountBackend";
+import { expireAllDueOnlinePayments } from "../onlinePayments/gateway";
 
 /**
  * Cron de hora em hora (migracao 34): uma consulta para todos os espacos expira

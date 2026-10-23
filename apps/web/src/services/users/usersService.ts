@@ -19,14 +19,14 @@ import {
   validationError,
 } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import {
   createUserAndInviteAction,
   inactivateUserInDb,
   listUsersFromDb,
   resendInvitationAction,
   updateUserInDb,
-} from "../usersBackend";
+} from "./actions";
 import {
   NOT_FOUND,
   clone,

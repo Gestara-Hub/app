@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import type { Id } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { onlinePaymentsService } from "@/services/onlinePaymentsService";
+import { onlinePaymentsService } from "@/services/onlinePayments";
 
 /**
  * Pix Automatico do aluno. Ativar ja paga as mensalidades vencidas dentro do

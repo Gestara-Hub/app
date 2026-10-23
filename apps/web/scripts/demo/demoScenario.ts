@@ -9,15 +9,15 @@ import type {
 } from "@gestarahub/contracts";
 import { addDays, format, parseISO, subDays } from "date-fns";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { communicationService } from "@/services/communicationService";
-import { financeService } from "@/services/financeService";
-import { packagesService } from "@/services/packagesService";
-import { professionalsService } from "@/services/professionalsService";
-import { teacherPayService } from "@/services/teacherPayService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { communicationService } from "@/services/communication";
+import { financeService } from "@/services/finance";
+import { packagesService } from "@/services/billing";
+import { professionalsService } from "@/services/catalog/professionalsService";
+import { teacherPayService } from "@/services/finance";
+import { turmasService } from "@/services/classes";
 
 /**
  * Espaco de demonstracao (doc 15, fatia 4). Roda os proprios servicos dentro

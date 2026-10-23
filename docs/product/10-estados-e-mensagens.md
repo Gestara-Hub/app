@@ -4,7 +4,7 @@
 
 O GestaraHub deve tratar de forma consistente os estados transversais de tela (carregando, vazio, erro, com dados), os estados especificos da Agenda (Modelo 1) e das Turmas (Modelo 3), as validacoes de formulario e as mensagens de confirmacao de acoes sensiveis. Este documento registra esses estados e os **textos reais do codigo**, para que telas mockadas, modelo de dados futuro e testes compartilhem a mesma referencia.
 
-Os textos entre aspas abaixo foram conferidos no codigo (componentes em `apps/web/src/features/*`, schemas Zod `*-schema.ts` e mensagens de `ApiError` nos `services/*Service.ts`). Quando o texto depende do modelo do tenant, a variante de turmas aparece entre parenteses (cliente/aluno, categoria/modalidade; ver `services/nouns.ts`).
+Os textos entre aspas abaixo foram conferidos no codigo (componentes em `apps/web/src/features/*`, schemas Zod `*-schema.ts` e mensagens de `ApiError` nos `services/*Service.ts`). Quando o texto depende do modelo do tenant, a variante de turmas aparece entre parenteses (cliente/aluno, categoria/modalidade; ver `services/world/nouns.ts`).
 
 ## Contexto
 

@@ -2,7 +2,7 @@ import type { Id, SaveTeacherPayRule, TeacherPayRule } from "@gestarahub/contrac
 import { DEFAULT_TEACHER_PAYMENT_DAY, describeTeacherPayRule } from "@gestarahub/core/finance";
 import { newId, notFoundError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { clone, ruleOf } from "./teacherPayHelpers";
 import { normalizeComponents, validateRulePayload } from "./teacherPayValidation";
 import type { TeacherPayTeacher } from "./teacherPayViews";

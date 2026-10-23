@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicMinorConsentDetailsAction } from "@/services/legalConsentBackend";
+import { getPublicMinorConsentDetailsAction } from "@/services/legalConsent/actions";
 import { MinorConsentForm } from "./minor-consent-form";
 
 export const metadata: Metadata = {

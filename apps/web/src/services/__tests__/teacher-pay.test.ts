@@ -1,10 +1,10 @@
 import type { ClassGroupView, ProfessionalView, TeacherPayoutView } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { professionalsService } from "@/services/professionalsService";
-import { teacherPayService } from "@/services/teacherPayService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { professionalsService } from "@/services/catalog/professionalsService";
+import { teacherPayService } from "@/services/finance";
+import { turmasService } from "@/services/classes";
 import {
   createClass,
   createInstructor,

@@ -7,7 +7,7 @@ import type {
 import { format, parseISO } from "date-fns";
 import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { clone, instructorName, resolveSession } from "./classShared";
 import { validateSubstituteConflict } from "./classValidation";
 import { buildSessionDetail } from "./classViews";

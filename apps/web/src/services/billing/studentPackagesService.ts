@@ -12,8 +12,8 @@ import { carryOverSources, leftoverLots, mergeLots, packageExpiresAt } from "@ge
 import { store } from "@/services/world/store";
 import { apiError, newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { withKind } from "@/lib/text";
-import { auditLogService } from "../auditLogService";
-import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
+import { auditLogService } from "../audit/auditLogService";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { clone, studentName, todayISO } from "./billingHelpers";
 import { validateSale } from "./billingValidation";
 import { toView } from "./billingViews";

@@ -15,7 +15,7 @@ import { charCount } from "@/lib/text";
 import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
 import { store } from "@/services/world/store";
-import { tenantHasFeature } from "../subscriptionService";
+import { tenantHasFeature } from "../subscription/subscriptionService";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):

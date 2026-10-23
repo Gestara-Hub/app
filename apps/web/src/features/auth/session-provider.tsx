@@ -23,8 +23,8 @@ import { useRefetchOnStoreChange } from "@/lib/use-refetch-on-store-change";
 import { queryKeys } from "@/lib/queryKeys";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { ensureUserTenant, setActiveOrganization } from "@/mocks/store";
-import { usersService } from "@/services/usersService";
-import { settingsService } from "@/services/settingsService";
+import { usersService } from "@/services/users";
+import { settingsService } from "@/services/settings/settingsService";
 import { refreshSession, signOut, syncSubscriptionTier } from "@/app/(auth)/actions";
 import { LegalConsentDialog } from "./components/legal-consent-dialog";
 import {

@@ -14,7 +14,7 @@ import { apiError, notFoundError, nowIso, validationError } from "@/services/wor
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { afterWorldCommit } from "../world/effects";
-import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "../onlinePaymentsBackend";
+import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "./actions";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de

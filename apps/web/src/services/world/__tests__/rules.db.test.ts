@@ -4,7 +4,7 @@ import { createCategoryAction } from "@/services/catalog/categoriesActions";
 import { createProfessionalAction } from "@/services/catalog/teamActions";
 import type { ActionResult } from "@/services/server/action";
 import { adminClient, createTestTenant, sessionClient, signInAs, signOut, type TestTenant } from "@/test/db";
-import { recordAuditLogInDb } from "@/services/auditLogBackend";
+import { recordAuditLogInDb } from "@/services/audit/auditLogBackend";
 import { serviceAction } from "../serviceActions";
 
 let tenant: TestTenant;

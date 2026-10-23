@@ -11,7 +11,7 @@ import {
   useStorageFlag,
 } from "@/lib/discovery-flags";
 import { queryKeys } from "@/lib/queryKeys";
-import { onboardingService } from "@/services/onboardingService";
+import { onboardingService } from "@/services/settings/onboardingService";
 import { buildDiscoveryItems, summarizeDiscovery } from "../discovery-items";
 
 /**

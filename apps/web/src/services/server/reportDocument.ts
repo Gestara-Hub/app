@@ -1,7 +1,7 @@
 import type { DocumentModel, ReportFilter, ReportType } from "@gestarahub/contracts";
 import { getSegmentPreset, vocabularyForModality } from "@/lib/business-segment-presets";
 import { reportToDocument } from "@/lib/documents/report-documents";
-import { reportsServiceImpl } from "../reportsService";
+import { reportsServiceImpl } from "../reports";
 import { runInWorld } from "../world/runWorld";
 import { store } from "../world/store";
 import type { TenantContext } from "./tenant";

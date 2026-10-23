@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { packagesService } from "@/services/packagesService";
+import { packagesService } from "@/services/billing";
 import type {
   CreateLessonPackage,
   Id,

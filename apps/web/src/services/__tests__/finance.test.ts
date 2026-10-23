@@ -1,11 +1,11 @@
 import type { CreateFinancialEntry, FileAttachment, FinancialEntry } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { financeService } from "@/services/financeService";
-import { onlinePaymentsService } from "@/services/onlinePaymentsService";
-import { assertFeature, subscriptionService } from "@/services/subscriptionService";
-import { teacherPayService } from "@/services/teacherPayService";
+import { billingService } from "@/services/billing";
+import { financeService } from "@/services/finance";
+import { onlinePaymentsService } from "@/services/onlinePayments";
+import { assertFeature, subscriptionService } from "@/services/subscription/subscriptionService";
+import { teacherPayService } from "@/services/finance";
 import { ACADEMY_ORG, createInstructor, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 
 // Categorias padrao do seed da academia (ids deterministicos).

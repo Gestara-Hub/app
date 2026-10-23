@@ -6,7 +6,7 @@ O GestaraHub deve usar termos simples na interface e termos mais genericos na do
 
 A linguagem do produto e HIBRIDA:
 
-- A interface usa termos simples e genericos (Clientes, Equipe, Servicos, Agenda), e parte dos rotulos ja muda conforme o **modelo operacional** do tenant: na academia (`classes`), o menu mostra Alunos, Turmas, Calendario, Modalidades, Planos e Mensalidades, e as mensagens/auditoria dizem "aluno" e "modalidade" (`components/layout/nav.ts`, `services/nouns.ts`).
+- A interface usa termos simples e genericos (Clientes, Equipe, Servicos, Agenda), e parte dos rotulos ja muda conforme o **modelo operacional** do tenant: na academia (`classes`), o menu mostra Alunos, Turmas, Calendario, Modalidades, Planos e Mensalidades, e as mensagens/auditoria dizem "aluno" e "modalidade" (`components/layout/nav.ts`, `services/world/nouns.ts`).
 - Rotulos por segmento configuraveis pelo tenant (label overrides) continuam previsao futura.
 - Codigo (tipos, enums, campos) e 100% em ingles; a UI e em portugues. Por isso cada termo abaixo indica, quando existe, o nome no codigo.
 

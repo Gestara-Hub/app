@@ -6,14 +6,14 @@ import type {
 } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService, membershipPeriodTaken } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { financeService } from "@/services/financeService";
-import { onlinePaymentsService } from "@/services/onlinePaymentsService";
-import { reportsService } from "@/services/reportsService";
-import { subscriptionService } from "@/services/subscriptionService";
-import { teacherPayService } from "@/services/teacherPayService";
-import { turmasService } from "@/services/turmasService";
+import { billingService, membershipPeriodTaken } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { financeService } from "@/services/finance";
+import { onlinePaymentsService } from "@/services/onlinePayments";
+import { reportsService } from "@/services/reports";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
+import { teacherPayService } from "@/services/finance";
+import { turmasService } from "@/services/classes";
 import {
   ACADEMY_UNIT,
   createClass,

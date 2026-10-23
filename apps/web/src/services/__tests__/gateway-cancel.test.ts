@@ -54,7 +54,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { cancelGatewayPayment, expireDueOnlinePayments } = await import("@/services/gatewayAccountBackend");
+const { cancelGatewayPayment, expireDueOnlinePayments } = await import("@/services/onlinePayments/gateway");
 
 describe("cancelar a cobrança online no Asaas", () => {
   beforeEach(() => {

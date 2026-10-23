@@ -4,9 +4,9 @@ import { plural } from "@gestarahub/core/format";
 import { financialEntryTypeLabel } from "@/lib/labels";
 import { newId, notFoundError, nowIso, writeOp, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { ensureMembershipCharges } from "../billingService";
-import { applyRecurringAutoPayments } from "../onlinePaymentsService";
+import { auditLogService } from "../audit/auditLogService";
+import { ensureMembershipCharges } from "../billing";
+import { applyRecurringAutoPayments } from "../onlinePayments";
 import { conflict, currentCompetence, todayISO } from "./financeHelpers";
 
 // --- Recorrencia (materializacao idempotente) -------------------------------

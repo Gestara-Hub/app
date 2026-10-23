@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ReceiptStatusFilter, SubaccountReceiptItem } from "@/services/onlinePaymentsBackend";
+import type { ReceiptStatusFilter, SubaccountReceiptItem } from "@/services/onlinePayments/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LINK_PAYMENT_METHOD_LABEL } from "@gestarahub/core/payment-fees";
 import { useState } from "react";

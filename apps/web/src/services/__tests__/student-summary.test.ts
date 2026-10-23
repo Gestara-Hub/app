@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { communicationService } from "@/services/communicationService";
-import { packagesService } from "@/services/packagesService";
-import { studentSummaryService } from "@/services/studentSummaryService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { communicationService } from "@/services/communication";
+import { packagesService } from "@/services/billing";
+import { studentSummaryService } from "@/services/clients/studentSummaryService";
+import { turmasService } from "@/services/classes";
 import {
   createClass,
   createInstructor,

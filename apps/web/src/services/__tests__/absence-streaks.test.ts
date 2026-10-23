@@ -1,8 +1,8 @@
 import type { AttendanceStatus, ClassGroupView, Client } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { clientsService } from "@/services/clientsService";
-import { turmasService } from "@/services/turmasService";
+import { clientsService } from "@/services/clients";
+import { turmasService } from "@/services/classes";
 import { createClass, createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 // Hoje (22/09/2026) e terca. Turmas ativas desde 14/09.

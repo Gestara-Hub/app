@@ -5,8 +5,8 @@ import {
   markOnlinePaymentPaidInDb,
   expireOnlinePaymentInDb,
   cancelOnlinePaymentByGatewayIdInDb,
-} from "@/services/onlinePaymentsWebhook";
-import { recheckFeesAfterPayment } from "@/services/gatewayAccountBackend";
+} from "@/services/onlinePayments/onlinePaymentsWebhook";
+import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
 
 /**
  * O Asaas manda a data do pagamento sem hora ("2026-10-21"). Guardada como esta,

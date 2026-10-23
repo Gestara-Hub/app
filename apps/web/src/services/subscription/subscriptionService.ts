@@ -9,8 +9,8 @@ import { hasFeature, isSubscriptionTier, tierOf } from "@/lib/subscription";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { realAccountInBrowser } from "./world/delegate";
-import { auditLogService } from "./auditLogService";
+import { realAccountInBrowser } from "../world/delegate";
+import { auditLogService } from "../audit/auditLogService";
 import {
   cancelAsaasSubscriptionAction,
   checkAsaasSubscriptionPaymentAction,
@@ -19,7 +19,7 @@ import {
   updateOrganizationSubscriptionAction,
   type CreateSubscriptionInput,
   type SubscriptionCheckoutResult,
-} from "./subscriptionBackend";
+} from "./actions";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 
 /**

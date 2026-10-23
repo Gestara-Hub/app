@@ -2,7 +2,7 @@ import type { ApiErrorField, Client, CreateClient, DateISO } from "@gestarahub/c
 import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
 import { validationError } from "@/services/world/ops";
-import { clientNoun } from "../nouns";
+import { clientNoun } from "../world/nouns";
 import { todayISO } from "./clientStore";
 import { isValidCpf } from "@gestarahub/core/payer";
 

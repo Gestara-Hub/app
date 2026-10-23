@@ -1,7 +1,7 @@
 import type { Charge, Client, MessageLog, StudentPackage } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { onboardingService } from "@/services/onboardingService";
+import { onboardingService } from "@/services/settings/onboardingService";
 import { resetAcademy } from "@/test/academy";
 
 /** Marcos do "Descubra o dia a dia": cada um nasce do dado real do tenant. */

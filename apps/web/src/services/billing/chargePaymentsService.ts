@@ -2,8 +2,8 @@ import type { ChargeView, Id, ManualPaymentDetails, PaymentMethod } from "@gesta
 import { coversPeriod } from "@gestarahub/core/membership-generation";
 import { store } from "@/services/world/store";
 import { apiError, notFoundError, nowIso, writeOp } from "@/services/world/ops";
-import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
-import { paidAtFromDate, paidOnNote } from "../payment-date";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
+import { paidAtFromDate, paidOnNote } from "./payment-date";
 import { clone } from "./billingHelpers";
 import { assertNotPaidOnline, assertNotWaived } from "./billingValidation";
 import { recordChargeEvent, toChargeView } from "./billingViews";

@@ -1,6 +1,6 @@
 import type { CreateRole, Id, Role, RoleFilter, UpdateRole } from "@gestarahub/contracts";
 import { store } from "@/services/world/store";
-import { realAccountInBrowser } from "./world/delegate";
+import { realAccountInBrowser } from "../world/delegate";
 import { normalizeText } from "@/lib/text";
 import {
   newId,
@@ -10,22 +10,22 @@ import {
   writeOp,
   textIncludes,
 } from "@/services/world/ops";
-import { auditLogService } from "./auditLogService";
-import { unwrap } from "./server/action";
+import { auditLogService } from "../audit/auditLogService";
+import { unwrap } from "../server/action";
 import {
   createRoleAction,
   getRoleAction,
   listRolesAction,
   removeRoleAction,
   updateRoleAction,
-} from "./catalog/teamActions";
+} from "./teamActions";
 import {
   duplicateRoleNameError,
   ROLE_NOT_FOUND,
   sortRoles,
   validateRolePayload,
-} from "./catalog/teamRules";
-import { encodeArgs } from "./world/transport";
+} from "./teamRules";
+import { encodeArgs } from "../world/transport";
 
 /**
  * Cargos da equipe. Conta real: tabela `roles` pelo servidor

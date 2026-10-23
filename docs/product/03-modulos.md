@@ -20,7 +20,7 @@ O GestaraHub e organizado em modulos funcionais. Cada organizacao tem um modelo 
 | Auditoria (rodape) | `/audit` | todos | `audit:view` |
 | Configuracoes (rodape) | `/settings` | todos | `settings:view` |
 
-Rotulos por modelo: o menu troca "Clientes" por "Alunos" na academia, e as mensagens/auditoria trocam "cliente/categoria" por "aluno/modalidade" (`services/nouns.ts`). Rotulos configuraveis pelo tenant (label overrides) ainda nao existem.
+Rotulos por modelo: o menu troca "Clientes" por "Alunos" na academia, e as mensagens/auditoria trocam "cliente/categoria" por "aluno/modalidade" (`services/world/nouns.ts`). Rotulos configuraveis pelo tenant (label overrides) ainda nao existem.
 
 Convencao de vocabulario: "Equipe" e o rotulo da navegacao; "Profissional" e o termo usado no contexto de um agendamento e em telas de detalhe.
 

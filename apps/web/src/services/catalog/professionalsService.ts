@@ -15,23 +15,23 @@ import {
   writeOp,
   textIncludes,
 } from "@/services/world/ops";
-import { auditLogService } from "./auditLogService";
-import { realAccountInBrowser } from "./world/delegate";
-import { unwrap } from "./server/action";
+import { auditLogService } from "../audit/auditLogService";
+import { realAccountInBrowser } from "../world/delegate";
+import { unwrap } from "../server/action";
 import {
   createProfessionalAction,
   getProfessionalAction,
   listProfessionalsAction,
   removeProfessionalAction,
   updateProfessionalAction,
-} from "./catalog/teamActions";
+} from "./teamActions";
 import {
   PROFESSIONAL_NOT_FOUND,
   sortProfessionals,
   toProfessionalView,
   validateProfessionalPayload,
-} from "./catalog/teamRules";
-import { encodeArgs } from "./world/transport";
+} from "./teamRules";
+import { encodeArgs } from "../world/transport";
 
 /**
  * Equipe. Conta real: banco pelo servidor (`catalog/teamActions`, doc 15,

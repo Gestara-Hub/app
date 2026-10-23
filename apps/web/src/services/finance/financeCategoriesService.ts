@@ -18,7 +18,7 @@ import {
   validationError,
 } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { clone, conflict, isEntryType } from "./financeHelpers";
 
 export function isDuplicateCategory(type: FinancialEntryType, name: string, exceptId?: Id): boolean {

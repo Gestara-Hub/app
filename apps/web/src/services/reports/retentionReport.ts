@@ -2,7 +2,7 @@ import type { ChurnReportData, GeneratedReportData } from "@gestarahub/contracts
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { addDays, format, parseISO } from "date-fns";
 import { store } from "@/services/world/store";
-import { assertFeature } from "../subscriptionService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
 

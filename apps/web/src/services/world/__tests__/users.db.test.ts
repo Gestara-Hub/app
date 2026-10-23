@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createUserAndInviteAction, inactivateUserInDb, listUsersFromDb } from "@/services/usersBackend";
+import { createUserAndInviteAction, inactivateUserInDb, listUsersFromDb } from "@/services/users/actions";
 import { adminClient, createTestTenant, signInAs, signOut, type TestTenant } from "@/test/db";
 
 let tenant: TestTenant;

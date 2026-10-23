@@ -3,8 +3,8 @@ import { defaultCertificateTemplate, renderCertificate } from "@gestarahub/core/
 import { beforeEach, describe, expect, it } from "vitest";
 import { getFileBlob } from "@/mocks/file-blobs";
 import { store } from "@/mocks/store";
-import { certificatesService } from "@/services/certificatesService";
-import { turmasService } from "@/services/turmasService";
+import { certificatesService } from "@/services/settings/certificatesService";
+import { turmasService } from "@/services/classes";
 import { createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 /**

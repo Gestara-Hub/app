@@ -2,8 +2,8 @@ import type { MessageTemplate, UpdateTemplatePayload } from "@gestarahub/contrac
 import { TEMPLATE_MAX_LENGTH, isManualTrigger } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
-import { assertFeature } from "../subscriptionService";
+import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { ensureTemplates } from "./communicationRules";
 
 /** Modelos de mensagem do espaco. */

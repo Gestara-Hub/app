@@ -1,6 +1,6 @@
 import type { FileAttachment, Id } from "@gestarahub/contracts";
 import { RECEIPT_FILE_RULES, fileIssue, type FileRules } from "@/lib/files";
-import { realAccountInBrowser } from "./world/delegate";
+import { realAccountInBrowser } from "../world/delegate";
 import { getFileBlob, putFileBlob } from "@/mocks/file-blobs";
 import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
 

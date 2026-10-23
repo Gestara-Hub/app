@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { categoriesService } from "@/services/categoriesService";
+import { categoriesService } from "@/services/catalog/categoriesService";
 import type {
   CategoryFilter,
   CreateCategory,

@@ -8,7 +8,7 @@ import type {
   UpdateAssessment,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { gradesService } from "@/services/gradesService";
+import { gradesService } from "@/services/grades";
 
 /** Notas mudam a lista da turma, o lancamento, o boletim e a auditoria. */
 function invalidateGrades(qc: QueryClient) {

@@ -3,8 +3,8 @@ import { daysUntilBirthday } from "@/lib/birthdays";
 import { ageAt } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
 import { notFoundError, readOp } from "@/services/world/ops";
-import { ensureMembershipCharges } from "../billingService";
-import { applyRecurringAutoPayments } from "../onlinePaymentsService";
+import { ensureMembershipCharges } from "../billing";
+import { applyRecurringAutoPayments } from "../onlinePayments";
 import { delegateAll } from "../world/delegate";
 import {
   LAST_MESSAGES,

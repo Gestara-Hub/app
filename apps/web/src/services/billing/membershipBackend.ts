@@ -11,8 +11,8 @@ import type { BillingDefaults } from "@gestarahub/core/billing";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { listChargesFromDb, listPlansFromDb } from "./billingBackend";
 import { chargeToDbRow } from "./billingRows";
-import { listClientsFromDb } from "./clientsBackend";
-import { listClassGroupsFromDb, listEnrollmentsFromDb } from "./turmasBackend";
+import { listClientsFromDb } from "../clients/clientsBackend";
+import { listClassGroupsFromDb, listEnrollmentsFromDb } from "../classes/turmasBackend";
 
 /**
  * Mensalidades automaticas no servidor (doc 15, fatia 1). Le alunos, planos,

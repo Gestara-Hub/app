@@ -6,9 +6,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { clientsService } from "@/services/clientsService";
-import { studentSummaryService } from "@/services/studentSummaryService";
-import { legalConsentService } from "@/services/legalConsentService";
+import { clientsService } from "@/services/clients";
+import { studentSummaryService } from "@/services/clients/studentSummaryService";
+import { legalConsentService } from "@/services/legalConsent/legalConsentService";
 import type {
   ClientFilter,
   CreateClassRecordsBatch,

@@ -18,7 +18,7 @@ import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCan } from "@/features/auth";
-import type { TeacherPayTeacher } from "@/services/teacherPayService";
+import type { TeacherPayTeacher } from "@/services/finance";
 import { useTeacherPayTeachers, useTeacherPayouts } from "../hooks/use-teacher-pay";
 import { competenceLabel } from "../lib";
 import { TeacherPayRuleDialog } from "./teacher-pay-rule-dialog";

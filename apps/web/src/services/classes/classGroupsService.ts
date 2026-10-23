@@ -20,9 +20,9 @@ import {
   validationError,
 } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
-import { actorTeacherId, teacherSeesClass } from "../teacherScope";
+import { auditLogService } from "../audit/auditLogService";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
+import { actorTeacherId, teacherSeesClass } from "./teacherScope";
 import { clone, todayISO, instructorName, SEP, parseSessionId, upcomingPeriod } from "./classShared";
 import { normalizeBilling, validateGroup, sameSlots } from "./classValidation";
 import { toGroupView } from "./classViews";

@@ -6,7 +6,7 @@
 
 1. **Mundo multi-tenant no mock.** `apps/web/src/mocks/store.ts` guarda um `MockWorld` com `tenants: Record<organizationId, MockStore>` e `activeOrganizationId`. O `store` exportado é um Proxy para o tenant ativo, então os services continuam escrevendo `store.clients`. O seed cria dois tenants vazios, só com o proprietário: **Corte Nobre** (`scheduling`, Marcelo Andrade) e **Academia X** (`classes`, Ana Ribeiro).
 2. **Um modelo operacional por tenant** (`Organization.model`: `scheduling` | `classes` | `delivery`). A navegação (`components/layout/nav.ts`: `navForModel`, `canAccessRoute`), o dashboard e os textos mudam conforme o modelo. `delivery` está tipado, sem telas.
-3. **Termos por modelo.** Na academia, cliente é "aluno" e categoria é "modalidade" (`services/nouns.ts`, `lib/labels.ts` `auditEntityTypeLabel(type, model)`).
+3. **Termos por modelo.** Na academia, cliente é "aluno" e categoria é "modalidade" (`services/world/nouns.ts`, `lib/labels.ts` `auditEntityTypeLabel(type, model)`).
 4. **Escopo do tenant é carimbado pelo servidor.** Os contratos `Create*` omitem `organizationId`/`unitId` (`TenantScopeFields` em `packages/contracts/src/common.ts`); os services sempre usam o tenant ativo da sessão. Nenhuma feature importa `@/config/tenant` (só o seed).
 5. **Unidade única por enquanto.** `store.unit` é singleton. Já têm `unitId`: turma, profissional, agendamento, bloqueio, série, auditoria e **mensalidade** (`Charge.unitId`: mensalidade = unidade ativa; aula avulsa = unidade da turma).
 6. **Sessão:** cookie `gestarahub_session` com o `UserView` em base64 (`lib/session.ts`), guarda em `src/proxy.ts` (Next 16), login e troca de usuário por server actions (`app/(auth)/actions.ts`). Trocar de usuário troca de organização.

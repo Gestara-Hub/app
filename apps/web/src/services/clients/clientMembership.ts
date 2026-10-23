@@ -7,8 +7,8 @@ import {
   planlessScholarCharges,
   scholarshipChargeFields,
   studentMembershipTerms,
-} from "../billingService";
-import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
+} from "../billing";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { todayISO } from "./clientStore";
 
 /**

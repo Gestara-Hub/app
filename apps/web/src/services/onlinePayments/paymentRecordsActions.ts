@@ -4,10 +4,10 @@ import type { Id, OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { forbiddenError } from "@gestarahub/core/api-error";
-import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "../gatewayAccountBackend";
+import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "./gateway";
 import { receiveInCash } from "@/lib/asaas";
 import { requireTenant } from "../server/tenant";
-import { mapRowToOnlinePayment } from "../onlinePaymentsRows";
+import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
 
 /**
  * Codigos de pagamento online no banco: gravar, listar, simular o pago e cancelar (aqui e no Asaas).

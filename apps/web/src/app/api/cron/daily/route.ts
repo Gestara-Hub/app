@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { materializeRecurrencesAction } from "@/services/financeBackend";
-import { generateMembershipChargesAction } from "@/services/membershipBackend";
+import { materializeRecurrencesAction } from "@/services/finance/financeBackend";
+import { generateMembershipChargesAction } from "@/services/billing/membershipBackend";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas

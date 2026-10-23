@@ -2,9 +2,9 @@ import type { Id, RecurringAuthorization } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { apiError, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { paymentGateway } from "../payments/paymentGateway";
-import { assertFeature } from "../subscriptionService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { clone, studentName, assertOnlineEnabled } from "./onlinePaymentRules";
 import {
   activeAuthorizationOf,

@@ -4,8 +4,8 @@ import { formatCents } from "@gestarahub/core/format";
 import { withKind } from "@/lib/text";
 import { newId, nowIso, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { hasUsablePackage } from "../packagesService";
+import { auditLogService } from "../audit/auditLogService";
+import { hasUsablePackage } from "../billing";
 import { todayISO, studentName } from "./classShared";
 
 /**

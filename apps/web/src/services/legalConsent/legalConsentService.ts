@@ -5,7 +5,7 @@ import {
   confirmPaperMinorConsentAction,
   getPublicMinorConsentDetailsAction,
   type ConfirmMinorConsentInput,
-} from "./legalConsentBackend";
+} from "./actions";
 import {
   CURRENT_PLATFORM_TERMS_VERSION,
   CURRENT_SUBACCOUNT_TERMS_VERSION,

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { setActiveOrganization, store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { professionalsService } from "@/services/professionalsService";
+import { billingService } from "@/services/billing";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { professionalsService } from "@/services/catalog/professionalsService";
 import { ACADEMY_ORG, ACADEMY_UNIT, resetAcademy } from "@/test/academy";
 
 describe("escopo do tenant carimbado pelo servidor", () => {

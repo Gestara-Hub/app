@@ -17,17 +17,17 @@ import {
   writeOp,
   textIncludes,
 } from "@/services/world/ops";
-import { auditLogService } from "./auditLogService";
-import { categoryNoun } from "./nouns";
-import { realAccountInBrowser } from "./world/delegate";
-import { unwrap } from "./server/action";
+import { auditLogService } from "../audit/auditLogService";
+import { categoryNoun } from "../world/nouns";
+import { realAccountInBrowser } from "../world/delegate";
+import { unwrap } from "../server/action";
 import {
   createCategoryAction,
   getCategoryAction,
   listCategoriesAction,
   removeCategoryAction,
   updateCategoryAction,
-} from "./catalog/categoriesActions";
+} from "./categoriesActions";
 import {
   defaultAssessmentsForNewModality,
   duplicateCategoryNameError,
@@ -35,8 +35,8 @@ import {
   resetMissingLevels,
   sortCategories,
   validateCategoryPayload,
-} from "./catalog/categoryRules";
-import { encodeArgs } from "./world/transport";
+} from "./categoryRules";
+import { encodeArgs } from "../world/transport";
 
 /**
  * Modalidades (categorias). Conta real: le e grava pelo servidor

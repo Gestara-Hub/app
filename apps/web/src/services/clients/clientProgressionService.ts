@@ -12,8 +12,8 @@ import type {
 import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
-import { assertCanManageProgression } from "../teacherScope";
+import { auditLogService } from "../audit/auditLogService";
+import { assertCanManageProgression } from "../classes/teacherScope";
 import { progressionTermSuggestions } from "./clientProgression";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 

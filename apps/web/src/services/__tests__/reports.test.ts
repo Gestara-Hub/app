@@ -1,8 +1,8 @@
 import type { DREStatementReportData } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { billingService } from "@/services/billingService";
-import { reportsService } from "@/services/reportsService";
-import { subscriptionService } from "@/services/subscriptionService";
+import { billingService } from "@/services/billing";
+import { reportsService } from "@/services/reports";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
 import { createStudent, resetAcademy } from "@/test/academy";
 
 async function incomeStatement(competence: string): Promise<DREStatementReportData> {

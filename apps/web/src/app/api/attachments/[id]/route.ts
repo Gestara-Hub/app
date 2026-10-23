@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
-import { getAttachmentRecord } from "@/services/attachmentsBackend";
-import { downloadAttachmentFromStorage } from "@/services/attachmentsStorage";
+import { getAttachmentRecord } from "@/services/attachments/attachmentsBackend";
+import { downloadAttachmentFromStorage } from "@/services/attachments/attachmentsStorage";
 
 export async function GET(
   req: NextRequest,

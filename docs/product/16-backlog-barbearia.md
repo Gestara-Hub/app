@@ -17,7 +17,7 @@
 - **Sugestão:** acumular as confirmações (`{ ...opts, allowX: true }`) a cada reenvio.
 
 ### B2 — Remarcar e séries não aceitam as regras moles ⚪
-- **Onde:** `apps/web/src/services/appointmentsService.ts:337` e `:421`; `reschedule-appointment-dialog.tsx:120-130`; `apps/web/src/services/recurrenceService.ts:100-107` e `:140`; `series-form-dialog.tsx:81-83`
+- **Onde:** `apps/web/src/services/scheduling/appointmentsService.ts:337` e `:421`; `reschedule-appointment-dialog.tsx:120-130`; `apps/web/src/services/scheduling/recurrenceService.ts:100-107` e `:140`; `series-form-dialog.tsx:81-83`
 - **Problema:** remarcar e criar série validam sem os overrides (`allowBreak`, `allowOutsideHours`, `allowOutsideBusinessHours`), e o dialog só mostra o erro. A série ainda exige que o profissional ofereça o serviço, regra que no agendamento avulso é só informativa.
 - **Cenário:** um profissional sem horário cadastrado (o cadastro começa vazio) não consegue ter nenhum agendamento remarcado, e a série dele cria 0 ocorrências com o aviso "todas em conflito". Remarcar para o almoço é barrado, embora criar no mesmo horário seja permitido.
 - **Sugestão:** repetir no Remarcar e na série o mesmo fluxo de confirmação do formulário de criação, e alinhar a regra de serviço por profissional.
@@ -29,7 +29,7 @@
 - **Sugestão:** criar coluna para quem tem agendamento no dia, mostrar a grade (com aviso) mesmo com a unidade fechada, e ampliar a janela até o primeiro e o último agendamento.
 
 ### B4 — Preço e duração do histórico mudam retroativamente ⚪
-- **Onde:** `apps/web/src/services/appointmentsService.ts:170-198` (`toView`)
+- **Onde:** `apps/web/src/services/scheduling/appointmentsService.ts:170-198` (`toView`)
 - **Problema:** o total do agendamento é calculado com o preço e a duração **atuais** do serviço.
 - **Cenário:** reajustar o corte de R$ 40 para R$ 50 muda a receita de dias passados e o valor de atendimentos já concluídos.
 - **Sugestão:** gravar um snapshot de preço e duração por serviço no agendamento (evoluir o contrato) e ler dele.
@@ -37,12 +37,12 @@
 ## Bugs médios
 
 ### B5 — Editar só a observação revalida o horário ⚪
-- **Onde:** `apps/web/src/services/appointmentsService.ts:298-304`; `appointment-form.tsx:70-72` e `:166-176`
+- **Onde:** `apps/web/src/services/scheduling/appointmentsService.ts:298-304`; `appointment-form.tsx:70-72` e `:166-176`
 - **Cenário:** se o serviço ou o profissional foi inativado depois, editar só a observação falha ("X está inativo"), e a combo aparece vazia. Se o horário do profissional mudou, surge "Agendar fora do horário?" só por editar a nota. O Editar também troca o profissional sem passar pela trilha de remarcação.
 - **Sugestão:** revalidar o horário só quando profissional, serviços ou horário mudarem; incluir os registros atuais nas opções mesmo inativos; tirar o profissional do Editar.
 
 ### B6 — Inativar profissional deixa os agendamentos futuros órfãos ⚪
-- **Onde:** `apps/web/src/services/professionalsService.ts:173-189`; `inactivate-professional-dialog.tsx:42-51`
+- **Onde:** `apps/web/src/services/catalog/professionalsService.ts:173-189`; `inactivate-professional-dialog.tsx:42-51`
 - **Sugestão:** a confirmação deve mostrar quantos agendamentos futuros existem e oferecer remarcar ou cancelar (ou bloquear a inativação enquanto houver futuros).
 
 ### B7 — Perfil Profissional sem vínculo vê a agenda de todos ⚪
@@ -67,7 +67,7 @@
 - **Sugestão:** colunas que ocupam a largura disponível, e a janela de horas pelo expediente do dia.
 
 ### B11 — Bloqueio de agenda sem saída ⚪
-- **Onde:** `schedule-day-grid.tsx` (`BlockCard`); `features/appointments/hooks/use-time-blocks.ts:32-47`; `services/timeBlocksService.ts:67`
+- **Onde:** `schedule-day-grid.tsx` (`BlockCard`); `features/appointments/hooks/use-time-blocks.ts:32-47`; `services/scheduling/timeBlocksService.ts:67`
 - **Cenário:** os hooks de editar e remover bloqueio existem, mas nenhuma tela usa, e o card não é clicável. Um bloqueio criado errado fica para sempre. Criar um bloqueio por cima de agendamentos não gera aviso.
 - **Sugestão:** card clicável com Editar e Remover (remover com confirmação) e aviso quando houver agendamentos no intervalo.
 

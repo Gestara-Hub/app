@@ -2,15 +2,15 @@ import type { Client, Id, UpdateClient } from "@gestarahub/contracts";
 import { plural } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
 import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import {
   cancelOpenMembershipCharges,
   chargeStartedMembershipPeriods,
   isPlanlessScholar,
   membershipPeriodTaken,
   studentMembershipTerms,
-} from "../billingService";
-import { clientNoun } from "../nouns";
+} from "../billing";
+import { clientNoun } from "../world/nouns";
 import { endStudentEnrollments, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { validateClient } from "./clientValidation";

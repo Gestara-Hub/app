@@ -12,7 +12,7 @@ import type {
 import { DEFAULT_ASSESSMENT_WEIGHT, averageOfAverages, normalizeGrade } from "@gestarahub/core/grades";
 import { newId, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import {
   clone,
   assessmentsStore,

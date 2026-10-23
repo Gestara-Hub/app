@@ -7,10 +7,10 @@ import type {
 } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { packagesService } from "@/services/packagesService";
-import { teacherPayService } from "@/services/teacherPayService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { packagesService } from "@/services/billing";
+import { teacherPayService } from "@/services/finance";
+import { turmasService } from "@/services/classes";
 import {
   createInstructor,
   createPlan,

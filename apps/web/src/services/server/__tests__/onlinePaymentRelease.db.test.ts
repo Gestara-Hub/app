@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { adminClient, createTestTenant, type TestTenant } from "@/test/db";
-import { markOnlinePaymentPaidInDb } from "../../onlinePaymentsWebhook";
+import { markOnlinePaymentPaidInDb } from "../../onlinePayments/onlinePaymentsWebhook";
 
 /**
  * Pago x disponivel (migracao 38): PAYMENT_CONFIRMED deixa o valor "a liberar"

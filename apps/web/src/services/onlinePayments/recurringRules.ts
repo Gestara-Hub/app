@@ -3,8 +3,8 @@ import { formatCents } from "@gestarahub/core/format";
 import { format, parseISO } from "date-fns";
 import { notFoundError, nowIso, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { tenantHasFeature } from "../subscriptionService";
+import { auditLogService } from "../audit/auditLogService";
+import { tenantHasFeature } from "../subscription/subscriptionService";
 import {
   brDate,
   cancelOnlinePaymentsForCharge,

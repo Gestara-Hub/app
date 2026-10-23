@@ -18,7 +18,7 @@ O cenario representa uma barbearia pequena e realista, suficiente para validar o
 
 - Navegacao do tenant `scheduling` (`components/layout/nav.ts`): Dashboard, Clientes, Equipe, Servicos e Agenda; no rodape, Usuarios, Auditoria e Configuracoes. "Agendamentos" nao e mais um item proprio: a Agenda (`/schedule`) tem as abas Calendario e Lista, e `/appointments` redireciona para ela.
 - "Equipe" e o rotulo da navegacao; "Profissional" e usado no contexto de um agendamento e em telas de detalhe.
-- Termos por modelo ja existem de forma simples (`services/nouns.ts`): no tenant de turmas, cliente vira "aluno" e categoria vira "modalidade". Um sistema completo de rotulos por segmento continua fora do MVP.
+- Termos por modelo ja existem de forma simples (`services/world/nouns.ts`): no tenant de turmas, cliente vira "aluno" e categoria vira "modalidade". Um sistema completo de rotulos por segmento continua fora do MVP.
 - Projeto do zero: nada da v1 e reaproveitado. Todos os dados deste cenario sao novos e ficticios.
 - Todos os identificadores de codigo (status, origem, campos) estao em ingles; so os rotulos da UI ficam em portugues.
 

@@ -1,14 +1,14 @@
-// Shim: as acoes do plano vivem em ./subscription (doc 12, fase 6).
+// Acoes de servidor do plano GestaraHub, num import so.
 export {
   cancelAsaasSubscriptionAction,
   updateOrganizationSubscriptionAction,
-} from "./subscription/subscriptionActions";
+} from "./subscriptionActions";
 export {
   checkAsaasSubscriptionPaymentAction,
   createAsaasSubscriptionCheckoutAction,
   simulateAsaasSubscriptionPaymentAction,
-} from "./subscription/subscriptionCheckoutActions";
+} from "./subscriptionCheckoutActions";
 export type {
   CreateSubscriptionInput,
   SubscriptionCheckoutResult,
-} from "./subscription/subscriptionCheckoutActions";
+} from "./subscriptionCheckoutActions";

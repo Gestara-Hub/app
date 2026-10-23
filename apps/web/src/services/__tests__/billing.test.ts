@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
+import { billingService } from "@/services/billing";
+import { clientsService } from "@/services/clients";
 import { ACADEMY_UNIT, chargesOf, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 
 const generate = async (...competences: string[]) => {

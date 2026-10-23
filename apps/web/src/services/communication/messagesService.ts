@@ -11,8 +11,8 @@ import { format, parseISO } from "date-fns";
 import { isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { assertFeature } from "../subscriptionService";
+import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 import {
   ensureConnection,
   connectionView,

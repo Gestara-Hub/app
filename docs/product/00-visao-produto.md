@@ -20,7 +20,7 @@ A linguagem do produto e hibrida:
   - `classes` (Modelo 3): Dashboard, Alunos, Equipe, Turmas, Calendario, Modalidades, Planos, Mensalidades.
   - Rodape (todos os modelos, conforme permissao): Usuarios, Auditoria, Configuracoes.
 - Nao existe mais item de menu "Agendamentos": Agenda e Agendamentos foram unificados em `/schedule` (abas Calendario e Lista); `/appointments` apenas redireciona para `/schedule`.
-- **Rotulos por modelo: parcialmente implementado.** A troca e fixa por modelo operacional (menu em `components/layout/nav.ts`; substantivos de mensagens e auditoria em `services/nouns.ts` e `lib/labels.ts`: na academia, cliente vira "aluno" e categoria vira "modalidade"). Ainda nao ha rotulos por segmento configuraveis pelo tenant (label overrides): isso continua previsao futura.
+- **Rotulos por modelo: parcialmente implementado.** A troca e fixa por modelo operacional (menu em `components/layout/nav.ts`; substantivos de mensagens e auditoria em `services/world/nouns.ts` e `lib/labels.ts`: na academia, cliente vira "aluno" e categoria vira "modalidade"). Ainda nao ha rotulos por segmento configuraveis pelo tenant (label overrides): isso continua previsao futura.
 
 No vocabulario de navegacao, "Equipe" e o rotulo do menu; "Profissional" e usado no contexto de um agendamento e em telas de detalhe (no Modelo 3, os formularios falam em "Professor / Instrutor").
 

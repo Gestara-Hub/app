@@ -5,7 +5,7 @@ import { getSegmentPreset } from "@/lib/business-segment-presets";
 import { competenceLongLabel, documentDate } from "@/lib/documents/format";
 import { onlineStatementDocument } from "@/lib/documents/payment-documents";
 import { minorConsentDocument, reportCardDocument } from "@/lib/documents/student-documents";
-import { gradesServiceImpl } from "../gradesService";
+import { gradesServiceImpl } from "../grades";
 import { runInWorld } from "../world/runWorld";
 import { store } from "../world/store";
 import { chargeLabelOf, competenceLabelOf } from "./paymentPage";

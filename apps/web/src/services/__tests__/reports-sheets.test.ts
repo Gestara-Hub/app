@@ -1,9 +1,9 @@
 import type { AttendanceReportData, ChurnReportData, StudentRosterReportData } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { reportsService } from "@/services/reportsService";
-import { subscriptionService } from "@/services/subscriptionService";
-import { turmasService } from "@/services/turmasService";
+import { reportsService } from "@/services/reports";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
+import { turmasService } from "@/services/classes";
 import { createClass, createInstructor, createStudent, resetAcademy, sessionIdOf } from "@/test/academy";
 
 /**

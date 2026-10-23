@@ -12,7 +12,7 @@ import {
 import { useTheme } from "next-themes";
 import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
-import { PREFERENCES_STORAGE_KEY } from "@/services/preferencesService";
+import { PREFERENCES_STORAGE_KEY } from "@/services/preferences/preferencesService";
 import {
   applyThemeStateFromServer,
   isThemeSyncingFromServer,

@@ -1,6 +1,6 @@
 import type { OnlinePayment } from "@gestarahub/contracts";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { cancelGatewayPayment, subaccountKeyOf } from "./gatewayAccountBackend";
+import { cancelGatewayPayment, subaccountKeyOf } from "./gateway";
 import { chargeMethodOf, mapRowToOnlinePayment } from "./onlinePaymentsRows";
 
 /**

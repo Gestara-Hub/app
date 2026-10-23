@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, decodeSession } from "@/lib/session";
-import { saveAttachmentInStorage } from "@/services/attachmentsBackend";
+import { saveAttachmentInStorage } from "@/services/attachments/attachmentsBackend";
 import type { FileAttachment } from "@gestarahub/contracts";
 
 export async function POST(req: NextRequest) {

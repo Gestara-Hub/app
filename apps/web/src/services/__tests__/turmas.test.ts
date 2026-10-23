@@ -1,10 +1,10 @@
 import type { ClassGroupView } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { professionalsService } from "@/services/professionalsService";
-import { turmasService } from "@/services/turmasService";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { professionalsService } from "@/services/catalog/professionalsService";
+import { turmasService } from "@/services/classes";
 import { ACADEMY_UNIT, createClass, createInstructor, resetAcademy, sessionIdOf } from "@/test/academy";
 
 const sessionId = (g: ClassGroupView, date: string) => `${g.id}~${date}~17:00`;

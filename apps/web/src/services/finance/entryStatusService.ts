@@ -8,7 +8,7 @@ import type {
 } from "@gestarahub/contracts";
 import { paymentMethodLabel } from "@/lib/labels";
 import { nowIso, writeOp, validationError } from "@/services/world/ops";
-import { paidAtFromDate, paidOnNote } from "../payment-date";
+import { paidAtFromDate, paidOnNote } from "../billing/payment-date";
 import { attachmentsNote, entryFacts, entryLabel, PAID_STATUS_LABEL, recordEntry } from "./financeAudit";
 import { clone, conflict, isPaymentMethod } from "./financeHelpers";
 import { findEntry } from "./financeStore";

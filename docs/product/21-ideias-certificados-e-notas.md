@@ -103,6 +103,6 @@ Aprovada com todas as recomendações acima: liga por modalidade com o padrão d
 - **Peso:** maior que zero, até 100, uma casa decimal.
 - **Modalidade desligada depois:** as avaliações ficam guardadas; a aba e o item "Notas" somem até religar.
 
-**Código:** regras puras em `packages/core/src/grades.ts` (testes em `packages/core/test/grades.test.ts`); contratos em `packages/contracts/src/assessment.ts`; serviço `apps/web/src/services/gradesService.ts` (testes em `services/__tests__/grades.test.ts`); tela em `apps/web/src/features/grades`.
+**Código:** regras puras em `packages/core/src/grades.ts` (testes em `packages/core/test/grades.test.ts`); contratos em `packages/contracts/src/assessment.ts`; serviço `apps/web/src/services/grades/` (testes em `services/__tests__/grades.test.ts`); tela em `apps/web/src/features/grades`.
 
 **Fase 2 (não entrou):** recuperação e segunda chamada (maior nota), nota como critério da trilha, `{nota}` no certificado, boletim em PDF, relatórios de desempenho e aviso "nota lançada" no WhatsApp.

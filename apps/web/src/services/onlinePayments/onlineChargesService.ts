@@ -10,9 +10,9 @@ import { formatCents } from "@gestarahub/core/format";
 import { resolveOnlinePayer } from "@gestarahub/core/payer";
 import { apiError, newId, notFoundError, nowIso, readOp, writeOp, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { paymentGateway } from "../payments/paymentGateway";
-import { assertFeature } from "../subscriptionService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { realAccountInBrowser } from "../world/delegate";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
@@ -20,7 +20,7 @@ import {
   insertOnlinePaymentInDb,
   listOnlinePaymentsForChargeFromDb,
   simulateOnlinePaidAction,
-} from "../onlinePaymentsBackend";
+} from "./actions";
 import {
   clone,
   todayISO,

@@ -10,8 +10,8 @@ import type {
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { store } from "@/services/world/store";
-import { ensureMembershipCharges } from "../billingService";
-import { assertFeature } from "../subscriptionService";
+import { ensureMembershipCharges } from "../billing";
+import { assertFeature } from "../subscription/subscriptionService";
 import { buildHeader } from "./reportCatalog";
 import { VOID_STATUSES, paidIn, buildCourseReport, buildPackageReport } from "./courseAndPackageReports";
 import type { ReportContext } from "./reportContext";

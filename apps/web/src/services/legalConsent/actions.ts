@@ -1,13 +1,13 @@
-// Shim: as acoes de aceite vivem em ./legalConsent (doc 12, fase 6).
+// Acoes de servidor dos aceites (plataforma e responsavel), num import so.
 export {
   checkUserLegalConsentAction,
   recordLegalConsentAction,
-} from "./legalConsent/platformConsentActions";
+} from "./platformConsentActions";
 export {
   confirmMinorConsentAction,
   confirmPaperMinorConsentAction,
   getPublicMinorConsentDetailsAction,
-} from "./legalConsent/minorConsentActions";
+} from "./minorConsentActions";
 export type {
   ConfirmMinorConsentInput,
-} from "./legalConsent/minorConsentActions";
+} from "./minorConsentActions";

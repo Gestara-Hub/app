@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { defaultMessageTemplates } from "@/mocks/seed";
 import { store } from "@/mocks/store";
-import { categoriesService } from "@/services/categoriesService";
-import { communicationService } from "@/services/communicationService";
-import { settingsService } from "@/services/settingsService";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { communicationService } from "@/services/communication";
+import { settingsService } from "@/services/settings/settingsService";
 import { ACADEMY_ORG, resetAcademy } from "@/test/academy";
 
 const tmpl = (key: string) => `tmpl-${ACADEMY_ORG}-${key}`;

@@ -16,8 +16,8 @@ import type {
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
 import { ENTRY_ATTACHMENT_RULES } from "@/lib/files";
-import { attachmentsService } from "@/services/attachmentsService";
-import { financeService } from "@/services/financeService";
+import { attachmentsService } from "@/services/attachments/attachmentsService";
+import { financeService } from "@/services/finance";
 
 // Toda mutation do Financeiro invalida `finance.all` (resumo, serie, lista...).
 function useInvalidateFinance() {

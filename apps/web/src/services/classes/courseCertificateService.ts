@@ -3,8 +3,8 @@ import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate } from "@gestarahub/core/certificate";
 import { apiError, notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { currentCertificateTemplate } from "../certificatesService";
-import { assertFeature } from "../subscriptionService";
+import { currentCertificateTemplate } from "../settings/certificatesService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { clone, todayISO, modalityName, instructorName, studentName } from "./classShared";
 import { frequencyOf } from "./classViews";
 

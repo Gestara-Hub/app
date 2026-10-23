@@ -1,41 +1,41 @@
-// Shim: as acoes de pagamento online vivem em ./onlinePayments (doc 12, fase 6).
+// Acoes de servidor do pagamento online, num import so (cada uma vive no seu arquivo desta pasta).
 export {
   cancelGatewayPaymentsAction,
   cancelOnlinePaymentsForChargeInDb,
   insertOnlinePaymentInDb,
   listOnlinePaymentsForChargeFromDb,
   simulateOnlinePaidAction,
-} from "./onlinePayments/paymentRecordsActions";
+} from "./paymentRecordsActions";
 export {
   getOrganizationGatewayAction,
   setupSubaccountAction,
   updateOrganizationOnlineSettingsAction,
-} from "./onlinePayments/subaccountActions";
+} from "./subaccountActions";
 export type {
   SetupSubaccountInput,
   SetupSubaccountResult,
-} from "./onlinePayments/subaccountActions";
+} from "./subaccountActions";
 export {
   createOnlineLinkPaymentAction,
   createOnlinePixPaymentAction,
-} from "./onlinePayments/checkoutActions";
+} from "./checkoutActions";
 export {
   getSubaccountBalanceAction,
   listSubaccountTransfersAction,
   requestSubaccountTransferAction,
-} from "./onlinePayments/balanceActions";
+} from "./balanceActions";
 export type {
   SubaccountBalanceResult,
   SubaccountTransferItem,
   TransferActionResult,
-} from "./onlinePayments/balanceActions";
+} from "./balanceActions";
 export {
   listSubaccountReceiptsAction,
-} from "./onlinePayments/receiptsActions";
+} from "./receiptsActions";
 export type {
   ReceiptStatusFilter,
   SubaccountReceiptItem,
   SubaccountReceiptsPage,
   SubaccountReceiptsQuery,
   SubaccountReceiptsSummary,
-} from "./onlinePayments/receiptsActions";
+} from "./receiptsActions";

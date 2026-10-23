@@ -10,14 +10,14 @@ import type {
   User,
 } from "@gestarahub/contracts";
 import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
-import { unwrap } from "./server/action";
-import { serviceAction } from "./world/serviceActions";
-import { encodeArgs } from "./world/transport";
+import { unwrap } from "../server/action";
+import { serviceAction } from "../world/serviceActions";
+import { encodeArgs } from "../world/transport";
 import { defaultMessageTemplates } from "@/services/defaults";
 import { readOp, writeOp, validationError } from "@/services/world/ops";
-import { realAccountInBrowser } from "./world/delegate";
-import { auditLogService } from "./auditLogService";
-import { getOrganizationGatewayAction } from "./onlinePaymentsBackend";
+import { realAccountInBrowser } from "../world/delegate";
+import { auditLogService } from "../audit/auditLogService";
+import { getOrganizationGatewayAction } from "../onlinePayments/actions";
 
 /** Nome do espaco e da unidade. */
 const MAX_NAME = 80;

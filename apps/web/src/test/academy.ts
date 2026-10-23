@@ -15,12 +15,12 @@ import type {
 import { firstCharge, resolveMembershipTerms } from "@gestarahub/core/billing";
 import { defaultFinancialCategories, emptyStore } from "@/mocks/seed";
 import { addTenant, resetStore, setActiveOrganization, store, type MockStore } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { packagesService } from "@/services/packagesService";
-import { professionalsService } from "@/services/professionalsService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { packagesService } from "@/services/billing";
+import { professionalsService } from "@/services/catalog/professionalsService";
+import { turmasService } from "@/services/classes";
 
 export const ACADEMY_ORG = "org-academia-x";
 export const ACADEMY_UNIT = "unit-academia-x";

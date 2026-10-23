@@ -3,7 +3,7 @@ import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, textIncludes } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { unwrap } from "../server/action";
 import { clone } from "./billingHelpers";
 import { validatePlan } from "./billingValidation";

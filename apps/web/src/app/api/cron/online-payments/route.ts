@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/gatewayAccountBackend";
+import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
 
 /**
  * Pix e links vencidos, de hora em hora (migracao 34): expira aqui e cancela no

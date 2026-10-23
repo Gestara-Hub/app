@@ -9,8 +9,8 @@ import type {
   TeacherPayoutAdjustment,
 } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { attachmentsService } from "@/services/attachmentsService";
-import { teacherPayService } from "@/services/teacherPayService";
+import { attachmentsService } from "@/services/attachments/attachmentsService";
+import { teacherPayService } from "@/services/finance";
 
 // Chave local da lista de professores da aba (sem entrada propria em queryKeys).
 const teachersKey = queryKeys.teacherPay.teachers;

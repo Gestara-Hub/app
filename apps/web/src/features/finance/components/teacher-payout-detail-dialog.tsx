@@ -51,7 +51,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { paymentMethodLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { useRetainedValue } from "@/lib/use-retained-value";
-import type { TeacherPayDetailSession, TeacherPayoutDetail } from "@/services/teacherPayService";
+import type { TeacherPayDetailSession, TeacherPayoutDetail } from "@/services/finance";
 import {
   useCloseTeacherPayout,
   useMarkTeacherPayoutPaid,

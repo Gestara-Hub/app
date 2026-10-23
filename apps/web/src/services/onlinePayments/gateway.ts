@@ -1,11 +1,11 @@
-// Shim: a conta do gateway vive em ./onlinePayments (doc 12, fase 6).
+// Conta do Asaas (tarifas, webhook, cancelamento e expiracao), num import so.
 export {
   GESTARAHUB_WEBHOOK_NAME,
   ensureSubaccountWebhook,
   recheckFeesAfterPayment,
   refreshGatewayIfNeeded,
   syncGatewayFees,
-} from "./onlinePayments/gatewaySetup";
+} from "./gatewaySetup";
 export {
   cancelGatewayPayment,
   expireAllDueOnlinePayments,
@@ -13,7 +13,7 @@ export {
   retryAllPendingGatewayCancels,
   retryPendingGatewayCancels,
   subaccountKeyOf,
-} from "./onlinePayments/gatewayCleanup";
+} from "./gatewayCleanup";
 export type {
   GatewayCancelResult,
-} from "./onlinePayments/gatewayCleanup";
+} from "./gatewayCleanup";

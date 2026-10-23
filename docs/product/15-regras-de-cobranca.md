@@ -47,7 +47,7 @@ Em 22/09/2026 um teste ponta a ponta encontrou 23 bugs, a maioria em Mensalidade
 ## Escopo
 
 - Tela: `apps/web/src/features/settings/components/organization-settings-card.tsx` (Regras da mensalidade, com prévia calculada pelo motor) e `features/turmas/components/billing-view.tsx` (Cobranças).
-- Regras: `packages/core/src/billing.ts` (motor), `apps/web/src/services/billingService.ts` e `clientsService.ts`.
+- Regras: `packages/core/src/billing.ts` (motor), `apps/web/src/services/billing/` e `clientsService.ts`.
 - Testes: `packages/core/test/billing.test.ts`, `apps/web/src/services/__tests__/billing.test.ts`, `apps/web/e2e/mensalidades.spec.ts`.
 
 ## Alternativas
@@ -170,7 +170,7 @@ Fase C do [plano de novas formas de cobrança](20-plano-novas-formas-de-cobranca
 - **Financeiro:** categoria de sistema **"Pacotes de aulas"** (`systemKey: "packages"`), linha agregada própria em Lançamentos e linha "Pacotes de aulas" no resultado do mês. Migração do mock v35 cria as coleções `lessonPackages` e `studentPackages` e a categoria nos espaços que já tinham as categorias padrão.
 - **Pagamento do professor:** o "% do que os alunos pagaram" conta cada aula usada no mês pelo valor da aula (preço ÷ aulas compradas), para quem deu a aula (substituto inclusive), só de pacote pago por inteiro; aula trazida na renovação vale o preço da aula do pacote de onde veio (doc 05, seção 5.3).
 - **Auditoria:** `criou o pacote 10 aulas (10 aulas, R$ 500,00)`; `vendeu o pacote 10 aulas para Ana (R$ 450,00, em 3 parcelas)` (com renovação: `, com 3 aulas trazidas do pacote anterior`); `cancelou o pacote 10 aulas de Ana e 1 cobrança em aberto`; as ações citam `compra do pacote "10 aulas" de Ana` ou `parcela 2 de 3 do pacote "10 aulas" de Ana`; entrar na aula pelo pacote, `inscreveu Ana na aula de 21/09/2026 da turma Pilates (usa 1 aula do pacote)`. O gasto de aula na chamada não entra (a chamada não é auditada).
-- Regras puras em `packages/core/src/packages.ts` (`packageExpiresAt`, `usageReasonFor`, `coversModality`, `packageState`, `pickPackageFor`, `carryOverSources`); serviço `apps/web/src/services/packagesService.ts`. Testes: `packages/core/test/packages.test.ts`, `apps/web/src/services/__tests__/packages.test.ts` (e a v35 em `migrations.test.ts`).
+- Regras puras em `packages/core/src/packages.ts` (`packageExpiresAt`, `usageReasonFor`, `coversModality`, `packageState`, `pickPackageFor`, `carryOverSources`); serviço `apps/web/src/services/billing/`. Testes: `packages/core/test/packages.test.ts`, `apps/web/src/services/__tests__/packages.test.ts` (e a v35 em `migrations.test.ts`).
 
 
 ## Lembretes de WhatsApp das outras cobranças (14/10/2026)

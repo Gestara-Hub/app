@@ -4,7 +4,7 @@ import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, textIncludes } from "@/services/world/ops";
 import { withKind } from "@/lib/text";
 import { realAccountInBrowser } from "../world/delegate";
-import { auditLogService } from "../auditLogService";
+import { auditLogService } from "../audit/auditLogService";
 import { unwrap } from "../server/action";
 import { clone } from "./billingHelpers";
 import { normalizePackage, validatePackage } from "./billingValidation";

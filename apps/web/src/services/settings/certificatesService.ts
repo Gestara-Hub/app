@@ -8,12 +8,12 @@ import {
   validateCertificateTemplate,
 } from "@gestarahub/core/certificate";
 import { CERTIFICATE_LOGO_RULES } from "@/lib/files";
-import { delegateAll } from "./world/delegate";
+import { delegateAll } from "../world/delegate";
 import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { attachmentsService } from "./attachmentsService";
-import { auditLogService } from "./auditLogService";
-import { assertFeature } from "./subscriptionService";
+import { attachmentsService } from "../attachments/attachmentsService";
+import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 
 /**
  * Modelo de certificado do espaco (doc 21, secao 1; recurso pago

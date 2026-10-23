@@ -2,7 +2,7 @@ import type { ClassSessionDetail, DateISO, Id } from "@gestarahub/contracts";
 import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { actorTeacherId, teacherSeesSession } from "../teacherScope";
+import { actorTeacherId, teacherSeesSession } from "./teacherScope";
 import { clone, makeSessionId, resolveSession, datesBetween } from "./classShared";
 import {
   toSessionView,

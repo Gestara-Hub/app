@@ -10,7 +10,7 @@ import { mockPaymentGateway } from "./adapters/mockAdapter";
 import {
   createOnlinePixPaymentAction,
   createOnlineLinkPaymentAction,
-} from "../onlinePaymentsBackend";
+} from "../onlinePayments/actions";
 
 export * from "./types";
 export { mockPaymentGateway } from "./adapters/mockAdapter";

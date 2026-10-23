@@ -8,8 +8,8 @@ import type {
 import { plural } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
 import { newId, nowIso, writeOp, validationError } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
-import { assertCanManageProgression } from "../teacherScope";
+import { auditLogService } from "../audit/auditLogService";
+import { assertCanManageProgression } from "../classes/teacherScope";
 import {
   applyGoalProgress,
   findGoal,

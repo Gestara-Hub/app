@@ -4,8 +4,8 @@ import { ORG_ID } from "@/config/tenant";
 import { PROGRESSION_TEMPLATES, resolveModalityTrack } from "@/lib/progression-tracks";
 import { setCurrentActor } from "@/mocks/currentActor";
 import { setActiveOrganization, store } from "@/mocks/store";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
 import { ACADEMY_ORG, createStudent, resetAcademy } from "@/test/academy";
 
 const summaries = () => store.auditLog.map((e) => e.summary);

@@ -1,10 +1,10 @@
 import type { Charge, Client } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { financeService } from "@/services/financeService";
-import { applyRecurringAutoPayments, onlinePaymentsService } from "@/services/onlinePaymentsService";
-import { subscriptionService } from "@/services/subscriptionService";
+import { billingService } from "@/services/billing";
+import { financeService } from "@/services/finance";
+import { applyRecurringAutoPayments, onlinePaymentsService } from "@/services/onlinePayments";
+import { subscriptionService } from "@/services/subscription/subscriptionService";
 import { createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 
 const plain = (text: string) => text.replace(/ /g, " ");

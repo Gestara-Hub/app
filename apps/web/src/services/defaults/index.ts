@@ -1,10 +1,10 @@
-// Shim: os padroes de um espaco novo vivem em ./defaults (doc 12, fase 6).
+// Padroes de um espaco novo (categorias financeiras, WhatsApp e modelos de mensagem).
 export {
   defaultFinancialCategories,
   defaultSystemFinancialCategory,
   defaultWhatsAppConnection,
   systemFinancialCategoryId,
-} from "./defaults/financialDefaults";
+} from "./financialDefaults";
 export {
   defaultMessageTemplates,
-} from "./defaults/messageTemplateDefaults";
+} from "./messageTemplateDefaults";

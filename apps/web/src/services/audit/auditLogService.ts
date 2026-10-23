@@ -9,7 +9,7 @@ import type {
 import { getCurrentActor } from "@/services/world/actor";
 import { newId, nowIso, readOp, textIncludes } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { realAccountInBrowser } from "./world/delegate";
+import { realAccountInBrowser } from "../world/delegate";
 import { listAuditLogsFromDb, recordAuditLogInDb } from "./auditLogBackend";
 
 function clone<T>(value: T): T {

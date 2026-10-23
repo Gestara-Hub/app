@@ -2,8 +2,8 @@ import type { Charge, ClassReservation, Id, ReservationKind, ReservationView } f
 import { formatCents } from "@gestarahub/core/format";
 import { apiError, newId, notFoundError, nowIso, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { acceptsPackages, hasUsablePackage } from "../packagesService";
+import { auditLogService } from "../audit/auditLogService";
+import { acceptsPackages, hasUsablePackage } from "../billing";
 import { syncAttendanceUsage } from "./attendancePackageUsage";
 import {
   clone,

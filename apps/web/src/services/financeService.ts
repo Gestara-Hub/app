@@ -1,1 +1,0 @@
-export { financeService } from "./finance";

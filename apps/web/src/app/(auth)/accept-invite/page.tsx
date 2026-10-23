@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { validateInvitationTokenAction } from "@/services/usersBackend";
+import { validateInvitationTokenAction } from "@/services/users/actions";
 import { AcceptInviteForm } from "./accept-invite-form";
 
 export const metadata = {

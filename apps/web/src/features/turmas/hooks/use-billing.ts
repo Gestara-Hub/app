@@ -7,9 +7,9 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { attachmentsService } from "@/services/attachmentsService";
-import { billingService } from "@/services/billingService";
-import { onlinePaymentsService } from "@/services/onlinePaymentsService";
+import { attachmentsService } from "@/services/attachments/attachmentsService";
+import { billingService } from "@/services/billing";
+import { onlinePaymentsService } from "@/services/onlinePayments";
 import type {
   ChargeFilter,
   CreateExtraCharge,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { systemService } from "@/services/system";
+import { systemService } from "@/services/world/system";
 
 export function useResetData() {
   const qc = useQueryClient();

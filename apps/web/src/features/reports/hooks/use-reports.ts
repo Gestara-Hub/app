@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReportFilter, ReportType } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { reportsService } from "@/services/reportsService";
+import { reportsService } from "@/services/reports";
 
 export function useReportsCatalog() {
   return useQuery({

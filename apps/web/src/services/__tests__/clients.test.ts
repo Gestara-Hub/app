@@ -2,11 +2,11 @@ import type { Charge } from "@gestarahub/contracts";
 import { chargesDueIn } from "@gestarahub/core/billing";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService, studentMembershipTerms } from "@/services/billingService";
-import { categoriesService } from "@/services/categoriesService";
-import { clientsService } from "@/services/clientsService";
-import { professionalsService } from "@/services/professionalsService";
-import { servicesService } from "@/services/servicesService";
+import { billingService, studentMembershipTerms } from "@/services/billing";
+import { categoriesService } from "@/services/catalog/categoriesService";
+import { clientsService } from "@/services/clients";
+import { professionalsService } from "@/services/catalog/professionalsService";
+import { servicesService } from "@/services/catalog/servicesService";
 import { chargesOf, createPlan, enrollStudent, resetAcademy } from "@/test/academy";
 
 const generate = async (...competences: string[]) => {

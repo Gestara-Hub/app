@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CertificateTemplate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
 import { queryKeys } from "@/lib/queryKeys";
-import { attachmentsService } from "@/services/attachmentsService";
-import { certificatesService } from "@/services/certificatesService";
+import { attachmentsService } from "@/services/attachments/attachmentsService";
+import { certificatesService } from "@/services/settings/certificatesService";
 
 export function useCertificateTemplate() {
   return useQuery({

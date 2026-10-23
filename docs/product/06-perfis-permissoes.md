@@ -78,7 +78,7 @@ Perfil focado no proprio trabalho.
 Pode:
 
 - Ver a propria agenda (Modelo 1, escopada ao seu `professionalId`) e avancar o status dos atendimentos (confirmar, iniciar, concluir, nao compareceu).
-- Modelo 3 (decisao de 18/10/2026): ve e age (chamada, registros de aula, graduacao, notas) **so nas turmas em que e o titular** e **nas aulas em que foi posto como substituto** ("Trocar instrutor", que vale para uma aula, nao para a turma). Lista de turmas, calendario e detalhe mostram so isso; chamada e evolucao fora do escopo sao recusadas com `FORBIDDEN` (`services/teacherScope.ts`). Graduar, metas e pontos fortes: so em aluno das turmas dele. Sem vinculo com a equipe, nao ve nenhuma turma.
+- Modelo 3 (decisao de 18/10/2026): ve e age (chamada, registros de aula, graduacao, notas) **so nas turmas em que e o titular** e **nas aulas em que foi posto como substituto** ("Trocar instrutor", que vale para uma aula, nao para a turma). Lista de turmas, calendario e detalhe mostram so isso; chamada e evolucao fora do escopo sao recusadas com `FORBIDDEN` (`services/classes/teacherScope.ts`). Graduar, metas e pontos fortes: so em aluno das turmas dele. Sem vinculo com a equipe, nao ve nenhuma turma.
 
 Nao pode: criar/editar/cancelar/remarcar agendamentos, bloquear horarios, criar series, ver clientes, equipe ou servicos, gerenciar cadastros, ver dashboard, financeiro, usuarios, auditoria ou configuracoes.
 
@@ -161,7 +161,7 @@ Regras especificas:
   - Acoes (botoes/menus) sao ocultadas por `can()`.
   - As pages protegidas chamam `requirePermission` no server (Dashboard, Clientes, Equipe, Servicos, Turmas, detalhe de turma e de aula, Calendario, Modalidades, Planos, Mensalidades, Usuarios, Auditoria, Configuracoes); sem permissao, redireciona para a primeira rota acessivel do perfil no modelo (`firstAllowedRoute`). **A Agenda (`/schedule`) nao tem esse guard** (todos os perfis tem `schedule:view`).
   - `canAccessRoute` valida o destino pos-login (`?from=`), recusando rota de outro modelo. Acessar diretamente pela URL uma rota de outro modelo nao e barrado por um guard proprio.
-- **Escopo do Profissional:** na Agenda (modelo de servicos), Calendario e Lista filtram para o `professionalId` do usuario, so na UI. No modelo de turmas o escopo e do service (`services/teacherScope.ts`): turmas em que e titular e aulas em que substitui; chamada, registros e graduacao fora disso sao recusados.
+- **Escopo do Profissional:** na Agenda (modelo de servicos), Calendario e Lista filtram para o `professionalId` do usuario, so na UI. No modelo de turmas o escopo e do service (`services/classes/teacherScope.ts`): turmas em que e titular e aulas em que substitui; chamada, registros e graduacao fora disso sao recusados.
 
 ## Fora de escopo no MVP
 

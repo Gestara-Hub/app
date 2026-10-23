@@ -1,14 +1,14 @@
-// Shim: as acoes de usuarios vivem em ./users (doc 12, fase 6).
+// Acoes de servidor de usuarios e convites, num import so.
 export {
   inactivateUserInDb,
   listUsersFromDb,
   updateUserInDb,
-} from "./users/userRecordsActions";
+} from "./userRecordsActions";
 export {
   createUserAndInviteAction,
   resendInvitationAction,
-} from "./users/inviteActions";
+} from "./inviteActions";
 export {
   acceptInvitationAction,
   validateInvitationTokenAction,
-} from "./users/acceptInvitationActions";
+} from "./acceptInvitationActions";

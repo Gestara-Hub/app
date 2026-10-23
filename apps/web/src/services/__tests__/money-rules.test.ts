@@ -1,11 +1,11 @@
 import type { Charge, ClassGroupView, CreateClassGroup, ProfessionalView } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { financeService } from "@/services/financeService";
-import { teacherPayService } from "@/services/teacherPayService";
-import { turmasService } from "@/services/turmasService";
+import { billingService } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { financeService } from "@/services/finance";
+import { teacherPayService } from "@/services/finance";
+import { turmasService } from "@/services/classes";
 import {
   ACADEMY_ORG,
   createInstructor,

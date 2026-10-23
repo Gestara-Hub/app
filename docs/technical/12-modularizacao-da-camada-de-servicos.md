@@ -147,7 +147,7 @@ A execução deve ser realizada de forma incremental, um serviço por vez, com v
 
 ### Fase 6: Domínios que cresceram depois do plano (feita em 23/10/2026)
 * **Por quê:** o plano de 19/10 listou os 5 arquivos gigantes daquele dia. Depois, o pagamento online (Asaas), usuários, relatórios, notas, comunicação e aceites passaram de 300 linhas no padrão antigo.
-* **Como:** só movendo código, sem mudar regra. Cada arquivo antigo virou reexportação (nenhum import mudou). Nos arquivos `"use server"` (`*Backend.ts`), as ações foram para arquivos novos também `"use server"`, o apoio síncrono (hash, guarda, endereço do app) foi para um módulo comum só de servidor e o arquivo antigo virou um módulo comum que reexporta (o build de produção confere).
+* **Como:** só movendo código, sem mudar regra. Primeiro cada arquivo antigo virou reexportação; depois a raiz foi limpa (abaixo). Nos arquivos `"use server"` (`*Backend.ts`), as ações foram para arquivos novos também `"use server"`, o apoio síncrono (hash, guarda, endereço do app) foi para um módulo comum só de servidor e o arquivo antigo virou um módulo comum que reexporta (o build de produção confere).
 * **Pastas novas:**
 
 | Pasta | De onde veio | Arquivos |
@@ -162,8 +162,9 @@ A execução deve ser realizada de forma incremental, um serviço por vez, com v
 | `services/defaults/` | `defaults.ts` (327) | `financialDefaults`, `messageTemplateDefaults` |
 | `services/clients/` | `studentSummaryService.ts` (339) | `studentSummaryRules`, `studentSummaryService` |
 
-* **Ficou como está:** `appointmentsService.ts` (539, agenda da barbearia, modelo adiado) e arquivos entre 300 e 340 linhas com uma função grande só (`subaccountActions`, `server/accountSetup.ts`), que não se separam sem mexer na regra. Arquivos pequenos do domínio (`onlinePaymentsRows.ts`, `onlinePaymentsWebhook.ts`) seguiram na raiz.
-* **Código novo:** importa da pasta (`@/services/onlinePayments`, `@/services/reports`...); os shims da raiz saem na fase 5.
+* **Ficou como está:** `appointmentsService.ts` (539, agenda da barbearia, modelo adiado) e arquivos entre 300 e 340 linhas com uma função grande só (`subaccountActions`, `server/accountSetup.ts`), que não se separam sem mexer na regra.
+* **Raiz limpa (23/10/2026):** depois do corte, todos os arquivos da raiz de `services/` foram para a pasta da sua área e os imports do projeto passaram a apontar para a pasta (sem reexportação na raiz). Na raiz ficou só `index.ts`. Novas pastas: `scheduling/` (agenda da barbearia), `attachments/`, `audit/`, `preferences/` e `settings/`; `catalog/` recebeu modalidades, serviços, profissionais e cargos; `world/` recebeu `nouns` e `system`; `classes/` recebeu `teacherScope` e `turmasBackend`. As reexportações das ações `"use server"` viraram `actions.ts` dentro da pasta (`onlinePayments/actions`, `users/actions`, `legalConsent/actions`, `subscription/actions`) e a do Asaas virou `onlinePayments/gateway`.
+* **Código novo:** importa da pasta (`@/services/onlinePayments`, `@/services/reports`, `@/services/classes/teacherScope`...). Nada de arquivo novo solto na raiz.
 
 ---
 

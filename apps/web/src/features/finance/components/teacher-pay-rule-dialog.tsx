@@ -28,7 +28,7 @@ import {
 import { handleFormApiError } from "@/lib/form-errors";
 import { teacherPayComponentLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
-import type { TeacherPayTeacher } from "@/services/teacherPayService";
+import type { TeacherPayTeacher } from "@/services/finance";
 import { useSaveTeacherPayRule } from "../hooks/use-teacher-pay";
 import { competenceLabel, currentCompetence } from "../lib";
 import {

@@ -2,8 +2,8 @@ import type { UpdateConnectionSettingsPayload, WhatsAppConnectionView } from "@g
 import { whatsappNumber } from "@/lib/whatsapp";
 import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { assertFeature } from "../subscriptionService";
+import { auditLogService } from "../audit/auditLogService";
+import { assertFeature } from "../subscription/subscriptionService";
 import { ensureConnection, connectionView } from "./communicationRules";
 
 /** Conexao do WhatsApp: status, ligar e desligar a API oficial e ajustes. */

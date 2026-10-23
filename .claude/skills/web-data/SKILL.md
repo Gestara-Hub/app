@@ -6,7 +6,7 @@ description: Write or evolve the apps/web mock service layer — the seam that i
 # Data layer (apps/web mock services)
 
 Source of truth: `docs/frontend/02-camada-de-dados-mock.md`, `docs/product/10-estados-e-mensagens.md`.
-Memory: [[monorepo-packages-boundaries]]. Reference: `services/appointmentsService.ts`.
+Memory: [[monorepo-packages-boundaries]]. Reference: `services/scheduling/appointmentsService.ts`.
 This layer is the **swap point** for the real NestJS API — keep signatures/types stable.
 
 ## Service (`src/services/<x>Service.ts`)

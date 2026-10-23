@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
-import { timeBlocksService } from "@/services/timeBlocksService";
+import { timeBlocksService } from "@/services/scheduling/timeBlocksService";
 import type {
   CreateTimeBlock,
   Id,

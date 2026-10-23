@@ -11,8 +11,8 @@ import {
   validationError,
 } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { auditLogService } from "../auditLogService";
-import { cancelOnlinePaymentsForCharge } from "../onlinePaymentsService";
+import { auditLogService } from "../audit/auditLogService";
+import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { clone, todayISO, studentName, activeEnrollments } from "./classShared";
 import { validateStudentScheduleConflict, resolveCourseChoice } from "./classValidation";
 import { toEnrollmentView } from "./classViews";

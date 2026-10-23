@@ -6,7 +6,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { settingsService } from "@/services/settingsService";
+import { settingsService } from "@/services/settings/settingsService";
 import { cancelTwoFactorSignInAction, verifyTwoFactorSignInAction } from "../two-factor-actions";
 
 /** Codigo de 6 numeros do aplicativo; ao acertar, entra no app. */

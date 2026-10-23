@@ -2,9 +2,9 @@ import type { Charge, Plan, StudentDiscount } from "@gestarahub/contracts";
 import { firstCharge, resolveMembershipTerms } from "@gestarahub/core/billing";
 import { beforeEach, describe, expect, it } from "vitest";
 import { store } from "@/mocks/store";
-import { billingService, scholarshipChargeFields } from "@/services/billingService";
-import { clientsService } from "@/services/clientsService";
-import { turmasService } from "@/services/turmasService";
+import { billingService, scholarshipChargeFields } from "@/services/billing";
+import { clientsService } from "@/services/clients";
+import { turmasService } from "@/services/classes";
 import { chargesOf, createClass, createInstructor, createPlan, resetAcademy } from "@/test/academy";
 
 // Hoje = 22/09/2026 (src/test/setup.ts). Academia: antecipado + proporcional, vence dia 10.

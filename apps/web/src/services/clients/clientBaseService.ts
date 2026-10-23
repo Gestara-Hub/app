@@ -10,8 +10,8 @@ import {
   phoneIncludes,
   textIncludes,
 } from "@/services/world/ops";
-import { auditLogService } from "../auditLogService";
-import { clientNoun } from "../nouns";
+import { auditLogService } from "../audit/auditLogService";
+import { clientNoun } from "../world/nouns";
 import { ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone } from "./clientStore";
 import { validateClient } from "./clientValidation";
