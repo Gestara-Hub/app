@@ -35,6 +35,10 @@ interface LoginFormProps {
   demoAvailable?: boolean;
   /** Motivo da volta do Google sem entrar (`?google_error=`, rota /auth/callback). */
   googleError?: string;
+  /** Voltou da troca de senha (`?reset=ok`). */
+  passwordReset?: boolean;
+  /** Com o cadastro na mesma tela: "Criar conta grátis" troca a aba em vez de ir para a landing. */
+  onCreateAccount?: () => void;
 }
 
 /** Mensagens da volta do Google (codigos de `resolveGoogleAccount` e da rota). */
@@ -54,6 +58,8 @@ export function LoginForm({
   tokenValidation: initialTokenValidation = null,
   demoAvailable = false,
   googleError,
+  passwordReset = false,
+  onCreateAccount,
 }: LoginFormProps) {
   const router = useRouter();
   const [tokenState, setTokenState] = useState<ValidateSignupTokenResult | null>(
@@ -395,6 +401,11 @@ export function LoginForm({
         from,
       });
 
+      if (!result.ok && result.twoFactorRequired) {
+        // Senha certa e verificacao em duas etapas ligada (doc 17): falta o codigo.
+        router.push(`/two-factor?from=${encodeURIComponent(from)}`);
+        return;
+      }
       if (!result.ok) {
         setLoginError(result.message);
         return;
@@ -464,6 +475,16 @@ export function LoginForm({
         </div>
       ) : null}
 
+      {passwordReset ? (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3.5 py-2.5 text-xs leading-relaxed text-foreground"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          Senha alterada. Entre com a nova senha.
+        </div>
+      ) : null}
+
       {googleError ? (
         <div
           role="alert"
@@ -495,7 +516,15 @@ export function LoginForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="login-password">Senha</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="login-password">Senha</Label>
+            <Link
+              href={loginEmail.trim() ? `/forgot-password?email=${encodeURIComponent(loginEmail.trim())}` : "/forgot-password"}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
           <div className="relative">
             <Input
               id="login-password"
@@ -545,12 +574,22 @@ export function LoginForm({
 
         <p className="text-center text-xs text-muted-foreground">
           Ainda não tem conta?{" "}
-          <Link
-            href="/#cadastro"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Criar conta grátis
-          </Link>
+          {onCreateAccount ? (
+            <button
+              type="button"
+              onClick={onCreateAccount}
+              className="cursor-pointer font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Criar conta grátis
+            </button>
+          ) : (
+            <Link
+              href="/#cadastro"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Criar conta grátis
+            </Link>
+          )}
         </p>
       </form>
 
