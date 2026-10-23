@@ -1,13 +1,7 @@
-import type {
-MessageTemplate,UpdateTemplatePayload
-} from "@gestarahub/contracts";
-import { TEMPLATE_MAX_LENGTH,isManualTrigger } from "@/lib/whatsapp";
+import type { MessageTemplate, UpdateTemplatePayload } from "@gestarahub/contracts";
+import { TEMPLATE_MAX_LENGTH, isManualTrigger } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
-import {
-apiError,nowIso,
-readOp,
-writeOp,validationError
-} from "@/services/world/ops";
+import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../auditLogService";
 import { assertFeature } from "../subscriptionService";
 import { ensureTemplates } from "./communicationRules";

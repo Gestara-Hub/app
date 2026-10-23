@@ -1,17 +1,16 @@
-import type {
-Id,ReportCardEntry,
-ReportCardModality,
-StudentReportCard
-} from "@gestarahub/contracts";
-import {
-averageGrades,averagesByLevel,isBelowPassing
-} from "@gestarahub/core/grades";
-import {
-notFoundError,readOp
-} from "@/services/world/ops";
+import type { Id, ReportCardEntry, ReportCardModality, StudentReportCard } from "@gestarahub/contracts";
+import { averageGrades, averagesByLevel, isBelowPassing } from "@gestarahub/core/grades";
+import { notFoundError, readOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
-import { clone,assessmentsStore,enabledSettings,levelName,sortAssessments,className } from "./gradeRules";
+import {
+  clone,
+  assessmentsStore,
+  enabledSettings,
+  levelName,
+  sortAssessments,
+  className,
+} from "./gradeRules";
 
 /** Boletim do aluno por modalidade (notas, medias por etapa e geral). */
 export const reportCardService = {

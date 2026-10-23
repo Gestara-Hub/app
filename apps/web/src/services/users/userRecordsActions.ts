@@ -1,11 +1,7 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type {
-UpdateUser,
-UserProfile,
-UserView
-} from "@gestarahub/contracts";
+import type { UpdateUser, UserProfile, UserView } from "@gestarahub/contracts";
 import { guard } from "./userActionsShared";
 
 /**

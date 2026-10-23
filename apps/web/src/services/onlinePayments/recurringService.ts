@@ -1,26 +1,16 @@
-import type {
-Id,RecurringAuthorization
-} from "@gestarahub/contracts";
+import type { Id, RecurringAuthorization } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import {
-apiError,notFoundError,
-nowIso,
-readOp,
-writeOp,
-validationError
-} from "@/services/world/ops";
+import { apiError, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { paymentGateway } from "../payments/paymentGateway";
 import { assertFeature } from "../subscriptionService";
+import { clone, studentName, assertOnlineEnabled } from "./onlinePaymentRules";
 import {
-clone,studentName,assertOnlineEnabled
-} from "./onlinePaymentRules";
-import {
-activeAuthorizationOf,
-applyRecurringAutoPayments,
-recurringLabel,
-findAuthorization,
+  activeAuthorizationOf,
+  applyRecurringAutoPayments,
+  recurringLabel,
+  findAuthorization,
 } from "./recurringRules";
 
 /** Pix Automatico do aluno: pedir, autorizar e revogar. */

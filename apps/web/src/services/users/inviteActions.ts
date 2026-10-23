@@ -1,14 +1,11 @@
 "use server";
 
-import { randomBytes,randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendOrganizationInvitationEmail } from "@/lib/email/mailersend";
 import { userProfileLabel } from "@/lib/labels";
-import type {
-CreateUser,UserProfile,
-UserView
-} from "@gestarahub/contracts";
-import { SEVEN_DAYS_MS,guard,hashToken,resolveAppBaseUrl } from "./userActionsShared";
+import type { CreateUser, UserProfile, UserView } from "@gestarahub/contracts";
+import { SEVEN_DAYS_MS, guard, hashToken, resolveAppBaseUrl } from "./userActionsShared";
 
 /**
  * Convite de usuario: criar com convite e reenviar.

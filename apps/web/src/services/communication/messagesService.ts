@@ -1,21 +1,28 @@
 import type {
-CommunicationMetrics,
-Id,MessageLog,
-MessageLogFilter,PaginatedResult,
-SendMessagePayload
+  CommunicationMetrics,
+  Id,
+  MessageLog,
+  MessageLogFilter,
+  PaginatedResult,
+  SendMessagePayload,
 } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
-import { format,parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { isManualTrigger } from "@/lib/whatsapp";
-import {
-apiError,nowIso,
-readOp,
-writeOp
-} from "@/services/world/ops";
+import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { assertFeature } from "../subscriptionService";
-import { ensureConnection,connectionView,ensureTemplates,ensureLogs,isBillingReminder,validateMessage,newLog,runBirthdayGreetings } from "./communicationRules";
+import {
+  ensureConnection,
+  connectionView,
+  ensureTemplates,
+  ensureLogs,
+  isBillingReminder,
+  validateMessage,
+  newLog,
+  runBirthdayGreetings,
+} from "./communicationRules";
 
 /** Mensagens: historico, envio assistido ou oficial, reenvio e metricas. */
 export const messagesService = {

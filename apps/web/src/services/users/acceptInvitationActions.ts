@@ -3,15 +3,8 @@
 import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-SESSION_COOKIE,
-SESSION_MAX_AGE,
-encodeSession,
-} from "@/lib/session";
-import type {
-UserProfile,
-UserView
-} from "@gestarahub/contracts";
+import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
+import type { UserProfile, UserView } from "@gestarahub/contracts";
 import { hashToken } from "./userActionsShared";
 
 /**

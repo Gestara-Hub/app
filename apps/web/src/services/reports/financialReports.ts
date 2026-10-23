@@ -1,16 +1,19 @@
 import type {
-BillingStatementReportData,
-BillingStatementRow,ChargeKind,CourseReportData,DRECategoryRow,
-DREStatementReportData,
-GeneratedReportData,
-PackageReportData
+  BillingStatementReportData,
+  BillingStatementRow,
+  ChargeKind,
+  CourseReportData,
+  DRECategoryRow,
+  DREStatementReportData,
+  GeneratedReportData,
+  PackageReportData,
 } from "@gestarahub/contracts";
 import { format } from "date-fns";
 import { store } from "@/services/world/store";
 import { ensureMembershipCharges } from "../billingService";
 import { assertFeature } from "../subscriptionService";
 import { buildHeader } from "./reportCatalog";
-import { VOID_STATUSES,paidIn,buildCourseReport,buildPackageReport } from "./courseAndPackageReports";
+import { VOID_STATUSES, paidIn, buildCourseReport, buildPackageReport } from "./courseAndPackageReports";
 import type { ReportContext } from "./reportContext";
 
 /** Relatorios de dinheiro: cobrancas, cursos, pacotes e DRE. */

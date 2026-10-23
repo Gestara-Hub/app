@@ -1,9 +1,4 @@
-import type {
-ReportHeaderInfo,
-ReportMetadata,
-Permission,
-ReportType
-} from "@gestarahub/contracts";
+import type { ReportHeaderInfo, ReportMetadata, Permission, ReportType } from "@gestarahub/contracts";
 import { nowIso } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { can } from "@/lib/permissions";

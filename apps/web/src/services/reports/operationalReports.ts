@@ -1,14 +1,16 @@
 import type {
-AttendanceReportData,
-AttendanceReportRow,
-BirthdayReportData,
-BirthdayRow,GeneratedReportData,StudentRosterReportData,
-StudentRosterRow
+  AttendanceReportData,
+  AttendanceReportRow,
+  BirthdayReportData,
+  BirthdayRow,
+  GeneratedReportData,
+  StudentRosterReportData,
+  StudentRosterRow,
 } from "@gestarahub/contracts";
-import { firstDayOfCompetence,lastDayOfCompetence,localDateOf } from "@gestarahub/core/finance";
+import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { format } from "date-fns";
 import { store } from "@/services/world/store";
-import { sessionDetailOf,sessionsOfClass } from "../turmasService";
+import { sessionDetailOf, sessionsOfClass } from "../turmasService";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
 

@@ -1,12 +1,7 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type {
-CreateLinkInput,
-CreatePixInput,
-PaymentLinkPayment,
-PixPayment,
-} from "../payments/types";
+import type { CreateLinkInput, CreatePixInput, PaymentLinkPayment, PixPayment } from "../payments/types";
 import { getPaymentGateway } from "../payments/registry";
 import { requireTenant } from "../server/tenant";
 

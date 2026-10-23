@@ -1,16 +1,10 @@
-import type {
-UpdateConnectionSettingsPayload,WhatsAppConnectionView
-} from "@gestarahub/contracts";
+import type { UpdateConnectionSettingsPayload, WhatsAppConnectionView } from "@gestarahub/contracts";
 import { whatsappNumber } from "@/lib/whatsapp";
-import {
-nowIso,
-readOp,
-writeOp,validationError
-} from "@/services/world/ops";
+import { nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { assertFeature } from "../subscriptionService";
-import { ensureConnection,connectionView } from "./communicationRules";
+import { ensureConnection, connectionView } from "./communicationRules";
 
 /** Conexao do WhatsApp: status, ligar e desligar a API oficial e ajustes. */
 export const connectionService = {

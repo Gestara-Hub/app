@@ -1,19 +1,19 @@
 import type {
-ApiErrorField,MessageCategory,
-MessageLog,MessageTemplate,
-MessageTrigger,SendMessagePayload,WhatsAppConnection,
-WhatsAppConnectionView
+  ApiErrorField,
+  MessageCategory,
+  MessageLog,
+  MessageTemplate,
+  MessageTrigger,
+  SendMessagePayload,
+  WhatsAppConnection,
+  WhatsAppConnectionView,
 } from "@gestarahub/contracts";
-import { format,parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
-import { MESSAGE_MAX_LENGTH,fillMessage,whatsappNumber } from "@/lib/whatsapp";
+import { MESSAGE_MAX_LENGTH, fillMessage, whatsappNumber } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
-import {
-newId,
-nowIso,persistLocal,
-validationError
-} from "@/services/world/ops";
-import { defaultMessageTemplates,defaultWhatsAppConnection } from "@/services/defaults";
+import { newId, nowIso, persistLocal, validationError } from "@/services/world/ops";
+import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
 import { store } from "@/services/world/store";
 import { tenantHasFeature } from "../subscriptionService";
 

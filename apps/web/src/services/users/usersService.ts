@@ -1,32 +1,43 @@
 import type {
-AuditChange,
-CreateUser,
-Id,UpdateUser,
-User,
-UserFilter,
-UserView
+  AuditChange,
+  CreateUser,
+  Id,
+  UpdateUser,
+  User,
+  UserFilter,
+  UserView,
 } from "@gestarahub/contracts";
-import { allTenants,store } from "@/mocks/store";
+import { allTenants, store } from "@/mocks/store";
 import { userProfileLabel } from "@/lib/labels";
 import {
-newId,
-notFoundError,
-nowIso,
-readOp,
-writeOp,
-textIncludes,
-validationError
+  newId,
+  notFoundError,
+  nowIso,
+  readOp,
+  writeOp,
+  textIncludes,
+  validationError,
 } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
 import { auditLogService } from "../auditLogService";
 import {
-createUserAndInviteAction,
-inactivateUserInDb,
-listUsersFromDb,
-resendInvitationAction,
-updateUserInDb,
+  createUserAndInviteAction,
+  inactivateUserInDb,
+  listUsersFromDb,
+  resendInvitationAction,
+  updateUserInDb,
 } from "../usersBackend";
-import { NOT_FOUND,clone,ensureEmailUnique,ensureNotLastOwner,ensureNotSelfPrivilegeChange,ensureProfessionalFree,toView,toViewWith,validateUser } from "./userRules";
+import {
+  NOT_FOUND,
+  clone,
+  ensureEmailUnique,
+  ensureNotLastOwner,
+  ensureNotSelfPrivilegeChange,
+  ensureProfessionalFree,
+  toView,
+  toViewWith,
+  validateUser,
+} from "./userRules";
 import type { UserSwitchOption } from "./userRules";
 
 export const usersService = {

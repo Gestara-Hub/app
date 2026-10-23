@@ -1,12 +1,15 @@
-import type {
-GeneratedReportData,ReportFilter,ReportMetadata,ReportType
-} from "@gestarahub/contracts";
+import type { GeneratedReportData, ReportFilter, ReportMetadata, ReportType } from "@gestarahub/contracts";
 import { format } from "date-fns";
-import { apiError,notFoundError,readOp } from "@/services/world/ops";
+import { apiError, notFoundError, readOp } from "@/services/world/ops";
 import { delegateAll } from "../world/delegate";
-import { CATALOG,REPORT_PERMISSION,actorCanSee } from "./reportCatalog";
-import { buildAttendanceSheet,buildMonthlyBirthdays,buildStudentsRoster } from "./operationalReports";
-import { buildBillingStatement,buildCourseSummary,buildIncomeStatement,buildPackageSummary } from "./financialReports";
+import { CATALOG, REPORT_PERMISSION, actorCanSee } from "./reportCatalog";
+import { buildAttendanceSheet, buildMonthlyBirthdays, buildStudentsRoster } from "./operationalReports";
+import {
+  buildBillingStatement,
+  buildCourseSummary,
+  buildIncomeStatement,
+  buildPackageSummary,
+} from "./financialReports";
 import { buildChurnRetention } from "./retentionReport";
 
 export const reportsServiceImpl = {

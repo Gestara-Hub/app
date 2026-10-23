@@ -1,11 +1,9 @@
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { can,canManageProfile } from "@/lib/permissions";
+import { can, canManageProfile } from "@/lib/permissions";
 import { requireTenant } from "../server/tenant";
-import type {
-UserProfile
-} from "@gestarahub/contracts";
+import type { UserProfile } from "@gestarahub/contracts";
 
 /**
  * Apoio das acoes de usuarios (so servidor): guarda de permissao, hash do token do convite e endereco do app.

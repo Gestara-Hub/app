@@ -1,24 +1,14 @@
-import type {
-Id,
-OnlinePayment,
-OnlinePaymentMethod
-} from "@gestarahub/contracts";
+import type { Id, OnlinePayment, OnlinePaymentMethod } from "@gestarahub/contracts";
 import {
-ASAAS_BILLING_TYPE,calculateOnlineChargeAmounts,
-defaultPassFeeFor,
-effectiveGatewayFees,
-platformSplitCents
+  ASAAS_BILLING_TYPE,
+  calculateOnlineChargeAmounts,
+  defaultPassFeeFor,
+  effectiveGatewayFees,
+  platformSplitCents,
 } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { resolveOnlinePayer } from "@gestarahub/core/payer";
-import {
-apiError,
-newId,
-notFoundError,
-nowIso,
-readOp,
-writeOp,persistLocal
-} from "@/services/world/ops";
+import { apiError, newId, notFoundError, nowIso, readOp, writeOp, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { paymentGateway } from "../payments/paymentGateway";
@@ -26,23 +16,26 @@ import { assertFeature } from "../subscriptionService";
 import { realAccountInBrowser } from "../world/delegate";
 import { isSupabaseOrganization } from "@/lib/session";
 import {
-cancelOnlinePaymentsForChargeInDb,
-insertOnlinePaymentInDb,
-listOnlinePaymentsForChargeFromDb,
-simulateOnlinePaidAction
+  cancelOnlinePaymentsForChargeInDb,
+  insertOnlinePaymentInDb,
+  listOnlinePaymentsForChargeFromDb,
+  simulateOnlinePaidAction,
 } from "../onlinePaymentsBackend";
 import {
-clone,
-todayISO,
-brDate,chargeLabel,currentSettings,
-assertOnlineEnabled,
-findOpenCharge,newPublicCode,
-expireStale,
-paymentsOf,
-methodLabel,
-chargeMethodFor,
-assertMethodAccepted,
-cancelOnlinePaymentsForCharge
+  clone,
+  todayISO,
+  brDate,
+  chargeLabel,
+  currentSettings,
+  assertOnlineEnabled,
+  findOpenCharge,
+  newPublicCode,
+  expireStale,
+  paymentsOf,
+  methodLabel,
+  chargeMethodFor,
+  assertMethodAccepted,
+  cancelOnlinePaymentsForCharge,
 } from "./onlinePaymentRules";
 import type { OnlineChargeCheckout } from "./onlinePaymentRules";
 

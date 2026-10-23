@@ -1,28 +1,20 @@
 import type {
-ApiErrorField,
-Charge,
-Id,
-OnlinePayment,
-OnlinePaymentMethod,
-OnlinePaymentSettings,
-PaymentMethod
+  ApiErrorField,
+  Charge,
+  Id,
+  OnlinePayment,
+  OnlinePaymentMethod,
+  OnlinePaymentSettings,
+  PaymentMethod,
 } from "@gestarahub/contracts";
 import { describeCharge } from "@gestarahub/core/billing";
-import {
-availableOnlineMethods
-} from "@gestarahub/core/payment-fees";
+import { availableOnlineMethods } from "@gestarahub/core/payment-fees";
 import { format } from "date-fns";
-import {
-apiError,notFoundError,
-nowIso,validationError
-} from "@/services/world/ops";
+import { apiError, notFoundError, nowIso, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { afterWorldCommit } from "../world/effects";
-import {
-cancelGatewayPaymentsAction,
-cancelOnlinePaymentsForChargeInDb
-} from "../onlinePaymentsBackend";
+import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "../onlinePaymentsBackend";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de

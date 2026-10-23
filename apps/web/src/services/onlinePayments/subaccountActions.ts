@@ -5,12 +5,8 @@ import { after } from "next/server";
 import type { OnlinePaymentSettings } from "@gestarahub/contracts";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import {
-ensureSubaccountWebhook,refreshGatewayIfNeeded,syncGatewayFees
-} from "../gatewayAccountBackend";
-import {
-createSubAccount
-} from "@/lib/asaas";
+import { ensureSubaccountWebhook, refreshGatewayIfNeeded, syncGatewayFees } from "../gatewayAccountBackend";
+import { createSubAccount } from "@/lib/asaas";
 import { requireSameOrganization } from "../server/tenant";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import { CURRENT_SUBACCOUNT_TERMS_VERSION } from "@gestarahub/contracts";

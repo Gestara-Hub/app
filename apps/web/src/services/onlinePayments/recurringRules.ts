@@ -1,16 +1,19 @@
-import type {
-Id,RecurringAuthorization
-} from "@gestarahub/contracts";
+import type { Id, RecurringAuthorization } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { format,parseISO } from "date-fns";
-import {
-notFoundError,
-nowIso,persistLocal
-} from "@/services/world/ops";
+import { format, parseISO } from "date-fns";
+import { notFoundError, nowIso, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
 import { tenantHasFeature } from "../subscriptionService";
-import { brDate, cancelOnlinePaymentsForCharge, chargeLabel, currentSettings, isOpen, studentName, todayISO } from "./onlinePaymentRules";
+import {
+  brDate,
+  cancelOnlinePaymentsForCharge,
+  chargeLabel,
+  currentSettings,
+  isOpen,
+  studentName,
+  todayISO,
+} from "./onlinePaymentRules";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de

@@ -1,21 +1,37 @@
 import type {
-ApiErrorField,
-Assessment,AssessmentGradeInput,
-AssessmentSheet,
-AssessmentView,ClassAssessmentsView,CreateAssessment,Id,UpdateAssessment
+  ApiErrorField,
+  Assessment,
+  AssessmentGradeInput,
+  AssessmentSheet,
+  AssessmentView,
+  ClassAssessmentsView,
+  CreateAssessment,
+  Id,
+  UpdateAssessment,
 } from "@gestarahub/contracts";
-import {
-DEFAULT_ASSESSMENT_WEIGHT,averageOfAverages,normalizeGrade
-} from "@gestarahub/core/grades";
-import {
-newId,nowIso,
-readOp,
-writeOp,
-validationError
-} from "@/services/world/ops";
+import { DEFAULT_ASSESSMENT_WEIGHT, averageOfAverages, normalizeGrade } from "@gestarahub/core/grades";
+import { newId, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../auditLogService";
-import { clone,assessmentsStore,findClass,findAssessment,modalityOf,enabledSettings,requireSettings,assertCanManage,actorId,activeEnrollments,enrolledOnDate,studentName,validateLevel,validateFields,toView,sortAssessments,studentAverage } from "./gradeRules";
+import {
+  clone,
+  assessmentsStore,
+  findClass,
+  findAssessment,
+  modalityOf,
+  enabledSettings,
+  requireSettings,
+  assertCanManage,
+  actorId,
+  activeEnrollments,
+  enrolledOnDate,
+  studentName,
+  validateLevel,
+  validateFields,
+  toView,
+  sortAssessments,
+  studentAverage,
+} from "./gradeRules";
 
 /** Avaliacoes da turma: listar, lancar notas, criar, editar e excluir. */
 export const assessmentsService = {

@@ -2,9 +2,7 @@
 
 import type { OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
-import {
-expireDueOnlinePayments
-} from "../gatewayAccountBackend";
+import { expireDueOnlinePayments } from "../gatewayAccountBackend";
 
 /**
  * Extrato de recebimentos online da subconta (filtros, resumo e paginas).

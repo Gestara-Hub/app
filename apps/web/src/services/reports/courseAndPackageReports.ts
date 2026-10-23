@@ -1,11 +1,13 @@
 import type {
-Charge,CourseReportData,
-CourseReportRow,PackageReportData,
-PackageReportRow
+  Charge,
+  CourseReportData,
+  CourseReportRow,
+  PackageReportData,
+  PackageReportRow,
 } from "@gestarahub/contracts";
-import { classBillingMode,isCourseEnded } from "@gestarahub/core/billing";
-import { firstDayOfCompetence,lastDayOfCompetence,localDateOf } from "@gestarahub/core/finance";
-import { ownLessons,packageState } from "@gestarahub/core/packages";
+import { classBillingMode, isCourseEnded } from "@gestarahub/core/billing";
+import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
+import { ownLessons, packageState } from "@gestarahub/core/packages";
 import { store } from "@/services/world/store";
 
 /**

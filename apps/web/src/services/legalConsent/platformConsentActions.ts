@@ -1,18 +1,18 @@
 "use server";
 
-import { headers,cookies } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { after } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/features/auth/get-current-user";
-import { SESSION_COOKIE,SESSION_MAX_AGE,encodeSession } from "@/lib/session";
+import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
 import {
-CURRENT_PLATFORM_TERMS_VERSION,
-type ConsentType,
-type LegalConsentResult,
-type RecordLegalConsentInput,
-type UserView,
+  CURRENT_PLATFORM_TERMS_VERSION,
+  type ConsentType,
+  type LegalConsentResult,
+  type RecordLegalConsentInput,
+  type UserView,
 } from "@gestarahub/contracts";
-import { computeTermsDocumentHash,resolveAppBaseUrl,sendWelcomeOnFirstAcceptance } from "./consentShared";
+import { computeTermsDocumentHash, resolveAppBaseUrl, sendWelcomeOnFirstAcceptance } from "./consentShared";
 
 /**
  * Aceite dos termos da plataforma: registrar e conferir.
