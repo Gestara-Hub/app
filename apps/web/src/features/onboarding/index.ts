@@ -3,6 +3,7 @@ export { SetupRouteGuard } from "./components/setup-route-guard";
 export { BusinessSetupWizard } from "./components/business-setup-wizard";
 export { Onboarding } from "./components/onboarding";
 export { OnboardingTopBanner } from "./components/onboarding-top-banner";
+export { DiscoveryNextStepBar } from "./components/discovery-next-step-bar";
 export { OnboardingWelcomeDialog } from "./components/onboarding-welcome-dialog";
 export { ProductTour, type TourStep } from "@/components/shared/product-tour";
 export { TOUR_STEPS_DEFAULT, tourStepsForClasses } from "./components/tour-steps";

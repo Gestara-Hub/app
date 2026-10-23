@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
-import { OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
+import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import { WhatsAppConfirmHost } from "@/features/communication";
 import { UserPreferencesProvider } from "@/features/preferences";
 import {
@@ -61,6 +61,7 @@ export default async function AppLayout({
               <AppTopbar />
               <Suspense fallback={null}>
                 <OnboardingTopBanner />
+                <DiscoveryNextStepBar />
               </Suspense>
               <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-6 print:p-0 print:max-w-none">
                 <SetupGuard>{children}</SetupGuard>

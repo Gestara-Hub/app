@@ -350,8 +350,18 @@ Concluídos os primeiros passos, o Dashboard mostra no mesmo lugar um card **opc
   5. **Registrar a evolução de um aluno**: "Registro de aula, meta ou graduação." Feito com algum registro de aula, meta ou graduação na ficha. Leva a Alunos.
   6. **Ver o resultado do mês**: "O que entrou, saiu e falta." Feito ao abrir o Financeiro (marca no navegador). Leva a `/finance`.
 - **Permissões**: item sem a permissão da ação fica de fora (matrícula `enrollment:manage`, chamada `attendance:mark`, pagamento e pacote `billing:manage`, parcelas `billing:view`, WhatsApp `communication:view`, evolução `clients:manage`, resultado `finance:view`).
-- **Atualização**: qualquer mutação bem-sucedida refaz a leitura dos marcos se o card está na tela (`createQueryClient`, em `lib/providers.tsx`); fora dela, a leitura fica velha e refaz ao voltar ao Dashboard. As marcas de "tela aberta" reagem na hora (`useSyncExternalStore`).
+- **Atualização**: qualquer mutação bem-sucedida refaz a leitura dos marcos se o card ou a faixa "Próximo passo" (§4.8) está na tela (`createQueryClient`, em `lib/providers.tsx`). As marcas de "tela aberta" reagem na hora (`useSyncExternalStore`).
 - Código: marcos em `onboardingService.getDiscoveryMilestones()` (uma leitura, contrato `DiscoveryMilestones`), itens em `buildDiscoveryItems` (pura, `features/onboarding/discovery-items.ts`, testada), card em `features/onboarding/components/discovery-checklist.tsx`, marcas do navegador em `lib/discovery-flags.ts` (com try/catch; gravadas por `BillingView` com `kind=course` e por `FinanceView`).
+
+### 4.8. Comemoração com uma ação e "Próximo passo" em todas as telas (22/10/2026)
+
+Quem termina a configuração inicial costuma fechar a comemoração sem ler, e o "Descubra o dia a dia" só aparecia no Painel. A pessoa ficava em Turmas sem saber o que fazer.
+- **Comemoração** ("Seu espaço está pronto!"): sem selo de 100% e sem a lista "Sua operação no dia a dia". Uma frase e um botão: "Agora matricule os alunos da turma “X”." com **"Matricular alunos agora"** (abre a turma com `?enroll=true`). No curso: "Os alunos já estão no curso “X”. Veja as parcelas geradas." com **"Ver as cobranças"**. "Agora não" fica discreto (botão fantasma).
+- **"Próximo passo"** no topo de todas as telas do app, menos o Painel (lá está o card completo): ícone, "Próximo passo · N de M feitos", o título do primeiro item pendente que não está bloqueado e **"Fazer agora →"**. Já na tela do item, troca o botão pela dica. Só no modelo de turmas, para dono e gerente, depois dos primeiros passos.
+- **"X"** esconde só a faixa (`gestarahub_discovery_bar_hidden:<orgId>:<userId>`); o card do Painel continua. O "Fechar" do card esconde os dois. Com tudo feito, some.
+- Na turma, "Fazer agora" de "Matricular alunos" reabre o formulário mesmo já estando na página (a turma reage ao `?enroll=true` de novo).
+- Como a faixa está em toda tela, os marcos refazem a leitura depois de cada ação em qualquer lugar (o `createQueryClient` só refaz o que está montado).
+- Código: `features/onboarding/components/discovery-next-step-bar.tsx` (montado no `app/(app)/layout.tsx`, abaixo do `OnboardingTopBanner`), ícones em `features/onboarding/discovery-icons.ts`, comemoração em `features/turmas/components/setup-complete-dialog.tsx`.
 
 ---
 

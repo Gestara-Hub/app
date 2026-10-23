@@ -253,9 +253,14 @@ export function TurmaDetailView({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
-  const [enrollOpen, setEnrollOpen] = useState(
-    () => searchParams?.get("enroll") === "true",
-  );
+  const enrollParam = searchParams?.get("enroll") === "true";
+  const [enrollOpen, setEnrollOpen] = useState(enrollParam);
+  // Ja na turma, o "Fazer agora" do Proximo passo (?enroll=true) abre de novo.
+  const [seenEnrollParam, setSeenEnrollParam] = useState(enrollParam);
+  if (enrollParam !== seenEnrollParam) {
+    setSeenEnrollParam(enrollParam);
+    if (enrollParam) setEnrollOpen(true);
+  }
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
   const [gradesClient, setGradesClient] = useState<Client | null>(null);

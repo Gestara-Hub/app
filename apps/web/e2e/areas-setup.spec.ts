@@ -415,9 +415,7 @@ test.describe("comemoração da configuração inicial", () => {
       });
       await skipWelcomeDialog(page);
       await createClass(page, "Turma Inaugural", modalityName);
-      await expect(party(page)).toContainText("Configuração inicial 100% concluída");
-      await expect(party(page)).toContainText("A turma “Turma Inaugural” foi criada.");
-      await expect(party(page)).toContainText("Matricular alunos na turma");
+      await expect(party(page)).toContainText("Agora matricule os alunos da turma “Turma Inaugural”.");
       await party(page).getByRole("button", { name: "Matricular alunos agora" }).click();
       await expect(page).toHaveURL(/\/classes\/[^/?]+\?enroll=true$/);
       await expect(page.getByRole("dialog", { name: "Matricular alunos" })).toBeVisible();
@@ -457,8 +455,7 @@ test.describe("comemoração da configuração inicial", () => {
       await enroll.locator("input[name=firstDueDate]").fill("2026-10-15");
       await enroll.getByRole("button", { name: "Matricular 1 aluno" }).click();
       await expect(page.getByText("Aluno matriculado.")).toBeVisible();
-      await expect(party(page)).toContainText("Alunos matriculados no curso “Curso de Outubro”.");
-      await expect(party(page)).not.toContainText("Matricular alunos na turma");
+      await expect(party(page)).toContainText("Os alunos já estão no curso “Curso de Outubro”. Veja as parcelas geradas.");
       await party(page).getByRole("button", { name: "Ver as cobranças" }).click();
       await expect(page).toHaveURL(/\/classes\/billing/);
     });

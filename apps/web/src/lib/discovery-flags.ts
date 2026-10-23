@@ -4,7 +4,8 @@ import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * Marcas do card "Descubra o dia a dia" guardadas no navegador, por
- * organizacao e usuario: "Fechar" (some para sempre) e telas ja abertas
+ * organizacao e usuario: "Fechar" (some para sempre), o "Proximo passo" do
+ * topo escondido e telas ja abertas
  * (Cobranças de curso, Financeiro), que nao deixam rastro no dado.
  * Toda leitura e escrita tolera localStorage indisponivel (modo privado,
  * quota): sem storage, nada fica marcado e a tela funciona igual.
@@ -15,6 +16,7 @@ export type DiscoveryVisit = "course_billing" | "finance";
 
 const DISMISSED_PREFIX = "gestarahub_discovery_dismissed";
 const VISITED_PREFIX = "gestarahub_discovery_visited";
+const BAR_HIDDEN_PREFIX = "gestarahub_discovery_bar_hidden";
 
 export interface DiscoveryScope {
   organizationId: string;
@@ -24,6 +26,11 @@ export interface DiscoveryScope {
 
 export function discoveryDismissedKey(scope: DiscoveryScope): string {
   return `${DISMISSED_PREFIX}:${scope.organizationId}:${scope.id}`;
+}
+
+/** "Proximo passo" do topo escondido (o card do Painel continua). */
+export function discoveryBarHiddenKey(scope: DiscoveryScope): string {
+  return `${BAR_HIDDEN_PREFIX}:${scope.organizationId}:${scope.id}`;
 }
 
 export function discoveryVisitedKey(scope: DiscoveryScope, visit: DiscoveryVisit): string {

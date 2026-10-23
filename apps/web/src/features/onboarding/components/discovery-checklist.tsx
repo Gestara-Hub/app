@@ -1,38 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarCheck,
-  Check,
-  Layers,
-  Lock,
-  MessageCircle,
-  ReceiptText,
-  TrendingUp,
-  UserPlus,
-  Wallet,
-  WalletCards,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Check, Lock, X } from "lucide-react";
 import type { ClassBillingMode } from "@gestarahub/contracts";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth";
 import { cn } from "@/lib/utils";
-import type { DiscoveryItemId } from "../discovery-items";
+import { DISCOVERY_ICONS } from "../discovery-icons";
 import { useDiscovery } from "../hooks/use-discovery";
-
-const ICONS: Record<DiscoveryItemId, LucideIcon> = {
-  enroll: UserPlus,
-  attendance: CalendarCheck,
-  membership_payment: Wallet,
-  course_installments: ReceiptText,
-  package_sale: Layers,
-  message: MessageCircle,
-  progress: TrendingUp,
-  finance: WalletCards,
-};
 
 /**
  * "Descubra o dia a dia": depois da configuracao inicial, no lugar dos
@@ -93,7 +68,7 @@ export function DiscoveryChecklist({ areaBillingMode }: { areaBillingMode: Class
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {items.map((item) => {
-          const Icon = ICONS[item.id];
+          const Icon = DISCOVERY_ICONS[item.id];
           const locked = !item.done && Boolean(item.requires);
           return (
             <li
