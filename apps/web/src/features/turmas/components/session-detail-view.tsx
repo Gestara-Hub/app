@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -79,6 +79,7 @@ import {
   useClassGroup,
   useClassSession,
   useMarkAttendance,
+  useRefreshAfterAttendance,
   useReserveSession,
   useRestorePrimaryInstructor,
 } from "../hooks/use-turmas";
@@ -166,6 +167,19 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const [optimistic, setOptimistic] = useState<ReadonlyMap<string, AttendanceStatus | null>>(new Map());
   // Filas por aluno: objeto estavel e mutavel, fora do que a tela desenha.
   const [writeQueues] = useState(() => new Map<string, { chain: Promise<void>; size: number }>());
+  const refreshAfterAttendance = useRefreshAfterAttendance();
+  // Toques ainda gravando (a lista fica `aria-busy` ate o ultimo chegar ao servidor).
+  const [pendingWrites, setPendingWrites] = useState(0);
+  // Sair da página com toque ainda gravando perderia a marcação: o navegador pergunta antes.
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (writeQueues.size === 0) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [writeQueues]);
   // Dois modais por aluno (Graduação e Registros de aula) e o registro da turma inteira.
   const [graduationClient, setGraduationClient] = useState<Client | null>(null);
   const [recordsClient, setRecordsClient] = useState<Client | null>(null);
@@ -283,20 +297,24 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   // veio do servidor passa a valer (erro tambem volta ao estado real).
   const writeAttendance = (studentId: string, status: AttendanceStatus | null) => {
     setOptimistic((prev) => new Map(prev).set(studentId, status));
+    setPendingWrites((n) => n + 1);
     const queue = writeQueues.get(studentId) ?? { chain: Promise.resolve(), size: 0 };
     queue.size += 1;
     queue.chain = queue.chain
       .then(() =>
         status
-          ? markMut.mutateAsync({ sessionId, studentId, status })
+          ? markMut.mutateAsync({ sessionId, studentId, status, deferRefresh: true })
           : // Desmarcar devolve a aula do pacote, se gastou.
-            clearMut.mutateAsync({ sessionId, studentId }),
+            clearMut.mutateAsync({ sessionId, studentId, deferRefresh: true }),
       )
       .then(() => undefined, onMarkError)
       .then(async () => {
+        setPendingWrites((n) => n - 1);
         queue.size -= 1;
         if (queue.size > 0) return;
         writeQueues.delete(studentId);
+        // Ultima gravacao da chamada: frequencia, pacotes e resumos relidos uma vez.
+        if (writeQueues.size === 0) refreshAfterAttendance();
         await refetch();
         if (writeQueues.has(studentId)) return;
         setOptimistic((prev) => {
@@ -327,10 +345,11 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       await Promise.all([...writeQueues.values()].map((q) => q.chain));
       const pending = roster.filter((entry) => !entry.attendance);
       for (const r of pending) {
-        await markMut.mutateAsync({ sessionId, studentId: r.studentId, status });
+        await markMut.mutateAsync({ sessionId, studentId: r.studentId, status, deferRefresh: true });
       }
       return pending.length;
     } finally {
+      refreshAfterAttendance();
       setBulkPending(false);
     }
   };
@@ -526,7 +545,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
           {null}
         </ListContainer>
       ) : (
-        <ListContainer>
+        <ListContainer busy={pendingWrites > 0}>
           {roster.map((r) => {
             const isEnrolled = r.kind === "enrolled" || !r.kind;
             const isTrial = r.kind === "trial";

@@ -5,15 +5,19 @@ export interface ListContainerProps {
   children?: ReactNode;
   emptyState?: ReactNode;
   className?: string;
+  /** Gravando por tras (ex.: toques da chamada): `aria-busy` para leitor de tela. */
+  busy?: boolean;
 }
 
 export function ListContainer({
   children,
   emptyState,
   className,
+  busy,
 }: ListContainerProps) {
   return (
     <div
+      aria-busy={busy || undefined}
       className={cn(
         "overflow-hidden rounded-xl border border-border/60 bg-card/40 backdrop-blur-xs shadow-xs",
         className,

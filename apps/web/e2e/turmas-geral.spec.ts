@@ -258,8 +258,14 @@ test.describe("aula", () => {
     await a20.click();
     await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
 
-    // Persistiu: recarregar mantem as marcas.
-    await waitWorld(page, ORG, (t) => t.attendances.length === 2);
+    // Persistiu: recarregar mantem as marcas. Os toques de cada aluno gravam em
+    // fila e o banco passa por estados do meio parecidos com o final; a lista
+    // fica `aria-busy` ate o ultimo toque chegar ao servidor.
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
+    await waitWorld(page, ORG, (t) => {
+      const of = (id: string) => t.attendances.find((a: { studentId: string }) => a.studentId === id)?.status;
+      return t.attendances.length === 2 && of("c-a") === "present" && of("c-c") === "justified" && !of("c-b");
+    });
     await page.reload();
     await expect(a20).toHaveAccessibleName("Aluno A20: Presente");
     await expect(carla).toHaveAccessibleName("Carla Souza: Justificada");

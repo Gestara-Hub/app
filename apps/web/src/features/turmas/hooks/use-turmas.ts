@@ -156,32 +156,44 @@ export function useClassSession(sessionId: Id) {
   });
 }
 
-export function useMarkAttendance() {
+/**
+ * Presença muda frequência e o saldo do pacote: relê turmas, sessões, pacotes
+ * e resumos dos alunos. A chamada chama uma vez só, quando as gravações acabam.
+ */
+export function useRefreshAfterAttendance() {
   const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+    qc.invalidateQueries({ queryKey: queryKeys.packages.all });
+    qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+  };
+}
+
+/**
+ * `deferRefresh`: a chamada grava toques em sequência e relê tudo no fim. Reler
+ * a cada toque enfileirava leituras do espaço inteiro na frente do próximo toque.
+ */
+type AttendanceWriteOptions = { deferRefresh?: boolean };
+
+export function useMarkAttendance() {
+  const refresh = useRefreshAfterAttendance();
   return useMutation({
-    mutationFn: (input: {
-      sessionId: Id;
-      studentId: Id;
-      status: AttendanceStatus;
-    }) => turmasService.markAttendance(input),
-    // Presença muda frequência e o saldo do pacote -> invalida turmas, sessões e pacotes.
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
-      qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+    mutationFn: ({ sessionId, studentId, status }: { sessionId: Id; studentId: Id; status: AttendanceStatus } & AttendanceWriteOptions) =>
+      turmasService.markAttendance({ sessionId, studentId, status }),
+    onSuccess: (_data, input) => {
+      if (!input.deferRefresh) refresh();
     },
   });
 }
 
 /** Desmarca a presença (devolve a aula do pacote, se gastou). */
 export function useClearAttendance() {
-  const qc = useQueryClient();
+  const refresh = useRefreshAfterAttendance();
   return useMutation({
-    mutationFn: (input: { sessionId: Id; studentId: Id }) => turmasService.clearAttendance(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.packages.all });
-      qc.invalidateQueries({ queryKey: queryKeys.clients.summaries });
+    mutationFn: ({ sessionId, studentId }: { sessionId: Id; studentId: Id } & AttendanceWriteOptions) =>
+      turmasService.clearAttendance({ sessionId, studentId }),
+    onSuccess: (_data, input) => {
+      if (!input.deferRefresh) refresh();
     },
   });
 }
