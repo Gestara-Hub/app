@@ -257,7 +257,14 @@ export const usersService = {
     });
   },
 
-  create(payload: CreateUser, sendInvite = true): Promise<UserView> {
+  /**
+   * `inviteSent`: o e-mail do convite saiu. Falhou, o usuario fica criado e
+   * `inviteError` diz o motivo ("Reenviar convite" na lista tenta de novo).
+   */
+  create(
+    payload: CreateUser,
+    sendInvite = true,
+  ): Promise<UserView & { inviteSent: boolean; inviteError?: string }> {
     return writeOp(async () => {
       validateUser(payload, { partial: false });
 
@@ -289,7 +296,7 @@ export const usersService = {
           security: true,
         });
 
-        return clone(res.user);
+        return { ...clone(res.user), inviteSent: Boolean(res.inviteSent), inviteError: res.inviteError };
       }
 
       ensureEmailUnique(payload.email);
@@ -313,7 +320,7 @@ export const usersService = {
         predicate: `criou o usuário ${user.name} (${userProfileLabel(user.profile)})`,
         security: true,
       });
-      return clone({ ...toView(user), pendingInvite: sendInvite });
+      return { ...clone({ ...toView(user), pendingInvite: sendInvite }), inviteSent: sendInvite };
     });
   },
 

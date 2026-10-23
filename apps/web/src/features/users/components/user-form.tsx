@@ -126,8 +126,12 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
         await updateMut.mutateAsync({ id: user.id, payload });
         toast.success("Usuário atualizado com sucesso.");
       } else {
-        await createMut.mutateAsync(payload);
-        toast.success("Usuário cadastrado e convite de acesso enviado por e-mail!");
+        const created = await createMut.mutateAsync(payload);
+        if (created.inviteSent) toast.success("Usuário cadastrado e convite de acesso enviado por e-mail!");
+        else
+          toast.warning("Usuário cadastrado, mas o convite não foi enviado.", {
+            description: `${created.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" na lista.`,
+          });
       }
       onSuccess();
     } catch (error) {

@@ -156,7 +156,14 @@ export async function createUserAndInviteAction(
   organizationId: string,
   payload: CreateUser,
   sendInvite = true,
-): Promise<{ success: boolean; user?: UserView; error?: string }> {
+): Promise<{
+  success: boolean;
+  user?: UserView;
+  error?: string;
+  /** Convite pedido e e-mail enviado. Falhou: `inviteError` diz o motivo e o usuario fica criado. */
+  inviteSent?: boolean;
+  inviteError?: string;
+}> {
   const denied = await guard(organizationId, { manage: true, targetProfile: payload.profile });
   if (denied) return { success: false, error: denied };
   try {
@@ -212,6 +219,8 @@ export async function createUserAndInviteAction(
     }
 
     let hasPendingInvite = false;
+    let inviteSent = false;
+    let inviteError: string | undefined;
 
     // 4. Se solicitado, gera convite e envia e-mail
     if (sendInvite) {
@@ -219,7 +228,7 @@ export async function createUserAndInviteAction(
       const tokenHash = hashToken(rawToken);
       const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
 
-      await admin.from("organization_invitations").insert({
+      const { error: inviteInsertErr } = await admin.from("organization_invitations").insert({
         organization_id: organizationId,
         user_id: userId,
         email: normalizedEmail,
@@ -231,18 +240,31 @@ export async function createUserAndInviteAction(
         expires_at: expiresAt,
       });
 
-      const baseUrl = await resolveAppBaseUrl();
-      const inviteUrl = `${baseUrl}/accept-invite?token=${rawToken}`;
+      if (inviteInsertErr) {
+        console.error("[usersBackend] Erro ao criar convite:", inviteInsertErr);
+        inviteError = "Não foi possível gerar o convite.";
+      } else {
+        const baseUrl = await resolveAppBaseUrl();
+        const inviteUrl = `${baseUrl}/accept-invite?token=${rawToken}`;
 
-      await sendOrganizationInvitationEmail({
-        toEmail: normalizedEmail,
-        toName: payload.name.trim(),
-        organizationName,
-        profileLabel: userProfileLabel(payload.profile),
-        inviteUrl,
-        expiresInDays: 7,
-      });
+        const emailRes = await sendOrganizationInvitationEmail({
+          toEmail: normalizedEmail,
+          toName: payload.name.trim(),
+          organizationName,
+          profileLabel: userProfileLabel(payload.profile),
+          inviteUrl,
+          expiresInDays: 7,
+        });
 
+        if (emailRes.ok) {
+          inviteSent = true;
+        } else {
+          // O e-mail nao saiu: o convite nao vale. O usuario fica criado e
+          // "Reenviar convite" na lista tenta de novo.
+          await admin.from("organization_invitations").update({ status: "revoked" }).eq("token_hash", tokenHash);
+          inviteError = emailRes.error;
+        }
+      }
       hasPendingInvite = true;
     }
 
@@ -273,7 +295,7 @@ export async function createUserAndInviteAction(
       updatedAt: insertedUser.updated_at,
     };
 
-    return { success: true, user: userView };
+    return { success: true, user: userView, inviteSent, inviteError };
   } catch (err) {
     console.error("[usersBackend] Erro inesperado em createUserAndInviteAction:", err);
     return {
@@ -406,20 +428,12 @@ export async function resendInvitationAction(
     const user = userRes.data;
     const organizationName = orgRes.data?.name || "Sua Organização";
 
-    // Revoga convites anteriores pendentes
-    await admin
-      .from("organization_invitations")
-      .update({ status: "revoked" })
-      .eq("organization_id", organizationId)
-      .eq("user_id", userId)
-      .eq("status", "pending");
-
     // Gera novo token de 7 dias
     const rawToken = randomBytes(32).toString("hex");
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
 
-    await admin.from("organization_invitations").insert({
+    const { error: inviteInsertErr } = await admin.from("organization_invitations").insert({
       organization_id: organizationId,
       user_id: userId,
       email: user.email,
@@ -430,6 +444,11 @@ export async function resendInvitationAction(
       status: "pending",
       expires_at: expiresAt,
     });
+
+    if (inviteInsertErr) {
+      console.error("[usersBackend] Erro ao criar convite:", inviteInsertErr);
+      return { success: false, error: "Não foi possível gerar o convite." };
+    }
 
     const baseUrl = await resolveAppBaseUrl();
     const inviteUrl = `${baseUrl}/accept-invite?token=${rawToken}`;
@@ -444,8 +463,19 @@ export async function resendInvitationAction(
     });
 
     if (!emailRes.ok) {
+      // O e-mail nao saiu: o convite novo nao vale e o anterior segue valendo.
+      await admin.from("organization_invitations").update({ status: "revoked" }).eq("token_hash", tokenHash);
       return { success: false, error: emailRes.error };
     }
+
+    // Enviado: so agora revoga os convites anteriores pendentes.
+    await admin
+      .from("organization_invitations")
+      .update({ status: "revoked" })
+      .eq("organization_id", organizationId)
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .neq("token_hash", tokenHash);
 
     return { success: true };
   } catch (err) {

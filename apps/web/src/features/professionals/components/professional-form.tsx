@@ -345,17 +345,23 @@ export function ProfessionalForm({
         await updateMut.mutateAsync({ id: professional.id, payload });
         if (inviteUser && !linkedUser && payload.email) {
           try {
-            await createUserMut.mutateAsync({
+            const invited = await createUserMut.mutateAsync({
               name: payload.name,
               email: payload.email,
               profile: "professional",
               professionalId: professional.id,
               status: "active",
             });
-            toast.success("Profissional atualizado e convite de acesso enviado por e-mail!");
+            if (invited.inviteSent) toast.success("Profissional atualizado e convite de acesso enviado por e-mail!");
+            else
+              toast.warning("Profissional atualizado, mas o convite não foi enviado.", {
+                description: `${invited.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" em Usuários.`,
+              });
           } catch (userErr) {
-            console.warn("[ProfessionalForm] Aviso ao enviar convite:", userErr);
-            toast.success("Profissional atualizado com sucesso.");
+            // Profissional salvo; o acesso (usuario) nao foi criado: diz o motivo.
+            toast.warning("Profissional atualizado, mas o acesso não foi criado.", {
+              description: getErrorMessage(userErr, "Tente de novo em Usuários."),
+            });
           }
         } else {
           toast.success("Profissional atualizado com sucesso.");
@@ -364,17 +370,23 @@ export function ProfessionalForm({
         const created = await createMut.mutateAsync({ ...payload, status: "active" });
         if (inviteUser && payload.email) {
           try {
-            await createUserMut.mutateAsync({
+            const invited = await createUserMut.mutateAsync({
               name: payload.name,
               email: payload.email,
               profile: "professional",
               professionalId: created.id,
               status: "active",
             });
-            toast.success("Profissional criado e convite de acesso enviado por e-mail!");
+            if (invited.inviteSent) toast.success("Profissional criado e convite de acesso enviado por e-mail!");
+            else
+              toast.warning("Profissional criado, mas o convite não foi enviado.", {
+                description: `${invited.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" em Usuários.`,
+              });
           } catch (userErr) {
-            console.warn("[ProfessionalForm] Aviso ao enviar convite:", userErr);
-            toast.success("Profissional criado com sucesso.");
+            // Profissional salvo; o acesso (usuario) nao foi criado: diz o motivo.
+            toast.warning("Profissional criado, mas o acesso não foi criado.", {
+              description: getErrorMessage(userErr, "Tente de novo em Usuários."),
+            });
           }
         } else {
           toast.success("Profissional criado com sucesso.");
