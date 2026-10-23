@@ -54,8 +54,8 @@ async function getEmailIconBase64(): Promise<string | null> {
 
 /**
  * Moldura comum dos e-mails (padrao desde 22/10/2026): faixa com o gradiente
- * da marca, topo escuro com logo, titulo e introducao, corpo branco e rodape
- * cinza. Cada e-mail entra so com o conteudo (ja escapado).
+ * da marca, topo escuro com logo, titulo e introducao, corpo branco, "Duvidas?"
+ * com o contato e rodape cinza. Cada e-mail entra so com o conteudo (ja escapado).
  */
 function renderEmailLayout({
   title,
@@ -79,6 +79,7 @@ function renderEmailLayout({
   const iconMarkup = hasInlineIcon
     ? `<img src="cid:gestarahub-icon" width="36" height="36" alt="GestaraHub" style="display:block;border:0;border-radius:9px;" />`
     : `<div style="width:36px;height:36px;border-radius:9px;background:#2563eb;color:#ffffff;font-weight:800;font-size:17px;line-height:36px;text-align:center;">G</div>`;
+  const support = escapeHtml(replyToEmail());
   const badgeMarkup = badge
     ? `<div style="display:inline-block;padding:4px 10px;margin-bottom:14px;border:1px solid #334155;border-radius:20px;background-color:#1e293b;font-size:12px;font-weight:700;color:#93c5fd;">${badge}</div>`
     : "";
@@ -126,6 +127,16 @@ function renderEmailLayout({
           <tr>
             <td style="padding:32px 36px 32px 36px;">
               ${body}
+            </td>
+          </tr>
+
+          <!-- Duvidas: em todos os e-mails, sempre a caixa de contato -->
+          <tr>
+            <td style="padding:0 36px 28px 36px;">
+              <p style="margin:0;font-size:14px;line-height:1.6;color:#475569;">
+                <strong style="color:#0f172a;">Dúvidas?</strong> Escreva para
+                <a href="mailto:${support}" style="color:#2563eb;text-decoration:underline;">${support}</a>. A gente ajuda.
+              </p>
             </td>
           </tr>
 
@@ -196,7 +207,7 @@ export function buildSignupEmailHtml({
               ${emailNotice("<strong>&#9201; Este link expira em 24 horas.</strong> Se o prazo vencer, abra o link mesmo assim ou preencha seu e-mail de novo para gerar outro na hora.")}
               ${emailFallbackLink(safeUrl)}`,
     footer: `Você recebeu este e-mail porque pediu para criar uma conta no GestaraHub. Se não foi você, pode ignorar esta mensagem.<br />
-              <span style="color:#64748b;">GestaraHub · E-mail automático, não responda.</span>`,
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
     hasInlineIcon,
   });
 }
@@ -218,7 +229,7 @@ export function buildSignupEmailText({
     "Importante: este link expira em 24 horas. Se o prazo vencer, basta solicitar um novo link na página de login ou cadastro.",
     "",
     "Se você não solicitou este cadastro, ignore este e-mail com segurança.",
-    "GestaraHub — E-mail automático, não responda.",
+    `Dúvidas? Escreva para ${replyToEmail()}.`,
   ].join("\n");
 }
 
@@ -256,6 +267,7 @@ export async function sendSignupLinkEmail(
       email: fromEmail,
       name: fromName,
     },
+    reply_to: { email: replyToEmail(), name: fromName },
     to: [
       {
         email: input.toEmail.trim(),
@@ -356,7 +368,7 @@ export function buildOrganizationInvitationEmailHtml({
               ${emailNotice(`<strong>&#9201; Este link vale por ${expiresInDays} dias</strong> e foi gerado só para <strong>${safeEmail}</strong>.`)}
               ${emailFallbackLink(safeUrl)}`,
     footer: `Se você não reconhece este convite, basta ignorar este e-mail.<br />
-              <span style="color:#64748b;">GestaraHub · E-mail automático, não responda.</span>`,
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
     hasInlineIcon,
   });
 }
@@ -381,7 +393,7 @@ export function buildOrganizationInvitationEmailText({
     "",
     `Este link expira em ${expiresInDays} dias.`,
     "",
-    "GestaraHub — E-mail automático, não responda.",
+    `Dúvidas? Escreva para ${replyToEmail()}.`,
   ].join("\n");
 }
 
@@ -406,6 +418,7 @@ export async function sendOrganizationInvitationEmail(
       email: fromEmail,
       name: fromName,
     },
+    reply_to: { email: replyToEmail(), name: fromName },
     to: [
       {
         email: input.toEmail.trim(),
@@ -487,7 +500,7 @@ export function buildPasswordResetEmailHtml({
               ${emailNotice("<strong>&#9201; Este link vale por 1 hora</strong> e só pode ser usado uma vez. Depois disso, peça outro na tela de login.")}
               ${emailFallbackLink(safeUrl)}`,
     footer: `Se não foi você que pediu, ignore este e-mail: sua senha continua a mesma.<br />
-              <span style="color:#64748b;">GestaraHub · E-mail automático, não responda.</span>`,
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
     hasInlineIcon,
   });
 }
@@ -504,7 +517,7 @@ export function buildPasswordResetEmailText({ toName, resetUrl }: SendPasswordRe
     "",
     "O link vale por 1 hora e só pode ser usado uma vez.",
     "Se não foi você que pediu, ignore este e-mail: sua senha continua a mesma.",
-    "GestaraHub · E-mail automático, não responda.",
+    `Dúvidas? Escreva para ${replyToEmail()}.`,
   ].join("\n");
 }
 
@@ -521,6 +534,7 @@ export async function sendPasswordResetEmail(
   const payload: Record<string, unknown> = {
     from: { email: fromEmail, name: fromName },
     to: [{ email: input.toEmail.trim(), name: input.toName.trim() }],
+    reply_to: { email: replyToEmail(), name: fromName },
     subject: "Crie uma nova senha no GestaraHub",
     html: buildPasswordResetEmailHtml({ ...input, hasInlineIcon: Boolean(iconBase64) }),
     text: buildPasswordResetEmailText(input),
@@ -557,7 +571,7 @@ export interface SendWelcomeEmailInput {
   appUrl: string;
 }
 
-/** Caixa que le as respostas (boas-vindas: "Responda este e-mail"). */
+/** Caixa que le as respostas e aparece no "Duvidas?" de todos os e-mails. */
 function replyToEmail(): string {
   return process.env.MAILERSEND_REPLY_TO_EMAIL?.trim() || SUPPORT_EMAIL;
 }
@@ -584,10 +598,9 @@ const WELCOME_STEPS = [
 export function buildWelcomeEmailHtml({
   toName,
   appUrl,
-  replyTo,
   hasInlineIcon,
   hasInstagramIcon,
-}: SendWelcomeEmailInput & { replyTo: string; hasInlineIcon: boolean; hasInstagramIcon: boolean }): string {
+}: SendWelcomeEmailInput & { hasInlineIcon: boolean; hasInstagramIcon: boolean }): string {
   const firstName = escapeHtml(toName.trim().split(/\s+/)[0] || toName.trim());
   const base = appUrl.replace(/\/+$/, "");
   const loginUrl = escapeHtml(`${base}/login`);
@@ -596,7 +609,6 @@ export function buildWelcomeEmailHtml({
   const privacyUrl = escapeHtml(`${base}/privacy`);
   const instagramUrl = escapeHtml(INSTAGRAM_URL);
   const instagramHandle = escapeHtml(INSTAGRAM_HANDLE);
-  const safeReplyTo = escapeHtml(replyTo);
 
   const instagramIcon = hasInstagramIcon
     ? `<img src="cid:gestarahub-instagram" width="44" height="44" alt="Instagram" style="display:block;border:0;border-radius:12px;" />`
@@ -626,7 +638,7 @@ export function buildWelcomeEmailHtml({
               <div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>
               ${emailButton(loginUrl, "Continuar configuração")}
 
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;margin:6px 0 28px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;margin:6px 0 0 0;">
                 <tr>
                   <td style="width:44px;padding:18px 14px 18px 18px;vertical-align:middle;">
                     <a href="${instagramUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">${instagramIcon}</a>
@@ -639,12 +651,7 @@ export function buildWelcomeEmailHtml({
                     <a href="${instagramUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:9px 14px;font-size:13px;font-weight:700;color:#0f172a;text-decoration:none;border:1px solid #cbd5e1;border-radius:9px;background-color:#ffffff;">Seguir @${instagramHandle}</a>
                   </td>
                 </tr>
-              </table>
-
-              <p style="margin:0;font-size:14px;line-height:1.6;color:#475569;">
-                <strong style="color:#0f172a;">Dúvidas?</strong> É só responder este e-mail ou escrever para
-                <a href="mailto:${safeReplyTo}" style="color:#2563eb;text-decoration:underline;">${safeReplyTo}</a>. A gente ajuda.
-              </p>`,
+              </table>`,
     footer: `<a href="${siteUrl}" style="color:#64748b;text-decoration:none;">Site</a>
               &nbsp;·&nbsp;
               <a href="${instagramUrl}" style="color:#64748b;text-decoration:none;">Instagram</a>
@@ -673,7 +680,7 @@ export function buildWelcomeEmailText({ toName, appUrl, replyTo }: SendWelcomeEm
     "",
     `Acompanhe as novidades no Instagram: ${INSTAGRAM_URL}`,
     "",
-    `Dúvidas? É só responder este e-mail ou escrever para ${replyTo}.`,
+    `Dúvidas? Escreva para ${replyTo}.`,
   ].join("\n");
 }
 
@@ -698,7 +705,6 @@ export async function sendWelcomeEmail(
     subject: "Bem-vindo ao GestaraHub",
     html: buildWelcomeEmailHtml({
       ...input,
-      replyTo,
       hasInlineIcon: Boolean(iconBase64),
       hasInstagramIcon: Boolean(instagramBase64),
     }),
