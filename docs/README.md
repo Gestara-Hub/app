@@ -53,6 +53,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/15-retirada-do-mock-turmas.md](technical/15-retirada-do-mock-turmas.md) — **Retirada do mock (turmas):** plano por fatias para a conta real ler e gravar só no Supabase; demonstração vira espaço real criado por seed.
 - [technical/16-ambiente-local.md](technical/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
 - [technical/17-verificacao-em-duas-etapas.md](technical/17-verificacao-em-duas-etapas.md) — **Verificação em duas etapas:** aplicativo autenticador (MFA do Supabase) para quem entra com senha, tela `/two-factor` no login; código por e-mail na entrega 2.
+- [technical/18-documentos-pdf.md](technical/18-documentos-pdf.md) — **Documentos em PDF:** um layout só (`DocumentModel`) para relatórios, recibos, declaração, demonstrativo, certificado, termo, boletim e extrato; prévia na tela, PDF e CSV no servidor, logo do espaço com reserva do GestaraHub.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
