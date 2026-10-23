@@ -1,6 +1,6 @@
 # 25. Lembretes inteligentes e aviso de segurança
 
-Data: 2026-10-23. Status: decidido; implementação em fases (seção 6).
+Data: 2026-10-23. Status: fases 1 a 5 feitas (seção 8); o resumo por e-mail fica para depois (seção 7).
 
 ## 1. Problema
 
@@ -82,3 +82,26 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (vai di
 - **Resumo da manhã por e-mail** para o dono, opcional: "Hoje: 5 cobranças vencem e 2 aniversários", com o link para os lembretes. Usa o MailerSend e o mesmo motor. Decisão do usuário (23/10/2026): entra depois.
 - **Envio automático no Pro pelo mesmo motor**, quando a API oficial do WhatsApp estiver ligada de verdade (hoje só o parabéns roda na rotina).
 - **Exigir a verificação em duas etapas** para ações sensíveis (trocar a conta de recebimento): doc technical/17.
+- **Cancelar aula e feriados** (decisão do usuário, 23/10/2026: fazer mais à frente). Hoje o app não tem essas ações: o status "cancelada" existe no contrato da aula (`ClassSessionStatus`), mas nada marca uma aula assim, e a unidade só tem horário por dia da semana, sem datas fechadas. Os modelos "Aula cancelada" e "Feriado" já existem para envio manual. Quando as ações existirem, viram lembretes: depois de cancelar, "Avisar os 12 alunos?"; dias antes do feriado, "Feriado na segunda: avisar as turmas?". Decisões a tomar antes de construir:
+  - **Cancelar aula** (uma data de uma turma, motivo opcional): a cobrança da aula avulsa ou da reserva cancela sozinha ou fica para decidir caso a caso? A aula cancelada não gasta aula do pacote (confirmar). Sai do pagamento do professor? Na chamada, some ou aparece riscada como "Cancelada"?
+  - **Feriados:** a data fecha o espaço todo ou dá para escolher turmas? As datas são cadastradas à mão ou o sistema sugere os feriados nacionais do ano para confirmar? O feriado cancela as aulas do dia com as mesmas regras de "cancelar aula" (recomendado)?
+
+## 8. Como ficou (23/10/2026)
+
+**Não há tabela de notificações.** Os lembretes são calculados na hora, a partir da situação atual do espaço (cobranças em aberto, pacotes, presenças, aniversários, mensagens já enviadas), e descartados. Não acumulam: o que deixa de valer (pagou, foi avisado, passou a semana do aniversário) some sozinho. Só ficam gravados o "Lembrar amanhã" e o "Não lembrar", nas preferências de cada usuário (`reminderSnoozes`, limpos quando vencem).
+
+**Código:**
+- Dados numa leitura só, com recorte e respeitando o perfil: `communication.getReminderSources` (`services/communication/remindersService.ts`). Sem permissão de cobrança, sem cobranças e pacotes; o professor só vê os alunos das turmas dele.
+- Motor puro: `features/communication/reminders.ts` (`buildReminders`), com as regras de prazo e texto que a ficha do aluno já usava (`message-suggestions.ts`, `message-values.ts`).
+- Painel: `features/dashboard/components/dashboard-todo.tsx` (bloco "Lembretes"); sino: `reminders-bell.tsx`, no topo do app; envio em sequência: `features/communication/components/reminder-sequence-dialog.tsx`.
+- Mudança de horário: `features/turmas/schedule-notice.ts` e `schedule-notice-host.tsx` (depois de salvar a turma com horário novo).
+- Aviso de segurança: `features/auth/security-prompt.ts` e `components/security-prompt-host.tsx`; "Ativar agora" abre a janela de Segurança já no QR code.
+
+**Detalhes que importam:**
+- **Grupo grande:** cada grupo mostra no máximo 20 alunos na tela, com "e mais N" e o link para a tela completa (Cobranças, que pagina). O título e o total contam todos.
+- **Feito no dia:** avisar o único aluno de um grupo não some com o grupo na hora; ele fica no dia, marcado ("Avisado hoje"), sem contar como pendência. O item não muda de posição ao ser avisado.
+- **Atualização:** qualquer gravação no app relê os lembretes (pagar, vender pacote, marcar presença, mandar mensagem).
+- **Aviso de segurança:** só decide depois de chegarem as preferências do servidor (`remoteLoaded`); antes, o primeiro acesso parecia sempre o primeiro dia. O convite só pede o aviso no primeiro membro da equipe.
+- **Avisos à turma:** "aula cancelada" e "feriado" ainda não têm ação no app; registrados na seção 7 com as decisões pendentes. Hoje o aviso vale para a mudança de horário.
+
+**Testes:** `features/communication/__tests__/reminders.test.ts` (regras), `services/__tests__/reminders.test.ts` (leitura por perfil, com a conferência do recorte), `features/auth/__tests__/security-prompt.test.ts`; e2e em `painel-hoje` (bloco e sino), `dinheiro-pacotes` (envio em sequência), `turmas-geral` (aviso de horário) e `seguranca-aviso` (área `acesso`).
