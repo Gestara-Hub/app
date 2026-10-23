@@ -3,6 +3,7 @@ import type {
   Id,
   MessageLog,
   MessageLogFilter,
+  MessageLogKind,
   PaginatedResult,
   SendMessagePayload,
 } from "@gestarahub/contracts";
@@ -21,14 +22,25 @@ import {
   isBillingReminder,
   validateMessage,
   newLog,
-  runBirthdayGreetings,
 } from "./communicationRules";
+
+/**
+ * Tipo da mensagem no filtro do historico. A mesma regra vale na consulta do
+ * banco (`messageLogPage.ts`): Aula cancelada, mudanca de horario e feriado
+ * sao "Avisos" (antes caiam em "Avulsa").
+ */
+export function messageKindMatches(log: Pick<MessageLog, "trigger" | "category">, kind?: MessageLogKind): boolean {
+  if (kind === "manual") return log.trigger === "manual_broadcast";
+  if (kind === "billing") return log.category === "billing";
+  if (kind === "retention") return log.category === "retention";
+  if (kind === "notices") return log.category === "administrative" && log.trigger !== "manual_broadcast";
+  return true;
+}
 
 /** Mensagens: historico, envio assistido ou oficial, reenvio e metricas. */
 export const messagesService = {
   listLogs(filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }): Promise<MessageLog[]> {
     return readOp(async () => {
-      runBirthdayGreetings();
       let logs = [...ensureLogs()];
       // Ficha do aluno: so as mensagens dele.
       if (filter?.clientId) logs = logs.filter((l) => l.clientId === filter.clientId);
@@ -46,9 +58,10 @@ export const messagesService = {
       return logs.sort((a, b) => b.sentAt.localeCompare(a.sentAt));
     });
   },
+  /** Uma pagina do historico (no espaco local; a conta real pagina no banco, `messageLogsPage`). */
   listLogsPaginated(filter?: MessageLogFilter): Promise<PaginatedResult<MessageLog>> {
     return readOp(async () => {
-      const all = await messagesService.listLogs(filter);
+      const all = (await messagesService.listLogs(filter)).filter((log) => messageKindMatches(log, filter?.kind));
       return paginateArray(all, filter?.page, filter?.pageSize);
     });
   },
@@ -118,7 +131,6 @@ export const messagesService = {
   },
   getMetrics(): Promise<CommunicationMetrics> {
     return readOp(async () => {
-      runBirthdayGreetings();
       const view = connectionView();
       const month = format(new Date(), "yyyy-MM");
       const localMonth = (iso: string) => format(parseISO(iso), "yyyy-MM");

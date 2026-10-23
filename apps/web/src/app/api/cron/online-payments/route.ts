@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { runAllBirthdayGreetings } from "@/services/communication/birthdayGreetingsCron";
 import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
 
 /**
- * Pix e links vencidos, de hora em hora (migracao 34): expira aqui e cancela no
- * Asaas, que aceita pagamento por ate 12 meses depois do vencimento. Tambem
- * tenta de novo os cancelamentos que falharam. Protegida por CRON_SECRET.
+ * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
+ * cancela no Asaas, que aceita pagamento por ate 12 meses depois do
+ * vencimento; tenta de novo os cancelamentos que falharam. Parabens automatico
+ * dos espacos com o WhatsApp oficial (doc 19, secao 12). Protegida por CRON_SECRET.
  */
 export const runtime = "nodejs";
 // Até 5 minutos: muitas chamadas ao Asaas numa rodada.
@@ -19,7 +21,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = { expired: 0, retriedCancels: 0, failures: 0 };
+  const started = Date.now();
+  const result = { expired: 0, retriedCancels: 0, birthdayGreetings: 0, failures: 0 };
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
@@ -30,6 +33,16 @@ export async function POST(req: Request) {
     result.retriedCancels = await retryAllPendingGatewayCancels();
   } catch (err) {
     console.error("[cron:online-payments] Nova tentativa de cancelamento falhou:", err);
+    result.failures += 1;
+  }
+
+  try {
+    // Folga para terminar dentro dos 300 s da rota.
+    const greetings = await runAllBirthdayGreetings(started + 240_000);
+    result.birthdayGreetings = greetings.sent;
+    result.failures += greetings.failures;
+  } catch (err) {
+    console.error("[cron:online-payments] Parabéns falharam:", err);
     result.failures += 1;
   }
 

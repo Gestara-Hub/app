@@ -279,3 +279,16 @@ Antes, toda gravação exigia a mesma versão do espaço da leitura: duas açõe
 | Apagar | passa de 8 s (falha) | **1,1 s** |
 
 Testes de banco: `world/__tests__/batchWrites.db.test.ts` (6.000 linhas: inserir, alterar só o status e apagar; linha de outro espaço no meio do lote não grava nada) e os 72 de antes.
+
+## 12. Leituras sem gravação e histórico de mensagens no banco (23/10/2026)
+
+**Parabéns automático na rotina** (`communication/birthdayGreetingsCron.ts`): antes rodava na leitura do histórico de mensagens e das métricas. Dois problemas: a leitura gravava (conflito, repetição, risco de envio duplicado no oficial) e o parabéns só saía se alguém abrisse a tela de mensagens depois do horário da regra. Agora a rotina de hora em hora (`/api/cron/online-payments`, migração 34) roda a mesma regra em cada espaço com o WhatsApp oficial conectado, com recorte (alunos, modelos e só os parabéns já registrados). A regra não mudou: a partir do horário dela, um por aluno por dia, no fuso do Brasil (`instrumentation.ts`). Testes: os de parabéns em `communication.test.ts` rodam a regra como a rotina, conferem que abrir o histórico não envia e conferem o recorte contra o espaço inteiro; `birthdayGreetingsCron.db.test.ts` roda no banco (envia uma vez; a segunda rodada não repete).
+
+**Histórico de mensagens paginado no banco** (`communication/messageLogPage.ts`, `listMessageLogPage`, `messageLogsPage`): a aba Histórico pede só a página, com situação, tipo, busca (nome, telefone ou texto) e total feitos na consulta. Antes trazia o histórico inteiro (e acima de 1.000 mensagens cortava). O tipo usa a mesma regra do espaço local (`messageKindMatches`). As outras leituras de mensagens (ficha do aluno, painel) leem só as do aluno ou do gatilho. Teste de banco: `messageLogPage.db.test.ts` (1.200 mensagens: total, ordem, tipos, situação, aluno, busca com `%`/`_`, telefone formatado e texto).
+
+**Mensalidades geradas na leitura de cobranças: mantidas (analisado).**
+- O Pix Automático na leitura não roda no servidor: as autorizações só existem no espaço de demonstração.
+- A geração na leitura só grava quando falta mensalidade, e é a rede de segurança entre um evento (aluno reativado, troca de plano, madrugada do dia 1º) e a rotina das 06:00. Não duplica: o índice único por período recusa a segunda, que conflita, tenta de novo e encontra a cobrança pronta.
+- Tirar da leitura faria a cobrança desses casos aparecer só no dia seguinte: mudança de comportamento com mais risco que ganho.
+
+**Produção:** região (Vercel `gru1`, Supabase `sa-east-1`) e pooler ficam no checklist de publicação, junto com a ordem das migrações 40 a 45 e a conferência das rotinas do pg_cron.

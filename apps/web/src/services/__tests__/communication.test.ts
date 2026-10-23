@@ -1,6 +1,9 @@
 import type { SendMessagePayload } from "@gestarahub/contracts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "@/mocks/store";
+import { runBirthdayGreetings } from "@/services/communication/communicationRules";
+import { birthdayGreetingsSlice } from "@/services/communication/birthdayGreetingsCron";
+import { checkSlice } from "@/services/world/sliceCheck";
 import { billingService } from "@/services/billing";
 import { clientsService } from "@/services/clients";
 import { communicationService } from "@/services/communication";
@@ -437,11 +440,16 @@ describe("parabens automatico", () => {
   }
 
   const greetings = () => store.messageLogs.filter((l) => l.trigger === "birthday_greeting");
+  /** O que a rotina de hora em hora roda em cada espaco. */
+  const greet = () => runBirthdayGreetings();
 
   it("no oficial envia um por aluno no dia, preenchendo aluno e empresa", async () => {
     const bia = await birthdayStudent();
     await connectOfficial();
 
+    // Abrir o historico nao envia (a leitura nao grava); a rotina de hora em hora envia.
+    expect(await communicationService.listLogs()).toHaveLength(0);
+    expect(greet()).toBe(1);
     const logs = await communicationService.listLogs();
     expect(logs).toHaveLength(1);
     expect(logs[0]).toMatchObject({
@@ -457,11 +465,10 @@ describe("parabens automatico", () => {
     expect(logs[0].content).not.toMatch(/\{\w+\}/);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
 
-    // Nova leitura no mesmo dia (e pelas metricas) nao duplica.
-    await communicationService.listLogs();
-    await communicationService.getMetrics();
+    // A rotina de novo no mesmo dia nao duplica.
+    greet();
     at("19:00");
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(1);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(1);
   });
@@ -470,16 +477,15 @@ describe("parabens automatico", () => {
     await birthdayStudent();
     await connectOfficial();
     await communicationService.updateTemplate({ id: tmpl("birthday"), content: "Feliz dia, {aluno}! Abraço da {empresa}." });
-    await communicationService.listLogs();
+    greet();
     expect(greetings()[0].content).toBe("Feliz dia, Bia! Abraço da Academia X.");
   });
 
   it("no assistido (gratis ou Pro sem conectar) nao envia", async () => {
     await birthdayStudent();
-    await communicationService.listLogs();
+    greet();
     setTier("pro");
-    await communicationService.listLogs();
-    await communicationService.getMetrics();
+    greet();
     expect(greetings()).toHaveLength(0);
   });
 
@@ -487,7 +493,7 @@ describe("parabens automatico", () => {
     await birthdayStudent();
     await connectOfficial();
     await communicationService.updateTemplate({ id: tmpl("birthday"), enabled: false });
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(0);
   });
 
@@ -495,10 +501,10 @@ describe("parabens automatico", () => {
     await birthdayStudent();
     await connectOfficial();
     at("08:29");
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(0);
     at("08:30");
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(1);
   });
 
@@ -506,10 +512,10 @@ describe("parabens automatico", () => {
     await birthdayStudent();
     await connectOfficial();
     await communicationService.updateTemplate({ id: tmpl("birthday"), sendHour: "15:00" });
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(0);
     at("15:00");
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(1);
   });
 
@@ -520,16 +526,16 @@ describe("parabens automatico", () => {
     await birthdayStudent("Amanha", { birthDate: "2000-09-23" });
     await birthdayStudent("Hoje");
     await connectOfficial();
-    await communicationService.listLogs();
+    greet();
     expect(greetings().map((l) => l.recipientName)).toEqual(["Hoje"]);
   });
 
   it("no dia seguinte o aluno do dia anterior nao recebe de novo", async () => {
     await birthdayStudent();
     await connectOfficial();
-    await communicationService.listLogs();
+    greet();
     at("12:00", "2026-09-23");
-    await communicationService.listLogs();
+    greet();
     expect(greetings()).toHaveLength(1);
   });
 
@@ -539,16 +545,28 @@ describe("parabens automatico", () => {
       message({ recipientName: "Bia", trigger: "birthday_greeting", clientId: bia.id, content: "Parabéns!" }),
     );
     await connectOfficial();
-    await communicationService.listLogs();
+    greet();
     expect(greetings().map((l) => l.status)).toEqual(["opened"]);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(0);
+  });
+
+  it("recorte da rotina (servidor) igual ao espaço inteiro", async () => {
+    const bia = await birthdayStudent("Bia");
+    await birthdayStudent("Caio");
+    await birthdayStudent("Amanha", { birthDate: "2000-09-23" });
+    await communicationService.registerAssistedMessage(
+      message({ recipientName: "Bia", trigger: "birthday_greeting", clientId: bia.id, content: "Parabéns!" }),
+    );
+    await communicationService.registerAssistedMessage(message({ recipientName: "Caio", content: "Oi" }));
+    await connectOfficial();
+    await checkSlice("cron.birthdayGreetings", birthdayGreetingsSlice, [], async () => runBirthdayGreetings());
   });
 
   it("dois alunos no mesmo dia recebem um cada", async () => {
     await birthdayStudent("Bia");
     await birthdayStudent("Caio");
     await connectOfficial();
-    await communicationService.listLogs();
+    greet();
     expect(greetings().map((l) => l.recipientName).sort()).toEqual(["Bia", "Caio"]);
     expect(store.whatsAppConnection?.monthlyQuota.used).toBe(2);
   });

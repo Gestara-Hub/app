@@ -138,9 +138,13 @@ export interface UpdateConnectionSettingsPayload {
   };
 }
 
+/** Tipo da mensagem no filtro do historico (agrupa gatilhos e categorias). */
+export type MessageLogKind = "all" | "billing" | "retention" | "notices" | "manual";
+
 export interface MessageLogFilter extends PaginationParams {
   trigger?: string;
   status?: string;
   search?: string;
   clientId?: Id;
+  kind?: MessageLogKind;
 }

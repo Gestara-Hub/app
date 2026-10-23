@@ -115,8 +115,9 @@ export function newLog(payload: SendMessagePayload, status: MessageLog["status"]
 
 /**
  * Parabens automatico (so no envio oficial): no dia do aniversario, a partir
- * do horario da regra, uma mensagem por aluno por dia. Roda na leitura, como a
- * geracao automatica de mensalidades; no backend vira tarefa agendada.
+ * do horario da regra, uma mensagem por aluno por dia. Roda na rotina de hora
+ * em hora (`birthdayGreetingsCron.ts`), nao mais na leitura do historico: antes
+ * so saia se alguem abrisse a tela de mensagens, e a leitura gravava.
  */
 export function runBirthdayGreetings(): number {
   if (connectionView().mode !== "official") return 0;

@@ -1,5 +1,6 @@
 import type {
   AppointmentFilter,
+  MessageLogFilter,
   AuditLogFilter,
   CategoryFilter,
   ChargeFilter,
@@ -180,6 +181,8 @@ export const queryKeys = {
     templates: ["communication", "templates"] as const,
     logs: (filter?: { trigger?: string; status?: string; search?: string; clientId?: Id }) =>
       ["communication", "logs", filter] as const,
+    // Pagina do historico (mesma raiz: gravar mensagem invalida as duas).
+    logsPage: (filter?: MessageLogFilter) => ["communication", "logs", "page", filter] as const,
     metrics: ["communication", "metrics"] as const,
   },
   reports: {

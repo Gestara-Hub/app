@@ -5,7 +5,7 @@ import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { Eye, MessageCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import type { MessageLog, MessageLogStatus } from "@gestarahub/contracts";
+import type { MessageLog, MessageLogKind, MessageLogStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDateTime, formatPhone } from "@gestarahub/core/format";
 import { relativeDateLabel } from "@gestarahub/core/date";
@@ -39,12 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useMessageLogs, useRetryMessage, useWhatsAppConnection } from "../hooks/use-communication";
+import { useMessageLogsPage, useRetryMessage, useWhatsAppConnection } from "../hooks/use-communication";
 import { useUserPreferences } from "@/features/preferences";
 import { STATUS_META, TRIGGER_META } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
-type KindFilter = "all" | "billing" | "retention" | "notices" | "manual";
+type KindFilter = MessageLogKind;
 
 const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
   { value: "all", label: "Todos os status" },
@@ -79,27 +79,20 @@ export function MessageLogsTab() {
   const [status, setStatus] = useState<"all" | MessageLogStatus>("all");
   const [kind, setKind] = useState<KindFilter>("all");
   const [selected, setSelected] = useState<MessageLog | null>(null);
-  const { data: logs = [], isPending } = useMessageLogs({ search: search.trim() || undefined, status });
-  const { data: connection } = useWhatsAppConnection();
-  const retryMut = useRetryMessage();
-  const official = connection?.mode === "official";
-
-  const rows = logs.filter((log) => {
-    if (kind === "manual") return log.trigger === "manual_broadcast";
-    if (kind === "billing") return log.category === "billing";
-    if (kind === "retention") return log.category === "retention";
-    // Aula cancelada, mudanca de horario e feriado (antes caiam em "Avulsa").
-    if (kind === "notices") return log.category === "administrative" && log.trigger !== "manual_broadcast";
-    return true;
-  });
   const { preferences } = useUserPreferences();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(
     () => preferences.pageSizes?.communication ?? preferences.defaultPageSize ?? 25,
   );
+  // Filtros e paginacao no banco (doc 19, secao 12): a tela traz so a pagina.
+  const { data, isPending } = useMessageLogsPage({ search: search.trim() || undefined, status, kind, page, pageSize });
+  const { data: connection } = useWhatsAppConnection();
+  const retryMut = useRetryMessage();
+  const official = connection?.mode === "official";
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+  const rows = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   const hasSearch = search.trim().length > 0;
   const hasFilters = status !== "all" || kind !== "all";
@@ -178,7 +171,7 @@ export function MessageLogsTab() {
       </div>
 
       <ListSummaryBar
-        count={rows.length}
+        count={total}
         singularLabel="mensagem"
         pluralLabel="mensagens"
         isLoading={isPending}
@@ -208,7 +201,7 @@ export function MessageLogsTab() {
           ) : undefined
         }
       >
-        {paginatedRows.map((log) => {
+        {rows.map((log) => {
           const actions = actionsFor(log);
           return (
             <ListItemContextMenu key={log.id} actions={actions}>
@@ -248,7 +241,7 @@ export function MessageLogsTab() {
           screenKey="communication"
           page={page}
           pageSize={pageSize}
-          total={rows.length}
+          total={total}
           totalPages={totalPages}
           onPageChange={setPage}
           onPageSizeChange={(newSize) => {

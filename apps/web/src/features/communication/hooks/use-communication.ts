@@ -1,10 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import type {
   Id,
+  MessageLogFilter,
   MessageTrigger,
   SendMessagePayload,
   UpdateConnectionSettingsPayload,
@@ -15,7 +16,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
 import { billingService } from "@/services/billing";
 import { clientsService } from "@/services/clients";
-import { communicationService } from "@/services/communication";
+import { communicationService, messageLogsPage } from "@/services/communication";
 import { studentSummaryService } from "@/services/clients/studentSummaryService";
 import { turmasService } from "@/services/classes";
 import { useOrganization } from "@/features/settings";
@@ -79,6 +80,16 @@ export function useMessageLogs(
     queryKey: queryKeys.communication.logs(filter),
     queryFn: () => communicationService.listLogs(filter),
     enabled,
+  });
+}
+
+/** Uma pagina do historico de mensagens (filtros e paginacao no banco na conta real). */
+export function useMessageLogsPage(filter: MessageLogFilter) {
+  return useQuery({
+    queryKey: queryKeys.communication.logsPage(filter),
+    queryFn: () => messageLogsPage(filter),
+    // Trocar de pagina mantem a lista atual ate a proxima chegar.
+    placeholderData: keepPreviousData,
   });
 }
 
