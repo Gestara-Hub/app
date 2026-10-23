@@ -57,6 +57,7 @@ export async function insertOnlinePaymentInDb(
       pix_copy_paste: payment.pixCopyPaste ?? null,
       pix_qr_code_base64: payment.pixQrCodeBase64 ?? null,
       link_url: payment.linkUrl ?? null,
+      public_code: payment.publicCode ?? null,
       fee_passed_to_customer: Boolean(payment.feePassedToCustomer),
       expires_at: payment.expiresAt,
       paid_at: payment.paidAt ?? null,

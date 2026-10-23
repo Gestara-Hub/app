@@ -153,6 +153,18 @@ function findOpenCharge(chargeId: Id): Charge {
  * demonstracao: na conta real quem expira (e exclui no Asaas) e o servidor
  * (`expireDueOnlinePayments`), e o navegador so le o status do banco.
  */
+/**
+ * Codigo do endereco publico /p/<codigo> (pagina do Pix ou ida ao link): 10
+ * caracteres aleatorios, sem os que se confundem (0/O, 1/l): 56^10 combinacoes.
+ * `getRandomValues` funciona tambem fora de HTTPS (ao contrario do randomUUID).
+ */
+const PUBLIC_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+function newPublicCode(): string {
+  const bytes = new Uint8Array(10);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => PUBLIC_CODE_ALPHABET[b % PUBLIC_CODE_ALPHABET.length]).join("");
+}
+
 function expireStale(): boolean {
   if (realAccountInBrowser()) return false;
   const now = nowIso();
@@ -599,6 +611,7 @@ export const onlinePaymentsServiceImpl = {
             }
           : {}),
         ...("linkUrl" in provided ? { linkUrl: provided.linkUrl } : {}),
+        publicCode: newPublicCode(),
         expiresAt: provided.expiresAt,
         createdAt: nowIso(),
       };

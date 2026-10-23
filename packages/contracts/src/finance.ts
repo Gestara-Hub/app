@@ -266,6 +266,8 @@ export interface OnlinePayment {
   pixCopyPaste?: string; // codigo copia e cola Pix
   pixQrCodeBase64?: string; // imagem base64 do QR Code para exibicao direta
   linkUrl?: string; // link de pagamento
+  publicCode?: string; // codigo do endereco publico /p/<codigo> (pagina do Pix ou ida ao link)
+  openedAt?: DateTimeISO; // primeira vez que o aluno abriu a pagina publica
   gatewayProvider?: string; // ex: 'asaas', 'pagbank'
   gatewayPaymentId?: string; // ID da transação no provedor ativo
   splitAmountCents?: number; // valor do split do GestaraHub retido

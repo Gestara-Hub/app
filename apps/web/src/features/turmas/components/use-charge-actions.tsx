@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { paymentMethodLabel } from "@/lib/labels";
 import { useRetainedValue } from "@/lib/use-retained-value";
+import { paymentPageUrl } from "@/lib/payment-page";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@gestarahub/core/format";
 import { whatsappDigits } from "@gestarahub/core/phone";
@@ -91,7 +92,7 @@ export function useChargeActions() {
   const { data: awaitingOnline } = useAwaitingOnlinePayments(hasOnlineFeature && onlineEnabled && can("billing:view"));
   const reminderValues = (c: ChargeView, values: Record<string, string>): Record<string, string> => {
     const open = awaitingOnline?.find((p) => p.chargeId === c.id);
-    const link = open?.linkUrl ?? open?.pixCopyPaste;
+    const link = open?.publicCode ? paymentPageUrl(open.publicCode) : (open?.linkUrl ?? open?.pixCopyPaste);
     return link ? { ...values, link_pagamento: link } : values;
   };
 

@@ -10,6 +10,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Copy,
+  Eye,
+  EyeOff,
   FlaskConical,
   Barcode,
   CreditCard,
@@ -49,6 +51,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
 import { useOrganization } from "@/features/settings";
+import { paymentPageUrl } from "@/lib/payment-page";
 import { whatsappNumber } from "@/lib/whatsapp";
 import {
   useCreateOnlinePayment,
@@ -110,11 +113,28 @@ function whatsappMessage(input: {
             : "a mensalidade";
   const from = input.orgName ? ` da ${input.orgName}` : "";
   const header = `Olá, ${firstName}! Segue ${what}${from} no valor de ${formatCents(input.payment.amountCents)}, com vencimento em ${shortDate(input.charge.dueDate)}.`;
-  const body =
-    input.payment.method === "pix"
+  // Endereco do GestaraHub (/p/<codigo>): a pagina confere a validade antes de
+  // mostrar o Pix ou levar ao cartao. Sem codigo (pagamento antigo), o de antes.
+  const body = input.payment.publicCode
+    ? `${input.payment.method === "pix" ? "Pague pelo Pix" : "Pague pelo link"}:\n${paymentPageUrl(input.payment.publicCode)}`
+    : input.payment.method === "pix"
       ? `Pix copia e cola:\n${input.payment.pixCopyPaste ?? ""}`
       : `Pague pelo link:\n${input.payment.linkUrl ?? ""}`;
   return `${header}\n\n${body}\n\nVálido até ${formatDateTime(input.payment.expiresAt)}.`;
+}
+
+/** "hoje às 14:05", "ontem às 09:10" ou "em 20/10 às 18:30" (hora de Brasília). */
+function openedLabel(iso: string): string {
+  const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(d);
+  const at = new Date(iso);
+  const day = fmt(at, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const today = fmt(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" });
+  const yesterday = fmt(new Date(Date.now() - 86_400_000), { year: "numeric", month: "2-digit", day: "2-digit" });
+  const time = fmt(at, { hour: "2-digit", minute: "2-digit" });
+  if (day === today) return `hoje às ${time}`;
+  if (day === yesterday) return `ontem às ${time}`;
+  return `em ${fmt(at, { day: "2-digit", month: "2-digit" })} às ${time}`;
 }
 
 async function copyText(text: string, success: string) {
@@ -493,6 +513,20 @@ export function OnlineChargeDialog({
                 <p className="text-xs text-muted-foreground">
                   Válido até {formatDateTime(awaiting.expiresAt)}. Depois disso,
                   gere um novo.
+                </p>
+                {/* Pagina /p/<codigo>: se o aluno ja abriu, cobrar de novo ou ligar e outra conversa. */}
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {awaiting.openedAt ? (
+                    <>
+                      <Eye className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                      Aberto pelo aluno {openedLabel(awaiting.openedAt)}.
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="size-3.5 shrink-0" aria-hidden />
+                      Ainda não aberto pelo aluno.
+                    </>
+                  )}
                 </p>
               </div>
 

@@ -200,6 +200,8 @@ function cleanSingleSubtitle(c: ChargeView): string {
   }
   const reason = cancelReasonOf(c);
   if (reason) parts.push(reason);
+  // Pix ou link em aberto que o aluno ja abriu (pagina /p/<codigo>).
+  if (c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue")) parts.push("link aberto");
   if (c.status === "paid") {
     const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
     parts.push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}`);
@@ -1066,6 +1068,7 @@ export function BillingView() {
                                     <span className="text-xs text-muted-foreground">
                                       · {c.kind === "dropin" ? `aula em ${shortDate(c.dueDate)}` : `vence ${shortDate(c.dueDate)}`}
                                       {c.status === "paid" && c.method ? ` · ${paymentMethodLabel(c.method)}` : ""}
+                                      {c.onlineOpenedAt && (c.status === "pending" || c.status === "overdue") ? " · link aberto" : ""}
                                     </span>
                                     {c.status === "waived" ? null : <ChargeStatusBadge charge={c} size="sm" />}
                                     <PaidViaBadge charge={c} />

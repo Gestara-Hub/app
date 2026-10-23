@@ -35,6 +35,8 @@ export function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayme
       ? String(row.pix_qr_code_base64)
       : undefined,
     linkUrl: row.link_url ? String(row.link_url) : undefined,
+    publicCode: row.public_code ? String(row.public_code) : undefined,
+    openedAt: row.opened_at ? new Date(String(row.opened_at)).toISOString() : undefined,
     feePassedToCustomer: Boolean(row.fee_passed_to_customer),
     canceledReason: row.canceled_reason ? String(row.canceled_reason) : undefined,
     expiresAt,

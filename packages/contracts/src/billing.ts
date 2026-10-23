@@ -146,6 +146,8 @@ export interface ChargeView extends Charge {
   planName?: string;
   planPeriod?: PlanPeriod;
   className?: string;
+  /** Pix ou link em aberto ja aberto pelo aluno na pagina publica (/p/<codigo>). */
+  onlineOpenedAt?: string;
 }
 
 // Backward compatibility aliases during transition

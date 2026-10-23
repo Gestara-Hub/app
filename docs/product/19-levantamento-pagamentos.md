@@ -78,6 +78,16 @@ O Pro inclui uma franquia mensal (hoje 1.000 no mock). Opções para o excedente
 - **Gravado na cobrança online:** `gatewayFeeCents`, `splitAmountCents`, `netAmountCents`, `feePassedToCustomer` e `paidMethod`. Ao gerar o link, a tarifa gravada é a do crédito (a maior). No pagamento, o webhook do Asaas traz `netValue` (já sem a tarifa dele) e `billingType`: a tarifa vira a real (`valor - netValue`), o líquido vira `netValue - split` e `paidMethod` guarda crédito, débito ou Pix (21/10/2026).
 - **Na tela (21/10/2026, a pedido: uma taxa só):** tarifa do Asaas e taxa GestaraHub aparecem **somadas** como "Taxas", com o detalhe ("Asaas R$ x + GestaraHub R$ y") ao passar o mouse na modal e num popup ao clicar no valor do histórico (tarifa do Asaas pelo meio usado, taxa GestaraHub fixa, aviso de estimativa no link não pago e de repasse). A modal mostra três linhas: "Aluno paga", "Taxas" e "Você recebe"; no link, taxas e líquido aparecem como faixa ("R$ 120,01 a R$ 120,27", débito a crédito) e o popup das taxas detalha cada meio. O histórico da subconta tem uma coluna "Taxas"; link ainda não pago mostra "até" nas taxas e "a partir de" no líquido; pago mostra "Link · Crédito" ou "Link · Débito" com os valores reais. Cobranças anteriores à coluna de tarifa somam só a taxa GestaraHub.
 
+### Decidido em 22/10/2026: validade, cron e página do aluno
+
+- **O Asaas aceita pagamento até 12 meses depois do vencimento** (o QR dinâmico vale esse tempo). A validade do GestaraHub (24h por padrão) só vale porque o app **cancela a cobrança no Asaas** quando ela vence: um cron de hora em hora (`online-payments-expiry`, migração 34) faz isso para todos os espaços numa consulta só, pelo índice parcial dos pagamentos em aberto. As telas "Cobrar online" e o histórico de recebimentos também expiram ao abrir.
+- **Página do aluno** (`/p/<código>`, migração 35): cada pagamento online tem um código curto e aleatório, e as mensagens (o "Enviar pelo WhatsApp" do Cobrar online e o lembrete da cobrança) levam esse endereço em vez do Pix solto ou do link do Asaas. A página mostra o nome do espaço, o que é cobrado e o valor, nunca dados do aluno:
+  - em aberto, Pix: QR, código copia e cola e "Copiar código Pix", com a validade;
+  - em aberto, cartão: segue direto para a fatura do parceiro;
+  - vencido, cancelado ou substituído: "Este link venceu. Peça um novo para {espaço}";
+  - pago: "Esta cobrança já está paga".
+  A primeira abertura fica gravada (`opened_at`), para mostrar depois quem viu a cobrança. A página não substitui o cancelamento no Asaas: o código copiado continua pagável no banco até o cron cancelar.
+
 ### A decidir
 - **Pendente (21/10/2026): e-mail do webhook.** Definir `ASAAS_WEBHOOK_EMAIL` com um e-mail do domínio `gestarahub.com.br` (por exemplo, `integracoes@gestarahub.com.br`) no `.env.local` e nas variáveis da Vercel. Até lá, o cadastro usa o e-mail da conta principal do Asaas. Depois de trocar, os webhooks já cadastrados não mudam sozinhos: é preciso recadastrar (trocar a URL ou rodar o cadastro de novo).
 - **Estorno:** desfazer pagamento online não é permitido na demonstração ([DECIDIR] no doc 05, seção 6.4).

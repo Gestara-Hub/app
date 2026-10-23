@@ -1,0 +1,9 @@
+/**
+ * Endereco publico da cobranca online (/p/<codigo>, pagina em
+ * app/(marketing)/p): vai nas mensagens no lugar do Pix solto ou do link do
+ * parceiro. Base: NEXT_PUBLIC_APP_URL; sem ela, o endereco aberto no navegador.
+ */
+export function paymentPageUrl(publicCode: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base.replace(/\/+$/, "")}/p/${publicCode}`;
+}

@@ -1339,6 +1339,16 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "boolean",
         "nullable": false,
         "hasDefault": true
+      },
+      "public_code": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "opened_at": {
+        "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

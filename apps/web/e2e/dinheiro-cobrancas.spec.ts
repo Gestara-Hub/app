@@ -339,13 +339,28 @@ test.describe("Pro", () => {
     await expect(page.getByText("Pix gerado.")).toBeVisible();
     const link = await openedWhatsApp(page, () => dialog.getByRole("button", { name: "Enviar pelo WhatsApp" }).click());
     expect(link.text).toContain('Olá, Aluna! Segue a parcela 1 de 2 de "Kimono" da Academia X no valor de R$ 125,00, com vencimento em 25/09.');
-    expect(link.text).toContain("Pix copia e cola:");
+    // A mensagem leva o endereco do GestaraHub (/p/<codigo>), que mostra o Pix enquanto vale.
+    const pageUrl = link.text.match(/https?:\/\/\S+\/p\/[A-Za-z0-9]+/)?.[0];
+    expect(link.text).toContain("Pague pelo Pix:");
+    expect(pageUrl).toBeTruthy();
+    await expect(dialog).toContainText("Ainda não aberto pelo aluno.");
+    const payPage = await page.context().newPage();
+    await payPage.goto(new URL(pageUrl!).pathname);
+    await expect(payPage.getByRole("heading", { name: "Kimono" })).toBeVisible();
+    await expect(payPage.getByText("R$ 125,00")).toBeVisible();
+    await expect(payPage.getByRole("button", { name: "Copiar código Pix" })).toBeVisible();
+    await expect(payPage.getByText("Aluna Kimono")).toHaveCount(0);
+    await payPage.close();
     // Com o Pix em aberto, o lembrete pelo WhatsApp leva o codigo junto.
     await dialog.getByRole("button", { name: "Fechar" }).last().click();
     await expect(dialog).toBeHidden();
+    // O aluno abriu a pagina: a linha da cobranca e o Cobrar online mostram.
+    await page.reload();
+    await expect(rowOf(page, "Aluna Kimono")).toContainText("link aberto");
     const reminder = await openedWhatsApp(page, () => menuAction(page, "Aluna Kimono", "Lembrar no WhatsApp"));
     expect(reminder.text).toMatch(/Pague pelo link: \S+/);
     await menuAction(page, "Aluna Kimono", "Cobrar online");
+    await expect(dialog).toContainText(/Aberto pelo aluno hoje às \d{2}:\d{2}/);
     await dialog.getByRole("button", { name: "Simular pagamento" }).click();
     await expect(page.getByText("Pagamento online confirmado.")).toBeVisible();
 
