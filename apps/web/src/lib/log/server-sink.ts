@@ -18,7 +18,9 @@ interface ErrorScope {
   userId?: string;
 }
 
-const scope = new AsyncLocalStorage<ErrorScope>();
+// Um so por processo (mesmo motivo do destino em `index.ts`: pacotes separados).
+const scope = ((globalThis as { __gestarahubErrorScope?: AsyncLocalStorage<ErrorScope> }).__gestarahubErrorScope ??=
+  new AsyncLocalStorage<ErrorScope>());
 
 /** Roda `fn` num escopo de erro novo (uma acao, uma rota). */
 export function runWithErrorScope<T>(fn: () => Promise<T>): Promise<T> {

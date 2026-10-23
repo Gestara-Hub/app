@@ -29,6 +29,11 @@ describe("máscara (LGPD)", () => {
     expect(text).toContain("a***@[email]");
   });
 
+  it("caminhos de pacotes na pilha não viram e-mail", () => {
+    const frame = "at x (/node_modules/.pnpm/next@16.2.4_@babel+core@7.28.0_@types+react@19.2.4/node_modules/next/dist/a.js:1:2)";
+    expect(maskText(frame)).toBe(frame);
+  });
+
   it("chaves sensíveis em objetos viram [oculto]; ids e números comuns ficam", () => {
     const masked = maskValue({ password: "x", apiKey: "y", user: { cpf: "1", name: "Ana" }, chargeId: "c-1", amountCents: 15000 });
     expect(masked).toEqual({ password: "[oculto]", apiKey: "[oculto]", user: { cpf: "[oculto]", name: "Ana" }, chargeId: "c-1", amountCents: 15000 });

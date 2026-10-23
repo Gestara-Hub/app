@@ -33,19 +33,28 @@ export interface ErrorEntry {
 }
 
 type ErrorSink = (entry: ErrorEntry) => Promise<void>;
-let sink: ErrorSink | undefined;
+type ScopeRunner = <T>(fn: () => Promise<T>) => Promise<T>;
+
+/**
+ * Destino e escopo ficam no objeto global do processo, nao numa variavel do
+ * modulo: o Next compila o `instrumentation.ts` num pacote separado do resto
+ * do servidor, e cada pacote teria a sua copia deste modulo (o destino ligado
+ * la nao chegava as acoes).
+ */
+interface LogGlobals {
+  sink?: ErrorSink;
+  scopeRunner?: ScopeRunner;
+}
+const globals = ((globalThis as { __gestarahubLog?: LogGlobals }).__gestarahubLog ??= {});
 
 /** Liga o destino (servidor: banco; navegador: acao do servidor). */
 export function setErrorSink(next: ErrorSink | undefined): void {
-  sink = next;
+  globals.sink = next;
 }
-
-type ScopeRunner = <T>(fn: () => Promise<T>) => Promise<T>;
-let scopeRunner: ScopeRunner | undefined;
 
 /** Liga o escopo por requisicao (so no servidor; `server-sink.ts`). */
 export function setErrorScopeRunner(next: ScopeRunner | undefined): void {
-  scopeRunner = next;
+  globals.scopeRunner = next;
 }
 
 /**
@@ -53,7 +62,7 @@ export function setErrorScopeRunner(next: ScopeRunner | undefined): void {
  * espaco e o usuario da sessao (anotados por `requireTenant`).
  */
 export function withErrorScope<T>(fn: () => Promise<T>): Promise<T> {
-  return scopeRunner ? scopeRunner(fn) : fn();
+  return globals.scopeRunner ? globals.scopeRunner(fn) : fn();
 }
 
 const isServer = typeof window === "undefined";
@@ -79,6 +88,7 @@ export function reportError(event: string, error: unknown, options: ReportOption
 
 async function report(entry: ErrorEntry): Promise<string> {
   writeConsole(entry);
+  const sink = globals.sink;
   if (sink) {
     try {
       await Promise.race([sink(entry), new Promise<void>((resolve) => setTimeout(resolve, 2000))]);

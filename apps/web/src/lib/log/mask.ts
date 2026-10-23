@@ -23,7 +23,9 @@ const RULES: [RegExp, string][] = [
   [/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[cpf]"],
   [/\+?\b55\s?\(?\d{2}\)?\s?9?\d{4}-?\d{4}\b/g, "[telefone]"],
   [/\(?\b\d{2}\)?\s?9\d{4}-?\d{4}\b/g, "[telefone]"],
-  [/\b([\w.+-])[\w.+-]*@([\w-]+\.)+[\w-]+\b/g, "$1***@[email]"],
+  // Dominio comeca com letra e termina com extensao de letras: caminhos de pacotes
+  // na pilha (`next@16.0.0_@babel+core@7.28`) nao sao e-mail.
+  [/\b([\w.+-])[\w.+-]*@[a-z][\w-]*(\.[a-z][\w-]*)*\.[a-z]{2,24}\b/gi, "$1***@[email]"],
 ];
 
 export function maskText(text: string): string {

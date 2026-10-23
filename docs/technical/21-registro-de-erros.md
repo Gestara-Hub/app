@@ -36,6 +36,8 @@ const code = await reportError("cron.daily.mensalidades", err, { source: "cron",
 | Navegador | Telas de erro (mostram o código), erro sem tratamento e promessa rejeitada. Só de quem está logado; espaço e usuário saem da sessão, nunca do que o navegador manda. Limite de 30 por usuário a cada 10 minutos, e o mesmo erro sai no máximo uma vez por minuto de cada navegador |
 | Os ~150 `logError`/`logWarn` do código | Com o espaço e o usuário da requisição, quando houver sessão |
 
+**Conferido no navegador (23/10/2026):** ação com falha forçada mostrou "Código do erro: …" no aviso e gravou a linha com o mesmo código, o método, o espaço e o usuário da sessão; erro forçado na tela mostrou o código na tela de erro e gravou como `browser.render`, com a tela e o espaço da sessão (as duas tentativas de renderização do React somaram na mesma linha). A conferência achou que o destino ligado no `instrumentation.ts` não chegava às ações (o Next compila o `instrumentation.ts` num pacote separado, com outra cópia do módulo): destino e escopo ficam no objeto global do processo.
+
 **Escopo da requisição:** `runAction` abre um escopo e `requireTenant` anota nele o espaço e o usuário. Qualquer `logError` dentro da ação grava com o espaço certo, sem passar contexto de mão em mão (`lib/log/server-sink.ts`, `AsyncLocalStorage`). Ligado no `instrumentation.ts`.
 
 ## 4. A tabela `error_logs`
