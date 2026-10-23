@@ -1,13 +1,11 @@
 "use client";
 
-import { useClients } from "@/features/clients";
-import { useServices } from "@/features/services";
-import { useProfessionals } from "@/features/professionals";
-import { useAppointments } from "@/features/appointments";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { onboardingService } from "@/services/settings/onboardingService";
 import { useBusinessSegment, useOrganization, useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
-import { useCategories } from "@/features/categories";
-import { useClassGroups, useLessonPackages, usePlans } from "@/features/turmas";
 import {
   buildClassesOnboardingSteps,
   buildSchedulingOnboardingSteps,
@@ -30,14 +28,12 @@ export function useOnboardingSteps() {
   const segment = useBusinessSegment();
   const unitQuery = useUnit();
   const orgQuery = useOrganization();
-  const servicesQuery = useServices();
-  const professionalsQuery = useProfessionals();
-  const clientsQuery = useClients();
-  const appointmentsQuery = useAppointments();
-  const categoriesQuery = useCategories();
-  const classGroupsQuery = useClassGroups();
-  const plansQuery = usePlans();
-  const lessonPackagesQuery = useLessonPackages();
+  // Uma leitura com as contagens (antes: dez listas inteiras em toda pagina).
+  const snapshotQuery = useQuery({
+    queryKey: queryKeys.onboarding.snapshot,
+    queryFn: () => onboardingService.getOnboardingSnapshot(),
+  });
+  const snapshot = snapshotQuery.data;
 
   const isClasses = model === "classes";
   const areaBillingMode = isClasses ? segment.defaultBillingMode : "membership";
@@ -51,49 +47,44 @@ export function useOnboardingSteps() {
   let isReady: boolean;
 
   if (isClasses) {
-    isReady =
-      !unitQuery.isPending &&
-      !orgQuery.isPending &&
-      !professionalsQuery.isPending &&
-      !categoriesQuery.isPending &&
-      !classGroupsQuery.isPending &&
-      !clientsQuery.isPending &&
-      !plansQuery.isPending &&
-      !lessonPackagesQuery.isPending;
+    isReady = !unitQuery.isPending && !orgQuery.isPending && !snapshotQuery.isPending;
 
     steps = buildClassesOnboardingSteps({
       hoursSet,
       billingSet: Boolean(orgQuery.data?.settings?.billingTiming),
-      modalitiesCount: categoriesQuery.data?.length ?? 0,
+      modalitiesCount: snapshot?.modalitiesCount ?? 0,
       modalitiesNeedReview: orgQuery.data?.settings?.modalitiesReviewed === false,
       // So os ativos contam (inativo nao se vende nem se atribui).
-      plansCount: plansQuery.data?.filter((p) => p.status === "active").length ?? 0,
-      lessonPackagesCount: lessonPackagesQuery.data?.filter((p) => p.status === "active").length ?? 0,
-      professionalsCount: professionalsQuery.data?.length ?? 0,
-      clientsCount: clientsQuery.data?.length ?? 0,
-      classGroups: classGroupsQuery.data ?? [],
+      plansCount: snapshot?.activePlansCount ?? 0,
+      lessonPackagesCount: snapshot?.activeLessonPackagesCount ?? 0,
+      professionalsCount: snapshot?.professionalsCount ?? 0,
+      clientsCount: snapshot?.clientsCount ?? 0,
+      classGroups: snapshot?.classGroups ?? [],
       areaBillingMode,
     });
   } else {
-    isReady =
-      !unitQuery.isPending &&
-      !servicesQuery.isPending &&
-      !professionalsQuery.isPending &&
-      !clientsQuery.isPending &&
-      !appointmentsQuery.isPending;
+    isReady = !unitQuery.isPending && !snapshotQuery.isPending;
 
     steps = buildSchedulingOnboardingSteps({
       hoursSet,
-      servicesCount: servicesQuery.data?.length ?? 0,
-      professionalsCount: professionalsQuery.data?.length ?? 0,
-      clientsCount: clientsQuery.data?.length ?? 0,
-      appointmentsCount: appointmentsQuery.data?.length ?? 0,
+      servicesCount: snapshot?.servicesCount ?? 0,
+      professionalsCount: snapshot?.professionalsCount ?? 0,
+      clientsCount: snapshot?.clientsCount ?? 0,
+      appointmentsCount: snapshot?.appointmentsCount ?? 0,
     });
   }
 
+  const summary = summarizeOnboardingSteps(steps);
+  // Passos prontos: as gravacoes deixam de reler a contagem (ver `createQueryClient`).
+  const queryClient = useQueryClient();
+  const setupDone = isReady && summary.isComplete;
+  useEffect(() => {
+    queryClient.setQueryData(queryKeys.onboarding.setupDone, setupDone);
+  }, [queryClient, setupDone]);
+
   return {
     steps,
-    ...summarizeOnboardingSteps(steps),
+    ...summary,
     isReady,
     isClasses,
     isCourseArea,

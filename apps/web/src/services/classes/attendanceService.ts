@@ -12,43 +12,56 @@ import { assertTeacherSession } from "./teacherScope";
 import { syncAttendanceUsage, auditPackageUsage } from "./attendancePackageUsage";
 import { todayISO, parseSessionId, resolveSession } from "./classShared";
 
+/** Marca um aluno na aula (dentro de uma gravacao ja aberta). */
+function applyAttendanceMark(input: { sessionId: Id; studentId: Id; status: AttendanceStatus }): void {
+  const { g, date } = resolveSession(input.sessionId);
+  assertTeacherSession(g, input.sessionId);
+  if (date > todayISO()) {
+    throw apiError("VALIDATION", "A chamada só pode ser feita no dia da aula ou depois.", {
+      httpStatus: 422,
+    });
+  }
+  const existing = store.attendances.find(
+    (a) => a.sessionId === input.sessionId && a.studentId === input.studentId,
+  );
+  if (existing) {
+    existing.status = input.status;
+    existing.markedAt = nowIso();
+  } else {
+    const attendanceRecord: Attendance = {
+      id: newId(),
+      sessionId: input.sessionId,
+      studentId: input.studentId,
+      status: input.status,
+      markedAt: nowIso(),
+    };
+    store.attendances.push(attendanceRecord);
+  }
+
+  // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
+  const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
+  // Presenca e gasto do pacote na mesma transacao (nunca um sem o outro).
+  auditPackageUsage(usage, g, date, input.studentId, input.status);
+}
+
 export const attendanceService = {
   markAttendance(input: {
     sessionId: Id;
     studentId: Id;
     status: AttendanceStatus;
   }): Promise<void> {
-    return writeOp(async () => {
-      const { g, date } = resolveSession(input.sessionId);
-      assertTeacherSession(g, input.sessionId);
-      if (date > todayISO()) {
-        throw apiError("VALIDATION", "A chamada só pode ser feita no dia da aula ou depois.", {
-          httpStatus: 422,
-        });
-      }
-      const existing = store.attendances.find(
-        (a) => a.sessionId === input.sessionId && a.studentId === input.studentId,
-      );
-      let attendanceRecord: Attendance;
-      if (existing) {
-        existing.status = input.status;
-        existing.markedAt = nowIso();
-        attendanceRecord = existing;
-      } else {
-        attendanceRecord = {
-          id: newId(),
-          sessionId: input.sessionId,
-          studentId: input.studentId,
-          status: input.status,
-          markedAt: nowIso(),
-        };
-        store.attendances.push(attendanceRecord);
-      }
+    return writeOp(async () => applyAttendanceMark(input));
+  },
 
-      // Pacote de aulas: presenca gasta, falta conforme o pacote, justificada nao.
-      const usage = syncAttendanceUsage(input.sessionId, input.studentId, input.status);
-      // Presenca e gasto do pacote na mesma transacao (nunca um sem o outro).
-      auditPackageUsage(usage, g, date, input.studentId, input.status);
+  /**
+   * Varios alunos de uma vez ("Todos vieram", concluir a chamada): uma gravacao
+   * so. Um por vez, cada um carregava o espaco inteiro no servidor (doc 19).
+   */
+  markManyAttendance(input: { sessionId: Id; studentIds: Id[]; status: AttendanceStatus }): Promise<void> {
+    return writeOp(async () => {
+      for (const studentId of input.studentIds) {
+        applyAttendanceMark({ sessionId: input.sessionId, studentId, status: input.status });
+      }
     });
   },
 

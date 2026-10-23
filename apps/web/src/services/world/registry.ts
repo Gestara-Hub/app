@@ -57,7 +57,7 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
         ],
         MANAGE_ENROLLMENT,
       ),
-      ...all(["markAttendance", "clearAttendance"], MARK_ATTENDANCE),
+      ...all(["markAttendance", "markManyAttendance", "clearAttendance"], MARK_ATTENDANCE),
     },
   },
   billing: {

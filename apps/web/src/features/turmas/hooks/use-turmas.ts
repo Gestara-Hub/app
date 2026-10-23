@@ -186,6 +186,16 @@ export function useMarkAttendance() {
   });
 }
 
+/** Vários alunos numa gravação só ("Todos vieram", concluir a chamada). */
+export function useMarkManyAttendance() {
+  const refresh = useRefreshAfterAttendance();
+  return useMutation({
+    mutationFn: (input: { sessionId: Id; studentIds: Id[]; status: AttendanceStatus }) =>
+      turmasService.markManyAttendance(input),
+    onSuccess: () => refresh(),
+  });
+}
+
 /** Desmarca a presença (devolve a aula do pacote, se gastou). */
 export function useClearAttendance() {
   const refresh = useRefreshAfterAttendance();

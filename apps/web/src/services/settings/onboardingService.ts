@@ -1,4 +1,4 @@
-import type { DiscoveryMilestones } from "@gestarahub/contracts";
+import type { DiscoveryMilestones, OnboardingSnapshot } from "@gestarahub/contracts";
 import { store } from "@/services/world/store";
 import { readOp } from "@/services/world/ops";
 import { delegateAll } from "../world/delegate";
@@ -10,6 +10,31 @@ import { delegateAll } from "../world/delegate";
  * endpoint de agregados (EXISTS por tabela, filtrando o tenant).
  */
 export const onboardingServiceImpl = {
+  /** Contagens dos passos da configuracao inicial (barra do topo, em toda pagina). */
+  getOnboardingSnapshot(): Promise<OnboardingSnapshot> {
+    return readOp(() => {
+      const enrolled = new Map<string, number>();
+      for (const e of store.enrollments ?? []) {
+        if (e.status === "active") enrolled.set(e.classGroupId, (enrolled.get(e.classGroupId) ?? 0) + 1);
+      }
+      return {
+        servicesCount: (store.services ?? []).length,
+        professionalsCount: (store.professionals ?? []).length,
+        clientsCount: (store.clients ?? []).length,
+        appointmentsCount: (store.appointments ?? []).length,
+        modalitiesCount: (store.categories ?? []).length,
+        activePlansCount: (store.plans ?? []).filter((p) => p.status === "active").length,
+        activeLessonPackagesCount: (store.lessonPackages ?? []).filter((p) => p.status === "active").length,
+        classGroups: (store.classGroups ?? []).map((g) => ({
+          id: g.id,
+          status: g.status,
+          billingMode: g.billingMode,
+          enrolledCount: enrolled.get(g.id) ?? 0,
+        })),
+      };
+    });
+  },
+
   getDiscoveryMilestones(): Promise<DiscoveryMilestones> {
     return readOp(() => {
       const enrollClassGroupId = store.classGroups

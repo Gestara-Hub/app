@@ -79,6 +79,7 @@ import {
   useClassGroup,
   useClassSession,
   useMarkAttendance,
+  useMarkManyAttendance,
   useRefreshAfterAttendance,
   useReserveSession,
   useRestorePrimaryInstructor,
@@ -119,6 +120,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const { data: categories } = useCategories();
   const { data: clients } = useClients({ status: "active" });
   const markMut = useMarkAttendance();
+  const markManyMut = useMarkManyAttendance();
   const clearMut = useClearAttendance();
   const reserveMut = useReserveSession();
   const cancelReservationMut = useCancelReservation();
@@ -344,12 +346,12 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       // Os toques ainda gravando entram antes (a lista ja mostra o que foi tocado).
       await Promise.all([...writeQueues.values()].map((q) => q.chain));
       const pending = roster.filter((entry) => !entry.attendance);
-      for (const r of pending) {
-        await markMut.mutateAsync({ sessionId, studentId: r.studentId, status, deferRefresh: true });
+      if (pending.length > 0) {
+        // Uma gravacao para todos (a mutacao rele turmas, pacotes e resumos no fim).
+        await markManyMut.mutateAsync({ sessionId, studentIds: pending.map((r) => r.studentId), status });
       }
       return pending.length;
     } finally {
-      refreshAfterAttendance();
       setBulkPending(false);
     }
   };

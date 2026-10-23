@@ -169,6 +169,10 @@ export const queryKeys = {
   // (ver `createQueryClient`).
   onboarding: {
     discovery: ["onboarding", "discovery"] as const,
+    // Passos da configuracao inicial (contagens, uma leitura); `setupDone` e so
+    // do navegador: com os passos prontos, as gravacoes deixam de rele-los.
+    snapshot: ["onboarding", "snapshot"] as const,
+    setupDone: ["onboarding", "setup-done"] as const,
   },
   communication: {
     all: ["communication"] as const,

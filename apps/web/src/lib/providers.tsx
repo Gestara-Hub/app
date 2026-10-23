@@ -64,10 +64,17 @@ export function createQueryClient(): QueryClient {
     mutationCache: new MutationCache({
       onSuccess: () => {
         void client.invalidateQueries({ queryKey: queryKeys.audit.all });
-        // Marcos do "Descubra o dia a dia": matricula, chamada, pagamento,
-        // venda de pacote, mensagem e evolucao viram "Feito" na hora, mesmo
-        // quando a acao acontece com o card na tela (refaz so se montado).
-        void client.invalidateQueries({ queryKey: queryKeys.onboarding.discovery });
+        // Marcos do "Descubra o dia a dia" e passos da configuracao inicial viram
+        // "Feito" na hora (refaz so se montado). Com tudo feito, nao rele mais:
+        // cada releitura carrega o espaco inteiro no servidor (doc 19, fase 1).
+        const discovery = client.getQueryData<Record<string, unknown>>(queryKeys.onboarding.discovery);
+        const discoveryDone =
+          discovery !== undefined &&
+          Object.entries(discovery).every(([key, value]) => key === "enrollClassGroupId" || value === true);
+        if (!discoveryDone) void client.invalidateQueries({ queryKey: queryKeys.onboarding.discovery });
+        if (client.getQueryData(queryKeys.onboarding.setupDone) !== true) {
+          void client.invalidateQueries({ queryKey: queryKeys.onboarding.snapshot });
+        }
         // Nomes embutidos em outras views (cliente/profissional em agendamento,
         // turma, cobranca): marca tudo como stale SEM refetch imediato; cada
         // tela rebusca ao montar de novo.
