@@ -1,4 +1,5 @@
 import type {
+  Address,
   DateTimeISO,
   Id,
   RecurringAuthorization,
@@ -8,7 +9,6 @@ export interface PixPayment {
   /** Id do pagamento no provedor de gateway (txid / id). */
   providerId: string;
   pixCopyPaste: string;
-  pixQrCodeBase64?: string;
   expiresAt: DateTimeISO;
   splitAmountCents?: number;
   /** Quem gerou de fato: "asaas" ou "mock" (demonstracao). */
@@ -45,6 +45,8 @@ export interface CreatePixInput {
   studentPhone?: string;
   studentCpf?: string;
   studentEmail?: string;
+  /** Endereco do cadastro do aluno: preenche o checkout do parceiro. */
+  studentAddress?: Address;
   subaccountApiKey?: string;
   splitAmountCents?: number;
   chargeDueDate?: string;
@@ -66,6 +68,8 @@ export interface CreateLinkInput {
   studentPhone?: string;
   studentCpf?: string;
   studentEmail?: string;
+  /** Endereco do cadastro do aluno: preenche o checkout do parceiro. */
+  studentAddress?: Address;
   subaccountApiKey?: string;
   splitAmountCents?: number;
   chargeDueDate?: string;

@@ -31,6 +31,8 @@ import {
 } from "@/lib/asaas";
 import { requireSameOrganization, requireTenant } from "./server/tenant";
 import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
+import { brazilNationalDigits } from "@gestarahub/core/phone";
+import { CURRENT_SUBACCOUNT_TERMS_VERSION } from "@gestarahub/contracts";
 
 
 
@@ -55,7 +57,6 @@ export async function insertOnlinePaymentInDb(
       gateway_provider: payment.gatewayProvider ?? "asaas",
       gateway_payment_id: payment.gatewayPaymentId ?? null,
       pix_copy_paste: payment.pixCopyPaste ?? null,
-      pix_qr_code_base64: payment.pixQrCodeBase64 ?? null,
       link_url: payment.linkUrl ?? null,
       public_code: payment.publicCode ?? null,
       fee_passed_to_customer: Boolean(payment.feePassedToCustomer),
@@ -265,9 +266,34 @@ export interface SetupSubaccountInput {
   name: string;
   email: string;
   cpfCnpj: string;
+  /** Obrigatoria para CPF (AAAA-MM-DD). */
+  birthDate?: string;
+  /** So para CNPJ. */
   companyType?: "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
   mobilePhone?: string;
+  /** Renda ou faturamento mensal, em reais. */
   incomeValue?: number;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  /** Bairro. */
+  province?: string;
+  postalCode?: string;
+}
+
+/**
+ * Campos que o Asaas exige para criar a subconta (POST /v3/accounts). Confere
+ * antes de chamar, para responder em portugues e sem gastar a chamada.
+ */
+function missingSubaccountField(input: SetupSubaccountInput, isCnpj: boolean): string | null {
+  if (!isCnpj && !/^\d{4}-\d{2}-\d{2}$/.test(input.birthDate ?? "")) return "Informe a data de nascimento.";
+  if (!brazilNationalDigits(input.mobilePhone)) return "Informe um celular do Brasil com DDD.";
+  if (!input.incomeValue || input.incomeValue <= 0) return "Informe a renda ou o faturamento mensal.";
+  if ((input.postalCode ?? "").replace(/\D/g, "").length !== 8) return "Informe o CEP.";
+  if (!input.address?.trim()) return "Informe a rua do endereço.";
+  if (!input.addressNumber?.trim()) return "Informe o número do endereço.";
+  if (!input.province?.trim()) return "Informe o bairro do endereço.";
+  return null;
 }
 
 export interface SetupSubaccountResult {
@@ -291,7 +317,10 @@ export async function setupSubaccountAction(
   try {
     const cleanCpfCnpj = input.cpfCnpj.replace(/\D/g, "");
     const isCnpj = cleanCpfCnpj.length > 11;
-    const companyType = input.companyType || (isCnpj ? "LIMITED" : undefined);
+    // Tipo de empresa so vale para CNPJ.
+    const companyType = isCnpj ? input.companyType || "LIMITED" : undefined;
+    const missing = missingSubaccountField(input, isCnpj);
+    if (missing) return { success: false, error: missing };
 
     let accountId = "";
     let walletId = "";
@@ -303,13 +332,22 @@ export async function setupSubaccountAction(
         email: input.email,
         cpfCnpj: cleanCpfCnpj,
         companyType,
-        mobilePhone: input.mobilePhone?.replace(/\D/g, "") || undefined,
-        incomeValue: input.incomeValue ?? 5000,
+        birthDate: isCnpj ? undefined : input.birthDate,
+        mobilePhone: brazilNationalDigits(input.mobilePhone),
+        incomeValue: input.incomeValue,
+        address: input.address?.trim(),
+        addressNumber: input.addressNumber?.trim(),
+        complement: input.complement?.trim() || undefined,
+        province: input.province?.trim(),
+        postalCode: input.postalCode?.replace(/\D/g, ""),
       });
 
       accountId = res.id;
       walletId = res.walletId;
-      apiKey = res.apiKey;
+      apiKey = res.apiKey ?? res.accessToken?.apiKey ?? "";
+      if (!apiKey) {
+        console.error("[setupSubaccountAction] Subconta criada sem chave de API na resposta:", accountId);
+      }
     } else {
       // Mock mode fallback
       accountId = `mock_acc_${Date.now()}`;
@@ -364,7 +402,7 @@ export async function setupSubaccountAction(
             gatewayWalletId: walletId,
             gatewayStatus: "approved",
             termsAcceptedAt: new Date().toISOString(),
-            termsVersion: "subaccount-v1.0",
+            termsVersion: CURRENT_SUBACCOUNT_TERMS_VERSION,
           },
         },
       })
@@ -394,7 +432,7 @@ export async function setupSubaccountAction(
           organization_id: input.organizationId,
           user_id: currentUser.id,
           consent_type: "subaccount_brokerage",
-          terms_version: "subaccount-v1.0",
+          terms_version: CURRENT_SUBACCOUNT_TERMS_VERSION,
           ip_address: ipAddress,
           user_agent: userAgent,
           metadata: {
@@ -707,8 +745,33 @@ function detectPixKeyType(
 
 export interface SubaccountBalanceResult {
   balanceCents: number;
+  /** Pago e ainda nao liberado (cartao), do banco do GestaraHub. */
   awaitingCents: number;
+  /** Proximo dia em que algum valor a liberar fica disponivel. */
+  nextCreditDate?: string;
   availableForTransferCents: number;
+}
+
+/**
+ * A liberar: pagos pelo aluno com o saldo ainda nao disponivel (PAYMENT_CONFIRMED
+ * sem o RECEIVED). O saldo do Asaas (`GET /finance/balance`) so traz o disponivel.
+ */
+async function pendingRelease(
+  adminClient: ReturnType<typeof createSupabaseAdminClient>,
+  organizationId: string,
+): Promise<{ awaitingCents: number; nextCreditDate?: string }> {
+  const { data } = await adminClient
+    .from("online_payments")
+    .select("net_amount_cents, credit_date")
+    .eq("organization_id", organizationId)
+    .eq("status", "paid")
+    .eq("funds_released", false);
+  const rows = data ?? [];
+  const dates = rows.map((r) => (r.credit_date ? String(r.credit_date).slice(0, 10) : "")).filter(Boolean).sort();
+  return {
+    awaitingCents: rows.reduce((total, r) => total + (Number(r.net_amount_cents) || 0), 0),
+    nextCreditDate: dates[0],
+  };
 }
 
 /**
@@ -725,14 +788,15 @@ export async function getSubaccountBalanceAction(
     .eq("id", organizationId)
     .maybeSingle();
 
+  const pending = await pendingRelease(adminClient, organizationId);
+
   if (org?.gateway_api_key && process.env.ASAAS_API_KEY) {
     try {
       const res = await getSubaccountBalance(org.gateway_api_key);
       const balanceCents = Math.round((res.balance || 0) * 100);
-      const awaitingCents = Math.round((res.awaitingPayment || 0) * 100);
       return {
         balanceCents,
-        awaitingCents,
+        ...pending,
         availableForTransferCents: Math.max(0, balanceCents),
       };
     } catch (err) {
@@ -745,7 +809,8 @@ export async function getSubaccountBalanceAction(
     .from("online_payments")
     .select("net_amount_cents, status")
     .eq("organization_id", organizationId)
-    .eq("status", "paid");
+    .eq("status", "paid")
+    .eq("funds_released", true);
 
   const totalNet = (payments || []).reduce(
     (acc, p) => acc + (p.net_amount_cents || 0),
@@ -754,7 +819,7 @@ export async function getSubaccountBalanceAction(
 
   return {
     balanceCents: totalNet,
-    awaitingCents: 0,
+    ...pending,
     availableForTransferCents: totalNet,
   };
 }
@@ -878,6 +943,10 @@ export interface SubaccountReceiptItem {
   paidAt?: string;
   createdAt: string;
   canceledReason?: string;
+  /** Dia em que o valor fica (ou ficou) disponivel para saque. */
+  creditDate?: string;
+  /** Pago e ja disponivel; pago e false = a liberar (cartao). */
+  fundsReleased: boolean;
 }
 
 /** Situacao no filtro do historico. "open" = pagas e aguardando (padrao). */
@@ -904,6 +973,9 @@ export interface SubaccountReceiptsSummary {
   grossCents: number;
   feeCents: number;
   netCents: number;
+  /** Do liquido pago: o que ja esta disponivel e o que ainda vai liberar. */
+  releasedNetCents: number;
+  pendingNetCents: number;
 }
 
 export interface SubaccountReceiptsPage {
@@ -963,7 +1035,7 @@ export async function listSubaccountReceiptsAction(
     .from("online_payments")
     .select(
       `
-      id, charge_id, method, status, amount_cents, split_amount_cents, gateway_fee_cents, paid_method, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason,
+      id, charge_id, method, status, amount_cents, split_amount_cents, gateway_fee_cents, paid_method, net_amount_cents, fee_passed_to_customer, paid_at, created_at, canceled_reason, credit_date, funds_released,
       charges (
         status, paid_via
       )
@@ -973,7 +1045,7 @@ export async function listSubaccountReceiptsAction(
     .eq("organization_id", query.organizationId);
   let totalsQuery = client
     .from("online_payments")
-    .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents")
+    .select("status, amount_cents, split_amount_cents, gateway_fee_cents, net_amount_cents, funds_released")
     .eq("organization_id", query.organizationId);
   if (period) {
     pageQuery = pageQuery.or(period);
@@ -996,7 +1068,7 @@ export async function listSubaccountReceiptsAction(
   const empty: SubaccountReceiptsPage = {
     items: [],
     total: 0,
-    summary: { count: 0, paidCount: 0, grossCents: 0, feeCents: 0, netCents: 0 },
+    summary: { count: 0, paidCount: 0, grossCents: 0, feeCents: 0, netCents: 0, releasedNetCents: 0, pendingNetCents: 0 },
   };
   if (pageRes.error || !pageRes.data) {
     console.error("[listSubaccountReceiptsAction] Erro ao listar recebimentos:", pageRes.error);
@@ -1011,6 +1083,8 @@ export async function listSubaccountReceiptsAction(
         acc.grossCents += Number(r.amount_cents) || 0;
         acc.feeCents += (Number(r.gateway_fee_cents) || 0) + (Number(r.split_amount_cents) || 0);
         acc.netCents += Number(r.net_amount_cents) || 0;
+        if (r.funds_released) acc.releasedNetCents += Number(r.net_amount_cents) || 0;
+        else acc.pendingNetCents += Number(r.net_amount_cents) || 0;
       }
       return acc;
     },
@@ -1044,6 +1118,8 @@ export async function listSubaccountReceiptsAction(
       paidAt: r.paid_at ? String(r.paid_at) : undefined,
       createdAt: String(r.created_at),
       canceledReason,
+      creditDate: r.credit_date ? String(r.credit_date).slice(0, 10) : undefined,
+      fundsReleased: Boolean(r.funds_released),
     };
   });
 

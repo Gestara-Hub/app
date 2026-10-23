@@ -18,6 +18,7 @@ import {
   platformSplitCents,
 } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
+import { resolveOnlinePayer } from "@gestarahub/core/payer";
 import { format, parseISO } from "date-fns";
 import {
   apiError,
@@ -524,6 +525,19 @@ export const onlinePaymentsServiceImpl = {
     const expiresInMinutes = settings.defaultExpiresInMinutes || 1440;
 
     assertMethodAccepted(method, settings);
+    // Quem paga (doc 19): aluno maior com o proprio CPF; menor, o responsavel
+    // financeiro. O parceiro exige o CPF: conta real sem ele nao gera o codigo.
+    const payerResult = student ? resolveOnlinePayer(student, todayISO()) : null;
+    const payer = payerResult?.ok ? payerResult.payer : undefined;
+    if (!payer && isSupabaseOrganization(store.organization.id) && !process.env.E2E_NOW) {
+      throw apiError(
+        "VALIDATION",
+        payerResult && !payerResult.ok && payerResult.reason === "guardian_cpf_missing"
+          ? "Aluno menor de idade: cadastre o CPF do responsável financeiro para cobrar online."
+          : "Cadastre o CPF do aluno para cobrar online. O parceiro de pagamentos exige o CPF de quem paga.",
+        { httpStatus: 422 },
+      );
+    }
     // Repasse: o da modal; sem ele, o padrao da forma em Recebimentos online.
     const passFee = passFeeOverride !== undefined ? passFeeOverride : defaultPassFeeFor(settings, method);
 
@@ -548,9 +562,11 @@ export const onlinePaymentsServiceImpl = {
             pixKey: settings.pixKey,
             merchantName: store.organization.name,
             studentId: charge.studentId,
-            studentName: student?.name,
-            studentPhone: student?.phone,
-            studentEmail: student?.email,
+            studentName: payer?.name ?? student?.name,
+            studentCpf: payer?.cpf,
+            studentPhone: payer?.phone ?? student?.phone,
+            studentEmail: payer?.email ?? student?.email,
+            studentAddress: student?.address,
             chargeDueDate: charge.dueDate,
             competence: charge.competence,
             planName: plan?.name,
@@ -565,9 +581,11 @@ export const onlinePaymentsServiceImpl = {
             expiresInMinutes,
             merchantName: store.organization.name,
             studentId: charge.studentId,
-            studentName: student?.name,
-            studentPhone: student?.phone,
-            studentEmail: student?.email,
+            studentName: payer?.name ?? student?.name,
+            studentCpf: payer?.cpf,
+            studentPhone: payer?.phone ?? student?.phone,
+            studentEmail: payer?.email ?? student?.email,
+            studentAddress: student?.address,
             chargeDueDate: charge.dueDate,
             competence: charge.competence,
             planName: plan?.name,
@@ -607,7 +625,6 @@ export const onlinePaymentsServiceImpl = {
         ...("pixCopyPaste" in provided
           ? {
               pixCopyPaste: provided.pixCopyPaste,
-              pixQrCodeBase64: provided.pixQrCodeBase64,
             }
           : {}),
         ...("linkUrl" in provided ? { linkUrl: provided.linkUrl } : {}),

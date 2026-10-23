@@ -62,14 +62,14 @@ export function useSetupGatewaySubaccount() {
 }
 
 /**
- * Consulta o saldo financeiro da subconta.
+ * Consulta o saldo financeiro da subconta. Sem atualizacao automatica: recarrega
+ * pelo botao "Atualizar" da tela (ou ao abrir de novo).
  */
 export function useSubaccountBalance(organizationId?: string) {
   return useQuery({
     queryKey: [...queryKeys.onlinePayments.all, "balance", organizationId],
     queryFn: () => getSubaccountBalanceAction(organizationId!),
     enabled: Boolean(organizationId),
-    refetchInterval: 30000, // 30s
   });
 }
 

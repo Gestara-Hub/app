@@ -78,7 +78,7 @@ export const WORLD_COLLECTIONS: WorldCollection[] = [
 const DB_ONLY: Record<string, string[]> = {
   clients: ["gateway_customer_id"],
   users: ["auth_user_id"],
-  online_payments: ["client_id", "gateway_cancel_pending"],
+  online_payments: ["client_id", "gateway_cancel_pending", "receipt_url"],
   organizations: [
     "gateway_provider",
     "gateway_account_id",

@@ -32,6 +32,7 @@ import {
   CollapsibleSection,
   ComboboxField,
   DateField,
+  InputCpf,
   InputCurrency,
   InputNumber,
   InputPhone,
@@ -42,6 +43,7 @@ import {
   type SegmentedChoiceOption,
 } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -75,6 +77,7 @@ import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clien
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { normalizeText } from "@/lib/text";
 import { whatsappDigits } from "@gestarahub/core/phone";
+import { cpfDigits } from "@gestarahub/core/payer";
 import { NOTES_MAX, clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
@@ -167,11 +170,14 @@ function toDefaults(
     email: client?.email ?? "",
     notes: client?.notes ?? "",
     birthDate: client?.birthDate ?? "",
+    cpf: client?.cpf ?? "",
     guardians: (client?.guardians ?? []).map((g) => ({
       name: g.name,
       relationship: g.relationship ?? "",
       phone: g.phone ?? "",
       email: g.email ?? "",
+      cpf: g.cpf ?? "",
+      financial: g.financial ?? false,
     })),
     address: {
       postalCode: addr?.postalCode ?? "",
@@ -346,6 +352,16 @@ export function ClientForm({
     append: appendGuardian,
     remove: removeGuardian,
   } = useFieldArray({ control: form.control, name: "guardians" });
+  const guardianValues = useWatch({ control: form.control, name: "guardians" });
+  // Um so responsavel financeiro: marcar um desmarca os outros.
+  const setFinancialGuardian = (index: number, checked: boolean) => {
+    (form.getValues("guardians") ?? []).forEach((_, i) => {
+      const next = i === index ? checked : false;
+      if (Boolean(form.getValues(`guardians.${i}.financial`)) !== next) {
+        form.setValue(`guardians.${i}.financial`, next, { shouldDirty: true });
+      }
+    });
+  };
   const firstChargeAmount = useWatch({
     control: form.control,
     name: "firstChargeAmount",
@@ -978,12 +994,15 @@ export function ClientForm({
       email: values.email || undefined,
       notes: values.notes || undefined,
       birthDate: values.birthDate || undefined,
+      cpf: cpfDigits(values.cpf) || undefined,
       guardians: (values.guardians ?? []).length
         ? (values.guardians ?? []).map((g) => ({
             name: g.name.trim(),
             relationship: g.relationship?.trim() || undefined,
             phone: g.phone?.trim() || undefined,
             email: g.email?.trim() || undefined,
+            cpf: cpfDigits(g.cpf) || undefined,
+            financial: g.financial || undefined,
           }))
         : undefined,
       minorConsentStatus,
@@ -1134,17 +1153,28 @@ export function ClientForm({
             />
           </div>
 
-          <InputText<ClientFormValues>
-            name="email"
-            type="email"
-            label="E-mail"
-            placeholder={
-              isClasses
-                ? "aluno@email.com (opcional)"
-                : "cliente@email.com (opcional)"
-            }
-            disabled={pending}
-          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <InputText<ClientFormValues>
+              name="email"
+              type="email"
+              label="E-mail"
+              placeholder={
+                isClasses
+                  ? "aluno@email.com (opcional)"
+                  : "cliente@email.com (opcional)"
+              }
+              disabled={pending}
+            />
+            <InputCpf<ClientFormValues>
+              name="cpf"
+              hint={
+                isMinor
+                  ? "Menor de idade: a cobrança online usa o CPF do responsável financeiro."
+                  : "Usado na cobrança online (Pix e cartão)."
+              }
+              disabled={pending}
+            />
+          </div>
         </div>
 
         {/* Bloco 2: Plano e mensalidade (específico de classes/academia) */}
@@ -1739,20 +1769,39 @@ export function ClientForm({
                   label="Telefone (WhatsApp)"
                   disabled={pending}
                 />
-                <InputText<ClientFormValues>
-                  name={`guardians.${index}.email`}
-                  type="email"
-                  label="E-mail"
-                  placeholder="Informe o e-mail (opcional)"
-                  disabled={pending}
-                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <InputText<ClientFormValues>
+                    name={`guardians.${index}.email`}
+                    type="email"
+                    label="E-mail"
+                    placeholder="Informe o e-mail (opcional)"
+                    disabled={pending}
+                  />
+                  <InputCpf<ClientFormValues> name={`guardians.${index}.cpf`} disabled={pending} />
+                </div>
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                  <Checkbox
+                    checked={Boolean(guardianValues?.[index]?.financial)}
+                    onCheckedChange={(checked) => setFinancialGuardian(index, checked === true)}
+                    disabled={pending}
+                    className="mt-0.5"
+                  />
+                  <span className="min-w-0">
+                    <span className="font-medium text-foreground">Responsável financeiro</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Paga as cobranças online do aluno menor de idade.
+                    </span>
+                  </span>
+                </label>
               </div>
             ))}
 
             <Button
               type="button"
               variant="outline"
-              onClick={() => appendGuardian({ name: "", relationship: "", phone: "", email: "" })}
+              onClick={() =>
+                appendGuardian({ name: "", relationship: "", phone: "", email: "", cpf: "", financial: false })
+              }
               disabled={pending}
             >
               <Plus className="size-4" />

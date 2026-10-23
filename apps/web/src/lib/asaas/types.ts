@@ -7,6 +7,8 @@ export interface AsaasAccountRequest {
   name: string;
   email: string;
   cpfCnpj: string;
+  /** Data de nascimento (so pessoa fisica), AAAA-MM-DD. */
+  birthDate?: string;
   companyType?: "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
   phone?: string;
   mobilePhone?: string;
@@ -24,7 +26,9 @@ export interface AsaasAccountResponse {
   name: string;
   email: string;
   cpfCnpj: string;
-  apiKey: string;
+  /** Formato antigo: chave no topo. O atual vem em `accessToken.apiKey`. */
+  apiKey?: string;
+  accessToken?: { apiKey?: string };
   walletId: string;
   accountNumber?: {
     agency: string;
@@ -39,7 +43,15 @@ export interface AsaasCustomerRequest {
   email?: string;
   mobilePhone?: string;
   phone?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  /** Bairro. */
+  province?: string;
+  postalCode?: string;
   externalReference?: string;
+  /** true: o Asaas nao manda e-mail, SMS nem WhatsApp ao pagador (cobrados da conta). */
+  notificationDisabled?: boolean;
 }
 
 export interface AsaasCustomerResponse {
@@ -114,6 +126,12 @@ export interface AsaasPaymentResponse {
   customer: string;
   value: number;
   netValue?: number;
+  /** Dia previsto em que o valor fica disponivel (cartao: cerca de 32 dias). */
+  estimatedCreditDate?: string | null;
+  /** Dia em que o valor ficou disponivel (PAYMENT_RECEIVED). */
+  creditDate?: string | null;
+  /** Comprovante publico do pagamento no Asaas. */
+  transactionReceiptUrl?: string | null;
   originalValue?: number;
   interestValue?: number;
   description?: string;
@@ -178,7 +196,6 @@ export interface AsaasWebhookPayload {
 export interface AsaasBalanceResponse {
   balance: number;
   reservedBalance?: number;
-  awaitingPayment?: number;
 }
 
 export interface AsaasTransferRequest {

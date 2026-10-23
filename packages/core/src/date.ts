@@ -57,3 +57,18 @@ export function relativeDateLabel(
   if (y === Number(today.slice(0, 4))) return `${d} ${MONTHS_SHORT[m - 1]}`;
   return `${String(m).padStart(2, "0")}/${y}`;
 }
+
+/**
+ * Tempo desde um instante, para "Atualizado ..." (pt-BR): "agora mesmo" (menos
+ * de 1 minuto), "há 5 min", "há 2 h", "há 3 dias". Instante no futuro (relogio
+ * adiantado) conta como agora.
+ */
+export function elapsedLabel(fromMs: number, nowMs: number = Date.now()): string {
+  const minutes = Math.floor(Math.max(0, nowMs - fromMs) / 60_000);
+  if (minutes < 1) return "agora mesmo";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "há 1 dia" : `há ${days} dias`;
+}

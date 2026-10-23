@@ -264,7 +264,6 @@ export interface OnlinePayment {
   amountCents: number;
   status: OnlinePaymentStatus;
   pixCopyPaste?: string; // codigo copia e cola Pix
-  pixQrCodeBase64?: string; // imagem base64 do QR Code para exibicao direta
   linkUrl?: string; // link de pagamento
   publicCode?: string; // codigo do endereco publico /p/<codigo> (pagina do Pix ou ida ao link)
   openedAt?: DateTimeISO; // primeira vez que o aluno abriu a pagina publica
@@ -273,7 +272,10 @@ export interface OnlinePayment {
   splitAmountCents?: number; // valor do split do GestaraHub retido
   gatewayFeeCents?: number; // tarifa do provedor (Asaas); no link e a pior estimativa ate o pagamento, depois a real
   paidMethod?: LinkPaymentMethodName; // meio que o aluno usou (webhook do Asaas)
+  creditDate?: DateISO; // dia em que o valor fica (ou ficou) disponivel para saque
+  fundsReleased?: boolean; // valor ja disponivel (cartao: pago antes, liberado ~32 dias depois)
   netAmountCents?: number; // valor liquido que a academia recebe (valor - tarifa - split)
+  receiptUrl?: string; // comprovante do pagamento no provedor (webhook do Asaas)
   feePassedToCustomer?: boolean; // indica se a taxa de cobranca foi repassada ao aluno
   canceledReason?: string; // motivo do cancelamento (ex: baixa manual, gerado novo código)
   expiresAt: DateTimeISO;

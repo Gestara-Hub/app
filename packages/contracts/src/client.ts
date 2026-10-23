@@ -173,6 +173,10 @@ export interface StudentGuardian {
   relationship?: string;
   phone?: string;
   email?: string;
+  /** CPF (so digitos). Do responsavel financeiro, paga a cobranca online do aluno menor. */
+  cpf?: string;
+  /** Responsavel financeiro: paga a cobranca online quando o aluno e menor de idade. */
+  financial?: boolean;
 }
 
 export type MinorConsentStatus =
@@ -189,6 +193,8 @@ export interface Client {
   email?: string;
   /** Aniversariantes do mes/dia (relatorio, avisos, mensagem de parabens). */
   birthDate?: DateISO;
+  /** CPF do aluno (so digitos): pagador da cobranca online quando maior de idade. */
+  cpf?: string;
   /** Responsaveis (menores de idade ou contato extra). */
   guardians?: StudentGuardian[];
   notes?: string;

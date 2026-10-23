@@ -739,6 +739,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "jsonb",
         "nullable": true,
         "hasDefault": true
+      },
+      "cpf": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },
@@ -1347,6 +1352,21 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
       },
       "opened_at": {
         "type": "timestamptz",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "credit_date": {
+        "type": "date",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "funds_released": {
+        "type": "boolean",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "receipt_url": {
+        "type": "text",
         "nullable": true,
         "hasDefault": false
       }

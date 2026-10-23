@@ -2,6 +2,7 @@ import { isPossiblePhone } from "@gestarahub/core/phone";
 import { format } from "date-fns";
 import { z } from "zod";
 import type { ClassBillingMode } from "@gestarahub/contracts";
+import { isValidCpf } from "@gestarahub/core/payer";
 
 /** Observacoes do aluno: limite para nao virar um livro. */
 export const NOTES_MAX = 1000;
@@ -39,6 +40,12 @@ export const clientFormSchema = z.object({
       message: "Informe um e-mail válido.",
     }),
   notes: z.string().trim().max(NOTES_MAX, `Use no máximo ${NOTES_MAX} caracteres.`).optional(),
+  // Pagador da cobranca online quando maior de idade (o parceiro exige CPF).
+  cpf: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || isValidCpf(v), { message: "Informe um CPF válido." }),
   birthDate: z
     .string()
     .optional()
@@ -69,6 +76,12 @@ export const clientFormSchema = z.object({
           .refine((v) => !v || EMAIL_RE.test(v), {
             message: "Informe um e-mail válido.",
           }),
+        cpf: z
+          .string()
+          .trim()
+          .optional()
+          .refine((v) => !v || isValidCpf(v), { message: "Informe um CPF válido." }),
+        financial: z.boolean().optional(),
       }),
     )
     .optional(),

@@ -1,7 +1,9 @@
 import type { DateTimeISO, Id } from "./common";
 
 export const CURRENT_PLATFORM_TERMS_VERSION = "v1.0-2026-10";
-export const CURRENT_SUBACCOUNT_TERMS_VERSION = "subaccount-v1.0";
+// v1.1 (22/10/2026): tarifa do parceiro separada da taxa do GestaraHub,
+// repasse ao aluno e dados enviados para abrir a conta.
+export const CURRENT_SUBACCOUNT_TERMS_VERSION = "subaccount-v1.1";
 
 export type ConsentType =
   | "platform_terms"

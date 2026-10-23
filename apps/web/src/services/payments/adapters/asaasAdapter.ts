@@ -14,6 +14,8 @@ import type {
   CreateLinkInput,
 } from "../types";
 import { newId } from "@/services/world/ops";
+import { brazilNationalDigits } from "@gestarahub/core/phone";
+import type { Address } from "@gestarahub/contracts";
 
 function addMinutes(minutes: number): DateTimeISO {
   return new Date(Date.now() + minutes * 60_000).toISOString();
@@ -84,18 +86,17 @@ export function formatPaymentDescription(input: {
  * Gera um CPF matematicamente válido para uso exclusivo no ambiente Sandbox do Asaas
  * caso o cadastro do aluno ainda não possua CPF informado.
  */
-function generateSandboxTestCpf(): string {
-  const rnd = (n: number) => Math.floor(Math.random() * n);
-  const n = Array.from({ length: 9 }, () => rnd(10));
-  let d1 = n.reduce((total, num, i) => total + num * (10 - i), 0);
-  d1 = 11 - (d1 % 11);
-  if (d1 >= 10) d1 = 0;
-  n.push(d1);
-  let d2 = n.reduce((total, num, i) => total + num * (11 - i), 0);
-  d2 = 11 - (d2 % 11);
-  if (d2 >= 10) d2 = 0;
-  n.push(d2);
-  return n.join("");
+/** Endereco do aluno nos campos do cliente do Asaas (so o que esta preenchido). */
+function customerAddress(address: Address | undefined) {
+  if (!address) return {};
+  const postalCode = address.postalCode?.replace(/\D/g, "");
+  return {
+    address: address.street?.trim() || undefined,
+    addressNumber: address.number?.trim() || undefined,
+    complement: address.complement?.trim() || undefined,
+    province: address.neighborhood?.trim() || undefined,
+    postalCode: postalCode && postalCode.length === 8 ? postalCode : undefined,
+  };
 }
 
 /**
@@ -107,20 +108,23 @@ export const asaasPaymentGateway: PaymentGateway = {
 
   async createPix(input: CreatePixInput): Promise<PixPayment> {
     const config = getAsaasConfig();
-    const isSandbox = config.apiUrl.includes("sandbox");
 
     // 1. Obtém ou cria o cliente pagador no Asaas
-    const cpf =
-      input.studentCpf?.replace(/\D/g, "") ||
-      (isSandbox ? generateSandboxTestCpf() : undefined);
+    // O parceiro exige o CPF de quem paga (aluno maior ou responsavel financeiro).
+    const cpf = input.studentCpf?.replace(/\D/g, "");
+    if (!cpf) throw new Error("Falta o CPF de quem paga a cobrança.");
 
     const customer = await createOrFindCustomer(
       {
         name: input.studentName || "Aluno GestaraHub",
         email: input.studentEmail || undefined,
-        mobilePhone: input.studentPhone?.replace(/\D/g, "") || undefined,
+        mobilePhone: brazilNationalDigits(input.studentPhone),
         cpfCnpj: cpf,
+        ...customerAddress(input.studentAddress),
         externalReference: input.studentId,
+        // Avisos ao aluno saem do GestaraHub; os do Asaas (SMS e WhatsApp sao
+        // cobrados da subconta) duplicariam a mensagem.
+        notificationDisabled: true,
       },
       input.subaccountApiKey,
     );
@@ -164,7 +168,6 @@ export const asaasPaymentGateway: PaymentGateway = {
       provider: "asaas",
       providerId: payment.id,
       pixCopyPaste: qrCode.payload,
-      pixQrCodeBase64: qrCode.encodedImage,
       // Validade no GestaraHub respeita o tempo configurado pelo usuário (ex: 24h),
       // em vez do padrão de 1 ano retornado tecnicamente pelo SPI/BACEN no QR Code
       expiresAt: addMinutes(input.expiresInMinutes || 1440),
@@ -174,18 +177,21 @@ export const asaasPaymentGateway: PaymentGateway = {
 
   async createLink(input: CreateLinkInput): Promise<PaymentLinkPayment> {
     const config = getAsaasConfig();
-    const isSandbox = config.apiUrl.includes("sandbox");
-    const cpf =
-      input.studentCpf?.replace(/\D/g, "") ||
-      (isSandbox ? generateSandboxTestCpf() : undefined);
+    // O parceiro exige o CPF de quem paga (aluno maior ou responsavel financeiro).
+    const cpf = input.studentCpf?.replace(/\D/g, "");
+    if (!cpf) throw new Error("Falta o CPF de quem paga a cobrança.");
 
     const customer = await createOrFindCustomer(
       {
         name: input.studentName || "Aluno GestaraHub",
         email: input.studentEmail || undefined,
-        mobilePhone: input.studentPhone?.replace(/\D/g, "") || undefined,
+        mobilePhone: brazilNationalDigits(input.studentPhone),
         cpfCnpj: cpf,
+        ...customerAddress(input.studentAddress),
         externalReference: input.studentId,
+        // Avisos ao aluno saem do GestaraHub; os do Asaas (SMS e WhatsApp sao
+        // cobrados da subconta) duplicariam a mensagem.
+        notificationDisabled: true,
       },
       input.subaccountApiKey,
     );

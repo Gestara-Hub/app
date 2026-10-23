@@ -4,6 +4,7 @@ import { store } from "@/services/world/store";
 import { validationError } from "@/services/world/ops";
 import { clientNoun } from "../nouns";
 import { todayISO } from "./clientStore";
+import { isValidCpf } from "@gestarahub/core/payer";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,9 +33,15 @@ export function validateClient(
   if (has("birthDate") && payload.birthDate && payload.birthDate > todayISO()) {
     fields.push({ field: "birthDate", message: "A data de nascimento não pode ser futura." });
   }
+  if (has("cpf") && payload.cpf && !isValidCpf(payload.cpf)) {
+    fields.push({ field: "cpf", message: "Informe um CPF válido." });
+  }
   payload.guardians?.forEach((g, i) => {
     if (!g.name?.trim()) {
       fields.push({ field: `guardians.${i}.name`, message: "Informe o nome do responsável." });
+    }
+    if (g.cpf && !isValidCpf(g.cpf)) {
+      fields.push({ field: `guardians.${i}.cpf`, message: "Informe um CPF válido." });
     }
   });
   // So a bolsa integral dispensa plano; a parcial cobra uma parte dele. Na

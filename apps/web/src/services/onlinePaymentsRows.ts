@@ -21,6 +21,8 @@ export function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayme
       typeof row.split_amount_cents === "number" ? row.split_amount_cents : 0,
     gatewayFeeCents:
       typeof row.gateway_fee_cents === "number" ? row.gateway_fee_cents : 0,
+    creditDate: row.credit_date ? String(row.credit_date).slice(0, 10) : undefined,
+    fundsReleased: Boolean(row.funds_released),
     paidMethod: (row.paid_method as OnlinePayment["paidMethod"]) ?? undefined,
     netAmountCents:
       typeof row.net_amount_cents === "number" ? row.net_amount_cents : 0,
@@ -31,12 +33,10 @@ export function mapRowToOnlinePayment(row: Record<string, unknown>): OnlinePayme
       ? String(row.gateway_payment_id)
       : undefined,
     pixCopyPaste: row.pix_copy_paste ? String(row.pix_copy_paste) : undefined,
-    pixQrCodeBase64: row.pix_qr_code_base64
-      ? String(row.pix_qr_code_base64)
-      : undefined,
     linkUrl: row.link_url ? String(row.link_url) : undefined,
     publicCode: row.public_code ? String(row.public_code) : undefined,
     openedAt: row.opened_at ? new Date(String(row.opened_at)).toISOString() : undefined,
+    receiptUrl: row.receipt_url ? String(row.receipt_url) : undefined,
     feePassedToCustomer: Boolean(row.fee_passed_to_customer),
     canceledReason: row.canceled_reason ? String(row.canceled_reason) : undefined,
     expiresAt,

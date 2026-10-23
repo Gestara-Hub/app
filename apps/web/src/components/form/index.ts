@@ -1,6 +1,7 @@
 export { FieldShell, fieldAria } from "./field-shell";
 export { InputText } from "./input-text";
 export { InputPhone } from "./input-phone";
+export { InputCpf } from "./input-cpf";
 export { AutocompleteField } from "./autocomplete-field";
 export { TextArea } from "./text-area";
 export { InputNumber } from "./input-number";

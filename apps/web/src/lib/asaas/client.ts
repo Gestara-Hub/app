@@ -166,12 +166,40 @@ export async function createSubAccount(
 }
 
 /**
- * Cria ou busca um cliente (Aluno) no Asaas.
+ * Cria ou busca um cliente (Aluno) no Asaas. Primeiro pelo id do aluno
+ * (`externalReference`): o mesmo aluno e sempre o mesmo cliente, e os dados
+ * de contato e endereco sao atualizados com o cadastro atual. Depois pelo CPF.
  */
 export async function createOrFindCustomer(
   customerData: AsaasCustomerRequest,
   subaccountApiKey?: string,
 ): Promise<AsaasCustomerResponse> {
+  if (customerData.externalReference) {
+    try {
+      const byRef = await asaasFetch<{ data: AsaasCustomerResponse[] }>(
+        `/customers?externalReference=${encodeURIComponent(customerData.externalReference)}`,
+        { apiKey: subaccountApiKey },
+      );
+      const existing = byRef.data?.[0];
+      if (existing) {
+        // Atualiza com o cadastro atual (inclusive o CPF: o pagador pode mudar,
+        // ex.: aluno que fez 18 anos deixa de pagar pelo responsavel).
+        const changes = Object.fromEntries(Object.entries(customerData).filter(([, v]) => v !== undefined));
+        try {
+          return await asaasFetch<AsaasCustomerResponse>(`/customers/${existing.id}`, {
+            method: "PUT",
+            body: changes,
+            apiKey: subaccountApiKey,
+          });
+        } catch {
+          return existing;
+        }
+      }
+    } catch {
+      // continua pela busca por CPF
+    }
+  }
+
   // Se informou CPF/CNPJ, tenta buscar primeiro para não duplicar
   if (customerData.cpfCnpj) {
     const cleanCpf = customerData.cpfCnpj.replace(/\D/g, "");

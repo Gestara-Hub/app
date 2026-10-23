@@ -14,12 +14,20 @@ export async function markOnlinePaymentPaidInDb(
   paidAtISO: string,
   provider?: string,
   /** Do webhook: valor liquido do Asaas (centavos) e o meio usado. Troca a tarifa estimada pela real. */
-  settlement?: { netValueCents?: number; paidMethod?: OnlinePayment["paidMethod"] },
+  settlement?: {
+    netValueCents?: number;
+    paidMethod?: OnlinePayment["paidMethod"];
+    /** Pago x disponivel: CONFIRMED (released false) e RECEIVED (released true). */
+    release?: { released: boolean; creditDate?: string };
+    /** Comprovante do parceiro (pagina publica /p/<codigo>). */
+    receiptUrl?: string;
+  },
 ): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
   const adminClient = createSupabaseAdminClient();
 
   const real: Record<string, unknown> = {};
   if (settlement?.paidMethod) real.paid_method = settlement.paidMethod;
+  if (settlement?.receiptUrl) real.receipt_url = settlement.receiptUrl;
   if (typeof settlement?.netValueCents === "number") {
     let lookup = adminClient
       .from("online_payments")
@@ -33,6 +41,26 @@ export async function markOnlinePaymentPaidInDb(
       // netValue do Asaas ja desconta a tarifa dele; o split sai depois, na liquidacao.
       real.gateway_fee_cents = Math.max(0, amount - settlement.netValueCents);
       real.net_amount_cents = Math.max(0, settlement.netValueCents - split);
+    }
+  }
+
+  if (settlement?.release) {
+    const { released, creditDate } = settlement.release;
+    if (released) {
+      real.funds_released = true;
+      if (creditDate) real.credit_date = creditDate;
+    } else {
+      // CONFIRMED atrasado (depois do RECEIVED) nao volta o valor para "a liberar".
+      let lookup = adminClient
+        .from("online_payments")
+        .select("funds_released")
+        .eq("gateway_payment_id", gatewayPaymentId);
+      if (provider) lookup = lookup.eq("gateway_provider", provider);
+      const { data: current } = await lookup.maybeSingle();
+      if (!current?.funds_released) {
+        real.funds_released = false;
+        if (creditDate) real.credit_date = creditDate;
+      }
     }
   }
 

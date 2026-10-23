@@ -77,6 +77,51 @@ describe("página pública do pagamento online", () => {
     expect((await loadPaymentPage(await payment({ chargeStatus: "paid" })))?.state).toBe("paid");
   });
 
+  it("paga por este código: dados do pagamento, comprovante e nada do aluno", async () => {
+    const code = await payment({ status: "paid", method: "link" });
+    await adminClient()
+      .from("online_payments")
+      .update({
+        paid_at: "2026-10-22T15:00:00.000Z",
+        paid_method: "creditCard",
+        receipt_url: "https://parceiro.example/comprovante/1",
+      })
+      .eq("public_code", code)
+      .throwOnError();
+    const view = await loadPaymentPage(code);
+    expect(view?.state).toBe("paid");
+    expect(view?.code).toBe(code);
+    expect(view?.paid).toMatchObject({
+      paidAt: "2026-10-22T15:00:00+00:00",
+      methodLabel: "Cartão de crédito",
+      receiptUrl: "https://parceiro.example/comprovante/1",
+    });
+    expect(JSON.stringify(view)).not.toContain("Aluno Secreto");
+  });
+
+  it("taxa repassada ao aluno: mostra o valor da cobrança e a taxa", async () => {
+    const code = await payment({ status: "paid" });
+    await adminClient()
+      .from("online_payments")
+      .update({ amount_cents: 15496, fee_passed_to_customer: true })
+      .eq("public_code", code)
+      .throwOnError();
+    const view = await loadPaymentPage(code);
+    expect(view?.amountCents).toBe(15496);
+    expect(view?.paid?.breakdown).toEqual({ baseCents: 15000, feeCents: 496 });
+  });
+
+  it("sem repasse: sem divisão do valor", async () => {
+    const view = await loadPaymentPage(await payment({ status: "paid" }));
+    expect(view?.paid?.breakdown).toBeUndefined();
+  });
+
+  it("paga fora deste código: sem comprovante do parceiro", async () => {
+    const view = await loadPaymentPage(await payment({ chargeStatus: "paid" }));
+    expect(view?.paid?.receiptUrl).toBeUndefined();
+    expect(view?.paid?.methodLabel).toBe("Pagamento online");
+  });
+
   it("código desconhecido ou fora do formato: nada", async () => {
     expect(await loadPaymentPage("NaoExiste123")).toBeNull();
     expect(await loadPaymentPage("x';drop")).toBeNull();

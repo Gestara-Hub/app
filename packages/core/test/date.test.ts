@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
-import { isPastSlot, nowTime, relativeDateLabel, todayISO } from "../src/date.ts";
+import { elapsedLabel, isPastSlot, nowTime, relativeDateLabel, todayISO } from "../src/date.ts";
 
 const TODAY = "2026-10-14";
 const label = (iso: string, relative?: boolean) => relativeDateLabel(iso, { today: TODAY, relative });
@@ -156,5 +156,25 @@ describe("todayISO, nowTime e isPastSlot (relógio simulado)", () => {
 
   it("isPastSlot hoje sem horário não é passado", () => {
     assert.equal(isPastSlot("2026-10-14", ""), false);
+  });
+});
+
+describe("elapsedLabel", () => {
+  const now = Date.UTC(2026, 9, 22, 15, 0, 0);
+  const minutesAgo = (m: number) => now - m * 60_000;
+
+  it("minutos, horas e dias desde a atualização", () => {
+    assert.equal(elapsedLabel(minutesAgo(0), now), "agora mesmo");
+    assert.equal(elapsedLabel(now - 59_000, now), "agora mesmo");
+    assert.equal(elapsedLabel(minutesAgo(5), now), "há 5 min");
+    assert.equal(elapsedLabel(minutesAgo(59), now), "há 59 min");
+    assert.equal(elapsedLabel(minutesAgo(60), now), "há 1 h");
+    assert.equal(elapsedLabel(minutesAgo(60 * 23), now), "há 23 h");
+    assert.equal(elapsedLabel(minutesAgo(60 * 24), now), "há 1 dia");
+    assert.equal(elapsedLabel(minutesAgo(60 * 24 * 3), now), "há 3 dias");
+  });
+
+  it("instante no futuro conta como agora", () => {
+    assert.equal(elapsedLabel(now + 120_000, now), "agora mesmo");
   });
 });

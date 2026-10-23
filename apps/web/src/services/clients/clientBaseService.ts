@@ -15,6 +15,7 @@ import { clientNoun } from "../nouns";
 import { ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone } from "./clientStore";
 import { validateClient } from "./clientValidation";
+import { cpfDigits } from "@gestarahub/core/payer";
 
 /** Cadastro, lista e leitura do aluno. */
 export const clientBaseService = {
@@ -83,6 +84,7 @@ export const clientBaseService = {
         phone: payload.phone.trim(),
         email: payload.email?.trim() || undefined,
         birthDate: payload.birthDate || undefined,
+        cpf: cpfDigits(payload.cpf) || undefined,
         guardians: payload.guardians?.length ? payload.guardians : undefined,
         notes: payload.notes?.trim() || undefined,
         address: payload.address,

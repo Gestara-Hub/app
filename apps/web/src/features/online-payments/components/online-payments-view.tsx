@@ -22,6 +22,7 @@ import { SubaccountPanel } from "./subaccount-panel";
 import { OnlinePaymentsOnboarding } from "./online-payments-onboarding";
 import { OnlinePaymentsSettingsTab } from "./online-payments-settings-tab";
 import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
+import { OnlinePaymentsRefresh } from "./online-payments-refresh";
 import { useSubaccountBalance } from "../hooks/use-online-payments";
 
 const BENEFITS = [
@@ -155,51 +156,51 @@ export function OnlinePaymentsView() {
         />
       ) : (
         <div className="space-y-5">
-          {/* Tabs Navigation */}
-          <div
-            role="tablist"
-            aria-label="Navegação de Recebimentos Online"
-            className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/60 p-1 text-muted-foreground sm:w-fit"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "carteira"}
-              onClick={() => setTab("carteira")}
-              className={cn(
-                "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-                tab === "carteira"
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+          {/* Abas e, na Carteira, "Atualizado ha X · Atualizar" na mesma linha */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              role="tablist"
+              aria-label="Navegação de Recebimentos Online"
+              className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/60 p-1 text-muted-foreground sm:w-fit"
             >
-              <Wallet className="size-4 shrink-0" />
-              Carteira & Extrato
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "carteira"}
+                onClick={() => setTab("carteira")}
+                className={cn(
+                  "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  tab === "carteira"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Wallet className="size-4 shrink-0" />
+                Carteira & Extrato
+              </button>
 
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "configuracoes"}
-              onClick={() => setTab("configuracoes")}
-              className={cn(
-                "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-                tab === "configuracoes"
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Settings2 className="size-4 shrink-0" />
-              Configurações
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "configuracoes"}
+                onClick={() => setTab("configuracoes")}
+                className={cn(
+                  "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  tab === "configuracoes"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Settings2 className="size-4 shrink-0" />
+                Configurações
+              </button>
+            </div>
+            {tab === "carteira" ? <OnlinePaymentsRefresh organizationId={org.id} /> : null}
           </div>
 
           {/* Tab Content */}
           {tab === "carteira" ? (
-            <SubaccountPanel
-              organizationId={org.id}
-              defaultPixKey={onlineSettings?.pixKey}
-            />
+            <SubaccountPanel organizationId={org.id} />
           ) : (
             <OnlinePaymentsSettingsTab
               organization={org}

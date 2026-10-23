@@ -14,6 +14,7 @@ import {
 } from "@/lib/asaas";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { requireSameOrganization } from "./server/tenant";
+import { brazilNationalDigits } from "@gestarahub/core/phone";
 
 export interface CreateSubscriptionInput {
   organizationId: string;
@@ -151,7 +152,7 @@ export async function createAsaasSubscriptionCheckoutAction(
       name: input.customer.name,
       email: input.customer.email,
       cpfCnpj: input.customer.cpfCnpj,
-      mobilePhone: input.customer.phone,
+      mobilePhone: brazilNationalDigits(input.customer.phone),
       externalReference: input.organizationId,
     });
 
@@ -171,7 +172,7 @@ export async function createAsaasSubscriptionCheckoutAction(
             name: input.creditCard.holderName,
             email: input.customer.email,
             cpfCnpj: input.customer.cpfCnpj,
-            mobilePhone: input.customer.phone,
+            mobilePhone: brazilNationalDigits(input.customer.phone),
           }
         : undefined,
     };

@@ -50,6 +50,17 @@ export function nationalDigitsOf(value: string | null | undefined): string {
   return "";
 }
 
+/**
+ * Celular brasileiro como os gateways de pagamento esperam: so DDD + numero,
+ * sem o 55 ("+5592991844219" -> "92991844219"). Numero de outro pais ou
+ * invalido: undefined (o Asaas so aceita telefone do Brasil).
+ */
+export function brazilNationalDigits(value: string | null | undefined): string | undefined {
+  const parsed = parsePhone(value);
+  if (!parsed || parsed.country !== "BR") return undefined;
+  return parsed.nationalNumber || undefined;
+}
+
 /** DDI do pais: "55", "1", "351". */
 export function callingCodeOf(country: PhoneCountry): string {
   return getCountryCallingCode(country);

@@ -57,9 +57,17 @@ export async function POST(req: Request) {
       const paidAt = paidAtFromAsaas(payment.clientPaymentDate || payment.paymentDate);
       // netValue ja vem sem a tarifa do Asaas; billingType diz se foi credito ou debito.
       const netValue = Number(payment.netValue);
+      // CONFIRMED: pago, saldo ainda nao liberado (cartao ~32 dias). RECEIVED: disponivel.
+      const released = event === "PAYMENT_RECEIVED";
+      const todayInBrazil = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+      const creditDate = released
+        ? (payment.creditDate ?? payment.estimatedCreditDate ?? todayInBrazil)
+        : (payment.estimatedCreditDate ?? payment.creditDate ?? undefined);
       const result = await markOnlinePaymentPaidInDb(payment.id, paidAt, "asaas", {
         netValueCents: Number.isFinite(netValue) ? Math.round(netValue * 100) : undefined,
         paidMethod: linkMethodFromAsaasBillingType(payment.billingType),
+        release: { released, creditDate: creditDate?.slice(0, 10) },
+        receiptUrl: payment.transactionReceiptUrl ?? undefined,
       });
 
       if (result) {

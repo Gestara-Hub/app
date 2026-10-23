@@ -59,6 +59,7 @@ import {
   useSimulateOnlinePaid,
 } from "../hooks/use-billing";
 import { IllustrativeQr } from "./illustrative-qr";
+import { PixQrCode } from "@/components/shared/pix-qr-code";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
@@ -205,6 +206,11 @@ export function OnlineChargeDialog({
 
   const payments = checkout.data?.payments ?? [];
   const awaiting = payments.find((p) => p.status === "awaiting");
+  // Pix do parceiro (nao a demonstracao): o QR desenhado e lido pelo banco.
+  const realPix = Boolean(awaiting?.pixCopyPaste) && awaiting?.gatewayProvider !== "mock";
+  // Link mostrado e copiado: o endereco do GestaraHub (/p/<codigo>), como na
+  // mensagem do WhatsApp; o do parceiro so quando nao ha codigo (codigo antigo).
+  const awaitingLink = awaiting?.publicCode ? paymentPageUrl(awaiting.publicCode) : awaiting?.linkUrl;
   const lastExpired = !awaiting
     ? payments.find((p) => p.status === "expired")
     : undefined;
@@ -417,14 +423,9 @@ export function OnlineChargeDialog({
             <div className="space-y-4">
               {awaiting.method === "pix" ? (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="rounded-lg border bg-background p-2">
-                    {awaiting.pixQrCodeBase64 ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`data:image/png;base64,${awaiting.pixQrCodeBase64}`}
-                        alt="QR Code do Pix"
-                        className="size-40 rounded object-contain"
-                      />
+                  <div className="rounded-lg border bg-white p-2">
+                    {realPix ? (
+                      <PixQrCode value={awaiting.pixCopyPaste ?? ""} className="size-40" />
                     ) : (
                       <IllustrativeQr
                         value={awaiting.pixCopyPaste ?? awaiting.id}
@@ -433,7 +434,7 @@ export function OnlineChargeDialog({
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {awaiting.pixQrCodeBase64
+                    {realPix
                       ? "Escaneie o QR Code no app do seu banco para pagar."
                       : "QR Code ilustrativo, não é lido por apps de banco."}
                   </p>
@@ -490,7 +491,7 @@ export function OnlineChargeDialog({
                   >
                     {awaiting.method === "pix"
                       ? awaiting.pixCopyPaste
-                      : awaiting.linkUrl}
+                      : awaitingLink}
                   </p>
                   <Button
                     type="button"
@@ -499,7 +500,7 @@ export function OnlineChargeDialog({
                       void copyText(
                         (awaiting.method === "pix"
                           ? awaiting.pixCopyPaste
-                          : awaiting.linkUrl) ?? "",
+                          : awaitingLink) ?? "",
                         awaiting.method === "pix"
                           ? "Código Pix copiado."
                           : "Link copiado.",

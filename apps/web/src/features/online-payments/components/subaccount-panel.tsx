@@ -4,7 +4,6 @@ import type { OnlinePaymentMethod } from "@gestarahub/contracts";
 import { ONLINE_METHOD_LABEL } from "@gestarahub/core/payment-fees";
 import {
   periodFromPreset,
-  periodLabel,
   PeriodRangePicker,
   type PeriodRange,
 } from "@/components/shared/period-range-picker";
@@ -22,7 +21,6 @@ import { LINK_PAYMENT_METHOD_LABEL } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
 import {
   ArrowDownLeft,
-  ArrowUpRight,
   Clock,
   ExternalLink,
   History,
@@ -30,7 +28,6 @@ import {
   Receipt,
 } from "lucide-react";
 import { formatCents } from "@gestarahub/core/format";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -45,11 +42,9 @@ import {
   useSubaccountTransfers,
   useSubaccountReceipts,
 } from "../hooks/use-online-payments";
-import { SubaccountTransferDialog } from "./subaccount-transfer-dialog";
 
 interface SubaccountPanelProps {
   organizationId: string;
-  defaultPixKey?: string;
 }
 
 const RECEIPT_STATUS_MAP: Record<
@@ -106,9 +101,7 @@ const TRANSFER_STATUS_MAP: Record<
 
 export function SubaccountPanel({
   organizationId,
-  defaultPixKey = "",
 }: SubaccountPanelProps) {
-  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [tab, setTab] = useState<"receipts" | "transfers">("receipts");
 
   const balanceQuery = useSubaccountBalance(organizationId);
@@ -139,6 +132,8 @@ export function SubaccountPanel({
 
   const availableCents = balanceQuery.data?.availableForTransferCents ?? 0;
   const awaitingCents = balanceQuery.data?.awaitingCents ?? 0;
+  const nextCreditDate = balanceQuery.data?.nextCreditDate;
+
   const receipts = receiptsQuery.data?.items ?? [];
   const receiptsTotal = receiptsQuery.data?.total ?? 0;
   const summary = receiptsQuery.data?.summary;
@@ -165,21 +160,9 @@ export function SubaccountPanel({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between pt-2 border-t border-emerald-500/15">
-            <span className="text-[11px] text-muted-foreground">
-              Liquidação imediata (D+0)
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setTransferDialogOpen(true)}
-              disabled={availableCents <= 0}
-              className="h-7 text-xs border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
-            >
-              <ArrowUpRight className="mr-1 size-3" />
-              Sacar Pix
-            </Button>
+          {/* Saque: um so botao, no cabecalho da tela ("Sacar via Pix"). */}
+          <div className="mt-3 border-t border-emerald-500/15 pt-2 text-[11px] text-muted-foreground">
+            Pix e boleto liberam na hora
           </div>
         </div>
 
@@ -187,7 +170,7 @@ export function SubaccountPanel({
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>A compensar (Cartão)</span>
+              <span>A liberar (cartão)</span>
               <Clock className="size-4 text-muted-foreground" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
@@ -200,7 +183,9 @@ export function SubaccountPanel({
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
-            Liberação em 30 dias (D+30)
+            {nextCreditDate
+              ? `Pago pelo aluno · próxima liberação em ${formatDayMonth(nextCreditDate)}`
+              : "Cartão de crédito libera cerca de 32 dias após o pagamento"}
           </div>
         </div>
 
@@ -208,20 +193,21 @@ export function SubaccountPanel({
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4">
           <div>
             <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-              <span>{period.preset === "this_month" ? "Recebido líquido no mês" : "Recebido líquido no período"}</span>
+              <span>{period.preset === "this_month" ? "Recebido no mês" : "Recebido no período"}</span>
               <Receipt className="size-4 text-muted-foreground" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
               {receiptsQuery.isLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : (
-                formatCents(summary?.netCents ?? 0)
+                formatCents(summary?.releasedNetCents ?? 0)
               )}
             </div>
           </div>
 
           <div className="mt-3 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
-            Taxas: {formatCents(summary?.feeCents ?? 0)} · {periodLabel(period).toLowerCase()}
+            Líquido já disponível · taxas {formatCents(summary?.feeCents ?? 0)}
+            {summary?.pendingNetCents ? ` · a liberar ${formatCents(summary.pendingNetCents)}` : ""}
           </div>
         </div>
       </div>
@@ -421,6 +407,11 @@ export function SubaccountPanel({
                                   >
                                     {badge.label}
                                   </span>
+                                  {r.status === "paid" && !r.fundsReleased ? (
+                                    <span className="text-[10px] leading-tight text-muted-foreground">
+                                      {r.creditDate ? `Libera em ${formatDayMonth(r.creditDate)}` : "A liberar"}
+                                    </span>
+                                  ) : null}
                                   {r.canceledReason ? (
                                     <span
                                       title={r.canceledReason}
@@ -534,14 +525,6 @@ export function SubaccountPanel({
           ) : null}
         </CardContent>
       </Card>
-
-      <SubaccountTransferDialog
-        open={transferDialogOpen}
-        onOpenChange={setTransferDialogOpen}
-        organizationId={organizationId}
-        availableCents={availableCents}
-        defaultPixKey={defaultPixKey}
-      />
     </div>
   );
 }
@@ -630,4 +613,10 @@ function FeesPopover({ receipt: r }: { receipt: SubaccountReceiptItem }) {
       </PopoverContent>
     </Popover>
   );
+}
+
+/** "2026-11-24" -> "24/11". */
+function formatDayMonth(date: string): string {
+  const [, m, d] = date.slice(0, 10).split("-");
+  return `${d}/${m}`;
 }

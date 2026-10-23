@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  brazilNationalDigits,
   displayPhone,
   formatAsYouType,
   isPossiblePhone,
@@ -43,5 +44,17 @@ describe("telefone com país", () => {
     assert.equal(isPossiblePhone("99999-8888"), false);
     assert.equal(whatsappDigits("99999-8888"), null);
     assert.equal(isPossiblePhone("123"), false);
+  });
+
+  it("celular para o gateway: só DDD + número, sem o 55", () => {
+    assert.equal(brazilNationalDigits("+5592991844219"), "92991844219");
+    assert.equal(brazilNationalDigits("+551132300606"), "1132300606");
+    // Dado antigo só com dígitos (com ou sem o 55) também vale como Brasil.
+    assert.equal(brazilNationalDigits("92991844219"), "92991844219");
+    assert.equal(brazilNationalDigits("5592991844219"), "92991844219");
+    // Outro país ou vazio: o Asaas não aceita, não manda.
+    assert.equal(brazilNationalDigits("+14155552671"), undefined);
+    assert.equal(brazilNationalDigits(""), undefined);
+    assert.equal(brazilNationalDigits(undefined), undefined);
   });
 });

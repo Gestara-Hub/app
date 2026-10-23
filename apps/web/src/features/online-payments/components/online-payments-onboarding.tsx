@@ -21,6 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ActivateSubaccountDialog } from "./activate-subaccount-dialog";
+import { ASAAS_FEES, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
+import { formatCents } from "@gestarahub/core/format";
 
 interface OnlinePaymentsOnboardingProps {
   organization: Organization;
@@ -141,17 +143,17 @@ export function OnlinePaymentsOnboarding({
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
                 <span className="text-xs text-muted-foreground">Pix Dinâmico</span>
                 <p className="text-lg font-bold text-foreground">
-                  R$ 1,99 <span className="text-xs font-normal text-muted-foreground">no Free</span>
+                  até {formatCents(ASAAS_FEES.pix.fixedCents)} + {formatCents(PLATFORM_SPLIT_CENTS.free)}
                 </p>
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                  R$ 1,29 no Plano Pro
+                <p className="text-[11px] text-muted-foreground">
+                  Tarifa do parceiro + taxa do GestaraHub ({formatCents(PLATFORM_SPLIT_CENTS.pro)} no Plano Profissional)
                 </p>
               </div>
 
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
                 <span className="text-xs text-muted-foreground">Cartão de Crédito</span>
                 <p className="text-lg font-bold text-foreground">
-                  2,99% + taxa
+                  até 2,99% + {formatCents(ASAAS_FEES.creditCard.fixedCents)} + {formatCents(PLATFORM_SPLIT_CENTS.free)}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Recebimento em 30 dias (D+30)
@@ -161,10 +163,10 @@ export function OnlinePaymentsOnboarding({
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
                 <span className="text-xs text-muted-foreground">Transferência para o banco</span>
                 <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  Grátis (R$ 0,00)
+                  30 grátis por mês
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Saque via Pix direto na sua chave
+                  Saque via Pix para a sua conta; depois, R$ 2,00 cada
                 </p>
               </div>
 
