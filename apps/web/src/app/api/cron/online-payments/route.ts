@@ -7,6 +7,8 @@ import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/ser
  * tenta de novo os cancelamentos que falharam. Protegida por CRON_SECRET.
  */
 export const runtime = "nodejs";
+// Até 5 minutos: muitas chamadas ao Asaas numa rodada.
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();

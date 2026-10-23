@@ -1,4 +1,6 @@
 import { deletePayment, getPayment } from "@/lib/asaas";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { settleAsaasPayment } from "./asaasSettlement";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { realSubaccountKey } from "./gatewaySetup";
 
@@ -165,16 +167,21 @@ export async function expireAllDueOnlinePayments(limit = 500): Promise<number> {
   const keys = await subaccountKeysOf(asaasOrgs);
   const toExpire: string[] = [];
   const pendingAtGateway: string[] = [];
-  for (const row of rows) {
+  // Asaas em paralelo, com limite (em sequencia, 500 codigos passavam do tempo da rotina).
+  await mapWithConcurrency(rows, GATEWAY_CONCURRENCY, async (row) => {
     const key = keys.get(String(row.organization_id));
     if (row.gateway_provider === "asaas" && row.gateway_payment_id && key) {
       const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
-      // Ja paga no Asaas: fica em aberto aqui e o webhook da a baixa.
-      if (result === "paid") continue;
+      // Ja paga no Asaas: da a baixa aqui com os dados dele (sem esperar o webhook),
+      // senao a linha volta primeiro em toda rodada e trava a fila.
+      if (result === "paid") {
+        await settlePaidAtGateway(String(row.gateway_payment_id), key);
+        return;
+      }
       if (result === "failed") pendingAtGateway.push(String(row.id));
     }
     toExpire.push(String(row.id));
-  }
+  });
   if (toExpire.length > 0) {
     await admin.from("online_payments").update({ status: "expired" }).in("id", toExpire).eq("status", "awaiting");
   }
@@ -182,6 +189,19 @@ export async function expireAllDueOnlinePayments(limit = 500): Promise<number> {
     await admin.from("online_payments").update({ gateway_cancel_pending: true }).in("id", pendingAtGateway);
   }
   return toExpire.length;
+}
+
+/** Chamadas ao Asaas ao mesmo tempo nas rotinas de todos os espacos. */
+const GATEWAY_CONCURRENCY = 5;
+
+/** Pago no Asaas e ainda em aberto aqui: baixa com o status e os valores do Asaas. */
+async function settlePaidAtGateway(gatewayPaymentId: string, apiKey: string): Promise<void> {
+  try {
+    const payment = await getPayment(gatewayPaymentId, apiKey);
+    await settleAsaasPayment(payment, payment.status === "RECEIVED" || payment.status === "RECEIVED_IN_CASH");
+  } catch (error) {
+    console.error("[gatewayAccount] Não foi possível dar baixa no pagamento já pago no Asaas:", error);
+  }
 }
 
 /** Tenta de novo os cancelamentos que falharam, de todos os espacos (cron por hora). */
@@ -194,15 +214,16 @@ export async function retryAllPendingGatewayCancels(limit = 200): Promise<number
     .limit(limit);
   if (!rows?.length) return 0;
   const keys = await subaccountKeysOf([...new Set(rows.map((r) => String(r.organization_id)))]);
-  let done = 0;
-  for (const row of rows) {
+  const settled: string[] = [];
+  await mapWithConcurrency(rows, GATEWAY_CONCURRENCY, async (row) => {
     const key = keys.get(String(row.organization_id));
-    if (!row.gateway_payment_id || !key) continue;
+    if (!row.gateway_payment_id || !key) return;
     const result = await cancelGatewayPayment(String(row.gateway_payment_id), key);
-    if (result !== "failed") {
-      await admin.from("online_payments").update({ gateway_cancel_pending: false }).eq("id", row.id);
-      done += 1;
-    }
+    if (result !== "failed") settled.push(String(row.id));
+  });
+  // Uma gravacao so para todos os que resolveram.
+  if (settled.length > 0) {
+    await admin.from("online_payments").update({ gateway_cancel_pending: false }).in("id", settled);
   }
-  return done;
+  return settled.length;
 }

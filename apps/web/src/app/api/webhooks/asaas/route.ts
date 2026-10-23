@@ -1,25 +1,11 @@
-import { linkMethodFromAsaasBillingType } from "@gestarahub/core/payment-fees";
 import { after, NextResponse } from "next/server";
 import type { AsaasWebhookPayload } from "@/lib/asaas";
+import { settleAsaasPayment } from "@/services/onlinePayments/asaasSettlement";
 import {
-  markOnlinePaymentPaidInDb,
   expireOnlinePaymentInDb,
   cancelOnlinePaymentByGatewayIdInDb,
 } from "@/services/onlinePayments/onlinePaymentsWebhook";
 import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
-
-/**
- * O Asaas manda a data do pagamento sem hora ("2026-10-21"). Guardada como esta,
- * vira meia-noite UTC e aparece como 21h do dia anterior no Brasil. Hoje: a hora
- * em que o aviso chegou. Outro dia: meio-dia no horario de Brasilia.
- */
-function paidAtFromAsaas(value: string | undefined | null): string {
-  const now = new Date();
-  if (!value) return now.toISOString();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(value).toISOString();
-  const todayInBrazil = now.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-  return value === todayInBrazil ? now.toISOString() : new Date(`${value}T12:00:00-03:00`).toISOString();
-}
 
 export async function POST(req: Request) {
   try {
@@ -54,21 +40,8 @@ export async function POST(req: Request) {
 
     // 2. Trata eventos de liquidação / confirmação de pagamento
     if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
-      const paidAt = paidAtFromAsaas(payment.clientPaymentDate || payment.paymentDate);
-      // netValue ja vem sem a tarifa do Asaas; billingType diz se foi credito ou debito.
-      const netValue = Number(payment.netValue);
       // CONFIRMED: pago, saldo ainda nao liberado (cartao ~32 dias). RECEIVED: disponivel.
-      const released = event === "PAYMENT_RECEIVED";
-      const todayInBrazil = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-      const creditDate = released
-        ? (payment.creditDate ?? payment.estimatedCreditDate ?? todayInBrazil)
-        : (payment.estimatedCreditDate ?? payment.creditDate ?? undefined);
-      const result = await markOnlinePaymentPaidInDb(payment.id, paidAt, "asaas", {
-        netValueCents: Number.isFinite(netValue) ? Math.round(netValue * 100) : undefined,
-        paidMethod: linkMethodFromAsaasBillingType(payment.billingType),
-        release: { released, creditDate: creditDate?.slice(0, 10) },
-        receiptUrl: payment.transactionReceiptUrl ?? undefined,
-      });
+      const result = await settleAsaasPayment(payment, event === "PAYMENT_RECEIVED");
 
       if (result) {
         // Tarifa real diferente da tabela gravada: a tarifa da subconta mudou.
