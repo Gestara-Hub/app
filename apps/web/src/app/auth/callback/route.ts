@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession, safeRedirectPath } from "@/lib/session";
 import { loadSessionPayload, resolveGoogleAccount } from "@/services/server/accountSetup";
+import { needsSecondFactor } from "@/app/(auth)/sign-in-session";
 
 /**
  * Volta do Google ("Continuar com Google", doc 16): troca o codigo pela sessao
@@ -36,6 +37,13 @@ export async function GET(request: NextRequest) {
   if (!result.ok) {
     await supabase.auth.signOut();
     return fail(result.code);
+  }
+
+  // Conta com senha e Google que ligou a verificacao em duas etapas (doc 17):
+  // a sessao do app so nasce depois do codigo.
+  if (await needsSecondFactor(supabase)) {
+    const from = safeRedirectPath(url.searchParams.get("from"));
+    return NextResponse.redirect(new URL(`/two-factor${from ? `?from=${encodeURIComponent(from)}` : ""}`, url.origin));
   }
 
   const { user, organization } = await loadSessionPayload(admin, result.dbUser);

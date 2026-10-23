@@ -52,6 +52,7 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/14-asaas-mcp.md](technical/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
 - [technical/15-retirada-do-mock-turmas.md](technical/15-retirada-do-mock-turmas.md) — **Retirada do mock (turmas):** plano por fatias para a conta real ler e gravar só no Supabase; demonstração vira espaço real criado por seed.
 - [technical/16-ambiente-local.md](technical/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
+- [technical/17-verificacao-em-duas-etapas.md](technical/17-verificacao-em-duas-etapas.md) — **Verificação em duas etapas:** aplicativo autenticador (MFA do Supabase) para quem entra com senha, tela `/two-factor` no login; código por e-mail na entrega 2.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

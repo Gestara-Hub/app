@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { UserProfile } from "@gestarahub/contracts";
-import { Building2, Check, Crown, LogOut, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { Building2, Check, Crown, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { switchDemoProfileAction } from "@/app/(auth)/signup-actions";
 import { resetAnalytics } from "@/lib/analytics";
 import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
-import { useCurrentUser } from "@/features/auth";
+import { TwoFactorDialog, useCurrentUser } from "@/features/auth";
 import { useOrganization, useSubscription, useUnit } from "@/features/settings";
 import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
 import { settingsService } from "@/services/settingsService";
@@ -57,6 +57,7 @@ export function AppTopbar() {
       router.refresh();
     });
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
 
   return (
     <>
@@ -138,6 +139,10 @@ export function AppTopbar() {
               <SlidersHorizontal className="size-4" />
               <span>Preferências</span>
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSecurityOpen(true)} className="cursor-pointer">
+              <ShieldCheck className="size-4" />
+              <span>Segurança</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
 
             {demo ? (
@@ -179,6 +184,7 @@ export function AppTopbar() {
       </div>
     </header>
     <UserPreferencesDialog open={preferencesOpen} onOpenChange={setPreferencesOpen} />
+    <TwoFactorDialog open={securityOpen} onOpenChange={setSecurityOpen} />
     </>
   );
 }
