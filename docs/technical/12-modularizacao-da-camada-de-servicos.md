@@ -2,7 +2,7 @@
 
 > **Status:** Decidido e planejado em 19/10/2026. Plano de ação para execução sob demanda.
 > **Alvo:** `apps/web/src/services/`
-> **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4.
+> **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4. Fase 6 feita em 23/10/2026 (os arquivos que passaram de 300 linhas depois do plano).
 > **Contexto relacionado:** [01-extensao-modelos-operacionais.md](01-extensao-modelos-operacionais.md), [06-passagem-backend.md](06-passagem-backend.md) e [08-backend-supabase.md](08-backend-supabase.md).
 
 ---
@@ -144,6 +144,26 @@ A execução deve ser realizada de forma incremental, um serviço por vez, com v
   1. Remoção das rotinas `simulateRead`, `simulateWrite` e sincronização do `store.ts`.
   2. Eliminação definitiva dos aliases em português (`turmasService`).
   3. Atualização dos imports no frontend para apontar diretamente para os serviços específicos em inglês (`classGroupsService`, `attendanceService`).
+
+### Fase 6: Domínios que cresceram depois do plano (feita em 23/10/2026)
+* **Por quê:** o plano de 19/10 listou os 5 arquivos gigantes daquele dia. Depois, o pagamento online (Asaas), usuários, relatórios, notas, comunicação e aceites passaram de 300 linhas no padrão antigo.
+* **Como:** só movendo código, sem mudar regra. Cada arquivo antigo virou reexportação (nenhum import mudou). Nos arquivos `"use server"` (`*Backend.ts`), as ações foram para arquivos novos também `"use server"`, o apoio síncrono (hash, guarda, endereço do app) foi para um módulo comum só de servidor e o arquivo antigo virou um módulo comum que reexporta (o build de produção confere).
+* **Pastas novas:**
+
+| Pasta | De onde veio | Arquivos |
+| --- | --- | --- |
+| `services/onlinePayments/` | `onlinePaymentsBackend.ts` (1.160), `onlinePaymentsService.ts` (889), `gatewayAccountBackend.ts` (376) | ações (`paymentRecordsActions`, `subaccountActions`, `checkoutActions`, `balanceActions`, `receiptsActions`), regras (`onlinePaymentRules`, `recurringRules`), sub-serviços (`onlineSettingsService`, `onlineChargesService`, `recurringService`), Asaas (`gatewaySetup`, `gatewayCleanup`) e `index.ts` |
+| `services/users/` | `usersBackend.ts` (670), `usersService.ts` (436) | `userRecordsActions`, `inviteActions`, `acceptInvitationActions`, `userActionsShared`, `userRules`, `usersService` |
+| `services/reports/` | `reportsService.ts` (647) | `reportCatalog`, `courseAndPackageReports`, um construtor por relatório (`operationalReports`, `financialReports`, `retentionReport`) e `reportsService` só despachando |
+| `services/grades/` | `gradesService.ts` (481) | `gradeRules`, `assessmentsService`, `reportCardService`, `index.ts` |
+| `services/communication/` | `communicationService.ts` (434) | `communicationRules`, `connectionService`, `templatesService`, `messagesService`, `index.ts` |
+| `services/legalConsent/` | `legalConsentBackend.ts` (400) | `platformConsentActions`, `minorConsentActions`, `consentShared` |
+| `services/subscription/` | `subscriptionBackend.ts` (336) | `subscriptionActions`, `subscriptionCheckoutActions` |
+| `services/defaults/` | `defaults.ts` (327) | `financialDefaults`, `messageTemplateDefaults` |
+| `services/clients/` | `studentSummaryService.ts` (339) | `studentSummaryRules`, `studentSummaryService` |
+
+* **Ficou como está:** `appointmentsService.ts` (539, agenda da barbearia, modelo adiado) e arquivos entre 300 e 340 linhas com uma função grande só (`subaccountActions`, `server/accountSetup.ts`), que não se separam sem mexer na regra. Arquivos pequenos do domínio (`onlinePaymentsRows.ts`, `onlinePaymentsWebhook.ts`) seguiram na raiz.
+* **Código novo:** importa da pasta (`@/services/onlinePayments`, `@/services/reports`...); os shims da raiz saem na fase 5.
 
 ---
 
