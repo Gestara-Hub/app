@@ -127,7 +127,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 
 ## 6. Decisão: troca de plano, renovação e atraso (23/10/2026)
 
-**Ainda não implementado.** A implementação vem depois das correções `alta` do teste geral (`docs/qa/2026-10-23-teste-geral.md`). Os valores dos exemplos são os de hoje no código (`config/subscription.ts`), que seguem em aberto.
+**Implementado em 23/10/2026** (como ficou: ao fim desta seção). Os valores dos exemplos são os de hoje no código (`config/subscription.ts`), que seguem em aberto.
 
 ### Decisao
 - **Upgrade (Grátis → Pro, Pro → Scale): na hora, com a diferença proporcional.** Os dias que sobram do plano atual viram crédito, e a **data de renovação não muda**. Exemplo: Pro mensal (R$ 79,90) → Scale mensal (R$ 199,00) no dia 10 de um ciclo de 30 dias, com 20 dias sobrando: hoje (199,00 − 79,90) × 20/30 = **R$ 79,40**; na renovação, R$ 199,00 por mês na mesma data. O plano novo liga quando a diferença é paga (cartão na hora, Pix ao confirmar).
@@ -148,6 +148,16 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
   | 5 dias depois | Volta ao Grátis e avisa |
 
   Ao voltar ao Grátis os dados ficam guardados e só os recursos pagos ficam bloqueados. Pagar a cobrança atrasada depois religa o plano.
+- **Depois de voltar ao Grátis: 15 dias para pagar e religar** (decisão do usuário, 23/10/2026). No 15º dia a assinatura é encerrada no Asaas, para de gerar cobranças, e o espaço assina de novo quando quiser, pelo checkout. Avisos ao dono e ao gerente, por e-mail e no aviso fixo do topo:
+
+  | Quando | Aviso |
+  | --- | --- |
+  | Ao voltar ao Grátis (5º dia de atraso) | "Seu plano voltou ao Grátis": pague até 03/12 para religar; depois, a assinatura é encerrada e dá para assinar de novo |
+  | 7 dias depois | "A assinatura do plano será encerrada em 03/12" |
+  | 2 dias antes | "Faltam 2 dias para encerrar a assinatura" |
+  | No 15º dia | "A assinatura do plano foi encerrada": os dados continuam guardados, assine de novo quando quiser (o aviso fica 7 dias no app) |
+
+  Por que 15: somado aos 5 dias de tolerância, o encerramento cai no 20º dia depois do vencimento, antes da renovação seguinte do mensal (30º dia). Assim nunca há duas cobranças atrasadas ao mesmo tempo. Ajustável em `PLAN_CLOSE_AFTER_REVERT_DAYS` (`@gestarahub/core/subscription-plan`).
 - **O Asaas avisa o sistema (webhook) sobre a assinatura:** pagamento confirmado (primeiro e renovações, mesmo com a tela fechada), atraso e cancelamento feito direto no Asaas.
 
 ### Contexto
@@ -164,3 +174,34 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 - **Upgrade começando um ciclo novo no dia da troca:** rejeitado para trocas no mesmo período (muda a data de cobrança sem necessidade). Fica só para mensal → anual.
 - **Downgrade na hora:** rejeitado. O período já foi pago.
 - **3 dias de tolerância:** considerado curto (ver Contexto). Pode ser revisto com dados de uso.
+
+### Como ficou (23/10/2026)
+- **Regras puras:** `@gestarahub/core/subscription-plan`.
+  - `quotePlanChange` faz a conta da troca: hoje, renovação, ou marcada para o fim do período.
+  - `planNoticeFor` decide os avisos; `planDailyStep` decide o que a rotina faz no dia.
+  - O período usa o tamanho real do mês ou do ano até a renovação. Por isso o exemplo de 30 dias dá exatamente R$ 79,40 e R$ 745,73.
+- **Servidor:** `services/server/subscriptionPlan.ts`, com as ações em `services/subscription/planChangeActions.ts`. Uma assinatura só por espaço no Asaas:
+  - **Upgrade:** gera uma cobrança avulsa da diferença, na fatura do Asaas (Pix ou cartão, a pessoa escolhe). O plano liga quando ela é paga: pela tela, que confere a cada 5 s, ou pelo webhook.
+  - **Ao ligar o upgrade:** a mesma assinatura recebe o valor e o ciclo novos, e a cobrança da renovação que o Asaas já gerou (ele cria a próxima 40 dias antes) também.
+  - **Mensal → anual:** apaga a cobrança do mês, que não vai mais existir, e o ciclo anual começa no dia.
+  - **Pro anual → Expansão mensal:** o Expansão liga na hora, com a diferença do anual, e a cobrança da renovação já vem com o valor mensal.
+  - **Downgrade:** fica marcado, e a renovação já sai com o valor novo. "Desmarcar" volta o valor.
+  - **Voltar ao Grátis:** encerra a assinatura no Asaas na hora, para não cobrar a próxima, mas o plano segue até o fim do período. "Desmarcar" cria a assinatura de novo, com a renovação na mesma data. Quem pagava no cartão passa a receber a fatura (Pix ou cartão), porque o cartão não fica guardado.
+  - **Defesa no servidor:** a troca direta para o Grátis, numa conta real com dias pagos, também fica marcada.
+  - **Checkout:** recusa quem já tem plano pago e encerra a assinatura antiga de quem voltou ao Grátis por atraso.
+- **Renovação e tolerância:**
+  - A assinatura guarda `renewsOn`, o fim do período pago.
+  - O webhook (`app/api/webhooks/asaas/route.ts`) trata as cobranças do plano: a renovação paga empurra a data; a cobrança criada ou vencida fica guardada para o "Pagar agora"; a assinatura removida direto no Asaas volta o espaço ao Grátis.
+  - A rotina diária (`app/api/cron/daily`) confere no Asaas se a renovação foi paga (mesmo sem webhook), aplica a troca marcada no dia, volta ao Grátis no 5º dia, encerra a assinatura no Asaas 15 dias depois (`closedFrom`) e manda os avisos por e-mail ao dono e ao gerente, uma vez cada.
+- **Telas:**
+  - Planos: quem já tem plano pago troca pela janela com a conta, e nada é cobrado sem confirmar.
+  - Configurações → Plano: renovação, troca marcada com "Desmarcar" e "Voltar ao Grátis" no fim do período.
+  - Aviso fixo no topo para dono e gerente (`PlanNoticeBanner`), com os mesmos textos do e-mail (`lib/plan-notice-copy.ts`).
+- **Testes:**
+  - `packages/core/test/subscription-plan.test.ts` (regras e exemplos da doc);
+  - `services/subscription/__tests__/planChange.db.test.ts` (servidor com o Asaas simulado);
+  - `services/subscription/__tests__/plan-webhook.test.ts` (roteamento do webhook);
+  - `services/subscription/__tests__/paidFeaturesOnServer.db.test.ts` (achado 80).
+
+### Pendente
+- **Antes de produção:** cadastrar o webhook na conta principal do Asaas, com os eventos de cobrança e de assinatura e o mesmo token (`ASAAS_WEBHOOK_SECRET`). Hoje o webhook é cadastrado só nas subcontas. Sem ele, a rotina diária ainda confere a renovação, mas o upgrade pago com a tela fechada só liga na próxima conferência.

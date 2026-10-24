@@ -80,7 +80,7 @@ Configurações ganha a aba **"Plano GestaraHub"**: mostra o plano atual, o que 
 
 Ainda em aberto: os recursos pagos são conferidos na tela e nos serviços do navegador. As actions do servidor não conferem o plano (ver o arquivo do teste geral).
 
-> ⚠️ **Regras de troca decididas e ainda não implementadas** (23/10/2026): upgrade proporcional na hora, downgrade no fim do período pago, mensal ↔ anual, 5 dias de tolerância e webhook da assinatura. Ver `docs/product/13-modelo-de-negocio.md` §6. Hoje o "Voltar ao Grátis" ainda é imediato e o Pro → Scale ainda cria uma segunda assinatura.
+> **Troca de plano, renovação e tolerância** (23/10/2026): upgrade proporcional na hora, downgrade no fim do período pago, mensal ↔ anual, 5 dias de tolerância com avisos e webhook da assinatura. Uma assinatura só por espaço no Asaas. Regras e código em `docs/product/13-modelo-de-negocio.md` §6 ("Como ficou"). A tela paga lê o plano do banco na conta real (achado 80), não do cookie espelho.
 
 ### 3.6 Permissões novas
 

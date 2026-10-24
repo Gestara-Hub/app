@@ -8,9 +8,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 
 | Pendência | Onde está o detalhe | Situação |
 | --- | --- | --- |
-| Correções do teste geral: as `média` e as `baixa` (as 5 altas estão corrigidas) | `qa/2026-10-23-teste-geral.md`, seção Correções | Em andamento; antes, a doc 13 §6 com o achado 80 |
-| Troca de plano, renovação e atraso da assinatura: upgrade proporcional na hora, downgrade no fim do período, mensal ↔ anual, 5 dias de tolerância com avisos, webhook da assinatura | `product/13-modelo-de-negocio.md` §6 | Decidido em 23/10; implementar depois das altas |
-| Plano conferido nas actions do servidor (recursos pagos usáveis no Grátis por quem chama a action direto) | `qa/2026-10-23-teste-geral.md`, achado 80 | Registrado como `média` |
+| Correções do teste geral: as `média` e as `baixa` (as 5 altas estão corrigidas) | `qa/2026-10-23-teste-geral.md`, seção Correções | Em andamento |
 | Cancelar aula e feriados | `product/25-lembretes-e-seguranca.md` §7 | Construir depois; há decisões abertas lá (avulsa, pacote, pagamento do professor, chamada, feriados) |
 | Resumo diário de lembretes por e-mail | `product/25-lembretes-e-seguranca.md` §7 | Adiado |
 | Primeiro desenho da tela no fuso do espaço (hoje sai em Brasília até o navegador ligar o fuso; afeta só outros fusos perto da meia-noite) | `qa/2026-10-23-teste-geral.md`, achado 81; `technical/22-fuso-do-espaco.md` | Registrado como `baixa` |
@@ -30,6 +28,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | --- | --- |
 | Escrever o roteiro de publicação: Supabase (`db push` antes do deploy do app), Vercel sem `DEMO_PASSWORD`, segredos no Vault, conferências depois do primeiro deploy | Ainda sem doc (combinado em 22/10, a escrever quando começar o deploy) |
 | GitHub Actions com as conferências rápidas e o e2e completo, e `main` protegida | `technical/20-tempo-dos-testes.md`, Etapa 2 |
+| Webhook na conta principal do Asaas (eventos de cobrança e de assinatura, mesmo token): hoje só as subcontas têm | `product/13-modelo-de-negocio.md` §6, Pendente |
 | `ASAAS_API_URL` da API real antes do build (desliga os botões de simular pagamento) | `technical/14-asaas-mcp.md` |
 | `ASAAS_WEBHOOK_EMAIL` (contato@gestarahub.com.br) na Vercel; webhooks de subcontas já criadas só pegam ao registrar de novo | `technical/19-desempenho-e-escala.md` |
 | Aprovar a conta do MailerSend ("Get approved"); hoje só entrega para 1 destinatário | Painel do MailerSend (ação sua, não é código) |
