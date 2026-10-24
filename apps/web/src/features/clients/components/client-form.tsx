@@ -84,6 +84,7 @@ import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
 import { MAX_INSTALLMENTS, resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
 import { ageLabel } from "@/lib/birthdays";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Teto da 1a cobranca (R$ 100.000,00): evita valor digitado errado. */
 const MAX_FIRST_CHARGE_CENTS = 10_000_000;
@@ -146,7 +147,8 @@ const DISCOUNT_TYPE_OPTIONS = [
   { value: "percentage", label: "Porcentagem (%)" },
 ];
 
-const todayDateISO = format(new Date(), "yyyy-MM-dd");
+// Lido na hora (nao no carregamento do modulo): o fuso do espaco ja esta ligado.
+const todayDateISO = () => dateInSpace();
 
 function toDefaults(
   client?: Client,
@@ -159,7 +161,7 @@ function toDefaults(
   const isScholar = Boolean(client?.discount?.scholarship);
   const hasDiscount = Boolean(!isScholar && client?.discount && client.discount.value > 0);
   const paymentMode = defaultPaymentMode({ client, isClasses, areaBillingMode });
-  const initialStartDate = client?.planStartDate || todayDateISO;
+  const initialStartDate = client?.planStartDate || todayDateISO();
   const initialStrategy = client?.billingStrategy || orgSettings?.midMonthStrategy || "prorated";
   const initialTiming = client?.cyclePaymentTiming || orgSettings?.billingTiming || "prepaid";
   const defaultDueDay = client?.dueDay ?? orgSettings?.defaultDueDay ?? 10;
@@ -206,7 +208,7 @@ function toDefaults(
     packageId: "",
     packagePriceCents: 0,
     packageInstallments: "1",
-    packageFirstDueDate: todayDateISO,
+    packageFirstDueDate: todayDateISO(),
     scholarshipKind:
       isScholar && !(client?.discount?.type === "percentage" && client.discount.value >= 100)
         ? "partial"
@@ -657,7 +659,7 @@ export function ClientForm({
       {
         period: selectedPlan.period,
         planPriceCents: basePriceCents,
-        startDate: planStartDate || todayDateISO,
+        startDate: planStartDate || todayDateISO(),
         strategy: billingStrategy,
         timing: cyclePaymentTiming,
         dueDay: billingStrategy === "full_cycle" ? undefined : defaultDueDay,
@@ -1013,7 +1015,7 @@ export function ClientForm({
       planId,
       // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
       // (as mensalidades isentas seguem essa regra).
-      planStartDate: planId || isFull ? values.planStartDate || todayDateISO : undefined,
+      planStartDate: planId || isFull ? values.planStartDate || todayDateISO() : undefined,
       billingStrategy: planId || isFull ? values.billingStrategy || "prorated" : undefined,
       cyclePaymentTiming: planId || isFull ? values.cyclePaymentTiming || "prepaid" : undefined,
       dueDay: planId || isFull ? values.dueDay || defaultDueDay : undefined,
@@ -1042,7 +1044,7 @@ export function ClientForm({
               packageId: values.packageId,
               priceCents: Math.round(values.packagePriceCents ?? 0),
               installments: Number(values.packageInstallments || 1),
-              firstDueDate: values.packageFirstDueDate || todayDateISO,
+              firstDueDate: values.packageFirstDueDate || todayDateISO(),
             });
             packageSold = true;
           } catch (error) {
@@ -1147,7 +1149,7 @@ export function ClientForm({
             <DateField<ClientFormValues>
               name="birthDate"
               label="Data de nascimento"
-              max={todayDateISO}
+              max={todayDateISO()}
               hint={birthDateHint}
               disabled={pending}
             />
@@ -1670,7 +1672,7 @@ export function ClientForm({
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       <span>
                         Autorizado eletronicamente pelo responsável via WhatsApp
-                        {client.minorConsentAt ? ` (${client.minorConsentAt.slice(0, 10).split("-").reverse().join("/")})` : ""}.
+                        {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
                       </span>
                     </div>
                   ) : client?.minorConsentStatus === "confirmed_paper" ? (
@@ -1678,7 +1680,7 @@ export function ClientForm({
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       <span>
                         Termo físico presencial arquivado na unidade
-                        {client.minorConsentAt ? ` (${client.minorConsentAt.slice(0, 10).split("-").reverse().join("/")})` : ""}.
+                        {client.minorConsentAt ? ` (${dateInSpace(client.minorConsentAt).split("-").reverse().join("/")})` : ""}.
                       </span>
                     </div>
                   ) : (

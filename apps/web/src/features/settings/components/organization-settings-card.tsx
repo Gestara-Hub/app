@@ -2,7 +2,8 @@
 
 import { isPossiblePhone } from "@gestarahub/core/phone";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BRAZIL_TIME_ZONES, resolveSpaceTimeZone, timeZoneForState } from "@gestarahub/core/date";
 import { useForm, FormProvider, useFormState, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -100,6 +101,7 @@ const schema = z.object({
       message: "Telefone inválido.",
     }),
   address: addressSchema.optional(),
+  timeZone: z.enum(BRAZIL_TIME_ZONES.map((z) => z.id) as [string, ...string[]]),
   classSegment: z.enum(
     Object.keys(CLASSES_SEGMENT_PRESETS) as [ClassesBusinessSegment, ...ClassesBusinessSegment[]],
   ),
@@ -120,6 +122,8 @@ const schema = z.object({
   }
 });
 type OrgUnitValues = z.infer<typeof schema>;
+
+const TIME_ZONE_OPTIONS: SelectOption[] = BRAZIL_TIME_ZONES.map((z) => ({ value: z.id, label: z.label }));
 
 const CLASS_SEGMENT_OPTIONS: SelectOption[] = Object.values(CLASSES_SEGMENT_PRESETS).map((p) => ({
   value: p.id,
@@ -218,6 +222,7 @@ function OrgUnitForm({
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const updateOrg = useUpdateOrganization();
+  const router = useRouter();
   const updateUnit = useUpdateUnit();
   const pending = updateOrg.isPending || updateUnit.isPending;
 
@@ -233,6 +238,7 @@ function OrgUnitForm({
       midMonthStrategy: organization.settings?.midMonthStrategy ?? "prorated",
       phone: unit.phone ?? "",
       address: parseUnitAddress(unit.address),
+      timeZone: resolveSpaceTimeZone(organization.settings, unit.address),
       classSegment: organization.classSegment ?? DEFAULT_CLASS_SEGMENT,
       customSegmentName: organization.customSegmentName ?? "",
       customSegmentProgression: organization.customSegmentProgression ?? DEFAULT_CUSTOM_PROGRESSION,
@@ -263,6 +269,12 @@ function OrgUnitForm({
   const neighborhood = useWatch({ control: form.control, name: "address.neighborhood" });
   const city = useWatch({ control: form.control, name: "address.city" });
   const state = useWatch({ control: form.control, name: "address.state" });
+  // Sem fuso escolhido, segue o estado do endereco (pode trocar, ex.: Noronha).
+  useEffect(() => {
+    if (organization.settings?.timeZone || form.getFieldState("timeZone").isDirty) return;
+    const suggested = timeZoneForState(state);
+    if (suggested && suggested !== form.getValues("timeZone")) form.setValue("timeZone", suggested);
+  }, [state, organization.settings?.timeZone, form]);
 
   const currentTiming = useWatch({ control: form.control, name: "billingTiming" });
   const currentStrategy = useWatch({ control: form.control, name: "midMonthStrategy" });
@@ -383,6 +395,7 @@ function OrgUnitForm({
         dirty.defaultDueDay ||
         dirty.billingTiming ||
         dirty.midMonthStrategy ||
+        dirty.timeZone ||
         // 1o salvamento grava as regras padrao (o onboarding depende delas).
         !organization.settings?.billingTiming,
     );
@@ -407,6 +420,7 @@ function OrgUnitForm({
             defaultDueDay: values.defaultDueDay,
             billingTiming: values.billingTiming,
             midMonthStrategy: values.midMonthStrategy,
+            ...(dirty.timeZone ? { timeZone: values.timeZone } : {}),
           },
         });
       }
@@ -428,6 +442,8 @@ function OrgUnitForm({
       }
       setBillingArrival(0);
       form.reset(values);
+      // O fuso da sessao vem do servidor: recarrega o layout com o novo.
+      if (dirty.timeZone || dirty.address) router.refresh();
     } catch (error) {
       toast.error(
         getErrorMessage(error, "Não foi possível salvar as configurações."),
@@ -556,6 +572,16 @@ function OrgUnitForm({
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-5 border-t border-border/40 mt-1">
               <AddressFields<OrgUnitValues> prefix="address" disabled={pending} />
+              <div className="mt-4 sm:max-w-sm">
+                <SelectField<OrgUnitValues>
+                  name="timeZone"
+                  label="Fuso horário"
+                  hint="Define o dia e a hora de cobranças e aulas."
+                  options={TIME_ZONE_OPTIONS}
+                  clearable={false}
+                  disabled={pending}
+                />
+              </div>
             </AccordionContent>
           </AccordionItem>
 

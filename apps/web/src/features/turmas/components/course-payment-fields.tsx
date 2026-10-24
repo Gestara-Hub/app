@@ -10,6 +10,7 @@ import { getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { DateField, InputCurrency, SelectField } from "@/components/form";
 import { pastDueHint, paymentSummary } from "../installments-summary";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -38,7 +39,7 @@ export function coursePaymentDefaults(turma: CourseClass): CoursePaymentValues {
   return {
     priceCents: turma.coursePriceCents ?? 0,
     installments: "1",
-    firstDueDate: format(new Date(), "yyyy-MM-dd"),
+    firstDueDate: dateInSpace(),
   };
 }
 
@@ -71,7 +72,7 @@ export function applyCourseErrors(form: UseFormReturn<CoursePaymentValues>, erro
 
 /** "R$ 150,00 à vista, vence hoje" ou "R$ 600,00 em 3x, 1ª vence 25/10". */
 function chargeLine(priceCents: number, installments: number, firstDueDate: string): string {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const due = !DATE_RE.test(firstDueDate)
     ? null
     : firstDueDate === today

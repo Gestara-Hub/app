@@ -5,7 +5,6 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import type {
   FileAttachment,
   FinancialEntry,
@@ -56,6 +55,7 @@ import {
   useUpdateFinanceEntry,
 } from "../hooks/use-finance";
 import { FinancialCategoryManagerDialog } from "./financial-category-manager-dialog";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -461,7 +461,7 @@ export function FinanceEntryFormDialog({
   }
   const current = shown.entry;
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const defaultDueDate = today.startsWith(competence) ? today : `${competence}-10`;
 
   return (

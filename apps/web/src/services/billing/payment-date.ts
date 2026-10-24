@@ -1,6 +1,7 @@
 import type { DateISO, DateTimeISO } from "@gestarahub/contracts";
 import { format, parseISO } from "date-fns";
 import { nowIso, validationError } from "@/services/world/ops";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -10,7 +11,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * o fechamento usam o mes da data). Data no futuro nao vale.
  */
 export function paidAtFromDate(paidOn?: DateISO): DateTimeISO {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   if (!paidOn || paidOn === today) return nowIso();
   if (!DATE_RE.test(paidOn) || Number.isNaN(parseISO(paidOn).getTime())) {
     throw validationError([{ field: "paidOn", message: "Informe a data do pagamento." }]);
@@ -23,6 +24,6 @@ export function paidAtFromDate(paidOn?: DateISO): DateTimeISO {
 
 /** " em 05/10" quando o pagamento nao e de hoje (texto da auditoria). */
 export function paidOnNote(paidOn?: DateISO): string {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   return paidOn && paidOn !== today ? ` em ${format(parseISO(paidOn), "dd/MM/yyyy")}` : "";
 }

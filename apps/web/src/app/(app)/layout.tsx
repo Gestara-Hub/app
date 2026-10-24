@@ -5,7 +5,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { NavigationTracker } from "@/components/layout/navigation-tracker";
-import { getCurrentUser } from "@/features/auth/get-current-user";
+import { getCurrentUser, getSessionTimeZone } from "@/features/auth/get-current-user";
 import { SessionProvider } from "@/features/auth/session-provider";
 import { BrowserErrorReporter, SecurityPromptHost } from "@/features/auth";
 import { ScheduleNoticeHost } from "@/features/turmas";
@@ -33,6 +33,8 @@ export default async function AppLayout({
   const model = organizationModelById(user.organizationId) ?? "scheduling";
   // Tier do plano GestaraHub (cookie espelho do store do navegador; seed = free).
   const tier = await getOrganizationTier(user.organizationId);
+  // Fuso do espaco: "hoje" e "agora" do navegador saem dele, nao do aparelho.
+  const timeZone = await getSessionTimeZone(user);
 
   // Estado de colapso da sidebar persistido pelo shadcn no cookie `sidebar_state`.
   const cookieStore = await cookies();
@@ -51,7 +53,7 @@ export default async function AppLayout({
   }
 
   return (
-    <SessionProvider user={user} model={model} tier={tier}>
+    <SessionProvider user={user} model={model} tier={tier} timeZone={timeZone}>
       <UserPreferencesProvider>
         <ViewModeProvider initialModes={initialViewModes}>
           <SidebarProvider key={user.organizationId} defaultOpen={defaultOpen}>

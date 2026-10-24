@@ -25,7 +25,7 @@ import { ScrollCueArea } from "@/components/shared/scroll-cue-area";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { formatCents, plural } from "@gestarahub/core/format";
-import { todayISO } from "@gestarahub/core/date";
+import { todayISO, dateInSpace } from "@gestarahub/core/date";
 import {
   useAttendanceSummary,
   useCharges,
@@ -104,7 +104,7 @@ function useAcademyDashboard() {
   // A data de "hoje" vem do relogio do usuario: so no client (sem erro de hidratacao).
   const isClient = useIsClient();
   const todayDate = todayISO();
-  const currentCompetence = format(parseISO(todayDate), "yyyy-MM");
+  const currentCompetence = dateInSpace(todayDate).slice(0, 7);
 
   const sessionsQuery = useClassSessions({
     dateFrom: todayDate,

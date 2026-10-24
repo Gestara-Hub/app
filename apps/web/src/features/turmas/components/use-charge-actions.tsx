@@ -2,7 +2,6 @@
 
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState, type ReactElement, type ReactNode } from "react";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
 import {
@@ -51,6 +50,7 @@ import {
   isReplaced,
   isSystemCanceled,
 } from "./charge-parts";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Acoes de uma cobranca (marcar pago, lembrar no WhatsApp, cobrar online,
@@ -165,7 +165,7 @@ export function useChargeActions() {
             icon: <MessageCircle className="size-4" />,
             disabled: !whatsapp.ready,
             onSelect: () => {
-              const reminder = chargeReminder(c, format(new Date(), "yyyy-MM-dd"));
+              const reminder = chargeReminder(c, dateInSpace());
               if (!reminder) return;
               whatsapp.send({
                 trigger: reminder.trigger,

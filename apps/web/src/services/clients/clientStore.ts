@@ -1,7 +1,7 @@
 import type { Id } from "@gestarahub/contracts";
-import { format } from "date-fns";
 import { store } from "@/services/world/store";
 import { notFoundError } from "@/services/world/ops";
+import { dateInSpace } from "@gestarahub/core/date";
 
 export function clone<T>(value: T): T {
   return structuredClone(value);
@@ -10,7 +10,7 @@ export function clone<T>(value: T): T {
 export const NOT_FOUND = "Cliente não encontrado.";
 
 export function todayISO(): string {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 export async function ensureClientInStore(id: Id): Promise<number> {

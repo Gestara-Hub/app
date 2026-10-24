@@ -6,6 +6,7 @@ import type {
   Organization,
   Unit,
 } from "@gestarahub/contracts";
+import { dateInSpace } from "@gestarahub/core/date";
 import type { TenantContext } from "./tenant";
 
 /** Linha de `organizations` no contrato (sem as tarifas da subconta). */
@@ -61,9 +62,9 @@ export async function loadUnit(ctx: TenantContext): Promise<Unit> {
   return unitFromRow(data);
 }
 
-/** Data de hoje no horario do espaco (Brasilia), nao no do servidor. */
+/** Data de hoje no fuso do espaco da requisicao, nao no do servidor. */
 export function todayInSpace(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return dateInSpace();
 }
 
 /** Erro do Postgres de indice unico. */

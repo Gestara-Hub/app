@@ -3,7 +3,6 @@
 import { useEffect, type ReactNode } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import type { DateISO, PaymentMethod } from "@gestarahub/contracts";
 import { DateField, FileDropField, PaymentMethodField } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -18,8 +17,9 @@ import {
 } from "@/components/ui/sheet";
 import { RECEIPT_FILE_RULES } from "@/lib/files";
 import { paymentFormSchema, type PaymentFormValues } from "@/lib/payment-form";
+import { dateInSpace } from "@gestarahub/core/date";
 
-const todayISO = () => format(new Date(), "yyyy-MM-dd");
+const todayISO = () => dateInSpace();
 const defaults = (): Partial<PaymentFormValues> => ({ method: undefined, paidOn: todayISO(), receipts: [] });
 
 /** O que o diálogo devolve: forma, dia do pagamento e comprovantes. */

@@ -1,13 +1,16 @@
 "use server";
 
 import {
+  asaasToday,
   createOrFindCustomer,
   createSubscription,
   getAsaasConfig,
   getPixQrCode,
   getSubscriptionPayments,
+  notAfterAsaasToday,
   receiveInCash,
 } from "@/lib/asaas";
+import { dateInSpace } from "@gestarahub/core/date";
 import type { Subscription } from "@gestarahub/contracts";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
@@ -147,7 +150,8 @@ export async function createAsaasSubscriptionCheckoutAction(
       externalReference: input.organizationId,
     });
 
-    const todayIso = new Date().toISOString().split("T")[0];
+    // Primeiro vencimento: hoje, no calendario do Asaas.
+    const todayIso = asaasToday();
 
     // 2. Prepara o payload da assinatura
     const subscriptionPayload = {
@@ -297,8 +301,7 @@ export async function simulateAsaasSubscriptionPaymentAction(
       return { success: true, subscription };
     }
 
-    const todayIso = new Date().toISOString().split("T")[0];
-    await receiveInCash(paymentId, todayIso, priceConfig.value);
+    await receiveInCash(paymentId, notAfterAsaasToday(dateInSpace()), priceConfig.value);
     const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId);
     return check.isPaid
       ? { success: true, subscription: check.subscription }

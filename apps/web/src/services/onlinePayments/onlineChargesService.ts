@@ -250,7 +250,12 @@ export const onlineChargesService = {
 
       if (realAccountInBrowser()) {
         const result = await simulateOnlinePaidAction(onlinePaymentId);
-        if (!result) {
+        if (!result.ok && result.reason === "gateway_refused") {
+          throw apiError("CONFLICT", "O parceiro de pagamentos recusou a baixa. A cobrança continua em aberto.", {
+            httpStatus: 409,
+          });
+        }
+        if (!result.ok) {
           throw notFoundError("Pagamento online não encontrado no banco.");
         }
         // Sincroniza o store local para os seletores que dependem dele

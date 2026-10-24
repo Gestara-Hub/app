@@ -8,11 +8,11 @@ import type {
   StudentGoalProgressEntry,
   StudentModalityProgression,
 } from "@gestarahub/contracts";
-import { format, parseISO } from "date-fns";
 import { firstLevelForAge, resolveModalityTrack } from "@/lib/progression-tracks";
 import { getCurrentActor } from "@/services/world/actor";
 import { store } from "@/services/world/store";
 import { newId, normalizeText, notFoundError, nowIso } from "@/services/world/ops";
+import { dateInSpace } from "@gestarahub/core/date";
 
 // --- Sugestoes da evolucao (aprendidas do uso) ----------------------------
 
@@ -80,8 +80,8 @@ export function progressionOf(client: Client, modalityId: Id, date: DateISO): St
   const since =
     store.enrollments
       .filter((e) => e.studentId === client.id && groupIds.has(e.classGroupId))
-      .map((e) => format(parseISO(e.enrolledAt), "yyyy-MM-dd"))
-      .sort()[0] ?? (client.createdAt ? format(parseISO(client.createdAt), "yyyy-MM-dd") : date);
+      .map((e) => dateInSpace(e.enrolledAt))
+      .sort()[0] ?? (client.createdAt ? dateInSpace(client.createdAt) : date);
   return {
     modalityId,
     modalityName: modality?.name,

@@ -3,6 +3,7 @@ import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
 import { notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Modelo 3 (turmas) — Fatia 1. Sessoes/aulas sao GERADAS on-the-fly a partir dos
@@ -15,13 +16,13 @@ export function clone<T>(value: T): T {
 }
 
 export function todayISO(): DateISO {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 // Data LOCAL (yyyy-MM-dd) de um timestamp ISO. `.slice(0, 10)` pega a data UTC
 // e erra o dia a noite (ex.: 22h em Brasilia ja e o dia seguinte em UTC).
 function localDateOf(iso: string): DateISO {
-  return format(parseISO(iso), "yyyy-MM-dd");
+  return dateInSpace(iso);
 }
 
 export function modalityName(id?: Id): string | undefined {

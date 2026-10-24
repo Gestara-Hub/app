@@ -1,8 +1,8 @@
 "use client";
 
-import { format } from "date-fns";
 import { Cake } from "lucide-react";
 import { UPCOMING_BIRTHDAY_DAYS, daysUntilBirthday, isBirthdayToday } from "@/lib/birthdays";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Selo de aniversario. Sem `date`, compara com hoje ("Aniversário hoje"); com
@@ -24,7 +24,7 @@ export function BirthdayBadge({
   compact?: boolean;
 }) {
   if (!birthDate) return null;
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const day = date ?? today;
 
   if (isBirthdayToday(birthDate, day)) {

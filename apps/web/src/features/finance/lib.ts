@@ -1,5 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Abas do Financeiro (valor do `?tab=`). */
 export type FinanceTab = "resumo" | "lancamentos" | "professores";
@@ -14,7 +15,7 @@ export function isFinanceTab(value: string | null | undefined): value is Finance
 
 /** Competencia atual "YYYY-MM" (data local). */
 export function currentCompetence(): string {
-  return format(new Date(), "yyyy-MM");
+  return dateInSpace().slice(0, 7);
 }
 
 export function isCompetence(value: string | null | undefined): value is string {

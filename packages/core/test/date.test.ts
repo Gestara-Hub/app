@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
-import { elapsedLabel, isPastSlot, nowTime, relativeDateLabel, todayISO } from "../src/date.ts";
+import {
+  dateInSpace,
+  elapsedLabel,
+  isPastSlot,
+  nowTime,
+  relativeDateLabel,
+  resolveSpaceTimeZone,
+  startOfDayInSpace,
+  setSpaceTimeZoneProvider,
+  timeZoneForState,
+  todayISO,
+} from "../src/date.ts";
 
 const TODAY = "2026-10-14";
 const label = (iso: string, relative?: boolean) => relativeDateLabel(iso, { today: TODAY, relative });
@@ -114,27 +125,28 @@ describe("relativeDateLabel: entradas inválidas", () => {
   });
 });
 
-describe("todayISO, nowTime e isPastSlot (relógio simulado)", () => {
+describe("todayISO, nowTime e isPastSlot (relógio simulado, fuso de Brasília)", () => {
+  // Brasília é UTC−3 o ano todo: 10h30 no espaço são 13h30 UTC, em qualquer máquina.
   beforeEach(() => {
-    mock.timers.enable({ apis: ["Date"], now: new Date(2026, 9, 14, 10, 30).getTime() });
+    mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 9, 14, 13, 30) });
   });
 
   afterEach(() => {
     mock.timers.reset();
   });
 
-  it("todayISO usa a data local em YYYY-MM-DD", () => {
+  it("todayISO usa a data do espaço em YYYY-MM-DD", () => {
     assert.equal(todayISO(), "2026-10-14");
   });
 
   it("todayISO completa mês e dia com zero", () => {
-    mock.timers.setTime(new Date(2026, 0, 5, 8, 0).getTime());
+    mock.timers.setTime(Date.UTC(2026, 0, 5, 11, 0));
     assert.equal(todayISO(), "2026-01-05");
   });
 
-  it("nowTime usa a hora local em HH:mm", () => {
+  it("nowTime usa a hora do espaço em HH:mm", () => {
     assert.equal(nowTime(), "10:30");
-    mock.timers.setTime(new Date(2026, 9, 14, 7, 5).getTime());
+    mock.timers.setTime(Date.UTC(2026, 9, 14, 10, 5));
     assert.equal(nowTime(), "07:05");
   });
 
@@ -176,5 +188,69 @@ describe("elapsedLabel", () => {
 
   it("instante no futuro conta como agora", () => {
     assert.equal(elapsedLabel(now + 120_000, now), "agora mesmo");
+  });
+});
+
+describe("dateInSpace: dia no fuso do espaço (Brasil)", () => {
+  it("pagamento às 21h41 de Brasília é do mesmo dia, não do dia seguinte em UTC", () => {
+    // 23/10 21:41 em Brasília = 24/10 00:41 UTC (achado 60).
+    assert.equal(dateInSpace("2026-10-24T00:41:00.000Z"), "2026-10-23");
+    assert.equal(new Date("2026-10-24T00:41:00.000Z").toISOString().slice(0, 10), "2026-10-24");
+  });
+
+  it("de manhã em UTC ainda é o dia anterior em Brasília só até as 3h", () => {
+    assert.equal(dateInSpace("2026-10-24T02:59:00.000Z"), "2026-10-23");
+    assert.equal(dateInSpace("2026-10-24T03:00:00.000Z"), "2026-10-24");
+  });
+
+  it("aceita Date e data sem hora", () => {
+    assert.equal(dateInSpace(new Date("2026-10-24T00:41:00.000Z")), "2026-10-23");
+    assert.equal(dateInSpace("2026-10-05"), "2026-10-05");
+  });
+});
+
+describe("fuso do espaço: os quatro fusos do Brasil", () => {
+  afterEach(() => setSpaceTimeZoneProvider(undefined));
+
+  it("o mesmo instante cai em dias diferentes conforme o fuso", () => {
+    // 24/10 02:30 UTC: 23h30 em Brasília, 22h30 em Manaus, 21h30 no Acre, 0h30 em Noronha.
+    const instant = "2026-10-24T02:30:00.000Z";
+    assert.equal(dateInSpace(instant, "America/Sao_Paulo"), "2026-10-23");
+    assert.equal(dateInSpace(instant, "America/Manaus"), "2026-10-23");
+    assert.equal(dateInSpace(instant, "America/Rio_Branco"), "2026-10-23");
+    assert.equal(dateInSpace(instant, "America/Noronha"), "2026-10-24");
+  });
+
+  it("hoje e agora seguem o fuso do espaço atual", () => {
+    mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-24T02:30:00.000Z") });
+    try {
+      setSpaceTimeZoneProvider(() => "America/Rio_Branco");
+      assert.equal(todayISO(), "2026-10-23");
+      assert.equal(nowTime(), "21:30");
+      setSpaceTimeZoneProvider(() => "America/Noronha");
+      assert.equal(todayISO(), "2026-10-24");
+      assert.equal(nowTime(), "00:30");
+      // Fuso desconhecido: Brasília.
+      setSpaceTimeZoneProvider(() => "Europe/Lisbon");
+      assert.equal(nowTime(), "23:30");
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
+  it("o dia do espaço começa à meia-noite local, em UTC", () => {
+    assert.equal(startOfDayInSpace("2026-10-23", "America/Sao_Paulo"), "2026-10-23T03:00:00.000Z");
+    assert.equal(startOfDayInSpace("2026-10-23", "America/Manaus"), "2026-10-23T04:00:00.000Z");
+    assert.equal(startOfDayInSpace("2026-10-23", "America/Rio_Branco"), "2026-10-23T05:00:00.000Z");
+    assert.equal(startOfDayInSpace("2026-10-23", "America/Noronha"), "2026-10-23T02:00:00.000Z");
+  });
+
+  it("o fuso vem da escolha, senão do estado da unidade, senão Brasília", () => {
+    assert.equal(resolveSpaceTimeZone({ timeZone: "America/Noronha" }, { state: "AM" }), "America/Noronha");
+    assert.equal(resolveSpaceTimeZone({}, { state: "am" }), "America/Manaus");
+    assert.equal(resolveSpaceTimeZone(undefined, { state: "AC" }), "America/Rio_Branco");
+    assert.equal(resolveSpaceTimeZone(undefined, "Rua sem estado"), "America/Sao_Paulo");
+    assert.equal(timeZoneForState("MS"), "America/Manaus");
+    assert.equal(timeZoneForState("PE"), "America/Sao_Paulo");
   });
 });

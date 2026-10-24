@@ -88,6 +88,7 @@ import { SubstituteInstructorDialog } from "./substitute-instructor-dialog";
 import { calendarHrefFor } from "../calendar-filters";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Saldo do pacote de quem paga a aula com pacote: "7 de 10 aulas", "Última
@@ -254,10 +255,10 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   );
   const rosterIds = new Set(roster.map((r) => r.studentId));
   // Presenca so faz sentido para aula que ja aconteceu (ou acontece hoje).
-  const isFutureSession = session.date > format(new Date(), "yyyy-MM-dd");
+  const isFutureSession = session.date > dateInSpace();
   const availableClients = (clients ?? []).filter((c) => !rosterIds.has(c.id));
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const isToday = session.date === today;
   const sessionDate = parseISO(session.date);
   const dateLabel = format(sessionDate, "EEEE, d 'de' MMMM", { locale: ptBR });

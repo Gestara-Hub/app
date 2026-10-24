@@ -25,6 +25,7 @@ import {
   resolveTrackStyle,
 } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Resumo do aluno (ficha do aluno, doc 22 item 2): a leitura unica que a API
@@ -42,12 +43,12 @@ export const LAST_RECORDS = 3;
 export const LAST_MESSAGES = 5;
 
 export function todayISO(): DateISO {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 /** Data LOCAL de um timestamp ISO. */
 export function localDateOf(iso: string): DateISO {
-  return format(parseISO(iso), "yyyy-MM-dd");
+  return dateInSpace(iso);
 }
 
 /** Em aberto: pendente ou atrasada (o atraso e derivado do vencimento). */

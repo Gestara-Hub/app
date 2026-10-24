@@ -1,9 +1,9 @@
 import type { ClassGroup, ReportFilter, ReportType } from "@gestarahub/contracts";
 import { firstDayOfCompetence, lastDayOfCompetence } from "@gestarahub/core/finance";
-import { format } from "date-fns";
 import { sessionIdsInRange } from "../classes/classSlices";
 import { WORLD_COLLECTIONS } from "../world/tables";
 import type { MethodSlice } from "../world/slices";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Recortes dos relatorios (doc 19, fase 2). Nenhum relatorio le mensagens nem
@@ -27,7 +27,7 @@ const generateReport: MethodSlice = async ([type, filter], load) => {
     return;
   }
   // Mesmo mes do relatorio (o mes local quando nao vem no filtro).
-  const competence = (filter as ReportFilter | undefined)?.competence || format(new Date(), "yyyy-MM");
+  const competence = (filter as ReportFilter | undefined)?.competence || dateInSpace().slice(0, 7);
   const groups = (await load.all("classGroups")) as unknown as ClassGroup[];
   const ids = sessionIdsInRange(groups, firstDayOfCompetence(competence), lastDayOfCompetence(competence));
   await load.where("attendances", "sessionId", ids);

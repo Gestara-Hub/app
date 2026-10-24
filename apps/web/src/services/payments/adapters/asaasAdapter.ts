@@ -1,5 +1,7 @@
 import type { DateTimeISO } from "@gestarahub/contracts";
+import { dateInSpace } from "@gestarahub/core/date";
 import {
+  asaasToday,
   createOrFindCustomer,
   createPixPayment,
   getPixQrCode,
@@ -29,8 +31,9 @@ function addMinutes(minutes: number): DateTimeISO {
 function calculateAsaasDueDate(expiresInMinutes: number): string {
   const expirationMs = (expiresInMinutes || 1440) * 60 * 1000;
   const validUntil = new Date(Date.now() + expirationMs);
-  const todayDate = new Date().toISOString().slice(0, 10);
-  const targetDueDate = validUntil.toISOString().slice(0, 10);
+  // Vence no dia do espaco, nunca antes do "hoje" do Asaas.
+  const todayDate = asaasToday();
+  const targetDueDate = dateInSpace(validUntil);
   return targetDueDate >= todayDate ? targetDueDate : todayDate;
 }
 

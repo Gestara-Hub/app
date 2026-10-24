@@ -11,13 +11,13 @@ import { documentSlices } from "./documentSlices";
 import { store } from "../world/store";
 import { chargeLabelOf, competenceLabelOf } from "./paymentPage";
 import type { TenantContext } from "./tenant";
+import { currentSpaceTimeZone } from "@gestarahub/core/date";
 
 /**
  * Termo do responsavel, boletim do aluno e extrato da conta de recebimento,
  * no servidor (runInWorld). Quem chama confere a permissao. Modulo so do servidor.
  */
 
-const TIME_ZONE = "America/Sao_Paulo";
 
 function organizationDetails(): string | undefined {
   return [store.unit?.name, store.unit?.phone].filter(Boolean).join(" · ") || undefined;
@@ -136,9 +136,9 @@ function methodLabelOf(payment: OnlinePayment): string {
   return payment.method === "pix" ? "Pix" : payment.method === "boleto" ? "Boleto" : "Pagamento online";
 }
 
-/** "2026-10" do instante, no horario do Brasil. */
+/** "2026-10" do instante, no fuso do espaco. */
 function competenceOf(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: TIME_ZONE }).slice(0, 7);
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: currentSpaceTimeZone() }).slice(0, 7);
 }
 
 /** Extrato dos pagamentos online confirmados no mes (valor, taxas, liquido e saldo). */

@@ -8,20 +8,20 @@ import type {
   GeneratedReportData,
   PackageReportData,
 } from "@gestarahub/contracts";
-import { format } from "date-fns";
 import { store } from "@/services/world/store";
 import { ensureMembershipCharges } from "../billing";
 import { assertFeature } from "../subscription/subscriptionService";
 import { buildHeader } from "./reportCatalog";
 import { VOID_STATUSES, paidIn, buildCourseReport, buildPackageReport } from "./courseAndPackageReports";
 import type { ReportContext } from "./reportContext";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Relatorios de dinheiro: cobrancas, cursos, pacotes e DRE. */
 
 export async function buildBillingStatement({ competence, periodLabel }: ReportContext): Promise<GeneratedReportData> {
     // Mensalidades do mes nascem na leitura (como em Cobrancas e no Financeiro).
     await ensureMembershipCharges(competence);
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = dateInSpace();
     const clientsById = new Map(store.clients.map((c) => [c.id, c.name]));
 
     // Cobrancas da competencia, sem as canceladas nem as isentas (nao sao
@@ -77,13 +77,13 @@ export async function buildBillingStatement({ competence, periodLabel }: ReportC
 }
 
 export async function buildCourseSummary({ competence, periodLabel }: ReportContext): Promise<GeneratedReportData> {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = dateInSpace();
     const data: CourseReportData = { header: buildHeader(periodLabel), ...buildCourseReport(competence, today) };
     return { type: "course_summary", data };
 }
 
 export async function buildPackageSummary({ competence, periodLabel }: ReportContext): Promise<GeneratedReportData> {
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = dateInSpace();
     const data: PackageReportData = { header: buildHeader(periodLabel), ...buildPackageReport(competence, today) };
     return { type: "package_summary", data };
 }

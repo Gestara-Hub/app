@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { Bell } from "lucide-react";
 import { plural } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCan, useModel } from "@/features/auth";
 import { DashboardTodo, useReminderCount } from "./dashboard-todo";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
@@ -22,7 +22,7 @@ export function RemindersBell() {
 }
 
 function RemindersBellButton() {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const count = useReminderCount(today);
   const [open, setOpen] = useState(false);
   if (count === 0 && !open) return null;

@@ -15,6 +15,7 @@ import {
   useQuery,
   type QueryClient,
 } from "@tanstack/react-query";
+import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { identifyUser } from "@/lib/analytics";
 import { can as canFn } from "@/lib/permissions";
 import { tierHasFeature, tierOf } from "@/lib/subscription";
@@ -60,18 +61,22 @@ export function SessionProvider({
   user,
   model,
   tier = "free",
+  timeZone,
   children,
 }: {
   user: UserView;
   model: OperationalModel;
   /** Tier do plano GestaraHub resolvido no server (ver get-subscription-tier). */
   tier?: SubscriptionTier;
+  /** Fuso do espaco (resolvido no server): o "hoje" do navegador sai dele. */
+  timeZone?: string;
   children: ReactNode;
 }) {
   // Sincrono (nao em effect) para valer ja no 1o render, antes das queries.
   if (typeof window !== "undefined") {
     ensureUserTenant(user);
     setActiveOrganization(user.organizationId);
+    setSpaceTimeZoneProvider(() => timeZone);
   }
 
   const sessionKey = `${user.organizationId}:${user.id}`;

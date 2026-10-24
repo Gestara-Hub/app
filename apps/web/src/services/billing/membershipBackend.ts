@@ -8,6 +8,7 @@ import {
   planMembershipCharges,
 } from "@gestarahub/core/membership-generation";
 import type { BillingDefaults } from "@gestarahub/core/billing";
+import { dateInSpace, resolveSpaceTimeZone } from "@gestarahub/core/date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { listChargesFromDb, listPlansFromDb } from "./billingBackend";
 import { chargeToDbRow } from "./billingRows";
@@ -30,7 +31,7 @@ export async function generateMembershipChargesAction(
   const client = createSupabaseAdminClient();
   const [{ data: org }, { data: unit }, clients, plans, classGroups, enrollments, charges] = await Promise.all([
     client.from("organizations").select("settings").eq("id", organizationId).maybeSingle(),
-    client.from("units").select("id").eq("organization_id", organizationId).limit(1).maybeSingle(),
+    client.from("units").select("id, address").eq("organization_id", organizationId).limit(1).maybeSingle(),
     listClientsFromDb(organizationId),
     listPlansFromDb(organizationId),
     listClassGroupsFromDb(organizationId),
@@ -45,8 +46,8 @@ export async function generateMembershipChargesAction(
     enrollments,
     charges,
     settings: (org?.settings ?? undefined) as BillingDefaults | undefined,
-    // Hoje no horario do espaco (Brasilia), nao no do servidor.
-    today: new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }),
+    // Hoje no fuso do espaco, nao no do servidor (a rotina roda sem sessao).
+    today: dateInSpace(new Date(), resolveSpaceTimeZone(org?.settings as { timeZone?: string } | undefined, unit?.address)),
   };
   const planned = planMembershipCharges(world, membershipCompetencesToGenerate(world, requested));
   if (planned.length === 0) return 0;

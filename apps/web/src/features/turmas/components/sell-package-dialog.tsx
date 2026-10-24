@@ -34,6 +34,7 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { withKind } from "@/lib/text";
 import { useLessonPackages, useSellPackage, useStudentPackages } from "../hooks/use-packages";
 import { pastDueHint, paymentSummary } from "../installments-summary";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -95,7 +96,7 @@ function SellPackageForm({
       packageId: "",
       priceCents: 0,
       installments: "1",
-      firstDueDate: format(new Date(), "yyyy-MM-dd"),
+      firstDueDate: dateInSpace(),
     },
   });
 
@@ -128,7 +129,7 @@ function SellPackageForm({
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Regra 6: comprar de novo o mesmo pacote traz o saldo dele; outro pacote da
   // mesma turma fica separado (avisa, para ninguem esperar a soma).
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const carried = chosen ? carryOverSources(owned ?? [], chosen.id, today).lessons : 0;
   const keptApart = chosen
     ? (owned ?? []).filter(

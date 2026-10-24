@@ -1,7 +1,6 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import type {
   Id,
@@ -22,6 +21,7 @@ import { turmasService } from "@/services/classes";
 import { useOrganization } from "@/features/settings";
 import { confirmOfficialSend } from "../components/whatsapp-confirm-host";
 import { ABSENCE_STREAK, messageSuggestions } from "../message-suggestions";
+import { dateInSpace } from "@gestarahub/core/date";
 
 function useInvalidateCommunication() {
   const qc = useQueryClient();
@@ -131,7 +131,7 @@ export function useMessageSuggestions(clientId?: Id) {
   });
   if (!clientId) return [];
   return messageSuggestions({
-    today: format(new Date(), "yyyy-MM-dd"),
+    today: dateInSpace(),
     summary,
     charges,
     absenceStreak: streaks?.find((s) => s.studentId === clientId)?.streak ?? 0,

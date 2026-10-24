@@ -1,6 +1,6 @@
 import { addDays, differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
 import type { ChargeView, DateISO, Id, MessageTrigger, ReminderLog, ReminderSources } from "@gestarahub/contracts";
-import { relativeDateLabel } from "@gestarahub/core/date";
+import { relativeDateLabel, dateInSpace } from "@gestarahub/core/date";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { ageTurningThisYear, daysUntilBirthday } from "@/lib/birthdays";
 import { selectEndingPackages } from "@/lib/package-ending";
@@ -92,7 +92,7 @@ const BILLING_TRIGGERS = new Set<MessageTrigger>([
   "charge_reminder",
 ]);
 
-const localDay = (iso: string) => format(parseISO(iso), "yyyy-MM-dd");
+const localDay = (iso: string) => dateInSpace(iso);
 const ddmm = (date: DateISO) => format(parseISO(date), "dd/MM");
 
 function namesLine(names: string[]): string {

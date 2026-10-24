@@ -7,6 +7,7 @@ import { selectEndingPackages } from "@/lib/package-ending";
 import { TRIGGER_META } from "./message-meta";
 import { chargeReference, chargeReminder, packageRemainingText } from "./message-values";
 import { levelWithSubLevel } from "@/lib/progression-tracks";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Modelos sugeridos na mensagem para o aluno: primeiro os da situacao dele
@@ -57,7 +58,7 @@ const MEMBERSHIP_LABEL: Partial<Record<MessageTrigger, string>> = {
 };
 
 const daysSince = (date: DateISO, today: DateISO) => differenceInCalendarDays(parseISO(today), parseISO(date));
-const localDay = (iso: string) => format(parseISO(iso), "yyyy-MM-dd");
+const localDay = (iso: string) => dateInSpace(iso);
 
 /** Em atraso primeiro (o mais antigo), depois o que vence antes. */
 function byUrgency(a: ChargeView, b: ChargeView): number {

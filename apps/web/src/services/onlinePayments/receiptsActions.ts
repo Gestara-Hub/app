@@ -5,6 +5,7 @@ import type { OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { expireDueOnlinePayments } from "./gateway";
 import { logError } from "@/lib/log";
+import { startOfDayInSpace } from "@gestarahub/core/date";
 
 /**
  * Extrato de recebimentos online da subconta (filtros, resumo e paginas).
@@ -75,11 +76,6 @@ const STATUS_FILTER_VALUES: Record<ReceiptStatusFilter, string[] | null> = {
   all: null,
 };
 
-/** Dia "AAAA-MM-DD" no horario de Brasilia: inicio, em ISO UTC. */
-function startOfDayInBrazil(date: string): string {
-  return new Date(`${date}T00:00:00-03:00`).toISOString();
-}
-
 /** Dia seguinte a "AAAA-MM-DD" (fim exclusivo do intervalo). */
 function nextDay(date: string): string {
   const d = new Date(`${date}T12:00:00Z`);
@@ -106,8 +102,8 @@ export async function listSubaccountReceiptsAction(
   // Intervalo aberto de um lado tambem vale (so "de" ou so "ate").
   let period: string | null = null;
   if (query.from || query.to) {
-    const from = query.from ? startOfDayInBrazil(query.from) : null;
-    const to = query.to ? startOfDayInBrazil(nextDay(query.to)) : null;
+    const from = query.from ? startOfDayInSpace(query.from) : null;
+    const to = query.to ? startOfDayInSpace(nextDay(query.to)) : null;
     const on = (col: string) =>
       [from ? `${col}.gte.${from}` : null, to ? `${col}.lt.${to}` : null].filter(Boolean).join(",");
     period = `and(${on("paid_at")}),and(paid_at.is.null,${on("created_at")})`;

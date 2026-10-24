@@ -18,9 +18,9 @@ import {
 import { getCurrentActor } from "@/services/world/actor";
 import { apiError, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { format, parseISO } from "date-fns";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Notas dos alunos (doc 21 §2.1, fase 1): avaliacoes da turma, lancamento por
@@ -110,7 +110,7 @@ export function activeEnrollments(classGroupId: Id) {
 
 /** Matriculados hoje que ja estavam na turma no dia da avaliacao (ALU-28). */
 export function enrolledOnDate(classGroupId: Id, date: string) {
-  return activeEnrollments(classGroupId).filter((e) => format(parseISO(e.enrolledAt), "yyyy-MM-dd") <= date);
+  return activeEnrollments(classGroupId).filter((e) => dateInSpace(e.enrolledAt) <= date);
 }
 
 export function studentName(studentId: Id): string {
@@ -147,7 +147,7 @@ export function validateFields(
   if (!partial || has("date")) {
     if (!payload.date || !DATE_PATTERN.test(payload.date)) {
       fields.push({ field: "date", message: "Informe a data da avaliação." });
-    } else if (payload.date > format(new Date(), "yyyy-MM-dd")) {
+    } else if (payload.date > dateInSpace()) {
       fields.push({ field: "date", message: "A avaliação não pode ter data futura." });
     }
   }

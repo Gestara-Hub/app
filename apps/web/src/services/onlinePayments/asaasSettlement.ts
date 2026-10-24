@@ -1,4 +1,5 @@
 import { linkMethodFromAsaasBillingType } from "@gestarahub/core/payment-fees";
+import { asaasToday } from "@/lib/asaas/dates";
 import type { AsaasPaymentResponse } from "@/lib/asaas/types";
 import { markOnlinePaymentPaidInDb } from "./onlinePaymentsWebhook";
 
@@ -16,8 +17,7 @@ export function paidAtFromAsaas(value: string | undefined | null): string {
   const now = new Date();
   if (!value) return now.toISOString();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(value).toISOString();
-  const todayInBrazil = now.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-  return value === todayInBrazil ? now.toISOString() : new Date(`${value}T12:00:00-03:00`).toISOString();
+  return value === asaasToday() ? now.toISOString() : new Date(`${value}T12:00:00-03:00`).toISOString();
 }
 
 /**
@@ -28,7 +28,7 @@ export function settleAsaasPayment(payment: AsaasPaymentResponse, released: bool
   const paidAt = paidAtFromAsaas(payment.clientPaymentDate || payment.paymentDate);
   // netValue ja vem sem a tarifa do Asaas; billingType diz se foi credito ou debito.
   const netValue = Number(payment.netValue);
-  const todayInBrazil = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const todayInBrazil = asaasToday();
   const creditDate = released
     ? (payment.creditDate ?? payment.estimatedCreditDate ?? todayInBrazil)
     : (payment.estimatedCreditDate ?? payment.creditDate ?? undefined);

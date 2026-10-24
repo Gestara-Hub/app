@@ -3,17 +3,18 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PAYMENT_METHODS } from "@/lib/labels";
 import { apiError } from "@/services/world/ops";
+import { dateInSpace } from "@gestarahub/core/date";
 
 export function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
 export function todayISO(): string {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 export function currentCompetence(): string {
-  return format(new Date(), "yyyy-MM");
+  return dateInSpace().slice(0, 7);
 }
 
 /** "2026-09-10" -> "10/09/2026" (sem passar por Date, evita UTC). */

@@ -1,16 +1,135 @@
-/** Data de hoje (local) em 'YYYY-MM-DD'. "Hoje" real da UI. */
-export function todayISO(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+/**
+ * Fuso do espaco (achados 60 e 76 do teste geral): o servidor roda em UTC e o
+ * navegador no fuso da pessoa; "hoje", "agora" e o dia de um instante saem no
+ * fuso do espaco. O Brasil tem quatro fusos (sem horario de verao desde 2019):
+ * cada espaco guarda o seu em `settings.timeZone`; sem escolha, vale o do estado
+ * do endereco da unidade; sem endereco, Brasilia.
+ */
+export const DEFAULT_SPACE_TIME_ZONE = "America/Sao_Paulo";
+
+/** Os fusos do Brasil, como aparecem para escolher em Configuracoes. */
+export const BRAZIL_TIME_ZONES = [
+  { id: "America/Noronha", label: "Fernando de Noronha (UTC−2)" },
+  { id: "America/Sao_Paulo", label: "Brasília (UTC−3)" },
+  { id: "America/Manaus", label: "Amazonas, Mato Grosso, MS, Rondônia e Roraima (UTC−4)" },
+  { id: "America/Rio_Branco", label: "Acre e oeste do Amazonas (UTC−5)" },
+] as const;
+
+export type SpaceTimeZone = (typeof BRAZIL_TIME_ZONES)[number]["id"];
+
+const KNOWN_ZONES = new Set<string>(BRAZIL_TIME_ZONES.map((z) => z.id));
+
+/** Fuso sugerido pelo estado (UF). Fernando de Noronha so por escolha (o estado e PE). */
+export function timeZoneForState(state?: string): SpaceTimeZone | undefined {
+  const uf = state?.trim().toUpperCase();
+  if (!uf) return undefined;
+  if (uf === "AC") return "America/Rio_Branco";
+  if (["AM", "MT", "MS", "RO", "RR"].includes(uf)) return "America/Manaus";
+  return "America/Sao_Paulo";
 }
 
-/** Hora atual (local) em 'HH:mm'. */
+/** Fuso do espaco: o escolhido, senao o do estado da unidade, senao Brasilia. */
+export function resolveSpaceTimeZone(
+  settings?: { timeZone?: string } | null,
+  unitAddress?: { state?: string } | string | null,
+): SpaceTimeZone {
+  const chosen = settings?.timeZone;
+  if (chosen && KNOWN_ZONES.has(chosen)) return chosen as SpaceTimeZone;
+  const state = typeof unitAddress === "object" && unitAddress ? unitAddress.state : undefined;
+  return timeZoneForState(state) ?? DEFAULT_SPACE_TIME_ZONE;
+}
+
+/**
+ * Quem diz o fuso do espaco "atual": o app liga no inicio (`services/world`,
+ * pelo espaco da requisicao no servidor e da sessao no navegador). Sem
+ * provedor (scripts, testes do core), Brasilia. Fica no objeto global: pacotes
+ * separados do Next teriam cada um a sua copia deste modulo.
+ */
+interface TimeZoneGlobals {
+  provider?: () => string | undefined;
+}
+const tzGlobals = ((globalThis as { __gestarahubTimeZone?: TimeZoneGlobals }).__gestarahubTimeZone ??= {});
+
+export function setSpaceTimeZoneProvider(provider: (() => string | undefined) | undefined): void {
+  tzGlobals.provider = provider;
+}
+
+/** Fuso do espaco atual. */
+export function currentSpaceTimeZone(): string {
+  try {
+    const zone = tzGlobals.provider?.();
+    return zone && KNOWN_ZONES.has(zone) ? zone : DEFAULT_SPACE_TIME_ZONE;
+  } catch {
+    return DEFAULT_SPACE_TIME_ZONE;
+  }
+}
+
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function partsIn(date: Date, timeZone: string): Record<string, string> {
+  let formatter = formatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    formatters.set(timeZone, formatter);
+  }
+  const parts: Record<string, string> = {};
+  for (const p of formatter.formatToParts(date)) parts[p.type] = p.value;
+  // Alguns motores escrevem a meia-noite como "24" com `hour12: false`.
+  if (parts.hour === "24") parts.hour = "00";
+  return parts;
+}
+
+/**
+ * Dia ('YYYY-MM-DD') de um instante no fuso do espaco (o atual, ou o informado),
+ * em qualquer ambiente. Sem instante, e "hoje". Data sem hora volta igual.
+ */
+export function dateInSpace(value: string | Date = new Date(), timeZone: string = currentSpaceTimeZone()): string {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return typeof value === "string" ? value.slice(0, 10) : "";
+  const p = partsIn(d, timeZone);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/**
+ * Inicio do dia 'YYYY-MM-DD' no fuso do espaco, como instante ISO (UTC): para
+ * filtrar horarios gravados por dia do espaco. Os fusos do Brasil nao tem
+ * horario de verao, entao o deslocamento do meio-dia vale para o dia todo.
+ */
+export function startOfDayInSpace(date: string, timeZone: string = currentSpaceTimeZone()): string {
+  const noonUtc = new Date(`${date}T12:00:00Z`);
+  const p = partsIn(noonUtc, timeZone);
+  const offsetMs = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - noonUtc.getTime();
+  return new Date(Date.parse(`${date}T00:00:00Z`) - offsetMs).toISOString();
+}
+
+/** Hora ('HH:mm') de um instante no fuso do espaco. */
+export function timeInSpace(value: string | Date = new Date(), timeZone: string = currentSpaceTimeZone()): string {
+  const d = typeof value === "string" ? new Date(value) : value;
+  const p = partsIn(d, timeZone);
+  return `${p.hour}:${p.minute}`;
+}
+
+/** Data de hoje ('YYYY-MM-DD') no fuso do espaco. "Hoje" real da UI e das regras. */
+export function todayISO(): string {
+  return dateInSpace(new Date());
+}
+
+/** Mes atual ('YYYY-MM') no fuso do espaco. */
+export function currentMonthISO(): string {
+  return todayISO().slice(0, 7);
+}
+
+/** Hora atual ('HH:mm') no fuso do espaco. */
 export function nowTime(): string {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return timeInSpace(new Date());
 }
 
 /**

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { format } from "date-fns";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +16,7 @@ import {
   type SecurityPromptReason,
 } from "../security-prompt";
 import { TwoFactorDialog } from "./two-factor-dialog";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const COPY: Record<SecurityPromptReason, string> = {
   online_payments: "Sua conta agora recebe pagamentos. Proteja o acesso.",
@@ -57,7 +57,7 @@ export function SecurityPromptHost() {
   const [reason, setReason] = useState<SecurityPromptReason | null>(null);
   const [enrolling, setEnrolling] = useState(false);
   const checking = useRef(false);
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = dateInSpace();
   const state = preferences.securityPrompt;
   // So conta de verdade (modelo de turmas no banco): a barbearia segue no modo demonstracao, sem login real.
   const model = useModel();

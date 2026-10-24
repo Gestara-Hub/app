@@ -5,6 +5,7 @@ import { store } from "@/services/world/store";
 import { assertFeature } from "../subscription/subscriptionService";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Retencao de alunos no mes, por turma. */
 
@@ -14,7 +15,7 @@ export async function buildChurnRetention({ competence, periodLabel }: ReportCon
     // Pelas matriculas: aluno ativo = com alguma matricula valendo no dia.
     const first = firstDayOfCompetence(competence);
     const monthEnd = lastDayOfCompetence(competence);
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = dateInSpace();
     const endDay = monthEnd < today ? monthEnd : today;
     const dayBefore = format(addDays(parseISO(first), -1), "yyyy-MM-dd");
     const validOn = (e: (typeof store.enrollments)[number], date: string) =>

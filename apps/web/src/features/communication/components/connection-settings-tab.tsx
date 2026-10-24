@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
 import { CheckCircle2, MessageCircle, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import type { WhatsAppConnectionView } from "@gestarahub/contracts";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
-import { relativeDateLabel } from "@gestarahub/core/date";
+import { relativeDateLabel, dateInSpace } from "@gestarahub/core/date";
 import { formatPhone } from "@gestarahub/core/format";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { FeatureLocked } from "@/components/shared/feature-locked";
@@ -225,7 +224,7 @@ export function ConnectionSettingsTab() {
               <p className="text-sm text-muted-foreground">
                 {connection.displayName} · {phoneLabel(connection.phoneNumber)}
                 {connection.connectedAt
-                  ? ` · desde ${relativeDateLabel(format(parseISO(connection.connectedAt), "yyyy-MM-dd"))}`
+                  ? ` · desde ${relativeDateLabel(dateInSpace(connection.connectedAt))}`
                   : ""}
               </p>
             </div>

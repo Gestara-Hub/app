@@ -8,11 +8,11 @@ import type {
   StudentRosterRow,
 } from "@gestarahub/contracts";
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
-import { format } from "date-fns";
 import { store } from "@/services/world/store";
 import { sessionDetailOf, sessionsOfClass } from "../classes";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
+import { dateInSpace } from "@gestarahub/core/date";
 
 
 /** Relatorios do dia a dia: lista de presenca, relacao de alunos e aniversariantes. */
@@ -25,7 +25,7 @@ export async function buildAttendanceSheet({ competence, periodLabel, filter }: 
       .filter((g) => g.status === "active")
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     const classGroup = groups.find((g) => g.id === filter.classGroupId) ?? groups[0] ?? null;
-    const today = format(new Date(), "yyyy-MM-dd");
+    const today = dateInSpace();
     const monthEnd = lastDayOfCompetence(competence);
     const sessions = classGroup
       ? sessionsOfClass(classGroup, firstDayOfCompetence(competence), monthEnd < today ? monthEnd : today)

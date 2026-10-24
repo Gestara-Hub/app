@@ -1,6 +1,6 @@
 import type { DateISO, Id, Plan } from "@gestarahub/contracts";
-import { format } from "date-fns";
 import { store } from "@/services/world/store";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Modelo 3 (financeiro). Registro/status, sem gateway. As mensalidades seguem
@@ -14,7 +14,7 @@ export function clone<T>(value: T): T {
 }
 
 export function todayISO(): DateISO {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 export function studentName(id: Id): string {

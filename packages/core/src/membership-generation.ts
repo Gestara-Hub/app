@@ -8,6 +8,7 @@ import {
   type CompetenceCharge,
   type ScheduledCharge,
 } from "@gestarahub/core/billing";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Geracao automatica das mensalidades, pura (doc 15, fatia 1). A mesma regra
@@ -33,7 +34,7 @@ export interface MembershipWorld {
 
 /** Inicio da vigencia: o do plano ou, sem ele, o dia do cadastro. */
 export function membershipStartDate(student: Pick<Client, "planStartDate" | "createdAt">): DateISO {
-  return student.planStartDate || format(parseISO(student.createdAt), "yyyy-MM-dd");
+  return student.planStartDate || dateInSpace(student.createdAt);
 }
 
 /** Bolsista integral sem plano: gera mensalidades isentas. */

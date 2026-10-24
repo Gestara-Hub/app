@@ -3,6 +3,7 @@ import { formatCents } from "@gestarahub/core/format";
 import { addMonths, format, parseISO } from "date-fns";
 import { apiError, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
+import { dateInSpace } from "@gestarahub/core/date";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -13,7 +14,7 @@ export function clone<T>(value: T): T {
 }
 
 export function todayISO(): DateISO {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 export function currentCompetence(): string {

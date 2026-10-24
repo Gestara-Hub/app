@@ -75,6 +75,7 @@ import {
   payoutLineDetail,
   payoutLineTitle,
 } from "./teacher-payout-status-badge";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const fullDate = (iso: string) => format(parseISO(iso), "dd/MM/yyyy");
 const sessionDate = (iso: string) => format(parseISO(iso), "EEE, dd/MM", { locale: ptBR });
@@ -635,7 +636,7 @@ function NextStepHint({
   if (status === "paid") {
     text = "Mês concluído. Para corrigir, desfaça o pagamento em Mais ações.";
   } else if (status === "closed") {
-    const overdue = dueDate < format(new Date(), "yyyy-MM-dd");
+    const overdue = dueDate < dateInSpace();
     text = overdue
       ? `Valor congelado. O pagamento venceu em ${fullDate(dueDate)}; registre em Pagar.`
       : `Valor congelado. Registre o pagamento em Pagar até ${fullDate(dueDate)}.`;

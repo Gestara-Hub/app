@@ -4,6 +4,7 @@ import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { Ticket } from "lucide-react";
 import type { StudentPackageView } from "@gestarahub/contracts";
 import { cn } from "@/lib/utils";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Pacote acabado ou vencido aparece por ate 30 dias (depois some da lista). */
 const RECENT_DAYS = 30;
@@ -15,7 +16,7 @@ const RECENT_DAYS = 30;
  */
 export function displayPackages(
   packages: StudentPackageView[],
-  today: string = format(new Date(), "yyyy-MM-dd"),
+  today: string = dateInSpace(),
 ): StudentPackageView[] {
   const active = packages.filter((p) => p.status === "active");
   const usable = active
@@ -39,7 +40,7 @@ export function displayPackages(
  */
 export function displayPackage(
   packages: StudentPackageView[],
-  today: string = format(new Date(), "yyyy-MM-dd"),
+  today: string = dateInSpace(),
 ): StudentPackageView | undefined {
   return displayPackages(packages, today)[0];
 }

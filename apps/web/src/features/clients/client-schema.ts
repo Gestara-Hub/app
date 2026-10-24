@@ -1,8 +1,8 @@
 import { isPossiblePhone } from "@gestarahub/core/phone";
-import { format } from "date-fns";
 import { z } from "zod";
 import type { ClassBillingMode } from "@gestarahub/contracts";
 import { isValidCpf } from "@gestarahub/core/payer";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /** Observacoes do aluno: limite para nao virar um livro. */
 export const NOTES_MAX = 1000;
@@ -50,7 +50,7 @@ export const clientFormSchema = z.object({
     .string()
     .optional()
     // Data local (nao UTC), como no resto do app.
-    .refine((v) => !v || v <= format(new Date(), "yyyy-MM-dd"), {
+    .refine((v) => !v || v <= dateInSpace(), {
       message: "A data de nascimento não pode ser futura.",
     })
     // 1900 virava "126 anos" (ALU-32): mais de 110 anos e ano errado.

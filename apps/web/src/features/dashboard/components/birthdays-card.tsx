@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { formatPhone } from "@gestarahub/core/format";
 import { useClients } from "@/features/clients";
 import { useMessageLogs, useWhatsAppSend } from "@/features/communication";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Aniversariantes do mes de `today` (alunos ativos) mais os proximos dias que
@@ -54,7 +55,7 @@ export function BirthdaysList({
   const whatsapp = useWhatsAppSend();
   const { data: greetings } = useMessageLogs({ trigger: "birthday_greeting" });
   const greetedToday = new Set(
-    (greetings ?? []).filter((l) => format(parseISO(l.sentAt), "yyyy-MM-dd") === today).map((l) => l.clientId),
+    (greetings ?? []).filter((l) => dateInSpace(l.sentAt) === today).map((l) => l.clientId),
   );
 
   if (isPending) {

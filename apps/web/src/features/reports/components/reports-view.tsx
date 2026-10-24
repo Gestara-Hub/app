@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import type { ReportType } from "@gestarahub/contracts";
 import { FeatureLocked } from "@/components/shared/feature-locked";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { useHasFeature } from "@/features/auth";
 import { useReportData } from "../hooks/use-reports";
 import { ReportDocumentScreen } from "./report-document-screen";
 import { ReportsCatalogTab } from "./reports-catalog-tab";
+import { dateInSpace } from "@gestarahub/core/date";
 
 interface ReportsViewProps {
   initialReportType?: ReportType | null;
@@ -32,7 +32,7 @@ export function ReportsView({
   initialReportType = null,
   initialCompetence,
 }: ReportsViewProps) {
-  const currentMonth = format(new Date(), "yyyy-MM");
+  const currentMonth = dateInSpace().slice(0, 7);
   const [competence, setCompetence] = useState(initialCompetence || currentMonth);
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(
     initialReportType && AVAILABLE_REPORTS.includes(initialReportType) ? initialReportType : null,

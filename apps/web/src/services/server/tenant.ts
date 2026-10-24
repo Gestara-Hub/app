@@ -1,5 +1,6 @@
 import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
+import { resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { can } from "@/lib/permissions";
 import { setErrorScope } from "@/lib/log/server-sink";
 import { secondFactorState } from "@/lib/security/second-factor";
@@ -24,6 +25,8 @@ export interface TenantContext {
   userId: Id;
   profile: UserProfile;
   professionalId?: Id;
+  /** Fuso do espaco (achado 60): o "hoje" das regras e do parceiro de pagamentos. */
+  timeZone: SpaceTimeZone;
   /** Lanca FORBIDDEN se o perfil nao tem nenhuma das permissoes. */
   require(...permissions: Permission[]): void;
 }
@@ -42,7 +45,7 @@ export async function requireTenant(): Promise<TenantContext> {
 
   const { data: row, error } = await client
     .from("users")
-    .select("id, organization_id, profile, professional_id")
+    .select("id, organization_id, profile, professional_id, organizations(settings, units(address))")
     .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
     .eq("status", "active")
     .limit(1)
@@ -50,14 +53,21 @@ export async function requireTenant(): Promise<TenantContext> {
   if (error || !row) throw unauthorized();
 
   const profile = row.profile as UserProfile;
-  // Erros registrados dentro desta requisicao saem com o espaco e o usuario da sessao.
-  setErrorScope({ organizationId: String(row.organization_id), userId: String(row.id) });
+  const organization = (row.organizations ?? null) as {
+    settings?: { timeZone?: string } | null;
+    units?: { address?: { state?: string } | string | null }[];
+  } | null;
+  const timeZone = resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address);
+  // Erros registrados dentro desta requisicao saem com o espaco e o usuario da
+  // sessao; o "hoje" da acao sai do fuso do espaco.
+  setErrorScope({ organizationId: String(row.organization_id), userId: String(row.id), timeZone });
   return {
     client,
     organizationId: String(row.organization_id),
     userId: String(row.id),
     profile,
     professionalId: row.professional_id ? String(row.professional_id) : undefined,
+    timeZone,
     require(...permissions) {
       if (!permissions.some((p) => can(profile, p))) throw forbiddenError();
     },

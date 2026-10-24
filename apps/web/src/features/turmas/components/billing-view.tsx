@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
 import { AlertCircle, Ban, CheckCircle2, ChevronDown, ChevronLeft, Plus, RotateCw, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -61,6 +60,7 @@ import {
   type StatusFilterValue,
 } from "./charge-parts";
 import { useChargeActions } from "./use-charge-actions";
+import { dateInSpace } from "@gestarahub/core/date";
 
 interface StudentConsolidatedGroup {
   studentId: string;
@@ -262,7 +262,7 @@ function subItemTitle(c: ChargeView): string {
   return c.planName ?? getCycleTitle(c);
 }
 
-const currentCompetence = () => format(new Date(), "yyyy-MM");
+const currentCompetence = () => dateInSpace().slice(0, 7);
 
 /**
  * Filtros na URL (o Financeiro linka para ca): `?month=YYYY-MM`,
@@ -482,7 +482,7 @@ export function BillingView() {
       : []),
   ];
 
-  const isFutureCompetence = competence > format(new Date(), "yyyy-MM");
+  const isFutureCompetence = competence > dateInSpace().slice(0, 7);
 
   return (
     <>

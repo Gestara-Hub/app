@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { Cake, Copy, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub/contracts";
-import { todayISO } from "@gestarahub/core/date";
+import { todayISO, dateInSpace, timeInSpace } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";
 import { Button } from "@/components/ui/button";
 import { nextBirthdayLabel } from "@/lib/birthdays";
@@ -86,9 +86,9 @@ export function StudentProfileAlerts({
         l.trigger === trigger &&
         l.status !== "failed" &&
         (!chargeId || l.chargeId === chargeId) &&
-        format(parseISO(l.sentAt), "yyyy-MM-dd") === today,
+        dateInSpace(l.sentAt) === today,
     );
-    return log ? format(parseISO(log.sentAt), "HH:mm") : null;
+    return log ? timeInSpace(log.sentAt) : null;
   };
   const sentNote = (time: string) => (
     <span className="text-xs text-muted-foreground">Enviado hoje às {time}</span>

@@ -8,7 +8,6 @@ import type {
 import { store } from "@/services/world/store";
 import { normalizeText } from "@/lib/text";
 import { plural } from "@gestarahub/core/format";
-import { format } from "date-fns";
 import {
   newId,
   notFoundError,
@@ -37,6 +36,7 @@ import {
   validateCategoryPayload,
 } from "./categoryRules";
 import { encodeArgs } from "../world/transport";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Modalidades (categorias). Conta real: le e grava pelo servidor
@@ -188,7 +188,7 @@ export const categoriesService = {
 
       const reset =
         payload.progressionTrack !== undefined
-          ? resetMissingLevels(store.clients, updated, format(new Date(), "yyyy-MM-dd"), nowIso()).reset
+          ? resetMissingLevels(store.clients, updated, dateInSpace(), nowIso()).reset
           : 0;
       const settings = store.organization.settings;
       if (

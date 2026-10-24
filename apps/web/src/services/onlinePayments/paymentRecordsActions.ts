@@ -4,8 +4,9 @@ import type { Id, OnlinePayment } from "@gestarahub/contracts";
 import { getClientForTenant } from "@/lib/supabase/tenant-client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { forbiddenError } from "@gestarahub/core/api-error";
+import { dateInSpace } from "@gestarahub/core/date";
 import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "./gateway";
-import { receiveInCash } from "@/lib/asaas";
+import { notAfterAsaasToday, receiveInCash } from "@/lib/asaas";
 import { isDemoOrganization } from "@/lib/demo";
 import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
 import { requireTenant } from "../server/tenant";
@@ -84,14 +85,19 @@ export async function listOnlinePaymentsForChargeFromDb(
   return (data || []).map(mapRowToOnlinePayment);
 }
 
+/** Resultado da liquidacao simulada: pago, nao achado ou recusado pelo parceiro. */
+export type SimulateOnlinePaidResult =
+  | { ok: true; payment: OnlinePayment; chargeId: string }
+  | { ok: false; reason: "not_found" | "gateway_refused" };
+
 /**
  * Simula a liquidação de um pagamento online no Sandbox/banco local.
- * Marca o online_payment e a cobrança correspondente como pagos no Supabase,
- * e notifica o Asaas via receiveInCash caso esteja em ambiente de testes.
+ * Com o Asaas, pede a baixa ao parceiro **primeiro**, com a data de hoje no
+ * fuso do espaco (achado 76: a data em UTC depois das 21h era "futura" para o
+ * Asaas, que recusava); so marca pago no app se o parceiro aceitar. Sem
+ * parceiro (demonstracao), marca pago direto.
  */
-export async function simulateOnlinePaidAction(
-  onlinePaymentId: string,
-): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
+export async function simulateOnlinePaidAction(onlinePaymentId: string): Promise<SimulateOnlinePaidResult> {
   const ctx = await requireTenant();
   ctx.require("billing:manage");
   // Fora do Asaas de testes, so o pagamento de verdade (webhook) marca pago.
@@ -107,17 +113,33 @@ export async function simulateOnlinePaidAction(
 
   if (row && row.organization_id !== ctx.organizationId) throw forbiddenError();
   if (fetchErr || !row) {
-    logError(
-      "[simulateOnlinePaidAction] Pagamento online não encontrado:",
-      onlinePaymentId,
-      fetchErr,
-    );
-    return null;
+    logError("[simulateOnlinePaidAction] Pagamento online não encontrado:", onlinePaymentId, fetchErr);
+    return { ok: false, reason: "not_found" };
+  }
+
+  // 2. Asaas: a baixa no parceiro vem antes. Recusou, nada muda no app.
+  if (row.gateway_payment_id && row.gateway_provider === "asaas") {
+    const { data: org } = await adminClient
+      .from("organizations")
+      .select("gateway_api_key")
+      .eq("id", ctx.organizationId)
+      .maybeSingle();
+    try {
+      await receiveInCash(
+        String(row.gateway_payment_id),
+        notAfterAsaasToday(dateInSpace()),
+        (Number(row.amount_cents) || 0) / 100,
+        org?.gateway_api_key ?? undefined,
+      );
+    } catch (asaasErr) {
+      logWarn("[simulateOnlinePaidAction] O Asaas recusou a baixa; a cobrança continua em aberto:", asaasErr);
+      return { ok: false, reason: "gateway_refused" };
+    }
   }
 
   const paidAtISO = new Date().toISOString();
 
-  // 2. Atualiza o status para pago
+  // 3. Atualiza o status para pago
   const { data: updatedPayment, error: paymentError } = await adminClient
     .from("online_payments")
     .update({
@@ -129,14 +151,11 @@ export async function simulateOnlinePaidAction(
     .maybeSingle();
 
   if (paymentError || !updatedPayment) {
-    logError(
-      "[simulateOnlinePaidAction] Erro ao atualizar status do online_payment:",
-      paymentError,
-    );
-    return null;
+    logError("[simulateOnlinePaidAction] Erro ao atualizar status do online_payment:", paymentError);
+    return { ok: false, reason: "not_found" };
   }
 
-  // 3. Cancela outros pagamentos da mesma cobrança ainda em aberto
+  // 4. Cancela outros pagamentos da mesma cobrança ainda em aberto
   await adminClient
     .from("online_payments")
     .update({ status: "canceled", canceled_reason: "Pago por outro código" })
@@ -144,7 +163,7 @@ export async function simulateOnlinePaidAction(
     .neq("id", row.id)
     .eq("status", "awaiting");
 
-  // 4. Atualiza a cobrança para paga
+  // 5. Atualiza a cobrança para paga
   const method = row.method === "link" ? "card" : "pix";
   const { error: chargeError } = await adminClient
     .from("charges")
@@ -157,51 +176,11 @@ export async function simulateOnlinePaidAction(
     .eq("id", row.charge_id);
 
   if (chargeError) {
-    logError(
-      "[simulateOnlinePaidAction] Erro ao atualizar charge após simulação:",
-      chargeError,
-    );
-  }
-
-  // 5. Se for Asaas Sandbox e tiver gateway_payment_id, liquida no gateway também
-  if (row.gateway_payment_id && row.gateway_provider === "asaas") {
-    try {
-      const { data: charge } = await adminClient
-        .from("charges")
-        .select("organization_id")
-        .eq("id", row.charge_id)
-        .maybeSingle();
-
-      let subaccountApiKey: string | undefined;
-      if (charge?.organization_id) {
-        const { data: org } = await adminClient
-          .from("organizations")
-          .select("gateway_api_key")
-          .eq("id", charge.organization_id)
-          .maybeSingle();
-        subaccountApiKey = org?.gateway_api_key;
-      }
-
-      const todayDate = paidAtISO.split("T")[0];
-      await receiveInCash(
-        String(row.gateway_payment_id),
-        todayDate,
-        (Number(row.amount_cents) || 0) / 100,
-        subaccountApiKey,
-      );
-      console.log(
-        `[simulateOnlinePaidAction] Baixa confirmada no Asaas Sandbox para o pagamento ${row.gateway_payment_id}!`,
-      );
-    } catch (asaasErr) {
-      logWarn(
-        "[simulateOnlinePaidAction] Não foi possível liquidar no Asaas Sandbox (ignorado):",
-        asaasErr,
-      );
-    }
+    logError("[simulateOnlinePaidAction] Erro ao atualizar charge após simulação:", chargeError);
   }
 
   const payment = mapRowToOnlinePayment(updatedPayment);
-  return { payment, chargeId: String(row.charge_id) };
+  return { ok: true, payment, chargeId: String(row.charge_id) };
 }
 
 export async function cancelOnlinePaymentsForChargeInDb(

@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { splitInstallments } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -48,7 +49,7 @@ export function paymentSummary(totalCents: number, installments: number, firstDu
  * Vencimento antes de hoje: a cobranca ja nasce atrasada. Aviso curto para o
  * campo de data (antes aceitava 2020 sem dizer nada). Fora disso, `undefined`.
  */
-export function pastDueHint(firstDueDate: string, today = format(new Date(), "yyyy-MM-dd")): string | undefined {
+export function pastDueHint(firstDueDate: string, today = dateInSpace()): string | undefined {
   if (!DATE_RE.test(firstDueDate) || firstDueDate >= today) return undefined;
   return "Data que já passou: a cobrança entra atrasada.";
 }

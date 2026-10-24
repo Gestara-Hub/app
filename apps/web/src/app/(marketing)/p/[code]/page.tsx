@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const dateTime = (iso: string) =>
+const dateTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
+    timeZone,
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -99,14 +99,14 @@ function PaymentBody({ view }: { view: PaymentPageView }) {
         {view.pixCopyPaste}
       </p>
       <CopyPixButton code={view.pixCopyPaste} />
-      <p className="text-center text-xs text-muted-foreground">Válido até {dateTime(view.expiresAt)}.</p>
+      <p className="text-center text-xs text-muted-foreground">Válido até {dateTime(view.expiresAt, view.timeZone)}.</p>
     </div>
   );
 }
 
-const fullDateTime = (iso: string) =>
+const fullDateTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
+    timeZone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -134,7 +134,7 @@ function PaidBody({ view }: { view: PaymentPageView }) {
           { label: "Taxa do pagamento online", value: formatCents(paid.breakdown.feeCents) },
         ]
       : []),
-    ...(paid?.paidAt ? [{ label: "Pago em", value: fullDateTime(paid.paidAt) }] : []),
+    ...(paid?.paidAt ? [{ label: "Pago em", value: fullDateTime(paid.paidAt, view.timeZone) }] : []),
     ...(paid ? [{ label: "Forma de pagamento", value: paid.methodLabel }] : []),
     {
       label: "Código do pagamento",

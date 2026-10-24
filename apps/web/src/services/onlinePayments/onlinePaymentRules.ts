@@ -9,13 +9,13 @@ import type {
 } from "@gestarahub/contracts";
 import { describeCharge } from "@gestarahub/core/billing";
 import { availableOnlineMethods } from "@gestarahub/core/payment-fees";
-import { format } from "date-fns";
 import { apiError, notFoundError, nowIso, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { afterWorldCommit } from "../world/effects";
 import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "./actions";
 import { logError } from "@/lib/log";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de
@@ -65,7 +65,7 @@ export function clone<T>(value: T): T {
 
 /** Data LOCAL de hoje (nao UTC). */
 export function todayISO(): string {
-  return format(new Date(), "yyyy-MM-dd");
+  return dateInSpace();
 }
 
 export function brDate(iso: string): string {

@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { setSpaceTimeZoneProvider } from "@gestarahub/core/date";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ErrorEntry } from "./index";
 
@@ -11,16 +12,26 @@ import type { ErrorEntry } from "./index";
  * o espaco e o usuario da sessao. Assim qualquer `logError` dentro da acao
  * grava com o espaco certo, sem passar o contexto de mao em mao. O espaco vem
  * sempre da sessao ou de quem chama no servidor (rotina), nunca do navegador.
+ * O mesmo escopo guarda o fuso do espaco (achado 60): o "hoje" e o "agora" de
+ * `@gestarahub/core/date` dentro da acao saem dele, e nao do fuso do servidor.
  */
 
 interface ErrorScope {
   organizationId?: string;
   userId?: string;
+  timeZone?: string;
 }
 
 // Um so por processo (mesmo motivo do destino em `index.ts`: pacotes separados).
 const scope = ((globalThis as { __gestarahubErrorScope?: AsyncLocalStorage<ErrorScope> }).__gestarahubErrorScope ??=
   new AsyncLocalStorage<ErrorScope>());
+
+setSpaceTimeZoneProvider(() => scope.getStore()?.timeZone);
+
+/** Fuso do espaco anotado na requisicao (ausente fora de uma acao). */
+export function requestTimeZone(): string | undefined {
+  return scope.getStore()?.timeZone;
+}
 
 /** Roda `fn` num escopo de erro novo (uma acao, uma rota). */
 export function runWithErrorScope<T>(fn: () => Promise<T>): Promise<T> {

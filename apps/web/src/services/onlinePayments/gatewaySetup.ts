@@ -5,7 +5,7 @@ import {
   isGatewayFeeDivergent,
   parseAsaasAccountFees,
 } from "@gestarahub/core/payment-fees";
-import { createWebhook, getAccountFees, getAccountInfo, listWebhooks, updateWebhook } from "@/lib/asaas";
+import { asaasToday, createWebhook, getAccountFees, getAccountInfo, listWebhooks, updateWebhook } from "@/lib/asaas";
 import type { AsaasWebhookConfig } from "@/lib/asaas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
@@ -175,7 +175,7 @@ export async function recheckFeesAfterPayment(input: {
     .eq("id", input.organizationId)
     .maybeSingle();
   const fees = (org?.gateway_fees ?? undefined) as GatewayAccountFees | undefined;
-  const table = effectiveGatewayFees(fees, new Date().toISOString().slice(0, 10));
+  const table = effectiveGatewayFees(fees, asaasToday());
   if (isGatewayFeeDivergent(table, input.paidMethod, input.chargedCents, input.realFeeCents)) {
     console.info("[gatewayAccount] Tarifa real diferente da tabela; buscando as tarifas da subconta de novo.");
     await syncGatewayFees(input.organizationId);

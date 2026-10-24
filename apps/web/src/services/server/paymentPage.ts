@@ -1,4 +1,5 @@
 import type { ChargeKind, OnlinePaymentMethod } from "@gestarahub/contracts";
+import { resolveSpaceTimeZone } from "@gestarahub/core/date";
 import { whatsappDigits } from "@gestarahub/core/phone";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -16,6 +17,8 @@ export interface PaymentPageView {
   /** Espaco (logo do comprovante em PDF); nao vai para a tela. */
   organizationId: string;
   organizationName: string;
+  /** Fuso do espaco: validade e data do pagamento no horario de quem cobra. */
+  timeZone: string;
   /** O que e cobrado: "Mensalidade", "Aula avulsa", "Curso Confeitaria"... */
   label: string;
   amountCents: number;
@@ -91,7 +94,7 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
   if (!payment) return null;
 
   const [{ data: org }, { data: charge }, { data: units }] = await Promise.all([
-    admin.from("organizations").select("name").eq("id", payment.organization_id).maybeSingle(),
+    admin.from("organizations").select("name, settings").eq("id", payment.organization_id).maybeSingle(),
     admin
       .from("charges")
       .select("kind, description, status, competence, paid_at, paid_via, amount_cents")
@@ -99,7 +102,7 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
       .maybeSingle(),
     admin
       .from("units")
-      .select("phone")
+      .select("phone, address")
       .eq("organization_id", payment.organization_id)
       .order("created_at", { ascending: true })
       .limit(1),
@@ -153,6 +156,7 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
     contactWhatsapp,
     state: paid ? "paid" : gone ? "expired" : "open",
     organizationName: String(org?.name ?? "o espaço"),
+    timeZone: resolveSpaceTimeZone(org?.settings as { timeZone?: string } | null, units?.[0]?.address),
     label: chargeLabelOf((charge?.kind ?? "extra") as ChargeKind, (charge?.description as string | null) ?? null),
     amountCents: Number(payment.amount_cents) || 0,
     method: payment.method as OnlinePaymentMethod,

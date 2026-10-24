@@ -10,6 +10,7 @@ import { attendanceService } from "../classes/attendanceService";
 import { levelsOf } from "../clients/studentSummaryRules";
 import { actorTeacherId } from "../classes/teacherScope";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Dados dos lembretes (doc product/25) numa leitura so: alunos ativos,
@@ -88,7 +89,7 @@ export const remindersService = {
       const absenceStreaks = (await attendanceService.listAbsenceStreaks(3)).filter((s) => active.has(s.studentId));
 
       // Avanco de nivel registrado ha pouco (graduacao), para o "Parabéns pelo avanço".
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = dateInSpace();
       const promotedSince = format(subDays(new Date(), PROMOTION_WINDOW_DAYS), "yyyy-MM-dd");
       const promotions = store.clients
         .filter((c) => active.has(c.id) && c.progressions && Object.keys(c.progressions).length > 0)

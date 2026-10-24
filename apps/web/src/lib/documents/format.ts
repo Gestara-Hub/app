@@ -1,5 +1,6 @@
 import type { DocumentCellFormat, DocumentCellValue } from "@gestarahub/contracts";
 import { formatCents, formatPhone } from "@gestarahub/core/format";
+import { currentSpaceTimeZone } from "@gestarahub/core/date";
 
 /**
  * Formatacao das celulas do documento (`DocumentModel`). A tela e o PDF usam
@@ -9,14 +10,14 @@ import { formatCents, formatPhone } from "@gestarahub/core/format";
 
 const EMPTY = "—";
 
-/** Horario dos documentos: o do Brasil, tambem no servidor (que roda em UTC). */
-const TIME_ZONE = "America/Sao_Paulo";
-
-/** "21/09/2026" (dia ISO fica como esta; instante vai para o horario do Brasil). */
+/**
+ * "21/09/2026" (dia ISO fica como esta; instante vai para o fuso do espaco,
+ * tambem no servidor, que roda em UTC).
+ */
 export function documentDate(iso: string): string {
   const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (day) return `${day[3]}/${day[2]}/${day[1]}`;
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: TIME_ZONE }).format(new Date(iso));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: currentSpaceTimeZone() }).format(new Date(iso));
 }
 
 const MONTHS = [
@@ -31,10 +32,10 @@ export function competenceLongLabel(competence: string): string {
   return name ? `${name[0].toUpperCase()}${name.slice(1)} de ${year}` : competence;
 }
 
-/** "21/09/2026, 14:05" no horario do Brasil. */
+/** "21/09/2026, 14:05" no fuso do espaco. */
 export function documentDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: TIME_ZONE,
+    timeZone: currentSpaceTimeZone(),
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

@@ -33,6 +33,7 @@ import { useCharges, useCreateExtraCharge } from "../hooks/use-billing";
 import { normalizeText } from "@/lib/text";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { installmentsSummary, pastDueHint } from "../installments-summary";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DESCRIPTION_MAX = 80;
@@ -94,7 +95,7 @@ function ExtraChargeForm({
       description: "",
       // Valor comeca vazio (antes "R$ 0,00", que parecia preenchido).
       totalCents: undefined,
-      firstDueDate: format(new Date(), "yyyy-MM-dd"),
+      firstDueDate: dateInSpace(),
       installments: "1",
     },
   });

@@ -52,6 +52,7 @@ import { ASAAS_FEES, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees"
 import { formatCents } from "@gestarahub/core/format";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
 import { requestSecurityPrompt } from "@/features/auth";
+import { todayISO } from "@gestarahub/core/date";
 
 function maskCpfCnpj(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -113,7 +114,7 @@ const schema = z
       const birth = data.birthDate ?? "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
         ctx.addIssue({ code: "custom", path: ["birthDate"], message: "Informe a data de nascimento." });
-      } else if (birth > new Date().toISOString().slice(0, 10)) {
+      } else if (birth > todayISO()) {
         ctx.addIssue({ code: "custom", path: ["birthDate"], message: "A data não pode ser no futuro." });
       }
     } else if (data.cpfCnpj.replace(/\D/g, "").length === 14 && !data.companyType) {
@@ -298,7 +299,7 @@ export function ActivateSubaccountDialog({
                     <DateField<FormValues>
                       name="birthDate"
                       label="Data de nascimento"
-                      max={new Date().toISOString().slice(0, 10)}
+                      max={todayISO()}
                       required={personKind === "person"}
                       disabled={setup.isPending}
                     />

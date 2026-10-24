@@ -15,6 +15,7 @@ import { documentSlices } from "./documentSlices";
 import { store } from "../world/store";
 import { chargeLabelOf, competenceLabelOf } from "./paymentPage";
 import type { TenantContext } from "./tenant";
+import { currentSpaceTimeZone, dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Recibo, declaracao anual e demonstrativo do professor, no servidor: leem o
@@ -22,15 +23,14 @@ import type { TenantContext } from "./tenant";
  * a permissao. Modulo so do servidor.
  */
 
-const TIME_ZONE = "America/Sao_Paulo";
 
-/** Ano do instante no horario do Brasil. */
+/** Ano do instante no fuso do espaco. */
 function yearOf(iso: string): number {
-  return Number(new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric" }).format(new Date(iso)));
+  return Number(new Intl.DateTimeFormat("en-CA", { timeZone: currentSpaceTimeZone(), year: "numeric" }).format(new Date(iso)));
 }
 
 function todayISO(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: TIME_ZONE });
+  return dateInSpace();
 }
 
 function organizationDetails(): string | undefined {

@@ -1,6 +1,6 @@
-import { format } from "date-fns";
 import { z } from "zod";
 import { RECEIPT_FILE_RULES, filesSchema } from "./files";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Formulario de registrar pagamento (mensalidade, lancamento, professor):
@@ -12,7 +12,7 @@ export const paymentFormSchema = z.object({
   paidOn: z
     .string()
     .min(1, "Informe a data do pagamento.")
-    .refine((value) => value <= format(new Date(), "yyyy-MM-dd"), "A data do pagamento não pode ser futura."),
+    .refine((value) => value <= dateInSpace(), "A data do pagamento não pode ser futura."),
   receipts: filesSchema(RECEIPT_FILE_RULES),
 });
 

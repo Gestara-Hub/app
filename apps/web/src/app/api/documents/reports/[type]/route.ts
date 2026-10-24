@@ -1,4 +1,5 @@
 import type { ReportFilter, ReportType } from "@gestarahub/contracts";
+import { dateInSpace } from "@gestarahub/core/date";
 import { REPORT_FILE_SLUG } from "@/lib/documents/report-documents";
 import { documentErrorResponse, documentResponse, formatFromRequest } from "@/services/server/documents";
 import { buildReportDocument } from "@/services/server/reportDocument";
@@ -8,10 +9,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COMPETENCE_RE = /^\d{4}-\d{2}$/;
-
-function currentCompetence(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7);
-}
 
 /**
  * Relatorio em PDF ou CSV, gerado no servidor com o layout dos documentos:
@@ -26,13 +23,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ type
   }
   const url = new URL(request.url);
   const competence = url.searchParams.get("competencia") ?? "";
-  const filter: ReportFilter = {
-    competence: COMPETENCE_RE.test(competence) ? competence : currentCompetence(),
-    classGroupId: url.searchParams.get("turma") || undefined,
-    sessionId: url.searchParams.get("aula") || undefined,
-  };
   try {
     const ctx = await requireTenant();
+    const filter: ReportFilter = {
+      // Sem competencia: o mes atual no fuso do espaco.
+      competence: COMPETENCE_RE.test(competence) ? competence : dateInSpace(new Date(), ctx.timeZone).slice(0, 7),
+      classGroupId: url.searchParams.get("turma") || undefined,
+      sessionId: url.searchParams.get("aula") || undefined,
+    };
     ctx.require("reports:view");
     ctx.require("reports:export");
     const model = await buildReportDocument(ctx, type as ReportType, filter);

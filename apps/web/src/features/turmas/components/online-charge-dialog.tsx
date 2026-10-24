@@ -61,6 +61,7 @@ import {
 } from "../hooks/use-billing";
 import { IllustrativeQr } from "./illustrative-qr";
 import { PixQrCode } from "@/components/shared/pix-qr-code";
+import { dateInSpace, currentSpaceTimeZone } from "@gestarahub/core/date";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
@@ -125,10 +126,10 @@ function whatsappMessage(input: {
   return `${header}\n\n${body}\n\nVálido até ${formatDateTime(input.payment.expiresAt)}.`;
 }
 
-/** "hoje às 14:05", "ontem às 09:10" ou "em 20/10 às 18:30" (hora de Brasília). */
+/** "hoje às 14:05", "ontem às 09:10" ou "em 20/10 às 18:30" (no fuso do espaço). */
 function openedLabel(iso: string): string {
   const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", ...opts }).format(d);
+    new Intl.DateTimeFormat("pt-BR", { timeZone: currentSpaceTimeZone(), ...opts }).format(d);
   const at = new Date(iso);
   const day = fmt(at, { year: "numeric", month: "2-digit", day: "2-digit" });
   const today = fmt(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -202,7 +203,7 @@ export function OnlineChargeDialog({
     method,
     splitAmountCents,
     passFee: activePassFee,
-    fees: effectiveGatewayFees(onlineSettings?.gatewayFees, format(new Date(), "yyyy-MM-dd")),
+    fees: effectiveGatewayFees(onlineSettings?.gatewayFees, dateInSpace()),
   });
 
   const payments = checkout.data?.payments ?? [];
@@ -261,7 +262,7 @@ export function OnlineChargeDialog({
     });
     // Mesmo envio dos outros botoes: abre o WhatsApp (ou envia pelo oficial) e registra.
     whatsapp.send({
-      trigger: charge.kind === "membership" ? billingReminderTrigger(charge, format(new Date(), "yyyy-MM-dd")) : "manual_broadcast",
+      trigger: charge.kind === "membership" ? billingReminderTrigger(charge, dateInSpace()) : "manual_broadcast",
       recipient: { name: checkout.data?.studentName || charge.studentName, phone: phone, clientId: charge.studentId },
       content: text,
       chargeId: charge.id,

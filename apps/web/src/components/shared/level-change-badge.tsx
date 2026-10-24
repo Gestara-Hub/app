@@ -1,9 +1,9 @@
 "use client";
 
-import { format } from "date-fns";
 import { ArrowUpCircle } from "lucide-react";
 import type { ProgressionLevelStep } from "@gestarahub/contracts";
 import { ageAt, isAgedOutOfLevel, levelAgeLabel } from "@/lib/progression-tracks";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * "Trocar faixa": o aluno passou da idade do nivel atual (ex.: fez 16 anos na
@@ -18,7 +18,7 @@ export function LevelChangeBadge({
   birthDate?: string;
   levelWord: string;
 }) {
-  const age = ageAt(birthDate, format(new Date(), "yyyy-MM-dd"));
+  const age = ageAt(birthDate, dateInSpace());
   if (!level || !isAgedOutOfLevel(level, age)) return null;
   return (
     <span

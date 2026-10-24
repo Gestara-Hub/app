@@ -2,13 +2,12 @@
 
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
 import { Eye, MessageCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { MessageLog, MessageLogKind, MessageLogStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDateTime, formatPhone } from "@gestarahub/core/format";
-import { relativeDateLabel } from "@gestarahub/core/date";
+import { relativeDateLabel, dateInSpace } from "@gestarahub/core/date";
 import {
   ListContainer,
   ListEmptyState,
@@ -227,7 +226,7 @@ export function MessageLogsTab() {
                     <span>·</span>
                     <span>{phoneLabel(log.recipientPhone)}</span>
                     <span>·</span>
-                    <span title={formatDateTime(log.sentAt)}>{relativeDateLabel(format(parseISO(log.sentAt), "yyyy-MM-dd"))}</span>
+                    <span title={formatDateTime(log.sentAt)}>{relativeDateLabel(dateInSpace(log.sentAt))}</span>
                   </p>
                 </div>
               </ListRow>

@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { addCompetence, materializeRecurrence, recurrenceDueDate } from "@gestarahub/core/finance";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/log";
+import { dateInSpace, resolveSpaceTimeZone } from "@gestarahub/core/date";
 
 function mapRowToRecurrence(row: Record<string, unknown>): FinancialRecurrence {
   return {
@@ -120,10 +121,11 @@ export async function materializeRecurrencesAction(organizationId: string): Prom
   const [recurrences, entries, { data: unit }] = await Promise.all([
     listFinancialRecurrencesFromDb(organizationId),
     listFinancialEntriesFromDb(organizationId),
-    client.from("units").select("id").eq("organization_id", organizationId).limit(1).maybeSingle(),
+    client.from("units").select("id, address, organizations(settings)").eq("organization_id", organizationId).limit(1).maybeSingle(),
   ]);
-  // Mes atual no horario do espaco (Brasilia), nao no do servidor.
-  const current = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).slice(0, 7);
+  // Mes atual no fuso do espaco, nao no do servidor (a rotina roda sem sessao).
+  const settings = (unit?.organizations as { settings?: { timeZone?: string } | null } | null)?.settings;
+  const current = dateInSpace(new Date(), resolveSpaceTimeZone(settings, unit?.address)).slice(0, 7);
   const upTo = addCompetence(current, 1);
 
   const rows: Record<string, unknown>[] = [];

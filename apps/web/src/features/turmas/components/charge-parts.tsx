@@ -11,6 +11,7 @@ import type { ChargeKind, ChargeStatus, ChargeView, PlanPeriod } from "@gestarah
 import { withKind } from "@/lib/text";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useOnlineCheckout } from "../hooks/use-billing";
+import { dateInSpace, todayISO } from "@gestarahub/core/date";
 
 /**
  * Pecas da linha de cobranca, as mesmas em Cobrancas e no extrato da ficha do
@@ -150,7 +151,7 @@ function OnlineSettlement({ charge }: { charge: ChargeView }) {
       ? "Pix"
       : undefined;
   const row = "flex items-center justify-between gap-3";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const release = paid.fundsReleased
     ? paid.creditDate
       ? `Disponível para saque desde ${formatDate(paid.creditDate)}`
@@ -429,7 +430,7 @@ export function ChargeDetails({ charge: c, showSubject = true }: { charge: Charg
   if (reason) parts.push(reason);
   // Paga: quando e como; com comprovante, avisa (abre pelo menu da linha).
   if (c.status === "paid") {
-    const when = c.paidAt ? ` em ${dueDateLabel(c.paidAt.slice(0, 10))}` : "";
+    const when = c.paidAt ? ` em ${dueDateLabel(dateInSpace(c.paidAt))}` : "";
     const how = c.method ? ` via ${paymentMethodLabel(c.method)}` : "";
     parts.push(`${c.paidVia === "online" ? "pago online" : "pago"}${how}${when}`);
     const receipts = c.attachments?.length ?? 0;

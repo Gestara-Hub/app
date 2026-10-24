@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
 import { Eye, MessageCircle, MessageSquarePlus } from "lucide-react";
 import type { MessageLog, MessageLogStatus } from "@gestarahub/contracts";
 import { formatDateTime } from "@gestarahub/core/format";
-import { relativeDateLabel } from "@gestarahub/core/date";
+import { relativeDateLabel, dateInSpace, timeInSpace } from "@gestarahub/core/date";
 import {
   ListContainer,
   ListEmptyState,
@@ -45,8 +44,8 @@ const STATUS_FILTERS: { value: "all" | MessageLogStatus; label: string }[] = [
 
 /** "Hoje às 10:30", "Há 3 dias às 08:00", "12/09/2026 às 19:10". */
 function sentLabel(iso: string): string {
-  const day = relativeDateLabel(format(parseISO(iso), "yyyy-MM-dd"));
-  return `${day.charAt(0).toUpperCase()}${day.slice(1)} às ${format(parseISO(iso), "HH:mm")}`;
+  const day = relativeDateLabel(dateInSpace(iso));
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)} às ${timeInSpace(iso)}`;
 }
 
 /**

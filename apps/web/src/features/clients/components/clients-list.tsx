@@ -25,7 +25,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -81,6 +80,7 @@ import {
 import { usePaginatedClients } from "../hooks/use-clients";
 import { useUserPreferences } from "@/features/preferences";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const PERIOD_SHORT: Record<PlanPeriod, string> = {
   monthly: "mês",
@@ -101,7 +101,7 @@ function getEffectivePriceCents(client: Client, plan: Plan): number {
   let price = plan.priceCents;
   const expired =
     client.discount?.validUntil !== undefined &&
-    client.discount.validUntil < format(new Date(), "yyyy-MM-dd");
+    client.discount.validUntil < dateInSpace();
   if (client.discount && client.discount.value > 0 && !expired) {
     if (client.discount.type === "percentage") {
       price = Math.max(0, price - Math.round((price * client.discount.value) / 100));
@@ -141,7 +141,7 @@ function ClientProgressionBadges({
   onOpenGraduation?: (client: Client) => void;
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
-  const age = ageAt(client.birthDate, format(new Date(), "yyyy-MM-dd"));
+  const age = ageAt(client.birthDate, dateInSpace());
   const entries = Object.values(client.progressions ?? {});
   const resolvedBadges = entries
     .map((prog) => {
@@ -222,7 +222,7 @@ function ClientProgressionBadges({
 function activeScholarship(client: Client) {
   const d = client.discount;
   if (!d?.scholarship) return null;
-  if (d.validUntil && d.validUntil < format(new Date(), "yyyy-MM-dd")) return null;
+  if (d.validUntil && d.validUntil < dateInSpace()) return null;
   return d;
 }
 

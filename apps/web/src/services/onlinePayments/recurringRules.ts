@@ -1,6 +1,5 @@
 import type { Id, RecurringAuthorization } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
-import { format, parseISO } from "date-fns";
 import { notFoundError, nowIso, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
@@ -14,6 +13,7 @@ import {
   studentName,
   todayISO,
 } from "./onlinePaymentRules";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de
@@ -65,7 +65,7 @@ export function applyRecurringAutoPayments(): number {
       a.studentId,
       {
         limit: a.maxAmountCents,
-        since: a.authorizedAt ? format(parseISO(a.authorizedAt), "yyyy-MM-dd") : undefined,
+        since: a.authorizedAt ? dateInSpace(a.authorizedAt) : undefined,
       },
     ]),
   );

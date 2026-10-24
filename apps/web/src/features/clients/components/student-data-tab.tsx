@@ -23,6 +23,7 @@ import { ageLabel } from "@/lib/birthdays";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
 import { isSupabaseOrganization } from "@/lib/session";
 import { useCurrentUser } from "@/features/auth";
+import { dateInSpace } from "@gestarahub/core/date";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -216,12 +217,12 @@ export function StudentDataTab({
               {student.minorConsentStatus === "confirmed_whatsapp" ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Autorizado eletronicamente por <strong className="text-foreground">{student.minorConsentBy || "Responsável legal"}</strong>
-                  {student.minorConsentAt ? ` em ${brDate(student.minorConsentAt.slice(0, 10))}` : ""}. Registro probatório com carimbo temporal arquivado.
+                  {student.minorConsentAt ? ` em ${brDate(dateInSpace(student.minorConsentAt))}` : ""}. Registro probatório com carimbo temporal arquivado.
                 </p>
               ) : student.minorConsentStatus === "confirmed_paper" ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Termo impresso assinado presencialmente e arquivado na recepção
-                  {student.minorConsentAt ? ` em ${brDate(student.minorConsentAt.slice(0, 10))}` : ""}.
+                  {student.minorConsentAt ? ` em ${brDate(dateInSpace(student.minorConsentAt))}` : ""}.
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">

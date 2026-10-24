@@ -1,5 +1,4 @@
 import type { GeneratedReportData, ReportFilter, ReportMetadata, ReportType } from "@gestarahub/contracts";
-import { format } from "date-fns";
 import { apiError, notFoundError, readOp } from "@/services/world/ops";
 import { delegateAll } from "../world/delegate";
 import { CATALOG, REPORT_PERMISSION, actorCanSee } from "./reportCatalog";
@@ -11,6 +10,7 @@ import {
   buildPackageSummary,
 } from "./financialReports";
 import { buildChurnRetention } from "./retentionReport";
+import { dateInSpace } from "@gestarahub/core/date";
 
 export const reportsServiceImpl = {
   getCatalog(): Promise<ReportMetadata[]> {
@@ -28,7 +28,7 @@ export const reportsServiceImpl = {
         throw apiError("FORBIDDEN", "Você não tem permissão para ver este relatório.", { httpStatus: 403 });
       }
       // Mes local (toISOString daria o mes seguinte depois das 21h no Brasil).
-      const competence = filter.competence || format(new Date(), "yyyy-MM");
+      const competence = filter.competence || dateInSpace().slice(0, 7);
       const [year, month] = competence.split("-");
       const periodLabel = `Competência ${month}/${year}`;
 

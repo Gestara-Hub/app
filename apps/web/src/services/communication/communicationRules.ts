@@ -8,7 +8,7 @@ import type {
   WhatsAppConnection,
   WhatsAppConnectionView,
 } from "@gestarahub/contracts";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { isBirthdayToday } from "@/lib/birthdays";
 import { MESSAGE_MAX_LENGTH, fillMessage, whatsappNumber } from "@/lib/whatsapp";
 import { charCount } from "@/lib/text";
@@ -16,6 +16,7 @@ import { newId, nowIso, persistLocal, validationError } from "@/services/world/o
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "@/services/defaults";
 import { store } from "@/services/world/store";
 import { tenantHasFeature } from "../subscription/subscriptionService";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5):
@@ -137,7 +138,7 @@ export function runBirthdayGreetings(): number {
       (log) =>
         log.trigger === "birthday_greeting" &&
         log.clientId === client.id &&
-        format(parseISO(log.sentAt), "yyyy-MM-dd") === today,
+        dateInSpace(log.sentAt) === today,
     );
     if (alreadySent) continue;
     const log = newLog(

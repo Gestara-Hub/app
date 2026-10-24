@@ -56,6 +56,7 @@ import {
   getTurmaFormSchema,
   type TurmaFormValues,
 } from "../turma-schema";
+import { dateInSpace } from "@gestarahub/core/date";
 
 const WEEKDAYS = [
   { value: 0, short: "Dom" },
@@ -164,7 +165,7 @@ function slotsToBlocks(
   durationMinutes = 60,
 ): ScheduleBlock[] {
   if (!slots || slots.length === 0) {
-    const initialDate = startDate || format(new Date(), "yyyy-MM-dd");
+    const initialDate = startDate || dateInSpace();
     const weekday = weekdayOf(initialDate);
     const times = getUnitTimesForWeekday(weekday, unit, durationMinutes);
     const dayConfig = unit?.businessHours?.find((b) => b.weekday === weekday);
@@ -404,7 +405,7 @@ function MeetingSlotsEditor({
       }
     }
     if (instructor && block.start && block.end) {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const today = dateInSpace();
       const [conflict] = findInstructorConflicts(
         block.days.map((day) => ({ weekday: day as Weekday, start: block.start, end: block.end })),
         instructor.id,

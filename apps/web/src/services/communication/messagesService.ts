@@ -8,7 +8,6 @@ import type {
   SendMessagePayload,
 } from "@gestarahub/contracts";
 import { paginateArray } from "@gestarahub/contracts";
-import { format, parseISO } from "date-fns";
 import { isManualTrigger } from "@/lib/whatsapp";
 import { apiError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -23,6 +22,7 @@ import {
   validateMessage,
   newLog,
 } from "./communicationRules";
+import { dateInSpace } from "@gestarahub/core/date";
 
 /**
  * Tipo da mensagem no filtro do historico. A mesma regra vale na consulta do
@@ -132,8 +132,8 @@ export const messagesService = {
   getMetrics(): Promise<CommunicationMetrics> {
     return readOp(async () => {
       const view = connectionView();
-      const month = format(new Date(), "yyyy-MM");
-      const localMonth = (iso: string) => format(parseISO(iso), "yyyy-MM");
+      const month = dateInSpace().slice(0, 7);
+      const localMonth = (iso: string) => dateInSpace(iso).slice(0, 7);
       const monthLogs = ensureLogs().filter((l) => localMonth(l.sentAt) === month);
       const sent = monthLogs.filter((l) => l.status !== "opened");
       const delivered = sent.filter((l) => l.status === "delivered" || l.status === "read").length;

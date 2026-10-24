@@ -53,6 +53,13 @@ export interface OrganizationSettings {
    * Ausente = nada a revisar.
    */
   modalitiesReviewed?: boolean;
+  /**
+   * Fuso do espaco (IANA, um dos quatro do Brasil: `BRAZIL_TIME_ZONES` em
+   * `@gestarahub/core/date`). Ausente = o do estado do endereco da unidade,
+   * senao Brasilia. Define o "hoje" das regras, das telas e do parceiro de
+   * pagamentos.
+   */
+  timeZone?: string;
 }
 
 export interface Organization {

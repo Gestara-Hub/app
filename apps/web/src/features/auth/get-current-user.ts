@@ -1,4 +1,6 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
+import { DEFAULT_SPACE_TIME_ZONE, resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { SESSION_COOKIE, decodeSession, isSupabaseOrganization } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { store } from "@/mocks/store";
@@ -23,7 +25,7 @@ export async function getCurrentUser(): Promise<UserView | null> {
   if (claims) {
     // Conta real: o usuario ainda existe e esta ativo no espaco? Inativado ou
     // removido, a sessao acaba (antes seguia navegando so com o cookie).
-    if (isSupabaseOrganization(claims.organizationId) && !(await isActiveInDb(claims.id, claims.organizationId))) {
+    if (isSupabaseOrganization(claims.organizationId) && !(await loadSessionSpace(claims.id, claims.organizationId)).active) {
       return null;
     }
     return claims;
@@ -45,17 +47,39 @@ export async function getCurrentUser(): Promise<UserView | null> {
   };
 }
 
-async function isActiveInDb(userId: string, organizationId: string): Promise<boolean> {
+/**
+ * Fuso do espaco da sessao (achado 60): o navegador usa o do espaco, nao o do
+ * aparelho. Sai da mesma leitura que confere o usuario (uma consulta por tela).
+ */
+export async function getSessionTimeZone(user: Pick<UserView, "id" | "organizationId">): Promise<SpaceTimeZone> {
+  if (!isSupabaseOrganization(user.organizationId)) return DEFAULT_SPACE_TIME_ZONE;
+  return (await loadSessionSpace(user.id, user.organizationId)).timeZone;
+}
+
+interface SessionSpace {
+  active: boolean;
+  timeZone: SpaceTimeZone;
+}
+
+// Uma leitura por requisicao, para o usuario e o fuso.
+const loadSessionSpace = cache(async (userId: string, organizationId: string): Promise<SessionSpace> => {
   try {
     const { data } = await createSupabaseAdminClient()
       .from("users")
-      .select("status")
+      .select("status, organizations(settings, units(address))")
       .eq("id", userId)
       .eq("organization_id", organizationId)
       .maybeSingle();
-    return data?.status === "active";
+    const organization = (data?.organizations ?? null) as {
+      settings?: { timeZone?: string } | null;
+      units?: { address?: { state?: string } | string | null }[];
+    } | null;
+    return {
+      active: data?.status === "active",
+      timeZone: resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address),
+    };
   } catch {
     // Sem banco (ambiente sem Supabase): nao derruba a sessao por isso.
-    return true;
+    return { active: true, timeZone: DEFAULT_SPACE_TIME_ZONE };
   }
-}
+});
