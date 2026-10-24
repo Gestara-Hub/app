@@ -17,6 +17,22 @@ export interface PixPayment {
   fallbackReason?: string;
 }
 
+/**
+ * O parceiro criou a cobranca, mas ainda nao entrega o QR do Pix: conta de
+ * recebimento recem-ativada, com a chave Pix ainda sendo cadastrada (achado 56).
+ * A cobranca ja foi cancelada no parceiro; basta tentar de novo em minutos.
+ */
+export const PIX_NOT_READY = "pix_not_ready";
+export const PIX_NOT_READY_MESSAGE = "A conta ainda está liberando o Pix. Tente de novo em alguns minutos.";
+
+export class PixNotReadyError extends Error {
+  readonly reason = PIX_NOT_READY;
+  constructor() {
+    super(PIX_NOT_READY_MESSAGE);
+    this.name = "PixNotReadyError";
+  }
+}
+
 export interface PaymentLinkPayment {
   /** Id do pagamento no provedor de gateway. */
   providerId: string;

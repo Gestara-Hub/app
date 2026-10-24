@@ -1,8 +1,10 @@
 import type { DateTimeISO } from "@gestarahub/contracts";
 import { dateInSpace } from "@gestarahub/core/date";
 import {
+  AsaasApiError,
   asaasToday,
   createOrFindCustomer,
+  deletePayment,
   createPixPayment,
   getPixQrCode,
   getAsaasConfig,
@@ -15,9 +17,18 @@ import type {
   CreatePixInput,
   CreateLinkInput,
 } from "../types";
+import { PixNotReadyError } from "../types";
 import { newId } from "@/services/world/ops";
+import { logWarn } from "@/lib/log";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
 import type { Address } from "@gestarahub/contracts";
+
+/** O Asaas recusa o QR porque a conta ainda nao tem chave Pix (recem-ativada). */
+function isPixKeyMissing(error: unknown): boolean {
+  if (!(error instanceof AsaasApiError)) return false;
+  const texts = [error.message, ...(error.errors ?? []).map((e) => e.description)];
+  return texts.some((t) => /chave pix/i.test(t ?? ""));
+}
 
 function addMinutes(minutes: number): DateTimeISO {
   return new Date(Date.now() + minutes * 60_000).toISOString();
@@ -164,8 +175,20 @@ export const asaasPaymentGateway: PaymentGateway = {
       input.subaccountApiKey,
     );
 
-    // 6. Busca o QR Code e código Copia e Cola
-    const qrCode = await getPixQrCode(payment.id, input.subaccountApiKey);
+    // 6. Busca o QR Code e código Copia e Cola. Sem QR, a cobranca nao serve
+    // para nada: cancela no parceiro (nao fica orfa) antes de avisar.
+    let qrCode: Awaited<ReturnType<typeof getPixQrCode>>;
+    try {
+      qrCode = await getPixQrCode(payment.id, input.subaccountApiKey);
+    } catch (qrError) {
+      try {
+        await deletePayment(payment.id, input.subaccountApiKey);
+      } catch (cancelError) {
+        logWarn("[asaasAdapter] Pix sem QR não foi cancelado no Asaas:", { paymentId: payment.id, cancelError });
+      }
+      if (isPixKeyMissing(qrError)) throw new PixNotReadyError();
+      throw qrError;
+    }
 
     return {
       provider: "asaas",

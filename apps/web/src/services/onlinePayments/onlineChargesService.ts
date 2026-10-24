@@ -133,6 +133,8 @@ export const onlineChargesService = {
       fees: effectiveGatewayFees(settings.gatewayFees, todayISO()),
     });
 
+    // Conta real nunca recebe codigo de demonstracao; o servidor do e2e (E2E_NOW) roda sem Asaas.
+    const gatewayOptions = { allowDemo: !isSupabaseOrganization(store.organization.id) || Boolean(process.env.E2E_NOW) };
     const provided =
       method === "pix"
         ? await paymentGateway.createPix({
@@ -153,7 +155,7 @@ export const onlineChargesService = {
             planName: plan?.name,
             chargeKind: charge.kind,
             description: charge.description,
-          })
+          }, gatewayOptions)
         : await paymentGateway.createLink({
             billingType: ASAAS_BILLING_TYPE[method] as "CREDIT_CARD" | "BOLETO" | "UNDEFINED",
             chargeId,
@@ -172,12 +174,12 @@ export const onlineChargesService = {
             planName: plan?.name,
             chargeKind: charge.kind,
             description: charge.description,
-          });
+          }, gatewayOptions);
 
     // Conta real nunca entrega codigo de demonstracao ao aluno: avisa o motivo.
     const gatewayProvider = provided.provider ?? "mock";
     // O servidor do e2e (E2E_NOW) roda sem Asaas e aceita o codigo simulado.
-    if (gatewayProvider === "mock" && isSupabaseOrganization(store.organization.id) && !process.env.E2E_NOW) {
+    if (gatewayProvider === "mock" && !gatewayOptions.allowDemo) {
       throw apiError(
         "NETWORK",
         `Não foi possível gerar ${method === "pix" ? "o Pix" : "o link"} no Asaas. ${provided.fallbackReason ?? ""}`.trim(),

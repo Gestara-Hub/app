@@ -1,7 +1,13 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { CreateLinkInput, CreatePixInput, PaymentLinkPayment, PixPayment } from "../payments/types";
+import {
+  PixNotReadyError,
+  type CreateLinkInput,
+  type CreatePixInput,
+  type PaymentLinkPayment,
+  type PixPayment,
+} from "../payments/types";
 import { getPaymentGateway } from "../payments/registry";
 import { requireTenant } from "../server/tenant";
 import { logError, logWarn } from "@/lib/log";
@@ -17,7 +23,7 @@ import { logError, logWarn } from "@/lib/log";
 export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
-): Promise<PixPayment | { error: string }> {
+): Promise<PixPayment | { error: string; reason?: string }> {
   const ctx = await requireTenant();
   try {
     let subaccountApiKey = input.subaccountApiKey;
@@ -88,6 +94,11 @@ export async function createOnlinePixPaymentAction(
     }
     return { ...result, provider: gateway.provider };
   } catch (error) {
+    // Conta recem-ativada sem chave Pix: esperado nos primeiros minutos.
+    if (error instanceof PixNotReadyError) {
+      logWarn("[createOnlinePixPaymentAction] Pix ainda não liberado na conta de recebimento.");
+      return { error: error.message, reason: error.reason };
+    }
     const message = error instanceof Error ? error.message : String(error);
     logError("[createOnlinePixPaymentAction] Erro ao gerar Pix no gateway:", error);
     return { error: message };
