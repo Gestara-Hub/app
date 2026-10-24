@@ -32,3 +32,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #15 tela do convite | feito | git log | typecheck, lint, Vitest | Visual conferido na bateria final |
 | 4.2 #19 jargão em Planos/checkout | adiado (depende da decisão #17/#18) | git log | — | O conteúdo da tela de Planos muda com a decisão; revisar o texto junto |
 | 4.2 #20 figura do Pix na landing | feito | git log | capturas refeitas com SHOTS=pix | Sem CPF na imagem |
+| 4.2 #22 subtítulo da Equipe | feito | git log | typecheck, lint, Vitest 1035 |  |

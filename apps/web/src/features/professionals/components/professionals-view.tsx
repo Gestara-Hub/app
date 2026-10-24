@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import type { ProfessionalView } from "@gestarahub/contracts";
-import { useCan } from "@/features/auth";
+import { useCan, useModel } from "@/features/auth";
 import { RoleManagerDialog } from "@/features/roles";
 import { useUpdateProfessional } from "../hooks/use-professionals";
+import { teamSubtitle } from "../team-copy";
 import { ProfessionalsList } from "./professionals-list";
 import { ProfessionalFormDrawer } from "./professional-form-drawer";
 import { InactivateProfessionalDialog } from "./inactivate-professional-dialog";
@@ -32,6 +33,7 @@ export function ProfessionalsView() {
 
   const updateMut = useUpdateProfessional();
   const canManage = useCan()("team:manage");
+  const isClasses = useModel() === "classes";
 
   const openCreate = () => setFormState({ open: true });
   const openEdit = (professional: ProfessionalView) =>
@@ -66,7 +68,7 @@ export function ProfessionalsView() {
       {confirmDialog}
       <PageHeader
         title="Equipe"
-        description="Profissionais da unidade e a disponibilidade de cada um."
+        description={teamSubtitle(isClasses)}
       >
         {canManage ? (
           <>
