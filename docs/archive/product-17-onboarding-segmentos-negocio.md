@@ -1,5 +1,7 @@
 # 17 — Onboarding de 1º Acesso e Presets por Segmento de Negócio
 
+> Histórico: substituído por `docs/frontend/08-decisoes-landing-page-e-onboarding.md` (seções 4.3 e 4.5), que descreve o que foi implementado.
+
 > **Status:** Histórico. Substituído pela implementação descrita em `docs/frontend/08-decisoes-landing-page-e-onboarding.md` (seções 4.3 e 4.5).
 > **Data:** 26/09/2026
 >

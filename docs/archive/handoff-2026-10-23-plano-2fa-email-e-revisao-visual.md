@@ -1,5 +1,7 @@
 # Plano para o agente: 2FA por e-mail e teste geral do sistema
 
+> Histórico: plano concluído em 23/10/2026 (verificação em duas etapas por e-mail e teste geral). O resultado está em `docs/technical/17-verificacao-em-duas-etapas.md` e `docs/qa/2026-10-23-teste-geral.md`.
+
 Data: 2026-10-23. Para executar em outra sessão (Claude no VS Code). **Ordem: Parte A inteira, depois a Parte B** (a Parte B é a mais demorada).
 
 ## Como rodar sozinho (o usuário não estará acompanhando)

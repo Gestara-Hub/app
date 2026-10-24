@@ -1,5 +1,7 @@
 # 22 — O que falta no frontend antes do backend
 
+> Histórico: levantamento de 14/10/2026, anterior ao backend (que existe desde 19/10/2026). O que ainda vale está em `docs/pendencias.md`.
+
 > **Status:** 14/10/2026. Levantamento depois das fases A a D do [doc 20](20-plano-novas-formas-de-cobranca.md). Itens com **proposta** aguardam decisão; os outros podem andar sem decisão nova.
 > Backend: [../technical/08-backend-supabase.md](../technical/08-backend-supabase.md) e [../technical/06-passagem-backend.md](../technical/06-passagem-backend.md).
 

@@ -60,3 +60,5 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #9 altura dos botões | feito (parte); resto pendência | git log | typecheck, lint, Vitest 1064 | ~50 usos de size sm/xs/lg em pendencias.md |
 | 4.3 achados que dependem de decisão | análises prontas | git log | só docs | #1/#72, #17/#18/#19/#67, #27/#53, #57, #70, #65/#37, #58 em pendencias.md com recomendação (#74 fora do foco, sem análise) |
 | 4.3 #27 selo Trancado na ficha | feito (parte); regra da cobrança espera decisão | git log | typecheck, lint, Vitest 1066 |  |
+| 4.2 #81 tela montada no servidor no fuso do espaço | adiado (registrado) | git log | — | O fuso do pedido vive em AsyncLocalStorage só nas actions; a tela do servidor (SSR de componentes do navegador) não enxerga. Precisa de experimento com o desenho do servidor; segue em pendencias.md |
+| 5.1 mover guias e arquivar | feito | git log | só docs (links corrigidos no commit seguinte) | guides: 14, 16, 20 (nomes mantidos); archive: technical-06, technical-15, product-22, product-17-onboarding, handoff 23/10; product/17-pitch virou 26 |

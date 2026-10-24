@@ -1,5 +1,7 @@
 # 15 — Retirada do mock no modelo de turmas
 
+> Histórico: as fatias 1 a 5 foram feitas (22/10/2026); o modelo de turmas roda no banco. O resumo do que vale hoje está em `docs/technical/19-desempenho-e-escala.md` e `docs/guides/16-ambiente-local.md`.
+
 Data: 2026-10-21.
 
 > **Status:** Decidido e planejado em 21/10/2026. Execução por fatias, na ordem abaixo. Cada fatia fecha com typecheck, lint e testes verdes e um commit próprio.
