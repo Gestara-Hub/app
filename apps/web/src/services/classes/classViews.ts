@@ -122,6 +122,7 @@ export function toSessionView(
     createdAt: g.createdAt,
     updatedAt: override?.updatedAt ?? g.updatedAt,
     className: g.name,
+    modalityId: g.modalityId,
     modalityName: modalityName(g.modalityId),
     instructorName: instructorName(effectiveInstructorId),
     primaryInstructorId: g.instructorId,

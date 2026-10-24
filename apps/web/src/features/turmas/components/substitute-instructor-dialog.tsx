@@ -26,6 +26,7 @@ import {
 import type { ClassSessionDetail } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { useProfessionals } from "@/features/professionals";
+import { substituteLabel, substituteOptions } from "../substitutes";
 import {
   useRestorePrimaryInstructor,
   useSubstituteInstructor,
@@ -156,14 +157,11 @@ function SubstituteInstructorForm({
               <SelectValue placeholder="Selecione o profissional substituto" />
             </SelectTrigger>
             <SelectContent>
-              {professionals.map((p) => {
-                const isPrimary = p.id === primaryInstructorId;
-                return (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name} {isPrimary ? "(Titular da turma)" : ""}
-                  </SelectItem>
-                );
-              })}
+              {substituteOptions(professionals, session.modalityId, primaryInstructorId).map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {substituteLabel(option)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           {submitError ? (

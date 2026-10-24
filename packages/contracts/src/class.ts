@@ -229,6 +229,7 @@ export type SubstituteInstructorPayload = {
 
 export interface ClassSessionView extends ClassSession {
   className: string;
+  modalityId?: Id;
   modalityName?: string;
   instructorName: string;
   primaryInstructorId?: Id;
