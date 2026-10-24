@@ -150,12 +150,12 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
         </div>
       </section>
 
-      {/* 2. Sons e Alertas Operacionais */}
+      {/* 2. Sons */}
       <section className="space-y-3 border-t border-border/40 pt-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Sons e Feedback Operacional</h3>
+          <h3 className="text-sm font-semibold text-foreground">Sons</h3>
           <p className="text-xs text-muted-foreground">
-            Sinais sonoros em operações rápidas de atendimento e recepção.
+            Sinais sonoros nas tarefas rápidas do dia a dia.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             )}
             <div>
               <Label className="text-xs font-medium text-foreground">
-                Sons de confirmação (Check-in e presença)
+                Sons de confirmação (presença)
               </Label>
               <p className="text-[11px] text-muted-foreground">
                 Toca um bipe discreto ao marcar presença de aluno na lista de chamada.

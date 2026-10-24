@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   Check,
-  Copy,
   Dices,
   Palette,
   Redo2,
@@ -73,7 +72,6 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
     canRedo,
     randomize,
     resetTheme,
-    generateCssCode,
     mounted,
   } = useThemeCustomizer();
 
@@ -83,16 +81,6 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
   useEffect(() => {
     loadFontCatalogPreview();
   }, []);
-
-  function handleCopyCss() {
-    try {
-      const code = generateCssCode();
-      void navigator.clipboard.writeText(code);
-      toast.success("Código CSS copiado para a área de transferência!");
-    } catch {
-      toast.error("Não foi possível copiar o código.");
-    }
-  }
 
   function handleRandomize() {
     randomize();
@@ -109,7 +97,7 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
       {/* Presets Toolbar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">Temas Prontos</span>
+          <span className="text-xs font-semibold text-foreground">Temas prontos</span>
           <div className="flex items-center gap-1.5">
             <Button
               type="button"
@@ -267,7 +255,7 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            Bordas (Raio)
+            Cantos
           </button>
         </div>
 
@@ -335,7 +323,7 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
         {activeTab === "other" ? (
           <div className="space-y-2 pt-1">
             <label className="text-xs font-medium text-muted-foreground block">
-              Arredondamento dos cantos (Raio: {state.radius}rem)
+              Arredondamento dos cantos
             </label>
             <div className="grid grid-cols-5 gap-1.5">
               {THEME_RADIUSES.map((r) => {
@@ -361,7 +349,7 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
         ) : null}
       </div>
 
-      {/* Bottom Action Bar: Undo, Redo, Copy */}
+      {/* Bottom Action Bar: Undo, Redo */}
       <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
         <div className="flex items-center gap-1.5">
           <Button
@@ -386,19 +374,9 @@ export function ThemeCustomizerPanel({ className }: { className?: string }) {
             <Redo2 className="size-3 mr-1" />
             Refazer
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={handleCopyCss}
-            className="text-[11px]"
-          >
-            <Copy className="size-3 mr-1" />
-            Copiar CSS
-          </Button>
         </div>
         <span className="font-mono text-[10px] text-muted-foreground">
-          {THEME_COLORS.find((t) => t.name === state.themeColor)?.label ?? state.themeColor} · r:{state.radius}
+          {THEME_COLORS.find((t) => t.name === state.themeColor)?.label ?? state.themeColor} · cantos {state.radius.replace(".", ",")}
         </span>
       </div>
     </div>

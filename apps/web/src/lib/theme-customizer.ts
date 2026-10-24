@@ -116,7 +116,7 @@ export interface ThemeFontOption {
 }
 
 export const THEME_FONTS: ThemeFontOption[] = [
-  { value: "system", label: "System (Nativo)", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
+  { value: "system", label: "Do aparelho", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
   { value: "inter", label: "Inter", fontFamily: "'Inter', sans-serif", googleFontQuery: "Inter:wght@400;500;600;700" },
   { value: "roboto", label: "Roboto", fontFamily: "'Roboto', sans-serif", googleFontQuery: "Roboto:wght@400;500;700" },
   { value: "open-sans", label: "Open Sans", fontFamily: "'Open Sans', sans-serif", googleFontQuery: "Open+Sans:wght@400;500;600;700" },
@@ -140,7 +140,7 @@ export const THEME_FONTS: ThemeFontOption[] = [
   { value: "instrument-sans", label: "Instrument Sans", fontFamily: "'Instrument Sans', sans-serif", googleFontQuery: "Instrument+Sans:wght@400;500;600;700" },
   { value: "manrope", label: "Manrope", fontFamily: "'Manrope', sans-serif", googleFontQuery: "Manrope:wght@400;500;600;700" },
   { value: "oxanium", label: "Oxanium", fontFamily: "'Oxanium', sans-serif", googleFontQuery: "Oxanium:wght@400;500;600;700" },
-  { value: "mono", label: "Mono (Monoespaçada)", fontFamily: "var(--font-mono), monospace" },
+  { value: "mono", label: "Monoespaçada", fontFamily: "var(--font-mono), monospace" },
 ];
 
 export const THEME_STYLES: { value: ThemeStyle; label: string }[] = [
@@ -160,7 +160,7 @@ export interface ThemePreset {
 export const THEME_PRESETS: ThemePreset[] = [
   {
     id: "default",
-    name: "Padrão (Default)",
+    name: "Padrão",
     previewColors: ["#18181b", "#71717a", "#e4e4e7", "#ffffff"],
     state: {
       baseColor: "zinc",
