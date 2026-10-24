@@ -43,3 +43,9 @@ export function phoneIncludes(phone: string | undefined, needle: string): boolea
   if (!phone || digits.length < 3) return false;
   return phone.replace(/\D/g, "").includes(digits);
 }
+
+/** Sugestoes que ainda nao existem (sem diferenca de maiuscula ou acento): clicar numa ja existente so levaria ao erro de nome repetido. */
+export function suggestionsNotTaken(suggestions: readonly string[], existingNames: readonly string[]): string[] {
+  const taken = new Set(existingNames.map(normalizeText));
+  return suggestions.filter((suggestion) => !taken.has(normalizeText(suggestion)));
+}

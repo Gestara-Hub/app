@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { charCount, normalizeText, withKind } from "@/lib/text";
+import { charCount, normalizeText, suggestionsNotTaken, withKind } from "@/lib/text";
 
 describe("normalizeText", () => {
   it("remove acentos e cedilha", () => {
@@ -40,5 +40,17 @@ describe("charCount", () => {
     expect(charCount("🥋")).toBe(1);
     expect(charCount("Bons treinos! 🥋🎉")).toBe(16);
     expect(charCount("")).toBe(0);
+  });
+});
+
+describe("suggestionsNotTaken (achado 24)", () => {
+  it("tira da lista o que já existe, sem ligar para maiúscula ou acento", () => {
+    expect(
+      suggestionsNotTaken(["Pilates Reformer", "Pilates Solo", "Yoga", "Studio VIP"], ["pilates reformer", "Pilátes Solo"]),
+    ).toEqual(["Yoga", "Studio VIP"]);
+  });
+
+  it("sem nada criado, todas as sugestões ficam", () => {
+    expect(suggestionsNotTaken(["Yoga"], [])).toEqual(["Yoga"]);
   });
 });

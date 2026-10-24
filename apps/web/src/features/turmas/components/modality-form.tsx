@@ -75,7 +75,8 @@ import {
   type BusinessSegmentPreset,
 } from "@/lib/business-segment-presets";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { useCreateCategory, useUpdateCategory } from "@/features/categories";
+import { useCategories, useCreateCategory, useUpdateCategory } from "@/features/categories";
+import { suggestionsNotTaken } from "@/lib/text";
 import { useBusinessSegment } from "@/features/settings";
 import { useClients } from "@/features/clients";
 import { plural } from "@gestarahub/core/format";
@@ -245,8 +246,12 @@ export function ModalityForm({
     : vocabulary.level === "Faixa"
       ? "Níveis"
       : vocabulary.levelPlural;
-  const quickSuggestions: readonly string[] =
-    segment.id === "martial_arts" ? QUICK_MODALITY_SUGGESTIONS : segment.defaultModalities;
+  // So o que ainda nao existe: clicar numa modalidade ja criada so levaria ao erro de nome repetido (achado 24).
+  const { data: existingModalities } = useCategories();
+  const quickSuggestions: readonly string[] = suggestionsNotTaken(
+    segment.id === "martial_arts" ? QUICK_MODALITY_SUGGESTIONS : segment.defaultModalities,
+    (existingModalities ?? []).map((category) => category.name),
+  );
   const suggestedTemplates = segment.trackTemplates;
   const otherTemplates = ALL_TEMPLATE_KEYS.filter((k) => !suggestedTemplates.includes(k));
 
