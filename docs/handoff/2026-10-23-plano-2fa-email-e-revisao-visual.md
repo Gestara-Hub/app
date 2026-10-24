@@ -167,12 +167,14 @@ Tudo com RLS ligado e **sem políticas** (só a chave de serviço), como a migra
 
 ### A.9 Pronto quando
 
-- [ ] Ligar e desligar por e-mail e por app, com auditoria.
-- [ ] Login com e-mail ligado pede código; a barreira recusa dados antes do código (teste de banco).
-- [ ] "Lembrar este dispositivo" funciona por 30 dias e pode ser esquecido; desligar revoga tudo.
-- [ ] Aviso de segurança oferece os dois métodos.
-- [ ] Typecheck, lint, Vitest, testes de banco da área e e2e da área `acesso` passando.
-- [ ] Doc 17 atualizada. Nada commitado sem o usuário pedir; nada de push.
+- [x] Ligar e desligar por e-mail e por app, com auditoria.
+- [x] Login com e-mail ligado pede código; a barreira recusa dados antes do código (teste de banco).
+- [x] "Lembrar este dispositivo" funciona por 30 dias e pode ser esquecido; desligar revoga tudo.
+- [x] Aviso de segurança oferece os dois métodos.
+- [x] Typecheck, lint, Vitest, testes de banco da área e e2e da área `acesso` passando.
+- [x] Doc 17 atualizada. Nada commitado sem o usuário pedir; nada de push.
+
+Feito em 23/10/2026 (ver doc 17, inclusive "Perguntas para o usuário"). O e2e `seguranca-aviso` era instável (corrida das preferências gravadas ao sair da página) e foi estabilizado.
 
 ---
 
@@ -300,8 +302,10 @@ No topo: quantos achados por gravidade, as 5 coisas mais importantes, a lista do
 
 ### B.7 Pronto quando
 
-- [ ] Todos os itens da seção B.5 executados no desktop e o essencial no celular; as telas principais no tema escuro.
-- [ ] Subconta criada no sandbox e o ciclo do pagamento online testado (seção B.3).
-- [ ] Perfis professor, recepção e gerente conferidos.
-- [ ] Arquivo `docs/qa/2026-10-xx-teste-geral.md` com os achados no formato da seção B.6.
-- [ ] Nenhuma correção feita; nada commitado sem o usuário pedir; nada de push.
+- [x] Todos os itens da seção B.5 executados no desktop e o essencial no celular; as telas principais no tema escuro.
+- [x] Subconta criada no sandbox e o ciclo do pagamento online testado (seção B.3).
+- [x] Perfis professor, recepção e gerente conferidos.
+- [x] Arquivo `docs/qa/2026-10-xx-teste-geral.md` com os achados no formato da seção B.6.
+- [x] Nenhuma correção feita; nada commitado sem o usuário pedir; nada de push.
+
+Feito em 23/10/2026: `docs/qa/2026-10-23-teste-geral.md` (76 achados, 5 `alta`). A única correção foi no código novo da Parte A (subtítulo da tela `/two-factor`); está no resumo do arquivo.
