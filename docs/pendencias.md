@@ -2,13 +2,13 @@
 
 Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para a doc com o detalhe. Ao resolver um item, apague a linha daqui e atualize a doc dele.
 
-Última revisão: 23/10/2026.
+Última revisão: 24/10/2026 (fim da execução noturna).
 
 ## Decidido, falta implementar
 
 | Pendência | Onde está o detalhe | Situação |
 | --- | --- | --- |
-| Correções do teste geral: as `média` e as `baixa` (as 5 altas estão corrigidas) | `qa/2026-10-23-teste-geral.md`, seção Correções | Em andamento |
+| Correções do teste geral: o que sobrou depende das decisões da seção "Esperando decisão sua" (57 de 81 achados corrigidos em 24/10) | `qa/2026-10-23-teste-geral.md`, seção Correções; `qa/2026-10-24-teste-final.md` | Esperando você |
 | Cancelar aula e feriados | `product/25-lembretes-e-seguranca.md` §7 | Construir depois; há decisões abertas lá (avulsa, pacote, pagamento do professor, chamada, feriados) |
 | Resumo diário de lembretes por e-mail | `product/25-lembretes-e-seguranca.md` §7 | Adiado |
 | Primeiro desenho da tela no fuso do espaço (hoje sai em Brasília até o navegador ligar o fuso; afeta só outros fusos perto da meia-noite) | `qa/2026-10-23-teste-geral.md`, achado 81; `technical/22-fuso-do-espaco.md` | Registrado como `baixa` |
@@ -17,20 +17,15 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 
 ## Testes deixados para o fim
 
-Decisão do usuário (23/10/2026): foco no desenvolvimento. O e2e e as conferências à mão ficam para uma rodada só, no fim, e o que aparecer é corrigido ali. **Cada etapa que pular um teste entra nesta tabela.** Na rodada: rodar tudo, registrar as falhas como achados no teste geral e corrigir.
+Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes, 5 ajustados por textos que mudaram de propósito), smoke (42), e2e novos do plano, da rotina diária, do aviso do Asaas, do fuso e do filtro da Auditoria, e a passada de tela de 104 telas (`qa/2026-10-24-teste-final.md`). Só o que depende de você ou do Asaas de verdade ficou:
 
 | O que | Cobre | Como (tempo) |
 | --- | --- | --- |
-| e2e da área `acesso` | #13 (convidado entra com a senha), permissões, verificação em duas etapas | `pnpm --filter @gestarahub/web e2e:area acesso` (4 a 6 min) |
-| e2e da área `configuracao` | #66 (plano em Configurações), #75 (Preferências), seletor de fuso | `pnpm --filter @gestarahub/web e2e:area configuracao` (5 a 7 min) |
-| e2e da área `cobrancas` | #60 e #76 (datas de pagamento), #56 (cobrar online), cobranças | `pnpm --filter @gestarahub/web e2e:area cobrancas` (6 a 8 min) |
-| e2e das áreas `auditoria` e `painel` | Filtro "Pessoas / Sistema / Só o que falhou" e detalhe com o código do erro; aviso fixo do plano no topo | `pnpm --filter @gestarahub/web e2e:area auditoria painel` |
-| e2e novos a escrever | Troca de plano (Planos → janela com a conta → Pix da diferença simulado → plano ligado; troca marcada e "Desmarcar"), aviso fixo do plano, "Histórico do plano" em Configurações, seletor de fuso, filtro "Sistema" da Auditoria | Hoje nenhum spec cobre a tela de Planos |
-| À mão no Asaas sandbox | #56: subconta nova e Pix gerado logo depois de ativar (mensagem e cobrança cancelada no Asaas); webhook da conta principal com os eventos do plano (renovação, diferença do upgrade, assinatura removida), com o túnel ligado | Doc `guides/16` (túnel) e doc 13 §6 |
-| À mão: rotina diária do plano | Renovação vencida → avisos → Grátis no 5º dia → assinatura encerrada no 15º; e-mails ao dono e ao gerente | Chamar `/api/cron/daily` com o `CRON_SECRET`, ajustando a data de renovação no banco local |
-| À mão no navegador | #60: pagamento depois das 21h e troca do fuso em Configurações; #75: console sem erro de hidratação em `/settings` → Preferências | `pnpm dev` |
-| À mão no Asaas sandbox: data de vencimento da fatura do link de cartão (#59) | Gerar o link numa cobrança que vence hoje e abrir: o app manda o vencimento igual ao fim da validade do link (24/10), e a fatura do parceiro mostrou 25/10. Se o parceiro soma dias (fim de semana?), decidir se o app mostra a mesma data | `qa/2026-10-23-teste-geral.md`, achado 59 |
-| Smoke no fim de tudo | Os 42 fluxos críticos | `pnpm --filter @gestarahub/web e2e:smoke` (4 min) |
+| À mão no Asaas sandbox: Pix logo depois de ativar uma subconta nova | #56: a mensagem "A conta ainda está liberando o Pix" e a cobrança cancelada no Asaas | Conta nova → Recebimentos online → Ativar → logo em seguida Cobranças → Cobrar online → Gerar Pix (5 min) |
+| À mão no Asaas sandbox: avisos de verdade pelo túnel | Webhook da conta principal com renovação, diferença do upgrade e assinatura removida (a rotina diária e o aviso já estão no e2e `plano-rotina-e-webhook`, com dados do banco) | Doc `guides/16` (túnel) e doc 13 §6 |
+| À mão no Asaas sandbox: data de vencimento da fatura do link de cartão (#59) | O app manda o vencimento igual ao fim da validade do link; a fatura do parceiro mostrou um dia a mais | Gerar o link numa cobrança que vence hoje e abrir |
+| À mão, depois das 21h de Brasília: pagamento (#60) | A data do pagamento na ficha e no Asaas (já coberto por teste de banco e de unidade) | Registrar um pagamento depois das 21h e abrir a ficha |
+| Conferir com o olho: janela com rolagem e botão "Certificado" do Grátis | #32 (seta de rolar cobrindo texto) e #49 (clicar em "Certificado" no Grátis) | Nova turma com horário fora do expediente; curso encerrado → ⋮ do aluno → Certificado numa conta Grátis |
 
 ## Esperando decisão sua
 

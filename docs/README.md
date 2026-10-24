@@ -88,6 +88,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 
 ### Testes do sistema e planos de execução
 - [qa/2026-10-23-teste-geral.md](qa/2026-10-23-teste-geral.md) — **Teste geral de 23/10/2026:** 80 achados por área e gravidade, as correções feitas (com commit e teste) e as perguntas de produto pendentes. As capturas ficam só na máquina local.
+- [qa/2026-10-24-teste-final.md](qa/2026-10-24-teste-final.md) — **Teste final de 24/10/2026:** passada de tela de 104 telas (4 perfis, desktop claro e celular escuro), e2e completo e smoke; 4 achados novos.
 - [handoff/2026-10-24-execucao-noturna.md](handoff/2026-10-24-execucao-noturna.md) — **Execução noturna de 24/10/2026:** plano dos achados em aberto, organização das docs e rodada final de testes; o andamento está em [handoff/2026-10-24-diario-noturno.md](handoff/2026-10-24-diario-noturno.md).
 
 ### Frontend
