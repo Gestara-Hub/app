@@ -3,7 +3,7 @@ import type { DateISO, DateTimeISO } from "./common";
 /**
  * Assinatura do GestaraHub (o "plano" do produto contratado pelo tenant). Nao
  * confundir com `Plan` (plano de mensalidade do aluno). Na tela aparece como
- * "Plano GestaraHub". Ver docs/technical/05-modulo-financeiro (secao 3).
+ * "Plano GestaraHub". Ver docs/technical/24-plano-gestarahub.
  */
 export type SubscriptionTier = "free" | "pro" | "scale";
 export type SubscriptionInterval = "monthly" | "yearly";

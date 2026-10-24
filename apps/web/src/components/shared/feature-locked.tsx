@@ -11,7 +11,7 @@ export const PLAN_SETTINGS_HREF = "/settings?tab=plano";
 /**
  * Tela de upsell de um recurso pago ("Disponível no Plano Profissional"). Renderizada
  * pela page server quando o perfil tem a permissao mas o tier do tenant nao tem
- * o recurso (ver docs/technical/05, secao 3.4). Sem imports de features: o
+ * o recurso (ver docs/technical/24, secao 4). Sem imports de features: o
  * conteudo (titulo, beneficios) vem por props.
  *
  * `canManagePlan=false` (ex.: gerente, que nao abre Configuracoes) troca o

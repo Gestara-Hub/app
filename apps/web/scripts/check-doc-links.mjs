@@ -72,7 +72,7 @@ for (const file of files) {
 
     // 2. Caminhos docs/... (com ou sem .md)
     // Planos de handoff citam arquivos que ainda vao nascer (2026-10-xx...): nao entram.
-    const isHandoff = file.startsWith(join(docsDir, "handoff"));
+    const isHandoff = file.startsWith(join(docsDir, "handoff")) || file.startsWith(join(docsDir, "archive", "handoff-"));
     for (const match of text.matchAll(/(?<![\w/.-])docs\/((?:technical|product|frontend|guides|archive|qa|handoff|skills)\/[\w.-]+(?:\/[\w.-]+)*)/g)) {
       if (isHandoff) break;
       const raw = match[1].replace(/[.,;:)]+$/, "");
@@ -89,6 +89,8 @@ for (const file of files) {
     }
 
     // 3. Atalhos "technical/17", "product/25"... (so quando nao fazem parte de um caminho maior).
+    // Planos de handoff descrevem os caminhos de antes e de depois: nao entram.
+    if (isHandoff) return;
     for (const match of text.matchAll(/(?<![\w/.-])(technical|product|frontend|guides)\/(\d{2})(?![\w-])/g)) {
       const [, folder, number] = match;
       if (!filesOfFolder(folder).some((name) => name.startsWith(`${number}-`))) {

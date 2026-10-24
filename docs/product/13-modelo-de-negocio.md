@@ -162,7 +162,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 
 ### Contexto
 - Em 23/10/2026 o código só sabia assinar e cancelar. Pro → Scale criava uma segunda assinatura sem cancelar a primeira (cobrança dupla), o downgrade era imediato e perdia os dias pagos, mensal ↔ anual não era possível e o webhook não tratava pagamentos de assinatura: renovação não paga deixava o plano ligado para sempre, e Pix pago com a tela fechada não ligava o plano.
-- Desde o commit `42ffdc3` o plano pago é gravado só no servidor, depois de conferir o pagamento no Asaas (a assinatura leva espaço, plano e período em `externalReference`). As regras acima partem dessa base. Ver `docs/technical/05-modulo-financeiro.md` §3.5.
+- Desde o commit `42ffdc3` o plano pago é gravado só no servidor, depois de conferir o pagamento no Asaas (a assinatura leva espaço, plano e período em `externalReference`). As regras acima partem dessa base. Ver `docs/technical/24-plano-gestarahub.md` §5.
 - 5 dias e não 3: o Pix não é cobrado de novo sozinho (o dono precisa pagar), e 3 dias com fim de semana no meio ficam curtos.
 
 ### Escopo

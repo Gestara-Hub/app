@@ -5,11 +5,11 @@
 Data: 2026-10-14.
 
 > **Status:** 13/10/2026. Ponto de partida da fase 3 (backend). Lista o que o mock faz "por baixo dos panos" e que o servidor precisa assumir, as decisões que faltam e a ordem sugerida de construção.
-> Documentos irmãos: integração real do WhatsApp em [07-integracao-whatsapp.md](07-integracao-whatsapp.md) e levantamento de pagamentos em [../product/19-levantamento-pagamentos.md](../product/19-levantamento-pagamentos.md).
+> Documentos irmãos: integração real do WhatsApp em [07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md) e levantamento de pagamentos em [../product/19-levantamento-pagamentos.md](../product/19-levantamento-pagamentos.md).
 
 ## 1. Direção
 
-- **Código:** banco no monorepo (pasta `apps/supabase/`), reaproveitando `packages/contracts` (formato da API) e `packages/core` (regras puras: motor de cobrança, financeiro, agenda, datas). Portais de aluno e professor unificados no mesmo monólito Next.js distribuídos via PWA ([10-monolito-frontend-pwa.md](10-monolito-frontend-pwa.md)).
+- **Código:** banco no monorepo (pasta `apps/supabase/`), reaproveitando `packages/contracts` (formato da API) e `packages/core` (regras puras: motor de cobrança, financeiro, agenda, datas). Portais de aluno e professor unificados no mesmo monólito Next.js distribuídos via PWA ([10-monolito-frontend-pwa.md](../technical/10-monolito-frontend-pwa.md)).
 - **Tabela original (13/10/2026), já resolvida pelo 08:**
 
 | Decisão | Sugestão | Por quê |
@@ -44,7 +44,7 @@ Status **derivados** continuam calculados na leitura, sem tarefa: mensalidade "a
 
 ### 2.2 O que o servidor carimba (nunca vem da tela)
 
-- **Espaço e unidade** (`organizationId`, `unitId`): vêm da sessão. Os tipos `Create*` já excluem esses campos (`TenantScopeFields`). Ver [03-multi-tenant-e-escopo.md](03-multi-tenant-e-escopo.md).
+- **Espaço e unidade** (`organizationId`, `unitId`): vêm da sessão. Os tipos `Create*` já excluem esses campos (`TenantScopeFields`). Ver [03-multi-tenant-e-escopo.md](../technical/03-multi-tenant-e-escopo.md).
 - **Autor** das ações: o mock usa o "ator ambiente" (`getCurrentActor`) na auditoria e no autor dos registros de aula. No servidor, vem do token.
 - `id`, `createdAt`, `updatedAt`.
 
@@ -82,9 +82,9 @@ Status **derivados** continuam calculados na leitura, sem tarefa: mensalidade "a
 4. **Cobrança:** motor em `packages/core/billing`, mensalidades, bolsas, tarefa de geração, e as formas novas do [doc 20](../product/20-plano-novas-formas-de-cobranca.md): cobrança avulsa com parcelas, curso fechado (forma de cobrança da turma, parcelas na matrícula, cancelamento no meio) e pacote de aulas (catálogo, venda, renovação com saldo, **gasto da aula na mesma transação da chamada**). Certificado de conclusão (Pro) junto com cursos.
 5. **Evolução:** graduação, registros de aula, metas.
 6. **Financeiro:** lançamentos, anexos, pagamento de professores ("% do que os alunos pagaram": mensalidades, parcelas de curso pagas e aulas de pacote usadas, com `carriedFrom` para o valor das aulas herdadas), relatórios de cursos e de pacotes.
-7. **Comunicação:** envio assistido (só registro) e depois WhatsApp oficial ([07](07-integracao-whatsapp.md)).
+7. **Comunicação:** envio assistido (só registro) e depois WhatsApp oficial ([07](../technical/07-integracao-whatsapp.md)).
 8. **Pagamentos reais:** plano da plataforma e cobrança online dos alunos ([doc 19](../product/19-levantamento-pagamentos.md)).
 
 Cada fatia troca a implementação dos services correspondentes (de store em memória para chamadas à API), mantendo assinaturas e tipos.
 
-> **21/10/2026:** as fatias 1 a 7 acima já gravam no Supabase, mas ainda com o store do navegador como cache. A retirada do mock no modelo de turmas segue o plano do [doc 15](15-retirada-do-mock-turmas.md).
+> **21/10/2026:** as fatias 1 a 7 acima já gravam no Supabase, mas ainda com o store do navegador como cache. A retirada do mock no modelo de turmas segue o plano do [doc 15](technical-15-retirada-do-mock-turmas.md).

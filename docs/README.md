@@ -23,16 +23,16 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 | Turmas e chamada | [product/11](product/11-modelo-3-turmas.md), [product/14](product/14-mvp-academia-lutas.md) | [technical/01](technical/01-extensao-modelos-operacionais.md) | `features/turmas`, `services/classes` |
 | Alunos e acesso de alunos | [product/23](product/23-area-do-aluno-e-professor.md), [product/24](product/24-diretrizes-exclusao-e-lgpd.md) | [technical/13](technical/13-acesso-de-alunos-e-responsaveis.md) | `features/clients`, `services/clients` |
 | Mensalidades e cobranças | [product/15](product/15-regras-de-cobranca.md), [product/20](product/20-plano-novas-formas-de-cobranca.md) | [technical/02](technical/02-motor-de-cobranca.md) | `packages/core/src/billing.ts`, `services/billing` |
-| Pagamento online | [product/19](product/19-levantamento-pagamentos.md) | [technical/05](technical/05-modulo-financeiro.md), [technical/14](technical/14-asaas-mcp.md) | `features/online-payments`, `services/onlinePayments`, `services/payments`, `lib/asaas` |
-| Plano GestaraHub | [product/13](product/13-modelo-de-negocio.md) (§6 troca de plano) | [technical/05](technical/05-modulo-financeiro.md) §3 | `features/subscription`, `services/subscription`, `services/server/subscription*.ts` |
+| Pagamento online | [product/19](product/19-levantamento-pagamentos.md) | [technical/25](technical/25-pagamento-online.md), [guides/14](guides/14-asaas-mcp.md) | `features/online-payments`, `services/onlinePayments`, `services/payments`, `lib/asaas` |
+| Plano GestaraHub | [product/13](product/13-modelo-de-negocio.md) (§6 troca de plano) | [technical/24](technical/24-plano-gestarahub.md) | `features/subscription`, `services/subscription`, `services/server/subscription*.ts` |
 | Financeiro | [product/13](product/13-modelo-de-negocio.md) | [technical/05](technical/05-modulo-financeiro.md) | `features/finance`, `services/finance` |
 | Relatórios e documentos | [product/21](product/21-ideias-certificados-e-notas.md) | [technical/18](technical/18-documentos-pdf.md) | `features/reports`, `lib/documents`, `app/api/documents` |
 | Comunicação e lembretes | [product/25](product/25-lembretes-e-seguranca.md), [product/13](product/13-modelo-de-negocio.md) §5 | [technical/07](technical/07-integracao-whatsapp.md) | `features/communication`, `services/communication`, `lib/whatsapp` |
 | Auditoria e registros | [technical/21](technical/21-registro-de-erros.md) | [technical/23](technical/23-historico-em-segundo-plano.md) | `features/audit`, `services/audit`, `lib/log` |
 | Fuso | [technical/22](technical/22-fuso-do-espaco.md) | [technical/22](technical/22-fuso-do-espaco.md) | `packages/core/src/date.ts` |
 | Desempenho | [technical/19](technical/19-desempenho-e-escala.md) | [technical/19](technical/19-desempenho-e-escala.md) | `services/world` |
-| Testes | [technical/04](technical/04-estrategia-de-testes.md) | [technical/20](technical/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
-| Ambiente local | [technical/16](technical/16-ambiente-local.md) | [technical/16](technical/16-ambiente-local.md) | `apps/web/scripts`, `apps/supabase` |
+| Testes | [technical/04](technical/04-estrategia-de-testes.md) | [guides/20](guides/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
+| Ambiente local | [guides/16](guides/16-ambiente-local.md) | [guides/16](guides/16-ambiente-local.md) | `apps/web/scripts`, `apps/supabase` |
 | **Fora do foco** (agendamento e entrega) | os docs em "Módulos em Standby", como estão | | `features/appointments`, `features/services` |
 
 ---
@@ -45,15 +45,14 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 4. [product/01-glossario.md](product/01-glossario.md) — Glossário dos termos do sistema.
 5. [product/06-perfis-permissoes.md](product/06-perfis-permissoes.md) — Perfis de acesso e RBAC.
 6. [product/15-regras-de-cobranca.md](product/15-regras-de-cobranca.md) — Regras de cobrança das mensalidades (antecipado/pós-pago, proporcional/mês cheio, vencimento). Substitui as regras de mensalidade do doc 11.
-7. [product/17-pitch-gestarahub.md](product/17-pitch-gestarahub.md) — Pitch de negócio (problema, solução, exemplos, modelo de receita e visão de marketplace de parceiros). Base para a apresentação.
+7. [product/26-pitch-gestarahub.md](product/26-pitch-gestarahub.md) — Pitch de negócio (problema, solução, exemplos, modelo de receita e visão de marketplace de parceiros). Base para a apresentação.
 8. [product/18-pesquisa-dores-e-caminhos.md](product/18-pesquisa-dores-e-caminhos.md) — Pesquisa (com fontes) das dores de academias, salões e docerias e dos caminhos de expansão além do marketplace (pagamentos, WhatsApp, canal próprio de captação, crédito, app do aluno).
 9. [product/19-levantamento-pagamentos.md](product/19-levantamento-pagamentos.md) — Levantamento dos três fluxos de dinheiro (assinatura do GestaraHub, mensagens do WhatsApp, mensalidade online com split) e dos provedores a validar.
 10. [product/20-plano-novas-formas-de-cobranca.md](product/20-plano-novas-formas-de-cobranca.md) — Proposta: cobrança avulsa, curso fechado e pacote de aulas (fases A a D e decisões pendentes).
 11. [product/21-ideias-certificados-e-notas.md](product/21-ideias-certificados-e-notas.md) — Ideias para refinar: gerador de certificados (Pro) e notas dos alunos (fase 1 entregue: avaliações na turma, lançamento e boletim; critério da trilha na fase 2).
-12. [product/22-antes-do-backend.md](product/22-antes-do-backend.md) — O que falta no frontend antes do backend: decisões pendentes (notas, ficha do aluno, apps), ajustes pequenos e rascunho dos apps de aluno e professor.
-13. [product/23-area-do-aluno-e-professor.md](product/23-area-do-aluno-e-professor.md) — **Área do Aluno e do Professor:** Mapeamento completo de funcionalidades e matriz de distribuição por plano (Grátis, Profissional e Expansão).
-14. [product/24-diretrizes-exclusao-e-lgpd.md](product/24-diretrizes-exclusao-e-lgpd.md) — **Diretrizes de Exclusão e LGPD:** Enquadramento legal (BACEN, CTN, CLT, Marco Civil), travas de subconta, esteira de 3 fases e anonimização por papel (Dono, Aluno, Professor, Staff).
-15. [product/17-onboarding-segmentos-negocio.md](product/17-onboarding-segmentos-negocio.md) — *(Histórico)* Plano original do wizard de 1º acesso e presets por segmento. A versão implementada está em `frontend/08`, seções 4.3 e 4.5.
+12. [product/23-area-do-aluno-e-professor.md](product/23-area-do-aluno-e-professor.md) — **Área do Aluno e do Professor:** Mapeamento completo de funcionalidades e matriz de distribuição por plano (Grátis, Profissional e Expansão).
+13. [product/24-diretrizes-exclusao-e-lgpd.md](product/24-diretrizes-exclusao-e-lgpd.md) — **Diretrizes de Exclusão e LGPD:** Enquadramento legal (BACEN, CTN, CLT, Marco Civil), travas de subconta, esteira de 3 fases e anonimização por papel (Dono, Aluno, Professor, Staff).
+14. [product/25-lembretes-e-seguranca.md](product/25-lembretes-e-seguranca.md) — **Lembretes inteligentes e aviso de segurança:** um motor de lembretes a partir dos modelos de mensagem (cobrança, pacote, faltas, aniversário, relacionamento, avisos), prioridade, sem repetir, adiar, envio em sequência, sino no topo; janela da verificação em duas etapas em quatro momentos.
 
 ---
 
@@ -65,8 +64,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [technical/02-motor-de-cobranca.md](technical/02-motor-de-cobranca.md) — Motor de cobrança único em `packages/core/src/billing.ts`.
 - [technical/03-multi-tenant-e-escopo.md](technical/03-multi-tenant-e-escopo.md) — Mundo multi-tenant no mock, um modelo por tenant, escopo carimbado pelo servidor e sessão.
 - [technical/04-estrategia-de-testes.md](technical/04-estrategia-de-testes.md) — `node --test` (motor), Vitest (services) e Playwright (e2e).
-- [technical/05-modulo-financeiro.md](technical/05-modulo-financeiro.md) — *(Em implementação)* Módulo Financeiro da academia: entradas e saídas, pagamento de professores, pagamento online simulado e plano GestaraHub (grátis/pro).
-- [technical/06-passagem-backend.md](technical/06-passagem-backend.md) — **Início da fase 3:** o que o mock faz e o servidor precisa assumir (tarefas agendadas, carimbos, arquivos, consultas), e ordem de construção das fatias.
+- [technical/05-modulo-financeiro.md](technical/05-modulo-financeiro.md) — Módulo Financeiro da academia: entradas e saídas e pagamento de professores. O plano GestaraHub está no doc 24 e o pagamento online no doc 25.
 - [technical/07-integracao-whatsapp.md](technical/07-integracao-whatsapp.md) — Checklist da integração real com a API oficial do WhatsApp (conexão de cada espaço, modelos aprovados, avisos da Meta, consentimento, limites).
 - [technical/08-backend-supabase.md](technical/08-backend-supabase.md) — **Decisão do backend:** Supabase (banco, login, Edge Functions com Hono, Cron, Storage), custo por fase e o que validar na primeira fatia.
 - [technical/09-analise-de-uso.md](technical/09-analise-de-uso.md) — **Análise de uso:** PostHog (páginas, cliques, mapa de calor, gravação com textos ocultos na área logada), variáveis de ambiente e o que falta decidir (aviso de cookies).
@@ -74,18 +72,23 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [technical/11-identidade-global-e-multi-membership.md](technical/11-identidade-global-e-multi-membership.md) — **Identidade Global e Multi-Membership:** conta única global com múltiplos vínculos por espaço.
 - [technical/12-modularizacao-da-camada-de-servicos.md](technical/12-modularizacao-da-camada-de-servicos.md) — **Modularização de Services:** fatiamento de arquivos gigantes (+1.000 linhas) em subdomínios com fachada retrocompatível.
 - [technical/13-acesso-de-alunos-e-responsaveis.md](technical/13-acesso-de-alunos-e-responsaveis.md) — **Acesso de alunos e responsáveis:** vínculo `student_access` (`self` ou `guardian`) separado da ficha, um login com seletor de espaço e de perfil, regras por idade, revogação auditada.
-- [technical/14-asaas-mcp.md](technical/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
-- [technical/15-retirada-do-mock-turmas.md](technical/15-retirada-do-mock-turmas.md) — **Retirada do mock (turmas):** plano por fatias para a conta real ler e gravar só no Supabase; demonstração vira espaço real criado por seed.
-- [technical/16-ambiente-local.md](technical/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
 - [technical/17-verificacao-em-duas-etapas.md](technical/17-verificacao-em-duas-etapas.md) — **Verificação em duas etapas:** aplicativo autenticador (MFA do Supabase) ou código por e-mail para quem entra com senha, "lembrar este dispositivo" por 30 dias, tela `/two-factor` no login e a barreira única (`secondFactorState`).
 - [technical/18-documentos-pdf.md](technical/18-documentos-pdf.md) — **Documentos em PDF:** um layout só (`DocumentModel`) para relatórios, recibos, declaração, demonstrativo, certificado, termo, boletim e extrato; prévia na tela, PDF e CSV no servidor, logo do espaço com reserva do GestaraHub.
 - [technical/19-desempenho-e-escala.md](technical/19-desempenho-e-escala.md) — **Desempenho e escala:** medição com um espaço de 1 ano (1,4 s a 4 s por ação, crescendo com o histórico), gargalos (espaço inteiro por ação, versão única por espaço, corte em 1.000 linhas, chamadas demais do navegador, rotina diária) e proposta em 4 fases.
-- [technical/20-tempo-dos-testes.md](technical/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
 - [technical/21-registro-de-erros.md](technical/21-registro-de-erros.md) — **Registro de erros:** tabela `error_logs` no nosso banco (agrupada, mascarada, 120 dias), `logError`/`reportError` de `@/lib/log`, código do erro na mensagem ao usuário, erros do navegador e resumo diário por e-mail.
 - [technical/22-fuso-do-espaco.md](technical/22-fuso-do-espaco.md) — **Fuso do espaço:** os quatro fusos do Brasil, fuso escolhido ou pelo estado da unidade, "hoje" no fuso do espaço no servidor e no navegador, datas do Asaas no horário de Brasília.
 - [technical/23-historico-em-segundo-plano.md](technical/23-historico-em-segundo-plano.md) — **Histórico do que roda sem pessoa:** Auditoria com o sistema como autor (rotina diária, parceiro de pagamentos), histórico do plano ligado à Auditoria, registro das execuções e dos avisos do Asaas (aviso repetido reconhecido), índices por consulta.
-- [handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md](handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md) — **Plano para outro agente:** verificação em duas etapas por e-mail e "lembrar este dispositivo" (parte A), depois o teste geral do sistema tela por tela, em desktop e celular, com subconta de recebimentos no sandbox, só registrando achados (parte B).
+- [technical/24-plano-gestarahub.md](technical/24-plano-gestarahub.md) — **Plano GestaraHub (assinatura):** contrato, matriz de recursos por plano, composição com permissões, demonstração e conta real, quem grava o plano. As regras de troca de plano estão em `product/13` §6.
+- [technical/25-pagamento-online.md](technical/25-pagamento-online.md) — **Pagamento online dos alunos:** Pix, link e Pix Automático (porta de pagamento, contrato, fluxos e regras).
+
+### Guias (como fazer)
+- [guides/14-asaas-mcp.md](guides/14-asaas-mcp.md) — **Documentação do Asaas por MCP:** como ligar o servidor `docs.asaas.com/mcp` em cada assistente (Claude Code, Cursor, VS Code, Antigravity, Codex, Claude Desktop) e a regra de só consulta.
+- [guides/16-ambiente-local.md](guides/16-ambiente-local.md) — **Ambiente local:** `pnpm setup:local` sobe o Supabase, aplica as migrações, preenche as variáveis e prepara o cron; `pnpm setup:local:reset` começa do zero.
+- [guides/20-tempo-dos-testes.md](guides/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
+
+### Testes do sistema e planos de execução
 - [qa/2026-10-23-teste-geral.md](qa/2026-10-23-teste-geral.md) — **Teste geral de 23/10/2026:** 80 achados por área e gravidade, as correções feitas (com commit e teste) e as perguntas de produto pendentes. As capturas ficam só na máquina local.
+- [handoff/2026-10-24-execucao-noturna.md](handoff/2026-10-24-execucao-noturna.md) — **Execução noturna de 24/10/2026:** plano dos achados em aberto, organização das docs e rodada final de testes; o andamento está em [handoff/2026-10-24-diario-noturno.md](handoff/2026-10-24-diario-noturno.md).
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.
@@ -114,6 +117,18 @@ Estes documentos contêm a especificação de outros modelos operacionais desenv
 
 ---
 
+## Arquivo (histórico)
+
+Planos cumpridos e documentos substituídos. Ficam para consulta; o que vale hoje está nos docs acima.
+
+- [archive/product-22-antes-do-backend.md](archive/product-22-antes-do-backend.md) — O que falta no frontend antes do backend: decisões pendentes (notas, ficha do aluno, apps), ajustes pequenos e rascunho dos apps de aluno e professor.
+- [archive/product-17-onboarding-segmentos-negocio.md](archive/product-17-onboarding-segmentos-negocio.md) — *(Histórico)* Plano original do wizard de 1º acesso e presets por segmento. A versão implementada está em `frontend/08`, seções 4.3 e 4.5.
+- [archive/technical-06-passagem-backend.md](archive/technical-06-passagem-backend.md) — **Início da fase 3:** o que o mock faz e o servidor precisa assumir (tarefas agendadas, carimbos, arquivos, consultas), e ordem de construção das fatias.
+- [archive/technical-15-retirada-do-mock-turmas.md](archive/technical-15-retirada-do-mock-turmas.md) — **Retirada do mock (turmas):** plano por fatias para a conta real ler e gravar só no Supabase; demonstração vira espaço real criado por seed.
+- [archive/handoff-2026-10-23-plano-2fa-email-e-revisao-visual.md](archive/handoff-2026-10-23-plano-2fa-email-e-revisao-visual.md) — **Plano para outro agente:** verificação em duas etapas por e-mail e "lembrar este dispositivo" (parte A), depois o teste geral do sistema tela por tela, em desktop e celular, com subconta de recebimentos no sandbox, só registrando achados (parte B).
+
+---
+
 ## Skills
 
 As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills/): `docs`, `architect`, `contract`, `smoke-web`, `web-data`, `web-feature`, `web-form`. Resumo de cada uma em [skills/README.md](skills/README.md). Regras gerais de código para agentes: [`../AGENTS.md`](../AGENTS.md) e [`../CLAUDE.md`](../CLAUDE.md).
@@ -123,4 +138,3 @@ As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills
 ## Princípio de Documentação
 
 Cada documento prioriza decisões claras, contexto, escopo, fora de escopo, regras e estabilidade. A documentação é mantida para consumo ágil por engenheiros e agentes de inteligência artificial.
-- [product/25-lembretes-e-seguranca.md](product/25-lembretes-e-seguranca.md) — **Lembretes inteligentes e aviso de segurança:** um motor de lembretes a partir dos modelos de mensagem (cobrança, pacote, faltas, aniversário, relacionamento, avisos), prioridade, sem repetir, adiar, envio em sequência, sino no topo; janela da verificação em duas etapas em quatro momentos.

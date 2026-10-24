@@ -4,7 +4,7 @@ Data: 2026-10-14.
 
 > **Status:** decidido em 14/10/2026 e atualizado em 19/10/2026. Substitui a direção "funções serverless da Vercel" e o NestJS registrados antes em [00-decisoes-tecnicas.md](00-decisoes-tecnicas.md).
 > ⚠️ **Atualização (19/10/2026):** A ideia de aplicativos separados em React Native para aluno e professor foi substituída pelo **Monólito Frontend em Next.js com PWA** ([10-monolito-frontend-pwa.md](10-monolito-frontend-pwa.md)). Toda a interface (gestor, aluno e professor) fica unificada em `apps/web`.
-> Passagem do mock para o servidor: [06-passagem-backend.md](06-passagem-backend.md).
+> Passagem do mock para o servidor: [06-passagem-backend.md](../archive/technical-06-passagem-backend.md).
 
 ## Contexto
 

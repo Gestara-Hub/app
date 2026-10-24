@@ -33,7 +33,7 @@ import {
 /**
  * Plano GestaraHub (assinatura) do tenant ativo. Na demonstracao o proprietario
  * troca o tier nas Configuracoes (aba "Plano GestaraHub"); o gating da tela e
- * `subscription:manage` (so owner). Ver docs/technical/05 (secao 3). Na conta
+ * `subscription:manage` (so owner). Ver docs/technical/24. Na conta
  * real quem grava o plano e o servidor (subscriptionActions e o checkout); aqui
  * o store so reflete o que ele devolveu.
  */

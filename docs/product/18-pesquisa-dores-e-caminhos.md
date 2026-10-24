@@ -1,6 +1,6 @@
 # Pesquisa: dores dos negócios e caminhos de expansão
 
-> Pesquisa na web feita em 27/09/2026, para apoiar o [pitch](17-pitch-gestarahub.md). Linguagem de negócio.
+> Pesquisa na web feita em 27/09/2026, para apoiar o [pitch](26-pitch-gestarahub.md). Linguagem de negócio.
 >
 > **Foco:** academias de **artes marciais** (jiu-jitsu, muay thai, judô, boxe, caratê etc.). Academias de musculação/fitness **não** são o público. Dados de academia fitness aparecem só quando não há dado de luta, e estão marcados como tal.
 >

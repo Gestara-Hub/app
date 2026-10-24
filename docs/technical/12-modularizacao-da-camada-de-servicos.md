@@ -4,8 +4,8 @@ Data: 2026-10-19.
 
 > **Status:** Decidido e planejado em 19/10/2026. Plano de ação para execução sob demanda.
 > **Alvo:** `apps/web/src/services/`
-> **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4. Fase 6 feita em 23/10/2026 (os arquivos que passaram de 300 linhas depois do plano).
-> **Contexto relacionado:** [01-extensao-modelos-operacionais.md](01-extensao-modelos-operacionais.md), [06-passagem-backend.md](06-passagem-backend.md) e [08-backend-supabase.md](08-backend-supabase.md).
+> **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](../archive/technical-15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4. Fase 6 feita em 23/10/2026 (os arquivos que passaram de 300 linhas depois do plano).
+> **Contexto relacionado:** [01-extensao-modelos-operacionais.md](01-extensao-modelos-operacionais.md), [06-passagem-backend.md](../archive/technical-06-passagem-backend.md) e [08-backend-supabase.md](08-backend-supabase.md).
 
 ---
 
@@ -41,7 +41,7 @@ Adota-se a **Modularização por Subdomínio com Fachada Retrocompatível (Barre
    - Algoritmos de cálculo (comissões, parcelamento, regras de graduação) migram para `packages/core`.
    - Mapeamentos de DTO/View são isolados em `*Views.ts`.
    - Validações de payload são isoladas em `*Validation.ts`.
-5. **Aposentadoria Futura do Mock:** Quando o Supabase cobrir 100% dos dados, a manipulação de `store.ts` será removida, reduzindo os sub-serviços a orquestradores enxutos. Plano por fatias no [doc 15](15-retirada-do-mock-turmas.md) (21/10/2026).
+5. **Aposentadoria Futura do Mock:** Quando o Supabase cobrir 100% dos dados, a manipulação de `store.ts` será removida, reduzindo os sub-serviços a orquestradores enxutos. Plano por fatias no [doc 15](../archive/technical-15-retirada-do-mock-turmas.md) (21/10/2026).
 
 ---
 

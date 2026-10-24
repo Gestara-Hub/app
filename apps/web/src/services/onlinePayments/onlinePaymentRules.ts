@@ -20,7 +20,7 @@ import { logError } from "@/lib/log";
 import { dateInSpace } from "@gestarahub/core/date";
 
 /**
- * Pagamento online SIMULADO (docs/technical/05, secao 6): Pix, link de
+ * Pagamento online SIMULADO (docs/technical/25): Pix, link de
  * pagamento e Pix Automatico aplicados as cobrancas dos alunos. O provedor fica
  * atras de `paymentGateway` (mock, sem rede). Mutations exigem o recurso
  * "online_payments" do plano; cobrar exige tambem a opcao ligada nas

@@ -60,7 +60,7 @@ interface RecurringAuthorizationSectionProps {
 }
 
 /**
- * Pix Automatico do aluno (simulado, docs/technical/05 secao 6.3): status e as
+ * Pix Automatico do aluno (simulado, docs/technical/25 secao 3): status e as
  * acoes Solicitar, Simular autorizacao (demo) e Revogar. Fica dentro do
  * formulario do aluno: todos os botoes sao type="button" e o campo do limite
  * nao envia o formulario com Enter.

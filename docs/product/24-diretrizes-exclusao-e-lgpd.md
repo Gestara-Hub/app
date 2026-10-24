@@ -115,7 +115,7 @@ Quando uma pessoa física vinculada ao espaço solicita o "direito ao esquecimen
 ## 5. Diretrizes para Interface Futura (Zona de Perigo / *Danger Zone*)
 
 Quando a funcionalidade for implementada na interface:
-1. **Localização:** Em [`/settings`](apps/web/src/features/settings), em uma aba ou card dedicado com visual destrutivo (`border-destructive/40 bg-destructive/5`).
+1. **Localização:** Em [`/settings`](../../apps/web/src/features/settings), em uma aba ou card dedicado com visual destrutivo (`border-destructive/40 bg-destructive/5`).
 2. **Permissão Restrita:** Exclusiva para o perfil `owner` (Proprietário).
 3. **Pré-verificação em tela:** Se houver saldo ou pendências na subconta, o card deve exibir um estado de bloqueio com link direto para a tela de transferência/saque.
 4. **Confirmação Estrita:** Exigir que o usuário digite o nome exato da organização (em caixa alta) e confirme sua senha antes de agendar a exclusão.

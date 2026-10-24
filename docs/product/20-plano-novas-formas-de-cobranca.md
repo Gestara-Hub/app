@@ -46,7 +46,7 @@ Cada fase fecha com testes de regra (`packages/core`), de service (Vitest) e de 
 | **C. Pacote de aulas** ✅ 14/10/2026 | Cadastro de pacotes (em Planos); venda ao aluno gera a cobrança; a chamada gasta uma aula; saldo na ficha, na chamada e no aluno; validade; aviso de "última aula" e de vencimento; renovar. Aluno com pacote entra em qualquer aula das modalidades do pacote, como o avulso hoje, mas gastando crédito. | Médio a grande |
 | **D. Acabamento** | Modelos de WhatsApp novos ("parcela do curso", "pacote acabando"); "Para fazer hoje" com pacotes acabando; certificado de conclusão do curso (PDF simples no navegador); relatórios por curso e por pacote; repasse de professor incluindo curso e pacote (decisão 5). | Médio |
 
-**Ordem e backend:** fazer A, B e C ainda no mock, antes da fatia 4 do backend (Cobrança, [06-passagem-backend.md](../technical/06-passagem-backend.md)), porque mudam os contratos, que são a especificação da API. As fatias 1 a 3 do backend (login, alunos, turmas) podem começar em paralelo. D pode vir depois.
+**Ordem e backend:** fazer A, B e C ainda no mock, antes da fatia 4 do backend (Cobrança, [06-passagem-backend.md](../archive/technical-06-passagem-backend.md)), porque mudam os contratos, que são a especificação da API. As fatias 1 a 3 do backend (login, alunos, turmas) podem começar em paralelo. D pode vir depois.
 
 ## 5. Decisões de produto (com recomendação)
 

@@ -159,7 +159,7 @@ interface OnlineChargeDialogProps {
 }
 
 /**
- * "Cobrar online" (simulado, docs/technical/05 secao 6.3): escolhe Pix ou link,
+ * "Cobrar online" (simulado, docs/technical/25 secao 3): escolhe Pix ou link,
  * mostra o copia e cola, o QR ilustrativo e o link, com Copiar e Enviar pelo
  * WhatsApp. "Simular pagamento" e so da demonstracao.
  */

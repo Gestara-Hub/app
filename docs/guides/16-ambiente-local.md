@@ -22,7 +22,7 @@ O comando faz, em ordem:
 1. confere o Docker e sobe o Supabase local, se estiver parado;
 2. aplica as migrações pendentes (`supabase migration up`);
 3. preenche no `apps/web/.env.local` as variáveis do Supabase local que faltarem (URL, chave anônima e service role), sem mexer nas que já existem;
-4. prepara o cron diário: cria o `CRON_SECRET` no `.env.local` e grava `app_url` e `cron_secret` no Vault do banco local (detalhes no [doc 15](15-retirada-do-mock-turmas.md), fatia 1);
+4. prepara o cron diário: cria o `CRON_SECRET` no `.env.local` e grava `app_url` e `cron_secret` no Vault do banco local (detalhes no [doc 15](../archive/technical-15-retirada-do-mock-turmas.md), fatia 1);
 5. recria o espaço de demonstração (Academia X) no banco: cria `DEMO_PASSWORD` no `.env.local`, se faltar, e roda o cenário de `apps/web/scripts/demo` (doc 15, fatia 4). Na tela de login aparece "Entrar na demonstração"; na barra do topo dá para ver a demonstração como dono, gerente, recepção ou professor.
 
 Nunca imprime chaves nem segredos. Depois:

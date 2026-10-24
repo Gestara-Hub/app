@@ -8,7 +8,7 @@ import type {
 /**
  * Matriz tier -> recursos pagos (fonte unica do gating por plano; espelha
  * lib/permissions). Uma tela paga exige as duas coisas: a permissao do perfil
- * (`can`) E o recurso do plano (`hasFeature`). Ver docs/technical/05 (secao 3).
+ * (`can`) E o recurso do plano (`hasFeature`). Ver docs/technical/24.
  */
 export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   free: ["online_payments"],

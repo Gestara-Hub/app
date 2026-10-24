@@ -2,14 +2,14 @@
 
 > Histórico: levantamento de 14/10/2026, anterior ao backend (que existe desde 19/10/2026). O que ainda vale está em `docs/pendencias.md`.
 
-> **Status:** 14/10/2026. Levantamento depois das fases A a D do [doc 20](20-plano-novas-formas-de-cobranca.md). Itens com **proposta** aguardam decisão; os outros podem andar sem decisão nova.
-> Backend: [../technical/08-backend-supabase.md](../technical/08-backend-supabase.md) e [../technical/06-passagem-backend.md](../technical/06-passagem-backend.md).
+> **Status:** 14/10/2026. Levantamento depois das fases A a D do [doc 20](../product/20-plano-novas-formas-de-cobranca.md). Itens com **proposta** aguardam decisão; os outros podem andar sem decisão nova.
+> Backend: [../technical/08-backend-supabase.md](../technical/08-backend-supabase.md) e [../technical/06-passagem-backend.md](technical-06-passagem-backend.md).
 
 ## 1. Em andamento ou feito nesta rodada
 
 | Item | Situação |
 |---|---|
-| Gerador de certificado v1 (Pro): layouts, cor, título, texto com variáveis, assinaturas, logo, prévia | Em implementação ([doc 21](21-ideias-certificados-e-notas.md) §1) |
+| Gerador de certificado v1 (Pro): layouts, cor, título, texto com variáveis, assinaturas, logo, prévia | Em implementação ([doc 21](../product/21-ideias-certificados-e-notas.md) §1) |
 | Menu de clique direito nas linhas de Cobranças (padrão de telas) | Em implementação |
 | Textos que diziam "academia" em telas de todas as áreas | Feito (restam os de Configurações, junto com o certificado) |
 
@@ -17,7 +17,7 @@
 
 | # | Item | Recomendação |
 |---|---|---|
-| 1 | **Notas dos alunos** (fase 1: avaliações por turma, lançamento, boletim) | Proposta em [doc 21](21-ideias-certificados-e-notas.md) §2.1: liga por modalidade com padrão da área, escala por modalidade, Grátis lança e Pro integra |
+| 1 | **Notas dos alunos** (fase 1: avaliações por turma, lançamento, boletim) | Proposta em [doc 21](../product/21-ideias-certificados-e-notas.md) §2.1: liga por modalidade com padrão da área, escala por modalidade, Grátis lança e Pro integra |
 | 2 | **Ficha do aluno** (página própria `/clients/[id]`) | **Feito (14/10/2026), simplificada em 18/10/2026 (doc frontend/07 §1.8).** Topo só com nome e situação; "Editar" e o menu ⋮ (editar, enviar WhatsApp, nova cobrança, vender pacote, inativar ou reativar). Avisos só do que pede ação (atraso com "Marcar pago" e "Cobrar", faltas seguidas, pacote acabando, aniversário hoje ou amanhã). Sanfona com uma linha de resumo por seção, fechadas por padrão (`?tab=` abre uma): Turmas (próxima aula e matrículas), Cobranças (extrato com todos os tipos e as ações da tela Cobranças), Pacotes (só com pacote), Evolução, Mensagens e Cadastro. A leitura é o "resumo do aluno" (`StudentSummary`, `studentSummaryService.getStudentSummary`), o mesmo que a API e os apps vão usar. Abre pelo nome do aluno em Alunos (e "Abrir ficha" no menu), na turma, na aula e em Cobranças |
 | 3 | **Escopo dos apps de aluno e professor** | Escrever antes do backend, porque muda a API. Rascunho na seção 3 |
 | 4 | "Outra área" na configuração inicial: perguntar **como cobra** (mensalidade, curso, pacote, não cobra) | **Feito (14/10/2026).** "Como você cobra?" no setup grava `customSegmentBilling`; vira a cobrança padrão da área (nova turma, cadastro do aluno, primeiros passos). Ver [doc 08](../frontend/08-decisoes-landing-page-e-onboarding.md) §4.3 e §4.5. Falta o mesmo campo em Configurações |

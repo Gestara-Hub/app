@@ -5,7 +5,7 @@
 Data: 2026-10-21.
 
 > **Status:** Decidido e planejado em 21/10/2026. Execução por fatias, na ordem abaixo. Cada fatia fecha com typecheck, lint e testes verdes e um commit próprio.
-> **Contexto relacionado:** [06 — Passagem para o backend](06-passagem-backend.md), [08 — Backend no Supabase](08-backend-supabase.md), [12 — Modularização da camada de serviços](12-modularizacao-da-camada-de-servicos.md).
+> **Contexto relacionado:** [06 — Passagem para o backend](technical-06-passagem-backend.md), [08 — Backend no Supabase](../technical/08-backend-supabase.md), [12 — Modularização da camada de serviços](../technical/12-modularizacao-da-camada-de-servicos.md).
 
 ## Decisao
 
@@ -49,7 +49,7 @@ Modelo de turmas: modalidades, equipe e cargos, planos, catálogo de pacotes, al
 
 Para cada domínio: os read-models passam a ser montados por server actions a partir do banco (reusando as funções puras), os hooks do TanStack Query chamam essas actions, e o `sync*FromDb` e a escrita no store daquele domínio são apagados.
 
-**Junto com a modularização do [doc 12](12-modularizacao-da-camada-de-servicos.md)** (decidido em 21/10/2026): nos domínios com serviço grande, o primeiro passo é dividir o serviço em pasta por subdomínio (`*Views.ts`, `*Validation.ts`, sub-serviços e `index.ts` com o nome antigo), só movendo código, num commit próprio com testes verdes. A troca da fonte para o banco vem no commit seguinte; nunca os dois juntos, para saber de onde veio uma quebra. Os `*Views.ts` são o que passa a rodar no servidor, e os `*Validation.ts` são a base da fatia 3.
+**Junto com a modularização do [doc 12](../technical/12-modularizacao-da-camada-de-servicos.md)** (decidido em 21/10/2026): nos domínios com serviço grande, o primeiro passo é dividir o serviço em pasta por subdomínio (`*Views.ts`, `*Validation.ts`, sub-serviços e `index.ts` com o nome antigo), só movendo código, num commit próprio com testes verdes. A troca da fonte para o banco vem no commit seguinte; nunca os dois juntos, para saber de onde veio uma quebra. Os `*Views.ts` são o que passa a rodar no servidor, e os `*Validation.ts` são a base da fatia 3.
 
 **Como cada domínio passa para o banco** (definido em 21/10/2026, no 2.1):
 

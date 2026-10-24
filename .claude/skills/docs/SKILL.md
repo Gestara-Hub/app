@@ -31,7 +31,7 @@ Every doc starts with: `Data:` · `Status:` (Proposta, Decidido, Feito ou Histó
 Sections `## Decisao` / `## Contexto` / `## Escopo` / `## Alternativas`, in the doc of the subject (product rule in `docs/product/`, technical in `docs/technical/`, frontend in `docs/frontend/`). Say what was decided, why, what was rejected and where the implementation lives.
 
 ## Reversed or replaced
-The old doc gets `> Histórico: substituído por <link>` and moves to `docs/archive/` (`git mv`), then every link to it is fixed (`node apps/web/scripts/check-doc-links.mjs` must report zero). A decision the code contradicts is worse than no decision.
+The old doc gets `> Histórico: substituído por <link>` and moves to `docs/archive/` (`git mv`), then every link to it is fixed (`pnpm --filter @gestarahub/web docs:check` must report zero: it checks relative links, `docs/...` paths and `technical/NN`-style shortcuts in docs, code and skills). A decision the code contradicts is worse than no decision.
 
 ## Memory
 A durable convention future sessions need also gets a one-line memory (`[[slug]]`) that links to the doc; never duplicate the doc.

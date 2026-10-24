@@ -3,7 +3,7 @@
 > Ver também (cobrança): [Regras das mensalidades e cobranças](15-regras-de-cobranca.md) · [Novas formas de cobrança](20-plano-novas-formas-de-cobranca.md) · [Motor de cobrança](../technical/02-motor-de-cobranca.md) · [Pagamento online](../technical/25-pagamento-online.md) · [Financeiro do espaço](../technical/05-modulo-financeiro.md).
 
 > **Status:** Atualizado em 19/10/2026. **Decisão tomada:** Provedor escolhido = **Asaas**. Preços do Pro (R$ 79,90/mês e R$ 799/ano) e Scale (R$ 199/mês e R$ 1.990/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via split nativo.
-> Base: modelo de negócio em [13-modelo-de-negocio.md](13-modelo-de-negocio.md); pagamento online simulado em [../technical/05-modulo-financeiro.md](../technical/05-modulo-financeiro.md), seção 6; WhatsApp em [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
+> Base: modelo de negócio em [13-modelo-de-negocio.md](13-modelo-de-negocio.md); pagamento online em [../technical/25-pagamento-online.md](../technical/25-pagamento-online.md); WhatsApp em [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
 
 ## 1. Os três fluxos de dinheiro
 
@@ -99,8 +99,8 @@ O Pro inclui uma franquia mensal (hoje 1.000 no mock). Opções para o excedente
 
 ### A decidir
 - **Pendente (21/10/2026): e-mail do webhook.** Definir `ASAAS_WEBHOOK_EMAIL` com um e-mail do domínio `gestarahub.com.br` (por exemplo, `integracoes@gestarahub.com.br`) no `.env.local` e nas variáveis da Vercel. Até lá, o cadastro usa o e-mail da conta principal do Asaas. Depois de trocar, os webhooks já cadastrados não mudam sozinhos: é preciso recadastrar (trocar a URL ou rodar o cadastro de novo).
-- **Estorno:** desfazer pagamento online não é permitido na demonstração ([DECIDIR] no doc 05, seção 6.4).
-- **Pix Automático exige CNPJ ativo há pelo menos 6 meses** (registrado no doc 05). Espaços com CPF ou CNPJ novo ficam com Pix e link avulsos.
+- **Estorno:** desfazer pagamento online não é permitido na demonstração ([DECIDIR] no doc 25, seção 4).
+- **Pix Automático exige CNPJ ativo há pelo menos 6 meses** (registrado no doc 25). Espaços com CPF ou CNPJ novo ficam com Pix e link avulsos.
 - **Cartão de crédito** para o aluno: entra agora ou depois?
 
 ## 5. Provedores de pagamento (a validar)
