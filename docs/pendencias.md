@@ -9,7 +9,8 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Pendência | Onde está o detalhe | Situação |
 | --- | --- | --- |
 | Correções do teste geral: 73 de 81 achados corrigidos em 24/10 (noite + decisões do dia). Sobram o #81, o #32/#49 (conferir com o olho) e os botões `xs` | `qa/2026-10-23-teste-geral.md`, seção Correções | Em fechamento |
-| **Canal de atendimento ("Fale com a gente")**: a tela de Planos não tem preço nos cards nem contato. Precisa de um canal (WhatsApp ou e-mail do GestaraHub) e do botão nos planos; depois define preço do Profissional | `product/13-modelo-de-negocio.md`; decisão 7A de 24/10 | Construir depois; não há doc do canal ainda |
+| **Painel admin do GestaraHub** (`apps/admin`): espaços, suporte por chatbot, planos e cortesias, saúde, comunicados e LGPD. Fase 1 é o "Fale com a gente" | `technical/26-painel-admin-gestarahub.md` | Decidido (24/10); começar pela fase 0 |
+| **Canal de atendimento ("Fale com a gente")**: a tela de Planos não tem preço nos cards nem contato. Precisa de um canal (vai ser o chatbot da fase 1 do painel admin) e do botão nos planos; depois define preço do Profissional | `product/13-modelo-de-negocio.md`; decisão 7A de 24/10 | Construir depois; não há doc do canal ainda |
 | Expansão fora da venda até existir multiunidade: o card e o botão voltam, e o teste e2e do upgrade para Expansão (`plano-gestarahub.spec.ts`, marcado `fixme`) | `technical/24-plano-gestarahub.md` | Voltar com a multiunidade |
 | Categoria financeira "Professores" (dado semeado) continua com esse nome mesmo em áreas que dizem "instrutor" | `qa/2026-10-23-teste-geral.md`, achado 23 | Renomear exige migrar dado; deixado |
 | Lista de alunos para o professor: o serviço de listagem (`clientsService.list`) ainda não é escopado por turma (a tela do professor não usa) | `services/classes/teacherScope.ts` | Escopar com a fatia de leitura |
@@ -39,7 +40,7 @@ Rodada final feita em 24/10/2026 (execução noturna): e2e completo (406 verdes,
 | Pendência | Onde está o detalhe |
 | --- | --- |
 | Verificação em duas etapas: desligar um método só, demonstração sem verificação, esquecer dispositivo sem encerrar a sessão | `technical/17-verificacao-em-duas-etapas.md`, Perguntas para o usuário |
-| Preço do Profissional e do Expansão; quem paga o WhatsApp automático e o pagamento online. Até lá a landing fica sem planos | `product/13-modelo-de-negocio.md`, `frontend/08-decisoes-landing-page-e-onboarding.md` §3.5 |
+| Landing sem planos até decidir mostrar os planos e quem paga o WhatsApp automático e o pagamento online (os preços já foram aprovados em 19/10: Profissional R$ 79,90 e Expansão R$ 199) | `product/13-modelo-de-negocio.md`, `frontend/08-decisoes-landing-page-e-onboarding.md` §3.5 |
 
 ## Antes de ir para produção
 
