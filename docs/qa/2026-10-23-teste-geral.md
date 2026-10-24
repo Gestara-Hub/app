@@ -260,5 +260,7 @@ Decisões de produto que apareceram no teste (escolha feita: só registrar).
 4. **Menor de idade** (#57): mensagens e cobranças devem ir para o responsável financeiro?
 5. **Professor** (#70): deve ver lembretes (faltas e aniversários dos alunos dele) e a ficha sem dinheiro?
 6. **Mensagem para vários alunos** (#65) e **visões de dia e mês no calendário** (#37): faltam ou ficam assim?
+7. **Parcelas além da validade** (#26, #33): travar, só avisar (recomendado) ou deixar? Ver `docs/pendencias.md`.
 7. **Conta de recebimento como pessoa física** (#58): avisar que CPF, e-mail e telefone aparecem para o aluno na fatura do cartão?
+8. **Parcelas além da validade ou do fim** (#26, #33): travar, só avisar (recomendado) ou deixar como está? Análise em `docs/pendencias.md`.
 8. Perguntas da verificação em duas etapas (desligar um método só, demonstração sem verificação, esquecer dispositivo sem encerrar a sessão) estão na doc `docs/technical/17-verificacao-em-duas-etapas.md`, seção "Perguntas para o usuário".

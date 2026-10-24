@@ -34,6 +34,7 @@ Decisão do usuário (23/10/2026): foco no desenvolvimento. O e2e e as conferên
 
 | Pendência | Onde está o detalhe |
 | --- | --- |
+| **#26 e #33: parcelas depois do fim** (pacote de 90 dias com parcelas até 9 meses depois; curso que termina em 20/11 com a última parcela em 23/12). As docs de cobrança (`product/15`, `product/20`) não dizem nada. Opções: (a) travar o número de parcelas pelo prazo; (b) só avisar na janela de venda/matrícula e deixar passar; (c) deixar como está. **Recomendação: (b)**, porque a dívida de uma venda já feita continua válida e parcelar além da validade é uma escolha comercial do dono; o aviso evita o erro sem prender. | `qa/2026-10-23-teste-geral.md`, achados 26 e 33 |
 | 8 perguntas de produto do teste geral (termos na demonstração, tela de Planos e taxa do Pix, aluno pausado, aluno menor, professor, mensagem para vários, calendário, conta de recebimento como pessoa física) | `qa/2026-10-23-teste-geral.md`, Perguntas para o usuário |
 | Verificação em duas etapas: desligar um método só, demonstração sem verificação, esquecer dispositivo sem encerrar a sessão | `technical/17-verificacao-em-duas-etapas.md`, Perguntas para o usuário |
 | Preço do Profissional e do Expansão; quem paga o WhatsApp automático e o pagamento online. Até lá a landing fica sem planos | `product/13-modelo-de-negocio.md`, `frontend/08-decisoes-landing-page-e-onboarding.md` §3.5 |
