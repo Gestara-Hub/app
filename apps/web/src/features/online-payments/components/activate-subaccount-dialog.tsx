@@ -48,7 +48,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ASAAS_FEES, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
+import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
 import { requestSecurityPrompt } from "@/features/auth";
@@ -370,7 +370,7 @@ export function ActivateSubaccountDialog({
                         Transferência Pix para sua conta bancária:
                       </span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        30 grátis por mês
+                        {pixWithdrawalRuleText()}
                       </span>
                     </div>
                   </div>

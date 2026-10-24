@@ -319,6 +319,20 @@ export const LINK_PAYMENT_METHOD_LABEL: Record<LinkPaymentMethod, string> = {
 };
 
 /**
+ * Saque via Pix da subconta: cota grátis por mês e tarifa depois dela (tabela
+ * do Asaas em 21/10/2026; a conta real devolve os valores em `myAccount/fees`,
+ * campos `transfer.monthlyTransfersWithoutFee` e `transfer.pix.feeValue`).
+ * Uma regra só para todas as telas (achado 4 do teste de 23/10).
+ */
+export const PIX_WITHDRAWAL = { freePerMonth: 30, feeCents: 200 } as const;
+
+/** "30 grátis por mês; depois, R$ 2,00 cada" */
+export function pixWithdrawalRuleText(rule: { freePerMonth: number; feeCents: number } = PIX_WITHDRAWAL): string {
+  const fee = `R$ ${(rule.feeCents / 100).toFixed(2).replace(".", ",")}`;
+  return `${rule.freePerMonth} grátis por mês; depois, ${fee} cada`;
+}
+
+/**
  * Forma do pagamento online como a tela de Recebimentos online e o extrato em
  * PDF mostram: "Pix", "Cartão · Crédito", "Boleto". Um texto so nos dois
  * (achado 62 do teste de 23/10).

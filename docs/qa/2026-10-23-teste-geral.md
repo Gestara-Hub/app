@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 13 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 14 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -103,6 +103,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 28 | 24/10 | Trocar o plano do aluno pede confirmação: a janela diz de qual plano para qual, quantas mensalidades em aberto (e o total) deixam de valer, a primeira cobrança do plano novo e que o pago não muda. O e2e `mensalidades-regras` confere o texto. | `features/clients/__tests__/plan-switch.test.ts` | — |
 | 62 | 24/10 | O extrato em PDF e a tela de Recebimentos online usam o mesmo texto para a forma ("Cartão · Crédito", "Pix", "Boleto") e para o saldo (cartão sem data prevista agora sai "A liberar" no PDF, não "Disponível"). Funções `onlinePaymentMethodLabel` e `onlineFundsLabel` em `@gestarahub/core/payment-fees`. | `packages/core/test/payment-fees.test.ts` | — |
 | 2 | 24/10 | O selo de atraso do cartão "Mensalidades recebidas" conta as mensalidades atrasadas do mês, o mesmo recorte do valor e do texto de baixo ("3 em atraso · R$ 491,61 atrasado"). O atraso de todos os meses continua nos Lembretes e no Financeiro. Cálculo em `monthlyRevenueSummary`. | `features/dashboard/__tests__/revenue-summary.test.ts` | — |
+| 4 | 24/10 | As telas de Recebimentos online dizem a mesma regra do saque via Pix: 30 grátis por mês e, depois, R$ 2,00 cada (antes um cartão dizia "grátis, sem tarifa"). A API do Asaas (`myAccount/fees`, `transfer.monthlyTransfersWithoutFee` e `transfer.pix.feeValue`) confirma a cota mensal e a tarifa da tabela da conta. Constante `PIX_WITHDRAWAL` e `pixWithdrawalRuleText` em `@gestarahub/core/payment-fees`. | `packages/core/test/payment-fees.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -175,7 +176,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 4 | Recebimentos online | tela antes de ativar | desktop 1280, claro | Os cartões se contradizem: "Saque Pix Grátis (R$ 0,00) ... sem tarifa de transferência" e, abaixo, "Transferência para o banco: 30 grátis por mês; depois, R$ 2,00 cada". | Uma regra só para o saque. | `/online-payments` sem conta ativada. Captura `tour-1280-online-payments.png`. | média |
+| 4 | Recebimentos online | tela antes de ativar | desktop 1280, claro | Os cartões se contradizem: "Saque Pix Grátis (R$ 0,00) ... sem tarifa de transferência" e, abaixo, "Transferência para o banco: 30 grátis por mês; depois, R$ 2,00 cada". | Uma regra só para o saque. | `/online-payments` sem conta ativada. Captura `tour-1280-online-payments.png`. | média (corrigido) |
 | 5 | Recebimentos online | tela antes de ativar | desktop 1280, claro | Selo "Ativação pendente" no topo, sem o dono ter começado nada. Texto longo de marketing ("Diga adeus ao envio manual de comprovantes e conferência bancária..."), jargão ("Ecossistema Financeiro GestaraHub") e o provedor citado pelo nome ("Asaas I.P. S.A."), quando a LP fala só em "parceiro de pagamentos regulado". | Selo só depois de começar a ativação; frases de 6 a 8 palavras; mesma forma de citar o provedor (decisão do usuário). | `/online-payments` sem conta ativada. | baixa |
 | 6 | Recebimentos online | título | desktop 1280, claro | Título "Recebimentos Online" (O maiúsculo); no menu, "Recebimentos online". | Mesma grafia. | `/online-payments`. | baixa |
 | 7 | Relatórios | cabeçalho | desktop 1280, claro | Subtítulo com jargão e longo: "Gere e exporte relatórios operacionais em PDF com layout timbrado para impressão e DRE gerencial completa." | Frase curta, sem "layout", "timbrado" e "DRE". | `/reports`. | baixa |

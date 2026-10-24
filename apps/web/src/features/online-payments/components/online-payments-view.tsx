@@ -37,7 +37,7 @@ const BENEFITS = [
   "Pix copia e cola e QR Code dinâmico com baixa automática",
   "Link de pagamento de cartão de crédito para enviar no WhatsApp",
   "Pix Automático: mensalidade cobrada no vencimento pelo banco",
-  "Carteira digital integrada com transferências via Pix sem tarifa",
+  "Saque do saldo via Pix: 30 grátis por mês",
 ] as const;
 
 type OnlinePaymentsTab = "carteira" | "configuracoes";

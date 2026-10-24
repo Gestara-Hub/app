@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ActivateSubaccountDialog } from "./activate-subaccount-dialog";
-import { ASAAS_FEES, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
+import { ASAAS_FEES, PIX_WITHDRAWAL, PLATFORM_SPLIT_CENTS } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
 
 interface OnlinePaymentsOnboardingProps {
@@ -114,10 +114,10 @@ export function OnlinePaymentsOnboarding({
                 <Zap className="size-5" />
               </div>
               <CardTitle className="text-base font-semibold">
-                Saque Pix Grátis (R$ 0,00)
+                Saque via Pix: {PIX_WITHDRAWAL.freePerMonth} grátis por mês
               </CardTitle>
               <CardDescription className="text-xs">
-                Transfira o saldo disponível da sua carteira para qualquer chave Pix do titular, sem tarifa de transferência.
+                Transfira o saldo disponível para uma chave Pix do titular. Depois dos saques grátis do mês, a tarifa é de {formatCents(PIX_WITHDRAWAL.feeCents)} cada.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -163,10 +163,10 @@ export function OnlinePaymentsOnboarding({
               <div className="rounded-lg border border-border/70 bg-card p-3.5 space-y-1">
                 <span className="text-xs text-muted-foreground">Transferência para o banco</span>
                 <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  30 grátis por mês
+                  {PIX_WITHDRAWAL.freePerMonth} grátis por mês
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Saque via Pix para a sua conta; depois, R$ 2,00 cada
+                  Saque via Pix para a sua conta; depois, {formatCents(PIX_WITHDRAWAL.feeCents)} cada
                 </p>
               </div>
 

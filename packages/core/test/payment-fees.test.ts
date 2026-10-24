@@ -13,6 +13,7 @@ import {
   linkMethodFromAsaasBillingType,
   onlineFundsLabel,
   onlinePaymentMethodLabel,
+  pixWithdrawalRuleText,
   parseAsaasAccountFees,
   platformSplitCents,
   type GatewayFeeTable,
@@ -294,5 +295,12 @@ describe("rótulos do pagamento online (achado 62)", () => {
     assert.equal(onlineFundsLabel(true, undefined, fmt), "Disponível");
     assert.equal(onlineFundsLabel(false, "2026-11-21", fmt), "Libera em 21/11/2026");
     assert.equal(onlineFundsLabel(false, undefined, fmt), "A liberar");
+  });
+});
+
+describe("saque via Pix (achado 4)", () => {
+  it("a regra do saque tem um texto só", () => {
+    assert.equal(pixWithdrawalRuleText(), "30 grátis por mês; depois, R$ 2,00 cada");
+    assert.equal(pixWithdrawalRuleText({ freePerMonth: 10, feeCents: 550 }), "10 grátis por mês; depois, R$ 5,50 cada");
   });
 });
