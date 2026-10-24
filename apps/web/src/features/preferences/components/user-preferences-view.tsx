@@ -15,6 +15,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsClient } from "@/lib/use-is-client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,12 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
   const { preferences, updatePreference, updatePreferences, resetPreferences } =
     useUserPreferences();
   const { setTheme } = useTheme();
+  // As preferencias vem do armazenamento do navegador: o servidor nao as
+  // conhece. A escolha (tema, som) so aparece depois de montar, senao o
+  // desenho do servidor e o do navegador diferem (achado 75 do teste geral).
+  const isClient = useIsClient();
+  const theme = isClient ? preferences.theme : undefined;
+  const audioEnabled = isClient && preferences.audioFeedbackEnabled;
 
   const handleThemeChange = (mode: ThemeMode) => {
     updatePreference("theme", mode);
@@ -83,14 +90,14 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             onClick={() => handleThemeChange("light")}
             className={cn(
               "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              preferences.theme === "light"
+              theme === "light"
                 ? "border-primary bg-primary/5 text-primary font-medium"
                 : "border-border bg-card text-muted-foreground",
             )}
           >
             <Sun className="size-5" />
             <span className="text-xs">Claro</span>
-            {preferences.theme === "light" && <Check className="size-3 text-primary" />}
+            {theme === "light" && <Check className="size-3 text-primary" />}
           </button>
 
           {/* Modo Escuro */}
@@ -99,14 +106,14 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             onClick={() => handleThemeChange("dark")}
             className={cn(
               "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              preferences.theme === "dark"
+              theme === "dark"
                 ? "border-primary bg-primary/5 text-primary font-medium"
                 : "border-border bg-card text-muted-foreground",
             )}
           >
             <Moon className="size-5" />
             <span className="text-xs">Escuro</span>
-            {preferences.theme === "dark" && <Check className="size-3 text-primary" />}
+            {theme === "dark" && <Check className="size-3 text-primary" />}
           </button>
 
           {/* Automático / Sistema */}
@@ -115,14 +122,14 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
             onClick={() => handleThemeChange("system")}
             className={cn(
               "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              preferences.theme === "system"
+              theme === "system"
                 ? "border-primary bg-primary/5 text-primary font-medium"
                 : "border-border bg-card text-muted-foreground",
             )}
           >
             <Monitor className="size-5" />
             <span className="text-xs">Sistema</span>
-            {preferences.theme === "system" && <Check className="size-3 text-primary" />}
+            {theme === "system" && <Check className="size-3 text-primary" />}
           </button>
         </div>
 
@@ -154,7 +161,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
 
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-3">
           <div className="flex items-center gap-3">
-            {preferences.audioFeedbackEnabled ? (
+            {audioEnabled ? (
               <Volume2 className="size-5 text-primary" />
             ) : (
               <VolumeX className="size-5 text-muted-foreground" />
@@ -179,7 +186,7 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
               Testar
             </Button>
             <Switch
-              checked={preferences.audioFeedbackEnabled}
+              checked={audioEnabled}
               onCheckedChange={handleAudioToggle}
               aria-label="Ativar feedback sonoro"
             />

@@ -109,6 +109,14 @@ export function createQueryClient(): QueryClient {
  * - ThemeProvider (next-themes): modo escuro e o padrao do sistema; o claro
  *   continua disponivel no seletor de tema.
  */
+/**
+ * O script do tema roda so no HTML do servidor, antes da pintura. No navegador
+ * ele nunca executa; como dado (`application/json`), o React nao avisa de
+ * `<script>` dentro de componente se tiver de recriar a arvore (achado 75).
+ * O next-themes ja marca o script com `suppressHydrationWarning`.
+ */
+const THEME_SCRIPT_PROPS = typeof window === "undefined" ? undefined : { type: "application/json" };
+
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
   useRefetchOnStoreChange(queryClient);
@@ -125,6 +133,7 @@ export function Providers({ children }: { children: ReactNode }) {
         storageKey="gestarahub:theme"
         enableSystem
         disableTransitionOnChange
+        scriptProps={THEME_SCRIPT_PROPS}
       >
         {children}
       </ThemeProvider>
