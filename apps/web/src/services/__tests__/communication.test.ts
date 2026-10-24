@@ -180,7 +180,7 @@ describe("modelos de mensagem", () => {
     );
     expect(fill("music", "class_canceled")).toContain("A aula de hoje na Espaço foi cancelada.");
     expect(fill("music", "schedule_change")).toBe(
-      "Oi, Ana! Aviso da Espaço: sua turma vai mudar de horário. Novo horário:",
+      "Oi, Ana! Aviso de Espaço: sua turma vai mudar de horário. Novo horário:",
     );
     expect(fill("music", "holiday_notice")).toContain("no feriado não teremos aula.");
     expect(fill("martial_arts", "holiday_notice")).toContain("no feriado não teremos treino.");

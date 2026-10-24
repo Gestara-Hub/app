@@ -14,7 +14,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
-import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues } from "../message-meta";
+import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues, templatePreview } from "../message-meta";
 import { EditTemplateDialog } from "./edit-template-dialog";
 import { MessageBubble } from "./message-bubble";
 
@@ -36,7 +36,7 @@ function TemplateCard({
 }) {
   const updateMut = useUpdateTemplate();
   const meta = TRIGGER_META[template.trigger];
-  const preview = fillMessage(template.content, sampleValues(orgName, withPaymentLink));
+  const preview = templatePreview(template.trigger, fillMessage(template.content, sampleValues(orgName, withPaymentLink)));
   // Modelo so de envio manual: sem interruptor nem prazo, nem no oficial.
   const automatic = official && !isManualTrigger(template.trigger);
 

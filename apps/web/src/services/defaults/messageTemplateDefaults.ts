@@ -230,7 +230,7 @@ function manualMessageTemplates(
       category: "administrative",
       title: "Mudança de horário",
       description: "Aviso de novo horário da turma",
-      content: "Oi, {aluno}! Aviso da {empresa}: sua turma vai mudar de horário. Novo horário:",
+      content: "Oi, {aluno}! Aviso de {empresa}: sua turma vai mudar de horário. Novo horário:",
       availableVariables: ["{aluno}", "{empresa}"],
     }),
     manual("holiday-notice", {
@@ -238,7 +238,7 @@ function manualMessageTemplates(
       category: "administrative",
       title: "Feriado ou recesso",
       description: "Aviso de pausa nas aulas",
-      content: `Oi, {aluno}! Aviso da {empresa}: no feriado ${tone.noClass}. Bom descanso e até a volta!`,
+      content: `Oi, {aluno}! Aviso de {empresa}: no feriado ${tone.noClass}. Bom descanso e até a volta!`,
       availableVariables: ["{aluno}", "{empresa}"],
     }),
   ];

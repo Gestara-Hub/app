@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useUpdateTemplate } from "../hooks/use-communication";
-import { TRIGGER_META, automationTiming, sampleValues } from "../message-meta";
+import { TRIGGER_META, automationTiming, sampleValues, templatePreview } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
 /** Texto do modelo: ate 900 caracteres, com folga para os nomes (o envio aceita 1000). */
@@ -101,7 +101,10 @@ function EditTemplateForm({
   }
 
   const withPaymentLink = hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
-  const preview = fillMessage(content, sampleValues(organization?.name, withPaymentLink));
+  const preview = templatePreview(
+    template.trigger,
+    fillMessage(content, sampleValues(organization?.name, withPaymentLink)),
+  );
   // Variavel que o modelo nao conhece: a frase dela sumia sem aviso (ALU-39).
   const unknownVariables = [...new Set([...content.matchAll(/\{(\w+)\}/g)].map((m) => `{${m[1]}}`))].filter(
     (v) => !template.availableVariables.includes(v),

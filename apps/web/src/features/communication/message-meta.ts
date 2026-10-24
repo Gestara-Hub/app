@@ -81,11 +81,24 @@ export function sampleValues(orgName?: string, withPaymentLink = false): Record<
     valor: "R$ 150,00",
     vencimento: "10/11",
     link_pagamento: withPaymentLink ? "https://pagar.gestarahub.com/c/abc123" : undefined,
-    referencia: "parcela 2 de 4 do curso Confeitaria",
+    // Serve a qualquer area do espaco (achado 8): nada de "curso Confeitaria" numa academia de lutas.
+    referencia: "mensalidade de novembro",
     pacote: "10 aulas",
     restante: "resta 1 aula",
     nivel: "Faixa Azul",
   };
+}
+
+/**
+ * Previa do modelo com os valores de exemplo. O aviso de mudanca de horario
+ * termina esperando o horario novo (a tela de avisos o completa na hora de
+ * enviar); na previa entra um horario de exemplo.
+ */
+export function templatePreview(
+  trigger: MessageTrigger,
+  filled: string,
+): string {
+  return trigger === "schedule_change" ? `${filled} Terças e quintas, 19h às 20h.` : filled;
 }
 
 /** Qual lembrete de cobranca serve para a mensalidade, pela situacao dela hoje. */

@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 29 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 31 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -117,6 +117,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 3 | 24/10 | A seta "Mais aniversariantes" (e as outras listas com rolagem) fica abaixo da lista, com 36 px de altura, e não cobre mais nenhuma linha (`ScrollCueArea`). | conferido na bateria final (e2e de sobreposição) | — |
 | 5, 6 | 24/10 | Recebimentos online: título "Recebimentos online" (igual ao menu); o selo "Ativação pendente" só aparece depois de a ativação começar; a abertura perdeu o selo "Ecossistema Financeiro GestaraHub" e ficou com frases curtas ("Receba pelo Pix com baixa automática"); o parceiro aparece só como "parceiro de pagamentos regulado" na abertura (o contrato mantém o nome legal). | conferido na bateria final | — |
 | 7 | 24/10 | O subtítulo de Relatórios é "Relatórios em PDF para imprimir ou enviar." (sem "layout", "timbrado" e "DRE"). | texto simples | — |
+| 8, 43 | 24/10 | A prévia dos modelos de mensagem usa um exemplo que serve a qualquer área ("mensalidade de novembro", antes "curso Confeitaria") e o aviso de mudança de horário mostra um horário de exemplo. O texto padrão dos avisos de horário e de feriado diz "Aviso de {empresa}" (sem o artigo "da"); vale para os espaços novos, os modelos já salvos ficam como estão. | `features/communication/__tests__/message-preview.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -215,8 +216,8 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 8 | Comunicação | modelos de mensagem | desktop 1280, claro | Prévia de "Pagamento recebido" e "Lembrete de cobrança" fala em "curso Confeitaria" com "Bons treinos!" num espaço de Lutas; prévia de "Mudança de horário" termina em "Novo horário:" vazio. | Exemplo coerente com a área do espaço e com o horário preenchido. | `/communication`, aba Mensagens. Captura `tour-1280-communication.png`. | baixa |
-| 43 | Aviso de mudança de horário | texto da mensagem | desktop 1280, claro | "Aviso da Estúdio Quaresma de Teste" (artigo fixo "da" antes do nome do espaço). | Texto sem artigo ("Aviso de Estúdio...", "Aviso: ..."). | Mudar o horário de uma turma com alunos → Avisar alunos. | baixa |
+| 8 | Comunicação | modelos de mensagem | desktop 1280, claro | Prévia de "Pagamento recebido" e "Lembrete de cobrança" fala em "curso Confeitaria" com "Bons treinos!" num espaço de Lutas; prévia de "Mudança de horário" termina em "Novo horário:" vazio. | Exemplo coerente com a área do espaço e com o horário preenchido. | `/communication`, aba Mensagens. Captura `tour-1280-communication.png`. | baixa (corrigido) |
+| 43 | Aviso de mudança de horário | texto da mensagem | desktop 1280, claro | "Aviso da Estúdio Quaresma de Teste" (artigo fixo "da" antes do nome do espaço). | Texto sem artigo ("Aviso de Estúdio...", "Aviso: ..."). | Mudar o horário de uma turma com alunos → Avisar alunos. | baixa (corrigido) |
 | 65 | Comunicação → Nova mensagem | mensagem para vários | desktop 1280, claro | A mensagem avulsa só aceita um aluno ("Aluno*" de seleção única). Não há como mandar o mesmo texto para vários (o plano do teste pede "avulsa para um aluno e para vários"); o envio em sequência só existe nos lembretes e no aviso de mudança de horário. | Confirmar se falta a seleção de vários (com envio em sequência) ou se fica assim. | `/communication` → Nova mensagem. | baixa |
 
 ### Administração
