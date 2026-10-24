@@ -92,3 +92,9 @@ export function csvCell(value: DocumentCellValue, format: DocumentCellFormat = "
       return String(value);
   }
 }
+
+/** Linha do espaco no cabecalho dos documentos: "Unidade Centro · (11) 93333-4444" (telefone com mascara, achado 45). */
+export function unitHeaderLine(unit: { name?: string; phone?: string } | null | undefined): string | undefined {
+  const parts = [unit?.name, unit?.phone ? formatPhone(unit.phone) : undefined].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}

@@ -1,7 +1,7 @@
 import type { Charge, Client, DocumentModel, Id, PaymentMethod, TeacherPayoutStatus } from "@gestarahub/contracts";
 import { notFoundError, apiError } from "@gestarahub/core/api-error";
 import { resolveOnlinePayer } from "@gestarahub/core/payer";
-import { competenceLongLabel } from "@/lib/documents/format";
+import { competenceLongLabel, unitHeaderLine } from "@/lib/documents/format";
 import {
   paymentRecordDocument,
   paymentsStatementDocument,
@@ -34,7 +34,7 @@ function todayISO(): string {
 }
 
 function organizationDetails(): string | undefined {
-  return [store.unit?.name, store.unit?.phone].filter(Boolean).join(" · ") || undefined;
+  return unitHeaderLine(store.unit);
 }
 
 /** Quem paga: o pagador da cobranca online (com CPF) ou, sem CPF, o proprio aluno. */

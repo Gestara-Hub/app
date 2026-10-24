@@ -3,7 +3,7 @@ import { notFoundError } from "@gestarahub/core/api-error";
 import { formatAverage, formatGrade } from "@gestarahub/core/grades";
 import { onlineFundsLabel, onlinePaymentMethodLabel } from "@gestarahub/core/payment-fees";
 import { getSegmentPreset } from "@/lib/business-segment-presets";
-import { competenceLongLabel, documentDate } from "@/lib/documents/format";
+import { competenceLongLabel, documentDate, unitHeaderLine } from "@/lib/documents/format";
 import { onlineStatementDocument } from "@/lib/documents/payment-documents";
 import { minorConsentDocument, reportCardDocument } from "@/lib/documents/student-documents";
 import { gradesServiceImpl } from "../grades";
@@ -21,7 +21,7 @@ import { currentSpaceTimeZone } from "@gestarahub/core/date";
 
 
 function organizationDetails(): string | undefined {
-  return [store.unit?.name, store.unit?.phone].filter(Boolean).join(" · ") || undefined;
+  return unitHeaderLine(store.unit);
 }
 
 function studentOf(id: Id): Client {
