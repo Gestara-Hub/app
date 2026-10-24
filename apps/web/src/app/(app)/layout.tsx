@@ -31,8 +31,8 @@ export default async function AppLayout({
   if (!user) redirect("/login");
   // Modelo operacional do tenant do usuario (resolvido no server; sem flicker).
   const model = organizationModelById(user.organizationId) ?? "scheduling";
-  // Tier do plano GestaraHub (cookie espelho do store do navegador; seed = free).
-  const tier = await getOrganizationTier(user.organizationId);
+  // Tier do plano GestaraHub: o do banco na conta real (achado 80); demonstracao, o cookie espelho.
+  const tier = await getOrganizationTier(user);
   // Fuso do espaco: "hoje" e "agora" do navegador saem dele, nao do aparelho.
   const timeZone = await getSessionTimeZone(user);
 

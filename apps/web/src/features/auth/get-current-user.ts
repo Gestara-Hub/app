@@ -4,7 +4,7 @@ import { DEFAULT_SPACE_TIME_ZONE, resolveSpaceTimeZone, type SpaceTimeZone } fro
 import { SESSION_COOKIE, decodeSession, isSupabaseOrganization } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { store } from "@/mocks/store";
-import type { UserView } from "@gestarahub/contracts";
+import type { SubscriptionTier, UserView } from "@gestarahub/contracts";
 
 /**
  * Resolve o usuario logado no SERVER. Server-only (usa `next/headers`).
@@ -56,9 +56,20 @@ export async function getSessionTimeZone(user: Pick<UserView, "id" | "organizati
   return (await loadSessionSpace(user.id, user.organizationId)).timeZone;
 }
 
+/**
+ * Plano do espaco da sessao, lido do banco (achado 80): na conta real a tela
+ * paga nao confia no cookie espelho, que o navegador pede para gravar.
+ * `undefined` fora do banco (demonstracao) ou sem leitura.
+ */
+export async function getSessionTier(user: Pick<UserView, "id" | "organizationId">): Promise<SubscriptionTier | undefined> {
+  if (!isSupabaseOrganization(user.organizationId)) return undefined;
+  return (await loadSessionSpace(user.id, user.organizationId)).tier;
+}
+
 interface SessionSpace {
   active: boolean;
   timeZone: SpaceTimeZone;
+  tier?: SubscriptionTier;
 }
 
 // Uma leitura por requisicao, para o usuario e o fuso.
@@ -66,17 +77,19 @@ const loadSessionSpace = cache(async (userId: string, organizationId: string): P
   try {
     const { data } = await createSupabaseAdminClient()
       .from("users")
-      .select("status, organizations(settings, units(address))")
+      .select("status, organizations(settings, subscription, units(address))")
       .eq("id", userId)
       .eq("organization_id", organizationId)
       .maybeSingle();
     const organization = (data?.organizations ?? null) as {
       settings?: { timeZone?: string } | null;
+      subscription?: { tier?: SubscriptionTier } | null;
       units?: { address?: { state?: string } | string | null }[];
     } | null;
     return {
       active: data?.status === "active",
       timeZone: resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address),
+      tier: data ? (organization?.subscription?.tier ?? "free") : undefined,
     };
   } catch {
     // Sem banco (ambiente sem Supabase): nao derruba a sessao por isso.

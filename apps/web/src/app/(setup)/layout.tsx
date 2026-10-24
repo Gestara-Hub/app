@@ -13,7 +13,7 @@ export default async function SetupLayout({
   if (!user) redirect("/login?from=/setup");
 
   const model = organizationModelById(user.organizationId) ?? "classes";
-  const tier = await getOrganizationTier(user.organizationId);
+  const tier = await getOrganizationTier(user);
 
   return (
     <SessionProvider user={user} model={model} tier={tier}>
