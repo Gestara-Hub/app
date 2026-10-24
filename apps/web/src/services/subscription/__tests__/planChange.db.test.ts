@@ -33,6 +33,8 @@ vi.mock("@/lib/asaas", async (importOriginal) => ({
 vi.mock("@/lib/email/mailersend", () => email);
 
 const plan = await import("@/services/server/subscriptionPlan");
+// Quem pediu a troca nos testes: o dono do espaco (montado no beforeEach).
+let owner: { actor: { userId: string; name: string; profile: "owner" } };
 const { updateOrganizationSubscriptionAction } = await import("../subscriptionActions");
 const { unwrap } = await import("@/services/server/action");
 
@@ -50,6 +52,21 @@ async function subscriptionInDb(): Promise<Subscription> {
   return data?.subscription as Subscription;
 }
 
+/** Historico do plano e a linha da Auditoria ligada a cada evento. */
+async function historyInDb() {
+  const { data: events } = await admin
+    .from("subscription_events")
+    .select("kind, source, actor, audit_log_id, amount_cents, asaas_payment_id")
+    .eq("organization_id", tenant.organizationId)
+    .order("created_at", { ascending: true });
+  const { data: audits } = await admin
+    .from("audit_logs")
+    .select("id, summary, source, actor, target, security")
+    .eq("organization_id", tenant.organizationId)
+    .eq("target->>type", "subscription");
+  return { events: events ?? [], audits: audits ?? [] };
+}
+
 const paidPlan = (over: Partial<Subscription> = {}): Subscription => ({
   tier: "pro",
   interval: "monthly",
@@ -65,6 +82,7 @@ const paidPlan = (over: Partial<Subscription> = {}): Subscription => ({
 beforeEach(async () => {
   vi.clearAllMocks();
   tenant = await createTestTenant();
+  owner = { actor: { userId: tenant.owner.id, name: "Teste owner", profile: "owner" } };
   asaas.getSubscriptionPayments.mockResolvedValue({
     data: [{ id: "pay_renovacao", status: "PENDING", value: 79.9, dueDate: inDays(20), subscription: "sub_teste" }],
   });
@@ -97,7 +115,7 @@ describe("upgrade: na hora, pago pela diferença", () => {
     );
     if (expected.kind !== "now") throw new Error("esperava upgrade na hora");
 
-    const start = await plan.startPlanChange(admin, tenant.organizationId, { tier: "scale", interval: "monthly" });
+    const start = await plan.startPlanChange(admin, tenant.organizationId, { tier: "scale", interval: "monthly" }, owner);
 
     expect(start.kind).toBe("awaiting_payment");
     expect(asaas.createPixPayment).toHaveBeenCalledWith(
@@ -126,13 +144,28 @@ describe("upgrade: na hora, pago pela diferença", () => {
     expect(asaas.createSubscription).not.toHaveBeenCalled();
     expect(asaas.updateSubscription).toHaveBeenCalledWith("sub_teste", expect.objectContaining({ value: 199, cycle: "MONTHLY" }));
     expect(asaas.updatePayment).toHaveBeenCalledWith("pay_renovacao", expect.objectContaining({ value: 199 }));
+
+    // Historico: quem pediu, o valor e a cobranca, e a mesma frase na Auditoria.
+    const { events, audits } = await historyInDb();
+    expect(events).toHaveLength(1);
+    // Quem confirmou foi o parceiro; quem pediu fica na frase.
+    expect(events[0]).toMatchObject({
+      kind: "upgraded",
+      source: "webhook.asaas",
+      amount_cents: expected.chargeTodayCents,
+      asaas_payment_id: "pay_diferenca",
+    });
+    const audit = audits.find((a) => a.id === events[0].audit_log_id);
+    expect(audit).toMatchObject({ source: "webhook.asaas", security: true });
+    expect(audit?.summary).toContain("Parceiro de pagamentos mudou o Plano GestaraHub para o Expansão mensal");
+    expect(audit?.summary).toContain("pedido por Teste owner");
   });
 
   it("mensal → anual: o ciclo anual começa no dia e a cobrança do mês sai", async () => {
     await setSubscription(paidPlan());
     asaas.createPixPayment.mockResolvedValue({ id: "pay_anual" });
     asaas.getPixQrCode.mockResolvedValue({ encodedImage: "img", payload: "pix", expirationDate: inDays(1) });
-    await plan.startPlanChange(admin, tenant.organizationId, { tier: "pro", interval: "yearly" });
+    await plan.startPlanChange(admin, tenant.organizationId, { tier: "pro", interval: "yearly" }, owner);
     asaas.getPayment.mockResolvedValue({
       id: "pay_anual",
       status: "CONFIRMED",
@@ -162,7 +195,7 @@ describe("redução: no fim do período pago", () => {
   it("Scale → Pro: fica marcada, a renovação já sai com o valor novo e dá para desmarcar", async () => {
     await setSubscription(paidPlan({ tier: "scale", priceCents: 19900 }));
 
-    const start = await plan.startPlanChange(admin, tenant.organizationId, { tier: "pro", interval: "monthly" });
+    const start = await plan.startPlanChange(admin, tenant.organizationId, { tier: "pro", interval: "monthly" }, owner);
 
     expect(start.kind).toBe("scheduled");
     const saved = await subscriptionInDb();
@@ -170,14 +203,14 @@ describe("redução: no fim do período pago", () => {
     expect(saved.scheduledChange).toEqual({ tier: "pro", interval: "monthly", effectiveOn: inDays(20) });
     expect(asaas.updateSubscription).toHaveBeenLastCalledWith("sub_teste", expect.objectContaining({ value: 79.9 }));
 
-    await plan.cancelScheduledPlanChange(admin, tenant.organizationId);
+    await plan.cancelScheduledPlanChange(admin, tenant.organizationId, owner);
     expect((await subscriptionInDb()).scheduledChange).toBeUndefined();
     expect(asaas.updateSubscription).toHaveBeenLastCalledWith("sub_teste", expect.objectContaining({ value: 199 }));
   });
 
   it("voltar ao Grátis: encerra no Asaas, o plano segue até o fim e desmarcar recria a assinatura", async () => {
     await setSubscription(paidPlan());
-    await plan.startPlanChange(admin, tenant.organizationId, { tier: "free", interval: "monthly" });
+    await plan.startPlanChange(admin, tenant.organizationId, { tier: "free", interval: "monthly" }, owner);
 
     expect(asaas.cancelSubscription).toHaveBeenCalledWith("sub_teste");
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", scheduledChange: { tier: "free", effectiveOn: inDays(20) } });
@@ -185,7 +218,7 @@ describe("redução: no fim do período pago", () => {
     expect(await plan.recordSubscriptionRemoved(admin, { id: "sub_teste" })).toBe(false);
 
     asaas.createSubscription.mockResolvedValue({ id: "sub_nova" });
-    await plan.cancelScheduledPlanChange(admin, tenant.organizationId);
+    await plan.cancelScheduledPlanChange(admin, tenant.organizationId, owner);
     expect(asaas.createSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ customer: "cus_teste", nextDueDate: inDays(20), cycle: "MONTHLY", value: 79.9 }),
     );
@@ -221,6 +254,16 @@ describe("renovação e tolerância de 5 dias", () => {
 
     await plan.recordSubscriptionPaymentPaid(admin, { id: "pay_atrasada", dueDate: inDays(-5), subscription: "sub_teste" });
     expect(await subscriptionInDb()).toMatchObject({ tier: "pro", status: "active", renewsOn: addPlanCycle(inDays(-5), "monthly") });
+
+    // Sem pessoa: a rotina voltou ao Gratis, o parceiro religou.
+    const { events, audits } = await historyInDb();
+    expect(events.map((e) => [e.kind, e.source])).toEqual([
+      ["reverted_to_free", "cron.daily"],
+      ["reactivated", "webhook.asaas"],
+    ]);
+    const revertAudit = audits.find((a) => a.id === events[0].audit_log_id);
+    expect(revertAudit?.actor).toMatchObject({ kind: "system", name: "Rotina diária" });
+    expect(revertAudit?.summary).toContain("Rotina diária voltou o espaço ao Grátis");
   });
 
   it("15 dias depois de voltar ao Grátis, encerra a assinatura no Asaas e avisa", async () => {

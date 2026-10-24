@@ -8,7 +8,9 @@ import { isSubscriptionTier } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runAction, type ActionResult } from "../server/action";
 import { dateInSpace } from "@gestarahub/core/date";
-import { readOrganizationSubscription, writeOrganizationSubscription } from "../server/subscription";
+import { readOrganizationSubscription, recordActivation, writeOrganizationSubscription } from "../server/subscription";
+import { recordSubscriptionEvent } from "../server/subscriptionEvents";
+import { userActor } from "../server/systemAudit";
 import { currentPlanOf, startPlanChange } from "../server/subscriptionPlan";
 import { requireSameOrganization } from "../server/tenant";
 
@@ -23,7 +25,7 @@ export async function updateOrganizationSubscriptionAction(
   tier: SubscriptionTier,
 ): Promise<ActionResult<Subscription>> {
   return runAction(async () => {
-    await requireSameOrganization(organizationId, { permissions: ["subscription:manage"] });
+    const ctx = await requireSameOrganization(organizationId, { permissions: ["subscription:manage"] });
     if (!isSubscriptionTier(tier)) throw validationError([{ field: "tier", message: "Plano inválido." }]);
     if (tier !== "free" && !isDemoOrganization(organizationId)) {
       throw forbiddenError("O Plano Profissional é ativado pelo pagamento, em Planos.");
@@ -31,10 +33,11 @@ export async function updateOrganizationSubscriptionAction(
 
     const admin = createSupabaseAdminClient();
     const current = await readOrganizationSubscription(admin, organizationId);
+    const author = { actor: await userActor(admin, ctx) };
     // Conta real com dias pagos: o Gratis vale no fim do periodo (doc product/13 §6).
     const renewsOn = currentPlanOf(current).renewsOn;
     if (tier === "free" && current && current.tier !== "free" && !isDemoOrganization(organizationId) && renewsOn && renewsOn > dateInSpace()) {
-      const start = await startPlanChange(admin, organizationId, { tier: "free", interval: current.interval ?? "monthly" });
+      const start = await startPlanChange(admin, organizationId, { tier: "free", interval: current.interval ?? "monthly" }, author);
       return start.subscription;
     }
     if (tier === "free") await cancelAsaasSubscription(current?.asaasSubscriptionId);
@@ -42,6 +45,17 @@ export async function updateOrganizationSubscriptionAction(
     const changedAt = new Date().toISOString();
     const subscription: Subscription = tier === "free" ? { tier, changedAt } : { tier, status: "active", changedAt };
     await writeOrganizationSubscription(admin, organizationId, subscription);
+    if (tier === "free") {
+      await recordSubscriptionEvent(admin, organizationId, author, {
+        kind: "canceled",
+        before: current,
+        after: subscription,
+        predicate: "voltou o Plano GestaraHub ao Grátis",
+      });
+    } else {
+      // Demonstracao: ativado sem pagamento.
+      await recordActivation(admin, organizationId, author, current, subscription);
+    }
     return subscription;
   }, "updateOrganizationSubscriptionAction");
 }

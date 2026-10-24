@@ -3,7 +3,7 @@
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Copy, Fingerprint, Lock, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ChevronDown, Copy, Fingerprint, Lock, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -99,7 +99,13 @@ export function AuditLogDetailDialog({
             <div className="min-w-0 flex-1">
               <DialogTitle className="flex flex-wrap items-center gap-2 text-left text-base">
                 <span className="min-w-0 break-words">{entry.actor.name}</span>
-                <Chip>{userProfileLabel(entry.actor.profile)}</Chip>
+                <Chip>{entry.source ? "Automático" : userProfileLabel(entry.actor.profile)}</Chip>
+                {entry.failed ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                    <AlertTriangle className="size-3" />
+                    Falhou
+                  </span>
+                ) : null}
                 {entry.security ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
                     <ShieldAlert className="size-3" />
@@ -114,6 +120,12 @@ export function AuditLogDetailDialog({
               <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {formatDateTime(entry.timestamp)}
               </p>
+              {entry.errorReference ? (
+                // O mesmo codigo do registro de erros: leva o suporte direto ao erro.
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Código do erro: <span className="font-mono font-medium text-foreground select-all">{entry.errorReference}</span>
+                </p>
+              ) : null}
             </div>
           </div>
         </DialogHeader>
@@ -208,9 +220,9 @@ export function AuditLogDetailDialog({
                   <dd className="text-right font-mono break-all select-all">
                     {entry.timestamp}
                   </dd>
-                  <dt className="text-muted-foreground">ID do autor</dt>
+                  <dt className="text-muted-foreground">{entry.source ? "Origem" : "ID do autor"}</dt>
                   <dd className="text-right font-mono break-all select-all">
-                    {entry.actor.userId}
+                    {entry.source ?? entry.actor.userId}
                   </dd>
                   {entry.target.id ? (
                     <>

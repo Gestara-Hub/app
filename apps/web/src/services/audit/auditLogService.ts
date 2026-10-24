@@ -14,6 +14,7 @@ import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { listAuditLogPage, recordAuditLogInDb } from "./auditLogBackend";
 import { logError } from "@/lib/log";
+import { endOfDayInSpace, startOfDayInSpace } from "@gestarahub/core/date";
 
 /** Eventos por pagina na tela de auditoria. */
 export const AUDIT_PAGE_SIZE = 50;
@@ -111,12 +112,16 @@ export const auditLogService = {
       if (filter?.security !== undefined) {
         result = result.filter((e) => e.security === filter.security);
       }
+      if (filter?.actorKind === "system") result = result.filter((e) => Boolean(e.source));
+      if (filter?.actorKind === "user") result = result.filter((e) => !e.source);
+      if (filter?.failed) result = result.filter((e) => e.failed);
+      // Dias do periodo no fuso do espaco (nao em UTC).
       if (filter?.dateFrom) {
-        const fromISO = filter.dateFrom.length === 10 ? `${filter.dateFrom}T00:00:00.000Z` : filter.dateFrom;
+        const fromISO = filter.dateFrom.length === 10 ? startOfDayInSpace(filter.dateFrom) : filter.dateFrom;
         result = result.filter((e) => e.timestamp >= fromISO);
       }
       if (filter?.dateTo) {
-        const toISO = filter.dateTo.length === 10 ? `${filter.dateTo}T23:59:59.999Z` : filter.dateTo;
+        const toISO = filter.dateTo.length === 10 ? endOfDayInSpace(filter.dateTo) : filter.dateTo;
         result = result.filter((e) => e.timestamp <= toISO);
       }
       if (filter?.search) {

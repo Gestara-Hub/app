@@ -117,6 +117,13 @@ export async function listFinancialEntriesFromDb(
  * migracao 27). Idempotente e segura com dois aparelhos. Devolve quantos criou.
  */
 export async function materializeRecurrencesAction(organizationId: string): Promise<number> {
+  return (await materializeRecurrencesWithSummary(organizationId)).count;
+}
+
+/** Igual, devolvendo tambem o que foi lancado (rotina diaria, doc technical/23). */
+export async function materializeRecurrencesWithSummary(
+  organizationId: string,
+): Promise<{ count: number; items: string[] }> {
   const client = createSupabaseAdminClient();
   const [recurrences, entries, { data: unit }] = await Promise.all([
     listFinancialRecurrencesFromDb(organizationId),
@@ -147,7 +154,7 @@ export async function materializeRecurrencesAction(organizationId: string): Prom
       });
     }
   }
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return { count: 0, items: [] };
 
   const { data: created, error } = await client.rpc("insert_recurrence_entries", {
     p_organization_id: organizationId,
@@ -157,5 +164,15 @@ export async function materializeRecurrencesAction(organizationId: string): Prom
     logError("[materializeRecurrencesAction] Erro ao gravar lançamentos repetidos:", error);
     throw new Error("Não foi possível gerar os lançamentos repetidos.");
   }
-  return Number(created) || 0;
+  const count = Number(created) || 0;
+  if (count === 0) return { count, items: [] };
+  // So os que entraram (o banco ignora o mes ja lancado).
+  const { data: inserted } = await client
+    .from("financial_entries")
+    .select("description, recurrence_competence")
+    .in("id", rows.map((r) => r.id as string));
+  const items = (inserted ?? []).map((e) =>
+    [String(e.description ?? "Lançamento"), String(e.recurrence_competence ?? "")].filter(Boolean).join(" · "),
+  );
+  return { count, items };
 }

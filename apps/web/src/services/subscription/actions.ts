@@ -12,6 +12,7 @@ export type {
 export {
   cancelScheduledPlanChangeAction,
   changePlanAction,
+  listPlanHistoryAction,
   checkPlanChangePaymentAction,
   previewPlanChangeAction,
   simulatePlanChangePaymentAction,

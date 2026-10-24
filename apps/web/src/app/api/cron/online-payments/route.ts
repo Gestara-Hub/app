@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { runAllBirthdayGreetings } from "@/services/communication/birthdayGreetingsCron";
 import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
 import { reportError } from "@/lib/log";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { finishJobRun, startJobRun } from "@/services/server/backgroundRuns";
 
 /**
  * Rotina de hora em hora (migracao 34). Pix e links vencidos: expira aqui e
@@ -23,17 +25,21 @@ export async function POST(req: Request) {
   }
 
   const started = Date.now();
+  // Uma linha por execucao (job_runs, doc technical/23).
+  const admin = createSupabaseAdminClient();
+  const runId = await startJobRun(admin, "cron.online-payments");
+  const errorReferences: string[] = [];
   const result = { expired: 0, retriedCancels: 0, birthdayGreetings: 0, failures: 0 };
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
-    await reportError("cron.hourly.expiracao", err, { source: "cron" });
+    errorReferences.push(await reportError("cron.hourly.expiracao", err, { source: "cron" }));
     result.failures += 1;
   }
   try {
     result.retriedCancels = await retryAllPendingGatewayCancels();
   } catch (err) {
-    await reportError("cron.hourly.cancelamentos", err, { source: "cron" });
+    errorReferences.push(await reportError("cron.hourly.cancelamentos", err, { source: "cron" }));
     result.failures += 1;
   }
 
@@ -43,10 +49,12 @@ export async function POST(req: Request) {
     result.birthdayGreetings = greetings.sent;
     result.failures += greetings.failures;
   } catch (err) {
-    await reportError("cron.hourly.parabens", err, { source: "cron" });
+    errorReferences.push(await reportError("cron.hourly.parabens", err, { source: "cron" }));
     result.failures += 1;
   }
 
+  // Sem espacos contados aqui: as tarefas percorrem os codigos e mensagens de todos.
+  await finishJobRun(admin, runId, { organizations: 0, failures: result.failures, totals: result, errorReferences });
   console.info("[cron:online-payments]", JSON.stringify(result));
   return NextResponse.json(result);
 }

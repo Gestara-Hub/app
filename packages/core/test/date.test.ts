@@ -8,6 +8,7 @@ import {
   relativeDateLabel,
   resolveSpaceTimeZone,
   startOfDayInSpace,
+  endOfDayInSpace,
   setSpaceTimeZoneProvider,
   timeZoneForState,
   todayISO,
@@ -243,6 +244,11 @@ describe("fuso do espaço: os quatro fusos do Brasil", () => {
     assert.equal(startOfDayInSpace("2026-10-23", "America/Manaus"), "2026-10-23T04:00:00.000Z");
     assert.equal(startOfDayInSpace("2026-10-23", "America/Rio_Branco"), "2026-10-23T05:00:00.000Z");
     assert.equal(startOfDayInSpace("2026-10-23", "America/Noronha"), "2026-10-23T02:00:00.000Z");
+  });
+
+  it("o dia do espaço termina antes da meia-noite local seguinte", () => {
+    assert.equal(endOfDayInSpace("2026-10-23", "America/Sao_Paulo"), "2026-10-24T02:59:59.999Z");
+    assert.equal(endOfDayInSpace("2026-10-31", "America/Rio_Branco"), "2026-11-01T04:59:59.999Z");
   });
 
   it("o fuso vem da escolha, senão do estado da unidade, senão Brasília", () => {

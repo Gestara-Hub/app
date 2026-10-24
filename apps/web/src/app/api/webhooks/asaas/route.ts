@@ -14,102 +14,127 @@ import {
   cancelOnlinePaymentByGatewayIdInDb,
 } from "@/services/onlinePayments/onlinePaymentsWebhook";
 import { recheckFeesAfterPayment } from "@/services/onlinePayments/gateway";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError, logWarn, reportError } from "@/lib/log";
+import { beginWebhookEvent, finishWebhookEvent } from "@/services/server/backgroundRuns";
+import { auditOnlinePaymentPaid } from "@/services/onlinePayments/onlinePaymentAudit";
 
 export async function POST(req: Request) {
+  // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
+  //    cadastrado na subconta (ASAAS_WEBHOOK_SECRET). Sem o cabecalho, recusa
+  //    tambem (antes um pedido sem cabecalho passava).
+  const webhookSecret = process.env.ASAAS_WEBHOOK_SECRET?.trim();
+  if (webhookSecret) {
+    const headerToken = req.headers.get("asaas-access-token");
+    if (headerToken !== webhookSecret) {
+      logWarn("[Asaas Webhook] Token de autenticação ausente ou inválido.");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    logError("[Asaas Webhook] ASAAS_WEBHOOK_SECRET não configurada; recusando.");
+    return NextResponse.json({ error: "Webhook não configurado." }, { status: 503 });
+  }
+
+  let payload: (AsaasWebhookPayload & { id?: string }) | null = null;
   try {
-    // 1. Token do webhook: o Asaas manda em "asaas-access-token" o authToken
-    //    cadastrado na subconta (ASAAS_WEBHOOK_SECRET). Sem o cabecalho, recusa
-    //    tambem (antes um pedido sem cabecalho passava).
-    const webhookSecret = process.env.ASAAS_WEBHOOK_SECRET?.trim();
-    if (webhookSecret) {
-      const headerToken = req.headers.get("asaas-access-token");
-      if (headerToken !== webhookSecret) {
-        logWarn("[Asaas Webhook] Token de autenticação ausente ou inválido.");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    } else if (process.env.NODE_ENV === "production") {
-      logError("[Asaas Webhook] ASAAS_WEBHOOK_SECRET não configurada; recusando.");
-      return NextResponse.json({ error: "Webhook não configurado." }, { status: 503 });
-    }
-
-    const payload = (await req.json()) as AsaasWebhookPayload;
-    const { event, payment, subscription } = payload ?? {};
-
-    // Assinatura do Plano GestaraHub encerrada direto no Asaas (doc product/13 §6).
-    if (event?.startsWith("SUBSCRIPTION_")) {
-      const removed =
-        (event === "SUBSCRIPTION_DELETED" || event === "SUBSCRIPTION_INACTIVATED") && subscription?.id
-          ? await recordSubscriptionRemoved(createSupabaseAdminClient(), subscription)
-          : false;
-      return NextResponse.json({ success: true, processed: removed });
-    }
-
-    if (!event || !payment?.id) {
-      return NextResponse.json(
-        { error: "Payload inválido. 'event' e 'payment.id' são obrigatórios." },
-        { status: 400 },
-      );
-    }
-
-    console.log(
-      `[Asaas Webhook] Evento recebido: ${event} para o pagamento ${payment.id}`,
-    );
-
-    // Cobrancas do Plano GestaraHub: renovacao da assinatura ou diferenca de um upgrade.
-    const plan = await handlePlanPayment(event, payment);
-    if (plan !== null) return NextResponse.json({ success: true, processed: plan });
-
-    // 2. Trata eventos de liquidação / confirmação de pagamento
-    if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
-      // CONFIRMED: pago, saldo ainda nao liberado (cartao ~32 dias). RECEIVED: disponivel.
-      const result = await settleAsaasPayment(payment, event === "PAYMENT_RECEIVED");
-
-      if (result) {
-        // Tarifa real diferente da tabela gravada: a tarifa da subconta mudou.
-        const paid = result.payment;
-        if (paid.organizationId) {
-          after(() =>
-            recheckFeesAfterPayment({
-              organizationId: paid.organizationId!,
-              paidMethod: paid.paidMethod,
-              chargedCents: paid.amountCents,
-              realFeeCents: paid.gatewayFeeCents,
-            }).catch((err) => logError("[Asaas Webhook] Erro ao conferir as tarifas:", err)),
-          );
-        }
-        console.log(
-          `[Asaas Webhook] Pagamento online e cobrança ${result.chargeId} marcados como pagos via Asaas!`,
-        );
-      } else {
-        logWarn(
-          `[Asaas Webhook] Pagamento ${payment.id} não encontrado na base local do GestaraHub.`,
-        );
-      }
-
-      return NextResponse.json({ success: true, processed: Boolean(result) });
-    }
-
-    // 3. Trata vencimento ou cancelamento
-    if (event === "PAYMENT_OVERDUE") {
-      await expireOnlinePaymentInDb(payment.id, "asaas");
-      return NextResponse.json({ success: true, status: "expired" });
-    }
-
-    if (event === "PAYMENT_DELETED") {
-      await cancelOnlinePaymentByGatewayIdInDb(payment.id, "asaas");
-      return NextResponse.json({ success: true, status: "canceled" });
-    }
-
-    // Outros eventos (ex: PAYMENT_CREATED) são reconhecidos sem erro
-    return NextResponse.json({ success: true, ignored: true });
-  } catch (error) {
-    await reportError("webhook.asaas", error, { source: "webhook" });
+    payload = (await req.json()) as AsaasWebhookPayload & { id?: string };
+  } catch {
+    return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
+  }
+  const { event, payment, subscription } = payload ?? {};
+  if (!event || (!payment?.id && !subscription?.id)) {
     return NextResponse.json(
-      { error: "Erro interno ao processar webhook." },
-      { status: 500 },
+      { error: "Payload inválido. 'event' e 'payment.id' são obrigatórios." },
+      { status: 400 },
     );
   }
+
+  // 2. Cada aviso vira uma linha (doc technical/23); o mesmo aviso repetido,
+  //    ja tratado, so e reconhecido (o Asaas manda "pelo menos uma vez").
+  const admin = createSupabaseAdminClient();
+  const record = await beginWebhookEvent(admin, {
+    eventId: payload?.id,
+    event,
+    paymentId: payment?.id,
+    subscriptionId: subscription?.id ?? payment?.subscription,
+  });
+  if (record.duplicate) return NextResponse.json({ success: true, duplicate: true });
+
+  try {
+    const handled = await handleEvent(admin, event, payment, subscription);
+    await finishWebhookEvent(admin, record.id, handled);
+    return NextResponse.json({ success: true, processed: handled.status === "processed" });
+  } catch (error) {
+    const reference = await reportError("webhook.asaas", error, { source: "webhook", context: { event } });
+    await finishWebhookEvent(admin, record.id, { status: "failed", errorReference: reference });
+    // 500: o Asaas tenta de novo, e a linha do aviso volta a ser tratada.
+    return NextResponse.json({ error: "Erro interno ao processar webhook." }, { status: 500 });
+  }
+}
+
+type Handled = { status: "processed" | "ignored"; organizationId?: string; outcome: string };
+
+async function handleEvent(
+  admin: SupabaseClient,
+  event: AsaasWebhookPayload["event"],
+  payment: AsaasPaymentResponse | undefined,
+  subscription: AsaasWebhookPayload["subscription"],
+): Promise<Handled> {
+  // Assinatura do Plano GestaraHub encerrada direto no Asaas (doc product/13 §6).
+  if (event.startsWith("SUBSCRIPTION_")) {
+    const removed =
+      (event === "SUBSCRIPTION_DELETED" || event === "SUBSCRIPTION_INACTIVATED") && subscription?.id
+        ? await recordSubscriptionRemoved(admin, subscription)
+        : false;
+    return removed ? { status: "processed", outcome: "plano: assinatura removida no parceiro" } : { status: "ignored", outcome: "assinatura" };
+  }
+  if (!payment) return { status: "ignored", outcome: "sem cobrança" };
+
+  // Cobrancas do Plano GestaraHub: renovacao da assinatura ou diferenca de um upgrade.
+  const plan = await handlePlanPayment(event, payment);
+  if (plan !== null) return plan ? { status: "processed", outcome: `plano: ${event}` } : { status: "ignored", outcome: `plano: ${event}` };
+
+  // Liquidacao / confirmacao de pagamento de aluno (subconta).
+  if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
+    // CONFIRMED: pago, saldo ainda nao liberado (cartao ~32 dias). RECEIVED: disponivel.
+    const result = await settleAsaasPayment(payment, event === "PAYMENT_RECEIVED");
+    if (!result) {
+      logWarn(`[Asaas Webhook] Pagamento ${payment.id} não encontrado na base local do GestaraHub.`);
+      return { status: "ignored", outcome: "pagamento não encontrado" };
+    }
+    const paid = result.payment;
+    if (paid.organizationId) {
+      // Tarifa real diferente da tabela gravada: a tarifa da subconta mudou.
+      after(() =>
+        recheckFeesAfterPayment({
+          organizationId: paid.organizationId!,
+          paidMethod: paid.paidMethod,
+          chargedCents: paid.amountCents,
+          realFeeCents: paid.gatewayFeeCents,
+        }).catch((err) => logError("[Asaas Webhook] Erro ao conferir as tarifas:", err)),
+      );
+    }
+    // Na Auditoria uma vez por pagamento (o cartao avisa "confirmado" e depois "recebido").
+    if (result.newlyPaid) await auditOnlinePaymentPaid(admin, paid);
+    return {
+      status: "processed",
+      organizationId: paid.organizationId,
+      outcome: result.newlyPaid ? "pagamento de aluno: baixa da cobrança" : "pagamento de aluno: saldo liberado",
+    };
+  }
+
+  // Vencimento ou cancelamento do codigo de pagamento.
+  if (event === "PAYMENT_OVERDUE") {
+    await expireOnlinePaymentInDb(payment.id, "asaas");
+    return { status: "processed", outcome: "pagamento de aluno: código vencido" };
+  }
+  if (event === "PAYMENT_DELETED") {
+    await cancelOnlinePaymentByGatewayIdInDb(payment.id, "asaas");
+    return { status: "processed", outcome: "pagamento de aluno: código removido" };
+  }
+
+  // Outros eventos (ex: PAYMENT_CREATED) sao reconhecidos sem erro.
+  return { status: "ignored", outcome: event };
 }
 
 /**

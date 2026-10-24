@@ -9,6 +9,7 @@ import { isSubscriptionTier } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runAction, type ActionResult } from "../server/action";
 import { readOrganizationSubscription } from "../server/subscription";
+import { listSubscriptionEvents, type SubscriptionEventView } from "../server/subscriptionEvents";
 import {
   cancelScheduledPlanChange,
   confirmPlanChangePayment,
@@ -18,7 +19,9 @@ import {
   type PlanChangePreview,
   type PlanChangeStart,
 } from "../server/subscriptionPlan";
-import { requireTenant } from "../server/tenant";
+import { requireTenant, type TenantContext } from "../server/tenant";
+import type { PlanAuthor } from "../server/subscriptionEvents";
+import { userActor } from "../server/systemAudit";
 
 /**
  * Troca do Plano GestaraHub (doc product/13 §6): conta, troca, conferencia do
@@ -44,6 +47,11 @@ async function manager() {
   return ctx;
 }
 
+/** Quem pediu (historico do plano e Auditoria). */
+async function authorOf(ctx: TenantContext): Promise<PlanAuthor> {
+  return { actor: await userActor(createSupabaseAdminClient(), ctx) };
+}
+
 export async function previewPlanChangeAction(target: PlanTarget): Promise<ActionResult<PlanChangePreview>> {
   return runAction(async () => {
     const ctx = await manager();
@@ -54,14 +62,16 @@ export async function previewPlanChangeAction(target: PlanTarget): Promise<Actio
 export async function changePlanAction(target: PlanTarget): Promise<ActionResult<PlanChangeStart>> {
   return runAction(async () => {
     const ctx = await manager();
-    return startPlanChange(createSupabaseAdminClient(), ctx.organizationId, checkTarget(target));
+    return startPlanChange(createSupabaseAdminClient(), ctx.organizationId, checkTarget(target), await authorOf(ctx));
   }, "changePlanAction");
 }
 
 export async function checkPlanChangePaymentAction(paymentId: string): Promise<ActionResult<PlanChangePaymentCheck>> {
   return runAction(async () => {
     const ctx = await manager();
-    return confirmPlanChangePayment(createSupabaseAdminClient(), ctx.organizationId, String(paymentId));
+    return confirmPlanChangePayment(createSupabaseAdminClient(), ctx.organizationId, String(paymentId), {
+      author: await authorOf(ctx),
+    });
   }, "checkPlanChangePaymentAction");
 }
 
@@ -78,13 +88,24 @@ export async function simulatePlanChangePaymentAction(paymentId: string): Promis
     if (pending?.paymentId === paymentId && !paymentId.startsWith("pay_mock_")) {
       await receiveInCash(paymentId, notAfterAsaasToday(dateInSpace()), pending.amountCents / 100);
     }
-    return confirmPlanChangePayment(admin, ctx.organizationId, String(paymentId), { simulated: true });
+    return confirmPlanChangePayment(admin, ctx.organizationId, String(paymentId), {
+      simulated: true,
+      author: await authorOf(ctx),
+    });
   }, "simulatePlanChangePaymentAction");
 }
 
 export async function cancelScheduledPlanChangeAction(): Promise<ActionResult<Subscription>> {
   return runAction(async () => {
     const ctx = await manager();
-    return cancelScheduledPlanChange(createSupabaseAdminClient(), ctx.organizationId);
+    return cancelScheduledPlanChange(createSupabaseAdminClient(), ctx.organizationId, await authorOf(ctx));
   }, "cancelScheduledPlanChangeAction");
+}
+
+/** Historico do plano (doc technical/23), mais recente primeiro. So quem gerencia o plano. */
+export async function listPlanHistoryAction(): Promise<ActionResult<SubscriptionEventView[]>> {
+  return runAction(async () => {
+    const ctx = await manager();
+    return listSubscriptionEvents(createSupabaseAdminClient(), ctx.organizationId);
+  }, "listPlanHistoryAction");
 }

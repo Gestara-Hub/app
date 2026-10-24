@@ -1,4 +1,5 @@
 import { paginateArray, type AuditLogEntry, type AuditLogFilter, type PaginatedResult } from "@gestarahub/contracts";
+import { endOfDayInSpace, startOfDayInSpace } from "@gestarahub/core/date";
 import type { TenantContext } from "../server/tenant";
 
 /** Linha do banco para o contrato. */
@@ -14,6 +15,9 @@ function entryOf(row: Record<string, unknown>): AuditLogEntry {
     summary: String(row.summary),
     changes: (row.changes as AuditLogEntry["changes"]) || undefined,
     security: Boolean(row.security),
+    ...(row.source ? { source: String(row.source) } : {}),
+    ...(row.failed ? { failed: true } : {}),
+    ...(row.error_reference ? { errorReference: String(row.error_reference) } : {}),
   };
 }
 
@@ -48,11 +52,16 @@ export async function auditLogPageFor(
   if (filter?.security !== undefined) query = query.eq("security", filter.security);
   if (filter?.entityType) query = query.eq("target->>type", filter.entityType);
   if (filter?.actorId) query = query.eq("actor->>userId", filter.actorId);
+  // Pessoas ou sistema (rotinas, parceiro de pagamentos); so o que falhou.
+  if (filter?.actorKind === "system") query = query.not("source", "is", null);
+  if (filter?.actorKind === "user") query = query.is("source", null);
+  if (filter?.failed) query = query.eq("failed", true);
+  // Dias do periodo no fuso do espaco (nao em UTC).
   if (filter?.dateFrom) {
-    query = query.gte("timestamp", filter.dateFrom.length === 10 ? `${filter.dateFrom}T00:00:00.000Z` : filter.dateFrom);
+    query = query.gte("timestamp", filter.dateFrom.length === 10 ? startOfDayInSpace(filter.dateFrom) : filter.dateFrom);
   }
   if (filter?.dateTo) {
-    query = query.lte("timestamp", filter.dateTo.length === 10 ? `${filter.dateTo}T23:59:59.999Z` : filter.dateTo);
+    query = query.lte("timestamp", filter.dateTo.length === 10 ? endOfDayInSpace(filter.dateTo) : filter.dateTo);
   }
   if (filter?.search?.trim()) query = query.ilike("summary", likeTerm(filter.search.trim()));
 

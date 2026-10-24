@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { selectAllRows } from "@/lib/supabase/select-all";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { materializeRecurrencesAction } from "@/services/finance/financeBackend";
-import { generateMembershipChargesAction } from "@/services/billing/membershipBackend";
+import { finishJobRun, startJobRun } from "@/services/server/backgroundRuns";
+import { runDailySpaceTasks, type DailySpaceTotals } from "@/services/server/dailyRoutine";
 import { reportError } from "@/lib/log";
 import { sendDailyErrorDigest } from "@/services/server/errorDigest";
 import { runPlanDailyTasks } from "@/services/server/subscriptionPlan";
@@ -36,44 +36,39 @@ export async function POST(req: Request) {
   }
 
   const admin = createSupabaseAdminClient();
+  // Uma linha por execucao (job_runs, doc technical/23): "a rotina rodou? como foi?".
+  const runId = await startJobRun(admin, "cron.daily");
   const { data: orgs, error } = await selectAllRows(() =>
     admin.from("organizations").select("id").eq("model", "classes").eq("status", "active"),
   );
   if (error) {
-    void reportError("cron.daily", error, { source: "cron", context: { step: "listar espaços" } });
+    const reference = await reportError("cron.daily", error, { source: "cron", context: { step: "listar espaços" } });
+    await finishJobRun(admin, runId, { organizations: 0, failures: 1, totals: {}, errorReferences: [reference] });
     return NextResponse.json({ error: "Erro ao listar os espaços." }, { status: 500 });
   }
 
-  const result = { organizations: orgs.length, membershipCharges: 0, recurrenceEntries: 0, failures: 0, skipped: 0 };
+  const totals: DailySpaceTotals = { membershipCharges: 0, recurrenceEntries: 0, failures: 0, errorReferences: [] };
+  const result: Record<string, unknown> & { organizations: number; skipped: number } = { organizations: orgs.length, skipped: 0 };
   // Ordem embaralhada: se o tempo acabar, os que ficaram de fora nao sao sempre os mesmos
   // (a tarefa e idempotente; a proxima rodada pega quem faltou).
   const shuffled = [...orgs].sort(() => Math.random() - 0.5);
   const deadline = Date.now() + BUDGET_MS;
-  const run = await mapWithConcurrency(shuffled, CONCURRENCY, async (org) => {
-    const id = String(org.id);
-    // Uma tarefa ou um espaco com problema nao impede os outros; o dia seguinte tenta de novo.
-    try {
-      result.membershipCharges += await generateMembershipChargesAction(id);
-    } catch (err) {
-      await reportError("cron.daily.mensalidades", err, { source: "cron", organizationId: id });
-      result.failures += 1;
-    }
-    try {
-      result.recurrenceEntries += await materializeRecurrencesAction(id);
-    } catch (err) {
-      await reportError("cron.daily.recorrencias", err, { source: "cron", organizationId: id });
-      result.failures += 1;
-    }
-  }, { deadline });
+  // Uma tarefa ou um espaco com problema nao impede os outros; o dia seguinte tenta de novo.
+  // O que foi criado (ou falhou) sai resumido por espaco na Auditoria.
+  const run = await mapWithConcurrency(shuffled, CONCURRENCY, (org) => runDailySpaceTasks(admin, String(org.id), totals), {
+    deadline,
+  });
   result.skipped = run.skipped;
 
   // Plano GestaraHub de todos os espacos (doc product/13 §6).
   try {
     const plan = await runPlanDailyTasks(admin, process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin);
     Object.assign(result, { plan });
+    totals.failures += plan.failures;
+    totals.errorReferences.push(...plan.errorReferences);
   } catch (err) {
-    await reportError("cron.daily.plano", err, { source: "cron" });
-    result.failures += 1;
+    totals.errorReferences.push(await reportError("cron.daily.plano", err, { source: "cron" }));
+    totals.failures += 1;
   }
 
   // Resumo dos erros novos ou que voltaram (doc technical/21).
@@ -81,9 +76,12 @@ export async function POST(req: Request) {
     const digest = await sendDailyErrorDigest();
     Object.assign(result, { errorDigest: digest });
   } catch (err) {
-    await reportError("cron.daily.resumo-erros", err, { source: "cron" });
+    totals.errorReferences.push(await reportError("cron.daily.resumo-erros", err, { source: "cron" }));
   }
 
+  const { errorReferences, ...counts } = totals;
+  Object.assign(result, counts);
+  await finishJobRun(admin, runId, { organizations: orgs.length, failures: totals.failures, totals: result, errorReferences });
   console.info("[cron:daily]", JSON.stringify(result));
   return NextResponse.json(result);
 }

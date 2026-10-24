@@ -8,7 +8,8 @@ import {
   ScrollText,
   ShieldAlert,
 } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { todayISO } from "@gestarahub/core/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,6 +87,12 @@ function AuditRow({
             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
               {auditEntityTypeLabel(entry.target.type, model)}
             </span>
+            {entry.failed ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                <AlertTriangle className="size-3" />
+                Falhou
+              </span>
+            ) : null}
             {entry.security ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                 <ShieldAlert className="size-3" />
@@ -123,7 +130,7 @@ function AuditRow({
             {entry.actor.name}
             <span className="text-muted-foreground/70">
               {" "}
-              · {userProfileLabel(entry.actor.profile)}
+              · {entry.source ? "Automático" : userProfileLabel(entry.actor.profile)}
             </span>
           </p>
         </div>
@@ -161,7 +168,8 @@ export function AuditLogList() {
 
   // Calcula datas para o filtro
   const { dateFrom, dateTo } = useMemo(() => {
-    const now = new Date();
+    // O dia de hoje no fuso do espaco (doc technical/22).
+    const now = parseISO(todayISO());
     if (datePreset === "today") {
       const today = format(now, "yyyy-MM-dd");
       return { dateFrom: today, dateTo: today };
@@ -197,7 +205,11 @@ export function AuditLogList() {
     () => ({
       search: search.trim() || undefined,
       entityType: entityType === "all" ? undefined : entityType,
-      actorId: actorId === "all" ? undefined : actorId,
+      // "Responsavel": pessoas, sistema, so o que falhou ou um usuario.
+      ...(actorId === "kind:user" ? { actorKind: "user" as const } : {}),
+      ...(actorId === "kind:system" ? { actorKind: "system" as const } : {}),
+      ...(actorId === "failed" ? { failed: true } : {}),
+      actorId: actorId === "all" || actorId.startsWith("kind:") || actorId === "failed" ? undefined : actorId,
       dateFrom,
       dateTo,
     }),
@@ -213,7 +225,8 @@ export function AuditLogList() {
     const map = new Map<string, string>();
     (usersData ?? []).forEach((u) => map.set(u.id, u.name));
     entries.forEach((e) => {
-      if (e.actor?.userId && !map.has(e.actor.userId)) {
+      // O sistema entra pela opcao "Sistema", nao como usuario.
+      if (e.actor?.userId && !e.source && !map.has(e.actor.userId)) {
         map.set(e.actor.userId, e.actor.name);
       }
     });
@@ -244,6 +257,8 @@ export function AuditLogList() {
     filter.search ||
     filter.entityType ||
     filter.actorId ||
+    filter.actorKind ||
+    filter.failed ||
     datePreset !== "all"
   );
 
@@ -343,7 +358,10 @@ export function AuditLogList() {
               <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os usuários</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="kind:user">Pessoas</SelectItem>
+              <SelectItem value="kind:system">Sistema (rotinas e pagamentos)</SelectItem>
+              <SelectItem value="failed">Só o que falhou</SelectItem>
               {actorOptions.map((actor) => (
                 <SelectItem key={actor.id} value={actor.id}>
                   {actor.name}

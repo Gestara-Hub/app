@@ -28,6 +28,20 @@ export async function generateMembershipChargesAction(
   organizationId: string,
   requested: string[] = [],
 ): Promise<number> {
+  return (await generateMembershipChargesWithSummary(organizationId, requested)).count;
+}
+
+export interface GeneratedSummary {
+  count: number;
+  /** O que entrou de fato, para o resumo na Auditoria ("Ana Souza · novembro/2026"). */
+  items: string[];
+}
+
+/** Igual, devolvendo tambem o que foi criado (rotina diaria, doc technical/23). */
+export async function generateMembershipChargesWithSummary(
+  organizationId: string,
+  requested: string[] = [],
+): Promise<GeneratedSummary> {
   const client = createSupabaseAdminClient();
   const [{ data: org }, { data: unit }, clients, plans, classGroups, enrollments, charges] = await Promise.all([
     client.from("organizations").select("settings").eq("id", organizationId).maybeSingle(),
@@ -50,7 +64,7 @@ export async function generateMembershipChargesAction(
     today: dateInSpace(new Date(), resolveSpaceTimeZone(org?.settings as { timeZone?: string } | undefined, unit?.address)),
   };
   const planned = planMembershipCharges(world, membershipCompetencesToGenerate(world, requested));
-  if (planned.length === 0) return 0;
+  if (planned.length === 0) return { count: 0, items: [] };
 
   const now = new Date().toISOString();
   const rows = planned.map((p) =>
@@ -71,5 +85,24 @@ export async function generateMembershipChargesAction(
     logError("[generateMembershipChargesAction] Erro ao gravar mensalidades:", error);
     throw new Error("Não foi possível gerar as mensalidades.");
   }
-  return Number(created) || 0;
+  const count = Number(created) || 0;
+  if (count === 0) return { count, items: [] };
+  // So as que entraram (o banco ignora o periodo ja cobrado).
+  const { data: inserted } = await client
+    .from("charges")
+    .select("student_id, competence")
+    .in("id", rows.map((r) => r.id as string));
+  const names = new Map(clients.map((c) => [c.id, c.name]));
+  const items = (inserted ?? []).map((c) =>
+    [names.get(String(c.student_id)) ?? "Aluno", competenceLabel(c.competence as string | null)].filter(Boolean).join(" · "),
+  );
+  return { count, items };
+}
+
+/** "novembro/2026" de "2026-11". */
+function competenceLabel(competence: string | null): string {
+  if (!competence) return "";
+  const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  const [year, month] = competence.split("-");
+  return `${months[Number(month) - 1] ?? month}/${year}`;
 }

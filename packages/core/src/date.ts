@@ -110,6 +110,14 @@ export function startOfDayInSpace(date: string, timeZone: string = currentSpaceT
   return new Date(Date.parse(`${date}T00:00:00Z`) - offsetMs).toISOString();
 }
 
+/** Fim do dia 'YYYY-MM-DD' no fuso do espaco (ultimo milissegundo), em ISO UTC. */
+export function endOfDayInSpace(date: string, timeZone: string = currentSpaceTimeZone()): string {
+  const next = new Date(`${date}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  const start = startOfDayInSpace(next.toISOString().slice(0, 10), timeZone);
+  return new Date(Date.parse(start) - 1).toISOString();
+}
+
 /** Hora ('HH:mm') de um instante no fuso do espaco. */
 export function timeInSpace(value: string | Date = new Date(), timeZone: string = currentSpaceTimeZone()): string {
   const d = typeof value === "string" ? new Date(value) : value;

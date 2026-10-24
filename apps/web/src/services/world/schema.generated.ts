@@ -174,6 +174,21 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "timestamptz",
         "nullable": false,
         "hasDefault": true
+      },
+      "source": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
+      },
+      "failed": {
+        "type": "boolean",
+        "nullable": false,
+        "hasDefault": true
+      },
+      "error_reference": {
+        "type": "text",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

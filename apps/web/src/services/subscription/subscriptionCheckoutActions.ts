@@ -23,10 +23,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   confirmSubscriptionPayment,
   readOrganizationSubscription,
+  recordActivation,
   writeOrganizationSubscription,
   type SubscriptionPaymentCheck,
 } from "../server/subscription";
 import { requireSameOrganization, requireTenant } from "../server/tenant";
+import { userActor } from "../server/systemAudit";
 import { logError } from "@/lib/log";
 
 /**
@@ -82,7 +84,9 @@ export interface SubscriptionCheckoutResult {
 export async function createAsaasSubscriptionCheckoutAction(
   input: CreateSubscriptionInput,
 ): Promise<SubscriptionCheckoutResult> {
-  await requireSameOrganization(input.organizationId, { permissions: ["subscription:manage"] });
+  const ctx = await requireSameOrganization(input.organizationId, { permissions: ["subscription:manage"] });
+  // Quem assinou (historico do plano e Auditoria).
+  const author = async () => ({ actor: await userActor(createSupabaseAdminClient(), ctx) });
   const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
   const config = getAsaasConfig();
 
@@ -115,6 +119,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+      await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
         success: true,
@@ -216,6 +221,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
+      await recordActivation(createSupabaseAdminClient(), input.organizationId, await author(), undefined, subscription);
 
       return {
         success: true,
@@ -284,7 +290,8 @@ export async function checkAsaasSubscriptionPaymentAction(
   }
 
   try {
-    return await confirmSubscriptionPayment(createSupabaseAdminClient(), ctx.organizationId, paymentId);
+    const admin = createSupabaseAdminClient();
+    return await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
   } catch (err) {
     logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
     return { status: "ERROR", isPaid: false };
@@ -325,11 +332,12 @@ export async function simulateAsaasSubscriptionPaymentAction(
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
+      await recordActivation(admin, ctx.organizationId, { actor: await userActor(admin, ctx) }, undefined, subscription);
       return { success: true, subscription };
     }
 
     await receiveInCash(paymentId, notAfterAsaasToday(dateInSpace()), priceConfig.value);
-    const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId);
+    const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId, { actor: await userActor(admin, ctx) });
     return check.isPaid
       ? { success: true, subscription: check.subscription }
       : { success: false, error: "O Asaas ainda não confirmou o pagamento." };

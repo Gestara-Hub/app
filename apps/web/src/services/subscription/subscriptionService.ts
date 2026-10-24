@@ -13,9 +13,11 @@ import { realAccountInBrowser } from "../world/delegate";
 import { unwrap } from "../server/action";
 import { auditLogService } from "../audit/auditLogService";
 import type { PlanChangePaymentCheck, PlanChangePreview, PlanChangeStart } from "../server/subscriptionPlan";
+import type { SubscriptionEventView } from "../server/subscriptionEvents";
 import {
   cancelScheduledPlanChangeAction,
   changePlanAction,
+  listPlanHistoryAction,
   checkPlanChangePaymentAction,
   previewPlanChangeAction,
   simulatePlanChangePaymentAction,
@@ -98,6 +100,8 @@ export const subscriptionService = {
         ? await unwrap(updateOrganizationSubscriptionAction(store.organization.id, tier))
         : { tier, changedAt: nowIso(), status: tier === "free" ? undefined : ("active" as const) };
       store.organization = { ...store.organization, subscription };
+      // Conta real: o servidor grava o historico do plano e a Auditoria.
+      if (realAccountInBrowser()) return currentSubscription();
 
       auditLogService.record({
         action: "updated",
@@ -168,20 +172,9 @@ export const subscriptionService = {
   changePlan(target: PlanTarget): Promise<PlanChangeStart> {
     return writeOp(async () => {
       assertRealAccount();
-      const before = currentSubscription();
+      // O servidor grava o historico do plano e a Auditoria (doc technical/23).
       const start = await unwrap(changePlanAction(target));
       store.organization = { ...store.organization, subscription: start.subscription };
-      if (start.kind === "scheduled") {
-        auditLogService.record({
-          action: "updated",
-          target: { type: "subscription", label: "Plano GestaraHub" },
-          predicate: `marcou a troca do Plano GestaraHub de ${subscriptionTierLabel(before.tier)} para ${subscriptionTierLabel(target.tier)}`,
-          changes: [{ field: "tier", label: "Plano", before: subscriptionTierLabel(before.tier), after: subscriptionTierLabel(target.tier) }],
-          security: true,
-        });
-      } else if (start.kind === "applied") {
-        recordUpgrade(before.tier, start.subscription);
-      }
       return start;
     });
   },
@@ -189,13 +182,9 @@ export const subscriptionService = {
   /** Confere o pagamento da diferenca; pago, o servidor ja ligou o plano. */
   checkPlanChangePayment(paymentId: string): Promise<PlanChangePaymentCheck> {
     return writeOp(async () => {
-      const before = currentSubscription();
       const check = await unwrap(checkPlanChangePaymentAction(paymentId));
       if (check.isPaid && check.subscription) {
         store.organization = { ...store.organization, subscription: check.subscription };
-        if (before.tier !== check.subscription.tier || before.interval !== check.subscription.interval) {
-          recordUpgrade(before.tier, check.subscription);
-        }
       }
       return check;
     });
@@ -203,14 +192,17 @@ export const subscriptionService = {
 
   simulatePlanChangePayment(paymentId: string): Promise<PlanChangePaymentCheck> {
     return writeOp(async () => {
-      const before = currentSubscription();
       const check = await unwrap(simulatePlanChangePaymentAction(paymentId));
       if (check.isPaid && check.subscription) {
         store.organization = { ...store.organization, subscription: check.subscription };
-        recordUpgrade(before.tier, check.subscription);
       }
       return check;
     });
+  },
+
+  /** Historico do plano (so na conta real; o espaco so do navegador nao tem). */
+  listHistory(): Promise<SubscriptionEventView[]> {
+    return readOp(async () => (realAccountInBrowser() ? unwrap(listPlanHistoryAction()) : []));
   },
 
   /** Desmarca a troca marcada para o fim do periodo. */
@@ -219,22 +211,20 @@ export const subscriptionService = {
       assertRealAccount();
       const subscription = await unwrap(cancelScheduledPlanChangeAction());
       store.organization = { ...store.organization, subscription };
-      auditLogService.record({
-        action: "updated",
-        target: { type: "subscription", label: "Plano GestaraHub" },
-        predicate: "desmarcou a troca do Plano GestaraHub",
-        security: true,
-      });
       return currentSubscription();
     });
   },
 
-  /** Plano pago ja gravado pelo servidor: reflete no store e registra na auditoria. */
+  /**
+   * Plano pago ja gravado pelo servidor: reflete no store. O historico e a
+   * Auditoria saem do servidor; no espaco so do navegador, a Auditoria daqui.
+   */
   activatePaidSubscription(subscription: Subscription): Promise<Subscription> {
     return writeOp(async () => {
       const before = tierOf(store.organization);
       store.organization = { ...store.organization, subscription };
       const tier = subscription.tier;
+      if (realAccountInBrowser()) return currentSubscription();
 
       auditLogService.record({
         action: "updated",
@@ -261,14 +251,4 @@ function assertRealAccount(): void {
   if (!realAccountInBrowser()) {
     throw apiError("CONFLICT", "A troca de plano está disponível na conta real.", { httpStatus: 409 });
   }
-}
-
-function recordUpgrade(before: SubscriptionTier, subscription: Subscription): void {
-  auditLogService.record({
-    action: "updated",
-    target: { type: "subscription", label: "Plano GestaraHub" },
-    predicate: `trocou o Plano GestaraHub para ${subscriptionTierLabel(subscription.tier)} (${subscription.interval === "yearly" ? "Anual" : "Mensal"})`,
-    changes: [{ field: "tier", label: "Plano", before: subscriptionTierLabel(before), after: subscriptionTierLabel(subscription.tier) }],
-    security: true,
-  });
 }

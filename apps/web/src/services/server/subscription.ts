@@ -4,7 +4,9 @@ import { forbiddenError } from "@gestarahub/core/api-error";
 import { addPlanCycle } from "@gestarahub/core/subscription-plan";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { getPayment, getSubscription } from "@/lib/asaas";
+import { subscriptionTierLabel } from "@/lib/labels";
 import { decodeSubscriptionReference } from "@/lib/subscription";
+import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
 
 /**
  * Plano GestaraHub no banco. Modulo so do servidor, sem "use server": o plano
@@ -49,6 +51,7 @@ export async function confirmSubscriptionPayment(
   admin: SupabaseClient,
   organizationId: string,
   paymentId: string,
+  author: PlanAuthor = systemAuthor("webhook.asaas"),
 ): Promise<SubscriptionPaymentCheck> {
   const payment = await getPayment(paymentId);
   if (!payment.subscription) throw forbiddenError();
@@ -76,5 +79,28 @@ export async function confirmSubscriptionPayment(
     changedAt: new Date().toISOString(),
   };
   await writeOrganizationSubscription(admin, organizationId, subscription);
+  await recordActivation(admin, organizationId, author, current, subscription, payment.id);
   return { status: payment.status, isPaid: true, subscription };
+}
+
+/** "assinou o Plano Profissional mensal (Pix)": historico do plano e Auditoria. */
+export async function recordActivation(
+  admin: SupabaseClient,
+  organizationId: string,
+  author: PlanAuthor,
+  before: Subscription | undefined,
+  after: Subscription,
+  paymentId?: string,
+): Promise<void> {
+  const interval = after.interval === "yearly" ? "anual" : "mensal";
+  const method = after.paymentMethod === "credit_card" ? "cartão" : "Pix";
+  await recordSubscriptionEvent(admin, organizationId, author, {
+    kind: "activated",
+    before,
+    after,
+    amountCents: after.priceCents,
+    paymentId,
+    effectiveOn: after.renewsOn,
+    predicate: `assinou o Plano ${subscriptionTierLabel(after.tier)} ${interval} (${method})`,
+  });
 }

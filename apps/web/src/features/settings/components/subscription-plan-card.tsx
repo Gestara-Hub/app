@@ -15,7 +15,7 @@ import { isDemoSpace } from "@/lib/demo";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { TIER_FEATURES } from "@/lib/subscription";
 import { useCan, useCurrentUser } from "@/features/auth";
-import { PlanChangeDialog, ScheduledPlanChangeNotice } from "@/features/subscription";
+import { PlanChangeDialog, PlanHistory, ScheduledPlanChangeNotice } from "@/features/subscription";
 import { useState } from "react";
 import { formatDate } from "@gestarahub/core/format";
 import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscription";
@@ -193,6 +193,7 @@ export function SubscriptionPlanCard() {
               Só o proprietário da conta pode trocar o plano.
             </p>
           )}
+          {canManage ? <PlanHistory /> : null}
         </CardContent>
       </Card>
       {dialog}

@@ -23,8 +23,13 @@ export async function markOnlinePaymentPaidInDb(
     /** Comprovante do parceiro (pagina publica /p/<codigo>). */
     receiptUrl?: string;
   },
-): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
+): Promise<{ payment: OnlinePayment; chargeId: string; newlyPaid: boolean } | null> {
   const adminClient = createSupabaseAdminClient();
+
+  // Ja estava pago? (cartao: CONFIRMED e depois RECEIVED; aviso repetido)
+  let before = adminClient.from("online_payments").select("status").eq("gateway_payment_id", gatewayPaymentId);
+  if (provider) before = before.eq("gateway_provider", provider);
+  const { data: previous } = await before.maybeSingle();
 
   const real: Record<string, unknown> = {};
   if (settlement?.paidMethod) real.paid_method = settlement.paidMethod;
@@ -112,7 +117,7 @@ export async function markOnlinePaymentPaidInDb(
     );
   }
 
-  return { payment, chargeId: payment.chargeId };
+  return { payment, chargeId: payment.chargeId, newlyPaid: previous?.status !== "paid" };
 }
 
 

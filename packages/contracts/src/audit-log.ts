@@ -55,10 +55,13 @@ export type AuditEntityType =
   | "message_log";
 
 // Autor do evento (snapshot no momento — nome/perfil podem mudar depois).
+// Sem pessoa (rotina diaria, parceiro de pagamentos): `kind: "system"`, com
+// `userId: "system"` e o nome de quem agiu (doc technical/23).
 export interface AuditActor {
   userId: Id;
   name: string;
   profile: UserProfile;
+  kind?: "system";
 }
 
 // Alvo do evento (snapshot do rotulo para exibir sem novo join). `profile` so
@@ -95,6 +98,11 @@ export interface AuditLogEntry {
   // Etiqueta o subconjunto sensivel (usuarios/permissoes/configuracoes) — dirige
   // a restricao de visibilidade do gerente.
   security: boolean;
+  // Origem tecnica quando nao foi pessoa ("cron.daily", "webhook.asaas").
+  source?: string;
+  // A tarefa falhou nesse espaco; `errorReference` e o codigo do registro de erros.
+  failed?: boolean;
+  errorReference?: string;
 }
 
 export interface AuditLogFilter {
@@ -104,4 +112,8 @@ export interface AuditLogFilter {
   dateTo?: DateTimeISO;
   security?: boolean;
   search?: string; // casa contra o summary
+  // Quem fez: pessoas ou o sistema (rotinas, parceiro de pagamentos).
+  actorKind?: "user" | "system";
+  // So o que falhou.
+  failed?: boolean;
 }

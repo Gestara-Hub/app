@@ -5,6 +5,15 @@ import { queryKeys } from "@/lib/queryKeys";
 import { subscriptionService } from "@/services/subscription/subscriptionService";
 import type { PlanTarget } from "@/services/subscription/actions";
 
+/** Historico do plano (doc technical/23). */
+export function usePlanHistory(enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.subscription.detail, "history"],
+    queryFn: () => subscriptionService.listHistory(),
+    enabled,
+  });
+}
+
 /** Conta da troca de plano (doc product/13 §6), para a confirmacao. */
 export function usePlanChangePreview(target: PlanTarget | null) {
   return useQuery({

@@ -43,7 +43,7 @@ export interface PaymentPageView {
   contactWhatsapp?: string;
 }
 
-const PAID_METHOD_LABEL: Record<string, string> = {
+export const PAID_METHOD_LABEL: Record<string, string> = {
   pix: "Pix",
   creditCard: "Cartão de crédito",
   debitCard: "Cartão de débito",

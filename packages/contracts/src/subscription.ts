@@ -53,6 +53,21 @@ export interface Subscription {
   noticesSent?: string[];
 }
 
+/** Tipo do evento no historico do plano (`subscription_events`, doc technical/23). */
+export type SubscriptionEventKind =
+  | "activated"
+  | "upgraded"
+  | "change_scheduled"
+  | "change_canceled"
+  | "change_applied"
+  | "renewed"
+  | "renewal_overdue"
+  | "reverted_to_free"
+  | "reactivated"
+  | "closed"
+  | "canceled"
+  | "removed_at_partner";
+
 export interface ScheduledPlanChange {
   tier: SubscriptionTier;
   interval?: SubscriptionInterval;
@@ -67,5 +82,7 @@ export interface PendingPlanChange {
   amountCents: number;
   /** Mensal → anual: o ciclo anual comeca no dia do pagamento. */
   restartsCycle: boolean;
+  /** Quem pediu a troca (o pagamento pode ser confirmado depois, pelo parceiro). */
+  requestedBy?: { userId: string; name: string };
   createdAt: DateTimeISO;
 }

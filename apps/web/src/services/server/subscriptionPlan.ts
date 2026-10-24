@@ -35,6 +35,8 @@ import {
 import { sendPlanNoticeEmail } from "@/lib/email/mailersend";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { logWarn, reportError } from "@/lib/log";
+import { formatCents } from "@gestarahub/core/format";
+import { recordSystemAudit } from "./systemAudit";
 import { planNoticeCopy } from "@/lib/plan-notice-copy";
 import {
   decodePlanChangeReference,
@@ -43,6 +45,7 @@ import {
   encodeSubscriptionReference,
 } from "@/lib/subscription";
 import { confirmSubscriptionPayment, readOrganizationSubscription, writeOrganizationSubscription } from "./subscription";
+import { recordSubscriptionEvent, systemAuthor, type PlanAuthor } from "./subscriptionEvents";
 
 /**
  * Troca de plano, renovacao e tolerancia do Plano GestaraHub no servidor (doc
@@ -79,6 +82,14 @@ function assertCanSimulate(): void {
   if (process.env.NODE_ENV === "production") {
     throw apiError("NETWORK", "A troca de plano está indisponível no momento.", { httpStatus: 503 });
   }
+}
+
+/** "13/11" de "2026-11-13". */
+const ddmm = (date: string | undefined) => (date ? `${date.slice(8, 10)}/${date.slice(5, 7)}` : "");
+/** "Profissional mensal", "Grátis". */
+function planName(subscription: Pick<Subscription, "tier" | "interval"> | undefined): string {
+  if (!subscription || subscription.tier === "free") return "Grátis";
+  return `${subscriptionTierLabel(subscription.tier)} ${subscription.interval === "yearly" ? "anual" : "mensal"}`;
 }
 
 const cycleOf = (interval: SubscriptionInterval) => (interval === "yearly" ? "YEARLY" : "MONTHLY") as "YEARLY" | "MONTHLY";
@@ -168,6 +179,7 @@ export async function startPlanChange(
   admin: SupabaseClient,
   organizationId: string,
   target: PlanChoice,
+  author: PlanAuthor,
 ): Promise<PlanChangeStart> {
   const subscription = await readOrganizationSubscription(admin, organizationId);
   if (!subscription || subscription.tier === "free") {
@@ -200,6 +212,14 @@ export async function startPlanChange(
       pendingChange: undefined,
     };
     await writeOrganizationSubscription(admin, organizationId, next);
+    await recordSubscriptionEvent(admin, organizationId, author, {
+      kind: "change_scheduled",
+      before: subscription,
+      after: next,
+      effectiveOn: quote.effectiveOn,
+      predicate: `marcou a troca do Plano GestaraHub para o ${planName(target)} em ${ddmm(quote.effectiveOn)}`,
+      details: { targetTier: target.tier, targetInterval: target.interval },
+    });
     return { kind: "scheduled", subscription: next };
   }
 
@@ -209,10 +229,11 @@ export async function startPlanChange(
     amountCents: quote.chargeTodayCents,
     restartsCycle: quote.restartsCycle,
     createdAt: new Date().toISOString(),
+    ...(author.source ? {} : { requestedBy: { userId: author.actor.userId, name: author.actor.name } }),
   };
 
   if (quote.chargeTodayCents === 0) {
-    const applied = await applyUpgrade(admin, organizationId, subscription, { ...pending, paymentId: "" });
+    const applied = await applyUpgrade(admin, organizationId, subscription, { ...pending, paymentId: "" }, author);
     return { kind: "applied", subscription: applied };
   }
 
@@ -274,6 +295,7 @@ async function applyUpgrade(
   organizationId: string,
   subscription: Subscription,
   pending: PendingPlanChange,
+  author: PlanAuthor,
 ): Promise<Subscription> {
   const today = dateInSpace();
   const current = currentPlanOf(subscription);
@@ -300,6 +322,21 @@ async function applyUpgrade(
     ...(pending.restartsCycle ? { noticesSent: [] } : {}),
   };
   await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, author, {
+    kind: "upgraded",
+    before: subscription,
+    after: next,
+    amountCents: pending.amountCents,
+    paymentId: pending.paymentId || undefined,
+    effectiveOn: renewsOn,
+    predicate: [
+      `mudou o Plano GestaraHub para o ${planName(next)}`,
+      pending.amountCents > 0 ? ` (diferença de ${formatCents(pending.amountCents)} paga` : "",
+      // Confirmado pelo parceiro: quem pediu fica na frase.
+      pending.amountCents > 0 && author.source && pending.requestedBy ? `, pedido por ${pending.requestedBy.name})` : pending.amountCents > 0 ? ")" : "",
+    ].join(""),
+    ...(pending.requestedBy ? { details: { requestedBy: pending.requestedBy } } : {}),
+  });
   return next;
 }
 
@@ -316,8 +353,10 @@ export async function confirmPlanChangePayment(
   admin: SupabaseClient,
   organizationId: string,
   paymentId: string,
-  options: { simulated?: boolean } = {},
+  options: { simulated?: boolean; author?: PlanAuthor } = {},
 ): Promise<PlanChangePaymentCheck> {
+  // Sem pessoa: o aviso do parceiro de pagamentos ligou o plano.
+  const author = options.author ?? systemAuthor("webhook.asaas");
   const subscription = await readOrganizationSubscription(admin, organizationId);
   const pending = subscription?.pendingChange;
   if (!subscription || !pending || pending.paymentId !== paymentId) {
@@ -331,7 +370,7 @@ export async function confirmPlanChangePayment(
   if (paymentId.startsWith(MOCK_CHANGE_PREFIX)) {
     if (!options.simulated) return { isPaid: false };
     assertCanSimulate();
-    return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending) };
+    return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending, author) };
   }
   const payment = await getPayment(paymentId);
   const reference = decodePlanChangeReference(payment.externalReference);
@@ -339,11 +378,15 @@ export async function confirmPlanChangePayment(
     throw apiError("FORBIDDEN", "Pagamento de outro espaço.", { httpStatus: 403 });
   }
   if (!PAID_STATUSES.includes(payment.status)) return { isPaid: false };
-  return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending) };
+  return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending, author) };
 }
 
 /** Desmarca a troca marcada (antes do dia). */
-export async function cancelScheduledPlanChange(admin: SupabaseClient, organizationId: string): Promise<Subscription> {
+export async function cancelScheduledPlanChange(
+  admin: SupabaseClient,
+  organizationId: string,
+  author: PlanAuthor,
+): Promise<Subscription> {
   const subscription = await readOrganizationSubscription(admin, organizationId);
   const scheduled = subscription?.scheduledChange;
   if (!subscription || !scheduled || subscription.tier === "free") {
@@ -361,6 +404,13 @@ export async function cancelScheduledPlanChange(admin: SupabaseClient, organizat
     }
   }
   await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, author, {
+    kind: "change_canceled",
+    before: subscription,
+    after: next,
+    effectiveOn: scheduled.effectiveOn,
+    predicate: `desmarcou a troca do Plano GestaraHub para o ${planName({ tier: scheduled.tier, interval: scheduled.interval })} de ${ddmm(scheduled.effectiveOn)}`,
+  });
   return next;
 }
 
@@ -391,6 +441,7 @@ export async function applyScheduledPlanChange(
   admin: SupabaseClient,
   organizationId: string,
   subscription: Subscription,
+  author: PlanAuthor = systemAuthor("cron.daily"),
 ): Promise<Subscription> {
   const scheduled = subscription.scheduledChange;
   if (!scheduled) return subscription;
@@ -409,6 +460,13 @@ export async function applyScheduledPlanChange(
           changedAt: new Date().toISOString(),
         };
   await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, author, {
+    kind: "change_applied",
+    before: subscription,
+    after: next,
+    effectiveOn: scheduled.effectiveOn,
+    predicate: `aplicou a troca marcada: o Plano GestaraHub passou para o ${planName(next)}`,
+  });
   return next;
 }
 
@@ -426,6 +484,13 @@ async function revertToFree(admin: SupabaseClient, organizationId: string, subsc
     changedAt: new Date().toISOString(),
   };
   await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, systemAuthor("cron.daily"), {
+    kind: "reverted_to_free",
+    before: subscription,
+    after: next,
+    effectiveOn: next.revertedFrom?.on,
+    predicate: `voltou o espaço ao Grátis: a renovação de ${ddmm(next.revertedFrom?.on)} não foi paga em 5 dias`,
+  });
   return next;
 }
 
@@ -451,6 +516,13 @@ async function closeAfterGrace(
     changedAt: new Date().toISOString(),
   };
   await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, systemAuthor("cron.daily"), {
+    kind: "closed",
+    before: subscription,
+    after: next,
+    effectiveOn: reverted.on,
+    predicate: `encerrou a assinatura do Plano ${planName({ tier: reverted.tier, interval: reverted.interval })}: 15 dias sem pagar a renovação de ${ddmm(reverted.on)}`,
+  });
   return next;
 }
 
@@ -477,6 +549,7 @@ export async function recordSubscriptionPaymentPaid(
   admin: SupabaseClient,
   payment: Pick<AsaasPaymentResponse, "id" | "dueDate" | "subscription">,
   knownOrganizationId?: string,
+  author: PlanAuthor = systemAuthor("webhook.asaas"),
 ): Promise<{ organizationId: string; subscription: Subscription } | null> {
   if (!payment.subscription) return null;
   const asaasSubscription = await getSubscription(payment.subscription);
@@ -486,7 +559,7 @@ export async function recordSubscriptionPaymentPaid(
 
   // Assinatura que o espaco ainda nao tem (Pix pago com a tela fechada): liga pelo checkout.
   if (subscription?.asaasSubscriptionId !== asaasSubscription.id) {
-    const check = await confirmSubscriptionPayment(admin, organizationId, payment.id);
+    const check = await confirmSubscriptionPayment(admin, organizationId, payment.id, author);
     return check.subscription ? { organizationId, subscription: check.subscription } : null;
   }
 
@@ -503,6 +576,19 @@ export async function recordSubscriptionPaymentPaid(
     pendingPayment: subscription.pendingPayment?.id === payment.id ? undefined : subscription.pendingPayment,
   };
   await writeOrganizationSubscription(admin, organizationId, next);
+  // Pagamento repetido (aviso e conferencia diaria): so o primeiro vira historico.
+  if (subscription.revertedFrom || advanced) {
+    await recordSubscriptionEvent(admin, organizationId, author, {
+      kind: subscription.revertedFrom ? "reactivated" : "renewed",
+      before: subscription,
+      after: next,
+      paymentId: payment.id,
+      effectiveOn: next.renewsOn,
+      predicate: subscription.revertedFrom
+        ? `religou o Plano ${planName(next)}: a renovação atrasada de ${ddmm(payment.dueDate)} foi paga`
+        : `confirmou a renovação do Plano ${planName(next)}, paga até ${ddmm(next.renewsOn)}`,
+    });
+  }
   return { organizationId, subscription: next };
 }
 
@@ -518,11 +604,22 @@ export async function recordSubscriptionPaymentOpen(
   if (!organizationId) return false;
   const subscription = await readOrganizationSubscription(admin, organizationId);
   if (!subscription || subscription.asaasSubscriptionId !== asaasSubscription.id) return false;
-  await writeOrganizationSubscription(admin, organizationId, {
+  const next: Subscription = {
     ...subscription,
     pendingPayment: { id: payment.id, dueDate: payment.dueDate, ...(payment.invoiceUrl ? { invoiceUrl: payment.invoiceUrl } : {}) },
     ...(overdue && subscription.tier !== "free" ? { status: "past_due" } : {}),
-  });
+  };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  if (overdue && subscription.tier !== "free" && subscription.status !== "past_due") {
+    await recordSubscriptionEvent(admin, organizationId, systemAuthor("webhook.asaas"), {
+      kind: "renewal_overdue",
+      before: subscription,
+      after: next,
+      paymentId: payment.id,
+      effectiveOn: payment.dueDate,
+      predicate: `avisou que a renovação do Plano ${planName(subscription)} de ${ddmm(payment.dueDate)} venceu sem pagamento`,
+    });
+  }
   return true;
 }
 
@@ -537,7 +634,14 @@ export async function recordSubscriptionRemoved(
   if (!subscription || subscription.asaasSubscriptionId !== asaasSubscription.id) return false;
   // Gratis marcado por nos: o plano segue ate o fim do periodo pago.
   if (subscription.scheduledChange?.tier === "free") return false;
-  await writeOrganizationSubscription(admin, organizationId, { tier: "free", changedAt: new Date().toISOString() });
+  const next: Subscription = { tier: "free", changedAt: new Date().toISOString() };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  await recordSubscriptionEvent(admin, organizationId, systemAuthor("webhook.asaas"), {
+    kind: "removed_at_partner",
+    before: subscription,
+    after: next,
+    predicate: "avisou que a assinatura foi removida direto no parceiro: o espaço voltou ao Grátis",
+  });
   return true;
 }
 
@@ -566,7 +670,7 @@ async function reconcileRenewal(
     .filter((p) => !p.deleted && PAID_STATUSES.includes(p.status) && p.dueDate >= renewsOn)
     .sort((a, b) => b.dueDate.localeCompare(a.dueDate))[0];
   if (!paid) return subscription;
-  const result = await recordSubscriptionPaymentPaid(admin, paid, organizationId);
+  const result = await recordSubscriptionPaymentPaid(admin, paid, organizationId, systemAuthor("cron.daily"));
   return result?.subscription ?? subscription;
 }
 
@@ -576,6 +680,8 @@ export interface PlanDailyResult {
   closed: number;
   emails: number;
   failures: number;
+  /** Codigos do registro de erros das falhas. */
+  errorReferences: string[];
 }
 
 /**
@@ -588,7 +694,7 @@ export async function runPlanDailyTasks(
   appUrl: string,
   options: { organizationIds?: string[] } = {},
 ): Promise<PlanDailyResult> {
-  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, failures: 0 };
+  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, failures: 0, errorReferences: [] };
   let query = admin.from("organizations").select("id, subscription, settings, units(address)").not("subscription", "is", null);
   // So alguns espacos (testes): a rotina nao mexe nos outros.
   if (options.organizationIds) query = query.in("id", options.organizationIds);
@@ -605,7 +711,18 @@ export async function runPlanDailyTasks(
       await runPlanDailyStep(admin, org, appUrl, result);
     } catch (err) {
       result.failures += 1;
-      await reportError("cron.daily.plano", err, { source: "cron", organizationId: String(org.id) });
+      const organizationId = String(org.id);
+      const reference = await reportError("cron.daily.plano", err, { source: "cron", organizationId });
+      result.errorReferences.push(reference);
+      await recordSystemAudit(admin, "cron.daily", {
+        organizationId,
+        action: "updated",
+        target: { type: "subscription", label: "Plano GestaraHub" },
+        predicate: `não conseguiu conferir o Plano GestaraHub (código ${reference})`,
+        security: true,
+        failed: true,
+        errorReference: reference,
+      });
     }
   }
   return result;

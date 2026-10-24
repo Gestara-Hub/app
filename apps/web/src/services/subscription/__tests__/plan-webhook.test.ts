@@ -10,6 +10,8 @@ const plan = vi.hoisted(() => ({
   recordSubscriptionRemoved: vi.fn(),
 }));
 const settlement = vi.hoisted(() => ({ settleAsaasPayment: vi.fn() }));
+const runs = vi.hoisted(() => ({ beginWebhookEvent: vi.fn(), finishWebhookEvent: vi.fn() }));
+const audit = vi.hoisted(() => ({ auditOnlinePaymentPaid: vi.fn() }));
 
 vi.mock("@/services/server/subscriptionPlan", () => plan);
 vi.mock("@/services/onlinePayments/asaasSettlement", () => settlement);
@@ -17,8 +19,19 @@ vi.mock("@/services/onlinePayments/onlinePaymentsWebhook", () => ({
   expireOnlinePaymentInDb: vi.fn(),
   cancelOnlinePaymentByGatewayIdInDb: vi.fn(),
 }));
-vi.mock("@/services/onlinePayments/gateway", () => ({ recheckFeesAfterPayment: vi.fn() }));
+vi.mock("@/services/onlinePayments/gateway", () => ({ recheckFeesAfterPayment: vi.fn(async () => undefined) }));
 vi.mock("@/lib/supabase/admin", () => ({ createSupabaseAdminClient: () => ({}) }));
+vi.mock("@/services/server/backgroundRuns", () => runs);
+// `after` so existe numa requisicao do Next: aqui roda na hora.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: (fn: () => unknown) => void fn(),
+}));
+vi.mock("@/services/onlinePayments/onlinePaymentAudit", () => audit);
+vi.mock("@/lib/log", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/log")>()),
+  reportError: vi.fn(async () => "CODIGO01"),
+}));
 
 const { AsaasApiError } = await import("@/lib/asaas");
 const { POST } = await import("@/app/api/webhooks/asaas/route");
@@ -30,6 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ASAAS_WEBHOOK_SECRET;
   settlement.settleAsaasPayment.mockResolvedValue(null);
+  runs.beginWebhookEvent.mockResolvedValue({ id: "linha-1", duplicate: false });
 });
 
 describe("webhook do Asaas e o Plano GestaraHub", () => {
@@ -71,5 +85,44 @@ describe("webhook do Asaas e o Plano GestaraHub", () => {
     const res = await post({ event: "SUBSCRIPTION_DELETED", subscription: { id: "sub_1" } });
     expect(await res.json()).toMatchObject({ processed: true });
     expect(plan.recordSubscriptionRemoved).toHaveBeenCalledWith(expect.anything(), { id: "sub_1" });
+  });
+
+  it("aviso repetido, já tratado, só é reconhecido", async () => {
+    runs.beginWebhookEvent.mockResolvedValue({ id: "linha-1", duplicate: true });
+    const res = await post({ id: "evt_1", event: "PAYMENT_RECEIVED", payment: { id: "pay_6" } });
+    expect(await res.json()).toMatchObject({ duplicate: true });
+    expect(settlement.settleAsaasPayment).not.toHaveBeenCalled();
+    expect(runs.beginWebhookEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventId: "evt_1" }));
+  });
+
+  it("pagamento de aluno: baixa, Auditoria uma vez e o aviso registrado", async () => {
+    settlement.settleAsaasPayment.mockResolvedValue({
+      payment: { organizationId: "org", amountCents: 15000 },
+      chargeId: "c1",
+      newlyPaid: true,
+    });
+    await post({ id: "evt_2", event: "PAYMENT_RECEIVED", payment: { id: "pay_7" } });
+    expect(audit.auditOnlinePaymentPaid).toHaveBeenCalledTimes(1);
+    expect(runs.finishWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      "linha-1",
+      expect.objectContaining({ status: "processed", organizationId: "org" }),
+    );
+
+    // O mesmo pagamento avisado de novo (cartao: "recebido" depois de "confirmado").
+    settlement.settleAsaasPayment.mockResolvedValue({ payment: { organizationId: "org" }, chargeId: "c1", newlyPaid: false });
+    await post({ id: "evt_3", event: "PAYMENT_RECEIVED", payment: { id: "pay_7" } });
+    expect(audit.auditOnlinePaymentPaid).toHaveBeenCalledTimes(1);
+  });
+
+  it("falha: responde 500 (o Asaas tenta de novo) e o aviso fica com o código do erro", async () => {
+    settlement.settleAsaasPayment.mockRejectedValue(new Error("banco fora"));
+    const res = await post({ id: "evt_4", event: "PAYMENT_RECEIVED", payment: { id: "pay_8" } });
+    expect(res.status).toBe(500);
+    expect(runs.finishWebhookEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      "linha-1",
+      { status: "failed", errorReference: "CODIGO01" },
+    );
   });
 });
