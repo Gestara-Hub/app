@@ -15,3 +15,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | obs: processo | — | git log | — | Um commit (#2) saiu com 1 teste vermelho por causa do grep; corrigido e emendado na hora. A partir daqui as checagens rodam com código de saída (check.sh). |
 | 4.1 #4 tarifa de saque | feito | git log | typecheck, lint, Vitest, core 281 | Confirmado no MCP do Asaas (somente leitura) |
 | 4.1 #67 pagamento online no Pro | feito | git log | typecheck, lint, Vitest 1014 |  |
+| 4.1 #61 CPF na janela Cobrar online | feito | git log | typecheck, lint, Vitest, core 282 | Tela conferida só por tipos; e2e fica para a bateria |

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ageOn, formatCpf, isValidCpf, resolveOnlinePayer } from "../src/payer.ts";
+import { ageOn, formatCpf, isValidCpf, payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "../src/payer.ts";
 
 // CPFs validos de teste (digitos verificadores certos).
 const ADULT_CPF = "52998224725";
@@ -90,5 +90,21 @@ describe("pagador da cobrança online", () => {
       resolveOnlinePayer({ ...base, birthDate: "2015-05-05", cpf: ADULT_CPF, guardians: [{ name: "Mãe" }] }, TODAY),
       { ok: false, reason: "guardian_cpf_missing" },
     );
+  });
+});
+
+describe("o que falta para cobrar online (achado 61)", () => {
+  it("diz qual CPF falta e a mensagem da janela", () => {
+    const adultNoCpf = resolveOnlinePayer({ name: "Ana", phone: "11999990000", birthDate: "1990-01-01" }, TODAY);
+    assert.equal(payerIssueOf(adultNoCpf), "student_cpf_missing");
+    assert.match(payerIssueMessage("student_cpf_missing"), /Cadastre o CPF do aluno/);
+
+    const childNoGuardian = resolveOnlinePayer({ name: "Gabi", phone: "11999990000", birthDate: "2015-01-01" }, TODAY);
+    assert.equal(payerIssueOf(childNoGuardian), "guardian_cpf_missing");
+    assert.match(payerIssueMessage("guardian_cpf_missing"), /responsável financeiro/);
+
+    const adultWithCpf = resolveOnlinePayer({ name: "Ana", cpf: ADULT_CPF, phone: "11999990000", birthDate: "1990-01-01" }, TODAY);
+    assert.equal(payerIssueOf(adultWithCpf), undefined);
+    assert.equal(payerIssueOf(null), "student_cpf_missing");
   });
 });

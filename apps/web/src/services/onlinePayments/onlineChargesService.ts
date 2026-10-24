@@ -7,7 +7,7 @@ import {
   platformSplitCents,
 } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
-import { resolveOnlinePayer } from "@gestarahub/core/payer";
+import { payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "@gestarahub/core/payer";
 import { apiError, newId, notFoundError, nowIso, readOp, writeOp, persistLocal } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
@@ -37,7 +37,7 @@ import {
   assertMethodAccepted,
   cancelOnlinePaymentsForCharge,
 } from "./onlinePaymentRules";
-import type { OnlineChargeCheckout } from "./onlinePaymentRules";
+import { payerRequired, type OnlineChargeCheckout } from "./onlinePaymentRules";
 import { logError } from "@/lib/log";
 
 /** Pix e link de uma cobranca: listar, gerar, simular o pago e cancelar. */
@@ -83,6 +83,7 @@ export const onlineChargesService = {
         amountCents: c.amountCents,
         dueDate: c.dueDate,
         payments,
+        payerIssue: payerRequired() ? payerIssueOf(student ? resolveOnlinePayer(student, todayISO()) : null) : undefined,
       });
     });
   },
@@ -110,14 +111,8 @@ export const onlineChargesService = {
     // financeiro. O parceiro exige o CPF: conta real sem ele nao gera o codigo.
     const payerResult = student ? resolveOnlinePayer(student, todayISO()) : null;
     const payer = payerResult?.ok ? payerResult.payer : undefined;
-    if (!payer && isSupabaseOrganization(store.organization.id) && !process.env.E2E_NOW) {
-      throw apiError(
-        "VALIDATION",
-        payerResult && !payerResult.ok && payerResult.reason === "guardian_cpf_missing"
-          ? "Aluno menor de idade: cadastre o CPF do responsável financeiro para cobrar online."
-          : "Cadastre o CPF do aluno para cobrar online. O parceiro de pagamentos exige o CPF de quem paga.",
-        { httpStatus: 422 },
-      );
+    if (!payer && payerRequired()) {
+      throw apiError("VALIDATION", payerIssueMessage(payerIssueOf(payerResult) ?? "student_cpf_missing"), { httpStatus: 422 });
     }
     // Repasse: o da modal; sem ele, o padrao da forma em Recebimentos online.
     const passFee = passFeeOverride !== undefined ? passFeeOverride : defaultPassFeeFor(settings, method);

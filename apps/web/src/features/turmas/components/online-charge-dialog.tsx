@@ -60,7 +60,9 @@ import {
   useSimulateOnlinePaid,
 } from "../hooks/use-billing";
 import { IllustrativeQr } from "./illustrative-qr";
+import Link from "next/link";
 import { PixQrCode } from "@/components/shared/pix-qr-code";
+import { payerIssueMessage } from "@gestarahub/core/payer";
 import { dateInSpace, currentSpaceTimeZone } from "@gestarahub/core/date";
 
 const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
@@ -217,6 +219,8 @@ export function OnlineChargeDialog({
     ? payments.find((p) => p.status === "expired")
     : undefined;
   const showChooser = !awaiting || choosing;
+  // Sem o CPF de quem paga o parceiro recusa: o aviso fica na janela, antes de gerar.
+  const payerIssue = checkout.data?.payerIssue;
 
   const generate = () => {
     if (!charge) return;
@@ -303,6 +307,18 @@ export function OnlineChargeDialog({
             </div>
           ) : showChooser ? (
             <div className="space-y-4">
+              {payerIssue ? (
+                <div role="alert" className="space-y-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                  <p>{payerIssueMessage(payerIssue)}</p>
+                  <Link
+                    href={`/clients/${checkout.data?.studentId ?? charge?.studentId ?? ""}`}
+                    className="inline-flex font-semibold underline underline-offset-2"
+                    onClick={() => close(false)}
+                  >
+                    {payerIssue === "guardian_cpf_missing" ? "Cadastrar CPF do responsável" : "Cadastrar CPF"}
+                  </Link>
+                </div>
+              ) : null}
               {lastExpired ? (
                 <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
                   O último código expirou em{" "}
@@ -626,7 +642,7 @@ export function OnlineChargeDialog({
                 >
                   Voltar
                 </Button>
-                <Button onClick={generate} disabled={createMut.isPending}>
+                <Button onClick={generate} disabled={createMut.isPending || Boolean(payerIssue)}>
                   {createMut.isPending
                     ? "Gerando..."
                     : method === "pix"

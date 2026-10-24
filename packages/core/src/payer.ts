@@ -101,3 +101,18 @@ export function resolveOnlinePayer(
     },
   };
 }
+
+export type PayerIssue = Extract<PayerResult, { ok: false }>["reason"];
+
+/** Mensagem de cada falta de CPF (a mesma na janela "Cobrar online" e na recusa do servidor). */
+export function payerIssueMessage(issue: PayerIssue): string {
+  return issue === "guardian_cpf_missing"
+    ? "Aluno menor de idade: cadastre o CPF do responsável financeiro para cobrar online."
+    : "Cadastre o CPF do aluno para cobrar online. O parceiro de pagamentos exige o CPF de quem paga.";
+}
+
+/** O que falta para o parceiro aceitar o pagador (sem aluno, falta o CPF dele), ou nada. */
+export function payerIssueOf(payer: PayerResult | null): PayerIssue | undefined {
+  if (!payer) return "student_cpf_missing";
+  return payer.ok ? undefined : payer.reason;
+}

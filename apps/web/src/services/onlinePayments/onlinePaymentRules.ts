@@ -9,11 +9,13 @@ import type {
 } from "@gestarahub/contracts";
 import { describeCharge } from "@gestarahub/core/billing";
 import { availableOnlineMethods } from "@gestarahub/core/payment-fees";
+import type { PayerIssue } from "@gestarahub/core/payer";
 import { apiError, notFoundError, nowIso, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
 import { afterWorldCommit } from "../world/effects";
 import { cancelGatewayPaymentsAction, cancelOnlinePaymentsForChargeInDb } from "./actions";
+import { isSupabaseOrganization } from "@/lib/session";
 import { logError } from "@/lib/log";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -55,6 +57,13 @@ export interface OnlineChargeCheckout {
   dueDate: string;
   /** Mais recente primeiro. */
   payments: OnlinePayment[];
+  /** Falta o CPF de quem paga: a janela avisa e leva ao cadastro (achado 61). */
+  payerIssue?: PayerIssue;
+}
+
+/** Conta real exige o CPF de quem paga (o parceiro recusa sem ele); a demonstração e o e2e não. */
+export function payerRequired(): boolean {
+  return isSupabaseOrganization(store.organization.id) && !process.env.E2E_NOW;
 }
 
 export type UpdateOnlinePaymentSettings = Partial<OnlinePaymentSettings>;
