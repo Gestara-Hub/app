@@ -424,6 +424,8 @@ function incomeStatement(data: DREStatementReportData, competence: string): Docu
 }
 
 function churnRetention(data: ChurnReportData, competence: string): DocumentModel {
+  // Sem aluno no inicio do mes nao ha base para calcular: "—" em vez de "0%" (achado 50).
+  const hasBase = data.activeStudentsStart > 0;
   return {
     ...reportBase(data.header, "Retenção de alunos", `${REPORT_FILE_SLUG.churn_retention}-${competence}`),
     subtitle: "Quem entrou, quem saiu e quem ficou no mês.",
@@ -434,7 +436,7 @@ function churnRetention(data: ChurnReportData, competence: string): DocumentMode
           { label: "Alunos no início", value: data.activeStudentsStart, format: "integer" },
           { label: "Novos", value: data.newEnrollments, format: "integer", tone: "positive" },
           { label: "Saíram", value: data.cancellations, format: "integer", tone: data.cancellations > 0 ? "negative" : "default" },
-          { label: "Retenção", value: data.retentionRatePercent, format: "percent", tone: "positive" },
+          { label: "Retenção", value: hasBase ? data.retentionRatePercent : null, format: "percent", tone: "positive" },
         ],
       },
       {
@@ -447,7 +449,7 @@ function churnRetention(data: ChurnReportData, competence: string): DocumentMode
             value: data.netGrowth > 0 ? `+${data.netGrowth}` : String(data.netGrowth),
             tone: data.netGrowth < 0 ? "negative" : data.netGrowth > 0 ? "positive" : "default",
           },
-          { label: "Cancelamento", value: data.churnRatePercent, format: "percent" },
+          { label: "Cancelamento", value: hasBase ? data.churnRatePercent : null, format: "percent" },
         ],
       },
       {
