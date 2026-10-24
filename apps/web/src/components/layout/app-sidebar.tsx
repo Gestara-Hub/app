@@ -302,7 +302,8 @@ export function AppSidebar() {
         ))}
 
         <div className="mt-auto p-2">
-          <SidebarSubscriptionCard />
+          {/* So quem pode contratar plano ve o cartao do plano (achado 71). */}
+          {can("subscription:manage") ? <SidebarSubscriptionCard /> : null}
         </div>
       </SidebarContent>
 

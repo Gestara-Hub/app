@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 54 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 55 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -140,6 +140,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 55 | 24/10 | Em Financeiro → Professores, o mês que venceu como prévia diz "venceu 05/10: falta fechar e pagar" em destaque (ou "falta pagar" se já fechado), em vez de só "vence 05/10". O cargo "Professor" no demonstrativo segue a decisão do nome do papel (achado 23). | `features/finance/__tests__/payables-subtitle.test.ts` | — |
 | 63 | 24/10 | O botão "Extrato em PDF" ganhou a seta de menu, porque abre a escolha do mês. | `features/online-payments/__tests__/statement-menu.test.ts` | — |
 | 64 | 24/10 | Ao cancelar uma cobrança que tem Pix ou link em aberto, a confirmação avisa: "O Pix ou o link já enviado ao aluno deixa de funcionar." | `features/turmas/__tests__/charge-label.test.ts` | — |
+| 71 | 24/10 | O cartão do plano na barra lateral ("Plano Grátis · Evoluir") só aparece para quem pode contratar plano (o dono); professor, recepção e gerente não o veem. | `components/layout/__tests__/sidebar-plan-card.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -262,7 +263,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 70 | Professor | lembretes e ficha | desktop 1280, claro | O professor não tem sino nem lembretes, e não abre a ficha de nenhum aluno (o menu do aluno na chamada não tem "Abrir ficha"; `/clients` volta para o calendário). O plano do teste esperava "lembretes só dos alunos dele, sem cobrança" e "ficha sem cobranças". | Confirmar a regra: professor com lembretes de faltas e aniversário dos alunos dele e ficha sem a parte de dinheiro, ou fica sem nada. | Demonstração → trocar para Rodrigo Mendes. | baixa |
-| 71 | Professor | menu lateral | desktop 1280, claro | O cartão "Plano Grátis · Evoluir · Automatize o WhatsApp e reduza sua taxa Pix" aparece para o professor (e para a recepção), que não pode contratar plano. | Cartão só para o dono. | Demonstração → trocar para Rodrigo Mendes ou Renata Alves. | baixa |
+| 71 | Professor | menu lateral | desktop 1280, claro | O cartão "Plano Grátis · Evoluir · Automatize o WhatsApp e reduza sua taxa Pix" aparece para o professor (e para a recepção), que não pode contratar plano. | Cartão só para o dono. | Demonstração → trocar para Rodrigo Mendes ou Renata Alves. | baixa (corrigido) |
 | 72 | Troca de perfil na demonstração | termos | desktop 1280, claro | Ao trocar para outro perfil, o contrato de termos não aparece na hora (vale o aceite do usuário anterior); ele surge só ao recarregar a página, no meio do uso. | Pedir o aceite logo depois da troca (ou já deixar aceito na demonstração, ver achado 1). | Demonstração → trocar para Rodrigo Mendes → recarregar. | baixa |
 
 ### Celular
