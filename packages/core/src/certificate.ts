@@ -269,11 +269,15 @@ export function fillCertificateText(
   values: CertificateValues,
   options: { sameDay?: boolean } = {},
 ): string {
-  const source = options.sameDay
+  const sameDayText = options.sameDay
     ? text.replace(/(^|\s)([Dd])e \{inicio\} a \{fim\}/g, (_m, space: string, d: string) =>
         `${space}${d === "D" ? "E" : "e"}m {inicio}`,
       )
     : text;
+  // Nome que ja diz "curso" ("Yoga Flow curso"): "o curso {curso}" nao repete a palavra.
+  const source = /(^|\s)curso(\s|$)/i.test(values.curso ?? "")
+    ? sameDayText.replace(/\b[Cc]urso\s+\{curso\}/g, "{curso}")
+    : sameDayText;
   const filled = source.replace(VARIABLE_RE, (_match, key: string) => {
     const value = KNOWN.has(key) ? values[key as CertificateVariable] : undefined;
     return value === undefined || value === "" ? MISSING : value;

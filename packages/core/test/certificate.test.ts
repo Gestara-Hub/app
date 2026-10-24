@@ -232,3 +232,16 @@ describe("certificado: validação do modelo", () => {
     assert.match(issue.message, /^Variável desconhecida: \{nota\}\. Use: \{aluno\}, \{curso\}, .*\{data\}\.$/);
   });
 });
+
+describe("certificado: nome do curso que já diz \"curso\" (achado 48)", () => {
+  it("não repete a palavra no texto padrão", () => {
+    const text = defaultCertificateText(buildCourseCertificate(input({ courseName: "Yoga Flow curso" })));
+    assert.match(text.body, /concluiu o Yoga Flow curso, de /);
+    assert.doesNotMatch(text.body, /curso Yoga Flow curso/);
+  });
+
+  it("nome sem a palavra continua com \"o curso\"", () => {
+    const text = defaultCertificateText(buildCourseCertificate(input({ courseName: "Confeitaria" })));
+    assert.match(text.body, /concluiu o curso Confeitaria, de /);
+  });
+});
