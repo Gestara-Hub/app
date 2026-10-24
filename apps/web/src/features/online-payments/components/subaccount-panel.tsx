@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import type { ReceiptStatusFilter, SubaccountReceiptItem } from "@/services/onlinePayments/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LINK_PAYMENT_METHOD_LABEL } from "@gestarahub/core/payment-fees";
+import { LINK_PAYMENT_METHOD_LABEL, onlineFundsLabel, onlinePaymentMethodLabel } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
 import {
   ArrowDownLeft,
@@ -354,11 +354,7 @@ export function SubaccountPanel({
                           </td>
                           <td className="px-3.5 py-2.5">
                             <Badge variant="outline" className="text-[10px] font-normal">
-                              {r.method === "pix"
-                                ? "Pix"
-                                : `${RECEIPT_METHOD_LABEL[r.method] ?? "Link"}${
-                                    r.paidMethod ? ` · ${LINK_PAYMENT_METHOD_LABEL[r.paidMethod]}` : ""
-                                  }`}
+                              {onlinePaymentMethodLabel(r.method, r.paidMethod)}
                             </Badge>
                           </td>
                           <td className="px-3.5 py-2.5 font-medium text-foreground">
@@ -409,7 +405,7 @@ export function SubaccountPanel({
                                   </span>
                                   {r.status === "paid" && !r.fundsReleased ? (
                                     <span className="text-[10px] leading-tight text-muted-foreground">
-                                      {r.creditDate ? `Libera em ${formatDayMonth(r.creditDate)}` : "A liberar"}
+                                      {onlineFundsLabel(false, r.creditDate, formatDayMonth)}
                                     </span>
                                   ) : null}
                                   {r.canceledReason ? (
@@ -538,13 +534,6 @@ const RECEIPT_STATUS_FILTER_LABEL: Record<ReceiptStatusFilter, string> = {
 };
 
 /** Forma gerada, no historico (o meio usado entra depois do ponto, quando o Asaas confirma). */
-const RECEIPT_METHOD_LABEL: Record<string, string> = {
-  pix: "Pix",
-  link: "Cartão",
-  boleto: "Boleto",
-  choice: "Escolha do aluno",
-};
-
 /**
  * "Taxas" do historico: o total (Asaas + GestaraHub) com um popup que explica
  * cada parte. Clique (funciona no celular); no link ainda nao pago, avisa que

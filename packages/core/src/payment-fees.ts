@@ -318,6 +318,32 @@ export const LINK_PAYMENT_METHOD_LABEL: Record<LinkPaymentMethod, string> = {
   debitCard: "Débito",
 };
 
+/**
+ * Forma do pagamento online como a tela de Recebimentos online e o extrato em
+ * PDF mostram: "Pix", "Cartão · Crédito", "Boleto". Um texto so nos dois
+ * (achado 62 do teste de 23/10).
+ */
+export function onlinePaymentMethodLabel(method: string, paidMethod?: LinkPaymentMethod | null): string {
+  if (method === "pix") return "Pix";
+  const base = (ONLINE_METHOD_LABEL as Record<string, string>)[method] ?? "Link";
+  return paidMethod ? `${base} · ${LINK_PAYMENT_METHOD_LABEL[paidMethod]}` : base;
+}
+
+/**
+ * Saldo de um pagamento confirmado: "Disponível" (liberado), "Libera em ..."
+ * (cartao com data prevista) ou "A liberar" (sem data ainda). `formatDate`
+ * escreve a data como cada tela precisa.
+ */
+export function onlineFundsLabel(
+  fundsReleased: boolean,
+  creditDate: string | undefined | null,
+  formatDate: (isoDay: string) => string,
+  releasedLabel = "Disponível",
+): string {
+  if (fundsReleased) return releasedLabel;
+  return creditDate ? `Libera em ${formatDate(creditDate)}` : "A liberar";
+}
+
 /** `billingType` do Asaas (webhook) para o meio usado. */
 export function linkMethodFromAsaasBillingType(billingType: string | undefined | null): LinkPaymentMethod | undefined {
   switch ((billingType ?? "").toUpperCase()) {

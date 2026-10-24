@@ -11,6 +11,8 @@ import {
   gatewayFeeCents,
   isGatewayFeeDivergent,
   linkMethodFromAsaasBillingType,
+  onlineFundsLabel,
+  onlinePaymentMethodLabel,
   parseAsaasAccountFees,
   platformSplitCents,
   type GatewayFeeTable,
@@ -275,5 +277,22 @@ describe("formas de cobrança online (21/10/2026)", () => {
     assert.equal(choice.byMethod.length, 4);
     assert.equal(choice.byMethod[0].method, "creditCard");
     for (const m of choice.byMethod) assert.ok(m.netAmountCents >= 15000);
+  });
+});
+
+describe("rótulos do pagamento online (achado 62)", () => {
+  it("a forma sai igual na tela e no extrato", () => {
+    assert.equal(onlinePaymentMethodLabel("pix"), "Pix");
+    assert.equal(onlinePaymentMethodLabel("pix", "pix"), "Pix");
+    assert.equal(onlinePaymentMethodLabel("link"), "Cartão");
+    assert.equal(onlinePaymentMethodLabel("link", "creditCard"), "Cartão · Crédito");
+    assert.equal(onlinePaymentMethodLabel("boleto"), "Boleto");
+  });
+
+  it("o saldo diz Disponível, a data prevista ou A liberar", () => {
+    const fmt = (d: string) => d.split("-").reverse().join("/");
+    assert.equal(onlineFundsLabel(true, undefined, fmt), "Disponível");
+    assert.equal(onlineFundsLabel(false, "2026-11-21", fmt), "Libera em 21/11/2026");
+    assert.equal(onlineFundsLabel(false, undefined, fmt), "A liberar");
   });
 });

@@ -1,6 +1,7 @@
-import type { Client, DocumentModel, Id, OnlinePayment } from "@gestarahub/contracts";
+import type { Client, DocumentModel, Id } from "@gestarahub/contracts";
 import { notFoundError } from "@gestarahub/core/api-error";
 import { formatAverage, formatGrade } from "@gestarahub/core/grades";
+import { onlineFundsLabel, onlinePaymentMethodLabel } from "@gestarahub/core/payment-fees";
 import { getSegmentPreset } from "@/lib/business-segment-presets";
 import { competenceLongLabel, documentDate } from "@/lib/documents/format";
 import { onlineStatementDocument } from "@/lib/documents/payment-documents";
@@ -124,18 +125,6 @@ export async function reportCardModel(studentId: Id): Promise<DocumentModel> {
   });
 }
 
-const PAID_METHOD_LABEL: Record<string, string> = {
-  pix: "Pix",
-  boleto: "Boleto",
-  creditCard: "Cartão de crédito",
-  debitCard: "Cartão de débito",
-};
-
-function methodLabelOf(payment: OnlinePayment): string {
-  if (payment.paidMethod) return PAID_METHOD_LABEL[payment.paidMethod] ?? "Pagamento online";
-  return payment.method === "pix" ? "Pix" : payment.method === "boleto" ? "Boleto" : "Pagamento online";
-}
-
 /** "2026-10" do instante, no fuso do espaco. */
 function competenceOf(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: currentSpaceTimeZone() }).slice(0, 7);
@@ -167,11 +156,11 @@ export async function onlineStatementModel(competence: string): Promise<Document
         paidAt: String(p.paidAt),
         studentName: student?.name ?? "—",
         label,
-        methodLabel: methodLabelOf(p),
+        methodLabel: onlinePaymentMethodLabel(p.method, p.paidMethod),
         amountCents: p.amountCents,
         feeCents: fee,
         netCents: p.netAmountCents ?? p.amountCents - fee,
-        availability: p.fundsReleased === false && p.creditDate ? `Libera em ${documentDate(p.creditDate)}` : "Disponível",
+        availability: onlineFundsLabel(p.fundsReleased !== false, p.creditDate, documentDate),
       };
     });
   return onlineStatementDocument({
