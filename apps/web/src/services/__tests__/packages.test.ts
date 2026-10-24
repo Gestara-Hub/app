@@ -988,7 +988,7 @@ describe("conflito de horário considera início e fim", () => {
   });
 });
 
-describe("turma desativada", () => {
+describe("turma inativada", () => {
   beforeEach(() => resetAcademy());
 
   it("não aceita matrícula, some das aulas futuras e cancela as reservas futuras", async () => {
@@ -1006,7 +1006,7 @@ describe("turma desativada", () => {
     await expect(turmasService.getSession(future)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(turmasService.getSession(sessionOf(g, "2026-09-21"))).resolves.toBeTruthy();
     await expect(turmasService.enroll({ classGroupId: g.id, studentId: beto.id })).rejects.toMatchObject({
-      message: "Turma desativada. Reative para matricular.",
+      message: "Turma inativada. Reative para matricular.",
     });
   });
 });

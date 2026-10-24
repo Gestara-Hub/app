@@ -232,7 +232,7 @@ Todas usam dialogo com titulo, corpo e botoes. Implementacao em `components/shar
 | Matricula duplicada | `VALIDATION` | "Aluno já matriculado nesta turma." |
 | Lista de espera duplicada | `VALIDATION` | "Aluno já está na lista de espera." |
 | Avulso ja reservado / ja matriculado | `VALIDATION` | "Aluno já reservou esta aula." / "Aluno já está matriculado nesta turma." |
-| Desativar turma ja inativa | `VALIDATION` | "Turma já foi desativada." |
+| Inativar turma ja inativa | `VALIDATION` | "Turma já foi inativada." |
 
 Formulario de turma: "Informe o nome da turma.", "Selecione a modalidade da turma.", "Selecione o instrutor.", "A capacidade deve ser ao menos 1.", "Informe a data de início.", "Marque ao menos um dia de encontro.", "Horário inválido: informe início e fim (o início deve ser antes do fim).". Plano: "Informe o nome do plano.".
 
@@ -252,7 +252,7 @@ Lista de quais acoes confirmam em [`../frontend/06-decisoes-de-interface.md`](..
 | Promover da espera | "Promover da lista de espera?" | `turma-detail-view.tsx` |
 | Remover da espera | "Remover da lista de espera?" | `turma-detail-view.tsx` |
 | Remover avulso/experimental da aula | "Remover da aula?" | `session-detail-view.tsx` |
-| Desativar / reativar turma | "Desativar turma?" / "Reativar turma?" | `turmas-view.tsx` |
+| Inativar / reativar turma | "Inativar turma?" / "Reativar turma?" | `turmas-view.tsx` |
 | Inativar / reativar plano | "Inativar plano?" / "Reativar plano?" | `plans-view.tsx` |
 | Inativar / reativar modalidade | "Inativar modalidade?" / "Reativar modalidade?" | `features/turmas` |
 | Inativar / reativar aluno | "Inativar aluno?" / "Reativar aluno?" | `features/clients` |

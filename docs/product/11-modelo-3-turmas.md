@@ -183,7 +183,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 - **Instrutor substituto**: `ClassSessionOverride` troca o instrutor so daquela aula, com motivo opcional; restaurar o titular remove o override.
 - **Encontros validados contra o horario de funcionamento da unidade** (quando configurado): encontro fora do expediente, em dia fechado ou sem turno e recusado ao salvar a turma. Salvar um horario de funcionamento que deixa aulas de fora pede confirmacao ("Há aulas fora do novo horário") e as aulas continuam no calendario ate a turma ser ajustada.
 - **Conflito de instrutor**: o mesmo instrutor nao pode ter duas turmas ativas com encontros sobrepostos no mesmo dia da semana.
-- **Desativar/reativar turma** (soft delete, com confirmacao e Auditoria). Turma inativa nao gera aulas no calendario (inclusive as passadas deixam de ser listadas); matriculas e presencas ficam gravadas.
+- **Inativar/reativar turma** (soft delete, com confirmacao e Auditoria). Turma inativa nao gera aulas no calendario (inclusive as passadas deixam de ser listadas); matriculas e presencas ficam gravadas.
 
 **Capacidade (regra mole)**
 - `availableSpots = capacity - matriculas ativas` (na turma); na aula, `capacity - tamanho do roster`.
@@ -216,7 +216,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 - Retrocompatibilidade: aluno sem plano proprio matriculado em turma com `planId` legado ainda e cobrado pela regra da academia.
 
 **Auditoria**
-- Entram: criar/editar/desativar/reativar turma, matricular, cancelar matricula, reservar/remover da aula e todas as operacoes financeiras.
+- Entram: criar/editar/inativar/reativar turma, matricular, cancelar matricula, reservar/remover da aula e todas as operacoes financeiras.
 - Ainda nao entram: presenca, lista de espera (entrar, promover, remover) e troca de instrutor.
 
 **RBAC**
@@ -237,7 +237,7 @@ Read-models: `ClassGroupView` (`modalityName`, `instructorName`, `planName`, `en
 
 ## Telas
 
-- **Turmas** (`/classes`) — lista com busca e filtro de status; Nova/Editar turma; desativar/reativar.
+- **Turmas** (`/classes`) — lista com busca e filtro de status; Nova/Editar turma; inativar/reativar.
 - **Detalhe da turma** (`/classes/[id]`) — uma linha de informacao, atalho para a aula de hoje ou a proxima, lista de alunos com alertas; abas so quando ha lista de espera ou avaliacoes; matricular, cancelar matricula (uma ou em lote), promover/remover da espera. Ver "Telas de turma e de aula (18/10/2026)".
 - **Calendario** (`/classes/calendar`) — aulas da semana (grade ou lista), filtros de modalidade e instrutor; clique abre a aula.
 - **Detalhe da aula** (`/classes/sessions/[sessionId]`) — chamada por toque e "Concluir chamada"; adicionar avulso/experimental, trocar instrutor e abrir a turma no menu ⋮ do cabeçalho; remover da aula no ⋮ do aluno.
@@ -398,11 +398,11 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md).
 
 - **Chamada otimista:** o toque aparece na hora e cada aluno tem uma fila de gravação na ordem dos toques; toque rápido não se perde. Quando a fila do aluno esvazia, a aula é relida e vale o que veio do serviço (erro volta ao estado real). "Todos vieram" e "Concluir chamada" esperam as filas antes.
 - **Remover da aula** apaga a presença: voltar para a aula começa sem marcação e gasta o pacote de novo.
-- **Aula que existe:** data real, entre o início e o fim da turma, no dia da semana e no horário da grade daquela data; em turma desativada, só as que já passaram. Senão, "Aula não encontrada" no detalhe e na chamada (data inválida na URL não derruba mais a tela).
+- **Aula que existe:** data real, entre o início e o fim da turma, no dia da semana e no horário da grade daquela data; em turma inativada, só as que já passaram. Senão, "Aula não encontrada" no detalhe e na chamada (data inválida na URL não derruba mais a tela).
 - **Mudar o horário** vale daqui para frente: a grade antiga fica em `ClassGroup.scheduleHistory` até ontem (ou até hoje, se a chamada de hoje já foi feita), e as aulas passadas, a frequência e o calendário seguem no horário delas (`meetingSlotsOn`).
 - **Avulso ou experimental que se matricula depois** segue como reserva nas aulas de antes da matrícula (não vira matriculado no passado nem gasta pacote ao remarcar).
 - **Conflito de horário** (professor e aluno) só com turma que tenha dias em comum daqui para frente: curso encerrado não bloqueia o próximo curso no mesmo horário nem a matrícula do aluno (`periodsOverlap`).
-- **Turma desativada:** selo "Inativo" com "Reativar turma" no menu, sem "Matricular alunos" nem próxima aula; o serviço recusa a matrícula ("Turma desativada. Reative para matricular.") e, ao desativar, cancela as reservas futuras e as avulsas em aberto delas.
+- **Turma inativada:** selo "Inativo" com "Reativar turma" no menu, sem "Matricular alunos" nem próxima aula; o serviço recusa a matrícula ("Turma inativada. Reative para matricular.") e, ao inativar, cancela as reservas futuras e as avulsas em aberto delas.
 - **Professor:** vê e age só nas turmas em que é o titular e nas aulas em que substitui (doc 06).
 - **Duas abas abertas:** cada leitura e gravação relê o banco salvo se outra aba gravou, e a tela da outra aba se atualiza sozinha (mock; some com o backend).
 

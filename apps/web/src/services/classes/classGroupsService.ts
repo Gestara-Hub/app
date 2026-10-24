@@ -130,7 +130,7 @@ export const classGroupsService = {
       const g = store.classGroups[idx];
       if (g.status === "inactive") {
         throw validationError([
-          { field: "status", message: "Turma já foi desativada." },
+          { field: "status", message: "Turma já foi inativada." },
         ]);
       }
 
@@ -153,7 +153,7 @@ export const classGroupsService = {
         if (charge && (charge.status === "pending" || charge.status === "overdue")) {
           charge.status = "canceled";
           charge.canceledBy = "system";
-          charge.notes = "Turma desativada";
+          charge.notes = "Turma inativada";
           charge.updatedAt = nowIso();
           cancelOnlinePaymentsForCharge(charge.id);
         }
@@ -161,13 +161,13 @@ export const classGroupsService = {
       auditLogService.record({
         action: "inactivated",
         target: { type: "class_group", id, label: g.name },
-        predicate: `desativou a turma ${g.name}${canceledReservations > 0 ? ` e cancelou ${plural(canceledReservations, "reserva futura", "reservas futuras")}` : ""}`,
+        predicate: `inativou a turma ${g.name}${canceledReservations > 0 ? ` e cancelou ${plural(canceledReservations, "reserva futura", "reservas futuras")}` : ""}`,
       });
       return clone(toGroupView(store.classGroups[idx]));
     });
   },
 
-  // Reativa uma turma desativada.
+  // Reativa uma turma inativada.
   reactivate(id: Id): Promise<ClassGroupView> {
     return writeOp(async () => {
       const idx = store.classGroups.findIndex((x) => x.id === id);

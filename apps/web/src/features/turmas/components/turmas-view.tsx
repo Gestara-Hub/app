@@ -124,7 +124,7 @@ function TurmaRow({
         isActive
           ? {
               key: "inactivate",
-              label: "Desativar",
+              label: "Inativar",
               icon: <PowerOff className="size-4" />,
               onSelect: () => onDeactivate(turma),
               destructive: true,
@@ -223,7 +223,7 @@ function TurmaCard({
         isActive
           ? {
               key: "inactivate",
-              label: "Desativar",
+              label: "Inativar",
               icon: <PowerOff className="size-4" />,
               onSelect: () => onDeactivate(turma),
               destructive: true,
@@ -426,10 +426,10 @@ export function TurmasView({
     if (!deactivatingTurma) return;
     try {
       await deactivate.mutateAsync(deactivatingTurma.id);
-      toast.success(`Turma "${deactivatingTurma.name}" desativada.`);
+      toast.success(`Turma "${deactivatingTurma.name}" inativada.`);
       setDeactivatingTurma(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Não foi possível desativar a turma."));
+      toast.error(getErrorMessage(err, "Não foi possível inativar a turma."));
     }
   };
 
@@ -520,11 +520,11 @@ export function TurmasView({
       <ConfirmActionDialog
         open={deactivatingTurma !== null}
         onOpenChange={(open) => !open && setDeactivatingTurma(null)}
-        title="Desativar turma?"
+        title="Inativar turma?"
         description={
           shownDeactivatingTurma ? (
             <>
-              Tem certeza que deseja desativar <strong>&ldquo;{shownDeactivatingTurma.name}&rdquo;</strong>?
+              Tem certeza que deseja inativar <strong>&ldquo;{shownDeactivatingTurma.name}&rdquo;</strong>?
               <br />
               <br />
               Os dados ficam guardados e a turma para de gerar aulas. A frequência
@@ -532,7 +532,7 @@ export function TurmasView({
             </>
           ) : null
         }
-        confirmLabel="Desativar"
+        confirmLabel="Inativar"
         isPending={deactivate.isPending}
         onConfirm={handleDeactivate}
       />

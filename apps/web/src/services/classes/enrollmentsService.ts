@@ -44,7 +44,7 @@ export const enrollmentsService = {
       const g = store.classGroups.find((x) => x.id === payload.classGroupId);
       if (!g) throw notFoundError("Turma não encontrada.");
       if (g.status !== "active") {
-        throw apiError("VALIDATION", "Turma desativada. Reative para matricular.", { httpStatus: 409 });
+        throw apiError("VALIDATION", "Turma inativada. Reative para matricular.", { httpStatus: 409 });
       }
       const student = store.clients.find((c) => c.id === payload.studentId);
       if (!student) {

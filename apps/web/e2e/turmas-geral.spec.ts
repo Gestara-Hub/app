@@ -14,7 +14,7 @@ import { modality } from "./ficha-notas-fixtures";
 import { TS, waitWorld, type Tenant } from "./geral-fixtures";
 
 /**
- * Turmas em geral: criar, editar, desativar e reativar; horarios contra o
+ * Turmas em geral: criar, editar, inativar e reativar; horarios contra o
  * expediente e o professor; trocar instrutor de uma aula; chamada (presente,
  * falta, justificada e desmarcar); lista de espera; avulso e experimental na
  * aula; filtros do calendario; turma e aula inexistentes.
@@ -148,15 +148,15 @@ test.describe("cadastro de turma", () => {
     await expect(page.getByRole("dialog", { name: "Avisar os alunos?" })).toHaveCount(0);
   });
 
-  test("desativar e reativar com confirmação", async ({ page }) => {
+  test("inativar e reativar com confirmação", async ({ page }) => {
     await seedClasses(page);
     await page.goto("/classes");
     await page.getByRole("button", { name: "Ações de Yoga Manhã", exact: true }).click();
-    await page.getByRole("menuitem", { name: "Desativar" }).click();
-    const confirm = page.getByRole("alertdialog", { name: "Desativar turma?" });
+    await page.getByRole("menuitem", { name: "Inativar" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Inativar turma?" });
     await expect(confirm).toContainText("Yoga Manhã");
-    await confirm.getByRole("button", { name: "Desativar" }).click();
-    await expect(page.getByText('Turma "Yoga Manhã" desativada.')).toBeVisible();
+    await confirm.getByRole("button", { name: "Inativar" }).click();
+    await expect(page.getByText('Turma "Yoga Manhã" inativada.')).toBeVisible();
     // A lista abre so com as ativas.
     await expect(page.getByRole("button", { name: "Ações de Yoga Manhã", exact: true })).toHaveCount(0);
 

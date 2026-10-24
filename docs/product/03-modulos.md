@@ -174,7 +174,7 @@ Gerenciar turmas recorrentes, matriculas, aulas e presenca.
 
 ### Funcionalidades implementadas
 
-- Listar, criar, editar, desativar e reativar turmas: nome, modalidade, instrutor titular, capacidade, data de inicio, encontros semanais (dia + inicio + fim) e aceite de alunos avulsos com valor da aula avulsa.
+- Listar, criar, editar, inativar e reativar turmas: nome, modalidade, instrutor titular, capacidade, data de inicio, encontros semanais (dia + inicio + fim) e aceite de alunos avulsos com valor da aula avulsa.
 - Detalhe da turma: ocupacao, matriculados com frequencia, matricular alunos (turma lotada pede "Matricular mesmo assim"), cancelar matricula, lista de espera (adicionar, promover, remover).
 - Detalhe da aula (`/classes/sessions/[id]`): lista de chamada com matriculados, avulsos e experimentais; marcar presenca (presente, falta, justificada); adicionar aluno avulso ou experimental; remover da aula; instrutor substituto e restaurar titular.
 
