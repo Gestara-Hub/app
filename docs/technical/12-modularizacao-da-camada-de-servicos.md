@@ -1,5 +1,7 @@
 # 12 — Modularização e Fatiamento da Camada de Serviços (Services)
 
+Data: 2026-10-19.
+
 > **Status:** Decidido e planejado em 19/10/2026. Plano de ação para execução sob demanda.
 > **Alvo:** `apps/web/src/services/`
 > **Execução (21/10/2026):** fases 1 a 4 feitas em 21/10/2026 (`services/classes/`, `services/clients/`, `services/finance/`, `services/billing/`), só movendo código; os arquivos antigos viraram reexportações. Elas entraram na fatia 2 do [doc 15](15-retirada-do-mock-turmas.md), cada uma como primeiro passo do seu domínio; a fase 5 entra na fatia 4. Fase 6 feita em 23/10/2026 (os arquivos que passaram de 300 linhas depois do plano).

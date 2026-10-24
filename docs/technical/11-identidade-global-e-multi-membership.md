@@ -1,5 +1,7 @@
 # ADR 11 — Identidade Global e Multi-Membership (Um e-mail, múltiplos espaços)
 
+Data: 2026-10-19. Status: Decidido.
+
 ## Decisão
 
 O GestaraHub adota o modelo de **Identidade Global com Vínculos Multi-Tenant** (padrão Slack / Notion / GitHub):

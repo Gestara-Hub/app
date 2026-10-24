@@ -1,5 +1,7 @@
 # 17. Verificação em duas etapas (2FA)
 
+Data: 2026-10-22.
+
 Status: entrega 1 (aplicativo autenticador) e entrega 2 (código por e-mail e "lembrar este dispositivo") feitas em 23/10/2026. O aviso para ligar (doc product/25, seção 5) oferece os dois métodos.
 
 ## Decisao

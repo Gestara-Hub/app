@@ -1,5 +1,7 @@
 # Extensao para novos modelos operacionais
 
+Data: 2026-07-13.
+
 > Operacionaliza a "Regra de evolucao" de [`docs/product/02-modelos-operacionais.md`](../product/02-modelos-operacionais.md) para os Modelos 2 e 3.
 >
 > **Status:** o Modelo 3 (turmas) ja foi implementado seguindo esta decisao (ver "Estado atual"). O Modelo 2 (entrega) continua so tipado (`OperationalModel = "delivery"`), sem telas.

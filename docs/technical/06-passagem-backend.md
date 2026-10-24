@@ -1,5 +1,7 @@
 # 06 — Passagem para o backend
 
+Data: 2026-10-14.
+
 > **Status:** 13/10/2026. Ponto de partida da fase 3 (backend). Lista o que o mock faz "por baixo dos panos" e que o servidor precisa assumir, as decisões que faltam e a ordem sugerida de construção.
 > Documentos irmãos: integração real do WhatsApp em [07-integracao-whatsapp.md](07-integracao-whatsapp.md) e levantamento de pagamentos em [../product/19-levantamento-pagamentos.md](../product/19-levantamento-pagamentos.md).
 

@@ -25,4 +25,4 @@ Source of truth: `docs/frontend/01-arquitetura.md` (layer model + "MFE-readiness
 ## Review checklist (apply to a change)
 - Lint boundaries green? RBAC via `can()`/`requirePermission` (never `profile === …`)?
 - PT UI / EN code? Soft-rules honored (**/web-form**)? No `@/mocks` in UI? Read-models (not raw rows) to UI (**/web-data**)?
-- Shared types in `@gestarahub/contracts` (**/contract**)? Is the decision worth recording → **/adr**?
+- Shared types in `@gestarahub/contracts` (**/contract**)? Is the decision worth recording → **/docs**?

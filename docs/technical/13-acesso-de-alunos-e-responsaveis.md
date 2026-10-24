@@ -1,5 +1,7 @@
 # ADR 13 — Acesso de alunos e responsáveis à Área do Aluno
 
+Data: 2026-10-21.
+
 > **Status:** Decidido em 21/10/2026. Ainda não implementado: vale para a construção do PWA do aluno ([ADR 10](10-monolito-frontend-pwa.md)) e para a seção "Acesso" da ficha do aluno.
 
 ## Decisao

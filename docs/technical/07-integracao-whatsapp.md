@@ -1,5 +1,7 @@
 # 07 — Integração real do WhatsApp (API oficial da Meta)
 
+Data: 2026-10-14.
+
 > **Status:** 13/10/2026. Checklist para quando o backend começar. Hoje só o **envio assistido** funciona de verdade; a conexão oficial e os envios automáticos são simulados no mock.
 > Decisão de produto (número do próprio espaço; assistido no grátis, oficial no Pro): [../product/13-modelo-de-negocio.md](../product/13-modelo-de-negocio.md), seção 5. Custos e repasse: [../product/19-levantamento-pagamentos.md](../product/19-levantamento-pagamentos.md), seção 3.
 

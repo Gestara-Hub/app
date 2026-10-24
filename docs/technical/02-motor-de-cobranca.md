@@ -1,5 +1,7 @@
 # Motor de cobrança único
 
+Data: 2026-09-22. Status: Feito.
+
 > Implementação técnica das regras de [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md). Decidido e implementado em 2026-09-22.
 
 ## Decisao

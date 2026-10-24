@@ -12,6 +12,29 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 
 📌 **[Pendências registradas](pendencias.md):** tudo o que ficou combinado para depois (decidido e não implementado, esperando decisão, antes de produção).
 
+## Mapa por assunto (modelo de turmas)
+
+Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma seção (regras em [`.claude/skills/docs`](../.claude/skills/docs/SKILL.md)). As tabelas por assunto abaixo valem para o modelo de turmas.
+
+| Assunto | Regras (o quê e por quê) | Funcionamento (como é feito) | Onde está no código |
+| --- | --- | --- | --- |
+| Acesso e segurança | [product/06](product/06-perfis-permissoes.md) | [technical/17](technical/17-verificacao-em-duas-etapas.md) (duas etapas), [technical/11](technical/11-identidade-global-e-multi-membership.md) | `apps/web/src/lib/security`, `app/(auth)`, `lib/permissions.ts` |
+| Configuração inicial | [frontend/08](frontend/08-decisoes-landing-page-e-onboarding.md) §4 | [frontend/08](frontend/08-decisoes-landing-page-e-onboarding.md) | `features/onboarding`, `services/settings` |
+| Turmas e chamada | [product/11](product/11-modelo-3-turmas.md), [product/14](product/14-mvp-academia-lutas.md) | [technical/01](technical/01-extensao-modelos-operacionais.md) | `features/turmas`, `services/classes` |
+| Alunos e acesso de alunos | [product/23](product/23-area-do-aluno-e-professor.md), [product/24](product/24-diretrizes-exclusao-e-lgpd.md) | [technical/13](technical/13-acesso-de-alunos-e-responsaveis.md) | `features/clients`, `services/clients` |
+| Mensalidades e cobranças | [product/15](product/15-regras-de-cobranca.md), [product/20](product/20-plano-novas-formas-de-cobranca.md) | [technical/02](technical/02-motor-de-cobranca.md) | `packages/core/src/billing.ts`, `services/billing` |
+| Pagamento online | [product/19](product/19-levantamento-pagamentos.md) | [technical/05](technical/05-modulo-financeiro.md), [technical/14](technical/14-asaas-mcp.md) | `features/online-payments`, `services/onlinePayments`, `services/payments`, `lib/asaas` |
+| Plano GestaraHub | [product/13](product/13-modelo-de-negocio.md) (§6 troca de plano) | [technical/05](technical/05-modulo-financeiro.md) §3 | `features/subscription`, `services/subscription`, `services/server/subscription*.ts` |
+| Financeiro | [product/13](product/13-modelo-de-negocio.md) | [technical/05](technical/05-modulo-financeiro.md) | `features/finance`, `services/finance` |
+| Relatórios e documentos | [product/21](product/21-ideias-certificados-e-notas.md) | [technical/18](technical/18-documentos-pdf.md) | `features/reports`, `lib/documents`, `app/api/documents` |
+| Comunicação e lembretes | [product/25](product/25-lembretes-e-seguranca.md), [product/13](product/13-modelo-de-negocio.md) §5 | [technical/07](technical/07-integracao-whatsapp.md) | `features/communication`, `services/communication`, `lib/whatsapp` |
+| Auditoria e registros | [technical/21](technical/21-registro-de-erros.md) | [technical/23](technical/23-historico-em-segundo-plano.md) | `features/audit`, `services/audit`, `lib/log` |
+| Fuso | [technical/22](technical/22-fuso-do-espaco.md) | [technical/22](technical/22-fuso-do-espaco.md) | `packages/core/src/date.ts` |
+| Desempenho | [technical/19](technical/19-desempenho-e-escala.md) | [technical/19](technical/19-desempenho-e-escala.md) | `services/world` |
+| Testes | [technical/04](technical/04-estrategia-de-testes.md) | [technical/20](technical/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
+| Ambiente local | [technical/16](technical/16-ambiente-local.md) | [technical/16](technical/16-ambiente-local.md) | `apps/web/scripts`, `apps/supabase` |
+| **Fora do foco** (agendamento e entrega) | os docs em "Módulos em Standby", como estão | | `features/appointments`, `features/services` |
+
 ---
 
 ## 1. Foco Ativo do MVP (Modelo 3 — Turmas & Academia)
@@ -93,7 +116,7 @@ Estes documentos contêm a especificação de outros modelos operacionais desenv
 
 ## Skills
 
-As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills/): `adr`, `architect`, `contract`, `smoke-web`, `web-data`, `web-feature`, `web-form`. Resumo de cada uma em [skills/README.md](skills/README.md). Regras gerais de código para agentes: [`../AGENTS.md`](../AGENTS.md) e [`../CLAUDE.md`](../CLAUDE.md).
+As skills de agente do projeto vivem em [`../.claude/skills/`](../.claude/skills/): `docs`, `architect`, `contract`, `smoke-web`, `web-data`, `web-feature`, `web-form`. Resumo de cada uma em [skills/README.md](skills/README.md). Regras gerais de código para agentes: [`../AGENTS.md`](../AGENTS.md) e [`../CLAUDE.md`](../CLAUDE.md).
 
 ---
 

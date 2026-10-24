@@ -1,5 +1,7 @@
 # Decisoes Tecnicas
 
+Data: 2026-06-26. Status: Decidido.
+
 ## Decisao
 
 O GestaraHub e construido com abordagem frontend-first e dados mockados, sobre uma stack TypeScript moderna baseada em Next.js 16 (App Router, React Server Components). O backend real fica adiado para a fase 3; ate la, toda a aplicacao roda no frontend, consumindo uma camada de servico mockada que imita um contrato de API HTTP.

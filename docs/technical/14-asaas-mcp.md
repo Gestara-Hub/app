@@ -1,5 +1,7 @@
 # 14 — Documentação do Asaas por MCP (consulta pela IA)
 
+Data: 2026-10-21.
+
 > **Status:** 21/10/2026. Guia de uso. O Asaas publica a documentação da API como um servidor MCP; qualquer assistente (Claude Code, Claude Desktop, Codex, Cursor, Antigravity, VS Code) pode consultá-la direto, sem copiar e colar a doc no prompt.
 
 ## O que é

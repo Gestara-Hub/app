@@ -1,6 +1,6 @@
 # 23. Histórico do que roda sem pessoa
 
-Data: 2026-10-23. Migração `20261023000049_background_history.sql`.
+Data: 2026-10-23. Migração `20261023000049_background_history.sql`. Status: Feito.
 
 ## Problema
 

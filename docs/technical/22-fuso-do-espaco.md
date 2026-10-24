@@ -1,6 +1,6 @@
 # 22. Fuso do espaço
 
-Data: 2026-10-23. Origem: achados 60 e 76 do teste geral (`qa/2026-10-23-teste-geral.md`).
+Data: 2026-10-23. Origem: achados 60 e 76 do teste geral (`qa/2026-10-23-teste-geral.md`). Status: Feito.
 
 ## Problema
 

@@ -6,7 +6,7 @@ As skills do GestaraHub vivem em [`.claude/skills/`](../../.claude/skills/) (um 
 
 | Skill | Para que serve |
 | --- | --- |
-| [`adr`](../../.claude/skills/adr/SKILL.md) | Registrar uma decisao de arquitetura ou de produto nos docs do jeito padrao e corrigir o drift de documentacao que ela cria. |
+| [`docs`](../../.claude/skills/docs/SKILL.md) | Decidir onde cada doc fica (produto, tecnico, guias, frontend, qa, handoff, archive), escrever no formato padrao, registrar decisoes e manter o mapa por assunto do README. |
 | [`architect`](../../.claude/skills/architect/SKILL.md) | Decidir e revisar arquitetura em `apps/web`: onde o codigo vive, fronteiras de modulo, extracao de pacotes, RSC x client, prontidao para MFE, checklist de revisao. |
 | [`contract`](../../.claude/skills/contract/SKILL.md) | Criar ou evoluir um contrato em `@gestarahub/contracts` (entidades, read-models, Create/Update, enums, codigos de erro) mantendo service mock e seed em sincronia. |
 | [`smoke-web`](../../.claude/skills/smoke-web/SKILL.md) | Subir e dirigir o `apps/web` para um smoke test em runtime (cookie de sessao forjado, puppeteer-core sobre o Chrome do sistema, injecao de dados no localStorage). |

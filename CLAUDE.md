@@ -8,6 +8,7 @@ GestaraHub is a modern multi-tenant management platform for service businesses, 
 - **Mock / Data Seam**: `@/mocks/store` (multi-tenant world persisted in `localStorage`) and `@/services/*Service.ts` simulate the future NestJS API with `simulateRead` and `simulateWrite`.
 - **Session**: mocked cookie `gestarahub_session`, route guard in `apps/web/src/proxy.ts` (Next 16), server actions in `apps/web/src/app/(auth)/actions.ts`, per-page RBAC with `requirePermission`.
 - **Docs**: `docs/README.md` is the index; ADRs in `docs/technical/`, UI decisions in `docs/frontend/06-decisoes-de-interface.md`, screen/form/mobile standards in `docs/frontend/07-padroes-telas-e-ux.md`, and **recent LP & Onboarding decisions in [`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/frontend/08-decisoes-landing-page-e-onboarding.md)**.
+- **Where each doc goes:** skill `docs` (`.claude/skills/docs`): look the subject up in the "Mapa por assunto" of `docs/README.md` first, add a section if it exists, create a file only for a new subject; "do later" items also go in `docs/pendencias.md`.
 
 ### 1.1. Contexto Estratégico & Decisões Recentes (LP & Setup Inicial)
 Consulte **[`docs/frontend/08-decisoes-landing-page-e-onboarding.md`](docs/frontend/08-decisoes-landing-page-e-onboarding.md)** para o histórico completo. Principais diretrizes ativas:

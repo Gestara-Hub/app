@@ -1,5 +1,7 @@
 # Estratégia de testes (regressão)
 
+Data: 2026-09-22. Status: Feito.
+
 > Substitui a linha "Vitest + Testing Library; Playwright em fase posterior" de [`00-decisoes-tecnicas.md`](00-decisoes-tecnicas.md). Implementado em 2026-09-22.
 
 ## Decisao

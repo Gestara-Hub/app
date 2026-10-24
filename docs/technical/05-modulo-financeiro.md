@@ -1,5 +1,7 @@
 # 05 — Módulo Financeiro (academia de luta)
 
+Data: 2026-09-29.
+
 > **Status:** implementado no frontend mockado (27/09/2026), aguardando validação no navegador e testes. Desvios na seção 14.
 > **Escopo:** Modelo 3 (`classes`), academias de luta. Contratos neutros (servem para os outros modelos no futuro), mas a navegação e as telas entram só em `classes` nesta rodada.
 > **Relacionados:** [13-modelo-de-negocio.md](../product/13-modelo-de-negocio.md) (grátis vs pago), [15-regras-de-cobranca.md](../product/15-regras-de-cobranca.md) (mensalidades), [02-motor-de-cobranca.md](02-motor-de-cobranca.md), [18-pesquisa-dores-e-caminhos.md](../product/18-pesquisa-dores-e-caminhos.md).

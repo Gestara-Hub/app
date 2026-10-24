@@ -1,5 +1,7 @@
 # 16 — Ambiente local
 
+Data: 2026-10-21.
+
 > **Status:** 21/10/2026. Como subir o GestaraHub com o Supabase local num comando.
 
 ## Pré-requisitos

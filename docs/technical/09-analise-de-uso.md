@@ -1,5 +1,7 @@
 # 09 — Análise de uso (PostHog)
 
+Data: 2026-10-18.
+
 > **Status:** 17/10/2026. Integração pronta no código (`apps/web/src/lib/analytics.ts`), com aviso de cookies. Só liga com a chave no ambiente **e** depois que a pessoa aceita. O dono está criando a conta no PostHog e a variável `NEXT_PUBLIC_POSTHOG_KEY`.
 
 ## Decisão

@@ -1,5 +1,7 @@
 # Multi-tenant, modelo operacional e escopo do tenant
 
+Data: 2026-09-22. Status: Feito.
+
 > Decisões já implementadas. A multiunidade continua adiada para a Fase 5 do roadmap ([`../product/07-roadmap.md`](../product/07-roadmap.md)).
 
 ## Decisao

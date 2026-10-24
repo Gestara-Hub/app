@@ -1,5 +1,7 @@
 # 15 — Retirada do mock no modelo de turmas
 
+Data: 2026-10-21.
+
 > **Status:** Decidido e planejado em 21/10/2026. Execução por fatias, na ordem abaixo. Cada fatia fecha com typecheck, lint e testes verdes e um commit próprio.
 > **Contexto relacionado:** [06 — Passagem para o backend](06-passagem-backend.md), [08 — Backend no Supabase](08-backend-supabase.md), [12 — Modularização da camada de serviços](12-modularizacao-da-camada-de-servicos.md).
 

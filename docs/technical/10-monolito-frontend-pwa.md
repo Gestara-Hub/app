@@ -1,5 +1,7 @@
 # 10 — Monólito Frontend no Next.js com PWA (Gestor, Professor e Aluno)
 
+Data: 2026-10-19.
+
 > **Status:** Decidido em 19/10/2026. Substitui a ideia anterior de aplicativos móveis separados em React Native/Expo registrados em [06-passagem-backend.md](06-passagem-backend.md) e [08-backend-supabase.md](08-backend-supabase.md).
 
 ## Decisão
