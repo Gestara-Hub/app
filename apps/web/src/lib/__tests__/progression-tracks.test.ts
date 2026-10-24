@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PROGRESSION_TEMPLATES,
   ageAt,
+  anyModalityHasTrack,
   computeNextPromotionStep,
   inferDefaultTrackForModalityName,
   inferTemplateKeyForModalityName,
@@ -315,5 +316,20 @@ describe("PROGRESSION_TEMPLATES", () => {
         expect(level.minAge).toBeLessThanOrEqual(level.maxAge);
       }
     }
+  });
+});
+
+describe("anyModalityHasTrack (achado 25)", () => {
+  it("só oferece definir nível em modalidade com trilha ligada", () => {
+    const withTrack = { name: "Jiu-Jitsu", progressionTrack: bjj };
+    const withoutTrack = { name: "Pilates Solo", progressionTrack: { ...bjj, enabled: false } };
+    expect(anyModalityHasTrack([withTrack])).toBe(true);
+    expect(anyModalityHasTrack([withoutTrack, withTrack])).toBe(true);
+    expect(anyModalityHasTrack([withoutTrack])).toBe(false);
+  });
+
+  it("sem modalidade nenhuma (aluno sem turma), não há o que definir", () => {
+    expect(anyModalityHasTrack([])).toBe(false);
+    expect(anyModalityHasTrack([undefined])).toBe(false);
   });
 });

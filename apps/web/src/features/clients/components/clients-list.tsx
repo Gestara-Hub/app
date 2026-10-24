@@ -51,7 +51,7 @@ import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { MinorConsentBadge, isMinorConsentPending } from "@/components/shared/minor-consent-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
-import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { ageAt, anyModalityHasTrack, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
@@ -141,6 +141,13 @@ function ClientProgressionBadges({
   onOpenGraduation?: (client: Client) => void;
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
+  const { data: enrolledModalities } = useEnrolledModalities();
+  const trackModalityIds = [
+    ...new Set([
+      ...Object.keys(client.progressions ?? {}),
+      ...(enrolledModalities ?? []).filter((pair) => pair.studentId === client.id).map((pair) => pair.modalityId),
+    ]),
+  ];
   const age = ageAt(client.birthDate, dateInSpace());
   const entries = Object.values(client.progressions ?? {});
   const resolvedBadges = entries
@@ -169,6 +176,8 @@ function ClientProgressionBadges({
 
   if (resolvedBadges.length === 0) {
     if (!onOpenGraduation) return null;
+    // Sem turma ou so em modalidade sem trilha: nada a definir (a ficha diz "Sem trilha de evolução").
+    if (!anyModalityHasTrack(trackModalityIds.map((id) => categoryById.get(id)))) return null;
     return (
       <button
         type="button"

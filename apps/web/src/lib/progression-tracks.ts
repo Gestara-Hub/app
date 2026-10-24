@@ -514,6 +514,17 @@ export function resolveModalityTrack(
   return inferDefaultTrackForModalityName(modality?.name ?? "");
 }
 
+/**
+ * Alguma das modalidades tem trilha de evolucao ligada? A lista de alunos so
+ * oferece "Definir nivel" a quem esta em modalidade com trilha (achado 25 do
+ * teste de 23/10); a ficha ja diz "Sem trilha de evolucao" nos outros casos.
+ */
+export function anyModalityHasTrack(
+  modalities: readonly ({ name?: string; progressionTrack?: ModalityProgressionTrack } | undefined)[],
+): boolean {
+  return modalities.some((modality) => Boolean(modality) && resolveModalityTrack(modality).enabled);
+}
+
 // --- Faixa etaria por nivel ------------------------------------------------
 
 /** Idade completa em `onDate` (YYYY-MM-DD), pela data local. Sem nascimento = null. */
