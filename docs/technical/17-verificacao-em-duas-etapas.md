@@ -93,16 +93,26 @@ Constantes em `lib/security/two-factor-rules.ts`:
 - Local: `[auth.mfa.totp]` com `enroll_enabled` e `verify_enabled` em `apps/supabase/config.toml`. Precisa reiniciar o Supabase local.
 - Produção: o TOTP já vem ligado nos projetos hospedados. Conferir em Authentication, Multi-Factor no painel.
 
+## Códigos de recuperação e reinício pelo painel (24/10/2026)
+
+**Códigos de recuperação.** Ao ligar a verificação pela primeira vez (app ou e-mail), a pessoa recebe 8 códigos de uso único (`ABCD-EFGH`, 32 símbolos sem 0, O, 1 e I), mostrados só uma vez com "Copiar" e "Baixar arquivo". No banco, `two_factor_recovery_codes` guarda só o hash (`recovery:usuário:código`), com RLS sem políticas (migração 58). Onde servem:
+- **Login:** na tela `/two-factor`, "Perdi o acesso ao código". O código gasto prova o segundo fator da sessão (`two_factor_sessions.method = 'recovery'`) e vale uma vez, mesmo com dois cliques juntos. Entra no mesmo limite de tentativas dos outros códigos.
+- **Desligar:** quem perdeu o aplicativo desliga com um código de recuperação e liga de novo com o aparelho novo.
+- **Gerar novos** (Segurança, "Códigos de recuperação"): pede um código atual do app ou do e-mail (propósito `recovery`) e troca os 8 por novos; os antigos deixam de valer. Vira evento de segurança na auditoria.
+- Desligar o 2FA apaga os códigos. A janela Segurança mostra quantos restam.
+
+**Reinício pelo painel.** Quem perdeu o aplicativo e os códigos pede ajuda no Fale com a gente. O proprietário do GestaraHub abre o espaço no painel, aba "Dados e LGPD", escolhe a pessoa e reinicia (motivo obrigatório, confirmação em dois toques; antes, confirmar quem é por fora do sistema). O painel remove o app e desliga o e-mail pela API de administração do Auth, limpa dispositivos lembrados, sessões verificadas e códigos (`platform.finish_user_two_factor_reset`, migração 59), registra na Auditoria do espaço (o dono do espaço vê) e do painel, e avisa a pessoa por e-mail. Código: `apps/admin/src/lib/server/user-two-factor.ts`.
+
 ## Testes
 
 - Vitest (`lib/__tests__/two-factor-rules.test.ts`): código, hash, validade, tentativas, reenvio, máscara do e-mail, nome do dispositivo, último uso e conta só do Google.
-- Banco (`app/(auth)/__tests__/twoFactor.db.test.ts` e `twoFactorEmail.db.test.ts`): senha sem verificação entra; com o e-mail ligado, a senha sozinha não lê dados (`getClientForTenant` e `requireTenant` recusam) até o código; outra sessão segue barrada; 5 erros revogam, vencido e usado não valem, código novo revoga o anterior, o propósito separa; limite de reenvio; dispositivo lembrado entra sem código (vencido, revogado ou de outro usuário não vale); app + dispositivo lembrado entra sem o código do app; ligar pelo e-mail e desligar (revoga dispositivos e sessões, auditoria); desligar com o app remove o fator.
+- Banco (`app/(auth)/__tests__/twoFactorRecovery.db.test.ts`: 8 códigos uma vez só, uso único, prova da sessão, desligar e gerar novos; `twoFactor.db.test.ts` e `twoFactorEmail.db.test.ts`): senha sem verificação entra; com o e-mail ligado, a senha sozinha não lê dados (`getClientForTenant` e `requireTenant` recusam) até o código; outra sessão segue barrada; 5 erros revogam, vencido e usado não valem, código novo revoga o anterior, o propósito separa; limite de reenvio; dispositivo lembrado entra sem código (vencido, revogado ou de outro usuário não vale); app + dispositivo lembrado entra sem o código do app; ligar pelo e-mail e desligar (revoga dispositivos e sessões, auditoria); desligar com o app remove o fator.
 - E2E (área `acesso`): `e2e/verificacao-email.spec.ts` (ligar pelo e-mail, sair, entrar com código, lembrar, entrar sem código, esquecer) e `e2e/seguranca-aviso.spec.ts` ("Ativar agora" abre a escolha). O código vem de `setKnownTwoFactorEmailCode` (`e2e/db.ts`), que grava um hash conhecido.
 
 ## Ainda não feito
 
 - Política RLS restritiva por `aal` no banco. Hoje a barreira está no servidor (`requireTenant`, `getClientForTenant`) e no cookie da sessão.
-- Códigos de recuperação do app. Quem perder o celular e não ligou o e-mail precisa que o suporte remova o fator pelo painel do Supabase.
+- Aviso por e-mail ao usar um código de recuperação no login (hoje só o painel avisa, quando reinicia o 2FA de alguém).
 - Ações que confiam só no cookie `gestarahub_session` (não assinado) e usam a chave de serviço, sem passar pelo `requireTenant` (ex.: `persistSetupToBackendAction`), não passam pela barreira. Vale revisar quando o cookie virar token assinado.
 
 ## Perguntas para o usuário

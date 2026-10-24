@@ -46,6 +46,7 @@ function currentSubscription(): Subscription {
     status: sub?.status,
     renewsOn: sub?.renewsOn,
     scheduledChange: sub?.scheduledChange,
+    courtesyUntil: sub?.courtesyUntil,
     pendingChange: sub?.pendingChange,
     pendingPayment: sub?.pendingPayment,
     revertedFrom: sub?.revertedFrom,

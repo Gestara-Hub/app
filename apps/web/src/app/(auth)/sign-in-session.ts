@@ -90,6 +90,12 @@ export async function finishSignIn(
     return { ok: false, message: "Sua conta está inativa. Procure o responsável pelo espaço." };
   }
 
+  // Espaco inativado pelo painel do GestaraHub (encerramento, LGPD): avisa em vez de voltar mudo ao login.
+  const { data: space } = await admin.from("organizations").select("status").eq("id", dbUser.organization_id).maybeSingle();
+  if (space?.status && space.status !== "active") {
+    return { ok: false, message: "Este espaço está inativo. Fale com o suporte do GestaraHub para reativar." };
+  }
+
   const { user, organization, unit, categories } = await loadSessionPayload(admin, dbUser);
   (await cookies()).set(SESSION_COOKIE, encodeSession(user), {
     httpOnly: true,

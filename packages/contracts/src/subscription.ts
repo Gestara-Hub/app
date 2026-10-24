@@ -33,6 +33,11 @@ export interface Subscription {
    * pagamento ate la, conta a tolerancia de 5 dias.
    */
   renewsOn?: DateISO;
+  /**
+   * Cortesia do GestaraHub (concedida pelo painel admin): o plano pago vale ate este
+   * dia, sem cobranca. A troca para o Gratis ja vem marcada no dia seguinte.
+   */
+  courtesyUntil?: DateISO;
   /** Troca que reduz (plano menor, anual → mensal, Gratis): vale em `effectiveOn`. */
   scheduledChange?: ScheduledPlanChange;
   /** Upgrade esperando o pagamento da diferenca (Pix): liga ao confirmar. */
@@ -66,7 +71,13 @@ export type SubscriptionEventKind =
   | "reactivated"
   | "closed"
   | "canceled"
-  | "removed_at_partner";
+  | "removed_at_partner"
+  // Concedidos pelo painel admin do GestaraHub (doc technical/26, fase 3).
+  | "courtesy_granted"
+  | "courtesy_ended"
+  | "courtesy_revoked"
+  | "grace_extended"
+  | "forced_free";
 
 export interface ScheduledPlanChange {
   tier: SubscriptionTier;

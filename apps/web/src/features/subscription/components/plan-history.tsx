@@ -20,6 +20,11 @@ const KIND_LABEL: Record<SubscriptionEventKind, string> = {
   closed: "Assinatura encerrada",
   canceled: "Voltou ao Grátis",
   removed_at_partner: "Removida no parceiro",
+  courtesy_granted: "Cortesia concedida",
+  courtesy_ended: "Cortesia terminou",
+  courtesy_revoked: "Cortesia encerrada",
+  grace_extended: "Mais dias para pagar",
+  forced_free: "Voltou ao Grátis",
 };
 
 function plan(tier: SubscriptionTier | undefined, interval: string | undefined): string {

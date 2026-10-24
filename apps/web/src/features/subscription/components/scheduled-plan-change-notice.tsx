@@ -19,6 +19,18 @@ export function ScheduledPlanChangeNotice({ subscription }: { subscription: Subs
   const scheduled = subscription?.scheduledChange;
   if (!subscription || !scheduled) return null;
 
+  // Cortesia do GestaraHub: so avisa ate quando vale (nao se desmarca).
+  if (subscription.courtesyUntil) {
+    return (
+      <div className="flex items-start gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 text-sm">
+        <CalendarClock className="mt-0.5 size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+        <span className="min-w-0 break-words">
+          Cortesia do GestaraHub: o Plano {subscriptionTierLabel(subscription.tier)} vale até {formatDate(subscription.courtesyUntil)}. Depois, o espaço volta ao Grátis, sem perder nada. Para continuar no plano, assine em Planos.
+        </span>
+      </div>
+    );
+  }
+
   const target =
     scheduled.tier === "free"
       ? "o Grátis"

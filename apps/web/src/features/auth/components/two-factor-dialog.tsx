@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Copy, Loader2, Mail, Smartphone } from "lucide-react";
+import { Copy, Download, KeyRound, Loader2, Mail, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,12 +25,13 @@ import {
   forgetTrustedDeviceAction,
   getTwoFactorStatusAction,
   listTrustedDevicesAction,
+  regenerateRecoveryCodesAction,
   sendSecurityEmailCodeAction,
   startTotpEnrollmentAction,
   type TrustedDeviceItem,
 } from "@/app/(auth)/two-factor-actions";
 
-type Status = { app: boolean; email: boolean; maskedEmail: string };
+type Status = { app: boolean; email: boolean; maskedEmail: string; recoveryLeft: number };
 
 type View =
   | { kind: "loading" }
@@ -40,7 +41,9 @@ type View =
   | { kind: "overview" }
   | { kind: "enroll-app"; factorId: string; qrCode: string; secret: string }
   | { kind: "enroll-email" }
-  | { kind: "disable"; method: "app" | "email" };
+  | { kind: "disable"; method: "app" | "email" | "recovery" }
+  | { kind: "regenerate"; method: "app" | "email" }
+  | { kind: "recovery-codes"; codes: string[] };
 
 /** Campo do codigo de 6 numeros (do aplicativo ou do e-mail). */
 function CodeField({
@@ -73,6 +76,47 @@ function CodeField({
         onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
         placeholder="000000"
         className="text-center font-mono text-lg tracking-[0.5em] md:text-lg"
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+      />
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Campo do codigo de recuperacao (8 letras e numeros, com ou sem hifen). */
+function RecoveryField({
+  id,
+  value,
+  onChange,
+  disabled,
+  error,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>
+        Código de recuperação
+        <span className="ml-0.5 text-destructive">*</span>
+      </Label>
+      <Input
+        id={id}
+        autoComplete="off"
+        autoCapitalize="characters"
+        maxLength={9}
+        value={value}
+        onChange={(e) => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 9))}
+        placeholder="ABCD-EFGH"
+        className="text-center font-mono text-lg tracking-widest md:text-lg"
         disabled={disabled}
         aria-invalid={Boolean(error)}
       />
@@ -125,7 +169,7 @@ function MethodCard({
  */
 export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [view, setView] = useState<View>({ kind: "loading" });
-  const [status, setStatus] = useState<Status>({ app: false, email: false, maskedEmail: "" });
+  const [status, setStatus] = useState<Status>({ app: false, email: false, maskedEmail: "", recoveryLeft: 0 });
   const [devices, setDevices] = useState<TrustedDeviceItem[]>([]);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +188,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
       if (!result.ok) return setView({ kind: "error", message: result.message });
       if (result.googleOnly) return setView({ kind: "google" });
       if (result.demo) return setView({ kind: "demo" });
-      setStatus({ app: result.app, email: result.email, maskedEmail: result.maskedEmail });
+      setStatus({ app: result.app, email: result.email, maskedEmail: result.maskedEmail, recoveryLeft: result.recoveryLeft });
       setView({ kind: "overview" });
       if (result.enabled) await loadDevices();
       else setDevices([]);
@@ -187,7 +231,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
     });
   };
 
-  const sendEmailCode = (purpose: "enable" | "disable") => {
+  const sendEmailCode = (purpose: "enable" | "disable" | "recovery") => {
     setError(null);
     startSending(async () => {
       const result = await sendSecurityEmailCodeAction({ purpose });
@@ -208,7 +252,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (view.kind !== "enroll-app" && view.kind !== "enroll-email" && view.kind !== "disable") return;
+    if (view.kind !== "enroll-app" && view.kind !== "enroll-email" && view.kind !== "disable" && view.kind !== "regenerate") return;
     setError(null);
     startTransition(async () => {
       const result =
@@ -216,15 +260,21 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
           ? await confirmTotpEnrollmentAction({ factorId: view.factorId, code })
           : view.kind === "enroll-email"
             ? await enableEmailTwoFactorAction({ code })
-            : await disableTwoFactorAction({ code, method: view.method });
+            : view.kind === "regenerate"
+              ? await regenerateRecoveryCodesAction({ code, method: view.method })
+              : await disableTwoFactorAction({ code, method: view.method });
       if (!result.ok) {
         setError(result.message);
         setCode("");
         return;
       }
-      toast.success(view.kind === "disable" ? "Verificação em duas etapas desligada." : "Verificação em duas etapas ligada.");
       setCode("");
+      const codes: string[] | undefined = "recoveryCodes" in result ? (result.recoveryCodes as string[] | undefined) : undefined;
+      if (view.kind === "regenerate") toast.success("Novos códigos de recuperação gerados.");
+      else toast.success(view.kind === "disable" ? "Verificação em duas etapas desligada." : "Verificação em duas etapas ligada.");
       await refresh();
+      // Os codigos aparecem so desta vez: a pessoa precisa guardar antes de fechar.
+      if (codes && codes.length > 0) go({ kind: "recovery-codes", codes });
     });
   };
 
@@ -246,6 +296,25 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
     });
   };
 
+  const copyCodes = async (codes: string[]) => {
+    try {
+      await navigator.clipboard.writeText(codes.join("\n"));
+      toast.success("Códigos copiados.");
+    } catch {
+      toast.error("Não foi possível copiar. Selecione os códigos e copie.");
+    }
+  };
+
+  const downloadCodes = (codes: string[]) => {
+    const text = ["Códigos de recuperação do GestaraHub", "Cada código vale uma vez. Guarde em lugar seguro.", "", ...codes, ""].join("\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "gestarahub-codigos-de-recuperacao.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const copySecret = async (secret: string) => {
     try {
       await navigator.clipboard.writeText(secret);
@@ -256,8 +325,10 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
   };
 
   const enabled = status.app || status.email;
-  const isForm = view.kind === "enroll-app" || view.kind === "enroll-email" || view.kind === "disable";
-  const emailStep = view.kind === "enroll-email" || (view.kind === "disable" && view.method === "email");
+  const isForm = view.kind === "enroll-app" || view.kind === "enroll-email" || view.kind === "disable" || view.kind === "regenerate";
+  const emailStep = view.kind === "enroll-email" || ((view.kind === "disable" || view.kind === "regenerate") && view.method === "email");
+  const emailPurpose = view.kind === "disable" ? "disable" : view.kind === "regenerate" ? "recovery" : "enable";
+  const codeReady = view.kind === "disable" && view.method === "recovery" ? code.replace(/-/g, "").length === 8 : code.length === 6;
   const waitingSend = emailStep && !sentTo;
 
   return (
@@ -323,6 +394,29 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                     )
                   }
                 />
+
+                {enabled ? (
+                  <MethodCard
+                    icon={<KeyRound className="size-4" aria-hidden />}
+                    title="Códigos de recuperação"
+                    description={
+                      status.recoveryLeft > 0
+                        ? `${status.recoveryLeft} ${status.recoveryLeft === 1 ? "código vale" : "códigos valem"}. Servem se você perder o aplicativo ou o e-mail.`
+                        : "Você não tem códigos valendo. Gere novos e guarde em lugar seguro."
+                    }
+                    on={status.recoveryLeft > 0}
+                    action={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => go({ kind: "regenerate", method: status.app ? "app" : "email" })}
+                        disabled={pending}
+                      >
+                        Gerar novos códigos
+                      </Button>
+                    }
+                  />
+                ) : null}
 
                 {enabled ? (
                   <div className="space-y-2 pt-2">
@@ -406,7 +500,9 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <p className="text-sm text-muted-foreground">
                   {view.kind === "disable"
                     ? "Para desligar, confirme com um código do e-mail."
-                    : `Vamos mandar um código para ${status.maskedEmail}.`}
+                    : view.kind === "regenerate"
+                      ? "Para gerar novos códigos, confirme com um código do e-mail. Os antigos deixam de valer."
+                      : `Vamos mandar um código para ${status.maskedEmail}.`}
                 </p>
                 {sentTo ? (
                   <>
@@ -423,7 +519,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                       type="button"
                       variant="outline"
                       className="w-full"
-                      onClick={() => sendEmailCode(view.kind === "disable" ? "disable" : "enable")}
+                      onClick={() => sendEmailCode(emailPurpose)}
                       disabled={sending || resend.seconds > 0}
                     >
                       {resend.seconds > 0 ? `Reenviar código em ${resend.seconds} s` : "Reenviar código"}
@@ -450,15 +546,83 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   disabled={pending}
                   error={error}
                 />
+                <div className="flex flex-col items-start gap-1">
+                  {status.email ? (
+                    <button
+                      type="button"
+                      onClick={() => go({ kind: "disable", method: "email" })}
+                      className="cursor-pointer text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      Receber código por e-mail
+                    </button>
+                  ) : null}
+                  {status.recoveryLeft > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => go({ kind: "disable", method: "recovery" })}
+                      className="cursor-pointer text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      Perdi o aplicativo: usar código de recuperação
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {view.kind === "disable" && view.method === "recovery" ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Digite um dos seus códigos de recuperação. Ele vale uma vez. Depois você pode ligar a verificação de novo com o aparelho novo.
+                </p>
+                <RecoveryField id="two-factor-recovery-code" value={code} onChange={setCode} disabled={pending} error={error} />
+              </div>
+            ) : null}
+
+            {view.kind === "regenerate" && view.method === "app" ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Para gerar novos códigos de recuperação, digite um código do aplicativo. Os antigos deixam de valer.
+                </p>
+                <CodeField
+                  id="two-factor-regenerate-code"
+                  label="Código do aplicativo"
+                  value={code}
+                  onChange={setCode}
+                  disabled={pending}
+                  error={error}
+                />
                 {status.email ? (
                   <button
                     type="button"
-                    onClick={() => go({ kind: "disable", method: "email" })}
+                    onClick={() => go({ kind: "regenerate", method: "email" })}
                     className="cursor-pointer text-sm font-medium text-foreground underline-offset-4 hover:underline"
                   >
                     Receber código por e-mail
                   </button>
                 ) : null}
+              </div>
+            ) : null}
+
+            {view.kind === "recovery-codes" ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Guarde estes códigos em lugar seguro (gerenciador de senhas ou papel). Cada um vale uma vez e serve se você perder o aplicativo ou o e-mail. Eles não aparecem de novo.
+                </p>
+                <ul className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-muted/40 p-3 font-mono text-sm">
+                  {view.codes.map((item) => (
+                    <li key={item} className="text-center select-all">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => copyCodes(view.codes)}>
+                    <Copy className="size-4" /> Copiar
+                  </Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => downloadCodes(view.codes)}>
+                    <Download className="size-4" /> Baixar arquivo
+                  </Button>
+                </div>
               </div>
             ) : null}
           </DialogBody>
@@ -472,7 +636,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 {waitingSend ? (
                   <Button
                     type="button"
-                    onClick={() => sendEmailCode(view.kind === "disable" ? "disable" : "enable")}
+                    onClick={() => sendEmailCode(emailPurpose)}
                     disabled={sending}
                     className="gap-2"
                   >
@@ -483,12 +647,16 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   <Button
                     type="submit"
                     variant={view.kind === "disable" ? "destructive" : "default"}
-                    disabled={pending || code.length !== 6}
+                    disabled={pending || !codeReady}
                   >
-                    {pending ? "Conferindo..." : view.kind === "disable" ? "Desligar" : "Ligar"}
+                    {pending ? "Conferindo..." : view.kind === "disable" ? "Desligar" : view.kind === "regenerate" ? "Gerar códigos" : "Ligar"}
                   </Button>
                 )}
               </>
+            ) : view.kind === "recovery-codes" ? (
+              <Button type="button" onClick={() => go({ kind: "overview" })}>
+                Guardei os códigos
+              </Button>
             ) : view.kind === "overview" && enabled ? (
               <>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

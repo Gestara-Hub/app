@@ -77,17 +77,19 @@ const loadSessionSpace = cache(async (userId: string, organizationId: string): P
   try {
     const { data } = await createSupabaseAdminClient()
       .from("users")
-      .select("status, organizations(settings, subscription, units(address))")
+      .select("status, organizations(status, settings, subscription, units(address))")
       .eq("id", userId)
       .eq("organization_id", organizationId)
       .maybeSingle();
     const organization = (data?.organizations ?? null) as {
+      status?: string;
       settings?: { timeZone?: string } | null;
       subscription?: { tier?: SubscriptionTier } | null;
       units?: { address?: { state?: string } | string | null }[];
     } | null;
     return {
-      active: data?.status === "active",
+      // Espaco inativado pelo painel (LGPD/encerramento): ninguem entra nem segue logado.
+      active: data?.status === "active" && organization?.status === "active",
       timeZone: resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address),
       tier: data ? (organization?.subscription?.tier ?? "free") : undefined,
     };

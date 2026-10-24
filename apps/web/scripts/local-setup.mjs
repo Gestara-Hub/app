@@ -14,7 +14,7 @@
  * 4. Prepara o cron diario: CRON_SECRET no .env.local e app_url/cron_secret no Vault
  *    (o mesmo que `pnpm cron:local`).
  * 5. Recria o espaco de demonstracao no banco (o mesmo que `pnpm demo:local`):
- *    DEMO_PASSWORD no .env.local e os usuarios e dados da Academia X.
+ *    DEMO_PASSWORD no .env.local e os usuarios e dados da Academia X (pulado com --no-demo).
  *
  * Nunca imprime chaves nem segredos. Depois: `pnpm dev` (e `pnpm tunnel` para o
  * webhook do Asaas).
@@ -28,6 +28,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const ENV_FILE = resolve(ROOT, "apps/web/.env.local");
 const SUPABASE = ["--workdir", "apps"];
 const reset = process.argv.includes("--reset");
+const noDemo = process.argv.includes("--no-demo");
 
 const step = (n, text) => console.log(`\n${n}. ${text}`);
 const fail = (text) => {
@@ -117,15 +118,20 @@ execFileSync(process.execPath, [resolve(ROOT, "apps/web/scripts/dev-cron-secrets
   .forEach((l) => console.log(`   ${l}`));
 
 // 5. Demonstracao no banco
-step(5, "Espaço de demonstração (Academia X)");
-execFileSync(process.execPath, [resolve(ROOT, "apps/web/scripts/dev-demo.mjs")], {
-  cwd: ROOT,
-  stdio: ["ignore", "pipe", "inherit"],
-})
-  .toString()
-  .split("\n")
-  .filter((l) => l.trim())
-  .forEach((l) => console.log(`   ${l}`));
+if (noDemo) {
+  step(5, "Espaço de demonstração");
+  console.log("   Pulado (--no-demo). Para criar depois: pnpm demo:local.");
+} else {
+  step(5, "Espaço de demonstração (Academia X)");
+  execFileSync(process.execPath, [resolve(ROOT, "apps/web/scripts/dev-demo.mjs")], {
+    cwd: ROOT,
+    stdio: ["ignore", "pipe", "inherit"],
+  })
+    .toString()
+    .split("\n")
+    .filter((l) => l.trim())
+    .forEach((l) => console.log(`   ${l}`));
+}
 
 console.log(`
 Pronto. Agora:

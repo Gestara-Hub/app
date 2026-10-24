@@ -1,0 +1,513 @@
+[
+  {
+    "id": "alunos#cadastrar-um-aluno",
+    "article": "Alunos e ficha do aluno",
+    "title": "Cadastrar um aluno",
+    "route": "/clients",
+    "text": "Em Alunos, clique em \"Novo aluno\". Informe nome e telefone (com DDD, para o WhatsApp). Escolha como ele paga: mensalidade com plano, pacote de aulas ou sem mensalidade. Para menor de idade, cadastre o responsável: nome, telefone e CPF do responsável financeiro."
+  },
+  {
+    "id": "alunos#ficha-do-aluno",
+    "article": "Alunos e ficha do aluno",
+    "title": "Ficha do aluno",
+    "route": "/clients",
+    "text": "Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Cobranças, Pacotes, Evolução, Mensagens e Cadastro."
+  },
+  {
+    "id": "alunos#pausar-a-assinatura",
+    "article": "Alunos e ficha do aluno",
+    "title": "Pausar a assinatura",
+    "route": "/clients",
+    "text": "Edite o aluno e mude \"Situação da assinatura\" para \"Trancada / Pausada\". O sistema pede confirmação e pergunta o que fazer com a mensalidade em aberto do mês: cancelar ou manter. As mensalidades futuras deixam de valer e o lembrete de WhatsApp não sai enquanto estiver pausado."
+  },
+  {
+    "id": "alunos#inativar-e-reativar",
+    "article": "Alunos e ficha do aluno",
+    "title": "Inativar e reativar",
+    "route": "/clients",
+    "text": "No menu ⋮ do aluno. Aluno inativo sai das listas e das novas matrículas. Ao reativar, a cobrança recomeça na data da volta."
+  },
+  {
+    "id": "alunos#aluno-menor-de-idade",
+    "article": "Alunos e ficha do aluno",
+    "title": "Aluno menor de idade",
+    "route": "/clients",
+    "text": "A cobrança e os avisos de cobrança vão para o responsável financeiro. Para a autorização de matrícula e LGPD, use \"Enviar autorização (WhatsApp)\"."
+  },
+  {
+    "id": "certificados#o-que-e",
+    "article": "Certificados de conclusão",
+    "title": "O que é",
+    "route": "/settings?tab=certificado",
+    "text": "Em cursos, o aluno que concluiu recebe um certificado em PDF. Faz parte do plano Profissional."
+  },
+  {
+    "id": "certificados#emitir",
+    "article": "Certificados de conclusão",
+    "title": "Emitir",
+    "route": "/settings?tab=certificado",
+    "text": "Na turma de curso encerrada, abra o menu ⋮ do aluno e escolha \"Certificado\". Dá para imprimir ou salvar em PDF."
+  },
+  {
+    "id": "certificados#personalizar-o-texto",
+    "article": "Certificados de conclusão",
+    "title": "Personalizar o texto",
+    "route": "/settings?tab=certificado",
+    "text": "Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase."
+  },
+  {
+    "id": "certificados#frequencia",
+    "article": "Certificados de conclusão",
+    "title": "Frequência",
+    "route": "/settings?tab=certificado",
+    "text": "O texto padrão diz quantas aulas o curso teve e a frequência real do aluno. \"Concluído\" vale pelo calendário do curso."
+  },
+  {
+    "id": "chamada#fazer-a-chamada",
+    "article": "Chamada (lista de presença)",
+    "title": "Fazer a chamada",
+    "route": "/classes/calendar",
+    "text": "No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele."
+  },
+  {
+    "id": "chamada#aula-avulsa-e-pacote",
+    "article": "Chamada (lista de presença)",
+    "title": "Aula avulsa e pacote",
+    "route": "/classes/calendar",
+    "text": "Quem não tem matrícula pode entrar como avulso, se a turma permitir. O aluno com pacote de aulas gasta uma aula quando é marcado presente. Falta sem justificativa pode gastar a aula, conforme a regra do pacote."
+  },
+  {
+    "id": "chamada#faltas-seguidas",
+    "article": "Chamada (lista de presença)",
+    "title": "Faltas seguidas",
+    "route": "/classes/calendar",
+    "text": "Três faltas seguidas viram um lembrete no sino do topo, para você chamar o aluno."
+  },
+  {
+    "id": "chamada#corrigir-uma-marcacao",
+    "article": "Chamada (lista de presença)",
+    "title": "Corrigir uma marcação",
+    "route": "/classes/calendar",
+    "text": "Abra a aula de novo e mude o status do aluno. A alteração fica na Auditoria."
+  },
+  {
+    "id": "cobrancas#ver-o-que-esta-em-aberto",
+    "article": "Cobranças",
+    "title": "Ver o que está em aberto",
+    "route": "/classes/billing",
+    "text": "Em Cobranças, filtre por mês e situação (pendente, atrasada, paga, cancelada). O topo resume quanto há a receber e quanto está atrasado."
+  },
+  {
+    "id": "cobrancas#marcar-como-pago",
+    "article": "Cobranças",
+    "title": "Marcar como pago",
+    "route": "/classes/billing",
+    "text": "No menu ⋮ da cobrança, \"Marcar pago\". Escolha a forma (Pix, dinheiro, cartão ou outra), a data e, se quiser, anexe o comprovante. Dá para desfazer o pagamento depois, com confirmação."
+  },
+  {
+    "id": "cobrancas#lembrar-no-whatsapp",
+    "article": "Cobranças",
+    "title": "Lembrar no WhatsApp",
+    "route": "/classes/billing",
+    "text": "No menu ⋮, \"Lembrar no WhatsApp\" abre a conversa com o texto pronto. Para aluno menor, a mensagem vai ao responsável financeiro."
+  },
+  {
+    "id": "cobrancas#cobranca-avulsa",
+    "article": "Cobranças",
+    "title": "Cobrança avulsa",
+    "route": "/classes/billing",
+    "text": "Na ficha do aluno ou em Cobranças, \"Nova cobrança\" cria uma cobrança única, à vista ou parcelada."
+  },
+  {
+    "id": "cobrancas#gerar-as-mensalidades",
+    "article": "Cobranças",
+    "title": "Gerar as mensalidades",
+    "route": "/classes/billing",
+    "text": "As mensalidades nascem sozinhas todo dia, pela regra de cada aluno. Em Cobranças, \"Gerar cobranças\" confere o mês se você quiser antecipar."
+  },
+  {
+    "id": "cobrancas#cancelar-uma-cobranca",
+    "article": "Cobranças",
+    "title": "Cancelar uma cobrança",
+    "route": "/classes/billing",
+    "text": "No menu ⋮, \"Cancelar\". Cobrança paga não se cancela: desfaça o pagamento antes."
+  },
+  {
+    "id": "comunicacao-e-lembretes#como-o-whatsapp-funciona",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Como o WhatsApp funciona",
+    "route": "/communication",
+    "text": "No plano Grátis, o envio é assistido: o sistema monta a mensagem e abre o WhatsApp do seu aparelho com o texto pronto, e você só envia. No plano Profissional, com o WhatsApp oficial conectado, as mensagens saem sozinhas."
+  },
+  {
+    "id": "comunicacao-e-lembretes#enviar-uma-mensagem",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Enviar uma mensagem",
+    "route": "/communication",
+    "text": "Em Comunicação, \"Nova mensagem\". Escolha um ou vários alunos (há \"Selecionar todos com WhatsApp\"), escreva o texto e use {aluno} para o nome. Com vários, o envio segue em sequência: um toque por aluno."
+  },
+  {
+    "id": "comunicacao-e-lembretes#modelos",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Modelos",
+    "route": "/communication",
+    "text": "Na aba Mensagens, edite o texto de cada aviso (atraso, vence hoje, aniversário, pacote acabando...). Variáveis como {aluno} e {valor} são trocadas no envio."
+  },
+  {
+    "id": "comunicacao-e-lembretes#lembretes-o-sino",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Lembretes (o sino)",
+    "route": "/communication",
+    "text": "O sino no topo mostra o que lembrar hoje: mensalidades em atraso ou perto de vencer, pacotes acabando, faltas seguidas e aniversários. Cada item tem o botão do WhatsApp; no menu você pode adiar para amanhã ou não lembrar daquele aluno. \"Enviar em sequência\" percorre o grupo todo."
+  },
+  {
+    "id": "comunicacao-e-lembretes#historico",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Histórico",
+    "route": "/communication",
+    "text": "A aba Histórico lista as mensagens abertas ou enviadas, com o status."
+  },
+  {
+    "id": "equipe-e-usuarios#equipe-quem-da-aula",
+    "article": "Equipe, usuários e permissões",
+    "title": "Equipe (quem dá aula)",
+    "route": "/team",
+    "text": "Em Equipe, \"Novo instrutor\" ou \"Novo professor\" (a palavra segue a área). Informe o nome, as modalidades que leciona e, se quiser, libere o acesso ao sistema."
+  },
+  {
+    "id": "equipe-e-usuarios#usuarios",
+    "article": "Equipe, usuários e permissões",
+    "title": "Usuários",
+    "route": "/team",
+    "text": "Em Usuários, convide pessoas por e-mail. Os perfis são Proprietário, Gerente, Atendente e o perfil de quem dá aula (Instrutor ou Professor)."
+  },
+  {
+    "id": "equipe-e-usuarios#o-que-cada-perfil-faz",
+    "article": "Equipe, usuários e permissões",
+    "title": "O que cada perfil faz",
+    "route": "/team",
+    "text": "- Proprietário: tudo, inclusive o plano do GestaraHub.\n- Gerente: opera o dia a dia, financeiro e usuários, menos o plano.\n- Atendente: alunos, matrículas, chamada, cobranças (ver) e mensagens.\n- Quem dá aula: vê as próprias turmas, faz a chamada, avalia e gradua os alunos dele. Vê a ficha dos alunos dele, sem dinheiro. Recebe o sino com faltas seguidas e aniversários dos alunos dele."
+  },
+  {
+    "id": "equipe-e-usuarios#convite",
+    "article": "Equipe, usuários e permissões",
+    "title": "Convite",
+    "route": "/team",
+    "text": "A pessoa recebe um e-mail para criar a senha. Dá para reenviar o convite em Usuários. Quem é convidado entra só no espaço que convidou."
+  },
+  {
+    "id": "equipe-e-usuarios#auditoria",
+    "article": "Equipe, usuários e permissões",
+    "title": "Auditoria",
+    "route": "/team",
+    "text": "Em Auditoria o proprietário e o gerente veem quem fez o quê, e quando."
+  },
+  {
+    "id": "evolucao-e-notas#trilha-de-evolucao",
+    "article": "Evolução, graduação e notas",
+    "title": "Trilha de evolução",
+    "route": "/clients",
+    "text": "Cada modalidade pode ter uma trilha (faixas, níveis, módulos ou fases). Em Modalidades, edite a modalidade e escolha o modelo de trilha."
+  },
+  {
+    "id": "evolucao-e-notas#graduar-ou-avancar",
+    "article": "Evolução, graduação e notas",
+    "title": "Graduar ou avançar",
+    "route": "/clients",
+    "text": "Na ficha do aluno, seção Evolução, abra a graduação (ou os níveis) e registre o avanço, com a data e quem avaliou. Quem dá aula pode graduar os alunos das próprias turmas."
+  },
+  {
+    "id": "evolucao-e-notas#registros-de-aula",
+    "article": "Evolução, graduação e notas",
+    "title": "Registros de aula",
+    "route": "/clients",
+    "text": "Anote observações e pontos fortes do aluno em \"Registros de aula\"."
+  },
+  {
+    "id": "evolucao-e-notas#notas",
+    "article": "Evolução, graduação e notas",
+    "title": "Notas",
+    "route": "/clients",
+    "text": "Em modalidades com avaliações ligadas (idiomas, música e cursos livres), crie avaliações na aba Avaliações da turma e lance as notas. O boletim fica na ficha do aluno."
+  },
+  {
+    "id": "evolucao-e-notas#troca-de-nivel-pela-idade",
+    "article": "Evolução, graduação e notas",
+    "title": "Troca de nível pela idade",
+    "route": "/clients",
+    "text": "Quando o aluno passa da idade da faixa, o sistema avisa no sino para escolher o nível da nova faixa etária."
+  },
+  {
+    "id": "financeiro-e-professores#resumo-do-mes",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Resumo do mês",
+    "route": "/finance",
+    "text": "Em Financeiro, a aba Resumo mostra entradas, saídas e resultado do mês. Escolha o mês no topo."
+  },
+  {
+    "id": "financeiro-e-professores#lancamentos",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Lançamentos",
+    "route": "/finance",
+    "text": "Em Lançamentos, registre despesas e outras receitas. Lançamentos podem se repetir todo mês. Dá para marcar como pago e anexar comprovante."
+  },
+  {
+    "id": "financeiro-e-professores#pagamento-de-quem-da-aula",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Pagamento de quem dá aula",
+    "route": "/finance",
+    "text": "Na aba de quem dá aula (Instrutores ou Professores), configure a regra de cada pessoa: valor fixo no mês, por aula dada, por aluno ativo ou percentual do que os alunos pagaram. No fim do mês, \"Fechar o mês\" congela o valor; depois, \"Pagar\" lança a saída no caixa. Um mês fechado pode ser reaberto."
+  },
+  {
+    "id": "financeiro-e-professores#ajustes",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Ajustes",
+    "route": "/finance",
+    "text": "No detalhe do pagamento, adicione ajustes (bônus ou desconto) antes de fechar."
+  },
+  {
+    "id": "financeiro-e-professores#relatorio-de-resultado",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Relatório de resultado",
+    "route": "/finance",
+    "text": "O relatório do resultado do mês e a retenção de alunos fazem parte do plano Profissional."
+  },
+  {
+    "id": "plano-gestarahub#o-que-o-gratis-tem",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "O que o Grátis tem",
+    "route": "/plans",
+    "text": "Alunos e turmas sem limite, chamada pelo celular, mensalidades, cursos e pacotes, caixa e pagamento de quem dá aula, cobrança por Pix e cartão online e repasse da taxa ao aluno, se você quiser."
+  },
+  {
+    "id": "plano-gestarahub#o-que-o-profissional-acrescenta",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "O que o Profissional acrescenta",
+    "route": "/plans",
+    "text": "Lembretes e avisos no WhatsApp sem clique, relatório do resultado do mês, retenção de alunos, certificado de conclusão em PDF e taxa menor por Pix pago."
+  },
+  {
+    "id": "plano-gestarahub#assinar-o-profissional",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "Assinar o Profissional",
+    "route": "/plans",
+    "text": "Em Planos, clique em \"Assinar o Profissional\", confira os dados e o valor antes de pagar, e pague por Pix ou cartão. O plano é liberado quando o pagamento é confirmado. Só o proprietário muda o plano."
+  },
+  {
+    "id": "plano-gestarahub#trocar-de-plano",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "Trocar de plano",
+    "route": "/plans",
+    "text": "Mudar de mensal para anual aumenta o valor na hora: o sistema mostra a diferença proporcional e só cobra depois da sua confirmação. Reduzir (voltar ao Grátis ou de anual para mensal) vale no fim do período já pago. Dá para desmarcar uma troca marcada."
+  },
+  {
+    "id": "plano-gestarahub#renovacao-e-atraso",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "Renovação e atraso",
+    "route": "/plans",
+    "text": "O aviso no topo mostra a data da renovação. Se o pagamento não cair, há 5 dias de tolerância; depois o espaço volta ao Grátis, sem perder dados. Pagando em até 15 dias o plano volta."
+  },
+  {
+    "id": "plano-gestarahub#cortesia",
+    "article": "Plano GestaraHub (Grátis e Profissional)",
+    "title": "Cortesia",
+    "route": "/plans",
+    "text": "Se o GestaraHub deu um período de cortesia do Profissional, o aviso mostra até quando vale. Ao terminar, o espaço volta ao Grátis, sem apagar nada."
+  },
+  {
+    "id": "planos-e-mensalidades#criar-um-plano-de-mensalidade",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Criar um plano de mensalidade",
+    "route": "/classes/plans",
+    "text": "Em Planos e pacotes, aba de planos, clique em adicionar. Informe o nome, o valor e o período (mensal, quinzenal ou semanal). O aluno recebe uma mensalidade por período."
+  },
+  {
+    "id": "planos-e-mensalidades#regras-da-mensalidade",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Regras da mensalidade",
+    "route": "/classes/plans",
+    "text": "Em Configurações você define o dia de vencimento padrão, se cobra antes ou depois do uso e como fica o primeiro mês (proporcional aos dias ou mês cheio). Cada aluno pode ter regra própria no cadastro."
+  },
+  {
+    "id": "planos-e-mensalidades#desconto-e-bolsa",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Desconto e bolsa",
+    "route": "/classes/plans",
+    "text": "No cadastro do aluno, ative \"Conceder desconto na mensalidade\". Bolsa integral gera mensalidades isentas."
+  },
+  {
+    "id": "planos-e-mensalidades#trocar-o-plano-do-aluno",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Trocar o plano do aluno",
+    "route": "/classes/plans",
+    "text": "Edite o aluno e escolha outro plano. O sistema mostra o que muda antes de salvar: as mensalidades em aberto do plano antigo são refeitas pelo plano novo, e o que já foi pago não muda."
+  },
+  {
+    "id": "planos-e-mensalidades#pacote-de-aulas",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Pacote de aulas",
+    "route": "/classes/plans",
+    "text": "Em Planos e pacotes, aba Pacotes de aulas, crie o pacote (quantidade de aulas, valor e validade). Venda pelo menu do aluno em \"Vender pacote\". O pacote pode ser parcelado."
+  },
+  {
+    "id": "planos-e-mensalidades#cursos",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Cursos",
+    "route": "/classes/plans",
+    "text": "Em áreas de curso, a turma tem valor fechado e parcelas. A cobrança sai na matrícula, pelo valor da turma ou com desconto."
+  },
+  {
+    "id": "primeiros-passos#configuracao-inicial",
+    "article": "Primeiros passos",
+    "title": "Configuração inicial",
+    "route": "/dashboard",
+    "text": "Ao criar a conta, o GestaraHub pede o nome do espaço, a área (Lutas, Pilates e yoga, Funcional, Dança, Música, Idiomas, Natação, Gastronomia, Artes, Beleza ou outra) e as aulas que você oferece. Depois, o Painel mostra os \"Primeiros passos\": horário de funcionamento, modalidades, planos, professores, alunos e a primeira turma. Cada passo concluído fica marcado."
+  },
+  {
+    "id": "primeiros-passos#ordem-recomendada",
+    "article": "Primeiros passos",
+    "title": "Ordem recomendada",
+    "route": "/dashboard",
+    "text": "1. Defina o horário de funcionamento em Configurações, aba Horários.\n2. Confira as modalidades em Modalidades.\n3. Crie os planos de mensalidade (ou pacotes, ou cursos) em Planos e pacotes.\n4. Cadastre quem dá aula em Equipe.\n5. Cadastre os alunos em Alunos.\n6. Crie as turmas em Turmas e matricule os alunos."
+  },
+  {
+    "id": "primeiros-passos#mudar-a-area-do-espaco",
+    "article": "Primeiros passos",
+    "title": "Mudar a área do espaço",
+    "route": "/dashboard",
+    "text": "Em Configurações, aba Geral, você troca a área e a forma de cobrança padrão. As palavras do sistema (Faixa, Nível, Módulo, Instrutor ou Professor) mudam junto."
+  },
+  {
+    "id": "recebimentos-online#o-que-e",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "O que é",
+    "route": "/online-payments",
+    "text": "O GestaraHub cobra o aluno por Pix e por link de cartão. O dinheiro cai na sua conta de recebimento, aberta com o parceiro de pagamentos. Funciona também no plano Grátis."
+  },
+  {
+    "id": "recebimentos-online#ativar",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Ativar",
+    "route": "/online-payments",
+    "text": "Em Recebimentos online, clique em \"Ativar recebimentos online\" e preencha os dados da conta (CPF ou CNPJ, nascimento ou tipo de empresa, renda ou faturamento e endereço). Com CPF, a fatura do cartão mostra ao aluno seu CPF, e-mail e telefone; se você tem CNPJ ou MEI, use ele. Depois de aprovada, a conta fica ativa."
+  },
+  {
+    "id": "recebimentos-online#cobrar-um-aluno",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Cobrar um aluno",
+    "route": "/online-payments",
+    "text": "Em Cobranças, no menu ⋮ da cobrança, \"Cobrar online\". Escolha Pix ou link, gere e envie ao aluno pelo WhatsApp. O pagamento é conferido sozinho e a cobrança é baixada."
+  },
+  {
+    "id": "recebimentos-online#taxas",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Taxas",
+    "route": "/online-payments",
+    "text": "Taxa do GestaraHub: R$ 1,99 por Pix pago no Grátis (R$ 1,29 nos pagos), mais a tarifa do parceiro. Você pode repassar a taxa ao aluno nas configurações de recebimento."
+  },
+  {
+    "id": "recebimentos-online#pix-automatico",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Pix Automático",
+    "route": "/online-payments",
+    "text": "Para mensalidade recorrente, o aluno autoriza o débito direto. A autorização fica na ficha do aluno."
+  },
+  {
+    "id": "recebimentos-online#retirada-para-o-banco",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Retirada para o banco",
+    "route": "/online-payments",
+    "text": "O saldo pode ser transferido para sua conta bancária em Recebimentos online. Há um número de retiradas grátis por mês e uma tarifa nas seguintes."
+  },
+  {
+    "id": "relatorios#relatorios-disponiveis",
+    "article": "Relatórios e documentos",
+    "title": "Relatórios disponíveis",
+    "route": "/reports",
+    "text": "Em Relatórios: lista de presença, relação de alunos, cobranças, cursos, pacotes e aniversariantes do mês. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional."
+  },
+  {
+    "id": "relatorios#gerar-pdf-e-planilha",
+    "article": "Relatórios e documentos",
+    "title": "Gerar PDF e planilha",
+    "route": "/reports",
+    "text": "Abra o relatório, ajuste o período ou a turma e use as opções de PDF ou CSV."
+  },
+  {
+    "id": "relatorios#recibos-e-demonstrativos",
+    "article": "Relatórios e documentos",
+    "title": "Recibos e demonstrativos",
+    "route": "/reports",
+    "text": "Na cobrança paga, o menu ⋮ gera o recibo. Na ficha do aluno, a declaração anual. No pagamento de quem dá aula, o demonstrativo do mês."
+  },
+  {
+    "id": "seguranca-e-conta#verificacao-em-duas-etapas",
+    "article": "Conta, senha e segurança",
+    "title": "Verificação em duas etapas",
+    "route": "/settings",
+    "text": "Em Preferências, ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias."
+  },
+  {
+    "id": "seguranca-e-conta#esqueci-a-senha",
+    "article": "Conta, senha e segurança",
+    "title": "Esqueci a senha",
+    "route": "/settings",
+    "text": "Na tela de entrada, use \"Esqueci minha senha\" e siga o e-mail."
+  },
+  {
+    "id": "seguranca-e-conta#aceite-dos-termos",
+    "article": "Conta, senha e segurança",
+    "title": "Aceite dos termos",
+    "route": "/settings",
+    "text": "No primeiro acesso, o proprietário aceita os Termos de uso e a Política de privacidade. Quem aceita fica registrado."
+  },
+  {
+    "id": "seguranca-e-conta#fuso-horario",
+    "article": "Conta, senha e segurança",
+    "title": "Fuso horário",
+    "route": "/settings",
+    "text": "Em Configurações, aba Geral, escolha o fuso do espaço (os quatro fusos do Brasil). Datas e vencimentos seguem esse fuso."
+  },
+  {
+    "id": "seguranca-e-conta#dados-dos-alunos-e-lgpd",
+    "article": "Conta, senha e segurança",
+    "title": "Dados dos alunos e LGPD",
+    "route": "/settings",
+    "text": "Os dados dos alunos são do seu espaço; o GestaraHub os guarda como operador. Para pedidos de exclusão ou correção, fale com o suporte."
+  },
+  {
+    "id": "turmas-e-matriculas#criar-uma-turma",
+    "article": "Turmas e matrículas",
+    "title": "Criar uma turma",
+    "route": "/classes",
+    "text": "Em Turmas, clique em \"Nova turma\". Informe o nome, a modalidade, quem dá a aula, a capacidade e os horários (dias da semana, início e fim). O sistema avisa na hora se a pessoa já dá aula em outro horário igual. A forma de cobrança da turma segue a área (mensalidade, curso com valor fechado, pacote ou sem cobrança) e pode ser trocada no formulário."
+  },
+  {
+    "id": "turmas-e-matriculas#matricular-alunos",
+    "article": "Turmas e matrículas",
+    "title": "Matricular alunos",
+    "route": "/classes",
+    "text": "Abra a turma e use \"Matricular alunos\". Escolha um ou mais alunos. Em turma de curso, a janela pede o valor, as parcelas e o primeiro vencimento. Se a turma estiver lotada, o aluno pode entrar na lista de espera."
+  },
+  {
+    "id": "turmas-e-matriculas#cancelar-a-matricula",
+    "article": "Turmas e matrículas",
+    "title": "Cancelar a matrícula",
+    "route": "/classes",
+    "text": "No menu ⋮ do aluno dentro da turma, escolha \"Cancelar matrícula\". Parcelas de curso que vencem depois de hoje saem; o que já venceu continua como dívida."
+  },
+  {
+    "id": "turmas-e-matriculas#trocar-a-pessoa-de-uma-aula",
+    "article": "Turmas e matrículas",
+    "title": "Trocar a pessoa de uma aula",
+    "route": "/classes",
+    "text": "Na aula do dia, use \"Trocar instrutor\" (ou \"Trocar professor\") para colocar um substituto só naquela data. As outras aulas seguem com o titular."
+  },
+  {
+    "id": "turmas-e-matriculas#inativar-e-reativar-uma-turma",
+    "article": "Turmas e matrículas",
+    "title": "Inativar e reativar uma turma",
+    "route": "/classes",
+    "text": "No menu ⋮ da turma. Turma inativa não aparece para novas matrículas."
+  }
+]

@@ -110,7 +110,7 @@ async function createClass(page: Page, name: string, moveToWednesday = false) {
   await dialog.getByRole("combobox", { name: /Modalidade/ }).click();
   await page.getByRole("option", { name: "Jiu-Jitsu" }).click();
   // Professor unico da modalidade ja vem escolhido.
-  await expect(dialog.getByRole("combobox", { name: /Professor/ })).toContainText("Carlos Silva");
+  await expect(dialog.getByRole("combobox", { name: /Instrutor/ })).toContainText("Carlos Silva");
   if (moveToWednesday) {
     // Evita conflito com a 1a turma (mesmo professor, terca 19h).
     await dialog.getByRole("button", { name: "Qua", exact: true }).click();
@@ -358,7 +358,7 @@ test.describe("formulário de turma", () => {
     await seedAcademy(page, { extra: withClass });
     const dialog = await openNewClass(page);
     // Carlos e o unico professor de Jiu-Jitsu: ja vem escolhido.
-    await expect(dialog.getByRole("combobox", { name: /Professor/ })).toContainText("Carlos Silva");
+    await expect(dialog.getByRole("combobox", { name: /Instrutor/ })).toContainText("Carlos Silva");
     const conflict = dialog.getByText(/Carlos Silva já dá aula .* na turma "Jiu-Jitsu Adulto"/);
     await expect(conflict).toHaveCount(0);
 

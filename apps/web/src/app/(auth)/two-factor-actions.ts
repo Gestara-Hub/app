@@ -8,7 +8,7 @@ import { sendTwoFactorCodeEmail } from "@/lib/email/mailersend";
 import { isDemoOrganization } from "@/lib/demo";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { currentSessionId, markSessionVerified, secondFactorInfo } from "@/lib/security/second-factor";
-import { isGoogleOnlyAccount, lastUsedLabel, maskEmail } from "@/lib/security/two-factor-rules";
+import { isGoogleOnlyAccount, lastUsedLabel, maskEmail, normalizeRecoveryCode } from "@/lib/security/two-factor-rules";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { recordAuditLogInDb } from "@/services/audit/auditLogBackend";
@@ -17,8 +17,11 @@ import {
   discardEmailCode,
   forgetAllTrustedDevices,
   forgetTrustedDevice,
+  consumeRecoveryCode,
   issueEmailCode,
+  issueRecoveryCodes,
   listTrustedDevices,
+  recoveryCodesLeft,
   setEmailTwoFactor,
   verifyEmailCode,
   type EmailCodeCheck,
@@ -46,6 +49,15 @@ const SESSION_EXPIRED = "Sua sessão expirou. Entre de novo.";
 const TOO_MANY = "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
 
 type ActionResult = { ok: true } | { ok: false; message: string };
+/** Ligar a verificacao devolve os codigos de recuperacao (so desta vez) quando a pessoa ainda nao tinha. */
+export type EnableResult = { ok: true; recoveryCodes?: string[] } | { ok: false; message: string };
+const INVALID_RECOVERY_CODE = "Código de recuperação inválido ou já usado.";
+
+/** Gera os codigos de recuperacao se a pessoa ainda nao tem nenhum valendo (primeira vez que liga). */
+async function ensureRecoveryCodes(admin: SupabaseClient, authUserId: string): Promise<string[] | undefined> {
+  if ((await recoveryCodesLeft(admin, authUserId)) > 0) return undefined;
+  return (await issueRecoveryCodes(admin, authUserId)) ?? undefined;
+}
 
 /** Fatores TOTP da sessao: o confirmado (se houver) e os que ficaram pela metade. */
 async function totpFactors(supabase: SupabaseClient) {
@@ -143,12 +155,14 @@ export async function sendSignInEmailCodeAction(): Promise<SendEmailCodeResult> 
 /** Confere o codigo (app ou e-mail) e so entao cria a sessao do app. */
 export async function verifyTwoFactorSignInAction(input: {
   code: string;
-  method: "app" | "email";
+  method: "app" | "email" | "recovery";
   remember?: boolean;
   from?: string;
 }): Promise<SignInSessionResult> {
   const code = input.code.replace(/\s/g, "");
-  if (!CODE_RE.test(code)) {
+  if (input.method === "recovery") {
+    if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
+  } else if (!CODE_RE.test(code)) {
     return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
   }
 
@@ -164,6 +178,12 @@ export async function verifyTwoFactorSignInAction(input: {
       if (!info.app || !verified) return { ok: false, message: SESSION_EXPIRED };
       const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
       if (error) return { ok: false, message: INVALID_APP_CODE };
+    } else if (input.method === "recovery") {
+      if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
+      const sessionId = await currentSessionId(supabase);
+      if (!sessionId || !(await markSessionVerified(admin, user.id, sessionId, "recovery"))) {
+        return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+      }
     } else {
       if (!info.email) return { ok: false, message: SESSION_EXPIRED };
       const check = await verifyEmailCode(admin, user.id, "login", code);
@@ -203,6 +223,8 @@ export type TwoFactorStatus =
       app: boolean;
       email: boolean;
       maskedEmail: string;
+      /** Codigos de recuperacao que ainda valem. */
+      recoveryLeft: number;
     }
   | { ok: false; message: string };
 
@@ -251,6 +273,7 @@ export async function getTwoFactorStatusAction(): Promise<TwoFactorStatus> {
     app: info.app,
     email: info.email,
     maskedEmail: maskEmail(session.user.email ?? ""),
+    recoveryLeft: info.app || info.email ? await recoveryCodesLeft(createSupabaseAdminClient(), session.user.id) : 0,
   };
 }
 
@@ -282,7 +305,7 @@ export async function startTotpEnrollmentAction(): Promise<TotpEnrollment> {
 }
 
 /** Confirma o cadastro com o primeiro codigo do app: a partir dai o login pede o codigo. */
-export async function confirmTotpEnrollmentAction(input: { factorId: string; code: string }): Promise<ActionResult> {
+export async function confirmTotpEnrollmentAction(input: { factorId: string; code: string }): Promise<EnableResult> {
   const code = input.code.replace(/\s/g, "");
   if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do aplicativo." };
   const session = await sessionToChange();
@@ -292,11 +315,11 @@ export async function confirmTotpEnrollmentAction(input: { factorId: string; cod
   const { error } = await session.supabase.auth.mfa.challengeAndVerify({ factorId: input.factorId, code });
   if (error) return { ok: false, message: INVALID_APP_CODE };
   await auditSecurity(session.current, "ligou a verificação em duas etapas com aplicativo");
-  return { ok: true };
+  return { ok: true, recoveryCodes: await ensureRecoveryCodes(createSupabaseAdminClient(), session.user.id) };
 }
 
 /** Manda o codigo para ligar ou desligar pelo e-mail. */
-export async function sendSecurityEmailCodeAction(input: { purpose: "enable" | "disable" }): Promise<SendEmailCodeResult> {
+export async function sendSecurityEmailCodeAction(input: { purpose: "enable" | "disable" | "recovery" }): Promise<SendEmailCodeResult> {
   try {
     const session = await sessionToChange();
     if (!session || isGoogleOnly(session.user)) return { ok: false, message: SESSION_EXPIRED };
@@ -308,7 +331,7 @@ export async function sendSecurityEmailCodeAction(input: { purpose: "enable" | "
 }
 
 /** Liga o codigo por e-mail com o codigo recebido. Esta sessao ja conta como verificada. */
-export async function enableEmailTwoFactorAction(input: { code: string }): Promise<ActionResult> {
+export async function enableEmailTwoFactorAction(input: { code: string }): Promise<EnableResult> {
   const code = input.code.replace(/\s/g, "");
   if (!CODE_RE.test(code)) return { ok: false, message: "Digite os 6 números do e-mail." };
   const session = await sessionToChange();
@@ -328,16 +351,18 @@ export async function enableEmailTwoFactorAction(input: { code: string }): Promi
     return { ok: false, message: "Não foi possível ligar agora. Tente novamente." };
   }
   await auditSecurity(session.current, "ligou a verificação em duas etapas por e-mail");
-  return { ok: true };
+  return { ok: true, recoveryCodes: await ensureRecoveryCodes(admin, session.user.id) };
 }
 
 /**
  * Desliga tudo com um codigo (do app ou do e-mail, o que estiver ligado):
  * remove o app, o e-mail, os dispositivos lembrados e as sessoes verificadas.
  */
-export async function disableTwoFactorAction(input: { code: string; method: "app" | "email" }): Promise<ActionResult> {
+export async function disableTwoFactorAction(input: { code: string; method: "app" | "email" | "recovery" }): Promise<ActionResult> {
   const code = input.code.replace(/\s/g, "");
-  if (!CODE_RE.test(code)) {
+  if (input.method === "recovery") {
+    if (!normalizeRecoveryCode(code)) return { ok: false, message: "Digite o código de recuperação (8 letras e números)." };
+  } else if (!CODE_RE.test(code)) {
     return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
   }
   const session = await sessionToChange();
@@ -354,6 +379,9 @@ export async function disableTwoFactorAction(input: { code: string; method: "app
     if (!verified) return { ok: false, message: INVALID_APP_CODE };
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
     if (error) return { ok: false, message: INVALID_APP_CODE };
+  } else if (input.method === "recovery") {
+    // Quem perdeu o aplicativo desliga com um codigo de recuperacao e liga de novo com o aparelho novo.
+    if (!(await consumeRecoveryCode(admin, user.id, code))) return { ok: false, message: INVALID_RECOVERY_CODE };
   } else {
     if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
     const check = await verifyEmailCode(admin, user.id, "disable", code);
@@ -366,6 +394,44 @@ export async function disableTwoFactorAction(input: { code: string; method: "app
   await clearTrustedDeviceCookie();
   await auditSecurity(session.current, "desligou a verificação em duas etapas");
   return { ok: true };
+}
+
+/**
+ * Gera 8 codigos de recuperacao novos (os antigos deixam de valer) com um
+ * codigo do app ou do e-mail. Devolve os codigos so desta vez.
+ */
+export async function regenerateRecoveryCodesAction(input: {
+  code: string;
+  method: "app" | "email";
+}): Promise<{ ok: true; recoveryCodes: string[] } | { ok: false; message: string }> {
+  const code = input.code.replace(/\s/g, "");
+  if (!CODE_RE.test(code)) {
+    return { ok: false, message: input.method === "app" ? "Digite os 6 números do aplicativo." : "Digite os 6 números do e-mail." };
+  }
+  const session = await sessionToChange();
+  if (!session) return { ok: false, message: SESSION_EXPIRED };
+  if (!(await allowCodeAttempt(session.user.id))) return { ok: false, message: TOO_MANY };
+
+  const { supabase, user } = session;
+  const admin = createSupabaseAdminClient();
+  const info = await secondFactorInfo(supabase, user);
+  if (!info.app && !info.email) return { ok: false, message: "Ligue a verificação em duas etapas primeiro." };
+
+  if (input.method === "app") {
+    const { verified } = await totpFactors(supabase);
+    if (!verified) return { ok: false, message: INVALID_APP_CODE };
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: verified.id, code });
+    if (error) return { ok: false, message: INVALID_APP_CODE };
+  } else {
+    if (!info.email) return { ok: false, message: "O código por e-mail não está ligado." };
+    const check = await verifyEmailCode(admin, user.id, "recovery", code);
+    if (check !== "ok") return { ok: false, message: emailCodeMessage(check) };
+  }
+
+  const recoveryCodes = await issueRecoveryCodes(admin, user.id);
+  if (!recoveryCodes) return { ok: false, message: "Não foi possível gerar agora. Tente novamente." };
+  await auditSecurity(session.current, "gerou novos códigos de recuperação da verificação em duas etapas");
+  return { ok: true, recoveryCodes };
 }
 
 // ---------------------------------------------------------------------------

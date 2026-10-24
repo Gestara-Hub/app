@@ -77,7 +77,7 @@ test.describe("cadastro de usuários (proprietário)", () => {
     await dialog.getByLabel("E-mail").fill(currentAcademy().owner.email);
     await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
     // Dono gerencia todos os perfis.
-    for (const p of ["Proprietário", "Gerente", "Atendente", "Profissional"]) {
+    for (const p of ["Proprietário", "Gerente", "Atendente", "Instrutor"]) {
       await expect(page.getByRole("menuitem", { name: p })).toBeVisible();
     }
     await page.getByRole("menuitem", { name: "Atendente" }).click();
@@ -92,7 +92,7 @@ test.describe("cadastro de usuários (proprietário)", () => {
     await expect(page.getByRole("button", { name: /^DR Duda Recepção Atendente Convite pendente/ })).toBeVisible();
   });
 
-  test("perfil Profissional exige vínculo e o nome vem da equipe", async ({ page }) => {
+  test("perfil Instrutor exige vínculo e o nome vem da equipe", async ({ page }) => {
     await seedTeam(page, (t) => {
       t.users = t.users.filter((u: Tenant) => u.id !== "usr-prof");
     });
@@ -101,18 +101,18 @@ test.describe("cadastro de usuários (proprietário)", () => {
     const dialog = page.getByRole("dialog", { name: "Novo usuário" });
     await dialog.getByLabel("E-mail").fill("carlos@academiax.com");
     await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
-    await page.getByRole("menuitem", { name: "Profissional" }).click();
-    await expect(dialog.getByText("Obrigatório no perfil Profissional: define a agenda que ele vê.")).toBeVisible();
+    await page.getByRole("menuitem", { name: "Instrutor" }).click();
+    await expect(dialog.getByText("Obrigatório no perfil Instrutor: define a agenda que ele vê.")).toBeVisible();
     await dialog.getByRole("button", { name: "Adicionar" }).click();
-    await expect(dialog.getByText("Vincule o usuário a um profissional da equipe.")).toBeVisible();
+    await expect(dialog.getByText("Vincule o usuário a alguém da equipe.")).toBeVisible();
 
-    await dialog.getByRole("combobox", { name: "Profissional da equipe" }).click();
+    await dialog.getByRole("combobox", { name: "Instrutor da equipe" }).click();
     await page.getByRole("option", { name: /Carlos Silva/ }).click();
     await expect(dialog.getByLabel("Nome")).toHaveValue("Carlos Silva");
     await expect(dialog).toContainText("Vinculado a Carlos Silva, da equipe.");
     await dialog.getByRole("button", { name: "Adicionar" }).click();
     await expect(page.getByText("Usuário cadastrado e convite de acesso enviado por e-mail!")).toBeVisible();
-    await expect(page.getByRole("button", { name: /^CS Carlos Silva Profissional Equipe/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^CS Carlos Silva Instrutor Equipe/ })).toBeVisible();
   });
 
   test("editar perfil, inativar e reativar com confirmação", async ({ page }) => {
@@ -264,7 +264,7 @@ test.describe("gerente x proprietário", () => {
     const dialog = page.getByRole("dialog", { name: "Novo usuário" });
     await dialog.getByRole("combobox", { name: "Perfil de acesso" }).click();
     await expect(page.getByRole("menuitem", { name: "Atendente" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Profissional" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Instrutor" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Proprietário" })).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: "Gerente" })).toHaveCount(0);
   });

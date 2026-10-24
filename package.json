@@ -23,6 +23,7 @@
     "dev:admin": "pnpm --filter @gestarahub/admin dev",
     "admin:setup": "pnpm --filter @gestarahub/admin setup:local",
     "admin:create-admin": "pnpm --filter @gestarahub/admin create-admin",
+    "admin:reset-mfa": "pnpm --filter @gestarahub/admin reset-mfa",
     "lint:admin": "pnpm --filter @gestarahub/admin lint",
     "typecheck:admin": "pnpm --filter @gestarahub/admin typecheck"
   }

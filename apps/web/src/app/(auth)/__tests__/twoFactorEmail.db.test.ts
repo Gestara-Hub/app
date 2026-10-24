@@ -247,7 +247,7 @@ describe("ligar e desligar pela janela Segurança", () => {
   it("liga pelo e-mail (a sessão atual segue lendo), desliga e revoga os dispositivos", async () => {
     expect(await getTwoFactorStatusAction()).toMatchObject({ ok: true, enabled: false, app: false, email: false });
 
-    expect(await enableEmailTwoFactorAction({ code: await knownCode("enable", "654321") })).toEqual({ ok: true });
+    expect(await enableEmailTwoFactorAction({ code: await knownCode("enable", "654321") })).toMatchObject({ ok: true });
     expect(await getTwoFactorStatusAction()).toMatchObject({ ok: true, enabled: true, email: true });
     expect(await readsData()).toBe(true);
 

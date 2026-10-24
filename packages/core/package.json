@@ -17,7 +17,8 @@
     "./payer": "./src/payer.ts",
     "./payment-fees": "./src/payment-fees.ts",
     "./membership-generation": "./src/membership-generation.ts",
-    "./subscription-plan": "./src/subscription-plan.ts"
+    "./subscription-plan": "./src/subscription-plan.ts",
+    "./subscription-prices": "./src/subscription-prices.ts"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",

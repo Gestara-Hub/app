@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { UserProfile } from "@gestarahub/contracts";
-import { Building2, Check, Crown, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { Building2, Check, Crown, LifeBuoy, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -27,10 +27,11 @@ import { userInitials } from "@/lib/session";
 import { userProfileLabel } from "@/lib/labels";
 import { TwoFactorDialog, useCurrentUser } from "@/features/auth";
 import { useOrganization, useSubscription, useUnit } from "@/features/settings";
-import { DEMO_USERS, isDemoOrganization } from "@/lib/demo";
+import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
+import { openSupport, useSupportUnread } from "@/features/support";
 
 export function AppTopbar() {
   const team = useTeamWords();
@@ -59,6 +60,8 @@ export function AppTopbar() {
       router.push(result.redirectTo);
       router.refresh();
     });
+  // Respostas do suporte ainda nao lidas (so na conta real).
+  const { data: supportUnread = 0 } = useSupportUnread(!isDemoSpace(user.organizationId));
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
 
@@ -110,13 +113,18 @@ export function AppTopbar() {
             <Button
               variant="ghost"
               className="size-8 rounded-full p-0"
-              aria-label="Menu do usuário"
+              aria-label={supportUnread > 0 ? `Menu do usuário (${supportUnread} resposta do suporte)` : "Menu do usuário"}
             >
-              <Avatar className="size-8">
-                <AvatarFallback className="bg-secondary text-xs font-medium">
-                  {userInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
+              <span className="relative">
+                <Avatar className="size-8">
+                  <AvatarFallback className="bg-secondary text-xs font-medium">
+                    {userInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+                {supportUnread > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-destructive" aria-hidden />
+                ) : null}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
@@ -135,6 +143,15 @@ export function AppTopbar() {
               </Link>
             </DropdownMenuItem>
 
+            <DropdownMenuItem onSelect={() => openSupport()} className="cursor-pointer">
+              <LifeBuoy className="size-4" />
+              <span>Fale com a gente</span>
+              {supportUnread > 0 ? (
+                <span className="ml-auto rounded-full bg-destructive px-1.5 text-[10px] font-semibold leading-4 text-destructive-foreground">
+                  {supportUnread}
+                </span>
+              ) : null}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => setPreferencesOpen(true)}
               className="cursor-pointer"

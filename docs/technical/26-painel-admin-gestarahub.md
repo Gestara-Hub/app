@@ -1,7 +1,7 @@
 # 26 — Painel administrativo do GestaraHub (`apps/admin`)
 
-Data: 2026-10-24. Status: Decidido. Fase 0 feita em 24/10 (seção 16); as demais fases seguem a seção 10.
-Código: `apps/admin` (fase 0 feita), `packages/contracts`, `packages/core`, `apps/supabase/migrations` (tabelas novas da seção 5). Nada muda em `apps/web` além do botão "Fale com a gente" e da caixa de suporte (fase 1).
+Data: 2026-10-24. Status: Feito (fases 0 a 8; 1C WhatsApp e itens da seção 17 ficam para depois).
+Código: `apps/admin`, `packages/contracts`, `packages/core`, `apps/supabase/migrations/…050 a …057`. Em `apps/web`: "Fale com a gente", comunicados, cortesia no plano, recusa de administrador e de espaço inativo.
 Testes: `apps/admin/src/**` (guia: [guides/21](../guides/21-painel-admin-local.md)). Regra do projeto: e2e só quando o dono pedir.
 
 > Para quem é: o dono do GestaraHub (responsável único pela plataforma) e, depois, a equipe interna. Não é uma tela dos clientes. Domínio, hospedagem e variáveis são decisões e tarefas do dono; a seção 12 lista o que fazer.
@@ -369,3 +369,42 @@ O código fica pronto no repositório; estes passos são de configuração:
 - Os componentes de UI foram copiados do `apps/web` (sem o "descartar alterações" do web); um pacote de UI compartilhado fica para quando houver um terceiro app.
 
 **Não coberto ainda:** testes e2e (só quando você pedir) e a verificação visual das telas.
+
+## 17. Fases 1 a 8 feitas (24/10/2026): o que existe
+
+Tudo na branch `painel-admin`, sem commit nas fases 1 a 8. Migrações `…051` a `…057`. Testes: `pnpm --filter @gestarahub/admin test:db` (77) e os de banco do web (`support`, `platformAdmin`, `courtesy`, `announcements`).
+
+**Fase 1 e 1B, Fale com a gente e assistente.** No app dos clientes, "Fale com a gente" no menu do usuário e nos Planos (`features/support`, `services/support/*`). O assistente busca nos artigos de `docs/ajuda/*.md` (índice gerado por `pnpm --filter @gestarahub/web help:build`), responde com regras fixas (nunca promete reembolso nem prazo, mascara CPF, e-mail, telefone e cartão, passa a pessoa para a equipe com `[[humano]]` ou quando parece urgente) e tem limites (30 por pessoa/dia, 150 por espaço/dia, R$ 150/mês em `platform.settings`). Sem `ANTHROPIC_API_KEY` o assistente não responde e a conversa vai direto para a equipe. No painel: caixa de entrada com meta de 2 dias úteis, respostas prontas, nota interna, urgente, encerrar/reabrir, aviso por e-mail ao cliente e resumo diário (`/api/cron/digest`).
+
+**Fase 2, Espaços.** Lista com filtros, ordenação e exportação (CSV) e a ficha do espaço em abas (resumo, assinatura, saúde, recebimentos online, suporte e notas, auditoria do painel, dados e LGPD). O painel lê só visões agregadas (`platform.space_stats`, `space_owners`, `space_activity`, `space_online_30d`) e colunas liberadas de `organizations` (sem chaves do parceiro de pagamentos).
+
+**Fase 3, Planos e cortesia.** Funções do banco gravam plano, histórico, Auditoria do espaço e auditoria do painel na mesma transação: cortesia (com fim obrigatório; no fim volta ao Grátis pela troca agendada que já existe), encerrar cortesia, mais dias para pagar e voltar ao Grátis. Só quem tem `plans:grant`. O app dos clientes mostra a cortesia no histórico e deixa o dono assinar durante ela.
+
+**Fase 4, Saúde.** Erros por código (com "erro conhecido"), rotinas, avisos do parceiro de pagamentos e visão dos recebimentos online. Busca pelo código que o cliente informa.
+
+**Fase 5, Comunicados.** `platform.announcements` (público: todos, por plano, por área ou espaços escolhidos; início e fim; aviso, atenção ou urgente). O app dos clientes mostra no topo (`AnnouncementBanner`), cada pessoa dispensa o seu e o urgente não se dispensa. No painel: criar, editar, arquivar, prévia de quantos espaços recebem e contagem de dispensas. A regra de público é uma função só do banco (`platform.audience_matches`), usada pelo painel e pelo app. Começar vazio usa a hora do banco (o relógio do app pode diferir).
+
+**Fase 6, Equipe e LGPD.**
+- Convite de administradores (só `platform_owner`): o único módulo com a chave de serviço do Auth é `lib/server/auth-admin.ts` (`ADMIN_SERVICE_ROLE_KEY`, opcional; sem ela o convite fica desligado). O convite cria o login sem senha, a linha "convidado" e manda um link de uso único; o aceite (`/accept`) confere o código só no envio da senha (para o programa de e-mail não gastar o link), vale só para quem está "convidado", define a senha, ativa e segue para o segundo fator. Sem e-mail configurado, o painel mostra o link uma vez. Mudar papel, desativar, reativar e reiniciar o 2FA têm confirmação e auditoria; ninguém mexe em si mesmo e o painel nunca fica sem proprietário ativo (regra em `lib/server/team.ts`).
+- Pedidos do titular (`/privacy`): tipo, espaço, prazo de 15 dias, situação e o que foi feito (obrigatório para concluir ou recusar). A auditoria guarda só o tipo e o número, nunca nome nem e-mail do titular.
+- Aba "Dados e LGPD" do espaço (só proprietário): exportar os dados do espaço em JSON (função `platform.export_space`: só tabelas de cadastro e operação, sem token, segredo, hash, senha nem chave) e inativar/reativar o espaço (`platform.set_space_status`). Espaço inativo: o app dos clientes derruba a sessão (`getCurrentUser`) e recusa as ações (`requireTenant`), e as rotinas diárias pulam o espaço. Nada é apagado.
+
+**Fase 8, Visão de suporte.** Não é entrar no espaço: é uma visão **somente leitura**, com motivo e 30 minutos (`platform.support_access_sessions`), montada só de configuração e totais (plano, pessoas por perfil, alunos e matrículas por situação, turmas com lotação, planos de mensalidade, cobranças dos últimos 6 meses por total, recebimentos online por situação, termos aceitos pelo proprietário). Nenhum nome, telefone, e-mail ou CPF de aluno. Abrir registra na Auditoria do espaço (o dono vê "Suporte do GestaraHub abriu uma visão de suporte") e na do painel; só vale para quem abriu e termina ao encerrar ou expirar. Papéis: proprietário e suporte (`support:access`).
+
+**Fase 7, Receita.** `/revenue`: receita mensal (anual dividido por 12, cortesia fora, preços de `@gestarahub/core/subscription-prices`), assinantes por plano, funil (criou espaço, cadastrou alunos, criou turmas, gerou cobranças, recebeu pelo app, paga plano), uso nos últimos 30 dias e movimento dos últimos 6 meses (novos, assinaram, subiram, reduziram, cancelaram, voltaram ao Grátis, pagamentos online e a taxa que fica com o GestaraHub). Só totais, por visões do banco (`…057`).
+
+**Início** virou o painel de atenção: conversas esperando, erros de hoje, renovações atrasadas e pedidos LGPD, cada um leva à tela. O menu mostra o número de conversas esperando e de pedidos LGPD fora do prazo.
+
+**Formulários (24/10, depois do teste do login).** Todos os formulários do painel usam React Hook Form + Zod, como o app dos clientes: erro por campo no navegador antes de enviar (`apps/admin/src/components/form`, hook `useActionForm`, schemas em `lib/form-schemas.ts`). A server action continua sendo a autoridade (valida de novo e grava), então as actions e os testes de banco não mudaram. Ficam sem RHF só os botões sem campo (reenviar convite, reiniciar 2FA, desativar/reativar pessoa, encerrar visão, arquivar) e o seletor de papel de uma linha da equipe.
+
+**2FA dos usuários dos espaços.** Na aba "Dados e LGPD" do espaço o proprietário reinicia o 2FA de uma pessoa que perdeu o aplicativo e os códigos de recuperação (detalhes em [technical/17](17-verificacao-em-duas-etapas.md)); registra nos dois lugares e avisa a pessoa por e-mail.
+
+**Recuperação do 2FA do painel.** Outro proprietário reinicia o 2FA de alguém pela tela Equipe (ninguém reinicia o próprio). Para o único proprietário que perdeu o aplicativo: `pnpm admin:reset-mfa -- --email ...` (`apps/admin/scripts/reset-mfa.mjs`), que exige acesso à infraestrutura, pede confirmação (`--yes` pula) e grava `admin.mfa_reset` na auditoria. Não há códigos de recuperação impressos.
+
+**Decisões tomadas na construção (sem pergunta ao dono)**
+- Cortesia reaproveita a troca agendada, sem mexer no motor de cobrança.
+- Excluir espaço de vez **não foi feito**: só inativar (reversível). A exclusão definitiva pede um levantamento do que apagar (cascata das tabelas, logins do espaço, assinatura no parceiro) e fica nas pendências.
+- Convite só pelo proprietário; o link do convite nunca é gravado nem registrado em log.
+- Aviso urgente não pode ser dispensado; os outros, só pela pessoa que dispensa.
+
+**Ainda não feito** (também em [pendencias](../pendencias.md)): "sugerir resposta" por IA na caixa de entrada, imagens no chat, reenviar cobrança e cancelar assinatura no parceiro pelo painel, rodar uma rotina de novo, resumo diário de erros do web ignorar "erro conhecido", resposta por e-mail do cliente voltar para a conversa, WhatsApp como canal (fase 1C, depende de conta Meta), exclusão definitiva de espaço, quais termos cada espaço aceitou na aba de dados (hoje só na visão de suporte), configurações da plataforma (seção 6.11) e e2e do painel.

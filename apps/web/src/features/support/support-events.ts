@@ -1,0 +1,19 @@
+/** Abrir o "Fale com a gente" de qualquer tela (menu, Planos, aviso de erro). */
+const EVENT = "gestarahub:open-support";
+
+export interface OpenSupportDetail {
+  /** Primeira mensagem ja escrita (ex.: dúvida sobre planos). */
+  draft?: string;
+  /** Codigo do erro que a pessoa viu (liga a conversa ao registro de erros). */
+  errorReference?: string;
+}
+
+export function openSupport(detail: OpenSupportDetail = {}): void {
+  window.dispatchEvent(new CustomEvent<OpenSupportDetail>(EVENT, { detail }));
+}
+
+export function onOpenSupport(handler: (detail: OpenSupportDetail) => void): () => void {
+  const listener = (event: Event) => handler((event as CustomEvent<OpenSupportDetail>).detail ?? {});
+  window.addEventListener(EVENT, listener);
+  return () => window.removeEventListener(EVENT, listener);
+}

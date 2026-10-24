@@ -79,7 +79,7 @@ test.describe("cadastro de turma", () => {
     await dialog.getByRole("combobox", { name: /Modalidade/ }).click();
     await page.getByRole("option", { name: "Yoga" }).click();
     // Paula e a unica professora de Yoga.
-    await expect(dialog.getByRole("combobox", { name: /Professor/ })).toContainText("Paula Souza");
+    await expect(dialog.getByRole("combobox", { name: /Instrutor/ })).toContainText("Paula Souza");
     await dialog.getByLabel("Início do encontro").fill("20:00");
     await dialog.getByLabel("Fim do encontro").fill("21:00");
     await dialog.getByLabel("Capacidade (vagas)").fill("12");
@@ -198,7 +198,7 @@ test.describe("cadastro de turma", () => {
     await dialog.getByLabel("Nome da turma").fill("Jiu-Jitsu Extra");
     await dialog.getByRole("combobox", { name: /Modalidade/ }).click();
     await page.getByRole("option", { name: "Jiu-Jitsu" }).click();
-    await dialog.getByRole("combobox", { name: /Professor/ }).click();
+    await dialog.getByRole("combobox", { name: /Instrutor/ }).click();
     await page.getByRole("option", { name: "Carlos Silva" }).click();
     await dialog.getByLabel("Início do encontro").fill("17:30");
     await dialog.getByLabel("Fim do encontro").fill("18:30");
@@ -209,7 +209,7 @@ test.describe("cadastro de turma", () => {
     await expect(page.getByText(/criada com sucesso/)).toHaveCount(0);
 
     // Com outro professor o mesmo horario passa.
-    await dialog.getByRole("combobox", { name: /Professor/ }).click();
+    await dialog.getByRole("combobox", { name: /Instrutor/ }).click();
     await page.getByRole("option", { name: "Paula Souza" }).click();
     await expect(conflict).toHaveCount(0);
     await dialog.getByRole("button", { name: "Adicionar", exact: true }).click();

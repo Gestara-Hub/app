@@ -31,6 +31,7 @@ import { platformFeeSentence } from "@gestarahub/core/payment-fees";
 import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import type { PlanTarget } from "@/services/subscription/actions";
+import { openSupport } from "@/features/support";
 import { PlanChangeDialog } from "./plan-change-dialog";
 import { ScheduledPlanChangeNotice } from "./scheduled-plan-change-notice";
 
@@ -47,7 +48,9 @@ export function PlansView() {
   const currentInterval = sub?.interval ?? "monthly";
   // Conta real com plano pago: a troca passa pela conta da diferenca (doc product/13 §6).
   const demo = isDemoSpace(useCurrentUser().organizationId);
-  const changesInPlace = !demo && currentTier !== "free";
+  // Cortesia do GestaraHub nao e assinatura: o botao leva ao checkout, nao a troca com a conta da diferenca.
+  const onCourtesy = Boolean(sub?.courtesyUntil);
+  const changesInPlace = !demo && currentTier !== "free" && !onCourtesy;
   const [changeTarget, setChangeTarget] = useState<PlanTarget | null>(null);
 
   const handleSelectTier = async (targetTier: SubscriptionTier) => {
@@ -262,7 +265,7 @@ export function PlansView() {
               <PaidPlanAction
                 tier="pro"
                 interval={interval}
-                current={{ tier: currentTier, interval: currentInterval }}
+                current={{ tier: onCourtesy ? "free" : currentTier, interval: currentInterval }}
                 changesInPlace={changesInPlace}
                 canManage={canManage}
                 onChange={setChangeTarget}
@@ -296,7 +299,7 @@ export function PlansView() {
                 <PaidPlanAction
                   tier="scale"
                   interval={interval}
-                  current={{ tier: currentTier, interval: currentInterval }}
+                  current={{ tier: onCourtesy ? "free" : currentTier, interval: currentInterval }}
                   changesInPlace={changesInPlace}
                   canManage={canManage}
                   onChange={setChangeTarget}
@@ -306,6 +309,13 @@ export function PlansView() {
             </Card>
           ) : null}
         </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Dúvidas sobre os planos?{" "}
+          <Button type="button" variant="link" className="h-auto p-0" onClick={() => openSupport({ draft: "Tenho uma dúvida sobre os planos: " })}>
+            Fale com a gente
+          </Button>
+        </p>
 
         {/* Garantia e Segurança */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-xs text-muted-foreground bg-muted/20 border border-border/60 rounded-xl p-4">

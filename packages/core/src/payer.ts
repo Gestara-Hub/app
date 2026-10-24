@@ -27,6 +27,28 @@ export function isValidCpf(value: string | null | undefined): boolean {
   return check(9) === Number(digits[9]) && check(10) === Number(digits[10]);
 }
 
+/** CNPJ valido pelos digitos verificadores (rejeita sequencias repetidas). */
+export function isValidCnpj(value: string | null | undefined): boolean {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (digits.length !== 14 || /^(\d)\1{13}$/.test(digits)) return false;
+  const check = (length: number) => {
+    const weights = length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = digits
+      .slice(0, length)
+      .split("")
+      .reduce((total, digit, i) => total + Number(digit) * weights[i], 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  return check(12) === Number(digits[12]) && check(13) === Number(digits[13]);
+}
+
+/** CPF (11 numeros) ou CNPJ (14) com digitos verificadores certos: o que o parceiro de pagamentos aceita. */
+export function isValidCpfOrCnpj(value: string | null | undefined): boolean {
+  const digits = (value ?? "").replace(/\D/g, "");
+  return digits.length === 11 ? isValidCpf(digits) : digits.length === 14 ? isValidCnpj(digits) : false;
+}
+
 /** Mascara de digitacao: 000.000.000-00. */
 export function formatCpf(value: string | null | undefined): string {
   const digits = cpfDigits(value);

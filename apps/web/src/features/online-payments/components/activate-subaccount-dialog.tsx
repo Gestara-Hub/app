@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/sheet";
 import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
+import { isValidCpfOrCnpj } from "@gestarahub/core/payer";
 import { PERSON_ACCOUNT_NOTICE, showsPersonAccountNotice } from "../account-notice";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
 import { requestSecurityPrompt } from "@/features/auth";
@@ -85,10 +86,7 @@ const schema = z
     cpfCnpj: z
       .string()
       .trim()
-      .refine((val) => {
-        const digits = val.replace(/\D/g, "");
-        return digits.length === 11 || digits.length === 14;
-      }, "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido."),
+      .refine((val) => isValidCpfOrCnpj(val), "Informe um CPF ou CNPJ válido. Confira os números."),
     birthDate: z.string().optional(),
     companyType: z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]).optional(),
     mobilePhone: z.string().trim().min(8, "Informe o telefone com DDD."),

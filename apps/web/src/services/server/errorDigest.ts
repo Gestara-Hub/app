@@ -41,9 +41,15 @@ export async function sendDailyErrorDigest(): Promise<{ errors: number; sent: bo
     await reportError("cron.daily.resumo-erros", new Error(result.error), { source: "cron", level: "warn" });
     return { errors: pending.length, sent: false };
   }
-  const ids = pending.map((row) => String(row.id));
-  for (let i = 0; i < ids.length; i += 200) {
-    await admin.from("error_logs").update({ notified_at: new Date().toISOString() }).in("id", ids.slice(i, i + 200));
+  // "Avisado" = o `last_seen` que o aviso cobriu (relogio do banco), nunca a hora do servidor: com
+  // alguns ms de diferenca entre os dois relogios, um erro visto logo antes do resumo voltava como novo.
+  // `.eq("last_seen", ...)`: se o erro voltou a acontecer no meio do envio, continua pendente.
+  for (let i = 0; i < pending.length; i += 25) {
+    await Promise.all(
+      pending.slice(i, i + 25).map((row) =>
+        admin.from("error_logs").update({ notified_at: row.last_seen }).eq("id", row.id).eq("last_seen", row.last_seen),
+      ),
+    );
   }
   return { errors: pending.length, sent: true };
 }

@@ -1,9 +1,5 @@
 import { z } from "zod";
-
-function isValidCpfOrCnpj(val: string): boolean {
-  const digits = val.replace(/\D/g, "");
-  return digits.length === 11 || digits.length === 14;
-}
+import { isValidCpfOrCnpj } from "@gestarahub/core/payer";
 
 export const subscriptionCheckoutSchema = z
   .object({
@@ -21,7 +17,7 @@ export const subscriptionCheckoutSchema = z
       .min(1, "Informe o CPF ou CNPJ.")
       .refine(
         (val) => isValidCpfOrCnpj(val),
-        "CPF ou CNPJ inválido. Digite 11 números para CPF ou 14 para CNPJ.",
+        "CPF ou CNPJ inválido. Confira os números.",
       ),
     customerPhone: z.string().optional(),
     billingType: z.enum(["PIX", "CREDIT_CARD"]),

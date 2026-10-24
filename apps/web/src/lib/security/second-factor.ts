@@ -12,7 +12,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  */
 
 export type SecondFactorState = "not_required" | "satisfied" | "missing";
-export type SecondFactorMethod = "email" | "device";
+export type SecondFactorMethod = "email" | "device" | "recovery";
 
 export interface SecondFactorInfo {
   state: SecondFactorState;

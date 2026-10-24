@@ -80,8 +80,8 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [technical/22-fuso-do-espaco.md](technical/22-fuso-do-espaco.md) — **Fuso do espaço:** os quatro fusos do Brasil, fuso escolhido ou pelo estado da unidade, "hoje" no fuso do espaço no servidor e no navegador, datas do Asaas no horário de Brasília.
 - [technical/23-historico-em-segundo-plano.md](technical/23-historico-em-segundo-plano.md) — **Histórico do que roda sem pessoa:** Auditoria com o sistema como autor (rotina diária, parceiro de pagamentos), histórico do plano ligado à Auditoria, registro das execuções e dos avisos do Asaas (aviso repetido reconhecido), índices por consulta.
 - [technical/24-plano-gestarahub.md](technical/24-plano-gestarahub.md) — **Plano GestaraHub (assinatura):** contrato, matriz de recursos por plano, composição com permissões, demonstração e conta real, quem grava o plano. As regras de troca de plano estão em `product/13` §6.
-- [guides/21-painel-admin-local.md](guides/21-painel-admin-local.md) — **Painel admin no ambiente local:** como subir (`pnpm admin:setup`, `admin:create-admin`, `dev:admin`), roteiro de teste manual da fase 0 e os testes automáticos.
-- [technical/26-painel-admin-gestarahub.md](technical/26-painel-admin-gestarahub.md) — **Painel admin do GestaraHub (fase 0 feita):** app `apps/admin` com login próprio; espaços, suporte via chatbot, planos e cortesias, saúde, receita, comunicados, LGPD e auditoria; fases e perguntas em aberto.
+- [guides/21-painel-admin-local.md](guides/21-painel-admin-local.md) — **Painel admin no ambiente local:** como subir (`pnpm admin:setup`, `admin:create-admin`, `dev:admin`), roteiros de teste manual (fase 0 e fases 1 a 8) e os testes automáticos.
+- [technical/26-painel-admin-gestarahub.md](technical/26-painel-admin-gestarahub.md) — **Painel admin do GestaraHub (fases 0 a 8 feitas):** app `apps/admin` com login próprio; espaços, suporte via assistente, planos e cortesias, saúde, receita, comunicados, equipe, LGPD, visão de suporte e auditoria; seção 17 diz o que existe e o que falta.
 - [technical/25-pagamento-online.md](technical/25-pagamento-online.md) — **Pagamento online dos alunos:** Pix, link e Pix Automático (porta de pagamento, contrato, fluxos e regras).
 
 ### Guias (como fazer)
@@ -92,6 +92,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 ### Testes do sistema e planos de execução
 - [qa/2026-10-23-teste-geral.md](qa/2026-10-23-teste-geral.md) — **Teste geral de 23/10/2026:** 80 achados por área e gravidade, as correções feitas (com commit e teste) e as perguntas de produto pendentes. As capturas ficam só na máquina local.
 - [qa/2026-10-24-teste-final.md](qa/2026-10-24-teste-final.md) — **Teste final de 24/10/2026:** passada de tela de 104 telas (4 perfis, desktop claro e celular escuro), e2e completo e smoke; 4 achados novos.
+- [qa/2026-10-24-teste-geral-2.md](qa/2026-10-24-teste-geral-2.md) — **Teste geral 2 (web e painel admin, 24/10/2026):** navegador real contra o Asaas sandbox (conta, Pix, link, cancelar, avisos, assinatura), 2FA com códigos de recuperação, comunicados, equipe, LGPD, suporte; e2e completo (401 passaram); 12 achados corrigidos e os que ficam para decisão.
 - [handoff/2026-10-24-execucao-noturna.md](handoff/2026-10-24-execucao-noturna.md) — **Execução noturna de 24/10/2026:** plano dos achados em aberto, organização das docs e rodada final de testes; o andamento está em [handoff/2026-10-24-diario-noturno.md](handoff/2026-10-24-diario-noturno.md).
 
 ### Frontend

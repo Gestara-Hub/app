@@ -14,6 +14,7 @@ import { organizationModelById } from "@/mocks/store";
 import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import { WhatsAppConfirmHost } from "@/features/communication";
 import { PlanNoticeBanner } from "@/features/subscription";
+import { AnnouncementBanner, SupportHost } from "@/features/support";
 import { UserPreferencesProvider } from "@/features/preferences";
 import {
   VIEW_MODE_STORAGE_PREFIX,
@@ -61,12 +62,14 @@ export default async function AppLayout({
             <AppSidebar />
             <NavigationTracker />
             <WhatsAppConfirmHost />
+            <SupportHost />
             <BrowserErrorReporter />
             <SecurityPromptHost />
             <ScheduleNoticeHost />
             {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
             <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
               <AppTopbar />
+              <AnnouncementBanner />
               <PlanNoticeBanner />
               <Suspense fallback={null}>
                 <OnboardingTopBanner />

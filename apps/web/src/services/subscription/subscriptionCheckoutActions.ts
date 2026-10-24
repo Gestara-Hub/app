@@ -155,7 +155,8 @@ export async function createAsaasSubscriptionCheckoutAction(
     // troca de plano; a que ficou de quem voltou ao Gratis sai do Asaas antes.
     const admin = createSupabaseAdminClient();
     const previous = await readOrganizationSubscription(admin, input.organizationId);
-    if (previous && previous.tier !== "free") {
+    // Cortesia do GestaraHub nao e assinatura: quem esta nela pode assinar (o pagamento a substitui).
+    if (previous && previous.tier !== "free" && !previous.courtesyUntil) {
       return {
         success: false,
         subscriptionId: "",

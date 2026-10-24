@@ -133,6 +133,13 @@ async function handleEvent(
     return { status: "processed", outcome: "pagamento de aluno: código removido" };
   }
 
+  // Estorno e contestacao: o app ainda nao muda a cobranca sozinho (decisao de produto em aberto,
+  // docs/pendencias.md). Fica no registro de erros para a equipe ver em Saude e falar com o dono.
+  if (event === "PAYMENT_REFUNDED" || event === "PAYMENT_REFUND_IN_PROGRESS" || event.startsWith("PAYMENT_CHARGEBACK")) {
+    logWarn(`[Asaas Webhook] ${event} no pagamento ${payment.id}: a cobrança continua como paga no GestaraHub; falar com o dono do espaço.`);
+    return { status: "ignored", outcome: `${event}: sem tratamento automático (avisar o dono)` };
+  }
+
   // Outros eventos (ex: PAYMENT_CREATED) sao reconhecidos sem erro.
   return { status: "ignored", outcome: event };
 }

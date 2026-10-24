@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ageOn, formatCpf, isValidCpf, messageGuardian, payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "../src/payer.ts";
+import { ageOn, formatCpf, isValidCnpj, isValidCpf, isValidCpfOrCnpj, messageGuardian, payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "../src/payer.ts";
 
 // CPFs validos de teste (digitos verificadores certos).
 const ADULT_CPF = "52998224725";
@@ -128,5 +128,24 @@ describe("messageGuardian (cobrança e avisos de aluno menor)", () => {
     assert.equal(messageGuardian({ guardians }, "2026-10-24"), undefined);
     assert.equal(messageGuardian({ birthDate: "2015-03-10", guardians: [{ name: "Sem fone" }] }, "2026-10-24"), undefined);
     assert.equal(messageGuardian({ birthDate: "2015-03-10" }, "2026-10-24"), undefined);
+  });
+});
+
+describe("CNPJ e documento do pagador", () => {
+  it("confere os digitos verificadores do CNPJ e recusa sequencias", () => {
+    assert.equal(isValidCnpj("11.222.333/0001-81"), true);
+    assert.equal(isValidCnpj("11222333000181"), true);
+    assert.equal(isValidCnpj("11.222.333/0001-82"), false);
+    assert.equal(isValidCnpj("00000000000000"), false);
+    assert.equal(isValidCnpj("123"), false);
+    assert.equal(isValidCnpj(undefined), false);
+  });
+
+  it("CPF ou CNPJ: o tamanho escolhe a regra e os digitos precisam bater", () => {
+    assert.equal(isValidCpfOrCnpj("529.982.247-25"), true);
+    assert.equal(isValidCpfOrCnpj("111.111.111-11"), false);
+    assert.equal(isValidCpfOrCnpj("11.222.333/0001-81"), true);
+    assert.equal(isValidCpfOrCnpj("11.222.333/0001-80"), false);
+    assert.equal(isValidCpfOrCnpj("1234567890"), false);
   });
 });

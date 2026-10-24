@@ -392,6 +392,10 @@ export async function cancelScheduledPlanChange(
   if (!subscription || !scheduled || subscription.tier === "free") {
     throw apiError("CONFLICT", "Não há troca de plano marcada.", { httpStatus: 409 });
   }
+  // A volta ao Gratis da cortesia nao se desmarca: para continuar, assina o plano em Planos.
+  if (subscription.courtesyUntil) {
+    throw apiError("CONFLICT", "Esta é uma cortesia do GestaraHub e termina no dia combinado. Para continuar no plano, assine em Planos.", { httpStatus: 409 });
+  }
   const current = { tier: subscription.tier, interval: subscription.interval ?? "monthly" } as const;
   let next: Subscription = { ...subscription, scheduledChange: undefined };
   if (onAsaas(subscription)) {
@@ -460,12 +464,15 @@ export async function applyScheduledPlanChange(
           changedAt: new Date().toISOString(),
         };
   await writeOrganizationSubscription(admin, organizationId, next);
+  const courtesy = Boolean(subscription.courtesyUntil);
   await recordSubscriptionEvent(admin, organizationId, author, {
-    kind: "change_applied",
+    kind: courtesy ? "courtesy_ended" : "change_applied",
     before: subscription,
     after: next,
     effectiveOn: scheduled.effectiveOn,
-    predicate: `aplicou a troca marcada: o Plano GestaraHub passou para o ${planName(next)}`,
+    predicate: courtesy
+      ? "encerrou a cortesia do Plano GestaraHub: o espaço voltou ao Grátis"
+      : `aplicou a troca marcada: o Plano GestaraHub passou para o ${planName(next)}`,
   });
   return next;
 }

@@ -163,7 +163,7 @@ test.describe("professor", () => {
     await page.keyboard.press("Escape");
 
     await page.goto("/classes/cg-own");
-    await page.getByRole("link", { name: "Aluno Alfa" }).click();
+    await page.getByLabel("Abrir ficha de Aluno Alfa").click();
     await expect.poll(() => new URL(page.url()).pathname).toBe("/clients/c-a");
     await expect(page.getByRole("heading", { level: 1, name: "Aluno Alfa" })).toBeVisible();
     // Turmas, evolução e cadastro; nada de cobranças, pacotes, mensagens nem edição.

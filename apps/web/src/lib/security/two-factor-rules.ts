@@ -23,6 +23,36 @@ export const TRUSTED_DEVICE_COOKIE = "gestarahub_trusted_device";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Codigos de recuperacao: 8 por vez, de uso unico, para quem perde o aplicativo. */
+export const RECOVERY_CODE_COUNT = 8;
+// 32 simbolos sem 0, O, 1 e I (nao se confundem ao digitar de um papel).
+const RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const RECOVERY_LENGTH = 8;
+
+/** "ABCD-EFGH": 8 simbolos aleatorios criptograficos, com hifen no meio para ler melhor. */
+export function generateRecoveryCode(): string {
+  let raw = "";
+  for (let i = 0; i < RECOVERY_LENGTH; i += 1) raw += RECOVERY_ALPHABET[randomInt(0, RECOVERY_ALPHABET.length)];
+  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+}
+
+export function generateRecoveryCodes(count = RECOVERY_CODE_COUNT): string[] {
+  const codes = new Set<string>();
+  while (codes.size < count) codes.add(generateRecoveryCode());
+  return [...codes];
+}
+
+/** O que a pessoa digitou (com ou sem hifen, minusculo, com espaco) vira o texto que se confere; "" se nao tem 8 simbolos. */
+export function normalizeRecoveryCode(input: string): string {
+  const raw = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return raw.length === RECOVERY_LENGTH ? raw : "";
+}
+
+/** Hash do codigo (so letras e numeros), com o usuario junto, como nos outros codigos. */
+export function hashRecoveryCode(authUserId: string, normalized: string): string {
+  return createHash("sha256").update(`recovery:${authUserId}:${normalized}`).digest("hex");
+}
+
 /** Codigo de 6 numeros, aleatorio criptografico. */
 export function generateEmailCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");

@@ -117,3 +117,19 @@ export function signOut(): void {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/**
+ * Conexao de dono do banco local, so para montar o que o app dos clientes nao
+ * alcanca (ex.: uma resposta do suporte no schema `platform`). A URL vem do
+ * `supabase status`, nunca de variavel gravada.
+ */
+export async function ownerSql() {
+  const { execFileSync } = await import("node:child_process");
+  const { fileURLToPath } = await import("node:url");
+  const postgres = (await import("postgres")).default;
+  const root = fileURLToPath(new URL("../../../..", import.meta.url));
+  const out = execFileSync("supabase", ["status", "--workdir", "apps", "-o", "env"], { cwd: root, encoding: "utf8" });
+  const url = out.match(/^DB_URL="?([^"\n]+)"?$/m)?.[1];
+  if (!url) throw new Error("DB_URL do Supabase local não encontrada.");
+  return postgres(url, { max: 1, onnotice: () => {} });
+}

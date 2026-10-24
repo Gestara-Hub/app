@@ -46,7 +46,7 @@ export async function requireTenant(): Promise<TenantContext> {
 
   const { data: row, error } = await client
     .from("users")
-    .select("id, organization_id, profile, professional_id, organizations(settings, units(address))")
+    .select("id, organization_id, profile, professional_id, organizations(status, settings, units(address))")
     .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
     .eq("status", "active")
     .limit(1)
@@ -55,9 +55,12 @@ export async function requireTenant(): Promise<TenantContext> {
 
   const profile = row.profile as UserProfile;
   const organization = (row.organizations ?? null) as {
+    status?: string;
     settings?: { timeZone?: string } | null;
     units?: { address?: { state?: string } | string | null }[];
   } | null;
+  // Espaco inativado pelo painel: nenhuma acao passa (a sessao tambem acaba em getCurrentUser).
+  if (organization?.status && organization.status !== "active") throw unauthorized();
   const timeZone = resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address);
   // Erros registrados dentro desta requisicao saem com o espaco e o usuario da
   // sessao; o "hoje" da acao sai do fuso do espaco.

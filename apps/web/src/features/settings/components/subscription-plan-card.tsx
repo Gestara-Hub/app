@@ -74,6 +74,8 @@ export function SubscriptionPlanCard() {
 
   // Scale inclui tudo do Pro (e a multiunidade): nao e Gratis.
   const isPro = data.tier !== "free";
+  // Cortesia do GestaraHub: tem o plano pago, mas nao assinatura.
+  const onCourtesy = Boolean(data.courtesyUntil);
   const isScale = data.tier === "scale";
 
   const handleChange = async () => {
@@ -166,11 +168,13 @@ export function SubscriptionPlanCard() {
               <p className="text-xs text-muted-foreground">
                 {demo
                   ? "Demonstração: a troca de plano não gera cobrança e fica registrada na Auditoria."
-                  : isPro
+                  : onCourtesy
+                    ? "Para continuar no plano depois da cortesia, assine por Pix ou cartão."
+                    : isPro
                     ? "Voltar ao Grátis vale no fim do período pago. Os dados ficam guardados."
                     : "Escolha o período e pague por Pix ou cartão."}
               </p>
-              {data.scheduledChange ? null : demo || isPro ? (
+              {data.scheduledChange && !onCourtesy ? null : demo || (isPro && !onCourtesy) ? (
                 <Button
                   type="button"
                   variant={isPro ? "outline" : "default"}

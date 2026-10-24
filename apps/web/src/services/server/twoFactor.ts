@@ -11,8 +11,11 @@ import {
   deviceLabel,
   generateEmailCode,
   hashDeviceToken,
+  generateRecoveryCodes,
   hashEmailCode,
+  hashRecoveryCode,
   isExpired,
+  normalizeRecoveryCode,
   resendWaitSeconds,
 } from "@/lib/security/two-factor-rules";
 import { logError } from "@/lib/log";
@@ -24,7 +27,7 @@ import { logError } from "@/lib/log";
  * e mandam o e-mail. Tudo pela chave de servico (tabelas sem politicas, migracao 48).
  */
 
-export type EmailCodePurpose = "login" | "enable" | "disable";
+export type EmailCodePurpose = "login" | "enable" | "disable" | "recovery";
 
 export type IssueEmailCodeResult =
   | { ok: true; code: string; resendInSeconds: number }
@@ -169,7 +172,59 @@ export async function disableTwoFactor(admin: SupabaseClient, authUserId: string
   if (!(await setEmailTwoFactor(admin, authUserId, false))) return false;
   await forgetAllTrustedDevices(admin, authUserId, now);
   await admin.from("two_factor_sessions").delete().eq("auth_user_id", authUserId);
+  await admin.from("two_factor_recovery_codes").delete().eq("auth_user_id", authUserId);
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Codigos de recuperacao
+// ---------------------------------------------------------------------------
+
+/** Gera 8 codigos novos (os anteriores deixam de valer). Devolve os codigos so desta vez; no banco, so o hash. */
+export async function issueRecoveryCodes(admin: SupabaseClient, authUserId: string): Promise<string[] | null> {
+  const codes = generateRecoveryCodes();
+  const { error: deleteError } = await admin.from("two_factor_recovery_codes").delete().eq("auth_user_id", authUserId);
+  if (deleteError) {
+    logError("[two-factor] Erro ao trocar os codigos de recuperacao:", deleteError);
+    return null;
+  }
+  const { error } = await admin.from("two_factor_recovery_codes").insert(
+    codes.map((code) => ({ auth_user_id: authUserId, code_hash: hashRecoveryCode(authUserId, normalizeRecoveryCode(code)) })),
+  );
+  if (error) {
+    logError("[two-factor] Erro ao criar os codigos de recuperacao:", error);
+    return null;
+  }
+  return codes;
+}
+
+/** Quantos codigos de recuperacao ainda valem. */
+export async function recoveryCodesLeft(admin: SupabaseClient, authUserId: string): Promise<number> {
+  const { count } = await admin
+    .from("two_factor_recovery_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("auth_user_id", authUserId)
+    .is("used_at", null);
+  return count ?? 0;
+}
+
+/** Gasta um codigo de recuperacao: vale uma vez so, mesmo com dois cliques ao mesmo tempo. */
+export async function consumeRecoveryCode(
+  admin: SupabaseClient,
+  authUserId: string,
+  input: string,
+  now = new Date(),
+): Promise<boolean> {
+  const normalized = normalizeRecoveryCode(input);
+  if (!normalized) return false;
+  const { data } = await admin
+    .from("two_factor_recovery_codes")
+    .update({ used_at: now.toISOString() })
+    .eq("auth_user_id", authUserId)
+    .eq("code_hash", hashRecoveryCode(authUserId, normalized))
+    .is("used_at", null)
+    .select("id");
+  return Boolean(data && data.length > 0);
 }
 
 // ---------------------------------------------------------------------------

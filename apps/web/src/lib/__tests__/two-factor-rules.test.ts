@@ -97,3 +97,22 @@ describe("conta so do Google", () => {
     expect(isGoogleOnlyAccount(["email"])).toBe(false);
   });
 });
+
+describe("códigos de recuperação (regras)", () => {
+  it("gera 8 códigos únicos no formato ABCD-EFGH, sem símbolos que se confundem", async () => {
+    const { generateRecoveryCodes, RECOVERY_CODE_COUNT } = await import("../security/two-factor-rules");
+    const codes = generateRecoveryCodes();
+    expect(codes).toHaveLength(RECOVERY_CODE_COUNT);
+    expect(new Set(codes).size).toBe(RECOVERY_CODE_COUNT);
+    for (const code of codes) expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+  });
+
+  it("normaliza o que a pessoa digita e recusa tamanho errado", async () => {
+    const { normalizeRecoveryCode, hashRecoveryCode } = await import("../security/two-factor-rules");
+    expect(normalizeRecoveryCode("abcd-efgh")).toBe("ABCDEFGH");
+    expect(normalizeRecoveryCode(" abcd efgh ")).toBe("ABCDEFGH");
+    expect(normalizeRecoveryCode("abc")).toBe("");
+    expect(hashRecoveryCode("u1", "ABCDEFGH")).not.toBe(hashRecoveryCode("u2", "ABCDEFGH"));
+    expect(hashRecoveryCode("u1", "ABCDEFGH")).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
