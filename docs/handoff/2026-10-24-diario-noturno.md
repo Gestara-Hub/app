@@ -34,3 +34,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #20 figura do Pix na landing | feito | git log | capturas refeitas com SHOTS=pix | Sem CPF na imagem |
 | 4.2 #22 subtítulo da Equipe | feito | git log | typecheck, lint, Vitest 1035 |  |
 | 4.2 #24 sugestões de modalidade | feito | git log | typecheck, lint, Vitest 1037 |  |
+| 4.2 #23 nome do papel | decisão registrada | git log | só docs | Recomendação: palavra da área no vocabulário |
