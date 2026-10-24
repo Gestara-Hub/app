@@ -69,10 +69,14 @@ export function recordChargeEvent(
   verb: string,
   reason?: string,
 ): void {
+  const label = chargeLabel(c);
+  // Cobranca a vista de curso ou pacote leva o nome da matricula/compra: "cancelou
+  // a matricula" diria que o aluno saiu, e so a cobranca foi cancelada (achado 68).
+  const lead = action === "cancelled" && /^(matrícula|compra)/.test(label) ? "cancelou a cobrança da" : verb;
   auditLogService.record({
     action,
-    target: { type: "charge", id: c.id, label: chargeLabel(c) },
-    predicate: `${verb} ${chargeLabel(c)} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})${reason ? `: ${reason}` : ""}`,
+    target: { type: "charge", id: c.id, label },
+    predicate: `${lead} ${label} (${formatCents(c.amountCents)}, vence ${c.dueDate.split("-").reverse().join("/")})${reason ? `: ${reason}` : ""}`,
   });
 }
 

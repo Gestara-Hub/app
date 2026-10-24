@@ -401,6 +401,22 @@ describe("curso fechado: cancelar a matrícula (decisão 1)", () => {
     expect(lastAudit()).toBe("Ana Ribeiro cancelou a matrícula de Otto no curso Confeitaria");
   });
 
+  it("cancelar só a cobrança do curso não vira \"cancelou a matrícula\" na Auditoria (achado 68)", async () => {
+    const g = await courseClass({ courseMaxInstallments: 1, coursePriceCents: 50000 });
+    const student = await createStudent("Fábio");
+    await turmasService.enroll({
+      classGroupId: g.id,
+      studentId: student.id,
+      course: choice({ priceCents: 50000, installments: 1 }),
+    });
+    await billingService.cancelCharge(courseCharges(student.id)[0].id, "Lançada por engano");
+
+    expect(lastAudit()).toMatch(/^Ana Ribeiro cancelou a cobrança da matrícula no curso "Confeitaria" de Fábio \(/);
+    // A matrícula continua.
+    const [enrollment] = await turmasService.listEnrollments(g.id);
+    expect(enrollment.status).toBe("active");
+  });
+
   it("matrícula de mensalidade continua sem mexer em cobrança", async () => {
     const teacher = await createInstructor("Ana");
     const g = await createClass({ instructorId: teacher.id, slots: nextSlot() });

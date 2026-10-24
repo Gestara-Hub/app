@@ -16,3 +16,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #4 tarifa de saque | feito | git log | typecheck, lint, Vitest, core 281 | Confirmado no MCP do Asaas (somente leitura) |
 | 4.1 #67 pagamento online no Pro | feito | git log | typecheck, lint, Vitest 1014 |  |
 | 4.1 #61 CPF na janela Cobrar online | feito | git log | typecheck, lint, Vitest, core 282 | Tela conferida só por tipos; e2e fica para a bateria |
+| 4.1 #68 Auditoria da cobrança do curso | feito | git log | typecheck, lint, Vitest 1015 |  |
