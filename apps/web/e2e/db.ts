@@ -9,6 +9,7 @@ import { runInWorld } from "../src/services/world/runWorld";
 import { store } from "../src/services/world/store";
 import { fromRow, WORLD_COLLECTIONS } from "../src/services/world/tables";
 import { defaultMessageTemplates, defaultWhatsAppConnection } from "../src/services/defaults";
+import { hashEmailCode } from "../src/lib/security/two-factor-rules";
 
 /**
  * Espacos de teste no Supabase local para o e2e (doc 15, fatia 5). Cada teste
@@ -375,4 +376,32 @@ export async function readAuditLog(
     .order("timestamp", { ascending: true });
   if (error) throw new Error(`Auditoria de teste: ${error.message}`);
   return (data ?? []) as { action: string; target: { type: string }; summary: string }[];
+}
+
+/**
+ * Verificacao por e-mail (doc 17): troca o codigo "enviado" por um conhecido
+ * (so o hash, como o servidor grava), em vez de ler o terminal.
+ */
+export async function setKnownTwoFactorEmailCode(
+  authUserId: string,
+  purpose: "login" | "enable" | "disable",
+  code: string,
+): Promise<void> {
+  const db = admin();
+  await db
+    .from("two_factor_email_codes")
+    .update({ status: "revoked" })
+    .eq("auth_user_id", authUserId)
+    .eq("purpose", purpose)
+    .eq("status", "pending")
+    .throwOnError();
+  await db
+    .from("two_factor_email_codes")
+    .insert({
+      auth_user_id: authUserId,
+      purpose,
+      code_hash: hashEmailCode(authUserId, code),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    })
+    .throwOnError();
 }

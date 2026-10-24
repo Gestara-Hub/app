@@ -17,6 +17,7 @@ import {
 import { canAccessRoute, firstAllowedRoute } from "@/components/layout/nav";
 import { organizationModelById } from "@/mocks/store";
 import { getCurrentUser } from "@/features/auth/get-current-user";
+import { forgetCurrentSessionVerification } from "@/lib/security/second-factor";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { discardUnstartedOwnerAccount } from "@/services/server/accountSetup";
@@ -112,10 +113,15 @@ export async function declineTermsAndSignOut(): Promise<void> {
   await signOut();
 }
 
-/** Logout: encerra a sessao do Supabase Auth, limpa o cookie de sessao e volta para o login. */
+/**
+ * Logout: encerra a sessao do Supabase Auth, limpa o cookie de sessao e volta
+ * para o login. A prova do segundo fator desta sessao acaba junto; o
+ * dispositivo lembrado continua (doc 17).
+ */
 export async function signOut(): Promise<void> {
   try {
     const supabase = await createSupabaseServerClient();
+    await forgetCurrentSessionVerification(supabase);
     await supabase.auth.signOut();
   } catch {
     // Segue limpando os cookies locais

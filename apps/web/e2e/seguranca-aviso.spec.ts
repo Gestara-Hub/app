@@ -4,11 +4,17 @@ import { classGroup, currentAcademy, expect, seedAcademy, skipWelcome, test } fr
 
 /**
  * Aviso da verificacao em duas etapas (doc product/25, secao 5): depois de 7
- * dias de uso, no acesso; "Agora não" nao repete; "Ativar agora" vai direto ao
- * QR code. Hoje (relogio fixo) e 22/09/2026.
+ * dias de uso, no acesso; "Agora não" nao repete; "Ativar agora" abre a escolha
+ * entre o app e o e-mail. Hoje (relogio fixo) e 22/09/2026.
  */
 
 async function openWithUsage(page: Page, firstSeenAt: string) {
+  // A primeira tela grava "primeiro dia = hoje" e manda ao sair da pagina: chegando
+  // depois do ajuste abaixo, apagava os 7 dias de uso (teste instavel). O app
+  // segue lendo as preferencias do servidor; so as gravacoes ficam de fora.
+  await page.route("**/api/preferences", (route) =>
+    route.request().method() === "POST" ? route.fulfill({ json: { success: true } }) : route.continue(),
+  );
   await seedAcademy(page, { extra: (t) => (t.classGroups = [classGroup("cg-1", "Jiu-Jitsu Adulto")]) });
   await skipWelcome(page);
   // As preferencias do servidor valem sobre as do navegador: o primeiro dia vai no banco.
@@ -41,8 +47,12 @@ test("menos de 7 dias de uso: sem aviso", async ({ page }) => {
   await expect(prompt(page)).toHaveCount(0);
 });
 
-test("'Ativar agora' abre a verificação já no QR code", async ({ page }) => {
+test("'Ativar agora' abre a escolha entre o aplicativo e o e-mail", async ({ page }) => {
   await openWithUsage(page, "2026-09-10");
   await prompt(page).getByRole("button", { name: "Ativar agora" }).click();
+  const security = page.getByRole("dialog", { name: "Segurança" });
+  await expect(security.getByRole("button", { name: "Usar aplicativo" })).toBeVisible();
+  await expect(security.getByRole("button", { name: "Usar e-mail" })).toBeVisible();
+  await security.getByRole("button", { name: "Usar aplicativo" }).click();
   await expect(page.getByRole("img", { name: "QR code para o aplicativo autenticador" })).toBeVisible();
 });

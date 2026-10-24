@@ -238,14 +238,14 @@ export function buildSignupEmailText({
  * Sem MAILERSEND_API_KEY: em desenvolvimento e nos e2e o link vai para o log e
  * o fluxo segue. Em producao e falha: nunca dizer que enviou sem enviar.
  */
-function withoutApiKey(link: string): { ok: true } | { ok: false; error: string } {
+function withoutApiKey(link: string, what = "Link gerado"): { ok: true } | { ok: false; error: string } {
   // E2E_NOW so existe no servidor dos e2e (tambem no modo producao, doc 20).
   if (process.env.NODE_ENV === "production" && !process.env.E2E_NOW) {
     logError("[mailersend] MAILERSEND_API_KEY ausente em producao: e-mail nao enviado.");
     return { ok: false, error: "O envio de e-mails está fora do ar. Tente novamente mais tarde." };
   }
   // Saida de proposito (em desenvolvimento o link e lido daqui): nao e erro, nao vai ao registro.
-  console.warn("[mailersend] MAILERSEND_API_KEY ausente. Link gerado (so desenvolvimento):", link);
+  console.warn(`[mailersend] MAILERSEND_API_KEY ausente. ${what} (so desenvolvimento):`, link);
   return { ok: true };
 }
 
@@ -564,6 +564,93 @@ export async function sendPasswordResetEmail(
   } catch (err) {
     logError("[mailersend] Falha de conexão ao enviar e-mail de nova senha:", err);
     return { ok: false, error: "Não foi possível enviar o e-mail. Verifique sua conexão e tente novamente." };
+  }
+}
+
+// --- Codigo da verificacao em duas etapas (doc technical/17) ------------------
+
+export interface SendTwoFactorCodeEmailInput {
+  toEmail: string;
+  toName: string;
+  code: string;
+}
+
+export function buildTwoFactorCodeEmailHtml({
+  toName,
+  code,
+  hasInlineIcon,
+}: SendTwoFactorCodeEmailInput & { hasInlineIcon: boolean }): string {
+  const firstName = escapeHtml(toName.trim().split(/\s+/)[0] || toName.trim());
+  const safeCode = escapeHtml(code);
+
+  return renderEmailLayout({
+    title: "Seu código de acesso ao GestaraHub",
+    preheader: `Seu código: ${safeCode}. Vale por 10 minutos.`,
+    heading: `Seu código de acesso, ${firstName}`,
+    intro: "Use este código para entrar no GestaraHub.",
+    body: `<p style="margin:0 0 24px 0;font-size:34px;font-weight:800;letter-spacing:0.3em;color:#0f172a;text-align:center;font-family:'SFMono-Regular',Menlo,Consolas,monospace;">
+                ${safeCode}
+              </p>
+              ${emailNotice("<strong>&#9201; Vale por 10 minutos.</strong> Se não foi você, troque sua senha.")}`,
+    footer: `Nunca passe este código para outra pessoa. A equipe do GestaraHub não pede o código.<br />
+              <span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+    hasInlineIcon,
+  });
+}
+
+export function buildTwoFactorCodeEmailText({ toName, code }: SendTwoFactorCodeEmailInput): string {
+  const firstName = toName.trim().split(/\s+/)[0] || toName.trim();
+  return [
+    `Seu código de acesso, ${firstName}`,
+    "",
+    `Código: ${code}`,
+    "",
+    "Vale por 10 minutos. Se não foi você, troque sua senha.",
+    "Nunca passe este código para outra pessoa.",
+    `Dúvidas? Escreva para ${replyToEmail()}.`,
+  ].join("\n");
+}
+
+export async function sendTwoFactorCodeEmail(
+  input: SendTwoFactorCodeEmailInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const apiKey = process.env.MAILERSEND_API_KEY;
+  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br";
+  const fromName = process.env.MAILERSEND_FROM_NAME || "GestaraHub";
+
+  if (!apiKey) return withoutApiKey(input.code, `Código para ${input.toEmail}`);
+
+  const iconBase64 = await getEmailIconBase64();
+  const payload: Record<string, unknown> = {
+    from: { email: fromEmail, name: fromName },
+    to: [{ email: input.toEmail.trim(), name: input.toName.trim() }],
+    reply_to: { email: replyToEmail(), name: fromName },
+    subject: "Seu código de acesso ao GestaraHub",
+    html: buildTwoFactorCodeEmailHtml({ ...input, hasInlineIcon: Boolean(iconBase64) }),
+    text: buildTwoFactorCodeEmailText(input),
+  };
+  if (iconBase64) {
+    payload.attachments = [
+      { content: iconBase64, filename: "email-icon.png", disposition: "inline", id: "gestarahub-icon" },
+    ];
+  }
+
+  try {
+    const response = await fetch(MAILERSEND_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      logError("[mailersend] Erro ao enviar o código de acesso:", response.status, errorBody);
+      return { ok: false, error: "Não foi possível enviar o código. Tente novamente em instantes." };
+    }
+    if (await wasSuppressed(response, "código de acesso")) return { ok: false, error: SUPPRESSED_ERROR };
+    return { ok: true };
+  } catch (err) {
+    logError("[mailersend] Falha de conexão ao enviar o código de acesso:", err);
+    return { ok: false, error: "Não foi possível enviar o código. Verifique sua conexão e tente novamente." };
   }
 }
 

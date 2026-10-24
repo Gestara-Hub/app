@@ -52,7 +52,7 @@ Data: 2026-10-23. Status: fases 1 a 5 feitas (seção 8); o resumo por e-mail fi
 
 ## 5. Aviso de segurança (verificação em duas etapas)
 
-Uma janela curta explicando por que proteger a conta, com "Ativar agora" (vai direto ao passo do QR code em Segurança) e "Agora não".
+Uma janela curta explicando por que proteger a conta, com "Ativar agora" (abre Segurança na escolha entre aplicativo e código por e-mail, doc technical/17) e "Agora não".
 
 **Momentos (os quatro):**
 
@@ -95,7 +95,7 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (vai di
 - Motor puro: `features/communication/reminders.ts` (`buildReminders`), com as regras de prazo e texto que a ficha do aluno já usava (`message-suggestions.ts`, `message-values.ts`).
 - Painel: `features/dashboard/components/dashboard-todo.tsx` (bloco "Lembretes"); sino: `reminders-bell.tsx`, no topo do app; envio em sequência: `features/communication/components/reminder-sequence-dialog.tsx`.
 - Mudança de horário: `features/turmas/schedule-notice.ts` e `schedule-notice-host.tsx` (depois de salvar a turma com horário novo).
-- Aviso de segurança: `features/auth/security-prompt.ts` e `components/security-prompt-host.tsx`; "Ativar agora" abre a janela de Segurança já no QR code.
+- Aviso de segurança: `features/auth/security-prompt.ts` e `components/security-prompt-host.tsx`; "Ativar agora" abre a janela de Segurança na escolha dos dois métodos (aplicativo ou e-mail). Não aparece no espaço de demonstração.
 
 **Detalhes que importam:**
 - **Grupo grande:** cada grupo mostra no máximo 20 alunos na tela, com "e mais N" e o link para a tela completa (Cobranças, que pagina). O título e o total contam todos.

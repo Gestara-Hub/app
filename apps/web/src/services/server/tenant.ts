@@ -2,13 +2,17 @@ import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
 import { can } from "@/lib/permissions";
 import { setErrorScope } from "@/lib/log/server-sink";
+import { secondFactorState } from "@/lib/security/second-factor";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { missingSecondFactor } from "@/lib/supabase/tenant-client";
 
 /**
  * Contexto do espaco na server action (doc 15, fatia 2). O espaco e o perfil
  * saem do usuario autenticado no Supabase, nunca de argumento vindo do
  * navegador, e o cliente e o da sessao (com RLS). Sem sessao valida nao ha
- * fallback para o cliente administrativo. Modulo so do servidor, sem
+ * fallback para o cliente administrativo. Com a verificacao em duas etapas
+ * ligada, a sessao precisa ter passado pelo segundo fator (doc 17): a mesma
+ * barreira de `getClientForTenant`. Modulo so do servidor, sem
  * "use server": nao vira action.
  */
 
@@ -34,6 +38,7 @@ export async function requireTenant(): Promise<TenantContext> {
     data: { user },
   } = await client.auth.getUser();
   if (!user) throw unauthorized();
+  if ((await secondFactorState(client, user)) === "missing") throw missingSecondFactor();
 
   const { data: row, error } = await client
     .from("users")

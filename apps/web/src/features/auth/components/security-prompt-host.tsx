@@ -77,7 +77,7 @@ export function SecurityPromptHost() {
     checking.current = true;
     try {
       const status = await getTwoFactorStatusAction();
-      if (!status.ok || status.googleOnly || status.enabled) return;
+      if (!status.ok || status.googleOnly || status.demo || status.enabled) return;
       markAsked();
       setReason(next);
     } finally {
@@ -115,7 +115,7 @@ export function SecurityPromptHost() {
             <DialogDescription>{reason ? COPY[reason] : ""}</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Depois da senha, o login pede um código do aplicativo do celular. Senha vazada sozinha não entra.
+            Depois da senha, o login pede um código do celular ou do e-mail. Senha vazada sozinha não entra.
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={dismiss}>
@@ -133,7 +133,7 @@ export function SecurityPromptHost() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <TwoFactorDialog open={enrolling} onOpenChange={setEnrolling} startOnOpen />
+      <TwoFactorDialog open={enrolling} onOpenChange={setEnrolling} />
     </>
   );
 }
