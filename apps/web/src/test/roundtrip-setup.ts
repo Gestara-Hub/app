@@ -1,7 +1,7 @@
 import { afterEach, expect } from "vitest";
 import { store } from "@/mocks/store";
 import { WORLD_SCHEMA } from "@/services/world/schema.generated";
-import { canonical, fromRow, toRow, WORLD_COLLECTIONS, type Row } from "@/services/world/tables";
+import { canonical, fromRow, SERVER_WRITTEN, toRow, WORLD_COLLECTIONS, type Row } from "@/services/world/tables";
 
 /**
  * Ida e volta pelo banco (doc 15, fatia 5): ao fim de cada teste de regra, todo
@@ -57,6 +57,9 @@ afterEach(() => {
       const back = fromRow(table, row);
       for (const [field, original] of Object.entries(object)) {
         if (original === undefined) continue;
+        // Plano pago: gravado so pelas actions de assinatura, nunca pelo espaco (achado 66).
+        const column = field.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+        if (SERVER_WRITTEN[table]?.includes(column)) continue;
         if (!sameValue(table, field, original, back[field])) {
           problems.push(`${table}.${field}: ${canonical(original).slice(0, 80)} -> ${canonical(back[field]).slice(0, 80)}`);
         }

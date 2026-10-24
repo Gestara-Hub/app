@@ -97,7 +97,7 @@ const DB_ONLY: Record<string, string[]> = {
  * nao muda o plano pago (achado 66 do teste de 23/10). Na gravacao fica o
  * valor do banco.
  */
-const SERVER_WRITTEN: Record<string, string[]> = {
+export const SERVER_WRITTEN: Record<string, string[]> = {
   organizations: ["subscription"],
 };
 
