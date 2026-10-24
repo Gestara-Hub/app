@@ -411,7 +411,7 @@ export function EnrollStudentsDialog({
             role="listbox"
             aria-multiselectable
             aria-label="Alunos"
-            className="max-h-72 space-y-0.5 overflow-y-auto p-1"
+            className="max-h-[max(18rem,calc(100dvh-30rem))] space-y-0.5 overflow-y-auto p-1"
           >
             {shown.length === 0 ? (
               <p className="px-2 py-6 text-center text-sm text-muted-foreground">
@@ -599,6 +599,9 @@ export function EnrollStudentsDialog({
 
         {/* Lotada: dois botoes de texto longo, empilhados no celular. */}
         <DialogFooter className={cn("p-6 pt-4 border-t border-border/40 shrink-0 bg-background", isFull && "max-sm:grid-cols-1")}>
+          <Button variant="outline" onClick={close} disabled={pending}>
+            Cancelar
+          </Button>
           {isFull ? (
             <Button
               variant="outline"

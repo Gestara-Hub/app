@@ -39,3 +39,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #30 plural na contagem | feito | git log | typecheck, lint, Vitest |  |
 | 4.2 #32 seta de rolar nos modais | adiado para a bateria 6B | git log | — | Sobreposição é por desenho (evita pulo de layout); decidir pela captura em tela |
 | 4.2 #34 e #35 turma | feito | git log | typecheck, lint, Vitest 1040 |  |
+| 4.2 #36 janela Matricular alunos | feito | git log | typecheck, lint, Vitest 1041 |  |
