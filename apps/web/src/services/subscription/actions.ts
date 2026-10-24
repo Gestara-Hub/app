@@ -1,8 +1,5 @@
 // Acoes de servidor do plano GestaraHub, num import so.
-export {
-  cancelAsaasSubscriptionAction,
-  updateOrganizationSubscriptionAction,
-} from "./subscriptionActions";
+export { updateOrganizationSubscriptionAction } from "./subscriptionActions";
 export {
   checkAsaasSubscriptionPaymentAction,
   createAsaasSubscriptionCheckoutAction,

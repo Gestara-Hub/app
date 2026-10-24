@@ -1,6 +1,7 @@
 import type {
   Organization,
   PaidFeature,
+  SubscriptionInterval,
   SubscriptionTier,
 } from "@gestarahub/contracts";
 
@@ -63,4 +64,29 @@ export function decodeTierCookie(
   const org = raw.slice(0, idx);
   const tier = raw.slice(idx + 1);
   return org === organizationId && isSubscriptionTier(tier) ? tier : undefined;
+}
+
+export type PaidTier = Exclude<SubscriptionTier, "free">;
+
+/**
+ * Referencia da assinatura no Asaas ("<organizationId>:<tier>:<interval>"):
+ * ao conferir o pagamento, o servidor sabe o espaco e o plano pelo Asaas, sem
+ * confiar no que o navegador manda (achado 66 do teste de 23/10).
+ */
+export function encodeSubscriptionReference(
+  organizationId: string,
+  tier: PaidTier,
+  interval: SubscriptionInterval,
+): string {
+  return `${organizationId}:${tier}:${interval}`;
+}
+
+export function decodeSubscriptionReference(
+  raw: string | null | undefined,
+): { organizationId: string; tier: PaidTier; interval: SubscriptionInterval } | undefined {
+  const [organizationId, tier, interval, ...rest] = (raw ?? "").split(":");
+  if (!organizationId || rest.length > 0) return undefined;
+  if (tier !== "pro" && tier !== "scale") return undefined;
+  if (interval !== "monthly" && interval !== "yearly") return undefined;
+  return { organizationId, tier, interval };
 }

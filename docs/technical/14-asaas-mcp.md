@@ -24,6 +24,7 @@ Há também o índice em texto `https://docs.asaas.com/llms.txt`, que serve para
 
 - **Só consulta.** Use o MCP para ler a documentação, descobrir endpoints e conferir esquemas. **Não** use `execute-request`: ele precisaria da chave de API no prompt, e chave nunca vai em prompt, log, PR ou memória de agente. Chamada real ao Asaas é feita pelo código em `apps/web/src/services/payments/` (porta `paymentGateway.ts`, adaptador `adapters/asaasAdapter.ts`) com as variáveis `ASAAS_*` do `.env.local`, e o webhook em `app/api/webhooks/asaas/route.ts`.
 - **Sandbox primeiro.** O código usa `ASAAS_API_URL=https://sandbox.asaas.com/api/v3` em desenvolvimento. A doc do MCP é a mesma para sandbox e produção.
+- **Simular pagamento só no sandbox.** Os botões "Simular liquidação (Sandbox)" e "Simular Pagamento no Asaas" aparecem só quando `ASAAS_API_URL` é de sandbox (ou está vazio, o padrão). O servidor recusa a simulação nos outros casos (`lib/payments-test-mode.ts`). O navegador recebe esse valor no build, em `NEXT_PUBLIC_PAYMENTS_TEST_MODE`, pelo `next.config.ts`. Em produção, `ASAAS_API_URL` precisa apontar para a API real **antes do build**.
 - A IA pode errar ao ler a doc. Confira na resposta a URL da página citada antes de implementar.
 - Versão da doc: `https://docs.asaas.com/mcp?branch=<nome>` aponta para uma branch específica da documentação, se um dia precisarmos.
 

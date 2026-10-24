@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { billingReminderTrigger, useWhatsAppSend } from "@/features/communication";
 import { useOrganization } from "@/features/settings";
 import { paymentPageUrl } from "@/lib/payment-page";
+import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
 import { whatsappNumber } from "@/lib/whatsapp";
 import {
   useCreateOnlinePayment,
@@ -559,33 +560,36 @@ export function OnlineChargeDialog({
               </div>
 
               {awaiting.gatewayProvider === "asaas" ? (
-                <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="size-3.5" aria-hidden />
-                    Integração Asaas Ativa (Sandbox)
-                  </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {awaiting.method === "pix"
-                      ? "Cobrança real gerada no Asaas, com QR Code Pix oficial."
-                      : awaiting.method === "boleto"
-                        ? "Cobrança real gerada no Asaas; o aluno paga o boleto na fatura do link."
-                        : awaiting.method === "choice"
-                          ? "Cobrança real gerada no Asaas; o aluno escolhe Pix, boleto ou cartão na fatura."
-                          : "Cobrança real gerada no Asaas; o aluno paga com cartão na fatura do link."}{" "}
-                    No ambiente de homologação você também pode simular a confirmação.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={paidMut.isPending}
-                    onClick={() => simulatePaid(awaiting)}
-                    className="gap-1.5 text-xs"
-                  >
-                    <RotateCw className={cn("size-3", paidMut.isPending && "animate-spin")} />
-                    {paidMut.isPending ? "Confirmando liquidação..." : "Simular liquidação (Sandbox)"}
-                  </Button>
-                </div>
+                // Quadro de testes (simular o pago): so com o Asaas de testes.
+                browserPaymentsTestMode() ? (
+                  <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3.5" aria-hidden />
+                      Integração Asaas Ativa (Sandbox)
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {awaiting.method === "pix"
+                        ? "Cobrança real gerada no Asaas, com QR Code Pix oficial."
+                        : awaiting.method === "boleto"
+                          ? "Cobrança real gerada no Asaas; o aluno paga o boleto na fatura do link."
+                          : awaiting.method === "choice"
+                            ? "Cobrança real gerada no Asaas; o aluno escolhe Pix, boleto ou cartão na fatura."
+                            : "Cobrança real gerada no Asaas; o aluno paga com cartão na fatura do link."}{" "}
+                      No ambiente de homologação você também pode simular a confirmação.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={paidMut.isPending}
+                      onClick={() => simulatePaid(awaiting)}
+                      className="gap-1.5 text-xs"
+                    >
+                      <RotateCw className={cn("size-3", paidMut.isPending && "animate-spin")} />
+                      {paidMut.isPending ? "Confirmando liquidação..." : "Simular liquidação (Sandbox)"}
+                    </Button>
+                  </div>
+                ) : null
               ) : (
                 <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
                   <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">

@@ -50,33 +50,16 @@ export function useSubscriptionCheckout() {
     },
   });
 
-  const activateSubscription = useMutation({
-    mutationFn: ({
-      tier,
-      interval,
-      meta,
-    }: {
-      tier: "pro" | "scale";
-      interval: SubscriptionInterval;
-      meta?: {
-        paymentMethod?: "pix" | "credit_card";
-        asaasSubscriptionId?: string;
-        asaasCustomerId?: string;
-      };
-    }) => subscriptionService.activatePaidSubscription(tier, interval, meta),
-    onSuccess: () => {
-      invalidateSubscription();
-    },
-  });
-
+  // Pago: o servidor ja ativou o plano; a tela le de novo.
   const checkStatus = async (paymentId: string) => {
-    return subscriptionService.checkPaymentStatus(paymentId);
+    const res = await subscriptionService.checkPaymentStatus(paymentId);
+    if (res.isPaid) invalidateSubscription();
+    return res;
   };
 
   return {
     createSession,
     simulatePayment,
-    activateSubscription,
     checkStatus,
     invalidateSubscription,
   };

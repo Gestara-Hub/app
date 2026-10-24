@@ -1,71 +1,52 @@
 "use server";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Subscription, SubscriptionTier } from "@gestarahub/contracts";
-import { cancelSubscription, getAsaasConfig } from "@/lib/asaas";
+import { forbiddenError, validationError } from "@gestarahub/core/api-error";
+import { AsaasApiError, cancelSubscription, getAsaasConfig } from "@/lib/asaas";
+import { isDemoOrganization } from "@/lib/demo";
+import { isSubscriptionTier } from "@/lib/subscription";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { runAction, type ActionResult } from "../server/action";
+import { readOrganizationSubscription, writeOrganizationSubscription } from "../server/subscription";
 import { requireSameOrganization } from "../server/tenant";
-import { logError } from "@/lib/log";
 
 /**
- * Plano do espaco no banco: trocar e cancelar a assinatura.
- */
-
-/**
- * Atualiza o plano de assinatura da organização no Supabase.
- * Suporta tanto o objeto Subscription completo quanto apenas o tier (retrocompatibilidade).
+ * Troca direta do plano nas Configuracoes: voltar ao Gratis em qualquer
+ * espaco; o plano pago so no espaco de demonstracao. Na conta real o plano
+ * pago vem do pagamento conferido no servidor (subscriptionCheckoutActions).
  */
 export async function updateOrganizationSubscriptionAction(
   organizationId: string,
-  subscriptionOrTier: SubscriptionTier | Subscription,
-): Promise<boolean> {
-  await requireSameOrganization(organizationId, { permissions: ["subscription:manage"] });
-  try {
-    const adminClient = createSupabaseAdminClient();
-    const payload =
-      typeof subscriptionOrTier === "string"
-        ? {
-            tier: subscriptionOrTier,
-            changedAt: new Date().toISOString(),
-          }
-        : {
-            ...subscriptionOrTier,
-            changedAt: subscriptionOrTier.changedAt || new Date().toISOString(),
-          };
-
-    const { error } = await adminClient
-      .from("organizations")
-      .update({
-        subscription: payload,
-      })
-      .eq("id", organizationId);
-
-    if (error) {
-      logError("[updateOrganizationSubscriptionAction] Erro no Supabase:", error);
-      return false;
+  tier: SubscriptionTier,
+): Promise<ActionResult<Subscription>> {
+  return runAction(async () => {
+    await requireSameOrganization(organizationId, { permissions: ["subscription:manage"] });
+    if (!isSubscriptionTier(tier)) throw validationError([{ field: "tier", message: "Plano inválido." }]);
+    if (tier !== "free" && !isDemoOrganization(organizationId)) {
+      throw forbiddenError("O Plano Profissional é ativado pelo pagamento, em Planos.");
     }
-    return true;
-  } catch (err) {
-    logError("[updateOrganizationSubscriptionAction] Exceção:", err);
-    return false;
-  }
+
+    const admin = createSupabaseAdminClient();
+    const current = await readOrganizationSubscription(admin, organizationId);
+    if (tier === "free") await cancelAsaasSubscription(current?.asaasSubscriptionId);
+
+    const changedAt = new Date().toISOString();
+    const subscription: Subscription = tier === "free" ? { tier, changedAt } : { tier, status: "active", changedAt };
+    await writeOrganizationSubscription(admin, organizationId, subscription);
+    return subscription;
+  }, "updateOrganizationSubscriptionAction");
 }
 
 /**
- * Cancela a assinatura atual no Asaas caso exista.
+ * Cancela a assinatura no Asaas ao voltar ao Gratis. Falha impede a troca (o
+ * espaco seguiria sendo cobrado); assinatura ja removida no Asaas conta como feita.
  */
-export async function cancelAsaasSubscriptionAction(
-  subscriptionId: string,
-): Promise<boolean> {
-  const config = getAsaasConfig();
-  if (!config.masterApiKey || subscriptionId.startsWith("sub_mock_")) {
-    return true;
-  }
-
+async function cancelAsaasSubscription(subscriptionId: string | undefined): Promise<void> {
+  if (!subscriptionId || subscriptionId.startsWith("sub_mock_") || !getAsaasConfig().masterApiKey) return;
   try {
     await cancelSubscription(subscriptionId);
-    return true;
-  } catch (err) {
-    logError("[cancelAsaasSubscriptionAction] Erro ao cancelar:", err);
-    return false;
+  } catch (error) {
+    if (error instanceof AsaasApiError && error.status === 404) return;
+    throw error;
   }
 }

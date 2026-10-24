@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { isAsaasSandboxUrl } from "./src/lib/payments-test-mode";
 
 const nextConfig: NextConfig = {
   // Servidor dos testes do navegador em outra porta usa outra pasta de build,
@@ -12,6 +13,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/documents/**": ["./public/documents/**"],
     "/p/**": ["./public/documents/**"],
+  },
+  // Botoes de simular pagamento so com o Asaas de testes (lib/payments-test-mode).
+  env: {
+    NEXT_PUBLIC_PAYMENTS_TEST_MODE: isAsaasSandboxUrl(process.env.ASAAS_API_URL) ? "1" : "0",
   },
   // Esconde o indicador flutuante do Next em dev.
   devIndicators: false,

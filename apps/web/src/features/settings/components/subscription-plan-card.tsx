@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { isDemoSpace } from "@/lib/demo";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { TIER_FEATURES } from "@/lib/subscription";
-import { useCan } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscription";
 
 // O que cada recurso pago entrega (texto curto da aba).
@@ -29,11 +30,14 @@ const PRO_FEATURES = TIER_FEATURES.pro;
 
 /**
  * Aba "Plano GestaraHub": plano atual, o que o Pro inclui e (so o proprietario,
- * `subscription:manage`) a troca de demonstracao, com confirmacao e auditoria.
+ * `subscription:manage`) a troca do plano, com confirmacao e auditoria. Ativar
+ * o Profissional sem pagar so no espaco de demonstracao; a conta real assina
+ * pelo checkout (achado 66 do teste de 23/10).
  */
 export function SubscriptionPlanCard() {
   const can = useCan();
   const canManage = can("subscription:manage");
+  const demo = isDemoSpace(useCurrentUser().organizationId);
   const { data, isLoading, isError, refetch } = useSubscription();
   const setTier = useSetSubscriptionTier();
   const { confirm, dialog } = useConfirmAction();
@@ -148,20 +152,30 @@ export function SubscriptionPlanCard() {
           {canManage ? (
             <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Demonstração: a troca de plano não gera cobrança e fica registrada na Auditoria.
-              </p>
-              <Button
-                type="button"
-                variant={isPro ? "outline" : "default"}
-                disabled={setTier.isPending}
-                onClick={() => void handleChange()}
-              >
-                {setTier.isPending
-                  ? "Salvando..."
+                {demo
+                  ? "Demonstração: a troca de plano não gera cobrança e fica registrada na Auditoria."
                   : isPro
-                    ? "Voltar ao Grátis"
-                    : "Ativar Profissional (demonstração)"}
-              </Button>
+                    ? "Voltar ao Grátis cancela a assinatura e as próximas cobranças."
+                    : "Escolha o período e pague por Pix ou cartão."}
+              </p>
+              {demo || isPro ? (
+                <Button
+                  type="button"
+                  variant={isPro ? "outline" : "default"}
+                  disabled={setTier.isPending}
+                  onClick={() => void handleChange()}
+                >
+                  {setTier.isPending
+                    ? "Salvando..."
+                    : isPro
+                      ? "Voltar ao Grátis"
+                      : "Ativar Profissional (demonstração)"}
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link href="/plans/checkout?tier=pro&interval=monthly">Assinar o Profissional</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <p className="border-t pt-4 text-xs text-muted-foreground">

@@ -71,6 +71,15 @@ Uma tela paga exige **as duas coisas**: permissão do perfil (`can`) **e** recur
 
 Configurações ganha a aba **"Plano GestaraHub"**: mostra o plano atual, o que o Pro inclui, e um botão **"Ativar Pro (demonstração)"** / **"Voltar ao Grátis"**. Só o proprietário troca. Fica registrado na Auditoria.
 
+**Conta real (23/10/2026, achado 66 do teste geral):** o botão de demonstração aparece só no espaço de demonstração (`pnpm demo:local`) e nos espaços só do navegador (`isDemoSpace`). A conta real vê **"Assinar o Profissional"**, que leva ao checkout, e pode **"Voltar ao Grátis"**, que cancela a assinatura no Asaas antes de gravar. O plano pago é gravado só no servidor:
+
+- `services/server/subscription.ts` grava a coluna `organizations.subscription`.
+- O espaço do servidor não grava essa coluna (`SERVER_WRITTEN` em `world/tables.ts`), nem se o navegador mandar o plano junto dos dados da organização.
+- A assinatura no Asaas leva o espaço, o plano e o período em `externalReference` (`encodeSubscriptionReference`). Ao conferir o Pix (polling) ou simular o pago, o servidor lê o plano do Asaas e recusa pagamento de outro espaço.
+- `updateOrganizationSubscriptionAction` recusa plano pago fora do espaço de demonstração.
+
+Ainda em aberto: os recursos pagos são conferidos na tela e nos serviços do navegador. As actions do servidor não conferem o plano (ver o arquivo do teste geral).
+
 ### 3.6 Permissões novas
 
 `Permission` ganha:

@@ -1,4 +1,5 @@
 import type { UserProfile } from "@gestarahub/contracts";
+import { isSupabaseOrganization } from "./session";
 
 /**
  * Espaco de demonstracao no banco (doc 15, fatia 4), criado por
@@ -16,4 +17,12 @@ export const DEMO_USERS: { profile: UserProfile; name: string; email: string }[]
 
 export function isDemoOrganization(organizationId: string | undefined): boolean {
   return organizationId === DEMO_ORGANIZATION_ID;
+}
+
+/**
+ * Espaco de demonstracao para a tela: o do banco (`pnpm demo:local`) ou um
+ * espaco so do navegador (fora do banco, como nos testes da tela).
+ */
+export function isDemoSpace(organizationId: string | undefined): boolean {
+  return isDemoOrganization(organizationId) || !isSupabaseOrganization(organizationId);
 }

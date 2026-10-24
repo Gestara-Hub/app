@@ -4,19 +4,32 @@ import {
   createOrFindCustomer,
   createSubscription,
   getAsaasConfig,
-  getPayment,
   getPixQrCode,
   getSubscriptionPayments,
   receiveInCash,
 } from "@/lib/asaas";
+import type { Subscription } from "@gestarahub/contracts";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
-import { updateOrganizationSubscriptionAction } from "./subscriptionActions";
-import { logError, logWarn } from "@/lib/log";
+import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
+import { encodeSubscriptionReference } from "@/lib/subscription";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  confirmSubscriptionPayment,
+  writeOrganizationSubscription,
+  type SubscriptionPaymentCheck,
+} from "../server/subscription";
+import { requireSameOrganization, requireTenant } from "../server/tenant";
+import { logError } from "@/lib/log";
 
 /**
  * Pagamento do plano no Asaas: gerar o checkout, conferir e simular o pago.
+ * O plano pago e gravado so aqui, no servidor, depois do pagamento (achado 66
+ * do teste de 23/10). Sem chave do Asaas, o checkout simulado so roda fora de
+ * producao.
  */
+
+const mockCheckoutAllowed = () => process.env.NODE_ENV !== "production";
 
 export interface CreateSubscriptionInput {
   organizationId: string;
@@ -52,6 +65,8 @@ export interface SubscriptionCheckoutResult {
     expirationDate: string;
   };
   error?: string;
+  /** Plano gravado quando o pagamento ja foi aprovado (cartao). */
+  subscription?: Subscription;
 }
 
 /**
@@ -60,16 +75,28 @@ export interface SubscriptionCheckoutResult {
 export async function createAsaasSubscriptionCheckoutAction(
   input: CreateSubscriptionInput,
 ): Promise<SubscriptionCheckoutResult> {
+  await requireSameOrganization(input.organizationId, { permissions: ["subscription:manage"] });
   const priceConfig = SUBSCRIPTION_PRICES[input.tier][input.interval];
   const config = getAsaasConfig();
 
   // Modo Simulado se não houver chave Master real
   if (!config.masterApiKey) {
+    if (!mockCheckoutAllowed()) {
+      return {
+        success: false,
+        subscriptionId: "",
+        customerId: "",
+        billingType: input.billingType,
+        status: "pending",
+        value: priceConfig.value,
+        error: "O pagamento do plano está indisponível no momento.",
+      };
+    }
     const mockSubId = `sub_mock_${Date.now()}`;
     const mockPayId = `pay_mock_${Date.now()}`;
 
     if (input.billingType === "CREDIT_CARD") {
-      await updateOrganizationSubscriptionAction(input.organizationId, {
+      const subscription: Subscription = {
         tier: input.tier,
         interval: input.interval,
         status: "active",
@@ -78,7 +105,8 @@ export async function createAsaasSubscriptionCheckoutAction(
         asaasSubscriptionId: mockSubId,
         asaasCustomerId: "cus_mock_local",
         changedAt: new Date().toISOString(),
-      });
+      };
+      await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
 
       return {
         success: true,
@@ -87,6 +115,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         billingType: "CREDIT_CARD",
         status: "active",
         value: priceConfig.value,
+        subscription,
       };
     }
 
@@ -128,6 +157,7 @@ export async function createAsaasSubscriptionCheckoutAction(
       nextDueDate: todayIso,
       cycle: (input.interval === "yearly" ? "YEARLY" : "MONTHLY") as "MONTHLY" | "YEARLY",
       description: priceConfig.description,
+      externalReference: encodeSubscriptionReference(input.organizationId, input.tier, input.interval),
       creditCard: input.creditCard,
       creditCardHolderInfo: input.creditCard
         ? {
@@ -141,9 +171,10 @@ export async function createAsaasSubscriptionCheckoutAction(
 
     const asaasSub = await createSubscription(subscriptionPayload);
 
-    // Se for Cartão de Crédito: ativação imediata
+    // Se for Cartão de Crédito: o Asaas cobra ao criar; a assinatura so
+    // nasce com o cartao aprovado (recusado da erro acima).
     if (input.billingType === "CREDIT_CARD") {
-      await updateOrganizationSubscriptionAction(input.organizationId, {
+      const subscription: Subscription = {
         tier: input.tier,
         interval: input.interval,
         status: "active",
@@ -153,7 +184,8 @@ export async function createAsaasSubscriptionCheckoutAction(
         asaasCustomerId: customer.id,
         nextDueDate: asaasSub.nextDueDate,
         changedAt: new Date().toISOString(),
-      });
+      };
+      await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
 
       return {
         success: true,
@@ -162,6 +194,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         billingType: "CREDIT_CARD",
         status: "active",
         value: priceConfig.value,
+        subscription,
       };
     }
 
@@ -207,22 +240,21 @@ export async function createAsaasSubscriptionCheckoutAction(
 }
 
 /**
- * Consulta o status de um pagamento específico de assinatura no Asaas.
+ * Confere o pagamento do plano no Asaas (polling do Pix) e, pago, ativa o
+ * plano no servidor.
  */
 export async function checkAsaasSubscriptionPaymentAction(
   paymentId: string,
-): Promise<{ status: string; isPaid: boolean }> {
+): Promise<SubscriptionPaymentCheck> {
+  const ctx = await requireTenant();
+  ctx.require("subscription:manage");
   const config = getAsaasConfig();
   if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
     return { status: "PENDING", isPaid: false };
   }
 
   try {
-    const payment = await getPayment(paymentId);
-    const isPaid = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(
-      payment.status,
-    );
-    return { status: payment.status, isPaid };
+    return await confirmSubscriptionPayment(createSupabaseAdminClient(), ctx.organizationId, paymentId);
   } catch (err) {
     logError("[checkAsaasSubscriptionPaymentAction] Erro:", err);
     return { status: "ERROR", isPaid: false };
@@ -230,42 +262,47 @@ export async function checkAsaasSubscriptionPaymentAction(
 }
 
 /**
- * Simula a liquidação do Pix no Asaas Sandbox (receiveInCash) e ativa o plano.
+ * Simula o Pix pago no Asaas de testes (receiveInCash) e ativa o plano pela
+ * mesma conferencia do pagamento real. Fora do sandbox e recusado. Sem chave
+ * do Asaas (checkout simulado, so fora de producao) usa o plano escolhido.
  */
 export async function simulateAsaasSubscriptionPaymentAction(
   paymentId: string,
-  organizationId: string,
   tier: "pro" | "scale",
   interval: "monthly" | "yearly",
   subscriptionId?: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; subscription?: Subscription }> {
+  const ctx = await requireTenant();
+  ctx.require("subscription:manage");
+  if (!serverPaymentsTestMode()) {
+    return { success: false, error: "A simulação só funciona no ambiente de testes." };
+  }
   const config = getAsaasConfig();
   const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
-  const todayIso = new Date().toISOString().split("T")[0];
+  const admin = createSupabaseAdminClient();
 
   try {
-    if (config.masterApiKey && !paymentId.startsWith("pay_mock_")) {
-      try {
-        await receiveInCash(paymentId, todayIso, priceConfig.value);
-      } catch (asaasErr) {
-        logWarn(
-          "[simulateAsaasSubscriptionPaymentAction] Aviso no receiveInCash:",
-          asaasErr,
-        );
-      }
+    if (!config.masterApiKey || paymentId.startsWith("pay_mock_")) {
+      if (!mockCheckoutAllowed()) return { success: false, error: "A simulação só funciona no ambiente de testes." };
+      const subscription: Subscription = {
+        tier,
+        interval,
+        status: "active",
+        paymentMethod: "pix",
+        priceCents: priceConfig.priceCents,
+        asaasSubscriptionId: subscriptionId,
+        changedAt: new Date().toISOString(),
+      };
+      await writeOrganizationSubscription(admin, ctx.organizationId, subscription);
+      return { success: true, subscription };
     }
 
-    await updateOrganizationSubscriptionAction(organizationId, {
-      tier,
-      interval,
-      status: "active",
-      paymentMethod: "pix",
-      priceCents: priceConfig.priceCents,
-      asaasSubscriptionId: subscriptionId,
-      changedAt: new Date().toISOString(),
-    });
-
-    return { success: true };
+    const todayIso = new Date().toISOString().split("T")[0];
+    await receiveInCash(paymentId, todayIso, priceConfig.value);
+    const check = await confirmSubscriptionPayment(admin, ctx.organizationId, paymentId);
+    return check.isPaid
+      ? { success: true, subscription: check.subscription }
+      : { success: false, error: "O Asaas ainda não confirmou o pagamento." };
   } catch (err) {
     logError("[simulateAsaasSubscriptionPaymentAction] Erro:", err);
     return {

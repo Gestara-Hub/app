@@ -34,6 +34,7 @@ import { useCurrentUser } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { subscriptionTierLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { browserPaymentsTestMode } from "@/lib/payments-test-mode";
 import { useSubscriptionCheckout } from "../hooks/use-subscription-checkout";
 import { logWarn } from "@/lib/log";
 
@@ -691,36 +692,38 @@ function SubscriptionCheckoutContent({
             </div>
           </div>
 
-          {/* Sandbox Simulation Helper */}
-          <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs">
-              <FlaskConical className="size-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">
-                <strong>Ambiente de Homologação (Sandbox):</strong> Quer simular o pagamento imediatamente sem escanear pelo banco?
-              </span>
-            </div>
+          {/* Simular o pagamento: so com o Asaas de testes (lib/payments-test-mode) */}
+          {browserPaymentsTestMode() ? (
+            <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs">
+                <FlaskConical className="size-4 text-primary shrink-0" />
+                <span className="text-muted-foreground">
+                  <strong>Ambiente de Homologação (Sandbox):</strong> Quer simular o pagamento imediatamente sem escanear pelo banco?
+                </span>
+              </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleSimulateSandboxPayment}
-              disabled={simulatePayment.isPending}
-              className="text-xs font-bold gap-1.5 h-8 shrink-0 border-primary/40 hover:bg-primary/10 shadow-2xs"
-            >
-              {simulatePayment.isPending ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Confirmando...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="size-3.5 text-emerald-600" />
-                  <span>Simular Pagamento no Asaas</span>
-                </>
-              )}
-            </Button>
-          </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSimulateSandboxPayment}
+                disabled={simulatePayment.isPending}
+                className="text-xs font-bold gap-1.5 h-8 shrink-0 border-primary/40 hover:bg-primary/10 shadow-2xs"
+              >
+                {simulatePayment.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Confirmando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    <span>Simular Pagamento no Asaas</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
 
           <div className="flex justify-between items-center pt-2">
             <Button

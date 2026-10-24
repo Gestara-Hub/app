@@ -10,9 +10,9 @@ import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { apiError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { realAccountInBrowser } from "../world/delegate";
+import { unwrap } from "../server/action";
 import { auditLogService } from "../audit/auditLogService";
 import {
-  cancelAsaasSubscriptionAction,
   checkAsaasSubscriptionPaymentAction,
   createAsaasSubscriptionCheckoutAction,
   simulateAsaasSubscriptionPaymentAction,
@@ -20,13 +20,13 @@ import {
   type CreateSubscriptionInput,
   type SubscriptionCheckoutResult,
 } from "./actions";
-import { SUBSCRIPTION_PRICES } from "@/config/subscription";
-import { logError, logWarn } from "@/lib/log";
 
 /**
  * Plano GestaraHub (assinatura) do tenant ativo. Na demonstracao o proprietario
  * troca o tier nas Configuracoes (aba "Plano GestaraHub"); o gating da tela e
- * `subscription:manage` (so owner). Ver docs/technical/05 (secao 3).
+ * `subscription:manage` (so owner). Ver docs/technical/05 (secao 3). Na conta
+ * real quem grava o plano e o servidor (subscriptionActions e o checkout); aqui
+ * o store so reflete o que ele devolveu.
  */
 
 function currentSubscription(): Subscription {
@@ -80,36 +80,12 @@ export const subscriptionService = {
       const before = tierOf(store.organization);
       if (before === tier) return currentSubscription();
 
-      // Se estiver voltando para o free, cancela assinatura ativa no Asaas se houver
-      if (tier === "free" && store.organization.subscription?.asaasSubscriptionId) {
-        try {
-          await cancelAsaasSubscriptionAction(
-            store.organization.subscription.asaasSubscriptionId,
-          );
-        } catch (err) {
-          logWarn("[subscriptionService] Erro ao cancelar assinatura no Asaas:", err);
-        }
-      }
-
-      store.organization = {
-        ...store.organization,
-        subscription: {
-          tier,
-          changedAt: nowIso(),
-          status: tier === "free" ? undefined : "active",
-        },
-      };
-
-      if (realAccountInBrowser()) {
-        try {
-          await updateOrganizationSubscriptionAction(store.organization.id, tier);
-        } catch (dbErr) {
-          logError(
-            "[subscriptionService] Erro ao sincronizar tier com Supabase:",
-            dbErr,
-          );
-        }
-      }
+      // Conta real: o servidor confere a regra (pago so na demonstracao) e
+      // cancela a assinatura no Asaas ao voltar ao Gratis.
+      const subscription = realAccountInBrowser()
+        ? await unwrap(updateOrganizationSubscriptionAction(store.organization.id, tier))
+        : { tier, changedAt: nowIso(), status: tier === "free" ? undefined : ("active" as const) };
+      store.organization = { ...store.organization, subscription };
 
       auditLogService.record({
         action: "updated",
@@ -139,20 +115,20 @@ export const subscriptionService = {
         organizationId: orgId,
       });
 
-      if (res.success && res.status === "active") {
-        await this.activatePaidSubscription(input.tier, input.interval, {
-          paymentMethod: input.billingType === "CREDIT_CARD" ? "credit_card" : "pix",
-          asaasSubscriptionId: res.subscriptionId,
-          asaasCustomerId: res.customerId,
-        });
-      }
+      if (res.success && res.subscription) await this.activatePaidSubscription(res.subscription);
 
       return res;
     });
   },
 
   checkPaymentStatus(paymentId: string): Promise<{ status: string; isPaid: boolean }> {
-    return readOp(() => checkAsaasSubscriptionPaymentAction(paymentId));
+    return writeOp(async () => {
+      const res = await checkAsaasSubscriptionPaymentAction(paymentId);
+      if (res.isPaid && res.subscription && tierOf(store.organization) !== res.subscription.tier) {
+        await this.activatePaidSubscription(res.subscription);
+      }
+      return { status: res.status, isPaid: res.isPaid };
+    });
   },
 
   simulatePayment(
@@ -162,66 +138,23 @@ export const subscriptionService = {
     subscriptionId?: string,
   ): Promise<{ success: boolean; error?: string }> {
     return writeOp(async () => {
-      const res = await simulateAsaasSubscriptionPaymentAction(
-        paymentId,
-        store.organization.id,
-        tier,
-        interval,
-        subscriptionId,
-      );
-      if (res.success) {
-        await this.activatePaidSubscription(tier, interval, {
-          paymentMethod: "pix",
-          asaasSubscriptionId: subscriptionId,
-        });
-      }
-      return res;
+      const res = await simulateAsaasSubscriptionPaymentAction(paymentId, tier, interval, subscriptionId);
+      if (res.success && res.subscription) await this.activatePaidSubscription(res.subscription);
+      return { success: res.success, error: res.error };
     });
   },
 
-  activatePaidSubscription(
-    tier: "pro" | "scale",
-    interval: SubscriptionInterval,
-    meta?: {
-      paymentMethod?: "pix" | "credit_card";
-      asaasSubscriptionId?: string;
-      asaasCustomerId?: string;
-    },
-  ): Promise<Subscription> {
+  /** Plano pago ja gravado pelo servidor: reflete no store e registra na auditoria. */
+  activatePaidSubscription(subscription: Subscription): Promise<Subscription> {
     return writeOp(async () => {
       const before = tierOf(store.organization);
-      const priceConfig = SUBSCRIPTION_PRICES[tier][interval];
-      const newSub: Subscription = {
-        tier,
-        interval,
-        status: "active",
-        priceCents: priceConfig.priceCents,
-        paymentMethod: meta?.paymentMethod,
-        asaasSubscriptionId: meta?.asaasSubscriptionId,
-        asaasCustomerId: meta?.asaasCustomerId,
-        changedAt: nowIso(),
-      };
-
-      store.organization = {
-        ...store.organization,
-        subscription: newSub,
-      };
-
-      if (realAccountInBrowser()) {
-        try {
-          await updateOrganizationSubscriptionAction(store.organization.id, newSub);
-        } catch (dbErr) {
-          logError(
-            "[subscriptionService] Erro ao sincronizar tier com Supabase:",
-            dbErr,
-          );
-        }
-      }
+      store.organization = { ...store.organization, subscription };
+      const tier = subscription.tier;
 
       auditLogService.record({
         action: "updated",
         target: { type: "subscription", label: "Plano GestaraHub" },
-        predicate: `ativou o Plano ${subscriptionTierLabel(tier)} (${interval === "yearly" ? "Anual" : "Mensal"}) via ${meta?.paymentMethod === "credit_card" ? "Cartão de Crédito" : "Pix"}`,
+        predicate: `ativou o Plano ${subscriptionTierLabel(tier)} (${subscription.interval === "yearly" ? "Anual" : "Mensal"}) via ${subscription.paymentMethod === "credit_card" ? "Cartão de Crédito" : "Pix"}`,
         changes: [
           {
             field: "tier",

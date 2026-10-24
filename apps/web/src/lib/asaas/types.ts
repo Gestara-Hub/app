@@ -78,6 +78,8 @@ export interface AsaasSubscriptionRequest {
   nextDueDate: string;
   cycle: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "SEMIANNUALLY" | "YEARLY";
   description?: string;
+  /** Espaco e plano da assinatura (lib/subscription, encodeSubscriptionReference). */
+  externalReference?: string;
   creditCard?: {
     holderName: string;
     number: string;
@@ -108,6 +110,7 @@ export interface AsaasSubscriptionResponse {
   billingType: "PIX" | "CREDIT_CARD" | "BOLETO" | "UNDEFINED";
   status: "ACTIVE" | "EXPIRED" | "INACTIVE";
   deleted?: boolean;
+  externalReference?: string;
 }
 
 export interface AsaasPaymentRequest {
@@ -157,6 +160,8 @@ export interface AsaasPaymentResponse {
   invoiceUrl?: string;
   bankSlipUrl?: string;
   externalReference?: string;
+  /** Assinatura que gerou a cobranca (sub_...). */
+  subscription?: string;
   deleted?: boolean;
 }
 

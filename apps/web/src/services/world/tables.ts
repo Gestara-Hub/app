@@ -92,6 +92,15 @@ const DB_ONLY: Record<string, string[]> = {
   ],
 };
 
+/**
+ * Colunas lidas pelo espaco mas gravadas so por actions proprias: o servico
+ * nao muda o plano pago (achado 66 do teste de 23/10). Na gravacao fica o
+ * valor do banco.
+ */
+const SERVER_WRITTEN: Record<string, string[]> = {
+  organizations: ["subscription"],
+};
+
 export type Row = Record<string, unknown>;
 
 export function schemaOf(table: string): WorldTableSchema {
@@ -154,7 +163,7 @@ export interface RowContext {
 /** Objeto do contrato -> linha completa da tabela. */
 export function toRow(table: string, object: Row, ctx: RowContext): Row {
   const schema = schemaOf(table);
-  const dbOnly = new Set(DB_ONLY[table] ?? []);
+  const dbOnly = new Set([...(DB_ONLY[table] ?? []), ...(SERVER_WRITTEN[table] ?? [])]);
   const row: Row = {};
   for (const column of Object.keys(schema.columns)) {
     if (dbOnly.has(column)) {

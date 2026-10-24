@@ -6,6 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { forbiddenError } from "@gestarahub/core/api-error";
 import { cancelGatewayPayment, expireDueOnlinePayments, subaccountKeyOf } from "./gateway";
 import { receiveInCash } from "@/lib/asaas";
+import { isDemoOrganization } from "@/lib/demo";
+import { serverPaymentsTestMode } from "@/lib/payments-test-mode";
 import { requireTenant } from "../server/tenant";
 import { mapRowToOnlinePayment } from "./onlinePaymentsRows";
 import { logError, logWarn } from "@/lib/log";
@@ -92,6 +94,8 @@ export async function simulateOnlinePaidAction(
 ): Promise<{ payment: OnlinePayment; chargeId: string } | null> {
   const ctx = await requireTenant();
   ctx.require("billing:manage");
+  // Fora do Asaas de testes, so o pagamento de verdade (webhook) marca pago.
+  if (!serverPaymentsTestMode() && !isDemoOrganization(ctx.organizationId)) throw forbiddenError();
   const adminClient = createSupabaseAdminClient();
 
   // 1. Busca o pagamento online pelo ID
