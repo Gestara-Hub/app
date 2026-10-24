@@ -13,6 +13,7 @@ import type {
   AsaasTransferResponse,
   AsaasSubscriptionRequest,
   AsaasSubscriptionResponse,
+  AsaasSubscriptionUpdate,
 } from "./types";
 import { logError, logWarn } from "@/lib/log";
 
@@ -372,6 +373,37 @@ export async function getSubscriptionPayments(
     `/subscriptions/${subscriptionId}/payments`,
     { apiKey },
   );
+}
+
+/**
+ * Atualiza a assinatura (valor, ciclo, proximo vencimento). Troca de plano:
+ * uma assinatura so por espaco (doc product/13 §6).
+ */
+export async function updateSubscription(
+  subscriptionId: string,
+  update: AsaasSubscriptionUpdate,
+  apiKey?: string,
+): Promise<AsaasSubscriptionResponse> {
+  return asaasFetch<AsaasSubscriptionResponse>(`/subscriptions/${subscriptionId}`, {
+    method: "PUT",
+    body: update,
+    apiKey,
+  });
+}
+
+/**
+ * Atualiza uma cobranca ainda nao paga (ex.: o valor da proxima renovacao).
+ */
+export async function updatePayment(
+  paymentId: string,
+  update: { value?: number; dueDate?: string; description?: string },
+  apiKey?: string,
+): Promise<AsaasPaymentResponse> {
+  return asaasFetch<AsaasPaymentResponse>(`/payments/${paymentId}`, {
+    method: "PUT",
+    body: update,
+    apiKey,
+  });
 }
 
 /**

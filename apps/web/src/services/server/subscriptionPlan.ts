@@ -1,0 +1,685 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PendingPlanChange, Subscription, SubscriptionInterval } from "@gestarahub/contracts";
+import { apiError, validationError } from "@gestarahub/core/api-error";
+import { dateInSpace, resolveSpaceTimeZone } from "@gestarahub/core/date";
+import {
+  addPlanCycle,
+  planDailyStep,
+  planNoticeKey,
+  planPriceCents,
+  quotePlanChange,
+  type CurrentPlan,
+  type PaidPlanTier,
+  type PlanChangeQuote,
+  type PlanChoice,
+  type PlanPrices,
+} from "@gestarahub/core/subscription-plan";
+import { SUBSCRIPTION_PRICES } from "@/config/subscription";
+import {
+  AsaasApiError,
+  asaasToday,
+  cancelSubscription,
+  createPixPayment,
+  createSubscription,
+  deletePayment,
+  getAsaasConfig,
+  getPayment,
+  getPixQrCode,
+  getSubscription,
+  getSubscriptionPayments,
+  updatePayment,
+  updateSubscription,
+  type AsaasPaymentResponse,
+  type AsaasSubscriptionResponse,
+} from "@/lib/asaas";
+import { sendPlanNoticeEmail } from "@/lib/email/mailersend";
+import { subscriptionTierLabel } from "@/lib/labels";
+import { logWarn, reportError } from "@/lib/log";
+import { planNoticeCopy } from "@/lib/plan-notice-copy";
+import {
+  decodePlanChangeReference,
+  decodeSubscriptionReference,
+  encodePlanChangeReference,
+  encodeSubscriptionReference,
+} from "@/lib/subscription";
+import { confirmSubscriptionPayment, readOrganizationSubscription, writeOrganizationSubscription } from "./subscription";
+
+/**
+ * Troca de plano, renovacao e tolerancia do Plano GestaraHub no servidor (doc
+ * product/13 §6). As regras sao as de `@gestarahub/core/subscription-plan`;
+ * aqui elas viram chamadas ao Asaas (uma assinatura so por espaco) e gravacoes
+ * no banco. Modulo so do servidor, sem "use server".
+ */
+
+export const PLAN_PRICES: PlanPrices = {
+  pro: { monthly: SUBSCRIPTION_PRICES.pro.monthly.priceCents, yearly: SUBSCRIPTION_PRICES.pro.yearly.priceCents },
+  scale: { monthly: SUBSCRIPTION_PRICES.scale.monthly.priceCents, yearly: SUBSCRIPTION_PRICES.scale.yearly.priceCents },
+};
+
+const PAID_STATUSES = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"];
+const OPEN_STATUSES = ["PENDING", "OVERDUE"];
+const MOCK_CHANGE_PREFIX = "pay_mock_change_";
+
+export function currentPlanOf(subscription: Subscription | undefined): CurrentPlan {
+  return {
+    tier: subscription?.tier ?? "free",
+    interval: subscription?.interval ?? "monthly",
+    renewsOn: subscription?.renewsOn ?? subscription?.nextDueDate,
+  };
+}
+
+/** A assinatura existe de verdade no Asaas (nao e a simulada sem chave). */
+function onAsaas(subscription: Subscription | undefined): subscription is Subscription & { asaasSubscriptionId: string } {
+  const id = subscription?.asaasSubscriptionId;
+  return Boolean(getAsaasConfig().masterApiKey && id && !id.startsWith("sub_mock_"));
+}
+
+/** Sem chave do Asaas, a troca simulada so roda fora de producao. */
+function assertCanSimulate(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw apiError("NETWORK", "A troca de plano está indisponível no momento.", { httpStatus: 503 });
+  }
+}
+
+const cycleOf = (interval: SubscriptionInterval) => (interval === "yearly" ? "YEARLY" : "MONTHLY") as "YEARLY" | "MONTHLY";
+const reais = (cents: number) => Math.round(cents) / 100;
+
+function priceConfig(plan: { tier: PaidPlanTier; interval: SubscriptionInterval }) {
+  return SUBSCRIPTION_PRICES[plan.tier][plan.interval];
+}
+
+async function openSubscriptionPayments(subscriptionId: string): Promise<AsaasPaymentResponse[]> {
+  const { data } = await getSubscriptionPayments(subscriptionId);
+  return (data ?? []).filter((p) => !p.deleted && OPEN_STATUSES.includes(p.status));
+}
+
+/**
+ * Leva o plano para a assinatura do Asaas: valor, ciclo e referencia, tambem
+ * nas cobrancas ja geradas (o Asaas cria a proxima 40 dias antes). `restart`
+ * (mensal → anual) apaga a cobranca do mes que nao vai mais existir e muda o
+ * proximo vencimento.
+ */
+async function syncAsaasPlan(
+  organizationId: string,
+  subscriptionId: string,
+  plan: { tier: PaidPlanTier; interval: SubscriptionInterval },
+  restart?: { nextDueDate: string },
+): Promise<void> {
+  const config = priceConfig(plan);
+  const open = await openSubscriptionPayments(subscriptionId);
+  if (restart) {
+    for (const payment of open) await deletePayment(payment.id);
+  }
+  await updateSubscription(subscriptionId, {
+    value: config.value,
+    cycle: cycleOf(plan.interval),
+    description: config.description,
+    externalReference: encodeSubscriptionReference(organizationId, plan.tier, plan.interval),
+    updatePendingPayments: true,
+    ...(restart ? { nextDueDate: restart.nextDueDate } : {}),
+  });
+  if (restart) return;
+  // A cobranca ja gerada leva o valor novo (o PUT da assinatura nem sempre a alcanca).
+  for (const payment of open) {
+    if (payment.value === config.value) continue;
+    try {
+      await updatePayment(payment.id, { value: config.value, description: config.description });
+    } catch (error) {
+      logWarn("[subscriptionPlan] Cobrança da renovação não atualizada no Asaas:", { paymentId: payment.id, error });
+    }
+  }
+}
+
+export interface PlanChangePreview {
+  quote: PlanChangeQuote;
+  current: CurrentPlan;
+}
+
+/** A conta da troca, para a confirmacao na tela. Nada e cobrado. */
+export async function previewPlanChange(
+  admin: SupabaseClient,
+  organizationId: string,
+  target: PlanChoice,
+): Promise<PlanChangePreview> {
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  const current = currentPlanOf(subscription);
+  return { current, quote: quotePlanChange(current, target, dateInSpace(), PLAN_PRICES) };
+}
+
+export type PlanChangeStart =
+  | { kind: "scheduled"; subscription: Subscription }
+  | { kind: "applied"; subscription: Subscription }
+  | {
+      kind: "awaiting_payment";
+      subscription: Subscription;
+      payment: {
+        id: string;
+        amountCents: number;
+        pixQrCode?: { encodedImage: string; payload: string; expirationDate: string };
+        invoiceUrl?: string;
+      };
+    };
+
+/**
+ * Faz a troca: o que reduz fica marcado para o fim do periodo; o que aumenta
+ * gera a cobranca avulsa da diferenca e liga quando ela e paga.
+ */
+export async function startPlanChange(
+  admin: SupabaseClient,
+  organizationId: string,
+  target: PlanChoice,
+): Promise<PlanChangeStart> {
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.tier === "free") {
+    throw apiError("CONFLICT", "Sem plano pago: assine pelo checkout.", { httpStatus: 409 });
+  }
+  if (subscription.status === "past_due") {
+    throw apiError("CONFLICT", "Pague a renovação em aberto antes de trocar de plano.", { httpStatus: 409 });
+  }
+  const current = currentPlanOf(subscription);
+  const today = dateInSpace();
+  const quote = quotePlanChange(current, target, today, PLAN_PRICES);
+
+  if (quote.kind === "same") throw validationError([{ field: "tier", message: "Esse já é o seu plano." }]);
+  if (quote.kind === "checkout") throw apiError("CONFLICT", "Sem plano pago: assine pelo checkout.", { httpStatus: 409 });
+
+  if (quote.kind === "scheduled") {
+    if (onAsaas(subscription)) {
+      if (target.tier === "free") await cancelOnAsaas(subscription.asaasSubscriptionId);
+      else await syncAsaasPlan(organizationId, subscription.asaasSubscriptionId, { tier: target.tier, interval: target.interval });
+    } else if (subscription.asaasSubscriptionId && !subscription.asaasSubscriptionId.startsWith("sub_mock_")) {
+      assertCanSimulate();
+    }
+    const next: Subscription = {
+      ...subscription,
+      scheduledChange: {
+        tier: target.tier,
+        ...(target.tier === "free" ? {} : { interval: target.interval }),
+        effectiveOn: quote.effectiveOn,
+      },
+      pendingChange: undefined,
+    };
+    await writeOrganizationSubscription(admin, organizationId, next);
+    return { kind: "scheduled", subscription: next };
+  }
+
+  const paidTarget = { tier: target.tier as PaidPlanTier, interval: target.interval };
+  const pending: Omit<PendingPlanChange, "paymentId"> = {
+    ...paidTarget,
+    amountCents: quote.chargeTodayCents,
+    restartsCycle: quote.restartsCycle,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (quote.chargeTodayCents === 0) {
+    const applied = await applyUpgrade(admin, organizationId, subscription, { ...pending, paymentId: "" });
+    return { kind: "applied", subscription: applied };
+  }
+
+  if (!onAsaas(subscription)) {
+    assertCanSimulate();
+    const paymentId = `${MOCK_CHANGE_PREFIX}${Date.now()}`;
+    const next: Subscription = { ...subscription, pendingChange: { ...pending, paymentId }, scheduledChange: undefined };
+    await writeOrganizationSubscription(admin, organizationId, next);
+    return { kind: "awaiting_payment", subscription: next, payment: { id: paymentId, amountCents: quote.chargeTodayCents } };
+  }
+
+  if (!subscription.asaasCustomerId) {
+    throw apiError("CONFLICT", "Assinatura sem cliente no parceiro de pagamentos.", { httpStatus: 409 });
+  }
+  const description = `Diferença: ${priceConfig(paidTarget).description}`;
+  // Pix ou cartao na fatura do Asaas (UNDEFINED): a pessoa escolhe.
+  const payment = await createPixPayment({
+    customer: subscription.asaasCustomerId,
+    billingType: "UNDEFINED",
+    value: reais(quote.chargeTodayCents),
+    dueDate: asaasToday(),
+    description,
+    externalReference: encodePlanChangeReference(organizationId, paidTarget.tier, paidTarget.interval),
+  });
+  let pixQrCode: { encodedImage: string; payload: string; expirationDate: string } | undefined;
+  try {
+    const qr = await getPixQrCode(payment.id);
+    pixQrCode = { encodedImage: qr.encodedImage, payload: qr.payload, expirationDate: qr.expirationDate };
+  } catch (error) {
+    logWarn("[subscriptionPlan] Pix da diferença sem QR; segue com a fatura:", error);
+  }
+  // Uma diferenca em aberto por vez: a anterior sai do Asaas.
+  if (subscription.pendingChange?.paymentId && !subscription.pendingChange.paymentId.startsWith(MOCK_CHANGE_PREFIX)) {
+    await deletePayment(subscription.pendingChange.paymentId).catch((error: unknown) =>
+      logWarn("[subscriptionPlan] Diferença anterior não removida do Asaas:", error),
+    );
+  }
+  const next: Subscription = { ...subscription, pendingChange: { ...pending, paymentId: payment.id }, scheduledChange: undefined };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return {
+    kind: "awaiting_payment",
+    subscription: next,
+    payment: { id: payment.id, amountCents: quote.chargeTodayCents, pixQrCode, invoiceUrl: payment.invoiceUrl },
+  };
+}
+
+async function cancelOnAsaas(subscriptionId: string): Promise<void> {
+  try {
+    await cancelSubscription(subscriptionId);
+  } catch (error) {
+    if (error instanceof AsaasApiError && error.status === 404) return;
+    throw error;
+  }
+}
+
+/** Upgrade pago: liga o plano novo e leva valor e ciclo para o Asaas. */
+async function applyUpgrade(
+  admin: SupabaseClient,
+  organizationId: string,
+  subscription: Subscription,
+  pending: PendingPlanChange,
+): Promise<Subscription> {
+  const today = dateInSpace();
+  const current = currentPlanOf(subscription);
+  const renewsOn = pending.restartsCycle ? addPlanCycle(today, "yearly") : (current.renewsOn ?? today);
+  if (onAsaas(subscription)) {
+    await syncAsaasPlan(
+      organizationId,
+      subscription.asaasSubscriptionId,
+      { tier: pending.tier, interval: pending.interval },
+      pending.restartsCycle ? { nextDueDate: renewsOn } : undefined,
+    );
+  }
+  const next: Subscription = {
+    ...subscription,
+    tier: pending.tier,
+    interval: pending.interval,
+    status: "active",
+    priceCents: planPriceCents(PLAN_PRICES, pending),
+    renewsOn,
+    nextDueDate: renewsOn,
+    pendingChange: undefined,
+    scheduledChange: undefined,
+    changedAt: new Date().toISOString(),
+    ...(pending.restartsCycle ? { noticesSent: [] } : {}),
+  };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return next;
+}
+
+export interface PlanChangePaymentCheck {
+  isPaid: boolean;
+  subscription?: Subscription;
+}
+
+/**
+ * Confere a cobranca da diferenca e, paga, liga o upgrade. Pagamento de outro
+ * espaco ou de outra troca e recusado.
+ */
+export async function confirmPlanChangePayment(
+  admin: SupabaseClient,
+  organizationId: string,
+  paymentId: string,
+  options: { simulated?: boolean } = {},
+): Promise<PlanChangePaymentCheck> {
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  const pending = subscription?.pendingChange;
+  if (!subscription || !pending || pending.paymentId !== paymentId) {
+    // Ja ligado pelo webhook (ou outra aba): pago se o Asaas confirma e e deste espaco.
+    if (!subscription || paymentId.startsWith(MOCK_CHANGE_PREFIX) || !getAsaasConfig().masterApiKey) return { isPaid: false };
+    const payment = await getPayment(paymentId);
+    const reference = decodePlanChangeReference(payment.externalReference);
+    const paid = reference?.organizationId === organizationId && PAID_STATUSES.includes(payment.status);
+    return paid ? { isPaid: true, subscription } : { isPaid: false };
+  }
+  if (paymentId.startsWith(MOCK_CHANGE_PREFIX)) {
+    if (!options.simulated) return { isPaid: false };
+    assertCanSimulate();
+    return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending) };
+  }
+  const payment = await getPayment(paymentId);
+  const reference = decodePlanChangeReference(payment.externalReference);
+  if (!reference || reference.organizationId !== organizationId) {
+    throw apiError("FORBIDDEN", "Pagamento de outro espaço.", { httpStatus: 403 });
+  }
+  if (!PAID_STATUSES.includes(payment.status)) return { isPaid: false };
+  return { isPaid: true, subscription: await applyUpgrade(admin, organizationId, subscription, pending) };
+}
+
+/** Desmarca a troca marcada (antes do dia). */
+export async function cancelScheduledPlanChange(admin: SupabaseClient, organizationId: string): Promise<Subscription> {
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  const scheduled = subscription?.scheduledChange;
+  if (!subscription || !scheduled || subscription.tier === "free") {
+    throw apiError("CONFLICT", "Não há troca de plano marcada.", { httpStatus: 409 });
+  }
+  const current = { tier: subscription.tier, interval: subscription.interval ?? "monthly" } as const;
+  let next: Subscription = { ...subscription, scheduledChange: undefined };
+  if (onAsaas(subscription)) {
+    if (scheduled.tier === "free") {
+      // A assinatura foi encerrada no Asaas ao marcar: volta a mesma, com a
+      // renovacao na data de sempre. Cartao vira fatura (Pix ou cartao).
+      next = { ...next, ...(await recreateOnAsaas(organizationId, subscription, current)) };
+    } else {
+      await syncAsaasPlan(organizationId, subscription.asaasSubscriptionId, current);
+    }
+  }
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return next;
+}
+
+async function recreateOnAsaas(
+  organizationId: string,
+  subscription: Subscription,
+  plan: { tier: PaidPlanTier; interval: SubscriptionInterval },
+): Promise<Pick<Subscription, "asaasSubscriptionId" | "paymentMethod">> {
+  if (!subscription.asaasCustomerId) {
+    throw apiError("CONFLICT", "Assinatura sem cliente no parceiro de pagamentos.", { httpStatus: 409 });
+  }
+  const config = priceConfig(plan);
+  const card = subscription.paymentMethod === "credit_card";
+  const created = await createSubscription({
+    customer: subscription.asaasCustomerId,
+    billingType: card ? "UNDEFINED" : "PIX",
+    value: config.value,
+    nextDueDate: currentPlanOf(subscription).renewsOn ?? asaasToday(),
+    cycle: cycleOf(plan.interval),
+    description: config.description,
+    externalReference: encodeSubscriptionReference(organizationId, plan.tier, plan.interval),
+  });
+  return { asaasSubscriptionId: created.id, paymentMethod: "pix" };
+}
+
+/** Chegou o dia da troca marcada. */
+export async function applyScheduledPlanChange(
+  admin: SupabaseClient,
+  organizationId: string,
+  subscription: Subscription,
+): Promise<Subscription> {
+  const scheduled = subscription.scheduledChange;
+  if (!scheduled) return subscription;
+  const next: Subscription =
+    scheduled.tier === "free"
+      ? { tier: "free", changedAt: new Date().toISOString() }
+      : {
+          ...subscription,
+          tier: scheduled.tier,
+          interval: scheduled.interval ?? subscription.interval,
+          priceCents: planPriceCents(PLAN_PRICES, {
+            tier: scheduled.tier,
+            interval: scheduled.interval ?? subscription.interval ?? "monthly",
+          }),
+          scheduledChange: undefined,
+          changedAt: new Date().toISOString(),
+        };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return next;
+}
+
+/** Fim da tolerancia sem pagamento: volta ao Gratis e guarda o plano para religar. */
+async function revertToFree(admin: SupabaseClient, organizationId: string, subscription: Subscription): Promise<Subscription> {
+  const next: Subscription = {
+    ...subscription,
+    tier: "free",
+    status: "past_due",
+    revertedFrom: {
+      tier: subscription.tier,
+      interval: subscription.interval,
+      on: currentPlanOf(subscription).renewsOn ?? dateInSpace(),
+    },
+    changedAt: new Date().toISOString(),
+  };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return next;
+}
+
+/**
+ * 15 dias depois de voltar ao Gratis sem pagar: encerra a assinatura no Asaas
+ * (para de gerar cobrancas) e guarda o plano que tinha, para o aviso. Dali em
+ * diante, assina de novo pelo checkout quando quiser.
+ */
+async function closeAfterGrace(
+  admin: SupabaseClient,
+  organizationId: string,
+  subscription: Subscription,
+  today: string,
+): Promise<Subscription> {
+  const reverted = subscription.revertedFrom;
+  if (!reverted) return subscription;
+  if (onAsaas(subscription)) await cancelOnAsaas(subscription.asaasSubscriptionId);
+  const next: Subscription = {
+    tier: "free",
+    asaasCustomerId: subscription.asaasCustomerId,
+    closedFrom: { tier: reverted.tier, renewsOn: reverted.on, on: today },
+    noticesSent: subscription.noticesSent,
+    changedAt: new Date().toISOString(),
+  };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return next;
+}
+
+async function organizationOfAsaasSubscription(
+  admin: SupabaseClient,
+  asaasSubscription: Pick<AsaasSubscriptionResponse, "id" | "externalReference">,
+): Promise<string | undefined> {
+  const reference = decodeSubscriptionReference(asaasSubscription.externalReference);
+  if (reference) return reference.organizationId;
+  const { data } = await admin
+    .from("organizations")
+    .select("id")
+    .eq("subscription->>asaasSubscriptionId", asaasSubscription.id)
+    .maybeSingle();
+  return data?.id ? String(data.id) : undefined;
+}
+
+/**
+ * Pagamento da assinatura confirmado (webhook ou conferencia diaria): a
+ * primeira cobranca liga o plano; as seguintes empurram a renovacao; paga
+ * depois de voltar ao Gratis, religa o plano.
+ */
+export async function recordSubscriptionPaymentPaid(
+  admin: SupabaseClient,
+  payment: Pick<AsaasPaymentResponse, "id" | "dueDate" | "subscription">,
+  knownOrganizationId?: string,
+): Promise<{ organizationId: string; subscription: Subscription } | null> {
+  if (!payment.subscription) return null;
+  const asaasSubscription = await getSubscription(payment.subscription);
+  const organizationId = knownOrganizationId ?? (await organizationOfAsaasSubscription(admin, asaasSubscription));
+  if (!organizationId) return null;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+
+  // Assinatura que o espaco ainda nao tem (Pix pago com a tela fechada): liga pelo checkout.
+  if (subscription?.asaasSubscriptionId !== asaasSubscription.id) {
+    const check = await confirmSubscriptionPayment(admin, organizationId, payment.id);
+    return check.subscription ? { organizationId, subscription: check.subscription } : null;
+  }
+
+  const interval = subscription.revertedFrom?.interval ?? subscription.interval ?? "monthly";
+  const paidThrough = addPlanCycle(payment.dueDate, interval);
+  const renewsOn = currentPlanOf(subscription).renewsOn;
+  const advanced = !renewsOn || paidThrough > renewsOn;
+  const next: Subscription = {
+    ...subscription,
+    ...(subscription.revertedFrom ? { tier: subscription.revertedFrom.tier, interval } : {}),
+    status: "active",
+    revertedFrom: undefined,
+    ...(advanced ? { renewsOn: paidThrough, nextDueDate: paidThrough, noticesSent: [] } : {}),
+    pendingPayment: subscription.pendingPayment?.id === payment.id ? undefined : subscription.pendingPayment,
+  };
+  await writeOrganizationSubscription(admin, organizationId, next);
+  return { organizationId, subscription: next };
+}
+
+/** Cobranca da renovacao criada ou vencida: guarda para o aviso "pagar agora". */
+export async function recordSubscriptionPaymentOpen(
+  admin: SupabaseClient,
+  payment: Pick<AsaasPaymentResponse, "id" | "dueDate" | "subscription" | "invoiceUrl">,
+  overdue: boolean,
+): Promise<boolean> {
+  if (!payment.subscription) return false;
+  const asaasSubscription = await getSubscription(payment.subscription);
+  const organizationId = await organizationOfAsaasSubscription(admin, asaasSubscription);
+  if (!organizationId) return false;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.asaasSubscriptionId !== asaasSubscription.id) return false;
+  await writeOrganizationSubscription(admin, organizationId, {
+    ...subscription,
+    pendingPayment: { id: payment.id, dueDate: payment.dueDate, ...(payment.invoiceUrl ? { invoiceUrl: payment.invoiceUrl } : {}) },
+    ...(overdue && subscription.tier !== "free" ? { status: "past_due" } : {}),
+  });
+  return true;
+}
+
+/** Assinatura encerrada direto no Asaas: o espaco volta ao Gratis. */
+export async function recordSubscriptionRemoved(
+  admin: SupabaseClient,
+  asaasSubscription: Pick<AsaasSubscriptionResponse, "id" | "externalReference">,
+): Promise<boolean> {
+  const organizationId = await organizationOfAsaasSubscription(admin, asaasSubscription);
+  if (!organizationId) return false;
+  const subscription = await readOrganizationSubscription(admin, organizationId);
+  if (!subscription || subscription.asaasSubscriptionId !== asaasSubscription.id) return false;
+  // Gratis marcado por nos: o plano segue ate o fim do periodo pago.
+  if (subscription.scheduledChange?.tier === "free") return false;
+  await writeOrganizationSubscription(admin, organizationId, { tier: "free", changedAt: new Date().toISOString() });
+  return true;
+}
+
+/** Cobranca avulsa da diferenca paga (webhook). */
+export async function recordPlanChangePaymentPaid(
+  admin: SupabaseClient,
+  payment: Pick<AsaasPaymentResponse, "id" | "externalReference">,
+): Promise<boolean> {
+  const reference = decodePlanChangeReference(payment.externalReference);
+  if (!reference) return false;
+  const check = await confirmPlanChangePayment(admin, reference.organizationId, payment.id);
+  return check.isPaid;
+}
+
+/** Sem webhook (ou perdido): a renovacao paga no Asaas empurra a data mesmo assim. */
+async function reconcileRenewal(
+  admin: SupabaseClient,
+  organizationId: string,
+  subscription: Subscription,
+  today: string,
+): Promise<Subscription> {
+  const renewsOn = currentPlanOf(subscription).renewsOn;
+  if (!onAsaas(subscription) || !renewsOn || renewsOn > today) return subscription;
+  const { data } = await getSubscriptionPayments(subscription.asaasSubscriptionId);
+  const paid = (data ?? [])
+    .filter((p) => !p.deleted && PAID_STATUSES.includes(p.status) && p.dueDate >= renewsOn)
+    .sort((a, b) => b.dueDate.localeCompare(a.dueDate))[0];
+  if (!paid) return subscription;
+  const result = await recordSubscriptionPaymentPaid(admin, paid, organizationId);
+  return result?.subscription ?? subscription;
+}
+
+export interface PlanDailyResult {
+  applied: number;
+  reverted: number;
+  closed: number;
+  emails: number;
+  failures: number;
+}
+
+/**
+ * Rotina diaria do plano (doc product/13 §6): confere renovacoes pagas, aplica
+ * as trocas marcadas, volta ao Gratis no fim da tolerancia e manda os avisos
+ * por e-mail ao dono e ao gerente (uma vez por renovacao).
+ */
+export async function runPlanDailyTasks(
+  admin: SupabaseClient,
+  appUrl: string,
+  options: { organizationIds?: string[] } = {},
+): Promise<PlanDailyResult> {
+  const result: PlanDailyResult = { applied: 0, reverted: 0, closed: 0, emails: 0, failures: 0 };
+  let query = admin.from("organizations").select("id, subscription, settings, units(address)").not("subscription", "is", null);
+  // So alguns espacos (testes): a rotina nao mexe nos outros.
+  if (options.organizationIds) query = query.in("id", options.organizationIds);
+  const { data: orgs, error } = await query;
+  if (error) throw error;
+  // Plano pago, ou de volta ao Gratis por atraso (pagar depois religa).
+  const withPlan = (orgs ?? []).filter((org) => {
+    const subscription = org.subscription as Subscription | null;
+    return subscription && (subscription.tier !== "free" || subscription.revertedFrom);
+  });
+  for (const org of withPlan) {
+    // Um espaco com problema nao impede os outros; o dia seguinte tenta de novo.
+    try {
+      await runPlanDailyStep(admin, org, appUrl, result);
+    } catch (err) {
+      result.failures += 1;
+      await reportError("cron.daily.plano", err, { source: "cron", organizationId: String(org.id) });
+    }
+  }
+  return result;
+}
+
+async function runPlanDailyStep(
+  admin: SupabaseClient,
+  org: { id: unknown; subscription: unknown; settings: unknown; units: unknown },
+  appUrl: string,
+  result: PlanDailyResult,
+): Promise<void> {
+  const organizationId = String(org.id);
+  const settings = org.settings as { timeZone?: string } | null;
+  const units = (org.units ?? []) as { address?: { state?: string } | string | null }[];
+  const today = dateInSpace(new Date(), resolveSpaceTimeZone(settings, units[0]?.address));
+  let subscription = await reconcileRenewal(admin, organizationId, org.subscription as Subscription, today);
+  const step = planDailyStep(subscription, today);
+  if (step.applyScheduled) {
+    await applyScheduledPlanChange(admin, organizationId, subscription);
+    result.applied += 1;
+    return;
+  }
+  if (step.revertToFree) {
+    subscription = await revertToFree(admin, organizationId, subscription);
+    result.reverted += 1;
+  }
+  if (step.closeSubscription) {
+    subscription = await closeAfterGrace(admin, organizationId, subscription, today);
+    result.closed += 1;
+  }
+  if (step.email) {
+    const copy = planNoticeCopy(
+      step.email,
+      subscriptionTierLabel(subscription.revertedFrom?.tier ?? subscription.closedFrom?.tier ?? subscription.tier),
+    );
+    // Encerrada: o botao leva aos planos; antes disso, a cobranca em aberto.
+    const actionUrl =
+      step.email.kind === "closed"
+        ? `${appUrl}/plans`
+        : (subscription.pendingPayment?.invoiceUrl ?? `${appUrl}/settings?tab=plano`);
+    const sent = await notifyManagers(admin, organizationId, { ...copy, actionUrl });
+    if (sent > 0) {
+      result.emails += sent;
+      await writeOrganizationSubscription(admin, organizationId, {
+        ...subscription,
+        noticesSent: [...(subscription.noticesSent ?? []), planNoticeKey(step.email)],
+      });
+    }
+  }
+}
+
+async function notifyManagers(
+  admin: SupabaseClient,
+  organizationId: string,
+  notice: { title: string; text: string; action: string; actionUrl: string },
+): Promise<number> {
+  const { data: users } = await admin
+    .from("users")
+    .select("name, email")
+    .eq("organization_id", organizationId)
+    .eq("status", "active")
+    .in("profile", ["owner", "manager"]);
+  let sent = 0;
+  for (const user of users ?? []) {
+    if (!user.email) continue;
+    const res = await sendPlanNoticeEmail({
+      toEmail: String(user.email),
+      toName: String(user.name ?? ""),
+      title: notice.title,
+      text: notice.text,
+      actionLabel: notice.action,
+      actionUrl: notice.actionUrl,
+    });
+    if (res.ok) sent += 1;
+  }
+  return sent;
+}

@@ -1,5 +1,13 @@
 import { after, NextResponse } from "next/server";
-import type { AsaasWebhookPayload } from "@/lib/asaas";
+import { AsaasApiError, type AsaasPaymentResponse, type AsaasWebhookPayload } from "@/lib/asaas";
+import { decodePlanChangeReference } from "@/lib/subscription";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  recordPlanChangePaymentPaid,
+  recordSubscriptionPaymentOpen,
+  recordSubscriptionPaymentPaid,
+  recordSubscriptionRemoved,
+} from "@/services/server/subscriptionPlan";
 import { settleAsaasPayment } from "@/services/onlinePayments/asaasSettlement";
 import {
   expireOnlinePaymentInDb,
@@ -26,7 +34,16 @@ export async function POST(req: Request) {
     }
 
     const payload = (await req.json()) as AsaasWebhookPayload;
-    const { event, payment } = payload ?? {};
+    const { event, payment, subscription } = payload ?? {};
+
+    // Assinatura do Plano GestaraHub encerrada direto no Asaas (doc product/13 §6).
+    if (event?.startsWith("SUBSCRIPTION_")) {
+      const removed =
+        (event === "SUBSCRIPTION_DELETED" || event === "SUBSCRIPTION_INACTIVATED") && subscription?.id
+          ? await recordSubscriptionRemoved(createSupabaseAdminClient(), subscription)
+          : false;
+      return NextResponse.json({ success: true, processed: removed });
+    }
 
     if (!event || !payment?.id) {
       return NextResponse.json(
@@ -38,6 +55,10 @@ export async function POST(req: Request) {
     console.log(
       `[Asaas Webhook] Evento recebido: ${event} para o pagamento ${payment.id}`,
     );
+
+    // Cobrancas do Plano GestaraHub: renovacao da assinatura ou diferenca de um upgrade.
+    const plan = await handlePlanPayment(event, payment);
+    if (plan !== null) return NextResponse.json({ success: true, processed: plan });
 
     // 2. Trata eventos de liquidação / confirmação de pagamento
     if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
@@ -88,5 +109,29 @@ export async function POST(req: Request) {
       { error: "Erro interno ao processar webhook." },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * Pagamento do Plano GestaraHub (conta principal): `null` quando nao e do plano
+ * (cobranca de aluno numa subconta), para seguir o fluxo de sempre.
+ */
+async function handlePlanPayment(event: AsaasWebhookPayload["event"], payment: AsaasPaymentResponse): Promise<boolean | null> {
+  const admin = createSupabaseAdminClient();
+  const paid = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+  if (decodePlanChangeReference(payment.externalReference)) {
+    return paid ? recordPlanChangePaymentPaid(admin, payment) : false;
+  }
+  if (!payment.subscription) return null;
+  try {
+    if (paid) return Boolean(await recordSubscriptionPaymentPaid(admin, payment));
+    if (event === "PAYMENT_CREATED" || event === "PAYMENT_OVERDUE") {
+      return recordSubscriptionPaymentOpen(admin, payment, event === "PAYMENT_OVERDUE");
+    }
+    return false;
+  } catch (error) {
+    // Assinatura que a conta principal nao conhece (de uma subconta): nao e do plano.
+    if (error instanceof AsaasApiError && error.status === 404) return null;
+    throw error;
   }
 }

@@ -1,7 +1,9 @@
 "use server";
 
 import {
+  AsaasApiError,
   asaasToday,
+  cancelSubscription,
   createOrFindCustomer,
   createSubscription,
   getAsaasConfig,
@@ -11,6 +13,7 @@ import {
   receiveInCash,
 } from "@/lib/asaas";
 import { dateInSpace } from "@gestarahub/core/date";
+import { addPlanCycle } from "@gestarahub/core/subscription-plan";
 import type { Subscription } from "@gestarahub/contracts";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { brazilNationalDigits } from "@gestarahub/core/phone";
@@ -19,6 +22,7 @@ import { encodeSubscriptionReference } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   confirmSubscriptionPayment,
+  readOrganizationSubscription,
   writeOrganizationSubscription,
   type SubscriptionPaymentCheck,
 } from "../server/subscription";
@@ -107,6 +111,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         priceCents: priceConfig.priceCents,
         asaasSubscriptionId: mockSubId,
         asaasCustomerId: "cus_mock_local",
+        renewsOn: addPlanCycle(asaasToday(), input.interval),
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
@@ -141,6 +146,27 @@ export async function createAsaasSubscriptionCheckoutAction(
   }
 
   try {
+    // Uma assinatura por espaco (doc product/13 §6): plano pago troca pela
+    // troca de plano; a que ficou de quem voltou ao Gratis sai do Asaas antes.
+    const admin = createSupabaseAdminClient();
+    const previous = await readOrganizationSubscription(admin, input.organizationId);
+    if (previous && previous.tier !== "free") {
+      return {
+        success: false,
+        subscriptionId: "",
+        customerId: "",
+        billingType: input.billingType,
+        status: "pending",
+        value: priceConfig.value,
+        error: "Você já tem um plano pago. Troque de plano em Planos.",
+      };
+    }
+    if (previous?.asaasSubscriptionId && !previous.asaasSubscriptionId.startsWith("sub_mock_")) {
+      await cancelSubscription(previous.asaasSubscriptionId).catch((error: unknown) => {
+        if (!(error instanceof AsaasApiError && error.status === 404)) throw error;
+      });
+    }
+
     // 1. Cria ou localiza o cliente da plataforma GestaraHub no Asaas
     const customer = await createOrFindCustomer({
       name: input.customer.name,
@@ -186,7 +212,7 @@ export async function createAsaasSubscriptionCheckoutAction(
         priceCents: priceConfig.priceCents,
         asaasSubscriptionId: asaasSub.id,
         asaasCustomerId: customer.id,
-        nextDueDate: asaasSub.nextDueDate,
+        renewsOn: addPlanCycle(asaasToday(), input.interval),
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(createSupabaseAdminClient(), input.organizationId, subscription);
@@ -295,6 +321,7 @@ export async function simulateAsaasSubscriptionPaymentAction(
         paymentMethod: "pix",
         priceCents: priceConfig.priceCents,
         asaasSubscriptionId: subscriptionId,
+        renewsOn: addPlanCycle(asaasToday(), interval),
         changedAt: new Date().toISOString(),
       };
       await writeOrganizationSubscription(admin, ctx.organizationId, subscription);

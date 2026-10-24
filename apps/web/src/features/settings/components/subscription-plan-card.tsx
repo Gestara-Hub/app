@@ -15,6 +15,9 @@ import { isDemoSpace } from "@/lib/demo";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
 import { TIER_FEATURES } from "@/lib/subscription";
 import { useCan, useCurrentUser } from "@/features/auth";
+import { PlanChangeDialog, ScheduledPlanChangeNotice } from "@/features/subscription";
+import { useState } from "react";
+import { formatDate } from "@gestarahub/core/format";
 import { useSetSubscriptionTier, useSubscription } from "../hooks/use-subscription";
 
 // O que cada recurso pago entrega (texto curto da aba).
@@ -41,6 +44,7 @@ export function SubscriptionPlanCard() {
   const { data, isLoading, isError, refetch } = useSubscription();
   const setTier = useSetSubscriptionTier();
   const { confirm, dialog } = useConfirmAction();
+  const [leaving, setLeaving] = useState(false);
 
   if (isLoading) {
     return (
@@ -72,6 +76,11 @@ export function SubscriptionPlanCard() {
   const isScale = data.tier === "scale";
 
   const handleChange = async () => {
+    // Conta real com plano pago: o Gratis vale no fim do periodo pago (doc product/13 §6).
+    if (isPro && !demo) {
+      setLeaving(true);
+      return;
+    }
     const next = isPro ? "free" : "pro";
     const ok = await confirm(
       next === "pro"
@@ -125,9 +134,11 @@ export function SubscriptionPlanCard() {
               ? "Sua organização tem todos os recursos do Profissional."
               : "O cadastro e a operação do dia a dia são grátis. Os recursos abaixo fazem parte do Profissional."}
             {data.changedAt ? ` Alterado em ${formatDateTime(data.changedAt)}.` : null}
+            {isPro && data.renewsOn && !data.scheduledChange ? ` Renova em ${formatDate(data.renewsOn)}.` : null}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
+          <ScheduledPlanChangeNotice subscription={data} />
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="size-4 text-primary" aria-hidden />O que o Profissional inclui
@@ -155,10 +166,10 @@ export function SubscriptionPlanCard() {
                 {demo
                   ? "Demonstração: a troca de plano não gera cobrança e fica registrada na Auditoria."
                   : isPro
-                    ? "Voltar ao Grátis cancela a assinatura e as próximas cobranças."
+                    ? "Voltar ao Grátis vale no fim do período pago. Os dados ficam guardados."
                     : "Escolha o período e pague por Pix ou cartão."}
               </p>
-              {demo || isPro ? (
+              {data.scheduledChange ? null : demo || isPro ? (
                 <Button
                   type="button"
                   variant={isPro ? "outline" : "default"}
@@ -185,6 +196,10 @@ export function SubscriptionPlanCard() {
         </CardContent>
       </Card>
       {dialog}
+      <PlanChangeDialog
+        target={leaving ? { tier: "free", interval: data.interval ?? "monthly" } : null}
+        onOpenChange={(open) => setLeaving(open)}
+      />
     </>
   );
 }

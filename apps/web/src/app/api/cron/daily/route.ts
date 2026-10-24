@@ -6,11 +6,14 @@ import { materializeRecurrencesAction } from "@/services/finance/financeBackend"
 import { generateMembershipChargesAction } from "@/services/billing/membershipBackend";
 import { reportError } from "@/lib/log";
 import { sendDailyErrorDigest } from "@/services/server/errorDigest";
+import { runPlanDailyTasks } from "@/services/server/subscriptionPlan";
 
 /**
  * Tarefas diarias de todos os espacos de turmas (doc 15, fatia 1), chamadas
  * pelo Supabase Cron (migracoes 26 e 27) para nao depender de alguem abrir o
  * app: mensalidades automaticas e lancamentos das recorrencias do Financeiro.
+ * Tambem o Plano GestaraHub: trocas marcadas, tolerancia da renovacao nao paga
+ * e avisos por e-mail (doc product/13 §6).
  * Protegida por CRON_SECRET no cabecalho Authorization. Idempotente: rodar
  * duas vezes no dia nao duplica (indices unicos das migracoes 25 e 27).
  */
@@ -63,6 +66,15 @@ export async function POST(req: Request) {
     }
   }, { deadline });
   result.skipped = run.skipped;
+
+  // Plano GestaraHub de todos os espacos (doc product/13 §6).
+  try {
+    const plan = await runPlanDailyTasks(admin, process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin);
+    Object.assign(result, { plan });
+  } catch (err) {
+    await reportError("cron.daily.plano", err, { source: "cron" });
+    result.failures += 1;
+  }
 
   // Resumo dos erros novos ou que voltaram (doc technical/21).
   try {

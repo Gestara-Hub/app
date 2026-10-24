@@ -898,3 +898,69 @@ export async function sendErrorDigestEmail(input: {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+export interface SendPlanNoticeEmailInput {
+  toEmail: string;
+  toName: string;
+  /** Titulo do aviso (vira o assunto). */
+  title: string;
+  text: string;
+  actionLabel: string;
+  actionUrl: string;
+}
+
+/**
+ * Aviso da renovacao do Plano GestaraHub ao dono e ao gerente (doc product/13
+ * §6): os mesmos textos do aviso fixo no topo do app (`lib/plan-notice-copy`).
+ */
+export async function sendPlanNoticeEmail(
+  input: SendPlanNoticeEmailInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const apiKey = process.env.MAILERSEND_API_KEY;
+  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || "naoresponda@gestarahub.com.br";
+  const fromName = process.env.MAILERSEND_FROM_NAME || "GestaraHub";
+  if (!apiKey) return withoutApiKey(input.actionUrl, `Aviso do plano para ${input.toEmail}`);
+
+  const firstName = input.toName.trim().split(/\s+/)[0] || input.toName.trim();
+  const iconBase64 = await getEmailIconBase64();
+  const html = renderEmailLayout({
+    title: escapeHtml(input.title),
+    preheader: escapeHtml(input.text),
+    heading: escapeHtml(input.title),
+    intro: `${escapeHtml(firstName)}, ${escapeHtml(input.text.charAt(0).toLowerCase() + input.text.slice(1))}`,
+    body: `${emailButton(input.actionUrl, escapeHtml(input.actionLabel))}${emailFallbackLink(input.actionUrl)}`,
+    footer: `<span style="color:#64748b;">GestaraHub · E-mail automático.</span>`,
+    hasInlineIcon: Boolean(iconBase64),
+  });
+  const payload: Record<string, unknown> = {
+    from: { email: fromEmail, name: fromName },
+    to: [{ email: input.toEmail.trim(), name: input.toName.trim() }],
+    reply_to: { email: replyToEmail(), name: fromName },
+    subject: input.title,
+    html,
+    text: [input.title, "", input.text, "", `${input.actionLabel}: ${input.actionUrl}`, `Dúvidas? Escreva para ${replyToEmail()}.`].join("\n"),
+  };
+  if (iconBase64) {
+    payload.attachments = [
+      { content: iconBase64, filename: "email-icon.png", disposition: "inline", id: "gestarahub-icon" },
+    ];
+  }
+
+  try {
+    const response = await fetch(MAILERSEND_API_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      logError("[mailersend] Erro ao enviar o aviso do plano:", response.status, errorBody);
+      return { ok: false, error: "Não foi possível enviar o aviso do plano." };
+    }
+    if (await wasSuppressed(response, "aviso do plano")) return { ok: false, error: SUPPRESSED_ERROR };
+    return { ok: true };
+  } catch (err) {
+    logError("[mailersend] Falha de conexão ao enviar o aviso do plano:", err);
+    return { ok: false, error: "Não foi possível enviar o aviso do plano." };
+  }
+}

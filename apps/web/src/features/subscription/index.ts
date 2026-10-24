@@ -7,3 +7,6 @@ export { SubscriptionCheckoutDialog } from "./components/subscription-checkout-d
 export { useSubscriptionCheckout } from "./hooks/use-subscription-checkout";
 
 
+export { PlanChangeDialog } from "./components/plan-change-dialog";
+export { ScheduledPlanChangeNotice } from "./components/scheduled-plan-change-notice";
+export { PlanNoticeBanner } from "./components/plan-notice-banner";

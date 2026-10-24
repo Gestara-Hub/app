@@ -9,3 +9,11 @@ export type {
   CreateSubscriptionInput,
   SubscriptionCheckoutResult,
 } from "./subscriptionCheckoutActions";
+export {
+  cancelScheduledPlanChangeAction,
+  changePlanAction,
+  checkPlanChangePaymentAction,
+  previewPlanChangeAction,
+  simulatePlanChangePaymentAction,
+} from "./planChangeActions";
+export type { PlanTarget } from "./planChangeActions";

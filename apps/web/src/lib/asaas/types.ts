@@ -194,8 +194,26 @@ export interface AsaasWebhookPayload {
     | "PAYMENT_DUNNING_RECEIVED"
     | "PAYMENT_DUNNING_REQUESTED"
     | "PAYMENT_BANK_SLIP_VIEWED"
-    | "PAYMENT_CHECKOUT_VIEWED";
-  payment: AsaasPaymentResponse;
+    | "PAYMENT_CHECKOUT_VIEWED"
+    | "SUBSCRIPTION_CREATED"
+    | "SUBSCRIPTION_UPDATED"
+    | "SUBSCRIPTION_INACTIVATED"
+    | "SUBSCRIPTION_DELETED";
+  /** Eventos de cobranca (PAYMENT_*). */
+  payment?: AsaasPaymentResponse;
+  /** Eventos de assinatura (SUBSCRIPTION_*). */
+  subscription?: AsaasSubscriptionResponse;
+}
+
+/** Atualizacao da assinatura (PUT /subscriptions/{id}). */
+export interface AsaasSubscriptionUpdate {
+  value?: number;
+  cycle?: AsaasSubscriptionRequest["cycle"];
+  nextDueDate?: string;
+  description?: string;
+  externalReference?: string;
+  /** Atualiza tambem as cobrancas pendentes ja geradas. */
+  updatePendingPayments?: boolean;
 }
 
 export interface AsaasBalanceResponse {

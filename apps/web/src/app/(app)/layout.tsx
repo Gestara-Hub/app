@@ -13,6 +13,7 @@ import { getOrganizationTier } from "@/features/auth/get-subscription-tier";
 import { organizationModelById } from "@/mocks/store";
 import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import { WhatsAppConfirmHost } from "@/features/communication";
+import { PlanNoticeBanner } from "@/features/subscription";
 import { UserPreferencesProvider } from "@/features/preferences";
 import {
   VIEW_MODE_STORAGE_PREFIX,
@@ -66,6 +67,7 @@ export default async function AppLayout({
             {/* Gravacoes de uso ocultam todo texto daqui (dados de alunos): lib/analytics. */}
             <SidebarInset data-analytics-mask="" className="print:bg-white print:p-0">
               <AppTopbar />
+              <PlanNoticeBanner />
               <Suspense fallback={null}>
                 <OnboardingTopBanner />
                 <DiscoveryNextStepBar />

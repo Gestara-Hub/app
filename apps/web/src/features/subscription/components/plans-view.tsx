@@ -25,9 +25,13 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { useCan } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "@/features/settings";
+import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
+import type { PlanTarget } from "@/services/subscription/actions";
+import { PlanChangeDialog } from "./plan-change-dialog";
+import { ScheduledPlanChangeNotice } from "./scheduled-plan-change-notice";
 
 export function PlansView() {
   const can = useCan();
@@ -39,6 +43,11 @@ export function PlansView() {
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
 
   const currentTier = sub?.tier ?? "free";
+  const currentInterval = sub?.interval ?? "monthly";
+  // Conta real com plano pago: a troca passa pela conta da diferenca (doc product/13 §6).
+  const demo = isDemoSpace(useCurrentUser().organizationId);
+  const changesInPlace = !demo && currentTier !== "free";
+  const [changeTarget, setChangeTarget] = useState<PlanTarget | null>(null);
 
   const handleSelectTier = async (targetTier: SubscriptionTier) => {
     if (!canManage) {
@@ -46,6 +55,10 @@ export function PlansView() {
       return;
     }
     if (targetTier === currentTier) return;
+    if (changesInPlace) {
+      setChangeTarget({ tier: targetTier, interval });
+      return;
+    }
 
     // Downgrade para Free
     const ok = await confirm({
@@ -77,6 +90,8 @@ export function PlansView() {
   return (
     <>
       <div className="max-w-6xl mx-auto space-y-10 pb-16">
+        <ScheduledPlanChangeNotice subscription={sub} />
+
         {/* Hero Header */}
         <div className="text-center space-y-3.5 pt-4">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -329,26 +344,16 @@ export function PlansView() {
             </div>
 
             <CardFooter className="pt-4">
-              {currentTier === "pro" ? (
-                <Button
-                  variant="outline"
-                  className="w-full text-xs font-bold gap-1.5 shadow-sm"
-                  disabled
-                >
-                  Plano Atual
-                </Button>
-              ) : (
-                <Button
-                  asChild
-                  variant="default"
-                  className="w-full text-xs font-bold gap-1.5 shadow-sm bg-primary hover:bg-primary/90"
-                >
-                  <Link href={`/plans/checkout?tier=pro&interval=${interval}`}>
-                    <span>Fazer Upgrade para o Profissional</span>
-                    <ArrowRight className="size-3.5" />
-                  </Link>
-                </Button>
-              )}
+              <PaidPlanAction
+                tier="pro"
+                interval={interval}
+                current={{ tier: currentTier, interval: currentInterval }}
+                changesInPlace={changesInPlace}
+                canManage={canManage}
+                onChange={setChangeTarget}
+                checkoutLabel="Fazer Upgrade para o Profissional"
+                primary
+              />
             </CardFooter>
           </Card>
 
@@ -432,26 +437,15 @@ export function PlansView() {
             </div>
 
             <CardFooter className="pt-4">
-              {currentTier === "scale" ? (
-                <Button
-                  variant="outline"
-                  className="w-full text-xs font-semibold"
-                  disabled
-                >
-                  Plano Atual
-                </Button>
-              ) : (
-                <Button
-                  asChild
-                  variant="secondary"
-                  className="w-full text-xs font-semibold"
-                >
-                  <Link href={`/plans/checkout?tier=scale&interval=${interval}`}>
-                    <span>Ativar Plano Expansão</span>
-                    <ArrowRight className="size-3.5" />
-                  </Link>
-                </Button>
-              )}
+              <PaidPlanAction
+                tier="scale"
+                interval={interval}
+                current={{ tier: currentTier, interval: currentInterval }}
+                changesInPlace={changesInPlace}
+                canManage={canManage}
+                onChange={setChangeTarget}
+                checkoutLabel="Ativar Plano Expansão"
+              />
             </CardFooter>
           </Card>
         </div>
@@ -470,7 +464,73 @@ export function PlansView() {
       </div>
 
       {dialog}
+      <PlanChangeDialog target={changeTarget} onOpenChange={(open) => (!open ? setChangeTarget(null) : undefined)} />
     </>
+  );
+}
+
+const RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, scale: 2 };
+
+/**
+ * Botao do plano pago: "Plano Atual" no mesmo plano e periodo; do Gratis (ou na
+ * demonstracao), o checkout; com plano pago, a troca com a conta da diferenca.
+ */
+function PaidPlanAction({
+  tier,
+  interval,
+  current,
+  changesInPlace,
+  canManage,
+  onChange,
+  checkoutLabel,
+  primary = false,
+}: {
+  tier: "pro" | "scale";
+  interval: "monthly" | "yearly";
+  current: { tier: SubscriptionTier; interval: "monthly" | "yearly" };
+  changesInPlace: boolean;
+  canManage: boolean;
+  onChange: (target: PlanTarget) => void;
+  checkoutLabel: string;
+  primary?: boolean;
+}) {
+  const className = cn("w-full text-xs font-semibold gap-1.5", primary && "font-bold shadow-sm");
+  if (current.tier === tier && (current.interval === interval || !changesInPlace)) {
+    return (
+      <Button variant="outline" className={className} disabled>
+        Plano Atual
+      </Button>
+    );
+  }
+  if (!changesInPlace) {
+    return (
+      <Button asChild variant={primary ? "default" : "secondary"} className={className}>
+        <Link href={`/plans/checkout?tier=${tier}&interval=${interval}`}>
+          <span>{checkoutLabel}</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </Button>
+    );
+  }
+  const label =
+    current.tier === tier
+      ? interval === "yearly"
+        ? "Mudar para o anual"
+        : "Mudar para o mensal"
+      : RANK[tier] > RANK[current.tier]
+        ? `Mudar para o ${tier === "pro" ? "Profissional" : "Expansão"}`
+        : `Voltar para o ${tier === "pro" ? "Profissional" : "Expansão"}`;
+  return (
+    <Button
+      type="button"
+      variant={primary ? "default" : "secondary"}
+      className={className}
+      disabled={!canManage}
+      onClick={() => onChange({ tier, interval })}
+    >
+      <span>{label}</span>
+      <ArrowRight className="size-3.5" />
+    </Button>
   );
 }
 

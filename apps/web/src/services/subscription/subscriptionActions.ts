@@ -7,12 +7,15 @@ import { isDemoOrganization } from "@/lib/demo";
 import { isSubscriptionTier } from "@/lib/subscription";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runAction, type ActionResult } from "../server/action";
+import { dateInSpace } from "@gestarahub/core/date";
 import { readOrganizationSubscription, writeOrganizationSubscription } from "../server/subscription";
+import { currentPlanOf, startPlanChange } from "../server/subscriptionPlan";
 import { requireSameOrganization } from "../server/tenant";
 
 /**
  * Troca direta do plano nas Configuracoes: voltar ao Gratis em qualquer
- * espaco; o plano pago so no espaco de demonstracao. Na conta real o plano
+ * espaco (conta real com dias pagos: marcado para o fim do periodo); o plano
+ * pago so no espaco de demonstracao. Na conta real o plano
  * pago vem do pagamento conferido no servidor (subscriptionCheckoutActions).
  */
 export async function updateOrganizationSubscriptionAction(
@@ -28,6 +31,12 @@ export async function updateOrganizationSubscriptionAction(
 
     const admin = createSupabaseAdminClient();
     const current = await readOrganizationSubscription(admin, organizationId);
+    // Conta real com dias pagos: o Gratis vale no fim do periodo (doc product/13 §6).
+    const renewsOn = currentPlanOf(current).renewsOn;
+    if (tier === "free" && current && current.tier !== "free" && !isDemoOrganization(organizationId) && renewsOn && renewsOn > dateInSpace()) {
+      const start = await startPlanChange(admin, organizationId, { tier: "free", interval: current.interval ?? "monthly" });
+      return start.subscription;
+    }
     if (tier === "free") await cancelAsaasSubscription(current?.asaasSubscriptionId);
 
     const changedAt = new Date().toISOString();

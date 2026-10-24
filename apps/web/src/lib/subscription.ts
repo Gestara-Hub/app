@@ -90,3 +90,26 @@ export function decodeSubscriptionReference(
   if (interval !== "monthly" && interval !== "yearly") return undefined;
   return { organizationId, tier, interval };
 }
+
+const PLAN_CHANGE_PREFIX = "plan-change";
+
+/**
+ * Referencia da cobranca avulsa da diferenca de um upgrade
+ * ("plan-change:<organizationId>:<tier>:<interval>"): o pagamento confirmado
+ * no Asaas diz ao servidor qual troca ligar (doc product/13 §6).
+ */
+export function encodePlanChangeReference(
+  organizationId: string,
+  tier: PaidTier,
+  interval: SubscriptionInterval,
+): string {
+  return `${PLAN_CHANGE_PREFIX}:${encodeSubscriptionReference(organizationId, tier, interval)}`;
+}
+
+export function decodePlanChangeReference(
+  raw: string | null | undefined,
+): ReturnType<typeof decodeSubscriptionReference> {
+  const value = raw ?? "";
+  if (!value.startsWith(`${PLAN_CHANGE_PREFIX}:`)) return undefined;
+  return decodeSubscriptionReference(value.slice(PLAN_CHANGE_PREFIX.length + 1));
+}

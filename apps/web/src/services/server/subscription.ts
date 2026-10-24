@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Subscription } from "@gestarahub/contracts";
 import { forbiddenError } from "@gestarahub/core/api-error";
+import { addPlanCycle } from "@gestarahub/core/subscription-plan";
 import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { getPayment, getSubscription } from "@/lib/asaas";
 import { decodeSubscriptionReference } from "@/lib/subscription";
@@ -69,7 +70,9 @@ export async function confirmSubscriptionPayment(
     paymentMethod: payment.billingType === "CREDIT_CARD" ? "credit_card" : "pix",
     asaasSubscriptionId: asaasSubscription.id,
     asaasCustomerId: asaasSubscription.customer,
-    nextDueDate: asaasSubscription.nextDueDate,
+    // O periodo pago comeca no vencimento desta cobranca.
+    renewsOn: addPlanCycle(payment.dueDate, reference.interval),
+    nextDueDate: addPlanCycle(payment.dueDate, reference.interval),
     changedAt: new Date().toISOString(),
   };
   await writeOrganizationSubscription(admin, organizationId, subscription);
