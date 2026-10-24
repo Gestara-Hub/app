@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight, ShieldCheck, UserCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userProfileLabel } from "@/lib/labels";
@@ -70,7 +69,7 @@ export function AcceptInviteForm({
         return;
       }
 
-      toast.success("Conta configurada com sucesso! Bem-vindo(a) à equipe.");
+      toast.success("Conta pronta. Você já está na equipe.");
       router.push("/dashboard");
       router.refresh();
     } catch {
@@ -80,104 +79,73 @@ export function AcceptInviteForm({
   };
 
   return (
-    <Card className="rounded-2xl border bg-card shadow-xl max-w-md w-full mx-auto">
-      <CardHeader className="text-center pb-4 pt-6">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
-          <UserCheck className="size-6" />
+    <div className="space-y-5">
+      {/* Quem foi convidado e com qual acesso */}
+      <dl className="space-y-2 rounded-xl border border-border/80 bg-muted/30 p-3.5 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">Espaço</dt>
+          <dd className="min-w-0 break-words text-right font-medium text-foreground">{organizationName}</dd>
         </div>
-        <CardTitle className="text-2xl font-bold tracking-tight">
-          Bem-vindo(a) à equipe!
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Defina sua senha para começar a acessar o sistema.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
-        {/* Card do Espaço e Perfil Convidado */}
-        <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 space-y-2 text-xs">
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Organização:</span>
-            <span className="font-bold text-foreground">{organizationName}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Nome:</span>
-            <span className="font-medium text-foreground">{name}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">E-mail:</span>
-            <span className="font-mono text-[11px] text-foreground">{email}</span>
-          </div>
-          <div className="flex justify-between items-center pt-1 border-t border-border/60">
-            <span className="text-muted-foreground">Perfil de Acesso:</span>
-            <Badge variant="outline" className="font-semibold text-[11px] bg-primary/5 text-primary border-primary/30">
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">Nome</dt>
+          <dd className="min-w-0 break-words text-right text-foreground">{name}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">E-mail</dt>
+          <dd className="min-w-0 break-all text-right text-foreground">{email}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-2">
+          <dt className="text-muted-foreground">Acesso</dt>
+          <dd>
+            <Badge variant="outline" className="border-primary/30 bg-primary/5 font-semibold text-primary">
               {userProfileLabel(profile)}
             </Badge>
-          </div>
+          </dd>
+        </div>
+      </dl>
+
+      {/* Com a conta Google do e-mail convidado, sem criar senha. */}
+      <GoogleSignInButton invite={token} placement="invite" />
+      <GoogleDivider label="ou crie uma senha" />
+
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="password">
+            Nova senha<span className="ml-0.5 text-destructive">*</span>
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
+            {...form.register("password")}
+          />
+          {form.formState.errors.password ? (
+            <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+          ) : null}
         </div>
 
-        {/* Com a conta Google do e-mail convidado, sem criar senha. */}
-        <GoogleSignInButton invite={token} placement="invite" />
-        <GoogleDivider label="ou crie uma senha" />
-
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-xs">
-              Nova senha (mínimo de {MIN_PASSWORD_LENGTH} caracteres)*
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Digite sua senha"
-              className="h-9 text-xs"
-              {...form.register("password")}
-            />
-            {form.formState.errors.password && (
-              <p className="text-xs text-destructive">
-                {form.formState.errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword" className="text-xs">
-              Confirme a Nova Senha *
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="Digite a senha novamente"
-              className="h-9 text-xs"
-              {...form.register("confirmPassword")}
-            />
-            {form.formState.errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {form.formState.errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="w-full font-bold text-xs gap-2 h-10 shadow-sm mt-2"
-          >
-            {submitting ? (
-              <span>Configurando seu acesso...</span>
-            ) : (
-              <>
-                <span>Ativar Conta e Acessar</span>
-                <ArrowRight className="size-4" />
-              </>
-            )}
-          </Button>
-        </form>
-
-        <div className="pt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-emerald-600" />
-          <span>Acesso seguro com autenticação criptografada</span>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword">
+            Confirmar nova senha<span className="ml-0.5 text-destructive">*</span>
+          </Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repita a nova senha"
+            {...form.register("confirmPassword")}
+          />
+          {form.formState.errors.confirmPassword ? (
+            <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
+          ) : null}
         </div>
-      </CardContent>
-    </Card>
+
+        <Button type="submit" disabled={submitting} className="w-full gap-2">
+          {submitting ? "Salvando..." : "Entrar no sistema"}
+          {submitting ? null : <ArrowRight className="size-4" aria-hidden />}
+        </Button>
+      </form>
+    </div>
   );
 }
