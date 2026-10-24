@@ -28,6 +28,7 @@ Decisão do usuário (23/10/2026): foco no desenvolvimento. O e2e e as conferên
 | À mão no Asaas sandbox | #56: subconta nova e Pix gerado logo depois de ativar (mensagem e cobrança cancelada no Asaas); webhook da conta principal com os eventos do plano (renovação, diferença do upgrade, assinatura removida), com o túnel ligado | Doc `technical/16` (túnel) e doc 13 §6 |
 | À mão: rotina diária do plano | Renovação vencida → avisos → Grátis no 5º dia → assinatura encerrada no 15º; e-mails ao dono e ao gerente | Chamar `/api/cron/daily` com o `CRON_SECRET`, ajustando a data de renovação no banco local |
 | À mão no navegador | #60: pagamento depois das 21h e troca do fuso em Configurações; #75: console sem erro de hidratação em `/settings` → Preferências | `pnpm dev` |
+| À mão no Asaas sandbox: data de vencimento da fatura do link de cartão (#59) | Gerar o link numa cobrança que vence hoje e abrir: o app manda o vencimento igual ao fim da validade do link (24/10), e a fatura do parceiro mostrou 25/10. Se o parceiro soma dias (fim de semana?), decidir se o app mostra a mesma data | `qa/2026-10-23-teste-geral.md`, achado 59 |
 | Smoke no fim de tudo | Os 42 fluxos críticos | `pnpm --filter @gestarahub/web e2e:smoke` (4 min) |
 
 ## Esperando decisão sua
