@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 53 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 54 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -139,6 +139,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 54 | 24/10 | Em Financeiro → Resumo, "Contas a pagar" diz de que dia é o quadro: "A partir de hoje, 23/10: atrasadas e as que vencem em 7 dias" (ao olhar outro mês, fica claro que o quadro não é daquele mês). | `features/finance/__tests__/payables-subtitle.test.ts` | — |
 | 55 | 24/10 | Em Financeiro → Professores, o mês que venceu como prévia diz "venceu 05/10: falta fechar e pagar" em destaque (ou "falta pagar" se já fechado), em vez de só "vence 05/10". O cargo "Professor" no demonstrativo segue a decisão do nome do papel (achado 23). | `features/finance/__tests__/payables-subtitle.test.ts` | — |
 | 63 | 24/10 | O botão "Extrato em PDF" ganhou a seta de menu, porque abre a escolha do mês. | `features/online-payments/__tests__/statement-menu.test.ts` | — |
+| 64 | 24/10 | Ao cancelar uma cobrança que tem Pix ou link em aberto, a confirmação avisa: "O Pix ou o link já enviado ao aluno deixa de funcionar." | `features/turmas/__tests__/charge-label.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -230,7 +231,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | 61 | Cobrar online | aluno sem CPF | desktop 1280, claro | "Gerar Pix" sem CPF do aluno mostra só um aviso flutuante ("Cadastre o CPF do aluno para cobrar online...") que some em cerca de 3 segundos; a janela continua igual, sem atalho para cadastrar o CPF. Na primeira vez parece que o botão não faz nada. | Aviso dentro da janela, antes de gerar, com "Cadastrar CPF" levando ao cadastro. | Aluno sem CPF → Cobranças → ⋮ → Cobrar online → Gerar Pix. Captura `online-07-sem-cpf.png`. | média (corrigido) |
 | 62 | Recebimentos online → Extrato em PDF | pagamento no cartão | PDF | No extrato, a aula avulsa paga no cartão aparece com forma "Pagamento online" e saldo "Disponível"; na tela do mesmo mês ela está como "Cartão" e "A liberar (cartão) R$ 66,13" (libera em cerca de 32 dias). | Forma "Cartão" e saldo "A liberar" também no PDF. | Pagar uma cobrança pelo link de cartão (sandbox) e baixar o extrato do mês. Arquivo `pdf-extrato-online.pdf`. | média (corrigido) |
 | 63 | Recebimentos online | botão "Extrato em PDF" | desktop 1280, claro | O botão abre um menu de meses e o PDF abre numa aba nova; o nome não indica que há escolha de mês (parece que não faz nada na primeira vez). | "Extrato em PDF ▾" ou escolha do mês junto. | `/online-payments` com conta ativa → Extrato em PDF. | baixa (corrigido) |
-| 64 | Cobrar online → Cancelar cobrança | Pix em aberto | desktop 1280, claro | Cancelar uma cobrança com Pix gerado cancela também a cobrança no parceiro (confirmado no sandbox), mas a confirmação não avisa que o Pix já enviado ao aluno deixa de valer. | Avisar na confirmação: "O Pix enviado ao aluno deixa de funcionar". | Cobrança com Pix gerado → ⋮ → Cancelar cobrança. | baixa |
+| 64 | Cobrar online → Cancelar cobrança | Pix em aberto | desktop 1280, claro | Cancelar uma cobrança com Pix gerado cancela também a cobrança no parceiro (confirmado no sandbox), mas a confirmação não avisa que o Pix já enviado ao aluno deixa de valer. | Avisar na confirmação: "O Pix enviado ao aluno deixa de funcionar". | Cobrança com Pix gerado → ⋮ → Cancelar cobrança. | baixa (corrigido) |
 | 76 | Cobrar online → "Simular liquidação (Sandbox)" | link de cartão | desktop 1280, claro | O app marcou a cobrança como paga, mas o Asaas recusou a liquidação ("A data selecionada 24/10/2026 não pode ser posterior a data atual", mesmo problema de fuso: o app mandou a data em UTC às 21h42 de 23/10). O log diz "(ignorado)": app pago, parceiro ainda aguardando. | Mandar a data no fuso do Brasil e não marcar pago se o parceiro recusar. | Depois das 21h, gerar link de cartão e usar "Simular liquidação (Sandbox)". Códigos J7QFTVN4 e 4ZNUBHDT na `error_logs`. | média (corrigido) |
 
 ### Comunicação

@@ -25,3 +25,8 @@ export function chargeAccessibleLabel(charge: ChargeLabelInput): string {
   const installment = (charge.cycleTotal ?? 1) > 1 ? `parcela ${charge.cycleIndex ?? 1} de ${charge.cycleTotal} do ` : "";
   return installment ? `${installment}${what}` : what;
 }
+
+/** Aviso extra ao cancelar a cobrança que tem Pix ou link em aberto (achado 64). */
+export function cancelOpenCodeNote(hasOpenOnlineCode: boolean): string | null {
+  return hasOpenOnlineCode ? "O Pix ou o link já enviado ao aluno deixa de funcionar." : null;
+}

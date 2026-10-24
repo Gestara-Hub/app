@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chargeAccessibleLabel } from "../charge-label";
+import { cancelOpenCodeNote, chargeAccessibleLabel } from "../charge-label";
 
 describe("nome da cobrança para leitor de tela (achado 46)", () => {
   it("diz qual cobrança é, não só o aluno", () => {
@@ -9,5 +9,12 @@ describe("nome da cobrança para leitor de tela (achado 46)", () => {
     expect(
       chargeAccessibleLabel({ kind: "course", description: "Confeitaria", cycleIndex: 2, cycleTotal: 4, dueDate: "2026-11-15" }),
     ).toBe("parcela 2 de 4 do curso Confeitaria");
+  });
+});
+
+describe("cancelar cobrança com Pix em aberto (achado 64)", () => {
+  it("avisa que o Pix ou link já enviado deixa de funcionar", () => {
+    expect(cancelOpenCodeNote(true)).toBe("O Pix ou o link já enviado ao aluno deixa de funcionar.");
+    expect(cancelOpenCodeNote(false)).toBeNull();
   });
 });

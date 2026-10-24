@@ -1,7 +1,7 @@
 "use client";
 
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
-import { chargeAccessibleLabel } from "../charge-label";
+import { cancelOpenCodeNote, chargeAccessibleLabel } from "../charge-label";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
@@ -102,6 +102,11 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     const link = open?.publicCode ? paymentPageUrl(open.publicCode) : (open?.linkUrl ?? open?.pixCopyPaste);
     return link ? { ...values, link_pagamento: link } : values;
   };
+
+  // Cancelar uma cobranca com Pix ou link em aberto invalida o codigo ja enviado (achado 64).
+  const openCodeNote = cancelOpenCodeNote(
+    Boolean(shownChargeToCancel && awaitingOnline?.some((p) => p.chargeId === shownChargeToCancel.id)),
+  );
 
   // Limite do Pix Automatico por aluno (so autorizacoes ativas).
   const { data: activeRecurring } = useActiveRecurringAuthorizations(hasOnlineFeature);
@@ -405,6 +410,13 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
               ) : null}{" "}
               de <strong className="text-foreground">{formatCents(shownChargeToCancel.amountCents)}</strong> sai
               do total a receber. Fica no histórico e dá para reverter.
+              {openCodeNote ? (
+                <>
+                  <br />
+                  <br />
+                  <strong className="text-foreground">{openCodeNote}</strong>
+                </>
+              ) : null}
             </>
           ) : null
         }
