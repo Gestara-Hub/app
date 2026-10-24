@@ -1,5 +1,7 @@
 # Regras de cobrança das mensalidades (Modelo 3)
 
+> Ver também (cobrança): [Novas formas de cobrança](20-plano-novas-formas-de-cobranca.md) · [Levantamento dos pagamentos](19-levantamento-pagamentos.md) · [Motor de cobrança](../technical/02-motor-de-cobranca.md) · [Pagamento online](../technical/25-pagamento-online.md) · [Financeiro do espaço](../technical/05-modulo-financeiro.md).
+
 > Decisões de produto já implementadas em 2026-09-22. Substituem as regras de mensalidade de [`11-modelo-3-turmas.md`](11-modelo-3-turmas.md) ("cobrança cheia, sem pro-rata"). O motor técnico está em [`../technical/02-motor-de-cobranca.md`](../technical/02-motor-de-cobranca.md).
 
 ## Decisao

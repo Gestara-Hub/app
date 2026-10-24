@@ -1,5 +1,7 @@
 # 19 — Levantamento: pagamentos
 
+> Ver também (cobrança): [Regras das mensalidades e cobranças](15-regras-de-cobranca.md) · [Novas formas de cobrança](20-plano-novas-formas-de-cobranca.md) · [Motor de cobrança](../technical/02-motor-de-cobranca.md) · [Pagamento online](../technical/25-pagamento-online.md) · [Financeiro do espaço](../technical/05-modulo-financeiro.md).
+
 > **Status:** Atualizado em 19/10/2026. **Decisão tomada:** Provedor escolhido = **Asaas**. Preços do Pro (R$ 79,90/mês e R$ 799/ano) e Scale (R$ 199/mês e R$ 1.990/ano) aprovados. Pagamento online liberado para todos (inclusive no Grátis) com taxas transacionais via split nativo.
 > Base: modelo de negócio em [13-modelo-de-negocio.md](13-modelo-de-negocio.md); pagamento online simulado em [../technical/05-modulo-financeiro.md](../technical/05-modulo-financeiro.md), seção 6; WhatsApp em [../technical/07-integracao-whatsapp.md](../technical/07-integracao-whatsapp.md).
 

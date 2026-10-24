@@ -1,5 +1,7 @@
 # Motor de cobrança único
 
+> Ver também (cobrança): [Regras das mensalidades e cobranças](../product/15-regras-de-cobranca.md) · [Novas formas de cobrança](../product/20-plano-novas-formas-de-cobranca.md) · [Levantamento dos pagamentos](../product/19-levantamento-pagamentos.md) · [Pagamento online](25-pagamento-online.md) · [Financeiro do espaço](05-modulo-financeiro.md).
+
 Data: 2026-09-22. Status: Feito.
 
 > Implementação técnica das regras de [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md). Decidido e implementado em 2026-09-22.

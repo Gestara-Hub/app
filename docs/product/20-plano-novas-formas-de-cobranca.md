@@ -1,5 +1,7 @@
 # 20 — Plano: novas formas de cobrança (curso fechado, pacote de aulas, cobrança avulsa)
 
+> Ver também (cobrança): [Regras das mensalidades e cobranças](15-regras-de-cobranca.md) · [Levantamento dos pagamentos](19-levantamento-pagamentos.md) · [Motor de cobrança](../technical/02-motor-de-cobranca.md) · [Pagamento online](../technical/25-pagamento-online.md) · [Financeiro do espaço](../technical/05-modulo-financeiro.md).
+
 > **Status:** 14/10/2026. Recomendações da seção 5 **aceitas**. **Fases A (cobrança avulsa), B (curso fechado) e C (pacote de aulas) entregues em 14/10/2026** (regras em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), seções "Cobrança avulsa", "Curso fechado" e "Pacote de aulas"); D pendente. Nasce da abertura para novas áreas (gastronomia, artes, beleza e cursos livres): elas vendem de um jeito que o sistema ainda não cobra.
 > Base: regras atuais em [15-regras-de-cobranca.md](15-regras-de-cobranca.md), motor em `packages/core/src/billing.ts`, contratos em `packages/contracts/src/billing.ts` e `class.ts`.
 

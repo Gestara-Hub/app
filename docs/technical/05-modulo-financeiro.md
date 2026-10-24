@@ -27,74 +27,7 @@ Responde às dores da pesquisa: "não sei quanto lucrei", contas misturadas, men
 
 ## 3. Plano do GestaraHub (assinatura) e controle de acesso
 
-### 3.1 Nome
-
-`Plan` já é o plano de mensalidade do aluno. O plano do GestaraHub se chama **assinatura** no código (`Subscription`) e **"Plano GestaraHub"** na tela (Configurações), para não confundir com "Planos e pacotes" do menu.
-
-### 3.2 Contrato
-
-```ts
-// packages/contracts/src/subscription.ts
-export type SubscriptionTier = "free" | "pro" | "scale";
-
-/** Recursos pagos, checados junto com a permissão do perfil. */
-export type PaidFeature =
-  | "online_payments"   // cobrança online (Pix, link, Pix Automático)
-  | "messaging"         // Comunicação automatizada (WhatsApp)
-  | "reports_advanced"  // Relatórios gerenciais avançados (DRE, churn)
-  | "certificates"      // Certificado de conclusão de curso (14/10/2026)
-  | "bi";               // Inteligência analítica preditiva
-```
-
-`Organization` ganha `subscription?: Subscription` (ausente = `free`).
-
-### 3.3 Matriz tier → recursos
-
-Em `apps/web/src/lib/subscription.ts`, espelhando `lib/permissions.ts`:
-
-```ts
-export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
-  free: [],
-  pro: ["online_payments", "messaging", "reports_advanced", "certificates"],
-  scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
-};
-```
-
-### 3.4 Composição com RBAC
-
-Uma tela paga exige **as duas coisas**: permissão do perfil (`can`) **e** recurso do plano (`hasFeature`).
-
-- **Permissão sem o recurso:** o item de menu aparece **com um cadeado**, e a rota abre a tela "Disponível no Plano Pro" com botão para ver o plano. **[DECIDIR]** mostrar com cadeado (estimula a conversão) ou esconder.
-- **Sem a permissão:** o item não aparece e a rota redireciona, como hoje.
-- **Guard de rota:** `requirePermission(permission, route)` continua. As páginas pagas também checam o recurso no server (o tier vem da organização da sessão) e, sem o recurso, renderizam a tela de upsell em vez de redirecionar.
-- **Service:** as mutations do Financeiro recusam com `ApiError` `FEATURE_NOT_IN_PLAN` (403) quando o tier não tem o recurso (defesa no "servidor", como no backend real).
-
-### 3.5 Demonstração
-
-Configurações ganha a aba **"Plano GestaraHub"**: mostra o plano atual, o que o Pro inclui, e um botão **"Ativar Pro (demonstração)"** / **"Voltar ao Grátis"**. Só o proprietário troca. Fica registrado na Auditoria.
-
-**Conta real (23/10/2026, achado 66 do teste geral):** o botão de demonstração aparece só no espaço de demonstração (`pnpm demo:local`) e nos espaços só do navegador (`isDemoSpace`). A conta real vê **"Assinar o Profissional"**, que leva ao checkout, e pode **"Voltar ao Grátis"**, que cancela a assinatura no Asaas antes de gravar. O plano pago é gravado só no servidor:
-
-- `services/server/subscription.ts` grava a coluna `organizations.subscription`.
-- O espaço do servidor não grava essa coluna (`SERVER_WRITTEN` em `world/tables.ts`), nem se o navegador mandar o plano junto dos dados da organização.
-- A assinatura no Asaas leva o espaço, o plano e o período em `externalReference` (`encodeSubscriptionReference`). Ao conferir o Pix (polling) ou simular o pago, o servidor lê o plano do Asaas e recusa pagamento de outro espaço.
-- `updateOrganizationSubscriptionAction` recusa plano pago fora do espaço de demonstração.
-
-Ainda em aberto: os recursos pagos são conferidos na tela e nos serviços do navegador. As actions do servidor não conferem o plano (ver o arquivo do teste geral).
-
-> **Troca de plano, renovação e tolerância** (23/10/2026): upgrade proporcional na hora, downgrade no fim do período pago, mensal ↔ anual, 5 dias de tolerância com avisos e webhook da assinatura. Uma assinatura só por espaço no Asaas. Regras e código em `docs/product/13-modelo-de-negocio.md` §6 ("Como ficou"). A tela paga lê o plano do banco na conta real (achado 80), não do cookie espelho.
-
-### 3.6 Permissões novas
-
-`Permission` ganha:
-
-| Key | Owner | Manager | Attendant | Professional |
-|---|---|---|---|---|
-| `finance:view` | ✅ | ✅ | — | — |
-| `finance:manage` (lançar, pagar professor, configurar cobrança online) | ✅ | ✅ | — | — |
-| `subscription:manage` (trocar o plano GestaraHub) | ✅ | — | — | — |
-
-Atendente continua vendo as Mensalidades (`billing:view`), como hoje. Cobrar um aluno online a partir das Mensalidades exige `billing:manage` **e** o recurso `online_payments`.
+Movido para o [doc 24 — Plano GestaraHub](24-plano-gestarahub.md) (contrato, matriz tier → recursos, composição com RBAC, demonstração e conta real, permissões). As regras de negócio estão em [`../product/13-modelo-de-negocio.md`](../product/13-modelo-de-negocio.md), seção 6.
 
 ## 4. Entradas e saídas
 
@@ -284,82 +217,9 @@ export interface TeacherPayout {
 
 Professor sem regra não aparece no fechamento. Professor inativado continua com os meses já trabalhados.
 
-## 6. Pagamento online (simulado)
+## 6. Pagamento online
 
-### 6.1 O que simula
-
-Nesta fase não há gateway real. Um **adaptador** isola o provedor, para trocar pelo real depois:
-
-```ts
-// apps/web/src/services/payments/paymentGateway.ts
-export interface PaymentGateway {
-  createPix(input: { chargeId: Id; amountCents: number; expiresInMinutes: number }): Promise<PixPayment>;
-  createLink(input: { chargeId: Id; amountCents: number }): Promise<PaymentLinkPayment>;
-  requestRecurringAuthorization(input: { studentId: Id; maxAmountCents: number }): Promise<RecurringAuthorization>;
-}
-export const mockPaymentGateway: PaymentGateway; // gera códigos fictícios, sem rede
-```
-
-### 6.2 Contrato
-
-```ts
-export type OnlinePaymentMethod = "pix" | "link";
-export type OnlinePaymentStatus = "awaiting" | "paid" | "expired" | "canceled";
-
-export interface OnlinePayment {
-  id: Id;
-  chargeId: Id;
-  method: OnlinePaymentMethod;
-  amountCents: number;
-  status: OnlinePaymentStatus;
-  pixCopyPaste?: string;     // "copia e cola" fictício
-  linkUrl?: string;          // link fictício (página de demonstração)
-  expiresAt: DateTimeISO;
-  paidAt?: DateTimeISO;
-  createdAt: DateTimeISO;
-}
-
-export type RecurringAuthorizationStatus = "pending" | "active" | "revoked";
-
-/** Pix Automático: autorização do aluno para débito recorrente da mensalidade. */
-export interface RecurringAuthorization {
-  id: Id;
-  organizationId: Id;
-  studentId: Id;
-  maxAmountCents: number;
-  status: RecurringAuthorizationStatus;
-  authorizedAt?: DateTimeISO;
-  revokedAt?: DateTimeISO;
-  createdAt: DateTimeISO;
-}
-
-export interface OnlinePaymentSettings {   // em OrganizationSettings
-  enabled: boolean;
-  pixKey?: string;           // exibida como dado da academia (simulado)
-  defaultExpiresInMinutes?: number; // padrão 1440 (24 h)
-}
-```
-
-`Charge` ganha `paidVia?: "manual" | "online" | "recurring"`, para saber como foi pago.
-
-### 6.3 Fluxos
-
-- **Cobrar online** (menu da cobrança em Mensalidades): escolhe Pix ou Link. Mostra o código copia-e-cola, um QR ilustrativo e o link, com botão **"Copiar"** e **"Enviar pelo WhatsApp"** (abre `wa.me` com a mensagem pronta; o envio automático fica para o módulo Comunicação).
-- **Simular pagamento (demonstração):** botão visível só na demo, que marca o `OnlinePayment` como pago e a cobrança como `paid` com `method = "pix"` e `paidVia = "online"`.
-- **Expiração:** `awaiting` com `expiresAt` passado vira `expired` na leitura. Pode gerar um novo.
-- **Pix Automático:** no cadastro ou detalhe do aluno, **"Solicitar Pix Automático"** cria a autorização `pending`, e **"Simular autorização"** a ativa. Com autorização `active`, as mensalidades do aluno **com vencimento até hoje** são marcadas pagas na leitura, com `paidVia = "recurring"`, desde que o valor seja ≤ `maxAmountCents`. Acima do limite, fica pendente e mostra um aviso.
-- **Requisito real, registrado para o futuro:** o Pix Automático exige CNPJ ativo há pelo menos 6 meses. Na demonstração não há checagem; a tela de configuração mostra o aviso.
-
-### 6.4 Regras
-
-- Só cobranças `pending` ou `overdue` podem ser cobradas online. Pagar manualmente cancela os `OnlinePayment` em aberto da cobrança.
-- Cancelar a cobrança cancela os `OnlinePayment` dela.
-- Desfazer o pagamento de uma cobrança paga online **não é permitido** na demonstração (seria estorno). **[DECIDIR]**
-- **Conta real nunca recebe código de demonstração** (23/10/2026, achado 56). Se o parceiro falhar, a conta real recebe uma mensagem de erro e nada é gravado. Só o espaço de demonstração e o servidor do e2e caem no Pix simulado (`allowDemo` em `paymentGateway`, `services/payments/paymentGateway.ts`).
-- **Pix logo depois de ativar a conta de recebimento:** nos primeiros minutos, o Asaas cria a cobrança mas ainda não entrega o QR, porque a chave Pix está sendo cadastrada.
-  - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
-  - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
-  - Outro erro na busca do QR também cancela a cobrança no parceiro.
+Movido para o [doc 25 — Pagamento online dos alunos](25-pagamento-online.md) (o que simula, contrato, fluxos e regras).
 
 ## 7. Telas
 
@@ -390,7 +250,7 @@ Rota nova `/finance` (menu **"Financeiro"**, ícone de carteira, depois de "Mens
 ### 7.4 Configurações
 - **Categorias financeiras:** gerenciar em `EntityManagerDialog` (criar, renomear, inativar; as de sistema ficam travadas).
 - **Pagamento online:** ligar/desligar, chave Pix (simulada), validade padrão do Pix, aviso sobre o CNPJ do Pix Automático.
-- **Plano GestaraHub:** seção 3.5.
+- **Plano GestaraHub:** [doc 24](24-plano-gestarahub.md), seção 5.
 
 ### 7.5 Em outras telas
 - **Mensalidades:** ação "Cobrar online" e badge "Pago online" / "Pix Automático" na linha.

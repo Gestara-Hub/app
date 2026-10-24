@@ -1,0 +1,82 @@
+# 25 — Pagamento online dos alunos (Pix, link e Pix Automático)
+
+Data: 2026-10-24 (extraído do doc 05, seção 6, de 27/09/2026). Status: Feito (o Asaas real entrou depois; o simulado segue na demonstração e no e2e).
+Código: `apps/web/src/services/payments/` (porta e adaptadores), `services/onlinePayments/`, `features/online-payments`, `lib/asaas/`, `app/api/webhooks/asaas/route.ts`.
+Testes: `services/__tests__/online-payments.test.ts`, `services/onlinePayments/__tests__/`, `services/payments/__tests__/`.
+
+> Sobre o Asaas: [`../guides/14-asaas-mcp.md`](../guides/14-asaas-mcp.md) (consulta da doc pelo assistente), [`../product/19-levantamento-pagamentos.md`](../product/19-levantamento-pagamentos.md) (levantamento dos fluxos). O que cada parte cobra e a regra das mensalidades: [`../product/15-regras-de-cobranca.md`](../product/15-regras-de-cobranca.md) e [doc 02](02-motor-de-cobranca.md). O financeiro do espaço está no [doc 05](05-modulo-financeiro.md) e o plano GestaraHub no [doc 24](24-plano-gestarahub.md).
+
+## 1. O que simula
+
+Nesta fase não há gateway real. Um **adaptador** isola o provedor, para trocar pelo real depois:
+
+```ts
+// apps/web/src/services/payments/paymentGateway.ts
+export interface PaymentGateway {
+  createPix(input: { chargeId: Id; amountCents: number; expiresInMinutes: number }): Promise<PixPayment>;
+  createLink(input: { chargeId: Id; amountCents: number }): Promise<PaymentLinkPayment>;
+  requestRecurringAuthorization(input: { studentId: Id; maxAmountCents: number }): Promise<RecurringAuthorization>;
+}
+export const mockPaymentGateway: PaymentGateway; // gera códigos fictícios, sem rede
+```
+
+## 2. Contrato
+
+```ts
+export type OnlinePaymentMethod = "pix" | "link";
+export type OnlinePaymentStatus = "awaiting" | "paid" | "expired" | "canceled";
+
+export interface OnlinePayment {
+  id: Id;
+  chargeId: Id;
+  method: OnlinePaymentMethod;
+  amountCents: number;
+  status: OnlinePaymentStatus;
+  pixCopyPaste?: string;     // "copia e cola" fictício
+  linkUrl?: string;          // link fictício (página de demonstração)
+  expiresAt: DateTimeISO;
+  paidAt?: DateTimeISO;
+  createdAt: DateTimeISO;
+}
+
+export type RecurringAuthorizationStatus = "pending" | "active" | "revoked";
+
+/** Pix Automático: autorização do aluno para débito recorrente da mensalidade. */
+export interface RecurringAuthorization {
+  id: Id;
+  organizationId: Id;
+  studentId: Id;
+  maxAmountCents: number;
+  status: RecurringAuthorizationStatus;
+  authorizedAt?: DateTimeISO;
+  revokedAt?: DateTimeISO;
+  createdAt: DateTimeISO;
+}
+
+export interface OnlinePaymentSettings {   // em OrganizationSettings
+  enabled: boolean;
+  pixKey?: string;           // exibida como dado da academia (simulado)
+  defaultExpiresInMinutes?: number; // padrão 1440 (24 h)
+}
+```
+
+`Charge` ganha `paidVia?: "manual" | "online" | "recurring"`, para saber como foi pago.
+
+## 3. Fluxos
+
+- **Cobrar online** (menu da cobrança em Mensalidades): escolhe Pix ou Link. Mostra o código copia-e-cola, um QR ilustrativo e o link, com botão **"Copiar"** e **"Enviar pelo WhatsApp"** (abre `wa.me` com a mensagem pronta; o envio automático fica para o módulo Comunicação).
+- **Simular pagamento (demonstração):** botão visível só na demo, que marca o `OnlinePayment` como pago e a cobrança como `paid` com `method = "pix"` e `paidVia = "online"`.
+- **Expiração:** `awaiting` com `expiresAt` passado vira `expired` na leitura. Pode gerar um novo.
+- **Pix Automático:** no cadastro ou detalhe do aluno, **"Solicitar Pix Automático"** cria a autorização `pending`, e **"Simular autorização"** a ativa. Com autorização `active`, as mensalidades do aluno **com vencimento até hoje** são marcadas pagas na leitura, com `paidVia = "recurring"`, desde que o valor seja ≤ `maxAmountCents`. Acima do limite, fica pendente e mostra um aviso.
+- **Requisito real, registrado para o futuro:** o Pix Automático exige CNPJ ativo há pelo menos 6 meses. Na demonstração não há checagem; a tela de configuração mostra o aviso.
+
+## 4. Regras
+
+- Só cobranças `pending` ou `overdue` podem ser cobradas online. Pagar manualmente cancela os `OnlinePayment` em aberto da cobrança.
+- Cancelar a cobrança cancela os `OnlinePayment` dela.
+- Desfazer o pagamento de uma cobrança paga online **não é permitido** na demonstração (seria estorno). **[DECIDIR]**
+- **Conta real nunca recebe código de demonstração** (23/10/2026, achado 56). Se o parceiro falhar, a conta real recebe uma mensagem de erro e nada é gravado. Só o espaço de demonstração e o servidor do e2e caem no Pix simulado (`allowDemo` em `paymentGateway`, `services/payments/paymentGateway.ts`).
+- **Pix logo depois de ativar a conta de recebimento:** nos primeiros minutos, o Asaas cria a cobrança mas ainda não entrega o QR, porque a chave Pix está sendo cadastrada.
+  - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
+  - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
+  - Outro erro na busca do QR também cancela a cobrança no parceiro.
