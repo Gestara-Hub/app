@@ -14,6 +14,22 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Primeiro desenho da tela no fuso do espaço (hoje sai em Brasília até o navegador ligar o fuso; afeta só outros fusos perto da meia-noite) | `qa/2026-10-23-teste-geral.md`, achado 81; `technical/22-fuso-do-espaco.md` | Registrado como `baixa` |
 | Fuso por unidade (multiunidade em fusos diferentes) | `technical/22-fuso-do-espaco.md`, Limites | Só com a multiunidade (Expansão) |
 
+## Testes deixados para o fim
+
+Decisão do usuário (23/10/2026): foco no desenvolvimento. O e2e e as conferências à mão ficam para uma rodada só, no fim, e o que aparecer é corrigido ali. **Cada etapa que pular um teste entra nesta tabela.** Na rodada: rodar tudo, registrar as falhas como achados no teste geral e corrigir.
+
+| O que | Cobre | Como (tempo) |
+| --- | --- | --- |
+| e2e da área `acesso` | #13 (convidado entra com a senha), permissões, verificação em duas etapas | `pnpm --filter @gestarahub/web e2e:area acesso` (4 a 6 min) |
+| e2e da área `configuracao` | #66 (plano em Configurações), #75 (Preferências), seletor de fuso | `pnpm --filter @gestarahub/web e2e:area configuracao` (5 a 7 min) |
+| e2e da área `cobrancas` | #60 e #76 (datas de pagamento), #56 (cobrar online), cobranças | `pnpm --filter @gestarahub/web e2e:area cobrancas` (6 a 8 min) |
+| e2e das áreas `auditoria` e `painel` | Filtro "Pessoas / Sistema / Só o que falhou" e detalhe com o código do erro; aviso fixo do plano no topo | `pnpm --filter @gestarahub/web e2e:area auditoria painel` |
+| e2e novos a escrever | Troca de plano (Planos → janela com a conta → Pix da diferença simulado → plano ligado; troca marcada e "Desmarcar"), aviso fixo do plano, "Histórico do plano" em Configurações, seletor de fuso, filtro "Sistema" da Auditoria | Hoje nenhum spec cobre a tela de Planos |
+| À mão no Asaas sandbox | #56: subconta nova e Pix gerado logo depois de ativar (mensagem e cobrança cancelada no Asaas); webhook da conta principal com os eventos do plano (renovação, diferença do upgrade, assinatura removida), com o túnel ligado | Doc `technical/16` (túnel) e doc 13 §6 |
+| À mão: rotina diária do plano | Renovação vencida → avisos → Grátis no 5º dia → assinatura encerrada no 15º; e-mails ao dono e ao gerente | Chamar `/api/cron/daily` com o `CRON_SECRET`, ajustando a data de renovação no banco local |
+| À mão no navegador | #60: pagamento depois das 21h e troca do fuso em Configurações; #75: console sem erro de hidratação em `/settings` → Preferências | `pnpm dev` |
+| Smoke no fim de tudo | Os 42 fluxos críticos | `pnpm --filter @gestarahub/web e2e:smoke` (4 min) |
+
 ## Esperando decisão sua
 
 | Pendência | Onde está o detalhe |
