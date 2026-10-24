@@ -56,3 +56,25 @@ export function financeHref(
 export function payablesSubtitle(todayIso: string): string {
   return `A partir de hoje, ${todayIso.slice(8, 10)}/${todayIso.slice(5, 7)}: atrasadas e as que vencem em 7 dias`;
 }
+
+const dayMonth = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/**
+ * Data da linha do professor: "pago em ...", "vence ..." ou, com o vencimento
+ * passado e o mes ainda sem fechar ou pagar, "venceu ...: falta fechar e pagar"
+ * (achado 55 do teste de 23/10).
+ */
+export function payoutDateInfo(input: {
+  status: string;
+  dueDate: string;
+  paidAt?: string;
+  today: string;
+}): { text: string; late: boolean } {
+  const { status, dueDate, paidAt, today } = input;
+  if (status === "paid" && paidAt) return { text: `pago em ${dayMonth(paidAt)}`, late: false };
+  const late = (status === "open" || status === "closed") && dueDate < today;
+  if (late) {
+    return { text: `venceu ${dayMonth(dueDate)}: falta ${status === "open" ? "fechar e pagar" : "pagar"}`, late };
+  }
+  return { text: `vence ${dayMonth(dueDate)}`, late: false };
+}

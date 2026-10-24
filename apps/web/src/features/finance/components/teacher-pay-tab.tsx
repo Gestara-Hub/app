@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { format, parseISO } from "date-fns";
 import { AlertTriangle, RotateCw, Settings2, Users, Wallet } from "lucide-react";
 import type { TeacherPayoutView } from "@gestarahub/contracts";
+import { todayISO } from "@gestarahub/core/date";
 import { isRuleEffective } from "@gestarahub/core/finance";
 import { formatCents, plural } from "@gestarahub/core/format";
 import {
@@ -17,15 +17,14 @@ import {
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { useCan } from "@/features/auth";
 import type { TeacherPayTeacher } from "@/services/finance";
 import { useTeacherPayTeachers, useTeacherPayouts } from "../hooks/use-teacher-pay";
-import { competenceLabel } from "../lib";
+import { competenceLabel, payoutDateInfo } from "../lib";
 import { TeacherPayRuleDialog } from "./teacher-pay-rule-dialog";
 import { TeacherPayoutDetailDialog } from "./teacher-payout-detail-dialog";
 import { TeacherPayoutStatusBadge } from "./teacher-payout-status-badge";
-
-const shortDate = (iso: string) => format(parseISO(iso), "dd/MM");
 
 /** Por que o professor nao entra no mes (sem regra, inativa ou vigencia futura). */
 function noRuleReason(teacher: TeacherPayTeacher): string {
@@ -260,10 +259,12 @@ function PayoutRow({
   onConfigure: () => void;
 }) {
   const inactive = payout.professionalStatus !== "active";
-  const dateInfo =
-    payout.status === "paid" && payout.payout?.paidAt
-      ? `pago em ${shortDate(payout.payout.paidAt)}`
-      : `vence ${shortDate(payout.dueDate)}`;
+  const dateInfo = payoutDateInfo({
+    status: payout.status,
+    dueDate: payout.dueDate,
+    paidAt: payout.payout?.paidAt,
+    today: todayISO(),
+  });
 
   return (
     <ListRow
@@ -303,7 +304,9 @@ function PayoutRow({
         </div>
         <div className="shrink-0 text-right">
           <p className="text-sm font-semibold tabular-nums text-foreground">{formatCents(payout.totalCents)}</p>
-          <p className="text-xs text-muted-foreground">{dateInfo}</p>
+          <p className={cn("text-xs", dateInfo.late ? "font-medium text-warning" : "text-muted-foreground")}>
+            {dateInfo.text}
+          </p>
         </div>
       </div>
     </ListRow>
