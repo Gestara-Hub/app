@@ -58,3 +58,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #71 cartão do plano para professor | feito | git log | typecheck, lint, Vitest 1061 |  |
 | 4.2 #73 selo de aniversário | feito | git log | typecheck, lint, Vitest 1063 |  |
 | 4.2 #9 altura dos botões | feito (parte); resto pendência | git log | typecheck, lint, Vitest 1064 | ~50 usos de size sm/xs/lg em pendencias.md |
+| 4.3 achados que dependem de decisão | análises prontas | git log | só docs | #1/#72, #17/#18/#19/#67, #27/#53, #57, #70, #65/#37, #58 em pendencias.md com recomendação (#74 fora do foco, sem análise) |
