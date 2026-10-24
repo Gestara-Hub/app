@@ -75,6 +75,7 @@ import {
 import { useBusinessSegment, useOrganization } from "@/features/settings";
 import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
+import { planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
 import { normalizeText } from "@/lib/text";
 import { whatsappDigits } from "@gestarahub/core/phone";
 import { cpfDigits } from "@gestarahub/core/payer";
@@ -255,6 +256,7 @@ export function ClientForm({
   // Cadastro novo com o telefone de alguem ja cadastrado pergunta antes (duplicado).
   const { data: existingClients } = useClients(undefined, !isEdit);
   const { confirm: confirmDuplicate, dialog: duplicateDialog } = useConfirmAction();
+  const { confirm: confirmPlanSwitch, dialog: planSwitchDialog } = useConfirmAction();
   // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
   const whatsapp = useWhatsAppSend();
   const updateMut = useUpdateClient();
@@ -1024,6 +1026,24 @@ export function ClientForm({
       initialCharge: initialChargePayload,
     };
 
+    // Trocar o plano refaz as mensalidades em aberto: dinheiro, so com confirmacao.
+    if (isEdit && client?.planId && planId && planId !== client.planId) {
+      const ok = await confirmPlanSwitch({
+        title: "Trocar o plano do aluno?",
+        description: planSwitchDescription({
+          fromPlan: plans?.find((p) => p.id === client.planId)?.name ?? "o plano atual",
+          toPlan: plan?.name ?? "o plano novo",
+          startDate: payload.planStartDate ?? todayDateISO(),
+          replaced: replacedMembershipCharges(studentCharges ?? [], payload.planStartDate ?? todayDateISO()),
+          firstCharge: initialChargePayload,
+        }),
+        confirmLabel: "Trocar o plano",
+        cancelLabel: "Voltar",
+        variant: "default",
+      });
+      if (!ok) return;
+    }
+
     try {
       if (isEdit && client) {
         await updateMut.mutateAsync({ id: client.id, payload });
@@ -1119,6 +1139,7 @@ export function ClientForm({
   return (
     <FormProvider {...form}>
       {duplicateDialog}
+      {planSwitchDialog}
       <form
         id={formId}
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}

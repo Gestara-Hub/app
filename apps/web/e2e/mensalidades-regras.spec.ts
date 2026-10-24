@@ -124,6 +124,11 @@ test("trocar o plano substitui a cobrança em aberto; \"Substituídas\" mostra a
   await dialog.getByRole("combobox", { name: "Plano de acesso" }).click();
   await page.getByRole("option", { name: /Mensal Plus/ }).click();
   await dialog.getByRole("button", { name: "Salvar" }).click();
+  // Trocar o plano pede confirmação, dizendo o que muda (achado 28).
+  const confirm = page.getByRole("alertdialog", { name: "Trocar o plano do aluno?" });
+  await expect(confirm).toContainText("muda de Mensal Jiu-Jitsu para Mensal Plus");
+  await expect(confirm).toContainText("1 mensalidade em aberto (R$ 150,00) deixa de valer");
+  await confirm.getByRole("button", { name: "Trocar o plano" }).click();
   await expect(page.getByText("Aluno atualizado com sucesso.")).toBeVisible();
 
   await page.goto("/classes/billing?status=all");
