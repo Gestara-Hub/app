@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { isDemoSpace } from "@/lib/demo";
 import { paidFeatureLabel, subscriptionTierLabel } from "@/lib/labels";
-import { TIER_FEATURES } from "@/lib/subscription";
+import { proOnlyFeatures } from "@/lib/subscription";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { PlanChangeDialog, PlanHistory, ScheduledPlanChangeNotice } from "@/features/subscription";
 import { useState } from "react";
@@ -29,7 +29,8 @@ const FEATURE_DESCRIPTION: Record<PaidFeature, string> = {
   bi: "Inteligência analítica preditiva e mapas de ocupação avançados.",
 };
 
-const PRO_FEATURES = TIER_FEATURES.pro;
+// So o que o Grátis não tem: o pagamento online já é do Grátis (achado 67).
+const PRO_FEATURES = proOnlyFeatures();
 
 /**
  * Aba "Plano GestaraHub": plano atual, o que o Pro inclui e (so o proprietario,

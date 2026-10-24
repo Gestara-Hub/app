@@ -16,6 +16,11 @@ export const TIER_FEATURES: Record<SubscriptionTier, readonly PaidFeature[]> = {
   scale: ["online_payments", "messaging", "reports_advanced", "certificates", "bi"],
 };
 
+/** O que o Profissional tem a mais que o Grátis (a lista da aba "Plano GestaraHub"). */
+export function proOnlyFeatures(): PaidFeature[] {
+  return TIER_FEATURES.pro.filter((feature) => !TIER_FEATURES.free.includes(feature));
+}
+
 export const SUBSCRIPTION_TIERS: readonly SubscriptionTier[] = ["free", "pro", "scale"];
 
 /** Tier efetivo da organizacao (sem assinatura = free). */
