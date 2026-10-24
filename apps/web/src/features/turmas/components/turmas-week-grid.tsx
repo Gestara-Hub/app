@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { sessionLinkLabel } from "../turma-copy";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { todayISO } from "@gestarahub/core/date";
@@ -101,6 +102,7 @@ export function TurmasWeekGrid({ days, sessions }: TurmasWeekGridProps) {
                             key={session.id}
                             href={`/classes/sessions/${encodeURIComponent(session.id)}`}
                             title={`${session.className} · ${session.start}–${session.end} · ${session.instructorName}`}
+                            aria-label={sessionLinkLabel(session)}
                             className="block rounded-md border bg-background px-2 py-1.5 transition-colors hover:border-foreground/20 hover:bg-accent"
                           >
                             <p className="min-w-0 break-words text-xs font-medium leading-tight text-foreground">

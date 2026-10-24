@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 41 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 42 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -127,6 +127,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 30 | 24/10 | A contagem da lista concorda com o número: "Mostrando 1–1 de 1 aluno" (singular do rótulo, `singularLabel`). | `lib/__tests__/text.test.ts` | — |
 | 34, 35 | 24/10 | Lista de espera: "A matrícula de Clara Nunes será feita na turma..." (sem gênero fixo). Cabeçalho da turma: "Turma lotada" só quando enche; acima da capacidade diz "3 de 2 alunos (acima da capacidade)". A parte do subtítulo da turma de curso sem modalidade segue a regra existente de não repetir a modalidade quando o nome da turma já a tem. | `features/turmas/__tests__/turma-copy.test.ts` | — |
 | 36 | 24/10 | A janela Matricular alunos ganhou o botão Cancelar no rodapé e a lista de alunos cresce com a altura da janela (antes uma caixa baixa com "Mais alunos abaixo" e espaço vazio embaixo). | `features/turmas/__tests__/enroll-dialog-footer.test.ts` | — |
+| 38 | 24/10 | Cada bloco de aula da grade do calendário tem nome para leitor de tela: turma, dia, horário e quem dá a aula (`sessionLinkLabel`). | `features/turmas/__tests__/turma-copy.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -184,7 +185,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | 35 | Página da turma | cabeçalho com mais alunos que vagas | desktop 1280, claro | Com 3 alunos em 2 vagas o cabeçalho diz só "Turma lotada"; a turma de curso não mostra a modalidade no subtítulo (as outras mostram). | "3 de 2 alunos (acima da capacidade)"; subtítulo igual nas turmas. | Matricular 3 alunos em turma de 2 vagas ("Matricular mesmo assim"). | baixa (corrigido) |
 | 36 | Turma → Matricular alunos | janela | desktop 1280, claro | Rodapé sem "Cancelar" (só "Matricular"); a lista de alunos fica numa caixa baixa com "Mais alunos abaixo" e muito espaço vazio embaixo. | Rodapé com "Cancelar"; lista ocupando a altura da janela. | Abrir "Matricular alunos" numa turma. Captura `matricula-03-tres-selecionados.png`. | baixa (corrigido) |
 | 37 | Calendário de turmas | visões | desktop 1280, claro | Só há "Grade" (semana) e "Lista"; não existem as visões de dia e de mês que o plano do teste lista (item 12). | Confirmar se dia e mês fazem falta no modelo de turmas. | `/classes/calendar`. | baixa |
-| 38 | Calendário de turmas | acessibilidade | desktop 1280, claro | Os blocos de aula da grade são links sem nome acessível (leitor de tela lê só "link"). | Nome com turma e horário. | Inspecionar a grade em `/classes/calendar`. | baixa |
+| 38 | Calendário de turmas | acessibilidade | desktop 1280, claro | Os blocos de aula da grade são links sem nome acessível (leitor de tela lê só "link"). | Nome com turma e horário. | Inspecionar a grade em `/classes/calendar`. | baixa (corrigido) |
 | 39 | Aula → chamada | tocar de novo num presente com a chamada concluída | desktop 1280, claro | Desmarcar um aluno presente numa chamada já concluída o transforma em "Faltou" (não volta a "sem marcação"). | Confirmar se é a regra desejada (concluída = quem não veio faltou). | Concluir a chamada com um presente e tocar nele de novo. | baixa (mantido) |
 | 40 | Aula → Adicionar aluno nesta aula | erro do aluno obrigatório | desktop 1280, claro | Sem aluno escolhido, o erro aparece só num aviso flutuante ("Selecione um aluno."), não junto do campo. O botão de ampliar a janela tem o nome "Aumentar modal" (jargão). | Erro junto do campo "Aluno*"; nome em português simples. | Aula → ⋮ → Adicionar aluno nesta aula → Adicionar sem aluno. | baixa |
 | 41 | Aula → Trocar instrutor | lista de substitutos | desktop 1280, claro | Oferece professor que não ensina a modalidade da turma (Bruna Lima só tem Yoga Flow; a turma é de Pilates Reformer) e aceita a troca. | Mostrar primeiro quem ensina a modalidade (ou avisar). | Aula de Pilates Reformer → ⋮ → Trocar instrutor. | baixa |
