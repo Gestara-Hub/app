@@ -46,3 +46,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #42 Desativar x Inativar | feito | git log | typecheck, lint, Vitest 1046 | e2e turmas-geral atualizado |
 | 4.2 #45 telefone no PDF | feito | git log | typecheck, lint, Vitest 1048 |  |
 | 4.2 #46 nomes na ficha | feito | git log | typecheck, lint, Vitest 1049 | describeCharge só na ficha, para não quebrar os e2e das listas |
+| 4.2 #47 Aluno desde na demonstração | feito (parte) | git log | demo:seed rodado; datas conferidas no banco | Auditoria da demo mantém a hora da criação |

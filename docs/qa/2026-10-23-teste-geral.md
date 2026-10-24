@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 47 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 48 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -133,6 +133,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 42 | 24/10 | A turma usa "Inativar" (menu, confirmação, aviso, Auditoria e mensagens do serviço), como alunos, modalidades, planos e equipe. Docs 03, 10 e 11 e o e2e `turmas-geral` ajustados. | `services/__tests__/packages.test.ts` (mensagem "Turma inativada") | — |
 | 45 | 24/10 | O telefone do espaço no cabeçalho dos recibos e documentos sai com máscara ("Unidade Centro · (11) 93333-4444"). Uma função só (`unitHeaderLine`) nos dois lugares que montavam a linha. | `lib/documents/__tests__/unit-header.test.ts` | — |
 | 46 | 24/10 | Na ficha do aluno, os botões de cada cobrança dizem qual é ("Ações de Ana Almeida: mensalidade out/2026", "Baixar recibo de Ana Almeida: parcela 2 de 4 do curso Confeitaria"). Nas listas de Cobranças o nome acessível continua só o do aluno (os e2e usam esse nome). | `features/turmas/__tests__/charge-label.test.ts` | — |
+| 47 | 24/10 | No espaço de demonstração, o aluno passa a existir desde o início do plano (ou da primeira cobrança): "Aluno desde 26/08/2026" em vez do dia em que o roteiro rodou. As entradas da Auditoria da demonstração seguem com a hora da criação. | conferido no banco depois de `pnpm demo:seed` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -279,7 +280,7 @@ Nenhum achado próprio nesta passada (os pontos de tela já estão nas outras á
 | 9 | Topo e menu lateral | botões | desktop 1280, claro | Alturas fora do padrão de 36 px: "Ver planos" e o avatar (32), "Dia a dia"/"Gestão" (27), "Ativar conta de recebimento" (40), "Definir faixa" na lista de alunos (23), "Simplificada"/"Avançada" no Financeiro (24). | 36 px nos botões de texto (doc 07 §1.5) ou exceção registrada para seletores. | Medido pelo script em todas as telas. | baixa |
 | 31 | Janelas laterais (drawer) | aviso de sucesso | desktop 1280, claro | Os avisos ("Aluno criado com sucesso. Enviar boas-vindas") aparecem no canto inferior direito, em cima dos botões "Cancelar"/"Adicionar" do rodapé da janela aberta, e escondem o botão por alguns segundos ao cadastrar em sequência. | Aviso em outra posição quando há janela aberta (ex.: topo), sem cobrir o rodapé. | Cadastrar dois alunos seguidos. Captura `aluno-05-responsaveis.png`. | média (corrigido) |
 | 32 | Janelas com rolagem | seta "rolar para baixo" | desktop 1280, claro | A seta redonda de "rolar" fica por cima do conteúdo (ex.: cobre parte da mensagem "Horário fora do expediente da unidade..."). | Seta sem cobrir texto (ou some quando há mensagem embaixo). | Nova turma com horário fora do expediente. Captura no relatório do Playwright (`turma fora do horario`). | baixa |
-| 47 | Dados da demonstração | "Aluno desde" | desktop 1280, claro | Na demonstração, todos os alunos aparecem como "Aluno desde 23/10/2026" (dia do `pnpm demo:local`), mas têm mensalidades pagas desde agosto e aulas antigas; as entradas da auditoria também saem todas com a hora da criação. | Datas de cadastro coerentes com o histórico. | `pnpm demo:local` e abrir qualquer ficha. | baixa |
+| 47 | Dados da demonstração | "Aluno desde" | desktop 1280, claro | Na demonstração, todos os alunos aparecem como "Aluno desde 23/10/2026" (dia do `pnpm demo:local`), mas têm mensalidades pagas desde agosto e aulas antigas; as entradas da auditoria também saem todas com a hora da criação. | Datas de cadastro coerentes com o histórico. | `pnpm demo:local` e abrir qualquer ficha. | baixa (corrigido) |
 | 74 | Barbearia (modelo de agendamento, fora do foco) | olhada rápida | desktop 1280, claro | Entrando como o dono da barbearia de demonstração, `/schedule`, `/appointments` e `/services` vão para a configuração inicial, que pergunta "Como se chama o seu espaço?" / "O que você ensina?" e fala em alunos (texto do modelo de turmas para uma barbearia). | Só registrado (a barbearia segue no modo demonstração). | Cookie de sessão do dono da barbearia (como no e2e) e abrir `/schedule`. | baixa |
 
 ## Perguntas para o usuário

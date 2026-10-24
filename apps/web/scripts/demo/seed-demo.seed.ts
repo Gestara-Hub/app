@@ -96,6 +96,26 @@ it("semeia o espaço de demonstração", { timeout: 300_000 }, async () => {
   } as unknown as TenantContext;
   const { teacherIds } = await runInWorld(ctx, () => buildDemo(new Date()));
 
+  // 3b. Data de cadastro coerente com o historico: o aluno "existe" desde o inicio do plano
+  // ou da primeira cobranca, nao desde o dia em que o roteiro rodou (achado 47).
+  const { data: students } = await admin
+    .from("clients")
+    .select("id, plan_start_date")
+    .eq("organization_id", DEMO_ORGANIZATION_ID)
+    .throwOnError();
+  for (const student of students ?? []) {
+    const { data: firstCharge } = await admin
+      .from("charges")
+      .select("due_date")
+      .eq("student_id", student.id)
+      .order("due_date", { ascending: true })
+      .limit(1);
+    const since = (student.plan_start_date as string | null) ?? (firstCharge?.[0]?.due_date as string | undefined);
+    if (since) {
+      await admin.from("clients").update({ created_at: `${since}T12:00:00-03:00` }).eq("id", student.id).throwOnError();
+    }
+  }
+
   // 4. O usuario professor e o primeiro professor da equipe.
   await admin.from("users").update({ professional_id: teacherIds[0] }).eq("id", ids.professional).throwOnError();
   console.log(`Demonstração pronta: ${DEMO_USERS.map((u) => u.email).join(", ")} (senha em DEMO_PASSWORD).`);
