@@ -20,3 +20,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #48 certificado (palavra repetida) | feito (parte); resto decisão | git log | typecheck, lint, Vitest, core 284 | Aulas/presença e cargo: análise em pendencias.md |
 | 4.1 #44 termo na ficha do menor | feito | git log | typecheck, lint, Vitest 1018 |  |
 | 4.1 #25 Definir nível na lista | feito | git log | typecheck, lint, Vitest 1020 |  |
+| 4.1 #21 Equipe vazia com inativos | feito | git log | typecheck, lint, Vitest 1023 | Só a Equipe usa a opção; as outras listas podem adotar |

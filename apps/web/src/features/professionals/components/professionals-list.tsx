@@ -366,6 +366,8 @@ export function ProfessionalsList({
 
   const { data, isPending, isError, refetch } = useProfessionals(filter);
   const professionals = data ?? [];
+  // Sem nenhum ativo, o vazio precisa saber se ha inativos (achado 21).
+  const { data: inactiveProfessionals } = useProfessionals({ status: "inactive" });
 
   const hasSearch = Boolean(filter.search);
   // O padrao (ativos) nao conta como filtro aplicado; limpar volta para ele.
@@ -402,6 +404,11 @@ export function ProfessionalsList({
         hasFilters={hasFilters}
         onClearSearch={clearSearch}
         onClearFilters={clearAll}
+        inactiveLeft={{
+          count: inactiveProfessionals?.length ?? 0,
+          noun: "Nenhum profissional",
+          onShow: () => setStatus("inactive"),
+        }}
         emptyGuide={
           <ModuleEmptyGuide
             icon={<Contact className="size-8" />}
