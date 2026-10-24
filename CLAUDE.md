@@ -2,7 +2,7 @@
 
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
-- **Monorepo**: pnpm workspaces (`apps/web`, `packages/contracts`, `packages/core`).
+- **Monorepo**: pnpm workspaces (`apps/web`, `apps/admin` painel interno do GestaraHub, `packages/contracts`, `packages/core`).
 - **Frontend Stack**: Next.js (App Router), React 19, TypeScript, Tailwind CSS, Radix UI, TanStack Query, React Hook Form, Zod.
 - **Packages**: `@gestarahub/contracts` (domain types, enums, `ApiError`) and `@gestarahub/core` (pure logic: `scheduling`, `billing`, `date`, `format`, `api-error`).
 - **Mock / Data Seam**: `@/mocks/store` (multi-tenant world persisted in `localStorage`) and `@/services/*Service.ts` simulate the future NestJS API with `simulateRead` and `simulateWrite`.

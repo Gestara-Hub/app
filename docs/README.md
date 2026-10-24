@@ -29,7 +29,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 | Relatórios e documentos | [product/21](product/21-ideias-certificados-e-notas.md) | [technical/18](technical/18-documentos-pdf.md) | `features/reports`, `lib/documents`, `app/api/documents` |
 | Comunicação e lembretes | [product/25](product/25-lembretes-e-seguranca.md), [product/13](product/13-modelo-de-negocio.md) §5 | [technical/07](technical/07-integracao-whatsapp.md) | `features/communication`, `services/communication`, `lib/whatsapp` |
 | Auditoria e registros | [technical/21](technical/21-registro-de-erros.md) | [technical/23](technical/23-historico-em-segundo-plano.md) | `features/audit`, `services/audit`, `lib/log` |
-| Painel administrativo do GestaraHub | [technical/26](technical/26-painel-admin-gestarahub.md) | [technical/26](technical/26-painel-admin-gestarahub.md) | `apps/admin` (a criar) |
+| Painel administrativo do GestaraHub | [technical/26](technical/26-painel-admin-gestarahub.md) | [technical/26](technical/26-painel-admin-gestarahub.md), [guides/21](guides/21-painel-admin-local.md) | `apps/admin`, `supabase/migrations/…platform_schema.sql` |
 | Fuso | [technical/22](technical/22-fuso-do-espaco.md) | [technical/22](technical/22-fuso-do-espaco.md) | `packages/core/src/date.ts` |
 | Desempenho | [technical/19](technical/19-desempenho-e-escala.md) | [technical/19](technical/19-desempenho-e-escala.md) | `services/world` |
 | Testes | [technical/04](technical/04-estrategia-de-testes.md) | [guides/20](guides/20-tempo-dos-testes.md), [qa/](qa/2026-10-23-teste-geral.md) | `apps/web/e2e`, `**/__tests__` |
@@ -80,7 +80,8 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 - [technical/22-fuso-do-espaco.md](technical/22-fuso-do-espaco.md) — **Fuso do espaço:** os quatro fusos do Brasil, fuso escolhido ou pelo estado da unidade, "hoje" no fuso do espaço no servidor e no navegador, datas do Asaas no horário de Brasília.
 - [technical/23-historico-em-segundo-plano.md](technical/23-historico-em-segundo-plano.md) — **Histórico do que roda sem pessoa:** Auditoria com o sistema como autor (rotina diária, parceiro de pagamentos), histórico do plano ligado à Auditoria, registro das execuções e dos avisos do Asaas (aviso repetido reconhecido), índices por consulta.
 - [technical/24-plano-gestarahub.md](technical/24-plano-gestarahub.md) — **Plano GestaraHub (assinatura):** contrato, matriz de recursos por plano, composição com permissões, demonstração e conta real, quem grava o plano. As regras de troca de plano estão em `product/13` §6.
-- [technical/26-painel-admin-gestarahub.md](technical/26-painel-admin-gestarahub.md) — **Painel admin do GestaraHub (proposta):** app `apps/admin` com login próprio; espaços, suporte via chatbot, planos e cortesias, saúde, receita, comunicados, LGPD e auditoria; fases e perguntas em aberto.
+- [guides/21-painel-admin-local.md](guides/21-painel-admin-local.md) — **Painel admin no ambiente local:** como subir (`pnpm admin:setup`, `admin:create-admin`, `dev:admin`), roteiro de teste manual da fase 0 e os testes automáticos.
+- [technical/26-painel-admin-gestarahub.md](technical/26-painel-admin-gestarahub.md) — **Painel admin do GestaraHub (fase 0 feita):** app `apps/admin` com login próprio; espaços, suporte via chatbot, planos e cortesias, saúde, receita, comunicados, LGPD e auditoria; fases e perguntas em aberto.
 - [technical/25-pagamento-online.md](technical/25-pagamento-online.md) — **Pagamento online dos alunos:** Pix, link e Pix Automático (porta de pagamento, contrato, fluxos e regras).
 
 ### Guias (como fazer)

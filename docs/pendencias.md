@@ -9,7 +9,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Pendência | Onde está o detalhe | Situação |
 | --- | --- | --- |
 | Correções do teste geral: 73 de 81 achados corrigidos em 24/10 (noite + decisões do dia). Sobram o #81, o #32/#49 (conferir com o olho) e os botões `xs` | `qa/2026-10-23-teste-geral.md`, seção Correções | Em fechamento |
-| **Painel admin do GestaraHub** (`apps/admin`): espaços, suporte por chatbot, planos e cortesias, saúde, comunicados e LGPD. Fase 1 é o "Fale com a gente" | `technical/26-painel-admin-gestarahub.md` | Decidido (24/10); começar pela fase 0 |
+| **Painel admin do GestaraHub** (`apps/admin`): espaços, suporte por chatbot, planos e cortesias, saúde, comunicados e LGPD. Fase 1 é o "Fale com a gente" | `technical/26-painel-admin-gestarahub.md` | Fase 0 feita em 24/10 (sem commit); próxima: fase 1, "Fale com a gente" |
 | **Canal de atendimento ("Fale com a gente")**: a tela de Planos não tem preço nos cards nem contato. Precisa de um canal (vai ser o chatbot da fase 1 do painel admin) e do botão nos planos; depois define preço do Profissional | `product/13-modelo-de-negocio.md`; decisão 7A de 24/10 | Construir depois; não há doc do canal ainda |
 | Expansão fora da venda até existir multiunidade: o card e o botão voltam, e o teste e2e do upgrade para Expansão (`plano-gestarahub.spec.ts`, marcado `fixme`) | `technical/24-plano-gestarahub.md` | Voltar com a multiunidade |
 | Categoria financeira "Professores" (dado semeado) continua com esse nome mesmo em áreas que dizem "instrutor" | `qa/2026-10-23-teste-geral.md`, achado 23 | Renomear exige migrar dado; deixado |

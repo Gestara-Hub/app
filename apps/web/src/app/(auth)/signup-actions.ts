@@ -1,5 +1,6 @@
 "use server";
 
+import { isPlatformAdminUser } from "@/lib/security/platform-admin";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import { cookies, headers } from "next/headers";
@@ -656,6 +657,13 @@ export async function signInWithPasswordAction(input: {
         ok: false,
         message: "E-mail ou senha incorretos.",
       };
+    }
+
+    // Conta de administrador da plataforma nao entra no app dos clientes: sai na
+    // hora, com a mesma mensagem de senha errada (nao revela que a conta existe).
+    if (isPlatformAdminUser(authData.user)) {
+      await supabase.auth.signOut();
+      return { ok: false, message: "E-mail ou senha incorretos." };
     }
 
     // Verificacao em duas etapas ligada (doc 17): a sessao do app so nasce

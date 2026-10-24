@@ -13,12 +13,17 @@
     "build": "pnpm --filter @gestarahub/web build",
     "lint": "pnpm --filter @gestarahub/web lint",
     "typecheck": "pnpm --filter @gestarahub/web typecheck",
-    "test": "pnpm --filter @gestarahub/core test && pnpm --filter @gestarahub/web test",
+    "test": "pnpm --filter @gestarahub/core test && pnpm --filter @gestarahub/web test && pnpm --filter @gestarahub/admin test",
     "e2e": "pnpm --filter @gestarahub/web e2e",
     "supabase:start": "supabase start --workdir apps",
     "supabase:stop": "supabase stop --workdir apps",
     "supabase:status": "supabase status --workdir apps",
     "supabase:reset": "supabase db reset --workdir apps",
-    "supabase:functions": "supabase functions serve --workdir apps --import-map apps/supabase/functions/deno.json"
+    "supabase:functions": "supabase functions serve --workdir apps --import-map apps/supabase/functions/deno.json",
+    "dev:admin": "pnpm --filter @gestarahub/admin dev",
+    "admin:setup": "pnpm --filter @gestarahub/admin setup:local",
+    "admin:create-admin": "pnpm --filter @gestarahub/admin create-admin",
+    "lint:admin": "pnpm --filter @gestarahub/admin lint",
+    "typecheck:admin": "pnpm --filter @gestarahub/admin typecheck"
   }
 }

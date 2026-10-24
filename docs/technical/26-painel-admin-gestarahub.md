@@ -1,8 +1,8 @@
 # 26 — Painel administrativo do GestaraHub (`apps/admin`)
 
-Data: 2026-10-24. Status: Decidido (nada construído). Todas as decisões do dono de 24/10 aplicadas (seção 13); pronto para começar pela fase 0.
-Código: `apps/admin` (novo), `packages/contracts`, `packages/core`, `apps/supabase/migrations` (tabelas novas da seção 5). Nada muda em `apps/web` além do botão "Fale com a gente" e da caixa de suporte (fase 1).
-Testes: a definir por fase (seção 11). Regra do projeto: e2e só quando o dono pedir.
+Data: 2026-10-24. Status: Decidido. Fase 0 feita em 24/10 (seção 16); as demais fases seguem a seção 10.
+Código: `apps/admin` (fase 0 feita), `packages/contracts`, `packages/core`, `apps/supabase/migrations` (tabelas novas da seção 5). Nada muda em `apps/web` além do botão "Fale com a gente" e da caixa de suporte (fase 1).
+Testes: `apps/admin/src/**` (guia: [guides/21](../guides/21-painel-admin-local.md)). Regra do projeto: e2e só quando o dono pedir.
 
 > Para quem é: o dono do GestaraHub (responsável único pela plataforma) e, depois, a equipe interna. Não é uma tela dos clientes. Domínio, hospedagem e variáveis são decisões e tarefas do dono; a seção 12 lista o que fazer.
 
@@ -351,3 +351,21 @@ O código fica pronto no repositório; estes passos são de configuração:
 ## 15. Documentos relacionados
 
 [technical/17](17-verificacao-em-duas-etapas.md) (2FA), [technical/21](21-registro-de-erros.md) (erros), [technical/23](23-historico-em-segundo-plano.md) (rotinas e avisos), [technical/24](24-plano-gestarahub.md) (plano), [technical/25](25-pagamento-online.md) (pagamento online), [product/13](../product/13-modelo-de-negocio.md) (negócio e preço), [product/24](../product/24-diretrizes-exclusao-e-lgpd.md) (exclusão e LGPD).
+
+## 16. Fase 0 feita (24/10/2026): o que existe e o que mudou do desenho
+
+**Entregue:** `apps/admin` (Next 16, a mesma stack e o mesmo tema do web, com roxo da logo como cor de ação, menu lateral escuro e faixa de ambiente), login com senha e segundo fator obrigatório, sessão de 8 horas, auditoria, telas Início, Equipe (leitura) e Auditoria, schema `platform`, papel `platform_app` e o `pnpm admin:setup` / `pnpm admin:create-admin`.
+
+**Decisões tomadas na construção**
+
+- **Sem `service_role` no painel.** O painel só tem a conexão do papel `platform_app` (`PLATFORM_DATABASE_URL`). A chave de serviço do Auth aparece só no comando `admin:create-admin`, e nunca é gravada.
+- **Marcador de plataforma** (`app_metadata.platform = true`): só o servidor grava (o teste confirma que o próprio usuário não consegue se promover). O `apps/web` recusa essas contas no login (`signInWithPasswordAction`), em `requireTenant` e em `getClientForTenant`.
+- **E-mail único nos dois sentidos**, por gatilhos: `platform.admins` recusa e-mail de usuário de espaço e `public.users` recusa e-mail de administrador.
+- **Cookies próprios** (`gestara-admin*`, `SameSite=Strict`) e um cookie assinado (HMAC) com o início da sessão para o limite de 8 horas; o painel confere sessão, marcador, linha ativa, tempo e AAL2 em cada página e action (`getAdminContext`).
+- **Auditoria sem chave estrangeira** para o administrador: é um livro de registro e nada pode alterá-la, nem apagar um administrador. O nome de quem fez fica gravado na linha.
+- **Limite de tentativas falha fechado** (se o banco não responde, recusa), ao contrário do app dos clientes.
+- `public.organizations` é a única tabela do `public` que o painel lê hoje (uma política `TO platform_app`); cada fase acrescenta as suas.
+- O convite de novos administradores continua na fase 6; por ora, `pnpm admin:create-admin`.
+- Os componentes de UI foram copiados do `apps/web` (sem o "descartar alterações" do web); um pacote de UI compartilhado fica para quando houver um terceiro app.
+
+**Não coberto ainda:** testes e2e (só quando você pedir) e a verificação visual das telas.

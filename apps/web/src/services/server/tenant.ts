@@ -3,6 +3,7 @@ import { apiError, forbiddenError } from "@gestarahub/core/api-error";
 import { resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { can } from "@/lib/permissions";
 import { setErrorScope } from "@/lib/log/server-sink";
+import { isPlatformAdminUser } from "@/lib/security/platform-admin";
 import { secondFactorState } from "@/lib/security/second-factor";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { missingSecondFactor } from "@/lib/supabase/tenant-client";
@@ -40,7 +41,7 @@ export async function requireTenant(): Promise<TenantContext> {
   const {
     data: { user },
   } = await client.auth.getUser();
-  if (!user) throw unauthorized();
+  if (!user || isPlatformAdminUser(user)) throw unauthorized();
   if ((await secondFactorState(client, user)) === "missing") throw missingSecondFactor();
 
   const { data: row, error } = await client

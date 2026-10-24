@@ -1,4 +1,5 @@
 import { apiError } from "@gestarahub/core/api-error";
+import { isPlatformAdminUser } from "@/lib/security/platform-admin";
 import { secondFactorState } from "@/lib/security/second-factor";
 import { createSupabaseServerClient } from "./server";
 
@@ -14,7 +15,8 @@ export async function getClientForTenant() {
   const {
     data: { user },
   } = await serverClient.auth.getUser();
-  if (!user) throw apiError("FORBIDDEN", "Sua sessão expirou. Entre de novo.", { httpStatus: 401 });
+  // Administrador da plataforma nunca opera um espaco (doc technical/26).
+  if (!user || isPlatformAdminUser(user)) throw apiError("FORBIDDEN", "Sua sessão expirou. Entre de novo.", { httpStatus: 401 });
   // Verificacao em duas etapas ligada e codigo ainda nao digitado (doc 17): a
   // senha sozinha nao le nem grava nada.
   if ((await secondFactorState(serverClient, user)) === "missing") throw missingSecondFactor();
