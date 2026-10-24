@@ -340,6 +340,8 @@ async function shoot(
   if (ONLY && !ONLY.includes(name)) return;
   await page.setViewportSize(size);
   for (const theme of ["light", "dark"]) {
+    // A preferencia do usuario do espaco ("sistema") sobrescreve o localStorage; o tema segue o esquema do navegador.
+    await page.emulateMedia({ colorScheme: theme as "light" | "dark" });
     await page.evaluate((th) => localStorage.setItem("gestarahub:theme", th), theme);
     await page.goto(url);
     await page.waitForLoadState("networkidle");
