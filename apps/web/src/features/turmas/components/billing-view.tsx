@@ -914,7 +914,8 @@ export function BillingView() {
                       actions={
                         <div className="flex items-center gap-2.5">
                           <ChargeAmount charge={c} className="text-sm font-semibold tabular-nums" />
-                          <div className="flex size-8 items-center justify-center">
+                          {/* min-w, nao size: com recibo e desfazer lado a lado a caixa cresce (achado 85). */}
+                          <div className="flex min-h-8 min-w-8 items-center justify-center">
                             {renderChargeActions(c, false)}
                           </div>
                         </div>
@@ -1082,7 +1083,7 @@ export function BillingView() {
                                     charge={c}
                                     className="text-xs font-semibold tabular-nums sm:text-sm"
                                   />
-                                  <div className="flex size-7 items-center justify-center">
+                                  <div className="flex min-h-7 min-w-7 items-center justify-center">
                                     {renderChargeActions(c, true)}
                                   </div>
                                 </div>

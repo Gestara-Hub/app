@@ -448,7 +448,7 @@ function SubscriptionCheckoutContent({
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="Ex: Studio Viva Bem Ltda"
-                  className="h-9 text-xs"
+                  className="text-base md:text-sm"
                 />
               </div>
 
@@ -462,7 +462,7 @@ function SubscriptionCheckoutContent({
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="financeiro@empresa.com"
-                  className="h-9 text-xs"
+                  className="text-base md:text-sm"
                 />
               </div>
 
@@ -475,7 +475,7 @@ function SubscriptionCheckoutContent({
                   value={customerCpfCnpj}
                   onChange={(e) => setCustomerCpfCnpj(e.target.value)}
                   placeholder="00.000.000/0001-00"
-                  className="h-9 text-xs"
+                  className="text-base md:text-sm"
                 />
               </div>
 
@@ -488,7 +488,7 @@ function SubscriptionCheckoutContent({
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="(11) 99999-9999"
-                  className="h-9 text-xs"
+                  className="text-base md:text-sm"
                 />
               </div>
             </div>
@@ -519,7 +519,7 @@ function SubscriptionCheckoutContent({
                     onChange={(e) => setCardNumber(e.target.value)}
                     placeholder="0000 0000 0000 0000"
                     maxLength={19}
-                    className="h-9 text-xs font-mono"
+                    className="text-base md:text-sm font-mono"
                   />
                 </div>
 
@@ -533,7 +533,7 @@ function SubscriptionCheckoutContent({
                       value={cardHolder}
                       onChange={(e) => setCardHolder(e.target.value.toUpperCase())}
                       placeholder="NOME COMO NO CARTÃO"
-                      className="h-9 text-xs"
+                      className="text-base md:text-sm"
                     />
                   </div>
 
@@ -547,7 +547,7 @@ function SubscriptionCheckoutContent({
                       onChange={(e) => setCardExpiry(e.target.value)}
                       placeholder="12/28"
                       maxLength={5}
-                      className="h-9 text-xs font-mono"
+                      className="text-base md:text-sm font-mono"
                     />
                   </div>
 
@@ -562,7 +562,7 @@ function SubscriptionCheckoutContent({
                       onChange={(e) => setCardCvv(e.target.value)}
                       placeholder="123"
                       maxLength={4}
-                      className="h-9 text-xs font-mono"
+                      className="text-base md:text-sm font-mono"
                     />
                   </div>
                 </div>

@@ -641,7 +641,7 @@ export function SubscriptionCheckoutView() {
                               <Input
                                 id="custName"
                                 placeholder="Ex: Studio Viva Bem Ltda"
-                                className="h-9 text-xs"
+                                className="text-base md:text-sm"
                                 value={field.value}
                                 onChange={field.onChange}
                                 onBlur={field.onBlur}
@@ -666,7 +666,7 @@ export function SubscriptionCheckoutView() {
                                 id="custEmail"
                                 type="email"
                                 placeholder="financeiro@empresa.com"
-                                className="h-9 text-xs"
+                                className="text-base md:text-sm"
                                 value={field.value}
                                 onChange={field.onChange}
                                 onBlur={field.onBlur}
@@ -691,7 +691,7 @@ export function SubscriptionCheckoutView() {
                                 id="custDoc"
                                 placeholder="00.000.000/0001-00"
                                 maxLength={18}
-                                className="h-9 text-xs font-mono"
+                                className="text-base md:text-sm font-mono"
                                 value={field.value}
                                 onChange={(e) =>
                                   field.onChange(maskCpfCnpj(e.target.value))
@@ -717,7 +717,7 @@ export function SubscriptionCheckoutView() {
                                 id="custPhone"
                                 placeholder="(11) 99999-9999"
                                 maxLength={15}
-                                className="h-9 text-xs"
+                                className="text-base md:text-sm"
                                 value={field.value || ""}
                                 onChange={(e) =>
                                   field.onChange(maskPhone(e.target.value))
@@ -761,7 +761,7 @@ export function SubscriptionCheckoutView() {
                                   id="cardNumber"
                                   placeholder="0000 0000 0000 0000"
                                   maxLength={19}
-                                  className="h-9 text-xs font-mono"
+                                  className="text-base md:text-sm font-mono"
                                   value={field.value || ""}
                                   onChange={(e) =>
                                     field.onChange(maskCardNumber(e.target.value))
@@ -789,7 +789,7 @@ export function SubscriptionCheckoutView() {
                                     <Input
                                       id="cardHolder"
                                       placeholder="NOME COMO NO CARTÃO"
-                                      className="h-9 text-xs uppercase"
+                                      className="text-base md:text-sm uppercase"
                                       value={field.value || ""}
                                       onChange={(e) =>
                                         field.onChange(e.target.value.toUpperCase())
@@ -817,7 +817,7 @@ export function SubscriptionCheckoutView() {
                                     id="cardExpiry"
                                     placeholder="12/28"
                                     maxLength={5}
-                                    className="h-9 text-xs font-mono"
+                                    className="text-base md:text-sm font-mono"
                                     value={field.value || ""}
                                     onChange={(e) =>
                                       field.onChange(maskCardExpiry(e.target.value))
@@ -845,7 +845,7 @@ export function SubscriptionCheckoutView() {
                                     type="password"
                                     placeholder="123"
                                     maxLength={4}
-                                    className="h-9 text-xs font-mono"
+                                    className="text-base md:text-sm font-mono"
                                     value={field.value || ""}
                                     onChange={(e) =>
                                       field.onChange(
