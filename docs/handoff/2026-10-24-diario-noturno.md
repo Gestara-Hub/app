@@ -41,3 +41,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #34 e #35 turma | feito | git log | typecheck, lint, Vitest 1040 |  |
 | 4.2 #36 janela Matricular alunos | feito | git log | typecheck, lint, Vitest 1041 |  |
 | 4.2 #38 blocos da grade | feito | git log | typecheck, lint, Vitest |  |
+| 4.2 #40 adicionar aluno na aula | feito | git log | typecheck, lint | e2e cobranca-avulsa já espera 'Selecione o aluno.' |

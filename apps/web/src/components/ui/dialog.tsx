@@ -400,9 +400,6 @@ function DialogContent({
                   aria-label={isExpanded ? "Restaurar tamanho" : "Aumentar tamanho"}
                 >
                   {isExpanded ? <Minimize2Icon /> : <Maximize2Icon />}
-                  <span className="sr-only">
-                    {isExpanded ? "Reduzir modal" : "Aumentar modal"}
-                  </span>
                 </button>
               )}
               {showCloseButton && (

@@ -940,6 +940,8 @@ function AddStudentSessionDialog({
   isPending: boolean;
 }) {
   const [studentId, setStudentId] = useState("");
+  // Erro junto do campo, nao num aviso que some (achado 40).
+  const [studentError, setStudentError] = useState<string | null>(null);
   const candidates = session.packageCandidates;
   const hasPackages = candidates.length > 0;
   const [chosenKind, setKind] = useState<ReservationKind>(
@@ -964,6 +966,7 @@ function AddStudentSessionDialog({
   // Aluno com pacote para esta aula entra pelo pacote (sem cobranca avulsa).
   const chooseStudent = (id: string) => {
     setStudentId(id);
+    setStudentError(null);
     if (id && isCandidate(id) && kind === "dropin") setKind("package");
   };
   const chooseKind = (next: ReservationKind) => {
@@ -974,7 +977,7 @@ function AddStudentSessionDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId) {
-      toast.error("Selecione um aluno.");
+      setStudentError("Selecione o aluno.");
       return;
     }
     onAdd({
@@ -1012,7 +1015,9 @@ function AddStudentSessionDialog({
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DialogBody className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Aluno *</label>
+            <label className="text-sm font-medium">
+              Aluno<span className="ml-0.5 text-destructive">*</span>
+            </label>
             <Combobox
               value={studentId}
               onChange={chooseStudent}
@@ -1022,10 +1027,17 @@ function AddStudentSessionDialog({
               emptyMessage="Nenhum aluno encontrado."
               ariaLabel="Aluno"
             />
+            {studentError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {studentError}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Tipo de inscrição *</label>
+            <label className="text-sm font-medium">
+              Tipo de inscrição<span className="ml-0.5 text-destructive">*</span>
+            </label>
             <div
               className={cn(
                 "grid gap-3",
