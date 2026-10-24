@@ -76,7 +76,12 @@ export async function finishSignIn(
   authUserId: string,
   from?: string,
 ): Promise<SignInSessionResult> {
-  const { data: dbUser, error: userErr } = await admin.from("users").select("*").eq("id", authUserId).maybeSingle();
+  // Convidado tem id proprio no app, ligado a conta pelo auth_user_id (como em requireTenant).
+  const { data: rows, error: userErr } = await admin
+    .from("users")
+    .select("*")
+    .or(`auth_user_id.eq.${authUserId},id.eq.${authUserId}`);
+  const dbUser = rows?.find((row) => row.auth_user_id === authUserId) ?? rows?.[0];
 
   if (userErr || !dbUser) {
     return { ok: false, message: "Usuário não encontrado na organização." };
