@@ -30,3 +30,5 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #8 e #43 modelos de mensagem | feito | git log | typecheck, lint, Vitest 1030 | Modelos já salvos mantêm o texto antigo |
 | 4.2 #10, #12, #16, #39 e #26/#33 | decisão registrada / mantidos | git log | só docs | #10 e #12 em pendencias.md; #16 e #39 mantidos (docs 07 e 11) |
 | 4.2 #15 tela do convite | feito | git log | typecheck, lint, Vitest | Visual conferido na bateria final |
+| 4.2 #19 jargão em Planos/checkout | adiado (depende da decisão #17/#18) | git log | — | O conteúdo da tela de Planos muda com a decisão; revisar o texto junto |
+| 4.2 #20 figura do Pix na landing | feito | git log | capturas refeitas com SHOTS=pix | Sem CPF na imagem |

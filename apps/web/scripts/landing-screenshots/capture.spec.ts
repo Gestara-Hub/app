@@ -397,6 +397,9 @@ test("telas da landing", async ({ page }) => {
       .getByText("Demonstração", { exact: true })
       .evaluate((el) => el.closest(".border-dashed")?.remove())
       .catch(() => undefined);
+    // A landing nao mostra taxa nem valor liquido, e a validade do print fica velha: saem do print (achado 20).
+    await p.getByText("Líquido para sua conta:").evaluate((el) => el.parentElement?.remove()).catch(() => undefined);
+    await p.getByText(/^Válido até/).evaluate((el) => el.remove()).catch(() => undefined);
     // Sem o "Fechar" do rodape: o print mostra so o Pix.
     await dialog.evaluate((el) => {
       for (const b of el.querySelectorAll("button")) {
