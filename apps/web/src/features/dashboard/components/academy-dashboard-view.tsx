@@ -24,6 +24,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ScrollCueArea } from "@/components/shared/scroll-cue-area";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
+import { monthlyRevenueSummary } from "../revenue-summary";
 import { formatCents, plural } from "@gestarahub/core/format";
 import { todayISO, dateInSpace } from "@gestarahub/core/date";
 import {
@@ -113,8 +114,6 @@ function useAcademyDashboard() {
   const groupsQuery = useClassGroups();
   // So mensalidades: aula avulsa nao entra em "Mensalidades recebidas".
   const chargesQuery = useCharges({ competence: currentCompetence, kind: "membership" });
-  // Selo de atraso igual ao "Para fazer hoje": todas as cobrancas atrasadas.
-  const overdueAllQuery = useCharges({ status: "overdue" });
   const attendanceQuery = useAttendanceSummary(todayDate);
 
   const sessions = sessionsQuery.data ?? [];
@@ -146,27 +145,8 @@ function useAcademyDashboard() {
     .join(" · ");
   const upcomingSessions = [...sessions].sort((a, b) => a.start.localeCompare(b.start));
 
-  // Financeiro do mês
-  const paidCharges = charges.filter((c) => c.status === "paid");
-  const pendingCharges = charges.filter((c) => c.status === "pending");
-  const overdueCharges = charges.filter((c) => c.status === "overdue");
-
-  const paidRevenue = paidCharges.reduce((sum, c) => sum + c.amountCents, 0);
-  const pendingRevenue = pendingCharges.reduce((sum, c) => sum + c.amountCents, 0);
-  const overdueRevenue = overdueCharges.reduce((sum, c) => sum + c.amountCents, 0);
-  // "Quitadas" so quando ha mensalidade no mes e nenhuma em aberto (pendente ou atrasada).
-  const billedCharges = charges.filter((c) => c.status !== "canceled" && c.status !== "waived");
-  const openParts = [
-    pendingRevenue > 0 ? `${formatCents(pendingRevenue)} pendente` : null,
-    overdueRevenue > 0 ? `${formatCents(overdueRevenue)} atrasado` : null,
-  ].filter(Boolean);
-  const revenueHint =
-    openParts.length > 0
-      ? openParts.join(" · ")
-      : billedCharges.length === 0
-        ? "Nenhuma mensalidade gerada no mês"
-        : "Todas as mensalidades quitadas";
-  const overdueCount = overdueAllQuery.data?.length ?? 0;
+  // Financeiro do mês: selo, valor e texto do mesmo recorte (achado 2).
+  const { paidRevenue, overdueRevenue, overdueCount, revenueHint } = monthlyRevenueSummary(charges);
 
   const isPending =
     sessionsQuery.isPending ||
@@ -192,7 +172,6 @@ function useAcademyDashboard() {
     overallOccupancyPct,
     sessionsHint,
     upcomingSessions,
-    overdueCharges,
     overdueCount,
     paidRevenue,
     overdueRevenue,

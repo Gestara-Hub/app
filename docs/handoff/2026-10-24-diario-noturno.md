@@ -11,3 +11,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #28 troca de plano do aluno | feito | git log | typecheck, lint, Vitest 1011 | Confirmação com valores (plan-switch.ts); e2e mensalidades-regras atualizado, não rodado agora |
 | 4.1 #26 parcelas além da validade | decisão registrada | git log | só docs | Docs não sustentam: análise e recomendação (avisar) em pendencias.md; #33 vai junto |
 | 4.1 #62 extrato PDF x tela | feito | git log | typecheck, lint, Vitest, core 280 | Rótulos únicos no core |
+| 4.1 #2 selo do Painel | feito | git log | typecheck, lint, Vitest | Selo = atrasadas do mês (mesmo recorte do texto); decisão: o selo de todos os meses ficava só nos Lembretes |

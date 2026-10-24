@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 12 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 13 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -102,6 +102,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 80 | 23/10 | Os serviços pagos já conferiam o plano no servidor, sobre o espaço carregado do banco (o plano é gravado só pelo servidor desde o #66). Faltava a tela paga: ela lia o plano de um cookie que o próprio navegador manda gravar. Na conta real, ela passa a ler o plano do banco, na mesma leitura que confere o usuário. Feito junto com a troca de plano da doc 13 §6. | `services/subscription/__tests__/paidFeaturesOnServer.db.test.ts` || `7331eff` |
 | 28 | 24/10 | Trocar o plano do aluno pede confirmação: a janela diz de qual plano para qual, quantas mensalidades em aberto (e o total) deixam de valer, a primeira cobrança do plano novo e que o pago não muda. O e2e `mensalidades-regras` confere o texto. | `features/clients/__tests__/plan-switch.test.ts` | — |
 | 62 | 24/10 | O extrato em PDF e a tela de Recebimentos online usam o mesmo texto para a forma ("Cartão · Crédito", "Pix", "Boleto") e para o saldo (cartão sem data prevista agora sai "A liberar" no PDF, não "Disponível"). Funções `onlinePaymentMethodLabel` e `onlineFundsLabel` em `@gestarahub/core/payment-fees`. | `packages/core/test/payment-fees.test.ts` | — |
+| 2 | 24/10 | O selo de atraso do cartão "Mensalidades recebidas" conta as mensalidades atrasadas do mês, o mesmo recorte do valor e do texto de baixo ("3 em atraso · R$ 491,61 atrasado"). O atraso de todos os meses continua nos Lembretes e no Financeiro. Cálculo em `monthlyRevenueSummary`. | `features/dashboard/__tests__/revenue-summary.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -131,7 +132,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 | Painel | card "Mensalidades recebidas" | desktop 1280, claro | O selo diz "10 em atraso", mas o texto embaixo diz "R$ 491,61 atrasado". 10 é o total de cobranças em atraso de todos os meses (R$ 1.412,67, como nos Lembretes e no Financeiro); R$ 491,61 é só deste mês (3 cobranças, como em Cobranças). | Número e valor do mesmo recorte: "3 em atraso · R$ 491,61" ou "10 em atraso · R$ 1.412,67". | Demonstração, dono, `/dashboard`. Comparar com Cobranças (Em atraso: 3, R$ 491,61) e Financeiro (Em atraso R$ 1.412,67). Captura `tour-1280-dashboard.png`. | média |
+| 2 | Painel | card "Mensalidades recebidas" | desktop 1280, claro | O selo diz "10 em atraso", mas o texto embaixo diz "R$ 491,61 atrasado". 10 é o total de cobranças em atraso de todos os meses (R$ 1.412,67, como nos Lembretes e no Financeiro); R$ 491,61 é só deste mês (3 cobranças, como em Cobranças). | Número e valor do mesmo recorte: "3 em atraso · R$ 491,61" ou "10 em atraso · R$ 1.412,67". | Demonstração, dono, `/dashboard`. Comparar com Cobranças (Em atraso: 3, R$ 491,61) e Financeiro (Em atraso R$ 1.412,67). Captura `tour-1280-dashboard.png`. | média (corrigido) |
 | 3 | Painel | card "Aniversariantes de outubro" | desktop 1280, claro | O botão "Mais aniversariantes" fica por cima da última linha (Isabela Moraes), cobrindo telefone e o próximo nome. O botão tem 23 px de altura. | Botão abaixo da lista, sem cobrir texto, com 36 px. | `/dashboard` na demonstração. Captura `tour-1280-dashboard.png`. | baixa |
 
 ### Cadastros
