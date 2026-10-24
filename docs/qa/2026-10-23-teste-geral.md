@@ -1,0 +1,239 @@
+# Teste geral do sistema (23/10/2026)
+
+Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. Nada foi corrigido: só registro. Feito por agente (Claude no VS Code) com Playwright (Chrome do sistema, sem janela) contra o `pnpm dev` na porta 3000, com o túnel do webhook do Asaas ligado.
+
+## Resumo
+
+**76 achados:** 5 `alta`, 24 `média`, 47 `baixa`. Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
+
+**As 5 mais importantes (todas `alta`):**
+
+1. **Convidado não consegue entrar de novo** (#13). Depois do primeiro acesso pelo link do convite, e-mail e senha certos respondem "Usuário não encontrado na organização." Provável causa: `finishSignIn` busca `users.id` = id da conta de login, e o convidado tem id próprio.
+2. **Plano Profissional de graça numa conta real** (#66). Configurações → Plano GestaraHub → "Ativar Profissional (demonstração)" grava `tier: pro` sem cobrança.
+3. **Data do pagamento em UTC** (#60, e #76 no sandbox). Pagamentos feitos depois das 21h aparecem com a data do dia seguinte na ficha ("em 24/10"), e a data errada vai também para o Asaas.
+4. **Primeiro Pix depois de ativar a subconta falha em silêncio** (#56). Nada aparece na tela, fica uma cobrança órfã no Asaas e o log diz "Pix caiu na demonstração" numa conta real.
+5. **Erro de hidratação do React em Configurações → Preferências** (#75), no celular e no desktop.
+
+Logo depois, entre as `média`: a tela de Planos promete recursos que não existem (#17); a cobrança e os avisos de aluno menor vão para o telefone da criança e não para o responsável financeiro (#57); a pausa do aluno não aparece na ficha e não mexe na cobrança do mês (#27, #53); taxa do Pix diferente entre telas (#18); avisos de sucesso cobrindo os botões do rodapé (#31).
+
+**Corrigido durante o teste (Parte A, código novo deste trabalho):** na tela `/two-factor`, o subtítulo falava do aplicativo mesmo depois de trocar para "Receber por e-mail". Virou "Falta só o código de 6 números para entrar." Nada mais foi corrigido.
+
+**Itens da seção B.5:** todos executados (lista abaixo). Ficaram de fora ou só em parte:
+
+- Notas nas escalas 0 a 100 e conceito: só vistas como opção da modalidade; lançadas apenas em 0 a 10.
+- Envio real de e-mail: o `pnpm dev` rodou sem `MAILERSEND_API_KEY` (a conta só entrega ao dono); links e códigos foram lidos no terminal.
+- Aviso de segurança no momento "pagamento online ativado": testado o "Agora não"; o "Ativar agora" foi testado no momento "senha nova" e na conta nova.
+- Anexos no cadastro do aluno e Pix Automático: não testados. Comprovante no pagamento: testado.
+- Saque (Sacar via Pix): só a janela aberta, sem transferir.
+- Chamada de aula substituída pelo professor: a troca de instrutor foi testada pelo dono; o professor substituto não foi conferido.
+- Visões de dia e de mês do calendário: não existem no modelo de turmas (#37).
+
+**Tabela `error_logs` (linhas novas durante o teste, desde 23/10 22:27 UTC):**
+
+| Nível | Origem | Mensagem | Código |
+| --- | --- | --- | --- |
+| error | Asaas | Erro em GET /payments/{id}/pixQrCode | BXCCVHCA |
+| error | createOnlinePixPaymentAction | Erro ao gerar Pix no gateway: Você não possui uma chave Pix cadastrada... | Y36LPSXP |
+| error | PaymentGateway | Pix caiu na demonstração: Você não possui uma chave Pix cadastrada... | JE3HJQJC |
+| warn | simulateOnlinePaidAction | Não foi possível liquidar no Asaas Sandbox (ignorado): A data selecionada 24/10/2026 não pode ser posterior a data atual. | J7QFTVN4 |
+| error | Asaas | Erro em POST /payments/{id}/receiveInCash | 4ZNUBHDT |
+
+O erro de hidratação (#75) saiu no console e no terminal, mas não entrou na `error_logs`. No terminal também apareceram `Error: aborted` (requisições canceladas ao trocar de página, ruído que já existia nos e2e) e, uma vez, `ERR_CONNECTION_REFUSED` no console em `/finance` (390), sem repetir.
+
+**Como foi feito:** scripts Playwright descartáveis contra o `pnpm dev` (Chrome do sistema, sem janela), na demonstração e numa conta criada do zero. As capturas estão em `docs/qa/capturas/2026-10-23/`, só na máquina local (a pasta está no `.gitignore`); as que mostravam CPF foram apagadas.
+
+## Ambiente
+
+- Banco local, sem reset (não foi preciso). `pnpm demo:local` recriou a demonstração antes do teste.
+- `pnpm dev` iniciado com `MAILERSEND_API_KEY` vazia: links e códigos saem no terminal (a conta do MailerSend ainda só entrega ao dono). O envio real de e-mail não foi testado.
+- Asaas: sandbox (`ASAAS_API_URL` conferida). **Subconta criada e deixada no sandbox** para a conta nova "Estúdio Quaresma de Teste" (pessoa física, com CPF gerado para teste; o número não é registrado aqui). Nenhuma transferência (saque) feita.
+- Conta nova do teste: "Estúdio Quaresma de Teste" (área Pilates e yoga), dona "Marta Quaresma", e-mail `qa.teste.geral.1023@example.com`; convidada "Gilda Convidada" (gerente). Senhas só no script descartável.
+- Plano Profissional ligado só no banco local, por alguns minutos, na conta nova, para testar certificado e relatórios do Profissional; depois voltou para Grátis.
+- Tamanhos: desktop 1280 × 900 (e 1440), celular 375 × 812 e 390 × 844.
+- Início da contagem da tabela `error_logs`: 23/10/2026 22:27:57 UTC (10 linhas antes).
+
+## Itens da seção B.5
+
+- [x] 1. Criar conta, entrar, sair, esqueci a senha, senha errada, conta inativa (troca de perfil e formulário barram com a mensagem certa)
+- [x] 2. Verificação em duas etapas (conta nova: app, e-mail, lembrar, esquecer, desligar, auditoria)
+- [x] 3. Convite (aviso de segurança no primeiro convite apareceu; achado alta no login do convidado)
+- [x] 4. Configuração inicial `/setup` (os 10 passos 3, "Outra área", erros, Enter; concluída com Pilates e yoga)
+- [x] 5. Site (landing desktop e celular, termos, privacidade, planos, checkout até a tela de pagamento; nenhuma compra)
+- [x] 6. Modalidades (criar com trilha e avaliações, editar, inativar, nome repetido barrado, filtro)
+- [x] 7. Equipe (criar, editar, inativar, reativar; não há horários do professor)
+- [x] 8. Planos e pacotes (mensal, quinzenal, semanal, pacote 10 aulas, editar, inativar)
+- [x] 9. Turmas (mensalidade com avulso, curso com parcelas, pacote; fora do horário barrado; editar; mudar horário → avisar em sequência; desativar/reativar; lista e cartões; busca)
+- [x] 10. Alunos (mensal proporcional, quinzenal, bolsista integral e parcial, pacote, sem mensalidade, menor com responsável financeiro; editar, trocar plano, pausar, inativar, reativar, busca, filtros; paginação vista na demonstração)
+- [x] 11. Matrícula e lista de espera (acima da capacidade com aviso, lista de espera, cancelar matrícula, promover, curso à vista e 3x, turma de pacote)
+- [x] 12. Calendário (grade e lista; trocar instrutor e restaurar titular; não há visão de dia e mês)
+- [x] 13. Aula e chamada (presente, falta, justificada com motivo, Todos vieram, desmarcar, avulso com cobrança, experimental, pacote gasta aula (demo), 3 faltas seguidas viram lembrete na hora (demo); a chamada da aula de amanhã só abre no dia)
+- [x] 14. Ficha do aluno (alertas, seções, cobranças com filtros, graduar, registro de aula, mensagem, declaração e recibo em PDF; termo do responsável sem ação na ficha)
+- [x] 15. Notas (escala 0 a 10, fora da escala, Faltou, média, boletim em PDF; 0 a 100 e conceito não lançados, só vistos como opção da modalidade)
+- [x] 16. Certificado (Grátis: bloqueado; Profissional ligado só no banco local para o teste: tela e PDF; depois voltou para Grátis)
+- [x] 17. Lembretes (sino e painel com os grupos, Ver, WhatsApp com o texto certo, Lembrar amanhã, Não lembrar deste, enviar em sequência com Pular; graduar e mandar mensagem mudam a lista na hora; pagar: ver item 18)
+- [x] 18. Cobranças (abas e filtros, pagar com Pix e comprovante, desfazer, pagar em dinheiro, recibo, cancelar com motivo, reabrir, avulsa em 3x, lembrete de WhatsApp; as mensalidades são geradas sozinhas, não há botão "gerar"; cobrar online na seção B.3)
+- [x] 19. Financeiro (resumo simplificado e avançado, saída recorrente e entrada, pagar e desfazer, encerrar repetição, categorias, regra de pagamento de professora, fechar mês, pagar, desfazer, reabrir, demonstrativo em PDF)
+- [x] 20. Recebimentos online (B.3): subconta criada no sandbox e aprovada; webhook pelo túnel; Pix de mensalidade (menor, CPF da responsável), Pix de parcela de curso e link de cartão de aula avulsa; links públicos no celular; pagos no sandbox (Pix pela API do sandbox, cartão pelo "Simular liquidação"); viraram Pago em Cobranças, ficha, painel, financeiro, relatórios e extrato; lembrete "pagamento para agradecer"; vencimento forçado (Pix expirado); cancelamento propagado ao parceiro; extrato em PDF; tela de saque aberta sem transferir
+- [x] 21. Relatórios (os 8, com CSV e PDF, na conta nova com Profissional temporário; no Grátis, DRE e Retenção aparecem bloqueados)
+- [x] 22. Comunicação (nova mensagem para um aluno com modelos, histórico com filtros, busca por nome, telefone e texto, abrir mensagem, editar modelo com variáveis e prévia, conexão assistida e Pro; envio para vários não existe)
+- [x] 23. Usuários (profissional ligado à equipe, atendente, convite, editar perfil, reenviar convite, inativar, reativar, filtro)
+- [x] 24. Auditoria (eventos do teste aparecem, carregar mais, filtros por tipo, autor, período, busca, detalhe imutável)
+- [x] 25. Configurações (abas Geral, Horários, Certificado, Plano GestaraHub, Preferências; salvar; "Sair sem salvar?" ao sair com alteração; regras da mensalidade confirmadas na conta nova)
+- [x] 26. Menu do usuário (Preferências com tema claro/escuro, Segurança, trocar perfil na demonstração, Sair)
+- [x] 27. Perfil professor (menu Calendário e Turmas, só a turma dele, sem aulas dos outros; URL proibida volta ao calendário, incluindo `/finance`; chamada da própria aula com falta, justificar, registrar aula e graduação; sem lembretes nem ficha)
+- [x] 28. Perfis recepção e gerente (menus e rotas conferidos; recepção sem Financeiro, Usuários, Auditoria e Configurações; gerente sem Configurações; gerente vê 142 eventos e nenhum "Sensível" do dono; Usuários do gerente só lista atendentes e profissionais)
+- [x] Fora do foco: agendamento/barbearia (olhada: cai na configuração inicial do mock)
+- [x] Tema escuro nas telas principais (painel, alunos, ficha, turmas, chamada, cobranças, financeiro, comunicação, relatórios, recebimentos, novo aluno; sem problema de contraste)
+- [x] Celular nas telas principais (375 e 390: 12 telas, ficha, chamada e 4 formulários; sem rolagem lateral, sem texto cortado, campos com 16 px, sem foco automático em campo; links públicos de pagamento em 390)
+
+## Achados por área
+
+Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no servidor, quebra no celular, falha de permissão), `média` (confuso ou feio, mas usa), `baixa` (acabamento).
+
+### Entrada e conta
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Login / demonstração | "Entrar na demonstração" | desktop 1280, claro | O primeiro acesso à demonstração abre o contrato inteiro (LGPD, Pagamentos, Direitos) em nome de "Ana Ribeiro" e exige aceitar para ver o sistema. O aceite fica gravado para todos os visitantes seguintes. A mesma coisa a cada perfil trocado no topo. | Na demonstração, os termos já aceitos pelo `pnpm demo:local` (o visitante não aceita contrato em nome de outra pessoa) ou um aviso curto próprio da demonstração. | `pnpm demo:local`, login, "Entrar na demonstração". Captura `tour-1440-dashboard.png` (primeira rodada). | média |
+| 11 | Criar senha → `/setup` | primeiro acesso da conta nova | desktop 1280, claro | O aviso "Conta criada com sucesso! Vamos configurar seu espaço." aparece por cima do botão "Aceitar e continuar" do contrato (canto inferior direito), escondendo o botão por alguns segundos. | Aviso em outro canto ou depois do aceite; botão sempre visível. | Criar conta, abrir o link do terminal, criar a senha. Captura `conta-08-depois-da-senha.png`. | média |
+| 12 | Criar conta e contrato | aceite dos termos | desktop 1280, claro | O aceite acontece duas vezes: a tela de cadastro já diz "Ao criar a conta, você aceita os Termos de uso e a Política de privacidade" e, no primeiro acesso, o contrato inteiro abre de novo pedindo a caixa "Li e aceito". | Um aceite só (decisão do usuário: o da tela de cadastro ou o do contrato). | Criar conta do zero. Capturas `conta-03-criar-conta.png` e `conta-08-depois-da-senha.png`. | baixa |
+| 13 | Login | convidado entra de novo com senha | desktop 1280, claro | Quem entrou por convite não consegue entrar de novo com e-mail e senha: senha certa responde "Usuário não encontrado na organização." (só o primeiro acesso, pelo link do convite, funciona). Causa provável: `finishSignIn` (`app/(auth)/sign-in-session.ts`) busca `users.id = id da conta de login`, mas o convidado tem `users.id` próprio, ligado por `auth_user_id`. | Entrar normalmente com a senha criada no convite. | Na conta nova, Usuários → Novo usuário (Gerente), abrir o link do convite no terminal, criar a senha, sair, entrar com o e-mail e a senha do convidado. Captura `convite-08-convidado-login.png`. | alta |
+| 14 | Aceitar convite `/accept-invite` | senha | desktop 1280, claro | Aceita senha de 6 caracteres ("Nova Senha (mínimo 6 caracteres)"); criar conta e "Esqueci minha senha" pedem no mínimo 8. | Mesma regra de senha (8) em todas as telas. | Abrir o link do convite e criar a senha "abc123": entra. Captura `convite-06-aceitar.png`. | média |
+| 15 | Aceitar convite `/accept-invite` | visual e texto | desktop 1280, claro | Tela fora do padrão das outras de entrada: sem a marca no topo, palavras com maiúscula ("Nova Senha", "Perfil de Acesso", "Ativar Conta e Acessar"), "Bem-vindo(a)", e-mail em fonte de código, asterisco preto em vez de vermelho, jargão no rodapé ("Acesso seguro com autenticação criptografada") e botão de 40 px. | Mesmo visual de `/login` e `/reset-password`: marca, `Nome*` com asterisco vermelho, frases curtas, botão de 36 px. | Abrir o link do convite. Captura `convite-06-aceitar.png`. | baixa |
+| 16 | Painel | boas-vindas depois da configuração inicial | desktop 1280, claro | A janela "Bem-vindo ao GestaraHub" não fecha com Esc (só pelo X ou "Explorar por conta própria"). | Esc fecha, como nas outras janelas. | Concluir a configuração inicial de uma conta nova e apertar Esc. | baixa |
+| 17 | Planos e Assinatura `/plans` | comparação dos planos | desktop 1280, claro | A tela promete recursos que o produto não tem: "App do Aluno e do Professor", "Portal do Aluno: pagamento em 1 clique e reservas", "Portal do Professor: avaliações e extrato", "Multiunidades ilimitadas", "BI de ocupação e inteligência analítica preditiva", "API para alto volume", "Página web dedicada", "Passe livre do aluno em todas as unidades". Mostra também preços do Profissional (R$ 79,90) e do Expansão (R$ 199,00), que a memória do projeto dá como ainda não definidos. | Só o que existe hoje (como a regra da landing) e preço só depois de decidido. | Conta nova, menu do usuário → "Planos & Assinatura". Captura `site-1280-plans.png`. | média |
+| 18 | Planos e checkout | taxa do Pix | desktop 1280, claro | Taxa do Pix diferente entre telas: em Planos, o Grátis tem "Cobrança Pix online (R$ 1,99 por Pix pago)"; em Recebimentos online, "Pix Dinâmico até R$ 1,99 + R$ 1,99 (tarifa do parceiro + taxa do GestaraHub)". | Um valor só, igual nas duas telas. | Comparar `/plans` com `/online-payments`. Capturas `site-1280-plans.png` e `tour-1280-online-payments.png`. | média |
+| 19 | Planos e checkout | texto | desktop 1280, claro | Jargão e inglês na tela: "Churn", "BI", "API", "gateway", "Link na Bio", "Fazer Upgrade", "O motor de crescimento"; títulos com maiúscula em cada palavra ("Finalizar Assinatura", "Dados de Faturamento", "Razão Social ou Nome do Titular"); frases longas de marketing. | Português direto, frases curtas, maiúscula só no começo. | `/plans` e `/plans/checkout`. Capturas `site-1280-plans.png` e `site-1280-checkout.png`. | baixa |
+| 20 | Landing `/` | "Veja o sistema por dentro" → Pagamento online | desktop 1280 e celular 375, claro | A ilustração do Pix diz "Válido até 23/10/2026, 09:09. Depois disso, gere um novo." às 19h do mesmo dia (a hora já passou) e mostra "Líquido para sua conta: R$ 158,01" num Pix de R$ 160,00, o que expõe a taxa (a doc 08 pede a seção sem valores de taxa). | Validade no futuro e sem valor líquido que revele a taxa. | Abrir `/` e rolar até "Receba pelo Pix sem conferir extrato". Capturas `landing-1280-02.png` e `landing-1280-03.png`. | baixa |
+
+### Painel e lembretes
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | Painel | card "Mensalidades recebidas" | desktop 1280, claro | O selo diz "10 em atraso", mas o texto embaixo diz "R$ 491,61 atrasado". 10 é o total de cobranças em atraso de todos os meses (R$ 1.412,67, como nos Lembretes e no Financeiro); R$ 491,61 é só deste mês (3 cobranças, como em Cobranças). | Número e valor do mesmo recorte: "3 em atraso · R$ 491,61" ou "10 em atraso · R$ 1.412,67". | Demonstração, dono, `/dashboard`. Comparar com Cobranças (Em atraso: 3, R$ 491,61) e Financeiro (Em atraso R$ 1.412,67). Captura `tour-1280-dashboard.png`. | média |
+| 3 | Painel | card "Aniversariantes de outubro" | desktop 1280, claro | O botão "Mais aniversariantes" fica por cima da última linha (Isabela Moraes), cobrindo telefone e o próximo nome. O botão tem 23 px de altura. | Botão abaixo da lista, sem cobrir texto, com 36 px. | `/dashboard` na demonstração. Captura `tour-1280-dashboard.png`. | baixa |
+
+### Cadastros
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | Alunos | lista | desktop 1280, claro | Cada linha tem até 4 etiquetas (Ativo, Aniversário em N dias, Termo pendente, Definir faixa) além do plano: a lista fica carregada. | Menos etiquetas por linha (ex.: só alertas que pedem ação). | `/clients` na demonstração. Captura `tour-1280-clients.png`. | baixa |
+| 21 | Equipe | lista com filtro "Ativos" depois de inativar o único professor | desktop 1280, claro | A lista diz "Nenhum profissional cadastrado ainda. Cadastre sua equipe...", mas existe um profissional (inativo). | "Nenhum profissional ativo" com atalho para ver os inativos (ou "Limpar filtros"). | Conta nova com um só professor: inativar e olhar a lista. | média |
+| 22 | Equipe | horários do professor | desktop 1280, claro | Não há onde definir os horários do professor: o menu ⋮ da linha só tem "Editar" e "Inativar", e o formulário não tem disponibilidade. O subtítulo da tela promete "a disponibilidade de cada um". | Ou a disponibilidade no cadastro, ou o subtítulo sem a promessa (no modelo de turmas o horário vem da turma). | `/team`, ⋮ de um professor. | baixa |
+| 23 | Equipe e Turmas | nome do papel | desktop 1280, claro | O mesmo papel com nomes diferentes: botão "Novo profissional", janela "Novo instrutor", aviso "Profissional criado", campo da turma "Professor*" com erro "Selecione o instrutor.". | Um nome só (o da área: professor/instrutor). | `/team` → Novo profissional; `/classes` → Nova turma → Adicionar vazio. | baixa |
+| 24 | Modalidades | sugestões do formulário | desktop 1280, claro | As sugestões "+ Pilates Reformer" e "+ Pilates Solo" aparecem mesmo já existindo essas modalidades (clicar só leva ao erro "Já existe uma modalidade com esse nome."). | Sugerir só o que ainda não existe. | Conta nova de Pilates e yoga: `/classes/modalities` → Nova modalidade. Captura `cad-04-modalidade-avaliacoes.png`. | baixa |
+| 25 | Alunos (lista) e ficha | etiqueta de evolução | desktop 1280, claro | Na lista, todo aluno da conta de Pilates mostra "Definir nível" (inclusive sem turma e em modalidade sem trilha), enquanto a ficha do mesmo aluno diz "Sem trilha de evolução". | Etiqueta só quando a modalidade do aluno tem trilha; mesma informação na lista e na ficha. | Conta nova de Pilates e yoga: cadastrar um aluno com plano mensal e comparar `/clients` com a ficha. | média |
+| 26 | Novo aluno / pacote | parcelas do pacote | desktop 1280, claro | O pacote de 10 aulas que vale 90 dias aceita até 12 parcelas: "12x de R$ 37,50: de 23/10/2026 a 23/09/2027". O aluno pagaria 9 meses depois de o pacote vencer. | Parcelas limitadas à validade do pacote (ou aviso). | Novo aluno → Pacote de aulas → "Pacote 10 aulas" (validade 90 dias) → Parcelas 12x. Captura `aluno-04-pacote.png`. | média |
+| 27 | Ficha do aluno | aluno pausado | desktop 1280, claro | Depois de pausar ("Trancada / Pausada (não gera cobrança)"), a ficha continua só com o selo "Ativo", sem sinal de pausa (a lista mostra "Trancado"). A cobrança de outubro, já gerada, continua em aberto. | Ficha com o estado "Pausado" e decisão clara sobre a cobrança do mês em curso (manter, perguntar ou cancelar). | Ficha de um aluno com mensal → Editar → Plano e mensalidade → Situação da assinatura: Trancada / Pausada → Salvar. Captura `ficha-07-ana-pausada.png`. | média |
+| 28 | Editar aluno | trocar plano | desktop 1280, claro | Trocar o plano (Quinzenal → Mensal) refaz a cobrança em aberto sem pedir confirmação (a regra do projeto pede confirmação em ações de dinheiro). | Confirmação dizendo o que acontece com a cobrança em aberto. | Ficha → Editar → Plano e mensalidade → trocar o plano → Salvar. | média |
+| 29 | Editar aluno | Pix Automático | desktop 1280, claro | O aviso diz "A cobrança online está desligada em Configurações → Pagamento online", mas Configurações não tem essa aba (fica em Recebimentos online). | Apontar para Recebimentos online (com link). | Ficha → Editar → Plano e mensalidade (conta sem recebimentos ativados). | baixa |
+| 30 | Alunos | filtro | desktop 1280, claro | Contagem com plural errado: "Mostrando 1–1 de 1 alunos". | "1 aluno". | Filtrar Inativos com um aluno inativo. | baixa |
+
+### Dia a dia
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 33 | Turma → Matricular alunos | curso parcelado | desktop 1280, claro | Curso que termina em 20/11 aceita 3 parcelas com a última em 23/12 ("3x de R$ 200,00: 23/10, 23/11 e 23/12"), um mês depois do fim. | Última parcela até o fim do curso (ou aviso). | Turma de curso até 20/11 → Matricular → Alterar → 3x. Captura `matricula-17-curso-3x.png`. | baixa |
+| 34 | Turma → Promover da lista de espera | texto | desktop 1280, claro | "Clara Nunes será matriculado na turma" (concordância fixa no masculino). | Texto neutro ("A matrícula de Clara Nunes será feita..."). | Lista de espera → Promover. | baixa |
+| 35 | Página da turma | cabeçalho com mais alunos que vagas | desktop 1280, claro | Com 3 alunos em 2 vagas o cabeçalho diz só "Turma lotada"; a turma de curso não mostra a modalidade no subtítulo (as outras mostram). | "3 de 2 alunos (acima da capacidade)"; subtítulo igual nas turmas. | Matricular 3 alunos em turma de 2 vagas ("Matricular mesmo assim"). | baixa |
+| 36 | Turma → Matricular alunos | janela | desktop 1280, claro | Rodapé sem "Cancelar" (só "Matricular"); a lista de alunos fica numa caixa baixa com "Mais alunos abaixo" e muito espaço vazio embaixo. | Rodapé com "Cancelar"; lista ocupando a altura da janela. | Abrir "Matricular alunos" numa turma. Captura `matricula-03-tres-selecionados.png`. | baixa |
+| 37 | Calendário de turmas | visões | desktop 1280, claro | Só há "Grade" (semana) e "Lista"; não existem as visões de dia e de mês que o plano do teste lista (item 12). | Confirmar se dia e mês fazem falta no modelo de turmas. | `/classes/calendar`. | baixa |
+| 38 | Calendário de turmas | acessibilidade | desktop 1280, claro | Os blocos de aula da grade são links sem nome acessível (leitor de tela lê só "link"). | Nome com turma e horário. | Inspecionar a grade em `/classes/calendar`. | baixa |
+| 39 | Aula → chamada | tocar de novo num presente com a chamada concluída | desktop 1280, claro | Desmarcar um aluno presente numa chamada já concluída o transforma em "Faltou" (não volta a "sem marcação"). | Confirmar se é a regra desejada (concluída = quem não veio faltou). | Concluir a chamada com um presente e tocar nele de novo. | baixa |
+| 40 | Aula → Adicionar aluno nesta aula | erro do aluno obrigatório | desktop 1280, claro | Sem aluno escolhido, o erro aparece só num aviso flutuante ("Selecione um aluno."), não junto do campo. O botão de ampliar a janela tem o nome "Aumentar modal" (jargão). | Erro junto do campo "Aluno*"; nome em português simples. | Aula → ⋮ → Adicionar aluno nesta aula → Adicionar sem aluno. | baixa |
+| 41 | Aula → Trocar instrutor | lista de substitutos | desktop 1280, claro | Oferece professor que não ensina a modalidade da turma (Bruna Lima só tem Yoga Flow; a turma é de Pilates Reformer) e aceita a troca. | Mostrar primeiro quem ensina a modalidade (ou avisar). | Aula de Pilates Reformer → ⋮ → Trocar instrutor. | baixa |
+| 42 | Turmas | menu da linha | desktop 1280, claro | A turma usa "Desativar"; alunos, modalidades, planos e equipe usam "Inativar". | Mesma palavra em todo o sistema. | `/classes` → ⋮ de uma turma. | baixa |
+| 44 | Ficha do aluno (menor) | termo do responsável | desktop 1280, claro | A lista de alunos marca "Termo pendente" (ex.: Beatriz Almeida, 6 anos, na demonstração), mas a ficha não mostra alerta nem ação para enviar o termo; não há responsável cadastrado e nada pede um. | Alerta na ficha com "Enviar termo ao responsável" (e pedir o responsável quando falta). | Demonstração → Alunos → Beatriz Almeida. Captura `ficha-demo-07-beatriz.png`. | média |
+| 46 | Ficha do aluno → Cobranças | acessibilidade | desktop 1280, claro | Os botões de cada cobrança se chamam todos "Ações de Ana Almeida" e os links, "Baixar recibo de Ana Almeida", sem dizer qual cobrança. | Nome com a cobrança ("Recibo da mensalidade de out/2026"). | Inspecionar a seção Cobranças da ficha. | baixa |
+| 48 | Certificado | texto e regra | desktop 1280, claro (plano Profissional, ligado só no banco local para o teste) | "Certificamos que Fábio Lins concluiu o curso Yoga Flow curso" (palavra repetida quando a turma já tem "curso" no nome; a regra `withKind` evita isso em outros lugares). "com 7 aulas" conta as aulas do curso, não a presença: o aluno teve zero presenças e saiu "Concluído". A instrutora sai como "Instrutor". | Nome sem repetir o tipo; número de aulas que o aluno fez (ou regra de conclusão por presença); cargo sem gênero fixo. | Curso encerrado com aluno matriculado → ⋮ do aluno → Certificado. Arquivo `pdf-certificado.pdf`. | média |
+| 49 | Turma → ⋮ do aluno → Certificado | plano Grátis | desktop 1280, claro | O item "Certificado (Plano Profissional)" aparece, mas clicar nele não faz nada (nem explica, nem oferece o plano). | Ao clicar, explicar e levar para Planos. | Conta Grátis, curso encerrado → ⋮ do aluno → Certificado. Captura `cert-06-certificado.png`. | baixa |
+| 73 | Aula → chamada | etiqueta "Em 5 dias" | desktop 1280, claro | Ao lado do nome de alguns alunos aparece "Em 5 dias" só com um ícone pequeno de bolo, sem a palavra "aniversário" (fácil de confundir com vencimento). | "Aniversário em 5 dias" ou ícone com nome acessível. | Demonstração → aula de Jiu-Jitsu adulto de hoje. | baixa |
+
+### Dinheiro
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | Recebimentos online | tela antes de ativar | desktop 1280, claro | Os cartões se contradizem: "Saque Pix Grátis (R$ 0,00) ... sem tarifa de transferência" e, abaixo, "Transferência para o banco: 30 grátis por mês; depois, R$ 2,00 cada". | Uma regra só para o saque. | `/online-payments` sem conta ativada. Captura `tour-1280-online-payments.png`. | média |
+| 5 | Recebimentos online | tela antes de ativar | desktop 1280, claro | Selo "Ativação pendente" no topo, sem o dono ter começado nada. Texto longo de marketing ("Diga adeus ao envio manual de comprovantes e conferência bancária..."), jargão ("Ecossistema Financeiro GestaraHub") e o provedor citado pelo nome ("Asaas I.P. S.A."), quando a LP fala só em "parceiro de pagamentos regulado". | Selo só depois de começar a ativação; frases de 6 a 8 palavras; mesma forma de citar o provedor (decisão do usuário). | `/online-payments` sem conta ativada. | baixa |
+| 6 | Recebimentos online | título | desktop 1280, claro | Título "Recebimentos Online" (O maiúsculo); no menu, "Recebimentos online". | Mesma grafia. | `/online-payments`. | baixa |
+| 7 | Relatórios | cabeçalho | desktop 1280, claro | Subtítulo com jargão e longo: "Gere e exporte relatórios operacionais em PDF com layout timbrado para impressão e DRE gerencial completa." | Frase curta, sem "layout", "timbrado" e "DRE". | `/reports`. | baixa |
+| 45 | Recibo e declaração (PDF) | cabeçalho | PDF | O telefone do espaço sai sem máscara: "Unidade Centro · 11933334444". | "(11) 93333-4444". | Ficha → Cobranças → Declaração 2026 ou recibo de uma cobrança paga. Arquivos `pdf-ficha-0.pdf` e `pdf-ficha-1.pdf`. | baixa |
+| 50 | Relatórios → Retenção de alunos | mês com todos os alunos novos | desktop 1280, claro (Profissional, só no teste) | "Alunos no início 0 · Novos 7 · Saíram 0 · Retenção 0%": a retenção sai 0% sem ninguém ter saído. | Sem base, mostrar "—" ou explicar ("sem alunos no início do mês"). | Conta nova (todos cadastrados no mês) → Relatórios → Retenção de alunos. | baixa |
+| 51 | Relatórios → Lista de presença | aula escolhida ao abrir | desktop 1280, claro | Abre direto numa aula vazia de um curso encerrado ("Curso relâmpago, ter 20/10 · Nenhum aluno nesta aula") em vez da aula de hoje ou da última com alunos. | Abrir na aula mais recente com chamada. | Conta nova → Relatórios → Lista de presença. | baixa |
+| 52 | Cobranças → ⋮ da cobrança | cobrar online desligado | desktop 1280, claro | O item diz "Cobrar online (desligado nas Configurações)", mas a ativação fica em Recebimentos online (Configurações não tem essa opção). Mesmo problema do aviso no cadastro do aluno. | "Cobrar online (ative em Recebimentos online)", com link. | Conta sem recebimentos ativados → Cobranças → ⋮ de uma cobrança. | baixa |
+| 53 | Cobranças | aluno pausado | desktop 1280, claro | A aluna pausada ("Trancada / Pausada (não gera cobrança)") continua em "A receber" com a mensalidade de outubro, e o lembrete de WhatsApp sai normalmente para ela. | Decidir o que fazer com a cobrança do mês ao pausar (ver achado da ficha) e marcar a linha como aluno pausado. | Pausar um aluno com mensalidade em aberto e abrir Cobranças. | média |
+| 54 | Financeiro → Resumo | outro mês selecionado | desktop 1280, claro | Em novembro, "Contas a pagar" mostra o aluguel de 23/10 ("Atrasadas e as que vencem em 7 dias" conta a partir de hoje, não do mês escolhido), misturando outubro na tela de novembro. | Deixar claro que o quadro é de hoje, ou mostrar as contas do mês escolhido. | Financeiro → próximo mês, com uma conta vencendo hoje. | baixa |
+| 55 | Financeiro → Professores | lista | desktop 1280, claro | Setembro já venceu (05/10) e segue como "Prévia"; a lista só tem "Editar pagamento" por linha e não diz que há mês a fechar e pagar (as ações só aparecem ao abrir a professora). O demonstrativo chama a professora de "Professor". | Destaque para mês vencido sem fechamento e atalho para fechar/pagar; cargo sem gênero fixo. | Demonstração → Financeiro → Professores → mês anterior. | baixa |
+| 56 | Cobranças → Cobrar online | primeiro Pix logo após ativar a subconta | desktop 1280, claro | Ao clicar "Gerar Pix" minutos depois de ativar a conta de recebimento, nada acontece na tela (sem erro, sem QR). No servidor: o Asaas cria a cobrança (`pay_…`), mas a busca do QR falha com "Você não possui uma chave Pix cadastrada para recebimentos de cobranças via Pix" e o log registra "[PaymentGateway] Pix caiu na demonstração". A cobrança fica órfã no Asaas, sem registro no app. A segunda tentativa, minutos depois, funcionou. | Mensagem clara ("A conta ainda está liberando o Pix, tente em alguns minutos"), sem cobrança órfã no parceiro e nunca cair em Pix de demonstração numa conta real. | Conta nova → Recebimentos online → Ativar → logo em seguida Cobranças → ⋮ → Cobrar online → Gerar Pix. Terminal do `pnpm dev` (códigos BXCCVHCA, Y36LPSXP, JE3HJQJC). | alta |
+| 57 | Cobrar online (menor de idade) | WhatsApp da cobrança | desktop 1280, claro | A cobrança da Gabi (11 anos, com responsável financeira cadastrada e marcada) vai para o telefone da própria aluna, começando com "Olá, Gabi!". O mesmo vale para o aviso de mudança de horário. O responsável financeiro só é usado para o CPF. | Para menor com responsável financeiro, mandar a cobrança ao responsável (nome e telefone dele). | Aluna menor com responsável financeiro → Cobranças → ⋮ → Cobrar online → Enviar pelo WhatsApp. | média |
+| 58 | Link de cartão (fatura do Asaas) | dados do titular | celular 390, claro | A fatura do parceiro (aberta pelo link `/p/...` de cartão) mostra ao aluno o CPF, o e-mail e o telefone de quem abriu a conta de recebimento como pessoa física, e diz "Esta cobrança é intermediada por Asaas.com". A captura foi apagada por mostrar o CPF. | Avisar o dono na ativação que esses dados aparecem para o aluno (ou orientar abrir como CNPJ); decidir como citar o parceiro. | Cobrar online com "Link de cartão" e abrir o link. | média |
+| 59 | Link de cartão | vencimento | celular 390, claro | No app a cobrança vence 23/10 e o link "vale até 24/10, 21:40"; na fatura do Asaas o vencimento aparece como 25/10/2026 ("daqui a 2 dias"). | Mesma data nos dois lugares. | Cobrar online com link de cartão uma cobrança que vence hoje e abrir o link. | baixa |
+| 60 | Ficha do aluno → Cobranças | data do pagamento | desktop 1280, claro | Pagamentos feitos em 23/10 depois das 21h (horário de Brasília) aparecem como "pago online via Pix em 24/10" e "pago via Dinheiro em 24/10" (no banco, `charges.paid_at` = 24/10 00:41 UTC; a tela usa a data em UTC). Recebimentos online mostra certo (23/10, 21:41). | Data no fuso do espaço (America/Sao_Paulo): "em 23/10". | Depois das 21h, registrar um pagamento (manual ou online) e abrir a ficha → Cobranças. | alta |
+| 61 | Cobrar online | aluno sem CPF | desktop 1280, claro | "Gerar Pix" sem CPF do aluno mostra só um aviso flutuante ("Cadastre o CPF do aluno para cobrar online...") que some em cerca de 3 segundos; a janela continua igual, sem atalho para cadastrar o CPF. Na primeira vez parece que o botão não faz nada. | Aviso dentro da janela, antes de gerar, com "Cadastrar CPF" levando ao cadastro. | Aluno sem CPF → Cobranças → ⋮ → Cobrar online → Gerar Pix. Captura `online-07-sem-cpf.png`. | média |
+| 62 | Recebimentos online → Extrato em PDF | pagamento no cartão | PDF | No extrato, a aula avulsa paga no cartão aparece com forma "Pagamento online" e saldo "Disponível"; na tela do mesmo mês ela está como "Cartão" e "A liberar (cartão) R$ 66,13" (libera em cerca de 32 dias). | Forma "Cartão" e saldo "A liberar" também no PDF. | Pagar uma cobrança pelo link de cartão (sandbox) e baixar o extrato do mês. Arquivo `pdf-extrato-online.pdf`. | média |
+| 63 | Recebimentos online | botão "Extrato em PDF" | desktop 1280, claro | O botão abre um menu de meses e o PDF abre numa aba nova; o nome não indica que há escolha de mês (parece que não faz nada na primeira vez). | "Extrato em PDF ▾" ou escolha do mês junto. | `/online-payments` com conta ativa → Extrato em PDF. | baixa |
+| 64 | Cobrar online → Cancelar cobrança | Pix em aberto | desktop 1280, claro | Cancelar uma cobrança com Pix gerado cancela também a cobrança no parceiro (confirmado no sandbox), mas a confirmação não avisa que o Pix já enviado ao aluno deixa de valer. | Avisar na confirmação: "O Pix enviado ao aluno deixa de funcionar". | Cobrança com Pix gerado → ⋮ → Cancelar cobrança. | baixa |
+| 76 | Cobrar online → "Simular liquidação (Sandbox)" | link de cartão | desktop 1280, claro | O app marcou a cobrança como paga, mas o Asaas recusou a liquidação ("A data selecionada 24/10/2026 não pode ser posterior a data atual", mesmo problema de fuso: o app mandou a data em UTC às 21h42 de 23/10). O log diz "(ignorado)": app pago, parceiro ainda aguardando. | Mandar a data no fuso do Brasil e não marcar pago se o parceiro recusar. | Depois das 21h, gerar link de cartão e usar "Simular liquidação (Sandbox)". Códigos J7QFTVN4 e 4ZNUBHDT na `error_logs`. | média |
+
+### Comunicação
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | Comunicação | modelos de mensagem | desktop 1280, claro | Prévia de "Pagamento recebido" e "Lembrete de cobrança" fala em "curso Confeitaria" com "Bons treinos!" num espaço de Lutas; prévia de "Mudança de horário" termina em "Novo horário:" vazio. | Exemplo coerente com a área do espaço e com o horário preenchido. | `/communication`, aba Mensagens. Captura `tour-1280-communication.png`. | baixa |
+| 43 | Aviso de mudança de horário | texto da mensagem | desktop 1280, claro | "Aviso da Estúdio Quaresma de Teste" (artigo fixo "da" antes do nome do espaço). | Texto sem artigo ("Aviso de Estúdio...", "Aviso: ..."). | Mudar o horário de uma turma com alunos → Avisar alunos. | baixa |
+| 65 | Comunicação → Nova mensagem | mensagem para vários | desktop 1280, claro | A mensagem avulsa só aceita um aluno ("Aluno*" de seleção única). Não há como mandar o mesmo texto para vários (o plano do teste pede "avulsa para um aluno e para vários"); o envio em sequência só existe nos lembretes e no aviso de mudança de horário. | Confirmar se falta a seleção de vários (com envio em sequência) ou se fica assim. | `/communication` → Nova mensagem. | baixa |
+
+### Administração
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 66 | Configurações → Plano GestaraHub | conta real (não demonstração) | desktop 1280, claro | O botão "Ativar Profissional (demonstração)" aparece numa conta real e liga o Plano Profissional sem cobrança ("Plano Profissional ativado."; no banco, `subscription.tier = "pro"`). Qualquer dono libera DRE, retenção, certificado e WhatsApp automático de graça. | Botão só no espaço de demonstração (ou só em desenvolvimento); conta real vai para o checkout. | Conta nova → Configurações → Plano GestaraHub → Ativar Profissional (demonstração) → confirmar. Captura `adm-07-ativar-pro.png`. (Voltei a conta para Grátis no banco depois.) | alta |
+| 67 | Configurações → Plano GestaraHub | texto | desktop 1280, claro | A aba lista "Pagamento online" como recurso do Profissional, mas a cobrança online já funciona no Grátis (a própria conta Grátis do teste cobrou e recebeu online). | Tirar o pagamento online da lista do Profissional (ou dizer "taxa menor"). | Conta Grátis → Configurações → Plano GestaraHub. | média |
+| 68 | Auditoria | cancelar cobrança de curso | desktop 1280, claro | Ao cancelar só a cobrança do curso (a matrícula continua), a auditoria registra "Marta Quaresma cancelou a matrícula no curso "Yoga Flow curso" de Fábio Lins". | "cancelou a cobrança do curso...". | Ficha → Cobranças → ⋮ da parcela do curso → Cancelar cobrança; abrir Auditoria. | média |
+| 69 | Menu do usuário → Preferências (e aba Preferências) | texto | desktop 1280, claro | Jargão e inglês: "Copiar CSS", "Zinco · r:0.5", "Padrão (Default)", "Bordas (Raio)", "Temas Prontos", "Aleatório", "Feedback Operacional", "Check-in". | Português simples, sem termos técnicos (doc 08). | Menu do usuário → Preferências. Captura `adm-05-preferencias.png`. | média |
+| 75 | Configurações → aba Preferências | carregar a página | celular 375 e 390 (também 1 vez no desktop), claro | Erro no console: "Hydration failed because the server rendered HTML didn't match the client" em `UserPreferencesView` (os botões de tema Claro/Escuro/Sistema saem com classes diferentes no servidor e no navegador) e o aviso "Encountered a script tag while rendering React component". Saiu 3 vezes no terminal do `pnpm dev`; não entrou na tabela `error_logs`. | Sem erro de hidratação (escolha do tema só depois de montar no navegador) e sem `<script>` dentro de componente. | Abrir `/settings` com a aba Preferências como a última usada (ou trocar o tema e recarregar `/settings`). | alta |
+
+### Perfis
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 70 | Professor | lembretes e ficha | desktop 1280, claro | O professor não tem sino nem lembretes, e não abre a ficha de nenhum aluno (o menu do aluno na chamada não tem "Abrir ficha"; `/clients` volta para o calendário). O plano do teste esperava "lembretes só dos alunos dele, sem cobrança" e "ficha sem cobranças". | Confirmar a regra: professor com lembretes de faltas e aniversário dos alunos dele e ficha sem a parte de dinheiro, ou fica sem nada. | Demonstração → trocar para Rodrigo Mendes. | baixa |
+| 71 | Professor | menu lateral | desktop 1280, claro | O cartão "Plano Grátis · Evoluir · Automatize o WhatsApp e reduza sua taxa Pix" aparece para o professor (e para a recepção), que não pode contratar plano. | Cartão só para o dono. | Demonstração → trocar para Rodrigo Mendes ou Renata Alves. | baixa |
+| 72 | Troca de perfil na demonstração | termos | desktop 1280, claro | Ao trocar para outro perfil, o contrato de termos não aparece na hora (vale o aceite do usuário anterior); ele surge só ao recarregar a página, no meio do uso. | Pedir o aceite logo depois da troca (ou já deixar aceito na demonstração, ver achado 1). | Demonstração → trocar para Rodrigo Mendes → recarregar. | baixa |
+
+### Celular
+
+Nenhum achado próprio nesta passada (os pontos de tela já estão nas outras áreas).
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+### Tema escuro
+
+Nenhum achado próprio nesta passada (os pontos de tela já estão nas outras áreas).
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+### Geral (várias telas)
+
+| # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 9 | Topo e menu lateral | botões | desktop 1280, claro | Alturas fora do padrão de 36 px: "Ver planos" e o avatar (32), "Dia a dia"/"Gestão" (27), "Ativar conta de recebimento" (40), "Definir faixa" na lista de alunos (23), "Simplificada"/"Avançada" no Financeiro (24). | 36 px nos botões de texto (doc 07 §1.5) ou exceção registrada para seletores. | Medido pelo script em todas as telas. | baixa |
+| 31 | Janelas laterais (drawer) | aviso de sucesso | desktop 1280, claro | Os avisos ("Aluno criado com sucesso. Enviar boas-vindas") aparecem no canto inferior direito, em cima dos botões "Cancelar"/"Adicionar" do rodapé da janela aberta, e escondem o botão por alguns segundos ao cadastrar em sequência. | Aviso em outra posição quando há janela aberta (ex.: topo), sem cobrir o rodapé. | Cadastrar dois alunos seguidos. Captura `aluno-05-responsaveis.png`. | média |
+| 32 | Janelas com rolagem | seta "rolar para baixo" | desktop 1280, claro | A seta redonda de "rolar" fica por cima do conteúdo (ex.: cobre parte da mensagem "Horário fora do expediente da unidade..."). | Seta sem cobrir texto (ou some quando há mensagem embaixo). | Nova turma com horário fora do expediente. Captura no relatório do Playwright (`turma fora do horario`). | baixa |
+| 47 | Dados da demonstração | "Aluno desde" | desktop 1280, claro | Na demonstração, todos os alunos aparecem como "Aluno desde 23/10/2026" (dia do `pnpm demo:local`), mas têm mensalidades pagas desde agosto e aulas antigas; as entradas da auditoria também saem todas com a hora da criação. | Datas de cadastro coerentes com o histórico. | `pnpm demo:local` e abrir qualquer ficha. | baixa |
+| 74 | Barbearia (modelo de agendamento, fora do foco) | olhada rápida | desktop 1280, claro | Entrando como o dono da barbearia de demonstração, `/schedule`, `/appointments` e `/services` vão para a configuração inicial, que pergunta "Como se chama o seu espaço?" / "O que você ensina?" e fala em alunos (texto do modelo de turmas para uma barbearia). | Só registrado (a barbearia segue no modo demonstração). | Cookie de sessão do dono da barbearia (como no e2e) e abrir `/schedule`. | baixa |
+
+## Perguntas para o usuário
+
+Decisões de produto que apareceram no teste (escolha feita: só registrar).
+
+1. **Termos na demonstração** (#1, #72): deixar os termos já aceitos pelo `pnpm demo:local`?
+2. **Tela de Planos** (#17, #18): o que pode ficar na tela antes de definir o preço do Profissional e a cobrança do WhatsApp/pagamento online? E qual é a taxa do Pix no Grátis (R$ 1,99 ou R$ 1,99 + tarifa do parceiro)?
+3. **Aluno pausado** (#27, #53): o que acontece com a cobrança do mês em curso ao pausar?
+4. **Menor de idade** (#57): mensagens e cobranças devem ir para o responsável financeiro?
+5. **Professor** (#70): deve ver lembretes (faltas e aniversários dos alunos dele) e a ficha sem dinheiro?
+6. **Mensagem para vários alunos** (#65) e **visões de dia e mês no calendário** (#37): faltam ou ficam assim?
+7. **Conta de recebimento como pessoa física** (#58): avisar que CPF, e-mail e telefone aparecem para o aluno na fatura do cartão?
+8. Perguntas da verificação em duas etapas (desligar um método só, demonstração sem verificação, esquecer dispositivo sem encerrar a sessão) estão na doc `docs/technical/17-verificacao-em-duas-etapas.md`, seção "Perguntas para o usuário".

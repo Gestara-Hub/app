@@ -17,3 +17,6 @@ next-env.d.ts
 
 # Claude Code (config pessoal/local)
 .claude/settings.local.json
+
+# Evidencias em imagem e PDF dos testes manuais (ficam so na maquina local)
+docs/qa/capturas/
