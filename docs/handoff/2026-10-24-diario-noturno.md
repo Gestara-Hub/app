@@ -28,3 +28,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #5 e #6 Recebimentos online | feito | git log | typecheck, lint, Vitest | Nome legal do parceiro fica no contrato |
 | 4.2 #7 subtítulo de Relatórios | feito | git log | typecheck, lint |  |
 | 4.2 #8 e #43 modelos de mensagem | feito | git log | typecheck, lint, Vitest 1030 | Modelos já salvos mantêm o texto antigo |
+| 4.2 #10, #12, #16, #39 e #26/#33 | decisão registrada / mantidos | git log | só docs | #10 e #12 em pendencias.md; #16 e #39 mantidos (docs 07 e 11) |
