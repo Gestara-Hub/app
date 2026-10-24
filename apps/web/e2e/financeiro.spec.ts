@@ -218,7 +218,7 @@ test("seletor de mês: \"Hoje\" só fora do mês atual e o mês vai para a URL",
   await picker.click();
   await page.getByRole("button", { name: "Dezembro de 2026" }).click();
   await expect(page).toHaveURL(/month=2026-12/);
-  await page.getByRole("tab", { name: "Professores" }).click();
+  await page.getByRole("tab", { name: "Instrutores" }).click();
   await expect(page).toHaveURL(/tab=professores/);
   await expect(page).toHaveURL(/month=2026-12/);
   await expect(page.getByRole("button", { name: "Escolher mês (Dezembro de 2026)" })).toBeVisible();

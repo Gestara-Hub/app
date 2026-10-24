@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useForm,
@@ -103,6 +104,7 @@ export function ProfessionalForm({
   onCancel,
   formId,
 }: ProfessionalFormProps) {
+  const team = useTeamWords();
   const isEdit = Boolean(professional);
   const isClasses = useModel() === "classes";
   const [addressOpen, setAddressOpen] = useState(
@@ -141,7 +143,7 @@ export function ProfessionalForm({
   const createRoleMut = useCreateRole();
   const currentRoleName = professional?.role?.name ?? "";
 
-  const schema = useMemo(() => getProfessionalFormSchema(isClasses), [isClasses]);
+  const schema = useMemo(() => getProfessionalFormSchema(isClasses, team.lower), [isClasses, team.lower]);
 
   const form = useForm<ProfessionalFormValues>({
     resolver: zodResolver(schema),
@@ -352,19 +354,19 @@ export function ProfessionalForm({
               professionalId: professional.id,
               status: "active",
             });
-            if (invited.inviteSent) toast.success("Profissional atualizado e convite de acesso enviado por e-mail!");
+            if (invited.inviteSent) toast.success(`${team.title} atualizado e convite de acesso enviado por e-mail!`);
             else
-              toast.warning("Profissional atualizado, mas o convite não foi enviado.", {
+              toast.warning(`${team.title} atualizado, mas o convite não foi enviado.`, {
                 description: `${invited.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" em Usuários.`,
               });
           } catch (userErr) {
             // Profissional salvo; o acesso (usuario) nao foi criado: diz o motivo.
-            toast.warning("Profissional atualizado, mas o acesso não foi criado.", {
+            toast.warning(`${team.title} atualizado, mas o acesso não foi criado.`, {
               description: getErrorMessage(userErr, "Tente de novo em Usuários."),
             });
           }
         } else {
-          toast.success("Profissional atualizado com sucesso.");
+          toast.success(`${team.title} atualizado com sucesso.`);
         }
       } else {
         const created = await createMut.mutateAsync({ ...payload, status: "active" });
@@ -377,19 +379,19 @@ export function ProfessionalForm({
               professionalId: created.id,
               status: "active",
             });
-            if (invited.inviteSent) toast.success("Profissional criado e convite de acesso enviado por e-mail!");
+            if (invited.inviteSent) toast.success(`${team.title} criado e convite de acesso enviado por e-mail!`);
             else
-              toast.warning("Profissional criado, mas o convite não foi enviado.", {
+              toast.warning(`${team.title} criado, mas o convite não foi enviado.`, {
                 description: `${invited.inviteError ?? "O e-mail não saiu."} Use "Reenviar convite" em Usuários.`,
               });
           } catch (userErr) {
             // Profissional salvo; o acesso (usuario) nao foi criado: diz o motivo.
-            toast.warning("Profissional criado, mas o acesso não foi criado.", {
+            toast.warning(`${team.title} criado, mas o acesso não foi criado.`, {
               description: getErrorMessage(userErr, "Tente de novo em Usuários."),
             });
           }
         } else {
-          toast.success("Profissional criado com sucesso.");
+          toast.success(`${team.title} criado com sucesso.`);
         }
       }
       onSuccess();
@@ -409,7 +411,7 @@ export function ProfessionalForm({
         }
       } else {
         toast.error(
-          getErrorMessage(error, "Não foi possível salvar o profissional."),
+          getErrorMessage(error, `Não foi possível salvar o ${team.lower}.`),
         );
       }
     }
@@ -480,7 +482,7 @@ export function ProfessionalForm({
             <span>
               {linkedUser.pendingInvite
                 ? `Convite pendente de aceite já enviado para ${linkedUser.email}.`
-                : `Vinculado ao usuário ${linkedUser.name} (${userProfileLabel(linkedUser.profile)}).`}
+                : `Vinculado ao usuário ${linkedUser.name} (${userProfileLabel(linkedUser.profile, team.title)}).`}
             </span>
           </div>
         ) : normalizedWatchedEmail && normalizedWatchedEmail.includes("@") ? (
@@ -528,7 +530,7 @@ export function ProfessionalForm({
               active={spotlightActive}
               targetRefs={[cardRef]}
               onDismiss={handleDismissSpotlight}
-              hint="Dica: Você pode liberar o acesso deste profissional ao sistema por aqui!"
+              hint={`Dica: Você pode liberar o acesso deste ${team.lower} ao sistema por aqui!`}
               zIndex={60}
               allowModalTarget
             />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import { InactivateModalityDialog } from "./inactivate-modality-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ModalitiesView() {
+  const team = useTeamWords();
   const [drawerState, setDrawerState] = useState<{
     open: boolean;
     modality?: Category;
@@ -62,7 +64,7 @@ export function ModalitiesView() {
       {confirmDialog}
       <PageHeader
         title="Modalidades"
-        description="Os tipos de aula que a unidade oferece. As turmas e os instrutores se organizam por elas."
+        description={`Os tipos de aula que a unidade oferece. As turmas e os ${team.lowerPlural} se organizam por elas.`}
       >
         {canManage ? (
           <Button onClick={openCreate} data-onboarding-cta={hasModalities ? undefined : "modalities"}>

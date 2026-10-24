@@ -8,6 +8,7 @@ import type {
   Id,
   TimeISO,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { classBillingMode, isCourseEnded, MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import {
   checkSlotWithinBusinessHours,
@@ -51,7 +52,7 @@ function validateInstructorScheduleConflict(
   const fields: ApiErrorField[] = [
     {
       field: "meetingSlots",
-      message: instructorConflictMessage(instructor?.name ?? "O instrutor", conflict),
+      message: instructorConflictMessage(instructor?.name ?? `O ${teamWords().lower}`, conflict, teamWords().lower),
     },
   ];
   throw validationError(fields);
@@ -230,7 +231,7 @@ export function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId
     fields.push({ field: "modalityId", message: "Selecione a modalidade da turma." });
   }
   if (!payload.instructorId) {
-    fields.push({ field: "instructorId", message: "Selecione o instrutor." });
+    fields.push({ field: "instructorId", message: `Selecione o ${teamWords().lower}.` });
   }
   if (!payload.meetingSlots || payload.meetingSlots.length === 0) {
     fields.push({ field: "meetingSlots", message: "Informe ao menos um encontro." });
@@ -300,7 +301,7 @@ export function validateSubstituteConflict(
   }));
   const [conflict] = findInstructorConflicts([slot], instructorId, busy);
   if (conflict) {
-    throw apiError("CLASS_SCHEDULE_CONFLICT", instructorConflictMessage(name, conflict), {
+    throw apiError("CLASS_SCHEDULE_CONFLICT", instructorConflictMessage(name, conflict, teamWords().lower), {
       httpStatus: 409,
     });
   }

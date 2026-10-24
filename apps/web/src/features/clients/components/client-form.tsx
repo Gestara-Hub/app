@@ -1,5 +1,6 @@
 "use client";
 
+import { packageExpiresAt } from "@gestarahub/core/packages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -65,6 +66,7 @@ import {
   SellPackageDialog,
   StudentPackageBadge,
   displayPackage,
+  pastEndHint,
   paymentSummary,
   useCharges,
   useLessonPackages,
@@ -75,7 +77,7 @@ import {
 import { useBusinessSegment, useOrganization } from "@/features/settings";
 import { useClients, useCreateClient, useUpdateClient } from "../hooks/use-clients";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
-import { planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
+import { pauseDescription, pausedChargeDescription, planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
 import { normalizeText } from "@/lib/text";
 import { whatsappDigits } from "@gestarahub/core/phone";
 import { cpfDigits } from "@gestarahub/core/payer";
@@ -83,7 +85,12 @@ import { NOTES_MAX, clientFormSchema, defaultPaymentMode, isPackageSale, type Cl
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
 import { whatsappNumber } from "@/lib/whatsapp";
-import { MAX_INSTALLMENTS, resolveMembershipTerms, upcomingCharges } from "@gestarahub/core/billing";
+import {
+  MAX_INSTALLMENTS,
+  isCurrentOpenMembershipCharge,
+  resolveMembershipTerms,
+  upcomingCharges,
+} from "@gestarahub/core/billing";
 import { ageLabel } from "@/lib/birthdays";
 import { dateInSpace } from "@gestarahub/core/date";
 
@@ -257,6 +264,8 @@ export function ClientForm({
   const { data: existingClients } = useClients(undefined, !isEdit);
   const { confirm: confirmDuplicate, dialog: duplicateDialog } = useConfirmAction();
   const { confirm: confirmPlanSwitch, dialog: planSwitchDialog } = useConfirmAction();
+  const { confirm: confirmPause, dialog: pauseDialog } = useConfirmAction();
+  const { confirm: confirmPausedCharge, dialog: pausedChargeDialog } = useConfirmAction();
   // Boas-vindas pelo WhatsApp do proprio espaco, oferecidas no aviso de cadastro.
   const whatsapp = useWhatsAppSend();
   const updateMut = useUpdateClient();
@@ -411,6 +420,13 @@ export function ClientForm({
     packagePriceCents ?? 0,
     Number(packageInstallments || 1),
     packageFirstDueDate ?? "",
+  );
+
+  const packagePastEnd = pastEndHint(
+    Number(packageInstallments || 1),
+    packageFirstDueDate ?? "",
+    packageExpiresAt(todayDateISO(), chosenPackage?.validityDays),
+    "a validade do pacote",
   );
 
   const { data: ownedPackages } = useStudentPackages(
@@ -680,8 +696,13 @@ export function ClientForm({
   const isPlanSwitch = Boolean(
     usesPlan && isEdit && client?.planId && selectedPlanId && selectedPlanId !== client.planId,
   );
+  // Pausar a assinatura: a mensalidade do mes em curso entra na confirmacao.
+  const selectedMembershipStatus = useWatch({ control: form.control, name: "membershipStatus" });
+  const isPausing = Boolean(
+    usesPlan && isEdit && client?.membershipStatus !== "paused" && selectedMembershipStatus === "paused",
+  );
   const { data: studentCharges } = useCharges(
-    isPlanSwitch && client ? { studentId: client.id, kind: "membership" } : undefined,
+    (isPlanSwitch || isPausing) && client ? { studentId: client.id, kind: "membership" } : undefined,
   );
   const lastPaidPeriod = useMemo(() => {
     if (!isPlanSwitch) return null;
@@ -1044,9 +1065,35 @@ export function ClientForm({
       if (!ok) return;
     }
 
+    // Pausar: dinheiro e lembretes mudam, entao confirma; a mensalidade do mes em
+    // curso fica a escolha do dono (cancelar ou manter em aberto).
+    let cancelCurrentMembershipCharge = false;
+    if (isEdit && client && client.membershipStatus !== "paused" && payload.membershipStatus === "paused") {
+      const currentCharges = (studentCharges ?? []).filter((c) => isCurrentOpenMembershipCharge(c, todayDateISO()));
+      const okPause = await confirmPause({
+        title: "Pausar a assinatura?",
+        description: pauseDescription(),
+        confirmLabel: "Pausar",
+        cancelLabel: "Voltar",
+        variant: "default",
+      });
+      if (!okPause) return;
+      if (currentCharges.length > 0) {
+        cancelCurrentMembershipCharge = await confirmPausedCharge({
+          title: "E a mensalidade em aberto?",
+          description: pausedChargeDescription(currentCharges),
+          confirmLabel: "Cancelar a cobrança",
+          cancelLabel: "Manter em aberto",
+        });
+      }
+    }
+
     try {
       if (isEdit && client) {
-        await updateMut.mutateAsync({ id: client.id, payload });
+        await updateMut.mutateAsync({
+          id: client.id,
+          payload: cancelCurrentMembershipCharge ? { ...payload, cancelCurrentMembershipCharge } : payload,
+        });
         toast.success(
           isClasses
             ? "Aluno atualizado com sucesso."
@@ -1140,6 +1187,8 @@ export function ClientForm({
     <FormProvider {...form}>
       {duplicateDialog}
       {planSwitchDialog}
+      {pauseDialog}
+      {pausedChargeDialog}
       <form
         id={formId}
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
@@ -1322,6 +1371,11 @@ export function ClientForm({
                   {packageSaleSummary ? (
                     <p className="text-xs text-muted-foreground" data-testid="client-package-summary">
                       {packageSaleSummary}
+                    </p>
+                  ) : null}
+                  {packagePastEnd ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="client-package-past-end">
+                      {packagePastEnd}
                     </p>
                   ) : null}
                 </div>

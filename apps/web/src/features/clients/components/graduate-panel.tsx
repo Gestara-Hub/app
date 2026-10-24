@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
 import { AlertTriangle, ArrowRight, Award, CheckCircle2, Circle } from "lucide-react";
 import type {
@@ -241,6 +242,7 @@ export function GraduatePanel({
   onCancel: () => void;
   onConfirm: (result: GraduateResult) => void;
 }) {
+  const team = useTeamWords();
   const isBelt = trackStyle === "belt";
   // `vocabulary` ja e o da trilha (faixa no estilo faixa, nivel/modulo/fase nas demais).
   const levelWord = vocabulary.level.toLowerCase();
@@ -489,7 +491,7 @@ export function GraduatePanel({
             id="graduate-examiner"
             value={examiner}
             onChange={(e) => setExaminer(e.target.value)}
-            placeholder="Informe o professor ou a banca"
+            placeholder={`Informe o ${team.lower} ou a banca`}
             className="text-base md:text-sm"
           />
         </div>

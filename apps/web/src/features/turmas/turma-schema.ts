@@ -12,7 +12,7 @@ export const turmaFormSchema = z.object({
   modalityId: z.string().min(1, "Selecione a modalidade da turma."),
   // Plano de mensalidade legado/opcional (agora gerenciado no Aluno).
   planId: z.string().optional(),
-  instructorId: z.string().min(1, "Selecione o instrutor."),
+  instructorId: z.string().min(1, "Selecione quem dá a aula."),
   allowDropin: z.boolean(),
   sessionPriceCents: z.number().int().min(0).nullish(),
   capacity: z

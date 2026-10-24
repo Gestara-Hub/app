@@ -7,3 +7,4 @@ export { StudentRecordsDialog, StudentRecordsDrawer, type ClassRecordContext } f
 export { ClassRecordsDialog, ClassRecordsDrawer, type ClassRecordsSession } from "./components/class-records-dialog";
 export { nextClassReminder } from "./components/progression-ui";
 export * from "./hooks/use-recurring-authorization";
+export { PausedTag } from "./components/paused-tag";

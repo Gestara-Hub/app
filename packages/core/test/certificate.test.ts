@@ -90,7 +90,7 @@ describe("certificado: dados e texto padrão", () => {
   it("texto com período, aulas, frequência, cidade e data por extenso", () => {
     assert.deepEqual(defaultCertificateText(buildCourseCertificate(input())), {
       title: "Certificado de conclusão",
-      body: "Certificamos que Ana Souza concluiu o curso Confeitaria, de 01/09/2026 a 29/09/2026, com 5 aulas e frequência de 80%.",
+      body: "Certificamos que Ana Souza concluiu o curso Confeitaria, de 01/09/2026 a 29/09/2026, que teve 5 aulas, com frequência de 80%.",
       placeAndDate: "Campinas, 14 de outubro de 2026",
     });
   });
@@ -109,7 +109,7 @@ describe("certificado: dados e texto padrão", () => {
     assert.equal(cert.city, undefined);
     assert.deepEqual(defaultCertificateText(cert), {
       title: "Certificado de conclusão",
-      body: "Certificamos que Ana Souza concluiu o curso Confeitaria, em 05/09/2026, com 1 aula.",
+      body: "Certificamos que Ana Souza concluiu o curso Confeitaria, em 05/09/2026, que teve 1 aula.",
       placeAndDate: "14 de outubro de 2026",
     });
   });

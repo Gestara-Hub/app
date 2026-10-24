@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -64,6 +65,7 @@ function UserRow({
   onReactivate: (u: UserView) => void;
   onResendInvite?: (u: UserView) => void;
 }) {
+  const team = useTeamWords();
   const isActive = user.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -126,7 +128,7 @@ function UserRow({
               {user.name}
             </p>
             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {userProfileLabel(user.profile)}
+              {userProfileLabel(user.profile, team.title)}
             </span>
             {user.professional ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
@@ -190,6 +192,7 @@ export function UsersList({
   onReactivate,
   onResendInvite,
 }: UsersListProps) {
+  const team = useTeamWords();
   const currentUser = useCurrentUser();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | RecordStatus>("all");
@@ -249,12 +252,12 @@ export function UsersList({
             icon={<ShieldCheck className="size-8" />}
             title={
               limitedView
-                ? "Nenhum atendente ou profissional cadastrado."
+                ? `Nenhum atendente ou ${team.lower} cadastrado.`
                 : "Nenhum usuário cadastrado ainda."
             }
             description={
               limitedView
-                ? "Você gerencia os perfis Atendente e Profissional. Cadastre quem pode acessar o sistema."
+                ? `Você gerencia os perfis Atendente e ${team.title}. Cadastre quem pode acessar o sistema.`
                 : "Cadastre quem pode acessar o sistema e defina o perfil de acesso."
             }
             actionLabel={canManage ? "Cadastrar usuário" : undefined}
@@ -304,12 +307,12 @@ export function UsersList({
           count={users.length}
           singularLabel={
             limitedView
-              ? "atendente ou profissional cadastrado"
+              ? `atendente ou ${team.lower} cadastrado`
               : "usuário cadastrado"
           }
           pluralLabel={
             limitedView
-              ? "atendentes ou profissionais cadastrados"
+              ? `atendentes ou ${team.lowerPlural} cadastrados`
               : "usuários cadastrados"
           }
           hasFilters={hasSearch || hasFilters}

@@ -74,7 +74,7 @@ test.describe("aviso de erro de ação", () => {
     await expect(confirm).toContainText("Reativar turma?");
     await confirm.getByRole("button", { name: "Reativar" }).click();
 
-    await expectSingleErrorToast(page, /^Carlos Silva já dá aula .+ na turma "Jiu-Jitsu Adulto"\. Escolha outro horário ou outro professor\.$/);
+    await expectSingleErrorToast(page, /^Carlos Silva já dá aula .+ na turma "Jiu-Jitsu Adulto"\. Escolha outro horário ou outro instrutor\.$/);
   });
 
   test("erro sem tratamento na tela (tela já fechada) cai no aviso global, uma vez só", async ({ page }) => {

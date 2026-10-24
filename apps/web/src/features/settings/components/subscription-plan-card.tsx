@@ -120,7 +120,7 @@ export function SubscriptionPlanCard() {
                 {subscriptionTierLabel(data.tier)}
               </Badge>
             </div>
-            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs font-semibold">
+            <Button asChild variant="outline" className="gap-1.5 text-xs font-semibold">
               <Link href="/plans">
                 <Sparkles className="size-3.5 text-primary" />
                 <span>Comparar todos os planos</span>

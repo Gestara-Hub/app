@@ -15,7 +15,7 @@ describe("userFormSchema", () => {
       const result = userFormSchema.safeParse({ ...base, profile: "professional", professionalId });
       expect(result.success).toBe(false);
       expect(fieldErrors({ ...base, profile: "professional", professionalId }).professionalId).toEqual([
-        "Vincule o usuário a um profissional da equipe.",
+        "Vincule o usuário a alguém da equipe.",
       ]);
     }
   });

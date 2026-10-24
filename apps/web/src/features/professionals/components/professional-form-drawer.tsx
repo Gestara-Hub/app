@@ -2,6 +2,7 @@
 
 import type { ProfessionalView } from "@gestarahub/contracts";
 import { useModel } from "@/features/auth";
+import { useTeamWords } from "@/features/settings";
 import {
   Sheet,
   SheetContent,
@@ -29,11 +30,12 @@ export function ProfessionalFormDrawer({
 }: ProfessionalFormDrawerProps) {
   const isEdit = Boolean(professional);
   const isClasses = useModel() === "classes";
+  const team = useTeamWords();
 
   const description = isClasses
     ? isEdit
-      ? "Atualize os dados e modalidades do instrutor."
-      : "Cadastre um instrutor e as modalidades que leciona."
+      ? `Atualize os dados e modalidades do ${team.lower}.`
+      : `Cadastre um ${team.lower} e as modalidades que leciona.`
     : isEdit
       ? "Atualize os dados, serviços e disponibilidade."
       : "Cadastre um profissional, os serviços que realiza e a disponibilidade.";
@@ -49,10 +51,10 @@ export function ProfessionalFormDrawer({
           <SheetTitle className="text-lg font-semibold text-foreground">
             {isEdit
               ? isClasses
-                ? "Editar instrutor"
+                ? `Editar ${team.lower}`
                 : "Editar profissional"
               : isClasses
-                ? "Novo instrutor"
+                ? `Novo ${team.lower}`
                 : "Novo profissional"}
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">{description}</SheetDescription>

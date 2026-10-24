@@ -62,7 +62,9 @@ const USER_PROFILE_LABEL: Record<UserProfile, string> = {
   professional: "Profissional",
 };
 
-export function userProfileLabel(profile: UserProfile): string {
+/** `teacherTitle`: a palavra do espaço para quem dá aula (instrutor, professor), no lugar de "Profissional". */
+export function userProfileLabel(profile: UserProfile, teacherTitle?: string): string {
+  if (profile === "professional" && teacherTitle) return teacherTitle;
   return USER_PROFILE_LABEL[profile];
 }
 
@@ -116,7 +118,10 @@ const CLASSES_ENTITY_TYPE_LABEL: Partial<Record<AuditEntityType, string>> = {
 export function auditEntityTypeLabel(
   type: AuditEntityType,
   model?: OperationalModel,
+  teacherTitle?: string,
 ): string {
+  if (type === "professional" && teacherTitle) return teacherTitle;
+  if (type === "teacher_payout" && teacherTitle) return `Pagamento de ${teacherTitle.toLowerCase()}`;
   return (model === "classes" && CLASSES_ENTITY_TYPE_LABEL[type]) || AUDIT_ENTITY_TYPE_LABEL[type];
 }
 

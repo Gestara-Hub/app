@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import type { ClassGroupView } from "@gestarahub/contracts";
 import {
   Sheet,
@@ -28,6 +29,7 @@ export function TurmaFormDrawer({
   turma,
   onCreated,
 }: TurmaFormDrawerProps) {
+  const team = useTeamWords();
   const isEdit = Boolean(turma);
 
   return (
@@ -43,8 +45,8 @@ export function TurmaFormDrawer({
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">
             {isEdit
-              ? "Atualize os dados, o instrutor e os encontros da turma."
-              : "Cadastre uma turma, o instrutor e os encontros recorrentes."}
+              ? `Atualize os dados, o ${team.lower} e os encontros da turma.`
+              : `Cadastre uma turma, o ${team.lower} e os encontros recorrentes.`}
           </SheetDescription>
         </SheetHeader>
         <TurmaForm

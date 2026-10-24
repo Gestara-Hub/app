@@ -6,6 +6,7 @@ import type {
   Id,
   UpdateClassGroup,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { plural } from "@gestarahub/core/format";
 import { findInstructorConflicts, instructorConflictMessage } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
@@ -184,7 +185,7 @@ export const classGroupsService = {
       if (conflict) {
         throw apiError(
           "CLASS_SCHEDULE_CONFLICT",
-          instructorConflictMessage(instructorName(g.instructorId) || "O instrutor", conflict),
+          instructorConflictMessage(instructorName(g.instructorId) || `O ${teamWords().lower}`, conflict, teamWords().lower),
           { httpStatus: 409 },
         );
       }

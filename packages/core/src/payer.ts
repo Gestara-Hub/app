@@ -102,6 +102,23 @@ export function resolveOnlinePayer(
   };
 }
 
+/**
+ * Quem recebe a cobranca e os avisos de um aluno menor pelo WhatsApp (decisao
+ * de 24/10, achado 57): o responsavel financeiro com telefone (o marcado, ou o
+ * primeiro com telefone). Maior de idade, sem data de nascimento ou sem
+ * responsavel com telefone: `undefined` (vai para o telefone do aluno).
+ */
+export function messageGuardian(
+  student: Pick<Client, "birthDate" | "guardians">,
+  today: string,
+): { name: string; phone: string } | undefined {
+  const age = ageOn(student.birthDate, today);
+  if (age === null || age >= 18) return undefined;
+  const withPhone = (student.guardians ?? []).filter((g) => Boolean(g.phone?.replace(/\D/g, "")));
+  const guardian = withPhone.find((g) => g.financial) ?? withPhone[0];
+  return guardian?.phone ? { name: guardian.name, phone: guardian.phone } : undefined;
+}
+
 export type PayerIssue = Extract<PayerResult, { ok: false }>["reason"];
 
 /** Mensagem de cada falta de CPF (a mesma na janela "Cobrar online" e na recusa do servidor). */

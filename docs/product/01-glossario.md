@@ -212,3 +212,7 @@ Estado atual de uma entidade. Cadastros usam `active`/`inactive` (Ativo/Inativo)
 
 - Definir o termo final para "unidade" quando a multiunidade for implementada.
 - Definir o conjunto inicial de rotulos por segmento (label overrides) quando o recurso for implementado.
+
+## Quem dá aula (24/10/2026)
+
+O app usa a palavra da área: **Instrutor** em Lutas, Pilates e yoga, Funcional, Gastronomia, Artes e Beleza; **Professor** em Dança, Música, Idiomas, Natação e "Outra área". No agendamento continua "Profissional". Fonte: `teacherTitle` em `lib/business-segment-presets.ts` e `lib/team-words.ts`.

@@ -14,6 +14,7 @@ import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
 import { store } from "../world/store";
 import { chargeLabelOf, competenceLabelOf } from "./paymentPage";
+import { teamWords } from "../world/nouns";
 import type { TenantContext } from "./tenant";
 import { currentSpaceTimeZone, dateInSpace } from "@gestarahub/core/date";
 
@@ -145,6 +146,7 @@ export async function teacherStatementModel(professionalId: Id, competence: stri
     organizationName: store.organization.name,
     organizationDetails: organizationDetails(),
     professionalName: detail.professionalName,
+    teacherLabel: teamWords().title,
     competence,
     competenceLabel: competenceLongLabel(competence),
     statusLabel: PAYOUT_STATUS_LABEL[detail.status],

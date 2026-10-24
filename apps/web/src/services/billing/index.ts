@@ -11,6 +11,7 @@ export {
 } from "./billingSync";
 export {
   autoGenerateMembershipCharges,
+  cancelCurrentMembershipCharges,
   cancelOpenMembershipCharges,
   chargeStartedMembershipPeriods,
   ensureMembershipCharges,

@@ -1,4 +1,5 @@
 import type { DateISO, Id, TeacherPayout, TeacherPayoutLine, TeacherPayRule } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { formatCents } from "@gestarahub/core/format";
 import { addMonths, format, parseISO } from "date-fns";
 import { apiError, notFoundError } from "@/services/world/ops";
@@ -87,7 +88,7 @@ export function lineDifference(a: TeacherPayoutLine[], b: TeacherPayoutLine[]): 
 
 export function findPayout(id: Id): TeacherPayout {
   const payout = store.teacherPayouts.find((p) => p.id === id);
-  if (!payout) throw notFoundError("Pagamento do professor não encontrado.");
+  if (!payout) throw notFoundError(`Pagamento do ${teamWords().lower} não encontrado.`);
   return payout;
 }
 

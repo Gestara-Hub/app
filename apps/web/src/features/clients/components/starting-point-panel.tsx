@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
 import { Building2, History, Sparkles } from "lucide-react";
 import type {
@@ -62,6 +63,7 @@ export function StartingPointPanel({
   onCancel: () => void;
   onSave: (result: StartingPointResult) => void;
 }) {
+  const team = useTeamWords();
   const isBelt = trackStyle === "belt";
   // `vocabulary` ja e o da trilha (faixa no estilo faixa, nivel/modulo/fase nas demais).
   const levelLabel = vocabulary.level;
@@ -178,7 +180,7 @@ export function StartingPointPanel({
                   id="origin-teacher"
                   value={teacher}
                   onChange={(e) => setTeacher(e.target.value)}
-                  placeholder="Informe o professor (opcional)"
+                  placeholder={`Informe o ${team.lower} (opcional)`}
                   className="text-base md:text-sm"
                 />
               </div>

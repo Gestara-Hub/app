@@ -153,25 +153,34 @@ test.describe("professor", () => {
     await expect(page.getByRole("dialog", { name: "Notas" })).toContainText("Prova Carlos");
   });
 
-  test("sem acesso a Alunos: a turma e a chamada não abrem a ficha do aluno", async ({ page }) => {
+  test("ficha só dos alunos dele e sem dinheiro; a lista de Alunos não abre", async ({ page }) => {
     await seedSchool(page);
     await loginAsUser(page, PROF, PROF_LINK);
-    await page.goto("/classes/cg-own");
-    await expect(page.getByText("Aluno Alfa", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Aluno Alfa" })).toHaveCount(0);
-    // A linha da turma so e clicavel (abre a ficha) com acesso a Alunos.
-    await expect(page.getByRole("button", { name: /^Aluno Alfa/ })).toHaveCount(0);
+    // Pela turma e pela chamada, o nome abre a ficha e o menu tem "Abrir ficha".
     await page.goto(`/classes/sessions/${encodeURIComponent("cg-own~2026-09-21~17:00")}`);
-    await expect(page.getByText("Aluno Alfa", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Aluno Alfa" })).toHaveCount(0);
-    // Na chamada, o menu do aluno fica sem "Abrir ficha".
     await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
-    await expect(page.getByRole("menuitem").first()).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Abrir ficha" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "Abrir ficha" })).toBeVisible();
     await page.keyboard.press("Escape");
-    // Abrir a ficha pelo endereco volta para a primeira tela do perfil.
-    await page.goto("/clients/c-a");
-    await expect.poll(() => new URL(page.url()).pathname).not.toBe("/clients/c-a");
+
+    await page.goto("/classes/cg-own");
+    await page.getByRole("link", { name: "Aluno Alfa" }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe("/clients/c-a");
+    await expect(page.getByRole("heading", { level: 1, name: "Aluno Alfa" })).toBeVisible();
+    // Turmas, evolução e cadastro; nada de cobranças, pacotes, mensagens nem edição.
+    await expect(page.getByRole("button", { name: /^Turmas/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Evolução/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Cadastro/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Cobranças/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Pacotes/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Mensagens/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+
+    // Aluno de turma de outro professor: o servidor recusa.
+    await page.goto("/clients/c-b");
+    await expect(page.getByText("Não foi possível carregar a ficha")).toBeVisible();
+    // A lista de Alunos segue fechada: o endereco volta para a primeira tela do perfil.
+    await page.goto("/clients");
+    await expect.poll(() => new URL(page.url()).pathname).not.toBe("/clients");
   });
 });
 

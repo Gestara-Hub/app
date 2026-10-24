@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Briefcase, Plus } from "lucide-react";
@@ -18,6 +19,7 @@ import { InactivateProfessionalDialog } from "./inactivate-professional-dialog";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 
 export function ProfessionalsView() {
+  const team = useTeamWords();
   const [formState, setFormState] = useState<{
     open: boolean;
     professional?: ProfessionalView;
@@ -43,7 +45,7 @@ export function ProfessionalsView() {
   async function reactivate(professional: ProfessionalView) {
     if (
       !(await confirmAction({
-        title: "Reativar profissional?",
+        title: `Reativar ${team.lower}?`,
         description: `“${professional.name}” volta a aparecer nas escalas e atribuições.`,
         confirmLabel: "Reativar",
       }))
@@ -55,10 +57,10 @@ export function ProfessionalsView() {
         id: professional.id,
         payload: { status: "active" },
       });
-      toast.success("Profissional reativado.");
+      toast.success(`${team.title} reativado.`);
     } catch (error) {
       toast.error(
-        getErrorMessage(error, "Não foi possível reativar o profissional."),
+        getErrorMessage(error, `Não foi possível reativar o ${team.lower}.`),
       );
     }
   }

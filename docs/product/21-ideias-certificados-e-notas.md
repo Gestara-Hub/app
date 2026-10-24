@@ -106,3 +106,7 @@ Aprovada com todas as recomendações acima: liga por modalidade com o padrão d
 **Código:** regras puras em `packages/core/src/grades.ts` (testes em `packages/core/test/grades.test.ts`); contratos em `packages/contracts/src/assessment.ts`; serviço `apps/web/src/services/grades/` (testes em `services/__tests__/grades.test.ts`); tela em `apps/web/src/features/grades`.
 
 **Fase 2 (não entrou):** recuperação e segunda chamada (maior nota), nota como critério da trilha, `{nota}` no certificado, boletim em PDF, relatórios de desempenho e aviso "nota lançada" no WhatsApp.
+
+## Texto padrão do certificado (24/10/2026)
+
+O padrão diz "... de {inicio} a {fim}, que teve {aulas}, com frequência de {frequencia}." — as aulas são as do curso e a frequência é a real do aluno. "Concluído" segue pelo calendário do curso (frequência mínima fica para quando um espaço pedir). A assinatura usa a palavra da área (Instrutor ou Professor).

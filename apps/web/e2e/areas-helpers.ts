@@ -29,6 +29,8 @@ export interface AreaSpec {
   tracks: Record<string, ExpectedTrack>;
   assessments: boolean;
   billing: BillingMode;
+  /** Como a area chama quem da aula (instrutores ou professores). */
+  teacher: "instrutores" | "professores";
   capacity: number;
   durationMinutes: number;
 }
@@ -55,6 +57,7 @@ export const AREAS: AreaSpec[] = [
     },
     assessments: false,
     billing: "membership",
+    teacher: "instrutores",
     capacity: 20,
     durationMinutes: 60,
   },
@@ -66,6 +69,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { "Pilates Reformer": null, "Pilates Solo": null },
     assessments: false,
     billing: "membership",
+    teacher: "instrutores",
     capacity: 6,
     durationMinutes: 50,
   },
@@ -77,6 +81,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { CrossFit: null, "Treino Funcional": null },
     assessments: false,
     billing: "membership",
+    teacher: "instrutores",
     capacity: 15,
     durationMinutes: 60,
   },
@@ -88,6 +93,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { "Balé clássico": levels, "Dança de Salão": levels },
     assessments: false,
     billing: "membership",
+    teacher: "professores",
     capacity: 15,
     durationMinutes: 60,
   },
@@ -99,6 +105,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { Violão: modules, "Piano e teclado": modules },
     assessments: true,
     billing: "membership",
+    teacher: "professores",
     capacity: 6,
     durationMinutes: 60,
   },
@@ -110,6 +117,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { Inglês: levels, Espanhol: levels },
     assessments: true,
     billing: "membership",
+    teacher: "professores",
     capacity: 10,
     durationMinutes: 60,
   },
@@ -124,6 +132,7 @@ export const AREAS: AreaSpec[] = [
     },
     assessments: false,
     billing: "membership",
+    teacher: "professores",
     capacity: 8,
     durationMinutes: 45,
   },
@@ -135,6 +144,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { Confeitaria: modules, Panificação: modules },
     assessments: false,
     billing: "course",
+    teacher: "instrutores",
     capacity: 12,
     durationMinutes: 120,
   },
@@ -146,6 +156,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { Cerâmica: modules, "Desenho e pintura": modules },
     assessments: false,
     billing: "course",
+    teacher: "instrutores",
     capacity: 10,
     durationMinutes: 120,
   },
@@ -157,6 +168,7 @@ export const AREAS: AreaSpec[] = [
     tracks: { Maquiagem: modules, "Design de sobrancelha": modules },
     assessments: true,
     billing: "course",
+    teacher: "instrutores",
     capacity: 12,
     durationMinutes: 120,
   },
@@ -193,7 +205,7 @@ export const CHECKLIST: Record<BillingMode, { steps: string[]; absent: string[];
       "Definir regras da mensalidade",
       "Cadastrar modalidades",
       "Criar planos ou pacotes",
-      "Cadastrar professores e instrutores",
+      "Cadastrar {team}",
       "Cadastrar alunos",
       "Criar a primeira turma",
     ],
@@ -204,7 +216,7 @@ export const CHECKLIST: Record<BillingMode, { steps: string[]; absent: string[];
     steps: [
       "Definir horário de funcionamento",
       "Cadastrar modalidades",
-      "Cadastrar professores e instrutores",
+      "Cadastrar {team}",
       "Cadastrar alunos",
       "Criar o primeiro curso",
       "Matricular alunos no curso",
@@ -223,7 +235,7 @@ export const CHECKLIST: Record<BillingMode, { steps: string[]; absent: string[];
       "Definir horário de funcionamento",
       "Cadastrar modalidades",
       "Criar um pacote de aulas",
-      "Cadastrar professores e instrutores",
+      "Cadastrar {team}",
       "Cadastrar alunos",
       "Criar a primeira turma",
     ],
@@ -240,7 +252,7 @@ export const CHECKLIST: Record<BillingMode, { steps: string[]; absent: string[];
     steps: [
       "Definir horário de funcionamento",
       "Cadastrar modalidades",
-      "Cadastrar professores e instrutores",
+      "Cadastrar {team}",
       "Cadastrar alunos",
       "Criar a primeira turma",
     ],

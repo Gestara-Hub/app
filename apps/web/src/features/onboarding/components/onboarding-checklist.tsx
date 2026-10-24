@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -54,7 +55,7 @@ function joinParts(parts: string[]): string {
 
 // Fases do setup para turmas e aulas. A fase 1 cita so o que a area usa
 // (mensalidade e planos, pacotes); area de curso fecha com curso e matricula.
-function classesGroups(steps: OnboardingStep[], isCourseArea: boolean) {
+function classesGroups(steps: OnboardingStep[], isCourseArea: boolean, titlePlural: string) {
   const present = new Set(steps.map((s) => s.id));
   // Area de mensalidade: o passo dos planos aceita pacote tambem ("Criar planos ou pacotes").
   const plansOrPackages = /pacotes/.test(steps.find((s) => s.id === "plans")?.label ?? "");
@@ -71,7 +72,7 @@ function classesGroups(steps: OnboardingStep[], isCourseArea: boolean) {
     {
       id: "people",
       label: "Fase 2: Pessoas",
-      description: "Professores, instrutores e alunos.",
+      description: `${titlePlural} e alunos.`,
       stepIds: ["team", "clients"],
     },
     isCourseArea
@@ -124,7 +125,8 @@ export function OnboardingChecklist({
   onSpotlightDone?: () => void;
   onStartTour: () => void;
 }) {
-  const groups = !isClasses ? GROUPS_DEFAULT : classesGroups(steps, isCourseArea);
+  const team = useTeamWords();
+  const groups = !isClasses ? GROUPS_DEFAULT : classesGroups(steps, isCourseArea, team.titlePlural);
   const activeStepRef = useRef<HTMLElement | null>(null);
   const spotlightRefs = useMemo(() => [activeStepRef], []);
   const [expandedCompletedGroups, setExpandedCompletedGroups] = useState<
@@ -138,7 +140,7 @@ export function OnboardingChecklist({
     services: "serviços",
     modalities: "modalidades",
     roles: "cargos",
-    team: isClasses ? "professores" : "equipe",
+    team: isClasses ? team.lowerPlural : "equipe",
     classes: isCourseArea ? "curso" : "turmas",
     enroll: "matrículas",
     plans: "planos",

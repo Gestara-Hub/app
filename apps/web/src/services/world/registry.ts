@@ -115,9 +115,11 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
     slices: async () => (await import("../communication/communicationSlices")).communicationSlices,
     permissions: {
       ...all(
-        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "getReminderSources", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
+        ["getConnection", "listTemplates", "listLogs", "listLogsPaginated", "getMetrics", "registerAssistedMessage", "sendMessage", "retryFailedMessage"],
         VIEW_COMMUNICATION,
       ),
+      // Lembretes: o professor ve so os dos alunos dele (faltas seguidas e aniversarios).
+      getReminderSources: ["communication:view", "clients:view_own"],
       ...all(["connectOfficial", "disconnectOfficial", "updateConnectionSettings", "updateTemplate"], MANAGE_COMMUNICATION),
     },
     noRetry: ["sendMessage", "retryFailedMessage", "connectOfficial", "disconnectOfficial"],
@@ -130,7 +132,8 @@ export const SERVICE_NAMESPACES: Record<string, ServiceNamespace> = {
   studentSummary: {
     load: async () => (await import("../clients/studentSummaryService")).studentSummaryServiceImpl as unknown as ServiceObject,
     slices: async () => (await import("../clients/clientSlices")).studentSummarySlices,
-    permissions: {},
+    // O professor le so a ficha dos alunos dele, sem dinheiro (o service escopa e esconde).
+    permissions: all(["getStudentSummary"], ["clients:view", "clients:view_own", "communication:view"]),
   },
   onlinePayments: {
     load: async () => (await import("../onlinePayments")).onlinePaymentsServiceImpl as unknown as ServiceObject,

@@ -13,13 +13,14 @@ import { getCurrentUser } from "./get-current-user";
  * passando a rota da nav (`route`) para checar o modelo do tenant.
  */
 export async function requirePermission(
-  permission: Permission,
+  permission: Permission | readonly Permission[],
   route: string,
 ): Promise<UserView> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const model = organizationModelById(user.organizationId) ?? "scheduling";
-  if (!isRouteInModel(route, model) || !can(user, permission)) {
+  const allowed = (Array.isArray(permission) ? permission : [permission]) as readonly Permission[];
+  if (!isRouteInModel(route, model) || !allowed.some((p) => can(user, p))) {
     redirect(firstAllowedRoute(user, model));
   }
   return user;

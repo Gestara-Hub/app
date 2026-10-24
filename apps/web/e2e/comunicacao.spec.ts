@@ -99,14 +99,41 @@ test.describe("envio assistido (grátis)", () => {
     await expect(detail).toContainText("venceu em 20/09");
   });
 
+  test("mensagem para vários alunos: seleciona todos e abre o WhatsApp de cada um, em sequência", async ({ page }) => {
+    await seedAcademy(page, {
+      extra: (t) => {
+        t.clients = [student("c-a", "Aluno A20"), student("c-b", "Aluna Bia")];
+      },
+    });
+    await page.goto("/communication");
+    await page.getByRole("button", { name: "Nova mensagem" }).click();
+    const dialog = page.getByRole("dialog", { name: "Nova mensagem" });
+    await dialog.getByRole("button", { name: "Selecionar todos com WhatsApp" }).click();
+    await expect(dialog).toContainText("A mensagem vai para cada aluno, em sequência.");
+    await dialog.getByLabel("Mensagem").fill("Oi, {aluno}! Aula especial no sábado.");
+    await dialog.getByRole("button", { name: "Começar o envio (2)" }).click();
+
+    const sequence = page.getByRole("dialog", { name: "Enviar em sequência" });
+    await expect(sequence).toContainText("1 de 2");
+    await expect(sequence).toContainText("Aluna Bia");
+    const first = await openedWhatsApp(page, () => sequence.getByRole("button", { name: "Abrir WhatsApp" }).click());
+    expect(first.text).toBe("Oi, Aluna Bia! Aula especial no sábado.");
+    await expect(sequence).toContainText("2 de 2");
+    const second = await openedWhatsApp(page, () => sequence.getByRole("button", { name: "Abrir WhatsApp" }).click());
+    expect(second.text).toBe("Oi, Aluno A20! Aula especial no sábado.");
+    await expect(sequence).toContainText("2 mensagens abertas no WhatsApp.");
+  });
+
   test("mensagem avulsa preserva emoji e quebra de linha no link", async ({ page }) => {
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/communication");
     await page.getByRole("button", { name: "Nova mensagem" }).click();
     const dialog = page.getByRole("dialog", { name: "Nova mensagem" });
     await expect(dialog).toContainText("Abre o WhatsApp deste aparelho com a mensagem pronta.");
-    await dialog.getByRole("combobox", { name: "Aluno" }).click();
+    await dialog.getByRole("combobox", { name: "Alunos" }).click();
     await page.getByRole("option", { name: /Aluno A20/ }).click();
+    // Escolha de varios: a lista segue aberta ate fechar.
+    await page.keyboard.press("Escape");
     await dialog.getByLabel("Mensagem").fill("Bom treino hoje! 🥋\nAté às 17h 🎉");
 
     const link = await openedWhatsApp(page, () => dialog.getByRole("button", { name: "Abrir no WhatsApp" }).click());
@@ -152,8 +179,10 @@ test.describe("envio assistido (grátis)", () => {
     await page.goto("/communication");
     await page.getByRole("button", { name: "Nova mensagem" }).click();
     const dialog = page.getByRole("dialog", { name: "Nova mensagem" });
-    await dialog.getByRole("combobox", { name: "Aluno" }).click();
+    await dialog.getByRole("combobox", { name: "Alunos" }).click();
     await page.getByRole("option", { name: /Aluno Sem Fone/ }).click();
+    // Escolha de varios: a lista segue aberta ate fechar.
+    await page.keyboard.press("Escape");
     await expect(dialog.getByText("Este aluno não tem WhatsApp com DDD no cadastro.")).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Abrir no WhatsApp" })).toBeDisabled();
   });
@@ -195,8 +224,10 @@ test.describe("WhatsApp oficial (Pro)", () => {
     await page.getByRole("button", { name: "Nova mensagem" }).click();
     const dialog = page.getByRole("dialog", { name: "Nova mensagem" });
     await expect(dialog).toContainText("Sai pelo WhatsApp oficial do espaço.");
-    await dialog.getByRole("combobox", { name: "Aluno" }).click();
+    await dialog.getByRole("combobox", { name: "Alunos" }).click();
     await page.getByRole("option", { name: /Aluno A20/ }).click();
+    // Escolha de varios: a lista segue aberta ate fechar.
+    await page.keyboard.press("Escape");
     await dialog.getByLabel("Mensagem").fill("Aula extra no sábado.");
     await dialog.getByRole("button", { name: "Enviar" }).click();
     await expect(dialog).toBeHidden();

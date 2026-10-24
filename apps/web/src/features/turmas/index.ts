@@ -13,7 +13,7 @@ export { NewExtraChargeDialog } from "./components/new-extra-charge-dialog";
 export { EnrollStudentsDialog, EnrollStudentsDrawer } from "./components/enroll-students-dialog";
 export { PackageFormDrawer, PackageFormDialog } from "./components/package-form-dialog";
 export { SellPackageDialog, SellPackageDrawer } from "./components/sell-package-dialog";
-export { paymentSummary } from "./installments-summary";
+export { pastEndHint, paymentSummary } from "./installments-summary";
 export { canSellPackageTo, canCancelPackage, canRenewPackage, cancelablePackage } from "./package-actions";
 export { StudentPackageBadge, displayPackage, displayPackages } from "./components/student-package-badge";
 export { StudentChargesPanel } from "./components/student-charges-panel";

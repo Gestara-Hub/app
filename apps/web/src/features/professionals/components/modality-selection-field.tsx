@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import type { FieldValues, Path } from "react-hook-form";
 import {
   MultiSelectField,
@@ -23,6 +24,7 @@ export function ModalitySelectionField<T extends FieldValues>({
   required,
   disabled,
 }: ModalitySelectionFieldProps<T>) {
+  const team = useTeamWords();
   const { data: categories } = useCategories({ status: "active" });
 
   const options: MultiSelectOption[] = (categories ?? []).map((category) => ({
@@ -41,7 +43,7 @@ export function ModalitySelectionField<T extends FieldValues>({
       }
       searchPlaceholder="Buscar modalidade..."
       emptyMessage="Nenhuma modalidade cadastrada."
-      hint="Define as modalidades que este profissional leciona nas turmas."
+      hint={`Define as modalidades que este ${team.lower} leciona nas turmas.`}
       options={options}
       required={required}
       disabled={disabled}

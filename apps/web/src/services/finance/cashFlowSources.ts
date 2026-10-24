@@ -6,6 +6,7 @@ import type {
   Id,
   TeacherPayout,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { competenceOf, type CashFlowItem } from "@gestarahub/core/finance";
 import { store } from "@/services/world/store";
 import { currentCompetence, todayISO } from "./financeHelpers";
@@ -65,7 +66,7 @@ export function payoutStatus(p: TeacherPayout): FinancialEntryDisplayStatus | nu
 }
 
 export function professionalName(id: Id): string {
-  return store.professionals.find((p) => p.id === id)?.name ?? "Professor";
+  return store.professionals.find((p) => p.id === id)?.name ?? teamWords().title;
 }
 
 /** Todos os itens de caixa do tenant (cobrancas, lancamentos, professores). */

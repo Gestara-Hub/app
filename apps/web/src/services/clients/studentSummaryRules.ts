@@ -9,6 +9,7 @@ import type {
   StudentOpenBalance,
   StudentPackageView,
   StudentScholarship,
+  StudentSummary,
   StudentSummaryEnrollment,
   StudentSummaryLevel,
   StudentSummaryMembership,
@@ -299,4 +300,43 @@ export function activePackagesOf(client: Client, today: DateISO): StudentPackage
         (a.expiresAt ?? "9999-12-31").localeCompare(b.expiresAt ?? "9999-12-31") ||
         b.purchasedAt.localeCompare(a.purchasedAt),
     );
+}
+
+/**
+ * Ficha do professor (decisao de 24/10, achado 70): o aluno, as turmas e a
+ * evolucao, sem dinheiro (plano, bolsa, saldo, parcelas, pacotes) nem
+ * documentos e endereco. O professor nao ve mensagens do aluno.
+ */
+export function summaryWithoutMoney(summary: StudentSummary): StudentSummary {
+  const {
+    discount: _discount,
+    planId: _planId,
+    planStartDate: _planStartDate,
+    billingStrategy: _billingStrategy,
+    cyclePaymentTiming: _cyclePaymentTiming,
+    dueDay: _dueDay,
+    cpf: _cpf,
+    address: _address,
+    guardians,
+    ...student
+  } = summary.student;
+  void [_discount, _planId, _planStartDate, _billingStrategy, _cyclePaymentTiming, _dueDay, _cpf, _address];
+  return {
+    ...summary,
+    student: {
+      ...student,
+      guardians: guardians?.map(({ cpf: _guardianCpf, ...guardian }: NonNullable<Client["guardians"]>[number]) => {
+        void _guardianCpf;
+        return guardian;
+      }),
+    },
+    membership: { status: summary.membership.status, recurringActive: false },
+    enrollments: summary.enrollments.map(({ course: _course, ...enrollment }: StudentSummaryEnrollment) => {
+      void _course;
+      return enrollment;
+    }),
+    openBalance: { totalCents: 0, count: 0, overdueCents: 0, overdueCount: 0 },
+    packages: [],
+    lastMessages: [],
+  };
 }

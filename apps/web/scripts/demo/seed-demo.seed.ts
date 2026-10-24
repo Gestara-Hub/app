@@ -1,3 +1,4 @@
+import { CURRENT_PLATFORM_TERMS_VERSION } from "@gestarahub/contracts";
 import { it } from "vitest";
 import { DEMO_ORGANIZATION_ID, DEMO_USERS } from "@/lib/demo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -82,6 +83,10 @@ it("semeia o espaço de demonstração", { timeout: 300_000 }, async () => {
         name: u.name,
         email: u.email,
         profile: u.profile,
+        // Ninguem aceita contrato em nome de "Ana Ribeiro": a demonstracao ja nasce aceita
+        // (achados 1 e 72) e a troca de perfil nunca pergunta.
+        terms_accepted_at: new Date().toISOString(),
+        terms_version: CURRENT_PLATFORM_TERMS_VERSION,
       })
       .throwOnError();
   }

@@ -29,6 +29,8 @@ export interface ReportDocumentContext {
   levelLabel: string;
   /** Palavra da trilha de uma modalidade (lista de presenca de uma turma). */
   levelLabelForModality?: (modalityName: string) => string;
+  /** Como o espaço chama quem dá aula ("Professor", "Instrutor"). */
+  teacherLabel?: string;
 }
 
 /** Nome do arquivo em portugues: relatorio-alunos-2026-10. */
@@ -227,7 +229,7 @@ function billingStatement(data: BillingStatementReportData, competence: string):
   };
 }
 
-function courseSummary(data: CourseReportData, competence: string): DocumentModel {
+function courseSummary(data: CourseReportData, competence: string, ctx: ReportDocumentContext): DocumentModel {
   return {
     ...reportBase(data.header, "Cursos", `${REPORT_FILE_SLUG.course_summary}-${competence}`),
     subtitle: "Cursos com aulas ou parcelas no mês. Valores do curso inteiro.",
@@ -246,7 +248,7 @@ function courseSummary(data: CourseReportData, competence: string): DocumentMode
         type: "table",
         columns: [
           { key: "name", label: "Curso", width: 2 },
-          { key: "teacher", label: "Professor", width: 1.4 },
+          { key: "teacher", label: ctx.teacherLabel ?? "Professor", width: 1.4 },
           { key: "start", label: "Início", format: "date" },
           { key: "end", label: "Fim", format: "date" },
           { key: "enrolled", label: "Matriculados", format: "integer" },
@@ -494,7 +496,7 @@ export function reportToDocument(
     case "billing_statement":
       return billingStatement(report.data, competence);
     case "course_summary":
-      return courseSummary(report.data, competence);
+      return courseSummary(report.data, competence, ctx);
     case "package_summary":
       return packageSummary(report.data, competence);
     case "monthly_birthdays":

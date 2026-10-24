@@ -111,4 +111,10 @@ describe("instructorConflictMessage", () => {
       'Carla já dá aula Terça das 18:00 às 19:00 na turma "Jiu-jitsu Kids". Escolha outro horário ou outro professor.',
     );
   });
+
+  it("usa a palavra do espaço para quem dá aula", () => {
+    const g = group({ meetingSlots: [slot(2, "18:00", "19:00")] });
+    const [conflict] = findInstructorConflicts([slot(2, "18:30", "19:30")], "prof-a", [g]);
+    assert.ok(instructorConflictMessage("Carla", conflict, "instrutor").endsWith("Escolha outro horário ou outro instrutor."));
+  });
 });

@@ -1,4 +1,5 @@
 import type { ClassBillingMode, ClassGroupView } from "@gestarahub/contracts";
+import type { TeamWords } from "@/lib/team-words";
 import { classBillingMode } from "@gestarahub/core/billing";
 
 export interface OnboardingStep {
@@ -43,6 +44,8 @@ export interface ClassesOnboardingInput {
    * "Outra área", a resposta de "Como você cobra?").
    */
   areaBillingMode: ClassBillingMode;
+  /** Como a área chama quem dá aula. */
+  teamWords: TeamWords;
 }
 
 /**
@@ -137,8 +140,8 @@ export function buildClassesOnboardingSteps(input: ClassesOnboardingInput): Onbo
       : null,
     {
       id: "team",
-      label: "Cadastrar professores e instrutores",
-      description: "Cadastre os professores e instrutores que ministram as aulas.",
+      label: `Cadastrar ${input.teamWords.lowerPlural}`,
+      description: `Cadastre os ${input.teamWords.lowerPlural} que ministram as aulas.`,
       href: "/team",
       cta: "Adicionar",
       done: input.professionalsCount > 0,

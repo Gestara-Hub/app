@@ -11,6 +11,7 @@ import { levelsOf } from "../clients/studentSummaryRules";
 import { actorTeacherId } from "../classes/teacherScope";
 import { ensureLogs, ensureTemplates } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
+import { messageGuardian } from "@gestarahub/core/payer";
 
 /**
  * Dados dos lembretes (doc product/25) numa leitura so: alunos ativos,
@@ -67,10 +68,13 @@ export const remindersService = {
           id: c.id,
           name: c.name,
           ...(c.phone ? { phone: c.phone } : {}),
+          ...(messageGuardian(c, dateInSpace()) ? { guardian: messageGuardian(c, dateInSpace()) } : {}),
           ...(c.birthDate ? { birthDate: c.birthDate } : {}),
           createdAt: c.createdAt,
         }));
       const active = new Set(students.map((s) => s.id));
+      // Assinatura pausada: o lembrete de cobranca nao sai (decisao de 24/10, achado 53).
+      const paused = new Set(store.clients.filter((c) => c.membershipStatus === "paused").map((c) => c.id));
 
       const paidSince = subDays(new Date(), PAID_WINDOW_DAYS).toISOString();
       const charges: ChargeView[] = canBilling
@@ -78,8 +82,7 @@ export const remindersService = {
             (c) =>
               active.has(c.studentId) &&
               c.kind !== "dropin" &&
-              (c.status === "pending" ||
-                c.status === "overdue" ||
+              ((!paused.has(c.studentId) && (c.status === "pending" || c.status === "overdue")) ||
                 (c.status === "paid" && Boolean(c.paidAt) && String(c.paidAt) >= paidSince)),
           )
         : [];

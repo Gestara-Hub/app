@@ -16,7 +16,7 @@ import { validationError } from "@gestarahub/core/api-error";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const ROLE_NOT_FOUND = "Cargo não encontrado.";
-export const PROFESSIONAL_NOT_FOUND = "Profissional não encontrado.";
+export const PROFESSIONAL_NOT_FOUND = "Cadastro não encontrado.";
 
 export function duplicateRoleNameError() {
   return validationError([{ field: "name", message: "Já existe um cargo com esse nome." }]);
@@ -47,7 +47,7 @@ export function validateProfessionalPayload(
 
   if (!partial || has("name")) {
     if (!payload.name || !payload.name.trim()) {
-      fields.push({ field: "name", message: "Informe o nome do profissional." });
+      fields.push({ field: "name", message: "Informe o nome." });
     }
   }
   // Cargo e opcional; se informado, precisa existir.

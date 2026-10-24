@@ -149,6 +149,8 @@ export interface TeacherStatementInput {
   organizationName: string;
   organizationDetails?: string;
   professionalName: string;
+  /** Como o espaço chama quem dá aula ("Professor", "Instrutor"). */
+  teacherLabel?: string;
   competence: string;
   competenceLabel: string;
   statusLabel: string;
@@ -183,7 +185,7 @@ export function teacherStatementDocument(input: TeacherStatementInput): Document
         type: "fields",
         title: "Resumo",
         items: [
-          { label: "Professor", value: input.professionalName },
+          { label: input.teacherLabel ?? "Professor", value: input.professionalName },
           ...(input.ruleSummary ? [{ label: "Regra", value: input.ruleSummary }] : []),
           { label: "Situação", value: input.statusLabel },
           { label: "Vencimento", value: input.dueDate, format: "date" },

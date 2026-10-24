@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import {
   useForm,
   useWatch,
@@ -54,6 +55,7 @@ interface UserFormProps {
 }
 
 export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
+  const team = useTeamWords();
   const isEdit = Boolean(user);
   const createMut = useCreateUser();
   const updateMut = useUpdateUser();
@@ -74,7 +76,7 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
   const allowedProfiles = new Set<UserProfile>(manageableProfiles(currentUser));
   if (user) allowedProfiles.add(user.profile);
   const profileOptions = PROFILE_ORDER.filter((p) => allowedProfiles.has(p)).map(
-    (value) => ({ value, label: userProfileLabel(value) }),
+    (value) => ({ value, label: userProfileLabel(value, team.title) }),
   );
 
   const form = useForm<UserFormValues>({
@@ -206,13 +208,13 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
           name="professionalId"
           render={({ field, fieldState }) => {
             const hint = isProfessionalProfile
-              ? "Obrigatório no perfil Profissional: define a agenda que ele vê."
+              ? `Obrigatório no perfil ${team.title}: define a agenda que ele vê.`
               : "Opcional. Vincula o usuário a um membro da equipe.";
             const error = fieldState.error?.message;
             return (
               <FieldShell
                 id="user-professional"
-                label="Profissional da equipe"
+                label={`${team.title} da equipe`}
                 required={isProfessionalProfile}
                 error={error}
                 hint={hint}
@@ -242,10 +244,10 @@ export function UserForm({ user, onSuccess, onCancel, formId }: UserFormProps) {
                     value: p.id,
                     label: p.roleName ? `${p.name} · ${p.roleName}` : p.name,
                   }))}
-                  placeholder="Selecione o profissional"
-                  searchPlaceholder="Buscar profissional..."
-                  emptyMessage="Nenhum profissional encontrado."
-                  ariaLabel="Profissional da equipe"
+                  placeholder={`Selecione o ${team.lower}`}
+                  searchPlaceholder={`Buscar ${team.lower}...`}
+                  emptyMessage={`Nenhum ${team.lower} encontrado.`}
+                  ariaLabel={`${team.title} da equipe`}
                   ariaDescribedBy={
                     fieldAria("user-professional", error, hint)["aria-describedby"]
                   }

@@ -28,6 +28,21 @@ export function replacedMembershipCharges(
   return { count: replaced.length, totalCents: replaced.reduce((sum, c) => sum + c.amountCents, 0) };
 }
 
+/** Texto da confirmacao ao pausar a assinatura (a regra vive em `clientLifecycleService`). */
+export function pauseDescription(): string {
+  return "A assinatura fica parada: sem mensalidade nova até voltar, e o lembrete de WhatsApp deixa de sair. As mensalidades dos próximos períodos deixam de valer. O que já foi pago não muda.";
+}
+
+/** A mensalidade em aberto do periodo em curso, para o dono cancelar ou manter. */
+export function pausedChargeDescription(
+  charges: readonly { amountCents: number; dueDate: string; status: string }[],
+): string {
+  const list = charges
+    .map((c) => `${formatCents(c.amountCents)} (vence ${shortDate(c.dueDate)})`)
+    .join(" e ");
+  return `${pluralWord(charges.length, "A mensalidade", "As mensalidades")} em curso ${pluralWord(charges.length, "está", "estão")} em aberto: ${list}. Cancelar tira ${pluralWord(charges.length, "a cobrança", "as cobranças")} da lista; manter deixa ${pluralWord(charges.length, "a cobrança", "as cobranças")} valendo.`;
+}
+
 export function planSwitchDescription(input: {
   fromPlan: string;
   toPlan: string;

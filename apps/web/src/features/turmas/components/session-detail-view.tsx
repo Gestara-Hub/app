@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -116,6 +117,7 @@ const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = {
 };
 
 export function SessionDetailView({ sessionId }: { sessionId: string }) {
+  const team = useTeamWords();
   const { data: session, isLoading, isError, error, refetch } = useClassSession(sessionId);
   const { data: turma } = useClassGroup(session?.classGroupId ?? "");
   const { data: categories } = useCategories();
@@ -152,8 +154,8 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   }
 
   const can = useCan();
-  // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
-  const canOpenProfile = can("clients:view");
+  // Ficha do aluno: `clients:view`, ou so a dos alunos dele (professor): sem elas, o nome fica sem link.
+  const canOpenProfile = can("clients:view") || can("clients:view_own");
   const canMark = can("attendance:mark");
   const canEnroll = can("enrollment:manage");
   const canManage = can("classes:manage");
@@ -393,7 +395,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
   const restorePrimary = async () => {
     try {
       await restoreMut.mutateAsync(session.id);
-      toast.success("Instrutor titular restaurado com sucesso.");
+      toast.success(`${team.title} titular restaurado com sucesso.`);
     } catch (err) {
       toast.error(getErrorMessage(err, "Erro ao restaurar titular."));
     }
@@ -477,7 +479,7 @@ export function SessionDetailView({ sessionId }: { sessionId: string }) {
       ? [
           {
             key: "substitute",
-            label: session.isSubstitute ? "Alterar substituto" : "Trocar instrutor",
+            label: session.isSubstitute ? "Alterar substituto" : `Trocar ${team.lower}`,
             icon: <UserCheck className="size-4" />,
             onSelect: () => setSubstituteOpen(true),
           },

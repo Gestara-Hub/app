@@ -18,7 +18,7 @@ const addressSchema = z.object({
 });
 
 export const professionalFormSchema = z.object({
-  name: z.string().trim().min(1, "Informe o nome do profissional."),
+  name: z.string().trim().min(1, "Informe o nome."),
   // Cargo opcional: campo pode ficar vazio.
   role: z.string().trim(),
   email: z
@@ -76,13 +76,13 @@ export type ProfessionalFormValues = z.infer<typeof professionalFormSchema>;
  * Retorna o schema apropriado para o modelo operacional ativo.
  * No modelo de turmas (classes), ao menos uma modalidade é obrigatória.
  */
-export function getProfessionalFormSchema(isClasses: boolean) {
+export function getProfessionalFormSchema(isClasses: boolean, teacherWord = "profissional") {
   return professionalFormSchema.superRefine((data, ctx) => {
     if (isClasses && (!data.modalityIds || data.modalityIds.length === 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["modalityIds"],
-        message: "Selecione ao menos uma modalidade que o profissional leciona.",
+        message: `Selecione ao menos uma modalidade que o ${teacherWord} leciona.`,
       });
     }
   });

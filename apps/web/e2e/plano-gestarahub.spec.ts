@@ -40,7 +40,10 @@ async function subscriptionInDb(): Promise<Record<string, unknown>> {
   return (data?.subscription ?? {}) as Record<string, unknown>;
 }
 
-test("upgrade: janela com a conta, Pix da diferença simulado e plano ligado", async ({ page }) => {
+// O Expansão saiu da venda em 24/10 (multiunidade ainda não existe): não há botão para
+// ele na tela de Planos. A conta da diferença segue coberta nos testes de unidade; este
+// fluxo volta quando o Expansão voltar (docs/pendencias.md).
+test.fixme("upgrade: janela com a conta, Pix da diferença simulado e plano ligado", async ({ page }) => {
   await seedPlan(page);
   await page.goto("/plans");
   await page.getByRole("button", { name: "Mudar para o Expansão" }).click();

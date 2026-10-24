@@ -7,6 +7,7 @@ import type {
   ModalityProgressionTrack,
   ProgressionTrackTemplateKey,
 } from "@gestarahub/contracts";
+import type { TeacherTitle } from "./team-words";
 import {
   PROGRESSION_TEMPLATES,
   inferDefaultTrackForModalityName,
@@ -78,6 +79,8 @@ export interface BusinessSegmentPreset {
    * sem cobranca). Guia a nova turma, o cadastro do aluno e os primeiros passos.
    */
   defaultBillingMode: ClassBillingMode;
+  /** Como a área chama quem dá aula (`teamWordsFor`). */
+  teacherTitle: TeacherTitle;
   /**
    * Avaliacoes e notas ligadas nas modalidades NOVAS (doc 21 §2.1): idiomas,
    * musica e cursos livres. Lutas fica desligado (o exame de faixa ja e a
@@ -161,6 +164,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["bjj_adult", "judo_karate", "muay_thai", "karate", "taekwondo", "capoeira", "kickboxing"],
     classDefaults: { durationMinutes: 60, capacity: 20 },
     defaultBillingMode: "membership",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: false,
     vocabulary: BELT_VOCABULARY,
   },
@@ -173,6 +177,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 50, capacity: 6 },
     defaultBillingMode: "membership",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
@@ -185,6 +190,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "functional_categories", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
     defaultBillingMode: "membership",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
@@ -197,6 +203,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 15 },
     defaultBillingMode: "membership",
+    teacherTitle: "Professor",
     assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },
@@ -209,6 +216,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 6 },
     defaultBillingMode: "membership",
+    teacherTitle: "Professor",
     assessmentsByDefault: true,
     vocabulary: MODULE_VOCABULARY,
   },
@@ -221,6 +229,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["language_cefr", "general_levels", "modules", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
     defaultBillingMode: "membership",
+    teacherTitle: "Professor",
     assessmentsByDefault: true,
     vocabulary: LEVEL_VOCABULARY,
   },
@@ -233,6 +242,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["swim_stages", "general_levels", "blank"],
     classDefaults: { durationMinutes: 45, capacity: 8 },
     defaultBillingMode: "membership",
+    teacherTitle: "Professor",
     assessmentsByDefault: false,
     vocabulary: STAGE_VOCABULARY,
   },
@@ -245,6 +255,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
     defaultBillingMode: "course",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: false,
     vocabulary: MODULE_VOCABULARY,
   },
@@ -257,6 +268,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 10 },
     defaultBillingMode: "course",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: false,
     vocabulary: MODULE_VOCABULARY,
   },
@@ -269,6 +281,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["modules", "blank"],
     classDefaults: { durationMinutes: 120, capacity: 12 },
     defaultBillingMode: "course",
+    teacherTitle: "Instrutor",
     assessmentsByDefault: true,
     vocabulary: MODULE_VOCABULARY,
   },
@@ -281,6 +294,7 @@ export const CLASSES_SEGMENT_PRESETS: Record<ClassesBusinessSegment, BusinessSeg
     trackTemplates: ["general_levels", "blank"],
     classDefaults: { durationMinutes: 60, capacity: 10 },
     defaultBillingMode: "membership",
+    teacherTitle: "Professor",
     assessmentsByDefault: false,
     vocabulary: LEVEL_VOCABULARY,
   },

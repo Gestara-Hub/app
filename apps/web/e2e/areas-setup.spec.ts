@@ -98,7 +98,12 @@ async function finishSetup(page: Page) {
 type ModalitiesStep = "review" | "done" | "none";
 
 /** Boas-vindas pela forma de cobranca e checklist com os passos da area. */
-async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modalities: ModalitiesStep) {
+async function expectWelcomeAndChecklist(
+  page: Page,
+  billing: BillingMode,
+  modalities: ModalitiesStep,
+  teacher: "instrutores" | "professores",
+) {
   const welcome = page.getByRole("dialog", { name: /Bem-vindo/ });
   await expect(welcome).toContainText(WELCOME_SETUP[billing]);
   await welcome.getByRole("button", { name: /Ir para os primeiros passos/ }).click();
@@ -106,7 +111,8 @@ async function expectWelcomeAndChecklist(page: Page, billing: BillingMode, modal
 
   const checklist = page.locator("[data-tour=onboarding-checklist]");
   await expect(checklist.getByRole("heading", { name: "Primeiros passos", exact: true })).toBeVisible();
-  const { steps, absent, phase1 } = CHECKLIST[billing];
+  const { phase1, absent } = CHECKLIST[billing];
+  const steps = CHECKLIST[billing].steps.map((label) => label.replace("{team}", teacher));
   await expect(checklist).toContainText(`${modalities === "done" ? 1 : 0} de ${steps.length} concluídos`);
   await expect(checklist).toContainText(phase1);
   for (const label of steps) await expect(checklist.getByText(label, { exact: true })).toBeVisible();
@@ -218,7 +224,7 @@ test.describe("configuração inicial por área", () => {
         expectAssessments(category, area.assessments);
       }
 
-      await expectWelcomeAndChecklist(page, area.billing, needsReview ? "review" : "done");
+      await expectWelcomeAndChecklist(page, area.billing, needsReview ? "review" : "done", area.teacher);
       await expectFormDefaults(page, area.billing, area.capacity, area.durationMinutes);
     });
   }
@@ -262,7 +268,7 @@ test.describe("configuração inicial por área", () => {
     expect(tenant.organization.settings.modalitiesReviewed).toBeUndefined();
     // Sem unidade informada, o nome da unidade fica vazio.
     expect(tenant.unit.name).toBe("");
-    await expectWelcomeAndChecklist(page, "membership", "none");
+    await expectWelcomeAndChecklist(page, "membership", "none", "professores");
     await expect(page.getByText("Adicione as modalidades ou atividades oferecidas.")).toBeVisible();
   });
 });
@@ -360,7 +366,7 @@ test.describe("configuração inicial: Outra área", () => {
       expectAssessments(category, false);
 
       // "Nao avancam" cria a modalidade sem trilha: nada a revisar.
-      await expectWelcomeAndChecklist(page, billing.value, progression.track ? "review" : "done");
+      await expectWelcomeAndChecklist(page, billing.value, progression.track ? "review" : "done", "professores");
       await expectFormDefaults(page, billing.value, 10, 60);
     });
   }
@@ -386,7 +392,7 @@ async function createClass(page: Page, name: string, modalityName: string, billi
   await form.getByLabel("Nome da turma").fill(name);
   await form.getByRole("combobox", { name: /Modalidade/ }).click();
   await page.getByRole("option", { name: modalityName }).click();
-  await expect(form.getByRole("combobox", { name: /Professor/ })).toContainText("Carlos Silva");
+  await expect(form.getByRole("combobox", { name: /Professor|Instrutor/ })).toContainText("Carlos Silva");
   if (billing) await form.getByRole("radio", { name: startsWith(CLASS_BILLING_LABEL[billing]) }).click();
   const isCourse = await form.getByRole("radio", { name: /^Curso com valor fechado/ }).getAttribute("aria-checked");
   if (isCourse === "true") {

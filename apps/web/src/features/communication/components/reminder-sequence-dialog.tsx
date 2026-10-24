@@ -78,13 +78,20 @@ function SequenceBody({ group, onClose }: { group: ReminderGroup; onClose: () =>
   }
 
   const hasPhone = Boolean(whatsappNumber(current.phone ?? ""));
-  const text = current.content ?? whatsapp.compose(current.trigger, current.values, current.studentName);
+  const text =
+    current.content ??
+    whatsapp.compose(current.trigger, current.values, current.recipientName ?? current.studentName, current.aboutStudent);
   const next = () => setIndex((i) => i + 1);
 
   function sendCurrent() {
     whatsapp.send({
       trigger: current.trigger,
-      recipient: { name: current.studentName, phone: current.phone, clientId: current.studentId },
+      recipient: {
+        name: current.recipientName ?? current.studentName,
+        phone: current.phone,
+        clientId: current.studentId,
+        aboutStudent: current.aboutStudent,
+      },
       values: current.values,
       ...(current.content ? { content: current.content } : {}),
       ...(current.chargeId ? { chargeId: current.chargeId } : {}),

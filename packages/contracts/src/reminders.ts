@@ -17,6 +17,8 @@ export interface ReminderStudent {
   id: Id;
   name: string;
   phone?: string;
+  /** Aluno menor: o responsavel que recebe a cobranca no lugar dele (nome e telefone). */
+  guardian?: { name: string; phone: string };
   birthDate?: DateISO;
   createdAt: DateTimeISO;
 }

@@ -191,6 +191,16 @@ export function platformSplitCents(tier: PlatformTier | undefined): number {
   return PLATFORM_SPLIT_CENTS[tier ?? "free"];
 }
 
+const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
+
+/**
+ * A frase da taxa do GestaraHub, a mesma em Planos, Recebimentos online e no
+ * checkout (achado 18, decisao de 24/10). Os valores vem de `PLATFORM_SPLIT_CENTS`.
+ */
+export function platformFeeSentence(): string {
+  return `Taxa do GestaraHub: ${brl(PLATFORM_SPLIT_CENTS.free)} por Pix pago no Grátis (${brl(PLATFORM_SPLIT_CENTS.pro)} nos pagos), mais a tarifa do parceiro.`;
+}
+
 /**
  * Tarifa de um meio sobre um valor cobrado (com piso e teto, se houver). O Asaas
  * TRUNCA a parte percentual (R$ 42,63 a 1,99% = 0,8483 -> 0,84): conferido em

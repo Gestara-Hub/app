@@ -41,6 +41,17 @@ export function teacherSeesSession(
   return teacherId === undefined || g.instructorId === teacherId || substituteOf(sessionId) === teacherId;
 }
 
+/** O professor da aula ao aluno: matricula ativa em turma em que e o titular. */
+export function teacherTeachesStudent(studentId: Id, teacherId = actorTeacherId()): boolean {
+  if (teacherId === undefined) return true;
+  return store.enrollments.some(
+    (e) =>
+      e.studentId === studentId &&
+      e.status === "active" &&
+      store.classGroups.some((g) => g.id === e.classGroupId && g.instructorId === teacherId),
+  );
+}
+
 function forbidden(message: string) {
   return apiError("FORBIDDEN", message, { httpStatus: 403 });
 }

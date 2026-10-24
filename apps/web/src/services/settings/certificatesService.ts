@@ -14,6 +14,7 @@ import { store } from "@/services/world/store";
 import { attachmentsService } from "../attachments/attachmentsService";
 import { auditLogService } from "../audit/auditLogService";
 import { assertFeature } from "../subscription/subscriptionService";
+import { teamWords } from "../world/nouns";
 
 /**
  * Modelo de certificado do espaco (doc 21, secao 1; recurso pago
@@ -27,7 +28,7 @@ import { assertFeature } from "../subscription/subscriptionService";
 
 /** Modelo em vigor (salvo ou padrao), para quem monta o certificado. */
 export function currentCertificateTemplate(): CertificateTemplate {
-  return structuredClone(store.certificateTemplate ?? defaultCertificateTemplate());
+  return structuredClone(store.certificateTemplate ?? defaultCertificateTemplate(teamWords().title));
 }
 
 /** Tira espacos das pontas; o texto guarda as quebras de linha do meio. */

@@ -107,7 +107,6 @@ export function PaginationBar({
         <div className="flex items-center gap-1 sm:hidden">
           <Button
             variant="outline"
-            size="sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || disabled}
             aria-label="Página anterior"
@@ -120,7 +119,6 @@ export function PaginationBar({
           </span>
           <Button
             variant="outline"
-            size="sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || disabled}
             aria-label="Próxima página"

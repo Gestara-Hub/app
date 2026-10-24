@@ -4,6 +4,7 @@ import {
   applyDiscount,
   chargesDueIn,
   firstCharge,
+  isCurrentOpenMembershipCharge,
   upcomingCharges,
   type MembershipTerms,
 } from "../src/billing.ts";
@@ -142,5 +143,30 @@ describe("desconto", () => {
 
   it("proporcional sobre o valor com desconto", () => {
     assert.equal(firstCharge(monthly({ priceCents: 13500 })).amountCents, 4950);
+  });
+});
+
+describe("isCurrentOpenMembershipCharge (pausa do aluno)", () => {
+  const base = { kind: "membership", status: "pending", dueDate: "2026-10-10" } as const;
+
+  it("pega a mensalidade em aberto do período que inclui hoje", () => {
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, periodStart: "2026-10-01", periodEnd: "2026-10-31" }, "2026-10-24"), true);
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, status: "overdue", periodStart: "2026-10-01", periodEnd: "2026-10-31" }, "2026-10-24"), true);
+  });
+
+  it("deixa o período que já acabou (dívida) e o que ainda não começou (sai sozinho na pausa)", () => {
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, periodStart: "2026-09-01", periodEnd: "2026-09-30" }, "2026-10-24"), false);
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, periodStart: "2026-11-01", periodEnd: "2026-11-30" }, "2026-10-24"), false);
+  });
+
+  it("sem período, vale a mensalidade que vence no mês de hoje", () => {
+    assert.equal(isCurrentOpenMembershipCharge(base, "2026-10-24"), true);
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, dueDate: "2026-09-10" }, "2026-10-24"), false);
+  });
+
+  it("só mensalidade em aberto: pago, cancelado e avulso ficam", () => {
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, status: "paid" }, "2026-10-24"), false);
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, status: "canceled" }, "2026-10-24"), false);
+    assert.equal(isCurrentOpenMembershipCharge({ ...base, kind: "dropin" }, "2026-10-24"), false);
   });
 });

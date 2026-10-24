@@ -143,6 +143,10 @@ export interface ChargeView extends Charge {
   teacherPayClosedIn?: string;
   /** Telefone do aluno (lembrete pelo WhatsApp). */
   studentPhone?: string;
+  /** Assinatura do aluno pausada (a linha leva o selo "Trancado"). */
+  studentPaused?: boolean;
+  /** Aluno menor com responsavel: a cobranca vai para o telefone dele, falando do aluno. */
+  guardianContact?: { name: string; phone: string };
   planName?: string;
   planPeriod?: PlanPeriod;
   className?: string;

@@ -2,7 +2,8 @@ import type { Id, StudentSummary } from "@gestarahub/contracts";
 import { daysUntilBirthday } from "@/lib/birthdays";
 import { ageAt } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
-import { notFoundError, readOp } from "@/services/world/ops";
+import { apiError, notFoundError, readOp } from "@/services/world/ops";
+import { actorTeacherId, teacherTeachesStudent } from "../classes/teacherScope";
 import { ensureMembershipCharges } from "../billing";
 import { applyRecurringAutoPayments } from "../onlinePayments";
 import { delegateAll } from "../world/delegate";
@@ -16,6 +17,7 @@ import {
   localDateOf,
   membershipOf,
   openBalanceOf,
+  summaryWithoutMoney,
   todayISO,
 } from "./studentSummaryRules";
 
@@ -29,9 +31,16 @@ export const studentSummaryServiceImpl = {
     return readOp(async () => {
       const client = store.clients.find((c) => c.id === studentId);
       if (!client) throw notFoundError("Aluno não encontrado.");
+      // Professor: so aluno de turma dele, e sem dinheiro (a leitura abaixo ja nasce limpa).
+      const teacherId = actorTeacherId();
+      if (teacherId !== undefined && !teacherTeachesStudent(studentId, teacherId)) {
+        throw apiError("FORBIDDEN", "Você só vê a ficha dos alunos das suas turmas.", { httpStatus: 403 });
+      }
       // Mesma leitura de Cobranças: mensalidades do mes nascem e o Pix Automatico paga.
-      await ensureMembershipCharges();
-      applyRecurringAutoPayments();
+      if (teacherId === undefined) {
+        await ensureMembershipCharges();
+        applyRecurringAutoPayments();
+      }
 
       const today = todayISO();
       const charges = store.charges.filter((c) => c.studentId === studentId);
@@ -42,7 +51,7 @@ export const studentSummaryServiceImpl = {
         .sort((a, b) => b.sentAt.localeCompare(a.sentAt))
         .slice(0, LAST_MESSAGES);
 
-      return structuredClone({
+      const summary: StudentSummary = structuredClone({
         student: client,
         age: ageAt(client.birthDate, today),
         daysToBirthday: client.birthDate ? daysUntilBirthday(client.birthDate, today) : null,
@@ -55,6 +64,7 @@ export const studentSummaryServiceImpl = {
         packages: activePackagesOf(client, today),
         lastMessages,
       });
+      return teacherId === undefined ? summary : summaryWithoutMoney(summary);
     });
   },
 };

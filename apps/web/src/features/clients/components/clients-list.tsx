@@ -47,12 +47,11 @@ import {
   type ListItemAction,
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
-import { BirthdayBadge } from "@/components/shared/birthday-badge";
 import { PausedTag } from "./paused-tag";
 import { MinorConsentBadge, isMinorConsentPending } from "@/components/shared/minor-consent-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
-import { ageAt, anyModalityHasTrack, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
+import { ageAt, isAgedOutOfLevel, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
 import { LevelChangeBadge } from "@/components/shared/level-change-badge";
 import { cn } from "@/lib/utils";
 import { whatsappNumber } from "@/lib/whatsapp";
@@ -142,13 +141,6 @@ function ClientProgressionBadges({
   onOpenGraduation?: (client: Client) => void;
 }) {
   const vocabulary = useClientVocabulary(client, categoryById);
-  const { data: enrolledModalities } = useEnrolledModalities();
-  const trackModalityIds = [
-    ...new Set([
-      ...Object.keys(client.progressions ?? {}),
-      ...(enrolledModalities ?? []).filter((pair) => pair.studentId === client.id).map((pair) => pair.modalityId),
-    ]),
-  ];
   const age = ageAt(client.birthDate, dateInSpace());
   const entries = Object.values(client.progressions ?? {});
   const resolvedBadges = entries
@@ -175,24 +167,8 @@ function ClientProgressionBadges({
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
-  if (resolvedBadges.length === 0) {
-    if (!onOpenGraduation) return null;
-    // Sem turma ou so em modalidade sem trilha: nada a definir (a ficha diz "Sem trilha de evolução").
-    if (!anyModalityHasTrack(trackModalityIds.map((id) => categoryById.get(id)))) return null;
-    return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenGraduation(client);
-        }}
-        className="inline-flex items-center gap-1 rounded-full border border-dashed border-primary/35 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors"
-      >
-        <GraduationCap className="size-3" />
-        <span>Definir {vocabulary.level.toLowerCase()}</span>
-      </button>
-    );
-  }
+  // "Definir nível" e aniversário ficam só na ficha: a lista mostra o que pede ação (decisão de 24/10).
+  if (resolvedBadges.length === 0) return null;
 
   return (
     <div
@@ -566,8 +542,7 @@ function ClientRow({
               >
                 {client.name}
               </Link>
-              <RecordStatusBadge status={client.status} />
-              <BirthdayBadge birthDate={client.birthDate} showUpcoming />
+              {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
               <MinorConsentBadge client={client} compact />
               {isClasses ? (
                 <ClientProgressionBadges
@@ -785,8 +760,7 @@ function ClientCard({
                 {client.name}
               </Link>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <RecordStatusBadge status={client.status} />
-                <BirthdayBadge birthDate={client.birthDate} showUpcoming compact />
+                {client.status !== "active" ? <RecordStatusBadge status={client.status} /> : null}
                 <MinorConsentBadge client={client} compact />
                 {isClasses ? (
                   <ClientProgressionBadges

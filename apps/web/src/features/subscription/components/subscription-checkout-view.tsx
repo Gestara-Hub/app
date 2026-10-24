@@ -93,10 +93,9 @@ export function SubscriptionCheckoutView() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Lê parâmetros da URL (?tier=pro|scale&interval=monthly|yearly)
-  const paramTier = searchParams.get("tier");
-  const initialTier: "pro" | "scale" =
-    paramTier === "scale" ? "scale" : "pro";
+  // Lê parâmetros da URL (?interval=monthly|yearly)
+  // So o Profissional esta a venda; um link antigo com tier=scale cai nele.
+  const initialTier: "pro" | "scale" = "pro";
 
   const paramInterval = searchParams.get("interval");
   const initialInterval: SubscriptionInterval =
@@ -168,7 +167,7 @@ export function SubscriptionCheckoutView() {
         if (res.isPaid) {
           window.clearInterval(intervalId);
           setStep("success");
-          toast.success("Pagamento confirmado via Asaas!");
+          toast.success("Pagamento confirmado.");
         }
       } catch (err) {
         logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
@@ -314,65 +313,57 @@ export function SubscriptionCheckoutView() {
               variant="outline"
               className="text-xs px-3 py-1 font-bold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-2"
             >
-              Assinatura Confirmada
+              Assinatura confirmada
             </Badge>
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-              Plano {planName} Ativado!
+              Plano {planName} ativado
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed pt-1">
-              Parabéns! Sua assinatura foi confirmada com sucesso via gateway Asaas.
-              Todos os recursos do plano já estão desbloqueados na sua conta.
+              Assinatura confirmada.
+              Os recursos do plano já estão liberados na sua conta.
             </p>
           </div>
 
           {/* O que foi liberado */}
           <div className="rounded-xl border border-border/80 bg-muted/20 p-5 text-left max-w-lg mx-auto space-y-3 text-xs">
             <p className="font-bold text-foreground border-b border-border/60 pb-2">
-              Recursos liberados imediatamente:
+              Liberado agora:
             </p>
             <ul className="space-y-2.5 text-muted-foreground">
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>Taxa Pix Reduzida (R$ 1,29):</strong> mais margem em cada mensalidade.</span>
+                <span><strong>Taxa menor no Pix</strong> a cada mensalidade paga.</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>WhatsApp 100% Automático:</strong> cobranças e lembretes enviados sem clique.</span>
+                <span><strong>WhatsApp automático:</strong> lembretes e avisos sem clique.</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>DRE Gerencial Completa:</strong> lucro líquido real e retenção de alunos.</span>
+                <span><strong>Relatório do resultado do mês</strong> e retenção de alunos.</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>Certificados em PDF:</strong> emissão oficial para cursos e graduações.</span>
+                <span><strong>Certificado em PDF</strong> para cursos.</span>
               </li>
-              {selectedTier === "scale" && (
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <span><strong>Multiunidades & BI Preditivo:</strong> gestão de redes e projeções analíticas.</span>
-                </li>
-              )}
             </ul>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Button
               type="button"
-              size="lg"
               onClick={() => router.push("/")}
               className="w-full sm:w-auto px-8 font-bold text-xs shadow-md"
             >
-              Ir para o Painel Principal
+              Ir para o painel
             </Button>
             <Button
               type="button"
               variant="outline"
-              size="lg"
               onClick={() => router.push("/plans")}
               className="w-full sm:w-auto px-6 font-semibold text-xs"
             >
-              Ver Detalhes do Plano
+              Ver o plano
             </Button>
           </div>
         </Card>
@@ -387,12 +378,11 @@ export function SubscriptionCheckoutView() {
         <Button
           asChild
           variant="ghost"
-          size="sm"
           className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
           <Link href="/plans">
             <ArrowLeft className="size-4" />
-            <span>Voltar para todos os planos</span>
+            <span>Voltar para os planos</span>
           </Link>
         </Button>
       </div>
@@ -413,11 +403,11 @@ export function SubscriptionCheckoutView() {
                     )}
                   </span>
                   <CardTitle className="text-2xl font-bold tracking-tight">
-                    Finalizar Assinatura
+                    Finalizar assinatura
                   </CardTitle>
                 </div>
                 <CardDescription className="text-xs">
-                  Preencha as informações para ativar o plano com emissão oficial e cobrança segura via Asaas.
+                  Preencha os dados para ativar o plano. O pagamento é feito com o parceiro de pagamentos.
                 </CardDescription>
               </CardHeader>
 
@@ -428,10 +418,10 @@ export function SubscriptionCheckoutView() {
                     noValidate
                     className="space-y-6"
                   >
-                    {/* Seletor de Plano: Profissional vs Expansão */}
+                    {/* Plano: so o Profissional esta a venda (o Expansão volta com a multiunidade) */}
                     <div className="space-y-2.5">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Plano Escolhido
+                        Plano escolhido
                       </Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button
@@ -447,9 +437,6 @@ export function SubscriptionCheckoutView() {
                           <div className="space-y-0.5">
                             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
                               <span>Profissional</span>
-                              <span className="rounded bg-primary/15 text-primary text-[10px] px-1.5 py-0.2 font-bold">
-                                Popular
-                              </span>
                             </p>
                             <p className="text-[11px] text-muted-foreground">
                               {interval === "monthly" ? "R$ 79,90/mês" : "R$ 66,58/mês (anual)"}
@@ -457,30 +444,6 @@ export function SubscriptionCheckoutView() {
                           </div>
                           {selectedTier === "pro" && (
                             <Check className="size-4 text-primary shrink-0 mt-0.5" />
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTier("scale")}
-                          className={cn(
-                            "flex items-start justify-between rounded-xl border p-3.5 text-left transition-all",
-                            selectedTier === "scale"
-                              ? "border-indigo-500 bg-indigo-500/5 ring-1 ring-indigo-500/30"
-                              : "border-border/70 hover:border-border bg-card",
-                          )}
-                        >
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                              <span>Expansão</span>
-                              <Crown className="size-3 text-indigo-500" />
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {interval === "monthly" ? "R$ 199,00/mês" : "R$ 165,83/mês (anual)"}
-                            </p>
-                          </div>
-                          {selectedTier === "scale" && (
-                            <Check className="size-4 text-indigo-500 shrink-0 mt-0.5" />
                           )}
                         </button>
                       </div>
@@ -491,7 +454,7 @@ export function SubscriptionCheckoutView() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Ciclo de Faturamento
+                            Ciclo de cobrança
                           </p>
                           <div className="flex items-baseline gap-1.5 pt-0.5">
                             <span className="text-2xl font-extrabold text-foreground tracking-tight">
@@ -624,7 +587,7 @@ export function SubscriptionCheckoutView() {
                     <div className="space-y-3.5 rounded-xl border border-border/70 p-4 bg-muted/10">
                       <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
                         <ShieldCheck className="size-4 text-primary" />
-                        <span>Dados de Faturamento (GestaraHub / Asaas)</span>
+                        <span>Dados de cobrança</span>
                       </p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -634,7 +597,7 @@ export function SubscriptionCheckoutView() {
                           render={({ field, fieldState }) => (
                             <FieldShell
                               id="custName"
-                              label="Razão Social ou Nome do Titular"
+                              label="Razão social ou nome do titular"
                               error={fieldState.error?.message}
                               required
                             >
@@ -868,19 +831,18 @@ export function SubscriptionCheckoutView() {
                     <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span>Processamento direto e seguro via Asaas.</span>
+                        <span>Pagamento seguro com o parceiro de pagamentos.</span>
                       </div>
 
                       <Button
                         type="submit"
-                        size="lg"
                         disabled={createSession.isPending}
                         className="w-full sm:w-auto font-bold text-xs gap-2 px-6 shadow-sm"
                       >
                         {createSession.isPending ? (
                           <>
                             <Loader2 className="size-4 animate-spin" />
-                            <span>Processando com o Asaas...</span>
+                            <span>Processando o pagamento...</span>
                           </>
                         ) : billingType === "PIX" ? (
                           <>
@@ -930,7 +892,7 @@ export function SubscriptionCheckoutView() {
                   </div>
                   <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
                     <QrCode className="size-3" />
-                    QR Code oficial Asaas
+                    QR Code do Pix
                   </span>
                 </div>
 
@@ -959,7 +921,6 @@ export function SubscriptionCheckoutView() {
                       />
                       <Button
                         type="button"
-                        size="sm"
                         onClick={handleCopyPix}
                         className="absolute right-1 top-1 h-7 text-[11px] gap-1 font-bold shadow-2xs"
                       >
@@ -971,7 +932,7 @@ export function SubscriptionCheckoutView() {
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                     <Loader2 className="size-3.5 animate-spin text-primary" />
-                    <span>Verificando recebimento no Asaas automaticamente...</span>
+                    <span>Verificando o recebimento...</span>
                   </div>
                 </div>
               </div>
@@ -989,7 +950,6 @@ export function SubscriptionCheckoutView() {
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={handleSimulateSandboxPayment}
                     disabled={simulatePayment.isPending}
                     className="text-xs font-bold gap-1.5 h-8 shrink-0 border-primary/40 hover:bg-primary/10 shadow-2xs"
@@ -1013,7 +973,6 @@ export function SubscriptionCheckoutView() {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   onClick={() => setStep("config")}
                   className="text-xs"
                 >
@@ -1023,7 +982,6 @@ export function SubscriptionCheckoutView() {
                 <Button
                   asChild
                   variant="outline"
-                  size="sm"
                   className="text-xs"
                 >
                   <Link href="/plans">
@@ -1041,7 +999,7 @@ export function SubscriptionCheckoutView() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Resumo do Pedido
+                  Resumo do pedido
                 </span>
                 <Badge
                   variant="outline"
@@ -1059,9 +1017,7 @@ export function SubscriptionCheckoutView() {
                 Plano {planName}
               </CardTitle>
               <CardDescription className="text-xs">
-                {selectedTier === "pro"
-                  ? "Cobranças online automáticas no WhatsApp e DRE completa."
-                  : "Multiunidades, BI preditivo e taxas customizadas."}
+                Lembretes no WhatsApp sem clique, relatórios e certificados.
               </CardDescription>
             </CardHeader>
 
@@ -1112,41 +1068,25 @@ export function SubscriptionCheckoutView() {
               {/* Lista de Recursos Inclusos */}
               <div className="space-y-2.5 pt-1">
                 <p className="font-semibold text-foreground">
-                  O que está incluso na sua assinatura:
+                  O que a assinatura inclui:
                 </p>
                 <ul className="space-y-2 text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Taxa Pix reduzida para R$ 1,29</span>
+                    <span>Taxa menor no Pix</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>WhatsApp 100% automático (lembretes e avisos)</span>
+                    <span>WhatsApp automático (lembretes e avisos)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>DRE Gerencial Completa e Retenção</span>
+                    <span>Relatório do resultado do mês e retenção</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Portal do Aluno e do Professor</span>
+                    <span>Certificado de conclusão em PDF</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Certificados de Conclusão em PDF oficial</span>
-                  </li>
-                  {selectedTier === "scale" && (
-                    <>
-                      <li className="flex items-start gap-2">
-                        <Check className="size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                        <span>Multiunidades ilimitadas em um só login</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="size-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                        <span>BI Analítico Preditivo e taxa customizada</span>
-                      </li>
-                    </>
-                  )}
                 </ul>
               </div>
 

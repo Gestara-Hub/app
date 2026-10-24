@@ -1,3 +1,5 @@
+import { getSegmentPreset } from "@/lib/business-segment-presets";
+import { teamWordsFor, type TeamWords } from "@/lib/team-words";
 import { store } from "@/services/world/store";
 
 /**
@@ -10,4 +12,13 @@ export function clientNoun(): string {
 
 export function categoryNoun(): string {
   return store.organization.model === "classes" ? "modalidade" : "categoria";
+}
+
+/** Como se chama quem dá aula neste espaço (instrutor, professor ou, no agendamento, profissional). */
+export function teamWords(): TeamWords {
+  const org = store.organization;
+  return teamWordsFor(
+    org.model === "classes",
+    getSegmentPreset(org.classSegment, org.customSegmentProgression, org.customSegmentBilling).teacherTitle,
+  );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -154,6 +155,7 @@ export function FinanceEntriesTab({
   competence: string;
   onCreateEntry?: () => void;
 }) {
+  const team = useTeamWords();
   const can = useCan();
   const canManage = can("finance:manage");
 
@@ -412,9 +414,9 @@ export function FinanceEntriesTab({
       );
       trailing = (
         <Button asChild variant="ghost" className="text-xs max-sm:px-2">
-          <Link href={financeHref("professores", competence)} aria-label="Ver professores">
+          <Link href={financeHref("professores", competence)} aria-label={`Ver ${team.lowerPlural}`}>
             <Users className="size-3.5" />
-            <span className="max-sm:hidden">Ver professores</span>
+            <span className="max-sm:hidden">{`Ver ${team.lowerPlural}`}</span>
           </Link>
         </Button>
       );

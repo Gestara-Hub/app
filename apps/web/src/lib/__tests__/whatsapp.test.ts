@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fillMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
+import { fillMessage, personalizeMessage, whatsappLink, whatsappNumber } from "@/lib/whatsapp";
 
 describe("whatsappNumber", () => {
   it("celular com DDD ganha o DDI 55", () => {
@@ -96,5 +96,17 @@ describe("fillMessage", () => {
 
   it("todas as frases com variavel sem valor somem", () => {
     expect(fillMessage("Oi {aluno}. Valor {valor}.", {})).toBe("");
+  });
+});
+
+describe("personalizeMessage (mensagem para vários alunos)", () => {
+  it("troca {aluno} e {empresa} por aluno, e deixa o resto como foi digitado", () => {
+    expect(personalizeMessage("Oi {aluno}! Aqui é a {empresa}. {outra}", "Ana", "Studio X")).toBe(
+      "Oi Ana! Aqui é a Studio X. {outra}",
+    );
+  });
+
+  it("sem nome do espaço, {empresa} não some sozinho", () => {
+    expect(personalizeMessage("Oi {aluno}, {empresa}", "Ana")).toBe("Oi Ana, {empresa}");
   });
 });

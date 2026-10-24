@@ -183,3 +183,7 @@ Regras especificas:
 - **Um usuario ativo por profissional** (ACE-08): o service recusa ligar um segundo ("Este profissional ja esta ligado ao usuario X.") e o formulario nao oferece quem ja tem usuario. Inativar o usuario libera o profissional; reativar o antigo esbarra no novo.
 - **Auditoria** registra tambem o WhatsApp assistido ("abriu no WhatsApp uma mensagem para X"; o envio em si nao e confirmado), o reenvio pela API oficial, a troca de instrutor numa aula e a volta do titular, e a chamada quando gasta ou devolve aula de pacote.
 - **Trocar o perfil de Profissional para outro** mantem o vinculo com a equipe (opcional nos outros perfis); o formulario nao fala mais em "agenda dele" (ACE-36). Para ligar o profissional a outro usuario, tire o vinculo ou inative este usuario.
+
+## Professor: ficha e lembretes (24/10/2026)
+
+Permissão `clients:view_own`: o professor abre a ficha dos alunos das turmas em que é titular, **sem** plano, bolsa, saldo, pacotes, mensagens, CPF e endereço (o serviço de resumo do aluno escopa e esconde). A lista de Alunos segue fechada. O sino de lembretes mostra só faltas seguidas e aniversários dos alunos dele, com "Abrir ficha" no lugar do WhatsApp (ele não manda mensagem).

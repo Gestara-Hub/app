@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, LayoutDashboard, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -15,11 +16,13 @@ import { FinanceEntryFormDialog } from "./finance-entry-form-dialog";
 import { FinanceSummaryTab } from "./finance-summary-tab";
 import { TeacherPayTab } from "./teacher-pay-tab";
 
-const TABS: { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[] = [
-  { value: "resumo", label: "Resumo", icon: LayoutDashboard },
-  { value: "lancamentos", label: "Lançamentos", icon: ArrowLeftRight },
-  { value: "professores", label: "Professores", icon: Users },
-];
+function financeTabs(teacherLabel: string): { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[] {
+  return [
+    { value: "resumo", label: "Resumo", icon: LayoutDashboard },
+    { value: "lancamentos", label: "Lançamentos", icon: ArrowLeftRight },
+    { value: "professores", label: teacherLabel, icon: Users },
+  ];
+}
 
 /**
  * Tela do Financeiro (plano pago): abas por URL (`?tab=`, padrao resumo) e mes
@@ -27,6 +30,7 @@ const TABS: { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[]
  * So a aba ativa monta (cada uma busca os proprios dados).
  */
 export function FinanceView() {
+  const team = useTeamWords();
   const { tab, setTab, competence, setCompetence } = useFinanceUrlState();
   const can = useCan();
   const canManage = can("finance:manage");
@@ -41,7 +45,7 @@ export function FinanceView() {
     <>
       <PageHeader
         title="Financeiro"
-        description="Entradas, saídas, resultado do mês e pagamento dos professores."
+        description={`Entradas, saídas, resultado do mês e pagamento dos ${team.lowerPlural}.`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <CompetencePicker competence={competence} onChange={setCompetence} label="Mês" />
@@ -59,7 +63,7 @@ export function FinanceView() {
         aria-label="Seções do financeiro"
         className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
       >
-        {TABS.map((t) => {
+        {financeTabs(team.titlePlural).map((t) => {
           const active = t.value === tab;
           const Icon = t.icon;
           return (

@@ -40,7 +40,7 @@ export const userFormSchema = z.object({
     ctx.addIssue({
       code: "custom",
       path: ["professionalId"],
-      message: "Vincule o usuário a um profissional da equipe.",
+      message: "Vincule o usuário a alguém da equipe.",
     });
   }
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
+import { pauseDescription, pausedChargeDescription, planSwitchDescription, replacedMembershipCharges } from "../plan-switch";
 
 const charge = (status: string, amountCents: number, periodStart: string) => ({
   status,
@@ -63,5 +63,26 @@ describe("troca de plano do aluno (achado 28)", () => {
         replaced: { count: 0, totalCents: 0 },
       }),
     ).toContain("Não há mensalidade em aberto para refazer.");
+  });
+});
+
+describe("pausa da assinatura", () => {
+  it("diz o que muda e o que não muda ao pausar", () => {
+    const text = pauseDescription();
+    expect(text).toContain("lembrete de WhatsApp deixa de sair");
+    expect(text).toContain("O que já foi pago não muda.");
+  });
+
+  it("lista a mensalidade em aberto do mês, no singular e no plural", () => {
+    expect(pausedChargeDescription([{ amountCents: 15000, dueDate: "2026-10-10", status: "pending" }])).toContain(
+      "A mensalidade em curso está em aberto: R$",
+    );
+    const many = pausedChargeDescription([
+      { amountCents: 7500, dueDate: "2026-10-10", status: "pending" },
+      { amountCents: 7500, dueDate: "2026-10-25", status: "pending" },
+    ]);
+    expect(many).toContain("As mensalidades em curso estão em aberto");
+    expect(many).toContain("(vence 10/10) e");
+    expect(many).toContain("(vence 25/10)");
   });
 });

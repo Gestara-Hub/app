@@ -309,7 +309,7 @@ async function logoFiles(testInfo: TestInfo) {
 }
 
 const DEFAULT_BODY_PREVIEW =
-  "Certificamos que Ana Souza concluiu o curso Confeitaria Básica, de 04/08/2026 a 22/09/2026, com 8 aulas e frequência de 92%.";
+  "Certificamos que Ana Souza concluiu o curso Confeitaria Básica, de 04/08/2026 a 22/09/2026, que teve 8 aulas, com frequência de 92%.";
 
 test.describe("Configurações: Certificado", () => {
   test("Plano Grátis: aba com o cadeado e o caminho para o Pro", async ({ page }) => {

@@ -147,7 +147,8 @@ export function useCommunicationMetrics() {
 
 export interface WhatsAppSendInput {
   trigger: MessageTrigger;
-  recipient: { name: string; phone?: string; clientId?: Id };
+  /** `aboutStudent`: o destinatario e o responsavel de um aluno menor; o texto abre falando do aluno. */
+  recipient: { name: string; phone?: string; clientId?: Id; aboutStudent?: string };
   /** Valores das variaveis do modelo; {aluno} e {empresa} vem sozinhos. */
   values?: Record<string, string | undefined>;
   /** Texto pronto (dispensa o modelo), ex.: mensagem avulsa. */
@@ -178,10 +179,16 @@ export function useWhatsAppSend() {
   });
   const mode = connection?.mode ?? "assisted";
 
-  function compose(trigger: MessageTrigger, values: WhatsAppSendInput["values"] = {}, name = ""): string {
+  function compose(
+    trigger: MessageTrigger,
+    values: WhatsAppSendInput["values"] = {},
+    name = "",
+    aboutStudent?: string,
+  ): string {
     const template = templates?.find((t) => t.trigger === trigger);
     if (!template) return "";
-    return fillMessage(template.content, { aluno: name, empresa: organization?.name, ...values });
+    const text = fillMessage(template.content, { aluno: name, empresa: organization?.name, ...values });
+    return aboutStudent && text ? `Sobre ${aboutStudent}:\n${text}` : text;
   }
 
   function sendMessage(input: WhatsAppSendInput): void {
@@ -190,7 +197,7 @@ export function useWhatsAppSend() {
       toast.error(`${input.recipient.name || "O aluno"} não tem um WhatsApp com DDD no cadastro.`);
       return;
     }
-    const content = (input.content ?? compose(input.trigger, input.values, input.recipient.name)).trim();
+    const content = (input.content ?? compose(input.trigger, input.values, input.recipient.name, input.recipient.aboutStudent)).trim();
     if (!content) {
       toast.error("Não foi possível montar a mensagem. Confira o modelo em Comunicação.");
       return;

@@ -166,7 +166,7 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
     },
     // Mensalidade: lembrete pela situacao; avulsa, curso e pacote: "Lembrete de cobrança".
     // Sem telefone valido o lembrete nao aparece (antes dava erro ao tocar).
-    ...(c.kind !== "dropin" && whatsappDigits(c.studentPhone)
+    ...(c.kind !== "dropin" && whatsappDigits(c.guardianContact?.phone ?? c.studentPhone)
       ? [
           {
             key: "whatsapp",
@@ -178,7 +178,12 @@ export function useChargeActions(options: { describeCharge?: boolean } = {}) {
               if (!reminder) return;
               whatsapp.send({
                 trigger: reminder.trigger,
-                recipient: { name: c.studentName, phone: c.studentPhone, clientId: c.studentId },
+                recipient: {
+                  name: c.guardianContact?.name ?? c.studentName,
+                  phone: c.guardianContact?.phone ?? c.studentPhone,
+                  clientId: c.studentId,
+                  aboutStudent: c.guardianContact ? c.studentName : undefined,
+                },
                 values: reminderValues(c, reminder.values),
                 chargeId: c.id,
               });

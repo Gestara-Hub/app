@@ -306,3 +306,7 @@ Decisões de produto que apareceram no teste (escolha feita: só registrar).
 7. **Conta de recebimento como pessoa física** (#58): avisar que CPF, e-mail e telefone aparecem para o aluno na fatura do cartão?
 8. **Parcelas além da validade ou do fim** (#26, #33): travar, só avisar (recomendado) ou deixar como está? Análise em `docs/pendencias.md`.
 9. Perguntas da verificação em duas etapas (desligar um método só, demonstração sem verificação, esquecer dispositivo sem encerrar a sessão) estão na doc `docs/technical/17-verificacao-em-duas-etapas.md`, seção "Perguntas para o usuário".
+
+## Correções de 24/10 (depois das decisões do dono, sem commit)
+
+Achados 1, 10, 12, 17, 18, 19, 23, 26, 27, 33, 37 (mantido), 48, 53, 55, 57, 58, 65, 67, 70 e 72 resolvidos conforme as decisões respondidas no dia (detalhes em `docs/product/15`, `06`, `25`, `21`, `01` e `13`). Testes: Vitest (1090), `core` (291) e `test:db` (122) verdes; e2e não rodado, listado em `docs/pendencias.md`.

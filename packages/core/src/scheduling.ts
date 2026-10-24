@@ -387,7 +387,9 @@ export function findInstructorConflicts(
 export function instructorConflictMessage(
   instructorName: string,
   conflict: InstructorSlotConflict,
+  /** Como o espaço chama quem dá aula ("professor", "instrutor"). */
+  teacherWord = "professor",
 ): string {
   const { groupSlot, group } = conflict;
-  return `${instructorName} já dá aula ${WEEKDAY_LABELS_PT[groupSlot.weekday]} das ${groupSlot.start} às ${groupSlot.end} na turma "${group.name}". Escolha outro horário ou outro professor.`;
+  return `${instructorName} já dá aula ${WEEKDAY_LABELS_PT[groupSlot.weekday]} das ${groupSlot.start} às ${groupSlot.end} na turma "${group.name}". Escolha outro horário ou outro ${teacherWord}.`;
 }

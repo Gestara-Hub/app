@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useMemo } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,6 +109,7 @@ function TeacherPayRuleForm({
   competence: string;
   onSuccess: () => void;
 }) {
+  const team = useTeamWords();
   const saveMut = useSaveTeacherPayRule();
   const pending = saveMut.isPending;
   const isEdit = Boolean(teacher.rule);
@@ -284,7 +286,7 @@ function TeacherPayRuleForm({
             <SwitchField<Values>
               name="active"
               label="Regra ativa"
-              hint="Desligada, o professor sai da prévia dos próximos fechamentos. Meses fechados não mudam."
+              hint={`Desligada, o ${team.lower} sai da prévia dos próximos fechamentos. Meses fechados não mudam.`}
               disabled={pending}
             />
           ) : null}

@@ -61,6 +61,31 @@ describe("dados dos lembretes", () => {
     expect(keys).toContain("birthday");
   });
 
+  it("assinatura pausada: a cobrança em aberto não vira lembrete", async () => {
+    await clientsService.update(ana.id, { membershipStatus: "paused" });
+    const src = await communicationService.getReminderSources();
+    expect(src.charges.filter((c) => c.studentId === ana.id && (c.status === "pending" || c.status === "overdue"))).toEqual([]);
+    const groups = buildReminders(src, { today: "2026-09-22" });
+    expect(groups.filter((g) => g.category === "billing").flatMap((g) => g.items).filter((i) => i.studentId === ana.id)).toEqual([]);
+  });
+
+  it("aluno menor: a cobrança vai para o telefone do responsável, falando do aluno", async () => {
+    await clientsService.update(ana.id, {
+      birthDate: "2015-03-10",
+      guardians: [{ name: "Mãe da Ana", phone: "11955556666", financial: true }],
+    });
+    const src = await communicationService.getReminderSources();
+    const groups = buildReminders(src, { today: "2026-09-22" });
+    const items = groups.filter((g) => g.category === "billing").flatMap((g) => g.items).filter((i) => i.studentId === ana.id);
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) {
+      expect(item).toMatchObject({ phone: "11955556666", recipientName: "Mãe da Ana", aboutStudent: "Ana" });
+    }
+    // Falta seguida e aniversario seguem pelo aluno (nao entram nessa regra).
+    const absence = groups.find((g) => g.key === "absence")?.items.find((i) => i.studentId === ana.id);
+    expect(absence?.recipientName).toBeUndefined();
+  });
+
   it("mensagem aberta no WhatsApp tira o lembrete", async () => {
     await communicationService.registerAssistedMessage({ recipientName: "Bia", recipientPhone: "11988880000", trigger: "birthday_greeting", clientId: bia.id, content: "Parabéns!" });
     const groups = buildReminders(await communicationService.getReminderSources(), { today: "2026-09-22" });
@@ -79,6 +104,11 @@ describe("dados dos lembretes", () => {
     expect(src.charges).toEqual([]);
     expect(src.packages).toEqual([]);
     expect(src.students.map((s) => s.name)).toEqual(["Ana"]);
+    // So o que o professor percebe primeiro: faltas seguidas dos alunos dele; nada de cobranca.
+    const groups = buildReminders(src, { today: "2026-09-22" });
+    expect(groups.map((g) => g.key)).toContain("absence");
+    expect(groups.some((g) => g.category === "billing")).toBe(false);
+    expect(groups.flatMap((g) => g.items).map((i) => i.studentName)).not.toContain("Bia");
   });
 
   it("pagou: a cobrança sai dos lembretes de cobrança", async () => {

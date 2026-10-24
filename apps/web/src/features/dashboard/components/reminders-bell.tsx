@@ -12,12 +12,12 @@ import { dateInSpace } from "@gestarahub/core/date";
 /**
  * Sino no topo (doc product/25): o numero de pendencias dos lembretes e, ao
  * tocar, a mesma lista do painel num painel lateral. Some sem pendencia. So no
- * modelo de turmas e para quem manda mensagem.
+ * modelo de turmas, para quem manda mensagem e para o professor (so os alunos dele).
  */
 export function RemindersBell() {
   const can = useCan();
   const model = useModel();
-  if (model !== "classes" || !can("communication:view")) return null;
+  if (model !== "classes" || !(can("communication:view") || can("clients:view_own"))) return null;
   return <RemindersBellButton />;
 }
 

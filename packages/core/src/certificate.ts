@@ -167,23 +167,33 @@ export const CERTIFICATE_LIMITS = {
 
 export const DEFAULT_CERTIFICATE_TITLE = "Certificado de conclusão";
 
-/** Reproduz o texto da fase D (curso de um dia vira "em ..."; sem frequencia, o trecho sai). */
+/**
+ * Texto padrao. "Que teve 7 aulas" diz o tamanho do curso (nao as presencas do
+ * aluno) e a frequencia real vem ao lado (achado 48). Curso de um dia vira
+ * "em ..."; sem frequencia, o trecho sai.
+ */
 export const DEFAULT_CERTIFICATE_BODY =
-  "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, com {aulas} e frequência de {frequencia}.";
+  "Certificamos que {aluno} concluiu o curso {curso}, de {inicio} a {fim}, que teve {aulas}, com frequência de {frequencia}.";
 
 export const DEFAULT_CERTIFICATE_SIGNATURES: readonly CertificateSignature[] = [
   { name: "{professor}", role: "Instrutor" },
   { name: "{empresa}", role: "Responsável" },
 ];
 
-/** Modelo padrao (o espaco que nunca salvou o proprio). */
-export function defaultCertificateTemplate(): CertificateTemplate {
+/**
+ * Modelo padrao (o espaco que nunca salvou o proprio). `teacherTitle` e a
+ * palavra do espaco para quem da aula ("Instrutor" ou "Professor").
+ */
+export function defaultCertificateTemplate(teacherTitle = "Instrutor"): CertificateTemplate {
   return {
     layout: "classic",
     accentColor: "graphite",
     title: DEFAULT_CERTIFICATE_TITLE,
     body: DEFAULT_CERTIFICATE_BODY,
-    signatures: DEFAULT_CERTIFICATE_SIGNATURES.map((s) => ({ ...s })),
+    signatures: DEFAULT_CERTIFICATE_SIGNATURES.map((s) => ({
+      ...s,
+      role: s.name === "{professor}" ? teacherTitle : s.role,
+    })),
     showAttendance: true,
   };
 }

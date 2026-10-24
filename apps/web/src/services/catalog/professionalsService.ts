@@ -6,6 +6,7 @@ import type {
   ProfessionalView,
   UpdateProfessional,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { store } from "@/services/world/store";
 import {
   newId,
@@ -84,8 +85,8 @@ function recordUpdate(updated: Professional, previousStatus: Professional["statu
     action: reactivated ? "activated" : "updated",
     target: { type: "professional", id: updated.id, label: updated.name },
     predicate: reactivated
-      ? `reativou o profissional ${updated.name}`
-      : `atualizou o profissional ${updated.name}`,
+      ? `reativou o ${teamWords().lower} ${updated.name}`
+      : `atualizou o ${teamWords().lower} ${updated.name}`,
   });
 }
 
@@ -163,7 +164,7 @@ export const professionalsService = {
       auditLogService.record({
         action: "created",
         target: { type: "professional", id: view.id, label: view.name },
-        predicate: `criou o profissional ${view.name}`,
+        predicate: `criou o ${teamWords().lower} ${view.name}`,
       });
       return clone(view);
     });
@@ -217,7 +218,7 @@ export const professionalsService = {
       auditLogService.record({
         action: "inactivated",
         target: { type: "professional", id, label: name },
-        predicate: `inativou o profissional ${name}`,
+        predicate: `inativou o ${teamWords().lower} ${name}`,
       });
     });
   },

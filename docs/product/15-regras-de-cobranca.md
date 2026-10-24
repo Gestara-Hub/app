@@ -263,3 +263,10 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md), co
 - **Cobrança avulsa repetida (COB-31):** mesma descrição para o mesmo aluno pede confirmação.
 - **Desconto ou bolsa no meio do mês (COB-32):** ao editar, a conta diz "Vale a partir do próximo período; o atual não muda."
 - **Inativar com uma ou várias mensalidades (COB-23):** os textos da escolha seguem o número.
+
+## Decisões de 24/10/2026 (teste geral)
+
+- **Pausar a assinatura** pede confirmação. As mensalidades de períodos que ainda não começaram saem sozinhas. A mensalidade em aberto do período em curso fica a escolha do dono: "Cancelar a cobrança" ou "Manter em aberto" (o que já foi pago não muda). A regra do período em curso está em `isCurrentOpenMembershipCharge` (`@gestarahub/core/billing`).
+- **Aluno pausado:** o lembrete de cobrança por WhatsApp não sai; a linha em Cobranças e a ficha levam o selo "Trancado".
+- **Parcelas depois do fim** (curso ou validade do pacote): só aviso na janela de venda ou matrícula, sem travar. A dívida de uma venda feita continua valendo.
+- **Aluno menor:** cobrança e avisos de cobrança vão para o responsável financeiro (o marcado, ou o primeiro com telefone), com o texto falando do aluno; sem responsável com telefone, vão para o aluno (`messageGuardian`).

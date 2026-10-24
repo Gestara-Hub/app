@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import type { DocumentModel, GeneratedReportData } from "@gestarahub/contracts";
 import { ArrowLeft, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -53,6 +54,7 @@ function downloadCsv(model: DocumentModel) {
  * banco) o PDF sai pela impressao do navegador.
  */
 export function ReportDocumentScreen({ report, onBack, onSheetChange, competence }: ReportDocumentScreenProps) {
+  const team = useTeamWords();
   const user = useCurrentUser();
   const can = useCan();
   const canExport = can("reports:export");
@@ -69,6 +71,7 @@ export function ReportDocumentScreen({ report, onBack, onSheetChange, competence
 
   const model = reportToDocument(report, competence, {
     levelLabel: vocabulary.level,
+    teacherLabel: team.title,
     levelLabelForModality: () => sheetVocabulary.level,
   });
   return (

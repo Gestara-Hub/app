@@ -101,11 +101,14 @@ const METHOD_OPTIONS: {
 
 function whatsappMessage(input: {
   studentName: string;
+  /** Aluno menor: a mensagem vai para o responsavel e fala do aluno. */
+  guardianName?: string;
   orgName?: string;
   charge: ChargeView;
   payment: OnlinePayment;
 }): string {
   const firstName = input.studentName.split(" ")[0] || input.studentName;
+  const greetingName = input.guardianName ? input.guardianName.split(" ")[0] || input.guardianName : firstName;
   const what =
     input.charge.kind === "dropin"
       ? "a aula avulsa"
@@ -117,7 +120,8 @@ function whatsappMessage(input: {
             ? `${(input.charge.cycleTotal ?? 1) > 1 ? `a parcela ${input.charge.cycleIndex ?? 1} de ${input.charge.cycleTotal} do` : "o pagamento do"} pacote "${input.charge.description ?? ""}"`
             : "a mensalidade";
   const from = input.orgName ? ` da ${input.orgName}` : "";
-  const header = `Olá, ${firstName}! Segue ${what}${from} no valor de ${formatCents(input.payment.amountCents)}, com vencimento em ${shortDate(input.charge.dueDate)}.`;
+  const ofStudent = input.guardianName ? ` de ${firstName}` : "";
+  const header = `Olá, ${greetingName}! Segue ${what}${ofStudent}${from} no valor de ${formatCents(input.payment.amountCents)}, com vencimento em ${shortDate(input.charge.dueDate)}.`;
   // Endereco do GestaraHub (/p/<codigo>): a pagina confere a validade antes de
   // mostrar o Pix ou levar ao cartao. Sem codigo (pagamento antigo), o de antes.
   const body = input.payment.publicCode
@@ -255,11 +259,13 @@ export function OnlineChargeDialog({
     });
   };
 
-  const phone = whatsappNumber(checkout.data?.studentPhone);
+  const guardian = checkout.data?.guardianContact;
+  const phone = whatsappNumber(guardian?.phone ?? checkout.data?.studentPhone);
   const sendWhatsapp = (payment: OnlinePayment) => {
     if (!charge || !phone) return;
     const text = whatsappMessage({
       studentName: checkout.data?.studentName || charge.studentName,
+      guardianName: guardian?.name,
       orgName: org?.name,
       charge,
       payment,
@@ -267,7 +273,7 @@ export function OnlineChargeDialog({
     // Mesmo envio dos outros botoes: abre o WhatsApp (ou envia pelo oficial) e registra.
     whatsapp.send({
       trigger: charge.kind === "membership" ? billingReminderTrigger(charge, dateInSpace()) : "manual_broadcast",
-      recipient: { name: checkout.data?.studentName || charge.studentName, phone: phone, clientId: charge.studentId },
+      recipient: { name: guardian?.name ?? (checkout.data?.studentName || charge.studentName), phone: phone, clientId: charge.studentId },
       content: text,
       chargeId: charge.id,
     });
@@ -597,7 +603,6 @@ export function OnlineChargeDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       disabled={paidMut.isPending}
                       onClick={() => simulatePaid(awaiting)}
                       className="gap-1.5 text-xs"

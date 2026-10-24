@@ -5,6 +5,7 @@ import type {
   TeacherPayoutLine,
   TeacherPayoutView,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { computeTeacherPayout, isRuleEffective, payoutTotalCents } from "@gestarahub/core/finance";
 import { formatCents, pluralWord } from "@gestarahub/core/format";
 import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
@@ -61,7 +62,7 @@ export const teacherPayClosingService = {
       const facts = buildFacts(competence);
       const view = buildView(professionalId, competence, facts);
       if (!view) {
-        throw notFoundError("Este professor não tem regra de pagamento vigente neste mês.");
+        throw notFoundError(`Este ${teamWords().lower} não tem regra de pagamento vigente neste mês.`);
       }
       const sessions = facts.sessions
         .filter((s) => s.fact.instructorId === professionalId)
@@ -93,10 +94,10 @@ export const teacherPayClosingService = {
     return writeOp(async () => {
       if (!isCompetence(competence)) throw notFoundError("Mês inválido.");
       const professional = store.professionals.find((p) => p.id === professionalId);
-      if (!professional) throw notFoundError("Professor não encontrado.");
+      if (!professional) throw notFoundError(`${teamWords().title} não encontrado.`);
       const rule = ruleOf(professionalId);
       if (!rule || !isRuleEffective(rule, competence)) {
-        throw conflict("Este professor não tem regra de pagamento vigente neste mês.");
+        throw conflict(`Este ${teamWords().lower} não tem regra de pagamento vigente neste mês.`);
       }
       const existing = payoutOf(professionalId, competence);
       if (existing && existing.status !== "open") {
@@ -174,10 +175,10 @@ export const teacherPayClosingService = {
         throw conflict("Não é possível fechar um mês que ainda não começou.");
       }
       const professional = store.professionals.find((p) => p.id === professionalId);
-      if (!professional) throw notFoundError("Professor não encontrado.");
+      if (!professional) throw notFoundError(`${teamWords().title} não encontrado.`);
       const rule = ruleOf(professionalId);
       if (!rule || !isRuleEffective(rule, competence)) {
-        throw conflict("Este professor não tem regra de pagamento vigente neste mês.");
+        throw conflict(`Este ${teamWords().lower} não tem regra de pagamento vigente neste mês.`);
       }
       const existing = payoutOf(professionalId, competence);
       if (existing && existing.status !== "open") {

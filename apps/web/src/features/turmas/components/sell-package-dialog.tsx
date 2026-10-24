@@ -11,7 +11,7 @@ import type { Client, LessonPackage } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { plural } from "@gestarahub/core/format";
-import { carryOverSources, packageScopesOverlap, packageState } from "@gestarahub/core/packages";
+import { carryOverSources, packageExpiresAt, packageScopesOverlap, packageState } from "@gestarahub/core/packages";
 import {
   ComboboxField,
   DateField,
@@ -33,7 +33,7 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { handleFormApiError } from "@/lib/form-errors";
 import { withKind } from "@/lib/text";
 import { useLessonPackages, useSellPackage, useStudentPackages } from "../hooks/use-packages";
-import { pastDueHint, paymentSummary } from "../installments-summary";
+import { pastDueHint, pastEndHint, paymentSummary } from "../installments-summary";
 import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -126,6 +126,12 @@ function SellPackageForm({
   }, [chosen, form]);
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
   const pastDue = pastDueHint(firstDueDate ?? "");
+  const pastEnd = pastEndHint(
+    Number(installments),
+    firstDueDate ?? "",
+    packageExpiresAt(dateInSpace(), chosen?.validityDays),
+    "a validade do pacote",
+  );
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   // Regra 6: comprar de novo o mesmo pacote traz o saldo dele; outro pacote da
   // mesma turma fica separado (avisa, para ninguem esperar a soma).
@@ -199,6 +205,11 @@ function SellPackageForm({
           {pastDue ? (
             <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-due-hint">
               {pastDue}
+            </p>
+          ) : null}
+          {pastEnd ? (
+            <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-end-hint">
+              {pastEnd}
             </p>
           ) : null}
 

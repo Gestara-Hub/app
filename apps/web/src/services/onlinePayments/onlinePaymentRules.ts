@@ -59,6 +59,8 @@ export interface OnlineChargeCheckout {
   payments: OnlinePayment[];
   /** Falta o CPF de quem paga: a janela avisa e leva ao cadastro (achado 61). */
   payerIssue?: PayerIssue;
+  /** Aluno menor com responsavel: a mensagem da cobranca vai para ele (nome e telefone). */
+  guardianContact?: { name: string; phone: string };
 }
 
 /** Conta real exige o CPF de quem paga (o parceiro recusa sem ele); a demonstração e o e2e não. */

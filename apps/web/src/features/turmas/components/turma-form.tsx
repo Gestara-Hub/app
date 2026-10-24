@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   useForm,
@@ -293,6 +294,7 @@ function MeetingSlotsEditor({
   /** Duracao padrao da area (ex.: 50 min no pilates): novos horarios e atalhos. */
   defaultDuration?: number;
 }) {
+  const team = useTeamWords();
   const [blocks, setBlocks] = useState<ScheduleBlock[]>(() =>
     slotsToBlocks(value, unit, startDate, defaultDuration),
   );
@@ -415,7 +417,7 @@ function MeetingSlotsEditor({
           ? { startDate: startDate > today ? startDate : today, endDate: endDate || undefined }
           : undefined,
       );
-      if (conflict) return instructorConflictMessage(instructor.name, conflict);
+      if (conflict) return instructorConflictMessage(instructor.name, conflict, team.lower);
     }
     if (error && block.days.length === 0) {
       return "Selecione ao menos um dia da semana para este horário.";
@@ -646,6 +648,7 @@ export function TurmaForm({
   onCancel?: () => void;
   isPage?: boolean;
 }) {
+  const team = useTeamWords();
   const createMut = useCreateClassGroup();
   const updateMut = useUpdateClassGroup();
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
@@ -1043,20 +1046,20 @@ export function TurmaForm({
           />
           <ComboboxField<TurmaFormValues>
             name="instructorId"
-            label="Professor"
+            label={team.title}
             placeholder={
               !modalityId
                 ? "Escolha a modalidade antes"
                 : instructorOptions.length === 0
-                  ? "Sem professor nesta modalidade"
-                  : "Selecione o professor"
+                  ? `Sem ${team.lower} nesta modalidade`
+                  : `Selecione o ${team.lower}`
             }
-            searchPlaceholder="Filtrar professor..."
-            emptyMessage="Nenhum professor encontrado."
+            searchPlaceholder={`Filtrar ${team.lower}...`}
+            emptyMessage={`Nenhum ${team.lower} encontrado.`}
             options={instructorOptions}
             required
             disabled={pending || !modalityId || instructorOptions.length === 0}
-            hint={inactiveInstructor ? "Professor inativo. Escolha outro para as próximas aulas." : undefined}
+            hint={inactiveInstructor ? `${team.title} inativo. Escolha outro para as próximas aulas.` : undefined}
           />
         </div>
 

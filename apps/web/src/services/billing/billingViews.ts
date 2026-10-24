@@ -2,6 +2,7 @@ import type { Charge, ChargeStatus, ChargeView, Id, StudentPackage, StudentPacka
 import { describeCharge } from "@gestarahub/core/billing";
 import { formatCents } from "@gestarahub/core/format";
 import { packageState } from "@gestarahub/core/packages";
+import { messageGuardian } from "@gestarahub/core/payer";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { className, planOf, studentName, todayISO } from "./billingHelpers";
@@ -43,6 +44,8 @@ export function toChargeView(c: Charge): ChargeView {
     cycleTotal: c.cycleTotal ?? 1,
     studentName: studentName(c.studentId),
     studentPhone: store.clients.find((s) => s.id === c.studentId)?.phone || undefined,
+    guardianContact: messageGuardian(store.clients.find((s) => s.id === c.studentId) ?? {}, todayISO()),
+    studentPaused: store.clients.find((s) => s.id === c.studentId)?.membershipStatus === "paused" || undefined,
     // Bolsista integral sem plano: rotulo proprio, sempre mensal.
     planName: planOf(c.planId)?.name ?? (!c.planId && c.scholarshipPercent ? "Bolsa integral" : undefined),
     planPeriod: planOf(c.planId)?.period ?? (!c.planId && c.scholarshipPercent ? "monthly" : undefined),

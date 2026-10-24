@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
@@ -94,6 +95,7 @@ function VariantSimplified({
   upcoming?: FinanceUpcomingItem[];
   onCreateEntry?: () => void;
 }) {
+  const team = useTeamWords();
   const isPositive = summary.resultCents >= 0;
   // Mes atual: atraso acumulado de todos os meses; meses passados: so o do mes.
   const overdueCents = summary.overdueToDate?.incomeCents ?? summary.incomeOverdueCents;
@@ -360,7 +362,7 @@ function VariantSimplified({
                       <div className="min-w-0">
                         <p className="min-w-0 font-medium text-foreground break-words">{item.description}</p>
                         <p className="text-[11px] text-muted-foreground">
-                          {item.source === "teacher_payout" ? "Professor" : "Conta operacional"}
+                          {item.source === "teacher_payout" ? `${team.title}` : "Conta operacional"}
                         </p>
                       </div>
                     </div>
@@ -410,7 +412,7 @@ function VariantSimplified({
           </Link>
           <Link href={financeHref("professores", competence)}>
             <Button variant="outline" className="text-xs cursor-pointer">
-              Folha dos Professores
+              Folha dos {team.titlePlural}
             </Button>
           </Link>
         </div>
@@ -437,6 +439,7 @@ function VariantExecutive({
   upcoming?: FinanceUpcomingItem[];
   previous?: FinanceMonthPoint;
 }) {
+  const team = useTeamWords();
   const isPositive = summary.resultCents >= 0;
   const projected = summary.resultCents + summary.incomeForecastCents - summary.expenseForecastCents;
   const hasPending = summary.incomeForecastCents > 0 || summary.expenseForecastCents > 0;
@@ -632,7 +635,7 @@ function VariantExecutive({
                   {formatCents(summary.expensePaidCents)}
                 </span>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Despesas e professores
+                  Despesas e {team.lowerPlural}
                 </div>
               </div>
             </div>
@@ -897,6 +900,7 @@ function CategoryColumn({
 type UpcomingFilter = "all" | "expenses" | "teachers";
 
 function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
+  const team = useTeamWords();
   const [filter, setFilter] = useState<UpcomingFilter>("all");
 
   const expenseCount = items.filter((i) => i.source === "entry").length;
@@ -953,7 +957,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
               filter === "teachers" ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            Professores ({teacherCount})
+            {team.titlePlural} ({teacherCount})
           </button>
         </div>
       </div>
@@ -1009,7 +1013,7 @@ function UpcomingCompactList({ items }: { items: FinanceUpcomingItem[] }) {
                       ) : null}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {item.source === "teacher_payout" ? "Pagamento de professor" : "Conta operacional a pagar"}
+                      {item.source === "teacher_payout" ? `Pagamento de ${team.lower}` : "Conta operacional a pagar"}
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { formatCents } from "@gestarahub/core/format";
 import { PaymentDialog, type PaymentDialogResult } from "@/components/shared/payment-dialog";
 
@@ -26,6 +27,7 @@ export function TeacherPayoutPayDialog({
   onOpenChange,
   onConfirm,
 }: TeacherPayoutPayDialogProps) {
+  const team = useTeamWords();
   return (
     <PaymentDialog
       open={open}
@@ -37,7 +39,7 @@ export function TeacherPayoutPayDialog({
       onConfirm={onConfirm}
       summary={
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
-          <dt className="text-muted-foreground">Professor</dt>
+          <dt className="text-muted-foreground">{team.title}</dt>
           <dd className="font-medium text-foreground">{teacherName}</dd>
           <dt className="text-muted-foreground">Mês trabalhado</dt>
           <dd className="text-foreground">{monthLabel}</dd>

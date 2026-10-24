@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -45,6 +46,7 @@ export function AuditLogDetailDialog({
   open,
   onOpenChange,
 }: AuditLogDetailDialogProps) {
+  const team = useTeamWords();
   const model = useModel();
   const entry = useRetainedValue(entryProp);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -99,7 +101,7 @@ export function AuditLogDetailDialog({
             <div className="min-w-0 flex-1">
               <DialogTitle className="flex flex-wrap items-center gap-2 text-left text-base">
                 <span className="min-w-0 break-words">{entry.actor.name}</span>
-                <Chip>{entry.source ? "Automático" : userProfileLabel(entry.actor.profile)}</Chip>
+                <Chip>{entry.source ? "Automático" : userProfileLabel(entry.actor.profile, team.title)}</Chip>
                 {entry.failed ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
                     <AlertTriangle className="size-3" />
@@ -115,7 +117,7 @@ export function AuditLogDetailDialog({
               </DialogTitle>
               <DialogDescription className="mt-1 text-left text-sm text-foreground">
                 {auditActionLabel(entry.action)} ·{" "}
-                {auditEntityTypeLabel(entry.target.type, model)}
+                {auditEntityTypeLabel(entry.target.type, model, team.title)}
               </DialogDescription>
               <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                 {formatDateTime(entry.timestamp)}
@@ -152,7 +154,7 @@ export function AuditLogDetailDialog({
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="font-medium">{entry.target.label}</span>
                 {entry.target.profile ? (
-                  <Chip>{userProfileLabel(entry.target.profile)}</Chip>
+                  <Chip>{userProfileLabel(entry.target.profile, team.title)}</Chip>
                 ) : null}
               </div>
             </div>

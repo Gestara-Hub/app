@@ -16,6 +16,7 @@ export type Permission =
   | "appointments:block" // criar bloqueios de horario (Admin + Gerente)
   | "recurrence:manage" // criar/editar series recorrentes
   | "clients:view"
+  | "clients:view_own" // ficha dos alunos das proprias turmas, sem dinheiro (professor)
   | "clients:manage" // criar/editar/inativar clientes
   | "team:view"
   | "team:manage" // criar/editar/inativar profissionais + cargos

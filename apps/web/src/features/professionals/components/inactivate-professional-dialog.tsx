@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
@@ -17,6 +18,7 @@ export function InactivateProfessionalDialog({
   professional,
   onOpenChange,
 }: InactivateProfessionalDialogProps) {
+  const team = useTeamWords();
   // Conteudo com o ultimo registro: nao some durante a animacao de saida.
   const shown = useRetainedValue(professional);
   const inactivateMut = useInactivateProfessional();
@@ -26,11 +28,11 @@ export function InactivateProfessionalDialog({
     if (!professional) return;
     try {
       await inactivateMut.mutateAsync(professional.id);
-      toast.success("Profissional inativado.");
+      toast.success(`${team.title} inativado.`);
       onOpenChange(false);
     } catch (error) {
       toast.error(
-        getErrorMessage(error, "Não foi possível inativar o profissional."),
+        getErrorMessage(error, `Não foi possível inativar o ${team.lower}.`),
       );
     }
   }
@@ -41,13 +43,13 @@ export function InactivateProfessionalDialog({
       onOpenChange={(open) => {
         if (!open) onOpenChange(false);
       }}
-      title="Inativar profissional?"
+      title={`Inativar ${team.lower}?`}
       description={
         shown ? (
           <>
             “{shown.name}” deixará de ser sugerido{" "}
             {isClasses
-              ? "como instrutor em novas turmas e substituições. As turmas atuais mantêm o instrutor"
+              ? `como ${team.lower} em novas turmas e substituições. As turmas atuais mantêm o ${team.lower}`
               : "em novos agendamentos"}
             . Você pode reativá-lo depois.
           </>

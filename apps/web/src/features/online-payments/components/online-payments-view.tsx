@@ -144,7 +144,6 @@ export function OnlinePaymentsView() {
 
               {canManage ? (
                 <Button
-                  size="sm"
                   onClick={() => setQuickTransferOpen(true)}
                   disabled={availableCents <= 0}
                   className="gap-1.5 shadow-xs"

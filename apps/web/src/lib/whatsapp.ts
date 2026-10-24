@@ -73,3 +73,12 @@ export function fillMessage(content: string, values: Record<string, string | und
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+/**
+ * `{aluno}` e `{empresa}` do texto escrito na mensagem avulsa, para cada aluno
+ * (so essas duas; qualquer outra chave fica como foi digitada).
+ */
+export function personalizeMessage(content: string, studentName: string, organizationName?: string): string {
+  const named = content.replaceAll("{aluno}", studentName);
+  return (organizationName ? named.replaceAll("{empresa}", organizationName) : named).trim();
+}

@@ -81,6 +81,7 @@ const ALL_PERMISSIONS = [
   ...REPORTS_OPS,
   "appointments:block",
   "clients:manage",
+  "clients:view_own",
   "team:manage",
   "services:manage",
   "settings:view",
@@ -145,6 +146,8 @@ export const PROFILE_PERMISSIONS: Record<UserProfile, readonly Permission[]> = {
   // substitui (os services escopam, services/teacherScope); nada de gestao.
   professional: [
     "schedule:view",
+    // Ficha do aluno das turmas dele, sem dinheiro (achado 70): o service escopa e esconde.
+    "clients:view_own",
     "appointments:status",
     "classes:view",
     "attendance:mark",

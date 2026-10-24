@@ -207,3 +207,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 
 ### Pendente
 - **Antes de produção:** cadastrar o webhook na conta principal do Asaas, com os eventos de cobrança e de assinatura e o mesmo token (`ASAAS_WEBHOOK_SECRET`). Hoje o webhook é cadastrado só nas subcontas. Sem ele, a rotina diária ainda confere a renovação, mas o upgrade pago com a tela fechada só liga na próxima conferência.
+
+## Tela de Planos (decisão de 24/10/2026)
+
+A tela mostra só o que existe: Grátis e Profissional (WhatsApp automático, relatórios de resultado e retenção, certificado, taxa menor). Sem preço nos cards (o valor aparece no checkout antes de cobrar) e sem Expansão à venda até existir multiunidade. A taxa do Pix tem uma frase única (`platformFeeSentence`). O botão "Fale com a gente" depende do canal de atendimento (ver `docs/pendencias.md`).

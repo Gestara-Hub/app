@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -71,6 +72,7 @@ function AuditRow({
   entry: AuditLogEntry;
   onSelect: (entry: AuditLogEntry) => void;
 }) {
+  const team = useTeamWords();
   const model = useModel();
   return (
     <ListRow
@@ -85,7 +87,7 @@ function AuditRow({
               {auditActionLabel(entry.action)}
             </span>
             <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              {auditEntityTypeLabel(entry.target.type, model)}
+              {auditEntityTypeLabel(entry.target.type, model, team.title)}
             </span>
             {entry.failed ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
@@ -130,7 +132,7 @@ function AuditRow({
             {entry.actor.name}
             <span className="text-muted-foreground/70">
               {" "}
-              · {entry.source ? "Automático" : userProfileLabel(entry.actor.profile)}
+              · {entry.source ? "Automático" : userProfileLabel(entry.actor.profile, team.title)}
             </span>
           </p>
         </div>
@@ -157,6 +159,7 @@ function SkeletonRows() {
 type DatePreset = "all" | "today" | "7d" | "30d" | "month" | "custom";
 
 export function AuditLogList() {
+  const team = useTeamWords();
   const model = useModel();
   const [search, setSearch] = useState("");
   const [entityType, setEntityType] = useState<"all" | AuditEntityType>("all");
@@ -344,7 +347,7 @@ export function AuditLogList() {
               <SelectItem value="all">Todos os tipos</SelectItem>
               {ENTITY_TYPES_BY_MODEL[model].map((type) => (
                 <SelectItem key={type} value={type}>
-                  {auditEntityTypeLabel(type, model)}
+                  {auditEntityTypeLabel(type, model, team.title)}
                 </SelectItem>
               ))}
             </SelectContent>

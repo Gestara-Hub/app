@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -240,6 +241,7 @@ export function ModalitiesList({
   onInactivate,
   onReactivate,
 }: ModalitiesListProps) {
+  const team = useTeamWords();
   const [search, setSearch] = useState("");
   // Padrao: so ativas (o dia a dia); inativas ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
@@ -292,7 +294,7 @@ export function ModalitiesList({
           <ModuleEmptyGuide
             icon={<Shapes className="size-8" />}
             title="Nenhuma modalidade cadastrada ainda."
-            description="Cadastre as modalidades oferecidas para organizar turmas e professores."
+            description={`Cadastre as modalidades oferecidas para organizar turmas e ${team.lowerPlural}.`}
           />
         }
       />

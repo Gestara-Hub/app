@@ -31,7 +31,9 @@ export type ReminderGroupKey =
   | "level_up"
   | "payment_received"
   /** Aviso a uma turma (mudanca de horario): montado na hora, fora do motor. */
-  | "schedule_change";
+  | "schedule_change"
+  /** Mensagem avulsa para varios alunos: montada na hora, fora do motor. */
+  | "broadcast";
 export type ReminderCategory = "billing" | "relationship" | "notice";
 
 export interface ReminderItem {
@@ -40,6 +42,9 @@ export interface ReminderItem {
   studentId: Id;
   studentName: string;
   phone?: string;
+  /** Aluno menor: quem recebe a mensagem no lugar dele (o responsavel), e o aluno de quem ela fala. */
+  recipientName?: string;
+  aboutStudent?: string;
   trigger: MessageTrigger;
   /** Variaveis do modelo ({aluno} e {empresa} vem do envio). */
   values: Record<string, string>;
@@ -204,8 +209,16 @@ export function buildReminders(
   const { today } = options;
   const snoozes = options.snoozes ?? {};
   const phoneOf = new Map(src.students.map((s) => [s.id, s.phone]));
+  const guardianOf = new Map(src.students.map((s) => [s.id, s.guardian]));
   const withPhone = (item: ReminderItem): ReminderItem =>
     phoneOf.get(item.studentId) ? { ...item, phone: phoneOf.get(item.studentId) } : item;
+  // Cobranca de aluno menor vai para o responsavel (decisao de 24/10, achado 57).
+  const withBillingContact = (item: ReminderItem): ReminderItem => {
+    const guardian = guardianOf.get(item.studentId);
+    return guardian
+      ? { ...item, phone: guardian.phone, recipientName: guardian.name, aboutStudent: item.studentName }
+      : withPhone(item);
+  };
   const keep = (item: ReminderItem | null): item is ReminderItem => Boolean(item) && !snoozed(item!.key, snoozes, today);
 
   // --- Cobranca ------------------------------------------------------------
@@ -219,19 +232,19 @@ export function buildReminders(
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || b.amountCents - a.amountCents)
     .map((c) => billingItem(c, today, "overdue", src.logs))
     .filter(keep)
-    .map(withPhone);
+    .map(withBillingContact);
   const dueToday = open
     .filter((c) => c.status === "pending" && c.dueDate === today)
     .sort((a, b) => b.amountCents - a.amountCents)
     .map((c) => billingItem(c, today, "due_today", src.logs))
     .filter(keep)
-    .map(withPhone);
+    .map(withBillingContact);
   const dueSoon = open
     .filter((c) => c.status === "pending" && c.dueDate > today && c.dueDate <= soonLimit)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || b.amountCents - a.amountCents)
     .map((c) => billingItem(c, today, "due_soon", src.logs))
     .filter(keep)
-    .map(withPhone);
+    .map(withBillingContact);
 
   // --- Pacote ---------------------------------------------------------------
   const packages = selectEndingPackages(src.packages, today)

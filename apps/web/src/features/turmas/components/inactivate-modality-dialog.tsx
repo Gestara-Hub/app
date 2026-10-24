@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { toast } from "sonner";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
@@ -17,6 +18,7 @@ export function InactivateModalityDialog({
   modality,
   onOpenChange,
 }: InactivateModalityDialogProps) {
+  const team = useTeamWords();
   // Conteudo com o ultimo registro: nao some durante a animacao de saida.
   const shown = useRetainedValue(modality);
   const inactivateMut = useInactivateCategory();
@@ -48,7 +50,7 @@ export function InactivateModalityDialog({
         shown ? (
           <>
             “{shown.name}” deixará de aparecer em novas turmas e no
-            cadastro de instrutores.
+            cadastro de {team.lowerPlural}.
             {inUse === 1 ? " A turma dela continua como está." : ""}
             {inUse > 1 ? ` As ${inUse} turmas dela continuam como estão.` : ""}{" "}
             Você pode reativá-la depois.

@@ -131,7 +131,7 @@ test.describe("envio assistido de vários lugares", () => {
     await panel.getByRole("button", { name: "Nova mensagem" }).first().click();
     // Na ficha o destinatario ja vem escolhido (sem campo de aluno).
     const dialog = page.getByRole("dialog", { name: "Mensagem para Bruna Lima" });
-    await expect(dialog.getByRole("combobox", { name: "Aluno" })).toHaveCount(0);
+    await expect(dialog.getByRole("combobox", { name: "Alunos" })).toHaveCount(0);
     await dialog.getByLabel("Mensagem").fill("Seu kimono chegou!");
     const link = await openedWhatsApp(page, () => dialog.getByRole("button", { name: "Abrir no WhatsApp" }).click());
     expect(link.phone).toBe("5511988881111");

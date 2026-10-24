@@ -236,7 +236,7 @@ test.describe("relatórios", () => {
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Exportar CSV" }).click()]);
     expect(download.suggestedFilename()).toBe("relatorio-cursos-2026-09.csv");
     const csv = await readDownload(download);
-    expect(csv).toContain('"Curso";"Professor";"Início";"Fim";"Matriculados";"Concluídos";"Cancelados";"Contratado";"Recebido";"Em aberto"');
+    expect(csv).toContain('"Curso";"Instrutor";"Início";"Fim";"Matriculados";"Concluídos";"Cancelados";"Contratado";"Recebido";"Em aberto"');
     expect(csv).toContain('"Confeitaria";"Carlos Silva";"03/08/2026";"30/11/2026";"1";"0";"1";"1000,00";"600,00";"400,00"');
 
     // Dezembro: o curso acabou em novembro e nao ha parcela.

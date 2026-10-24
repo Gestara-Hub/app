@@ -105,3 +105,7 @@ Uma janela curta explicando por que proteger a conta, com "Ativar agora" (abre S
 - **Avisos à turma:** "aula cancelada" e "feriado" ainda não têm ação no app; registrados na seção 7 com as decisões pendentes. Hoje o aviso vale para a mudança de horário.
 
 **Testes:** `features/communication/__tests__/reminders.test.ts` (regras), `services/__tests__/reminders.test.ts` (leitura por perfil, com a conferência do recorte), `features/auth/__tests__/security-prompt.test.ts`; e2e em `painel-hoje` (bloco e sino), `dinheiro-pacotes` (envio em sequência), `turmas-geral` (aviso de horário) e `seguranca-aviso` (área `acesso`).
+
+## Mensagem para vários alunos (24/10/2026)
+
+"Nova mensagem" aceita vários alunos ("Selecionar todos com WhatsApp"). O texto vale para todos (`{aluno}` e `{empresa}` são trocados por aluno) e o envio segue pela janela "Enviar em sequência" (um toque por aluno). O calendário de turmas segue só com Grade e Lista.

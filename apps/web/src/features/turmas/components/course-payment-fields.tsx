@@ -9,7 +9,7 @@ import type { ClassGroup, EnrollmentCourseChoice } from "@gestarahub/contracts";
 import { getFieldErrors } from "@gestarahub/core/api-error";
 import { formatCents } from "@gestarahub/core/format";
 import { DateField, InputCurrency, SelectField } from "@/components/form";
-import { pastDueHint, paymentSummary } from "../installments-summary";
+import { pastDueHint, pastEndHint, paymentSummary } from "../installments-summary";
 import { dateInSpace } from "@gestarahub/core/date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,7 +32,7 @@ const coursePaymentSchema = z
 
 export type CoursePaymentValues = z.infer<typeof coursePaymentSchema>;
 
-type CourseClass = Pick<ClassGroup, "coursePriceCents" | "courseMaxInstallments">;
+type CourseClass = Pick<ClassGroup, "coursePriceCents" | "courseMaxInstallments" | "endDate">;
 
 /** Valor cheio do curso, a vista, vencendo hoje (decisao 2: entrar no meio paga o valor cheio). */
 export function coursePaymentDefaults(turma: CourseClass): CoursePaymentValues {
@@ -114,6 +114,7 @@ export function CoursePaymentFields({
   });
   const summary = paymentSummary(priceCents ?? 0, Number(installments), firstDueDate ?? "");
   const pastDue = pastDueHint(firstDueDate ?? "");
+  const pastEnd = pastEndHint(Number(installments), firstDueDate ?? "", turma.endDate, "o fim do curso");
   const [editing, setEditing] = useState(false);
   const { errors } = useFormState({ control: form.control });
   const open = editing || Object.keys(errors).length > 0;
@@ -176,6 +177,11 @@ export function CoursePaymentFields({
         {pastDue ? (
           <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-due-hint">
             {pastDue}
+          </p>
+        ) : null}
+        {pastEnd ? (
+          <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="past-end-hint">
+            {pastEnd}
           </p>
         ) : null}
       </section>

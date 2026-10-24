@@ -174,6 +174,7 @@ const GROUP_LOOK: Record<ReminderGroup["key"], { icon: ReactNode; tone: string }
   welcome: { icon: <UserPlus className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   payment_received: { icon: <HandCoins className="size-4" />, tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   schedule_change: { icon: <CalendarClock className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  broadcast: { icon: <MessageCircle className="size-4" />, tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
 };
 
 /** Rotulo do botao do WhatsApp pelo tipo de lembrete. */
@@ -197,11 +198,13 @@ function whatsAppLabel(item: ReminderItem): string {
 export function DashboardTodo({ today, bare = false }: { today: string; /** Sem o cartao (no painel do sino). */ bare?: boolean }) {
   const areaVocabulary = useSegmentVocabulary();
   const whatsapp = useWhatsAppSend();
-  const reminders = useReminders(today);
-  const levelPending = useLevelChangePending(today);
-  const [graduating, setGraduating] = useState<{ client: Client; modalityId: string } | null>(null);
   const can = useCan();
+  const reminders = useReminders(today);
+  const levelPending = useLevelChangePending(today, can("clients:view"));
+  const [graduating, setGraduating] = useState<{ client: Client; modalityId: string } | null>(null);
   const canSellPackage = can("billing:manage");
+  // O professor ve os lembretes dos alunos dele, mas nao manda mensagem: abre a ficha.
+  const canMessage = can("communication:view");
   const [selling, setSelling] = useState<{ id: string; name: string } | null>(null);
   const [sequence, setSequence] = useState<ReminderGroup | null>(null);
 
@@ -231,7 +234,7 @@ export function DashboardTodo({ today, bare = false }: { today: string; /** Sem 
           detail={group.detail}
           action="Ver"
           toolbar={
-            group.pending >= 2 ? (
+            group.pending >= 2 && canMessage ? (
               <Button
                 type="button"
                 variant="outline"
@@ -260,19 +263,30 @@ export function DashboardTodo({ today, bare = false }: { today: string; /** Sem 
         >
           {group.items.map((item) => (
             <StudentLine key={item.key} name={item.studentName} detail={item.detail} done={item.done}>
-              <WhatsAppButton
-                label={whatsAppLabel(item)}
-                done={Boolean(item.done)}
-                disabled={!whatsapp.ready}
-                onClick={() =>
-                  whatsapp.send({
-                    trigger: item.trigger,
-                    recipient: { name: item.studentName, phone: item.phone, clientId: item.studentId },
-                    values: item.values,
-                    ...(item.chargeId ? { chargeId: item.chargeId } : {}),
-                  })
-                }
-              />
+              {canMessage ? (
+                <WhatsAppButton
+                  label={whatsAppLabel(item)}
+                  done={Boolean(item.done)}
+                  disabled={!whatsapp.ready}
+                  onClick={() =>
+                    whatsapp.send({
+                      trigger: item.trigger,
+                      recipient: {
+                        name: item.recipientName ?? item.studentName,
+                        phone: item.phone,
+                        clientId: item.studentId,
+                        aboutStudent: item.aboutStudent,
+                      },
+                      values: item.values,
+                      ...(item.chargeId ? { chargeId: item.chargeId } : {}),
+                    })
+                  }
+                />
+              ) : (
+                <Button asChild variant="outline" className="shrink-0 text-xs">
+                  <Link href={`/clients/${item.studentId}`}>Abrir ficha</Link>
+                </Button>
+              )}
               {group.key === "packages" && canSellPackage ? (
                 <Button
                   type="button"
@@ -369,7 +383,8 @@ export function DashboardTodo({ today, bare = false }: { today: string; /** Sem 
 
 /** Pendencias dos lembretes mais a troca de nivel pela idade (o numero do sino). */
 export function useReminderCount(today: string): number {
+  const can = useCan();
   const reminders = useReminders(today);
-  const levelPending = useLevelChangePending(today);
+  const levelPending = useLevelChangePending(today, can("clients:view"));
   return reminders.pending + levelPending.length;
 }

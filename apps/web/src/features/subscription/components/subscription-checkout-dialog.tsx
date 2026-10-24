@@ -97,7 +97,7 @@ function SubscriptionCheckoutContent({
         if (res.isPaid) {
           window.clearInterval(intervalId);
           setStep("success");
-          toast.success("Pagamento confirmado via Asaas!");
+          toast.success("Pagamento confirmado.");
         }
       } catch (err) {
         logWarn("[SubscriptionCheckout] Erro no polling de status:", err);
@@ -263,7 +263,7 @@ function SubscriptionCheckoutContent({
               </span>
               <DialogTitle className="text-xl font-bold tracking-tight">
                 {step === "success"
-                  ? "Assinatura Confirmada!"
+                  ? "Assinatura confirmada!"
                   : `Ativar Plano ${planName}`}
               </DialogTitle>
             </div>
@@ -435,13 +435,13 @@ function SubscriptionCheckoutContent({
           <div className="space-y-3.5 rounded-xl border border-border/70 p-4 bg-muted/10">
             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="size-4 text-primary" />
-              <span>Dados de Faturamento (GestaraHub / Asaas)</span>
+              <span>Dados de cobrança</span>
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
                 <Label htmlFor="custName" className="text-xs">
-                  Razão Social ou Nome do Titular *
+                  Razão social ou nome do titular *
                 </Label>
                 <Input
                   id="custName"
@@ -574,14 +574,13 @@ function SubscriptionCheckoutContent({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Processamento oficial e seguro via Gateway Asaas.</span>
+              <span>Pagamento seguro com o parceiro de pagamentos.</span>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={onClose}
                 className="text-xs"
               >
@@ -590,7 +589,6 @@ function SubscriptionCheckoutContent({
 
               <Button
                 type="submit"
-                size="sm"
                 disabled={createSession.isPending}
                 className="w-full sm:w-auto text-xs font-bold gap-1.5 h-9 px-5 shadow-sm"
               >
@@ -645,7 +643,7 @@ function SubscriptionCheckoutContent({
               </div>
               <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
                 <QrCode className="size-3" />
-                QR Code oficial do Asaas
+                QR Code do Pix
               </span>
             </div>
 
@@ -674,7 +672,6 @@ function SubscriptionCheckoutContent({
                   />
                   <Button
                     type="button"
-                    size="sm"
                     onClick={handleCopyPix}
                     className="absolute right-1 top-1 h-7 text-[11px] gap-1 font-bold shadow-2xs"
                   >
@@ -687,7 +684,7 @@ function SubscriptionCheckoutContent({
               {/* Status animado de verificação */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
                 <Loader2 className="size-3.5 animate-spin text-primary" />
-                <span>Verificando recebimento no Asaas...</span>
+                <span>Verificando o recebimento...</span>
               </div>
             </div>
           </div>
@@ -705,7 +702,6 @@ function SubscriptionCheckoutContent({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={handleSimulateSandboxPayment}
                 disabled={simulatePayment.isPending}
                 className="text-xs font-bold gap-1.5 h-8 shrink-0 border-primary/40 hover:bg-primary/10 shadow-2xs"
@@ -729,7 +725,6 @@ function SubscriptionCheckoutContent({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               onClick={() => setStep("config")}
               className="text-xs"
             >
@@ -739,7 +734,6 @@ function SubscriptionCheckoutContent({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={onClose}
               className="text-xs"
             >
@@ -758,10 +752,10 @@ function SubscriptionCheckoutContent({
 
           <div className="space-y-2 max-w-md mx-auto">
             <h3 className="text-2xl font-extrabold text-foreground tracking-tight">
-              Plano {planName} Ativado!
+              Plano {planName} ativado
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Parabéns! Sua assinatura foi confirmada com sucesso via gateway Asaas.
+              Assinatura confirmada.
               Todos os recursos exclusivos do seu plano já estão desbloqueados na sua conta.
             </p>
           </div>
@@ -782,25 +776,18 @@ function SubscriptionCheckoutContent({
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span><strong>DRE Gerencial Completa:</strong> controle de lucro real e churn.</span>
+                <span><strong>Relatório do resultado do mês</strong> e retenção de alunos.</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span><strong>Certificados em PDF:</strong> emissão oficial e envio aos alunos.</span>
               </li>
-              {targetTier === "scale" && (
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <span><strong>Multiunidades e BI Preditivo:</strong> gestão de filiais e ocupação em tempo real.</span>
-                </li>
-              )}
             </ul>
           </div>
 
           <div className="pt-2">
             <Button
               type="button"
-              size="lg"
               onClick={onClose}
               className="w-full sm:w-auto px-8 font-bold text-xs shadow-md"
             >

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
 
 export function AppTopbar() {
+  const team = useTeamWords();
   const user = useCurrentUser();
   const { data: unit } = useUnit();
   const { data: organization, isError: orgError } = useOrganization();
@@ -121,7 +123,7 @@ export function AppTopbar() {
             <DropdownMenuLabel className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">{user.name}</span>
               <span className="text-xs font-normal text-muted-foreground">
-                {userProfileLabel(user.profile)}
+                {userProfileLabel(user.profile, team.title)}
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -162,7 +164,7 @@ export function AppTopbar() {
                     <span className="min-w-0 flex-1">
                       <span className="block break-words">{demoUser.name}</span>
                       <span className="block break-words text-xs text-muted-foreground">
-                        {userProfileLabel(demoUser.profile)}
+                        {userProfileLabel(demoUser.profile, team.title)}
                       </span>
                     </span>
                     {demoUser.profile === user.profile ? <Check className="mt-0.5 size-4" /> : null}

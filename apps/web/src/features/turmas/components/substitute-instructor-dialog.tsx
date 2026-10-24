@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -47,6 +48,7 @@ function SubstituteInstructorForm({
   session,
   onClose,
 }: SubstituteInstructorFormProps) {
+  const team = useTeamWords();
   const { data: professionals = [], isLoading: loadingProfessionals } =
     useProfessionals({ status: "active" });
 
@@ -69,7 +71,7 @@ function SubstituteInstructorForm({
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!instructorId) {
-      toast.error("Selecione o instrutor substituto.");
+      toast.error(`Selecione o ${team.lower} substituto.`);
       return;
     }
 
@@ -81,10 +83,10 @@ function SubstituteInstructorForm({
           reason: reason.trim() || undefined,
         },
       });
-      toast.success("Instrutor da aula atualizado com sucesso.");
+      toast.success(`${team.title} da aula atualizado com sucesso.`);
       onClose();
     } catch (err) {
-      const message = getErrorMessage(err, "Erro ao trocar instrutor.");
+      const message = getErrorMessage(err, `Erro ao trocar ${team.lower}.`);
       setSubmitError(message);
       toast.error(message);
     }
@@ -93,7 +95,7 @@ function SubstituteInstructorForm({
   const handleRestore = async () => {
     try {
       await restoreMut.mutateAsync(session.id);
-      toast.success("Instrutor titular restaurado com sucesso.");
+      toast.success(`${team.title} titular restaurado com sucesso.`);
       onClose();
     } catch (err) {
       toast.error(getErrorMessage(err, "Erro ao restaurar titular."));
@@ -107,11 +109,11 @@ function SubstituteInstructorForm({
       <DialogHeader className="pr-14">
         <DialogTitle className="flex items-center gap-2">
           <UserCheck className="size-5 text-primary" />
-          Trocar instrutor desta aula
+          Trocar {team.lower} desta aula
         </DialogTitle>
         <DialogDescription>
-          Altere o professor responsável apenas por esta data e horário. As
-          demais aulas da turma continuarão com o instrutor titular.
+          Altere o {team.lower} responsável apenas por esta data e horário. As
+          demais aulas da turma continuarão com o {team.lower} titular.
         </DialogDescription>
       </DialogHeader>
 
@@ -129,7 +131,7 @@ function SubstituteInstructorForm({
           </span>
         </p>
         <p className="text-muted-foreground">
-          Instrutor titular da turma:{" "}
+          {team.title} titular da turma:{" "}
           <span className="font-medium text-foreground">
             {primaryInstructorName}
           </span>
@@ -139,7 +141,7 @@ function SubstituteInstructorForm({
       <form onSubmit={handleConfirm} className="space-y-4 py-1">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground">
-            Instrutor substituto <span className="text-destructive">*</span>
+            {team.title} substituto <span className="text-destructive">*</span>
           </label>
           <Select
             value={instructorId}
@@ -151,10 +153,10 @@ function SubstituteInstructorForm({
           >
             <SelectTrigger
               className="w-full"
-              aria-label="Instrutor substituto"
+              aria-label={`${team.title} substituto`}
               aria-invalid={submitError ? true : undefined}
             >
-              <SelectValue placeholder="Selecione o profissional substituto" />
+              <SelectValue placeholder={`Selecione o ${team.lower} substituto`} />
             </SelectTrigger>
             <SelectContent>
               {substituteOptions(professionals, session.modalityId, primaryInstructorId).map((option) => (

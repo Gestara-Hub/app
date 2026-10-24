@@ -428,7 +428,6 @@ export function PrivacyPolicy() {
           <div className="pt-2">
             <Button
               variant="outline"
-              size="sm"
               onClick={reviewAnalyticsConsent}
               className="text-xs"
             >

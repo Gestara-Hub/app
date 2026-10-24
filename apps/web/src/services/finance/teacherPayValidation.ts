@@ -7,6 +7,7 @@ import type {
   TeacherPayoutAdjustment,
   TeacherPayoutLine,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { DEFAULT_TEACHER_PAYMENT_DAY } from "@gestarahub/core/finance";
 import { validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -45,7 +46,7 @@ export function normalizeComponents(
     if (classGroupIds.some((id) => !ownGroups.has(id))) {
       fields.push({
         field: `components.${i}.classGroupIds`,
-        message: "Escolha apenas turmas em que o professor é titular.",
+        message: `Escolha apenas turmas em que o ${teamWords().lower} é titular.`,
       });
     }
     const scope = classGroupIds.length > 0 ? { classGroupIds } : {};

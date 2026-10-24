@@ -4,6 +4,7 @@ import { store } from "@/services/world/store";
 import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
 import {
+  cancelCurrentMembershipCharges,
   cancelOpenMembershipCharges,
   chargeStartedMembershipPeriods,
   isPlanlessScholar,
@@ -27,7 +28,7 @@ export const clientLifecycleService = {
       validateClient(payload, { partial: true, current });
       const ts = nowIso();
       // A 1a mensalidade do formulario vira cobranca abaixo; nao fica no cadastro.
-      const { initialCharge: _initialCharge, ...fields } = payload;
+      const { initialCharge: _initialCharge, cancelCurrentMembershipCharge, ...fields } = payload;
       void _initialCharge;
       const updated: Client = {
         ...current,
@@ -60,6 +61,10 @@ export const clientLifecycleService = {
           chargeStartedMembershipPeriods(current, today);
         }
         cancelOpenMembershipCharges(updated.id, today, "Cancelada na pausa da assinatura");
+        // A mensalidade do periodo em curso so sai se o dono escolheu na confirmacao.
+        if (cancelCurrentMembershipCharge && updated.membershipStatus === "paused") {
+          cancelCurrentMembershipCharges(updated.id, today, "Cancelada na pausa da assinatura");
+        }
       }
 
       // Troca de plano ou de data de inicio: as mensalidades em aberto do

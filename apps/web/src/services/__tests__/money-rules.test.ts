@@ -182,6 +182,34 @@ describe("pausa e volta do aluno", () => {
     expect(after[1]).toMatchObject({ isProrated: true, amountCents: 5500 });
   });
 
+  it("pausar mantém a mensalidade do mês em curso em aberto, a não ser que o dono escolha cancelar", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const kept = await enrollStudent({ plan, startDate: "2026-09-01" });
+    await clientsService.update(kept.id, { membershipStatus: "paused" });
+    expect(memberships(kept.id).map(brief)).toEqual(["2026-09-01 15000 pending"]);
+
+    const canceled = await enrollStudent({ plan, startDate: "2026-09-01" });
+    await billingService.generateCharges("2026-10");
+    await clientsService.update(canceled.id, { membershipStatus: "paused", cancelCurrentMembershipCharge: true });
+    // Setembro (em curso) sai a pedido; outubro ainda nao comecou e sai sozinho.
+    expect(memberships(canceled.id)).toEqual([]);
+    expect(memberships(canceled.id, { includeCanceled: true }).map(brief)).toEqual([
+      "2026-09-01 15000 canceled",
+      "2026-10-01 15000 canceled",
+    ]);
+    // A escolha nao fica gravada no cadastro.
+    expect(store.clients.find((c) => c.id === canceled.id)).not.toHaveProperty("cancelCurrentMembershipCharge");
+  });
+
+  it("a escolha de cancelar o mês não mexe no que já foi pago", async () => {
+    const plan = await createPlan("monthly", 15000);
+    const s = await enrollStudent({ plan, startDate: "2026-09-01" });
+    const [charge] = memberships(s.id);
+    await billingService.markPaid(charge.id, "pix");
+    await clientsService.update(s.id, { membershipStatus: "paused", cancelCurrentMembershipCharge: true });
+    expect(memberships(s.id, { includeCanceled: true }).map((c) => c.status)).toEqual(["paid"]);
+  });
+
   it("reativar o aluno recomeça a cobrança na data da volta", async () => {
     const plan = await createPlan("monthly", 15000);
     const s = await enrollStudent({ plan, startDate: "2026-09-01" });

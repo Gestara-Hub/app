@@ -227,8 +227,8 @@ export function TurmaDetailView({
   const { confirm: confirmAction, dialog: confirmDialog } = useConfirmAction();
   const reactivateMut = useReactivateClassGroup();
   const can = useCan();
-  // Ficha do aluno pede `clients:view` (o professor nao tem): sem ela, o nome fica sem link.
-  const canOpenProfile = can("clients:view");
+  // Ficha do aluno: `clients:view`, ou so a dos alunos dele (professor): sem elas, o nome fica sem link.
+  const canOpenProfile = can("clients:view") || can("clients:view_own");
   const canManage = can("enrollment:manage");
   // Certificado de conclusao: Plano Profissional; no gratis o item abre o upsell.
   const hasCertificates = useHasFeature()("certificates");

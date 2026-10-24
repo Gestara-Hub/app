@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { INSTRUCTOR_WORDS, TEACHER_WORDS } from "@/lib/team-words";
 import type { ClassGroupView } from "@gestarahub/contracts";
 import { getSegmentPreset } from "@/lib/business-segment-presets";
 import {
@@ -23,6 +24,7 @@ function input(extra: Partial<ClassesOnboardingInput> = {}): ClassesOnboardingIn
     plansCount: 0,
     lessonPackagesCount: 0,
     professionalsCount: 0,
+    teamWords: INSTRUCTOR_WORDS,
     clientsCount: 0,
     classGroups: [],
     areaBillingMode: "membership",
@@ -297,5 +299,14 @@ describe("atendimento individual", () => {
     const summary = summarizeOnboardingSteps(steps);
     expect(summary.doneCount).toBe(3);
     expect(summary.nextStep?.id).toBe("clients");
+  });
+});
+
+describe("palavra de quem dá aula nos primeiros passos", () => {
+  it("usa a palavra da área no passo da equipe", () => {
+    const step = (words: ClassesOnboardingInput["teamWords"]) =>
+      buildClassesOnboardingSteps(input({ teamWords: words })).find((s) => s.id === "team");
+    expect(step(INSTRUCTOR_WORDS)?.label).toBe("Cadastrar instrutores");
+    expect(step(TEACHER_WORDS)?.label).toBe("Cadastrar professores");
   });
 });

@@ -1,4 +1,5 @@
 import type { Id, SaveTeacherPayRule, TeacherPayRule } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { DEFAULT_TEACHER_PAYMENT_DAY, describeTeacherPayRule } from "@gestarahub/core/finance";
 import { newId, notFoundError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -41,7 +42,7 @@ export const teacherPayRulesService = {
   saveRule(professionalId: Id, payload: SaveTeacherPayRule): Promise<TeacherPayRule> {
     return writeOp(async () => {
       const professional = store.professionals.find((p) => p.id === professionalId);
-      if (!professional) throw notFoundError("Professor não encontrado.");
+      if (!professional) throw notFoundError(`${teamWords().title} não encontrado.`);
       const components = normalizeComponents(professionalId, payload.components);
       validateRulePayload(payload);
 

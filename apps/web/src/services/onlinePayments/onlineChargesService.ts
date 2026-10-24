@@ -1,4 +1,5 @@
 import type { Id, OnlinePayment, OnlinePaymentMethod } from "@gestarahub/contracts";
+import { messageGuardian } from "@gestarahub/core/payer";
 import {
   ASAAS_BILLING_TYPE,
   calculateOnlineChargeAmounts,
@@ -80,6 +81,7 @@ export const onlineChargesService = {
         studentId: c.studentId,
         studentName: student?.name ?? "",
         studentPhone: student?.phone || undefined,
+        guardianContact: student ? messageGuardian(student, todayISO()) : undefined,
         amountCents: c.amountCents,
         dueDate: c.dueDate,
         payments,

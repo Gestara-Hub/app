@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "@/features/settings";
+import { platformFeeSentence } from "@gestarahub/core/payment-fees";
 import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import type { PlanTarget } from "@/services/subscription/actions";
@@ -64,7 +65,7 @@ export function PlansView() {
     const ok = await confirm({
       title: "Voltar ao Plano Grátis?",
       description:
-        "Sua assinatura atual será cancelada no gateway Asaas e você não terá novas cobranças recorrentes. Os recursos do Profissional/Expansão serão bloqueados. Seus alunos, turmas e dados cadastrados permanecem 100% seguros e voltam a ficar ativos quando você reativar o plano.",
+        "Sua assinatura será cancelada e não haverá novas cobranças. Os recursos do Profissional ficam bloqueados. Seus alunos, turmas e dados continuam guardados e voltam quando você assinar de novo.",
       confirmLabel: "Voltar ao Grátis",
       variant: "destructive",
     });
@@ -73,7 +74,7 @@ export function PlansView() {
 
     setTier.mutate("free", {
       onSuccess: () => {
-        toast.success("Plano Grátis reativado. Assinatura cancelada no Asaas.");
+        toast.success("Plano Grátis ativado. Assinatura cancelada.");
       },
       onError: (err) => {
         toast.error(
@@ -96,15 +97,15 @@ export function PlansView() {
         <div className="text-center space-y-3.5 pt-4">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Sparkles className="size-3.5" />
-            <span>Planos e Assinaturas GestaraHub</span>
+            <span>Planos do GestaraHub</span>
           </div>
 
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Escolha o plano ideal para acelerar seu negócio
+            Escolha o plano do seu espaço
           </h1>
 
           <p className="max-w-2xl mx-auto text-sm text-muted-foreground sm:text-base leading-relaxed">
-            Do controle operacional sem custos fixos à automação total de cobranças por Pix, WhatsApp e gestão financeira avançada.
+            O Grátis cobre o dia a dia. O Profissional automatiza o WhatsApp e libera relatórios e certificados.
           </p>
 
           {/* Seletor Mensal / Anual */}
@@ -141,8 +142,13 @@ export function PlansView() {
           </div>
         </div>
 
-        {/* 3 Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+        {/* Grátis e Profissional; o Expansão só aparece para quem já tem (volta com a multiunidade). */}
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-6 lg:gap-8 items-stretch",
+            currentTier === "scale" ? "md:grid-cols-3" : "mx-auto max-w-4xl md:grid-cols-2",
+          )}
+        >
           {/* Plano Grátis */}
           <Card
             className={cn(
@@ -156,7 +162,7 @@ export function PlansView() {
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Para Começar
+                    Para começar
                   </span>
                   {currentTier === "free" ? (
                     <Badge variant="secondary" className="text-[10px] font-bold text-foreground bg-muted">
@@ -166,58 +172,29 @@ export function PlansView() {
                 </div>
                 <CardTitle className="text-2xl font-bold">Grátis</CardTitle>
                 <CardDescription className="text-xs">
-                  Opere seu espaço no dia a dia com tudo que você precisa sem mensalidade fixa.
+                  Tudo para tocar o dia a dia do seu espaço, sem mensalidade.
                 </CardDescription>
 
                 <div className="pt-4">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold text-foreground">
-                      R$ 0
-                    </span>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      / mês
-                    </span>
+                    <span className="text-4xl font-extrabold text-foreground">R$ 0</span>
+                    <span className="text-xs text-muted-foreground font-medium">/ mês</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground pt-0.5">
-                    Grátis para sempre, sem cartão de crédito.
-                  </p>
+                  <p className="text-[11px] text-muted-foreground pt-0.5">Grátis, sem cartão de crédito.</p>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-3 pt-2 text-xs">
-                <p className="font-semibold text-foreground border-b border-border/50 pb-2">
-                  O que está incluso:
-                </p>
+                <p className="font-semibold text-foreground border-b border-border/50 pb-2">Inclui:</p>
                 <ul className="space-y-2.5 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span><strong>Alunos e turmas ilimitados</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Lista de presença e chamada no celular</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Mensalidades, cursos e pacotes de aulas</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Controle financeiro de caixa e professores</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Cobrança Pix online (R$ 1,99 por Pix pago)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>App do Aluno e do Professor (presença e histórico)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                    <span>Opção de repasse de taxas ao aluno</span>
-                  </li>
+                  {FREE_FEATURES.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
                 </ul>
+                <p className="text-[11px] text-muted-foreground">{platformFeeSentence()}</p>
               </CardContent>
             </div>
 
@@ -228,32 +205,22 @@ export function PlansView() {
                 disabled={currentTier === "free" || setTier.isPending}
                 onClick={() => handleSelectTier("free")}
               >
-                {currentTier === "free" ? "Plano Atual" : "Voltar ao Grátis"}
+                {currentTier === "free" ? "Plano atual" : "Voltar ao Grátis"}
               </Button>
             </CardFooter>
           </Card>
 
-          {/* Plano Profissional (Destaque) */}
+          {/* Plano Profissional (destaque) */}
           <Card
             className={cn(
               "flex flex-col justify-between rounded-2xl border-2 transition-all duration-200 relative bg-card shadow-md",
               "border-primary ring-2 ring-primary/20",
             )}
           >
-            {/* Tag flutuante de Mais Escolhido */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground shadow-sm">
-                <Sparkles className="size-3" />
-                Mais Escolhido
-              </span>
-            </div>
-
             <div>
               <CardHeader className="pb-4 pt-6">
                 <div className="flex items-center justify-between pb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                    O Motor de Crescimento
-                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">Para automatizar</span>
                   {currentTier === "pro" ? (
                     <Badge variant="secondary" className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
                       Seu plano atual
@@ -264,22 +231,14 @@ export function PlansView() {
                   <span>Profissional</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Zere a inadimplência, automatize cobranças no WhatsApp e economize dezenas de horas por mês.
+                  Lembretes e avisos no WhatsApp sem clique, relatórios do resultado e certificados.
                 </CardDescription>
 
                 <div className="pt-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold text-foreground">
-                      {interval === "monthly" ? "R$ 79,90" : "R$ 66,58"}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      / mês
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium pt-0.5">
+                  <p className="text-[11px] text-muted-foreground">
                     {interval === "monthly"
-                      ? "Faturamento mensal sem fidelidade"
-                      : "Faturado anualmente (R$ 799/ano · 2 meses grátis)"}
+                      ? "Cobrança mensal, sem fidelidade. O valor aparece antes de você confirmar."
+                      : "Cobrança anual, com 2 meses grátis. O valor aparece antes de você confirmar."}
                   </p>
                 </div>
               </CardHeader>
@@ -289,56 +248,12 @@ export function PlansView() {
                   Tudo do Grátis, além de:
                 </p>
                 <ul className="space-y-2.5 text-foreground/90">
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>Taxa Pix reduzida: R$ 1,29</strong>{" "}
-                      <span className="text-[11px] text-muted-foreground">(economia de 35% por cobrança)</span>
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>WhatsApp 100% Automático</strong>{" "}
-                      <span className="text-[11px] text-muted-foreground">(lembretes e avisos sem clique)</span>
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>DRE Gerencial Completa</strong>{" "}
-                      <span className="text-[11px] text-muted-foreground">(lucro real e projeção de caixa)</span>
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>Taxa de Retenção e Churn</strong>{" "}
-                      <span className="text-[11px] text-muted-foreground">(saiba quem está prestes a sair)</span>
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>Portal do Aluno:</strong> pagamento em 1 clique e reservas
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>Portal do Professor:</strong> avaliações e extrato de aulas
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>
-                      <strong>Certificados de Conclusão</strong> em PDF oficial
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                    <span>Suporte prioritário via WhatsApp</span>
-                  </li>
+                  {PRO_FEATURES.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <Check className="size-4 shrink-0 text-primary mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </div>
@@ -351,103 +266,45 @@ export function PlansView() {
                 changesInPlace={changesInPlace}
                 canManage={canManage}
                 onChange={setChangeTarget}
-                checkoutLabel="Fazer Upgrade para o Profissional"
+                checkoutLabel="Assinar o Profissional"
                 primary
               />
             </CardFooter>
           </Card>
 
-          {/* Plano Scale */}
-          <Card
-            className={cn(
-              "flex flex-col justify-between rounded-2xl border transition-all duration-200 relative bg-card shadow-xs",
-              currentTier === "scale"
-                ? "border-indigo-500/60 ring-1 ring-indigo-500/20"
-                : "border-border/70 hover:border-border",
-            )}
-          >
-            <div>
+          {/* Expansão: só para quem já tem. Volta a ser vendido quando existir multiunidade. */}
+          {currentTier === "scale" ? (
+            <Card className="flex flex-col justify-between rounded-2xl border border-indigo-500/60 bg-card shadow-xs ring-1 ring-indigo-500/20">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Para Franquias & Redes
+                    Seu plano
                   </span>
-                  {currentTier === "scale" ? (
-                    <Badge variant="secondary" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
-                      Seu plano atual
-                    </Badge>
-                  ) : null}
+                  <Badge variant="secondary" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20">
+                    Seu plano atual
+                  </Badge>
                 </div>
                 <CardTitle className="text-2xl font-bold flex items-center gap-2">
                   <span>Expansão</span>
                   <Crown className="size-4 text-indigo-500" />
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Para redes em expansão que exigem gestão de múltiplas filiais e inteligência analítica.
+                  Tem tudo do Profissional. Este plano não está mais à venda.
                 </CardDescription>
-
-                <div className="pt-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold text-foreground">
-                      {interval === "monthly" ? "R$ 199,00" : "R$ 165,83"}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      / mês
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground pt-0.5">
-                    {interval === "monthly"
-                      ? "Faturamento mensal sem fidelidade"
-                      : "Faturado anualmente (R$ 1.990/ano · 2 meses grátis)"}
-                  </p>
-                </div>
               </CardHeader>
-
-              <CardContent className="space-y-3 pt-2 text-xs">
-                <p className="font-semibold text-foreground border-b border-border/50 pb-2">
-                  Tudo do Profissional, além de:
-                </p>
-                <ul className="space-y-2.5 text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span><strong>Multiunidades ilimitadas</strong> em um só login</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span>Taxas de pagamento personalizadas no gateway</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span>BI de ocupação e inteligência analítica preditiva</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span>API para alto volume e integrações customizadas</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span><strong>Página web dedicada</strong> (Link na Bio e presença online)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="size-4 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-                    <span>Passe livre do aluno em todas as unidades da rede</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </div>
-
-            <CardFooter className="pt-4">
-              <PaidPlanAction
-                tier="scale"
-                interval={interval}
-                current={{ tier: currentTier, interval: currentInterval }}
-                changesInPlace={changesInPlace}
-                canManage={canManage}
-                onChange={setChangeTarget}
-                checkoutLabel="Ativar Plano Expansão"
-              />
-            </CardFooter>
-          </Card>
+              <CardFooter className="pt-4">
+                <PaidPlanAction
+                  tier="scale"
+                  interval={interval}
+                  current={{ tier: currentTier, interval: currentInterval }}
+                  changesInPlace={changesInPlace}
+                  canManage={canManage}
+                  onChange={setChangeTarget}
+                  checkoutLabel="Ativar o Expansão"
+                />
+              </CardFooter>
+            </Card>
+          ) : null}
         </div>
 
         {/* Garantia e Segurança */}
@@ -471,8 +328,26 @@ export function PlansView() {
 
 const RANK: Record<SubscriptionTier, number> = { free: 0, pro: 1, scale: 2 };
 
+/** So o que o produto faz hoje (decisao de 24/10, achados 17 e 19). */
+const FREE_FEATURES = [
+  "Alunos e turmas sem limite",
+  "Chamada pelo celular",
+  "Mensalidades, cursos e pacotes de aulas",
+  "Caixa e pagamento de quem dá aula",
+  "Cobrança por Pix e cartão online",
+  "Repasse da taxa ao aluno, se você quiser",
+];
+
+const PRO_FEATURES = [
+  "Lembretes e avisos no WhatsApp sem clique",
+  "Relatório do resultado do mês",
+  "Retenção de alunos",
+  "Certificado de conclusão em PDF",
+  "Taxa menor por Pix pago",
+];
+
 /**
- * Botao do plano pago: "Plano Atual" no mesmo plano e periodo; do Gratis (ou na
+ * Botao do plano pago: "Plano atual" no mesmo plano e periodo; do Gratis (ou na
  * demonstracao), o checkout; com plano pago, a troca com a conta da diferenca.
  */
 function PaidPlanAction({
@@ -551,8 +426,8 @@ export function PlansSkeleton() {
         </div>
       </div>
 
-      {/* 3 Pricing Cards Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+      {/* 2 Pricing Cards Skeleton */}
+      <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8 items-stretch">
         {/* Card 1: Grátis */}
         <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
           <div className="space-y-4">
@@ -584,7 +459,6 @@ export function PlansSkeleton() {
 
         {/* Card 2: Profissional (Destaque) */}
         <div className="relative flex flex-col justify-between rounded-2xl border-2 border-primary/40 bg-card p-6 pt-7 shadow-md space-y-6">
-          <Skeleton className="absolute -top-3.5 left-1/2 -translate-x-1/2 h-6 w-32 rounded-full" />
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-3.5 w-32 rounded" />
@@ -605,35 +479,6 @@ export function PlansSkeleton() {
                 <div key={i} className="flex items-center gap-2">
                   <Skeleton className="size-4 rounded-full shrink-0" />
                   <Skeleton className={cn("h-3 rounded", i % 2 === 0 ? "w-full" : "w-4/5")} />
-                </div>
-              ))}
-            </div>
-          </div>
-          <Skeleton className="h-9 w-full rounded-md" />
-        </div>
-
-        {/* Card 3: Expansão */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-3.5 w-36 rounded" />
-              <Skeleton className="h-5 w-24 rounded-full" />
-            </div>
-            <Skeleton className="h-8 w-32 rounded-md" />
-            <div className="space-y-1.5">
-              <Skeleton className="h-3.5 w-full rounded" />
-              <Skeleton className="h-3.5 w-4/5 rounded" />
-            </div>
-            <div className="pt-2 space-y-1">
-              <Skeleton className="h-10 w-36 rounded-md" />
-              <Skeleton className="h-3 w-56 rounded" />
-            </div>
-            <div className="pt-3 border-t border-border/50 space-y-2.5">
-              <Skeleton className="h-3.5 w-36 rounded mb-3" />
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Skeleton className="size-4 rounded-full shrink-0" />
-                  <Skeleton className={cn("h-3 rounded", i % 2 === 0 ? "w-5/6" : "w-3/4")} />
                 </div>
               ))}
             </div>

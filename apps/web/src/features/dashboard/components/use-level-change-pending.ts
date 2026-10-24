@@ -21,8 +21,9 @@ export interface LevelChangePending {
  * Verde, que vai ate 15) e precisam de um nivel da nova faixa etaria. So conta
  * modalidade em que o aluno esta matriculado (e a Graduacao consegue abrir).
  */
-export function useLevelChangePending(today: string): LevelChangePending[] {
-  const { data: clients } = useClients({ status: "active" });
+export function useLevelChangePending(today: string, enabled = true): LevelChangePending[] {
+  // Sem permissao de ver alunos (professor), nem busca a lista.
+  const { data: clients } = useClients({ status: "active" }, enabled);
   const { data: categories } = useCategories({ status: "active" });
   const { data: enrolled } = useEnrolledModalities();
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));

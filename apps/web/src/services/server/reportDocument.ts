@@ -5,6 +5,7 @@ import { reportsServiceImpl } from "../reports";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
 import { store } from "../world/store";
+import { teamWords } from "../world/nouns";
 import type { TenantContext } from "./tenant";
 
 /**
@@ -33,6 +34,7 @@ export async function reportDocumentModel(type: ReportType, filter: ReportFilter
   const categories = store.categories;
   return reportToDocument(report, filter.competence ?? "", {
     levelLabel: area.level,
+    teacherLabel: teamWords().title,
     levelLabelForModality: (name) =>
       vocabularyForModality(categories.find((c) => c.name === name) ?? { name }, area).level,
   });

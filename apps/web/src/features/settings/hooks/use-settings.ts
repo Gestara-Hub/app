@@ -13,6 +13,8 @@ import {
   type SegmentVocabulary,
 } from "@/lib/business-segment-presets";
 import { queryKeys } from "@/lib/queryKeys";
+import { teamWordsFor, type TeamWords } from "@/lib/team-words";
+import { useModel } from "@/features/auth";
 import {
   settingsService,
   type UpdateOrganization,
@@ -39,6 +41,15 @@ export function useBusinessSegment(): BusinessSegmentPreset {
     organization?.customSegmentProgression,
     organization?.customSegmentBilling,
   );
+}
+
+/**
+ * Como o app chama quem dá aula: a palavra da área em turmas (instrutor ou
+ * professor) e "profissional" no agendamento.
+ */
+export function useTeamWords(): TeamWords {
+  const isClasses = useModel() === "classes";
+  return teamWordsFor(isClasses, useBusinessSegment().teacherTitle);
 }
 
 /** Atalho para as palavras da area ("Faixa" ou "Nível", "Graduar" ou "Avançar"). */

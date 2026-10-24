@@ -116,7 +116,6 @@ export function SubaccountTransferDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
                     className="h-auto p-0 text-xs font-semibold text-primary hover:underline"
                     onClick={() => form.setValue("amountCents", availableCents)}
                   >

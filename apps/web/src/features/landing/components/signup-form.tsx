@@ -275,7 +275,7 @@ export function SignupForm({ idPrefix, className, onSignIn }: SignupFormProps) {
 
           <div className="space-y-2 border-t border-border/60 pt-4 text-xs leading-relaxed text-muted-foreground">
             <p>
-              Ao criar a conta, você aceita os{" "}
+              Leia os{" "}
               <Link href="/terms" className="whitespace-nowrap font-medium text-foreground underline-offset-4 hover:underline">
                 Termos de uso
               </Link>{" "}

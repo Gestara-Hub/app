@@ -230,7 +230,13 @@ export interface CreateClientInitialCharge {
 export type CreateClient = Omit<Client, "id" | "createdAt" | "updatedAt" | TenantScopeFields> & {
   initialCharge?: CreateClientInitialCharge;
 };
-export type UpdateClient = Partial<CreateClient>;
+export type UpdateClient = Partial<CreateClient> & {
+  /**
+   * Ao pausar a assinatura: cancela tambem a mensalidade em aberto do periodo
+   * em curso (a escolha do dono na confirmacao). Nao e gravado no cadastro.
+   */
+  cancelCurrentMembershipCharge?: boolean;
+};
 
 export interface ClientFilter extends PaginationParams {
   search?: string; // nome ou telefone

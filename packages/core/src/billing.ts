@@ -411,3 +411,24 @@ export function isFutureOpenInstallment(
 ): boolean {
   return (charge.status === "pending" || charge.status === "overdue") && charge.dueDate > today;
 }
+
+/**
+ * Mensalidade em aberto do periodo em curso (pausa do aluno, decisao de
+ * 24/10): o periodo ja comecou e ainda nao terminou hoje; sem periodo, vence
+ * no mes de hoje. Os periodos que comecam depois saem sozinhos na pausa.
+ */
+export function isCurrentOpenMembershipCharge(
+  charge: {
+    kind: ChargeKind;
+    status: ChargeStatus;
+    dueDate: DateISO;
+    periodStart?: DateISO;
+    periodEnd?: DateISO;
+  },
+  today: DateISO,
+): boolean {
+  if (charge.kind !== "membership") return false;
+  if (charge.status !== "pending" && charge.status !== "overdue") return false;
+  if (charge.periodStart) return charge.periodStart <= today && (charge.periodEnd ?? charge.dueDate) >= today;
+  return charge.dueDate.slice(0, 7) === today.slice(0, 7);
+}

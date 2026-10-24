@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ageOn, formatCpf, isValidCpf, payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "../src/payer.ts";
+import { ageOn, formatCpf, isValidCpf, messageGuardian, payerIssueMessage, payerIssueOf, resolveOnlinePayer } from "../src/payer.ts";
 
 // CPFs validos de teste (digitos verificadores certos).
 const ADULT_CPF = "52998224725";
@@ -106,5 +106,27 @@ describe("o que falta para cobrar online (achado 61)", () => {
     const adultWithCpf = resolveOnlinePayer({ name: "Ana", cpf: ADULT_CPF, phone: "11999990000", birthDate: "1990-01-01" }, TODAY);
     assert.equal(payerIssueOf(adultWithCpf), undefined);
     assert.equal(payerIssueOf(null), "student_cpf_missing");
+  });
+});
+
+describe("messageGuardian (cobrança e avisos de aluno menor)", () => {
+  const guardians = [
+    { name: "Tia Lu", phone: "11911112222" },
+    { name: "Mãe Ana", phone: "11933334444", financial: true },
+  ];
+
+  it("menor: o responsável financeiro com telefone; sem marca, o primeiro com telefone", () => {
+    assert.deepEqual(messageGuardian({ birthDate: "2015-03-10", guardians }, "2026-10-24"), { name: "Mãe Ana", phone: "11933334444" });
+    assert.deepEqual(
+      messageGuardian({ birthDate: "2015-03-10", guardians: [{ name: "Sem fone" }, { name: "Tia Lu", phone: "11911112222" }] }, "2026-10-24"),
+      { name: "Tia Lu", phone: "11911112222" },
+    );
+  });
+
+  it("maior, sem nascimento ou sem responsável com telefone: telefone do aluno (undefined)", () => {
+    assert.equal(messageGuardian({ birthDate: "2000-03-10", guardians }, "2026-10-24"), undefined);
+    assert.equal(messageGuardian({ guardians }, "2026-10-24"), undefined);
+    assert.equal(messageGuardian({ birthDate: "2015-03-10", guardians: [{ name: "Sem fone" }] }, "2026-10-24"), undefined);
+    assert.equal(messageGuardian({ birthDate: "2015-03-10" }, "2026-10-24"), undefined);
   });
 });

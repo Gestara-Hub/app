@@ -4,6 +4,7 @@ import type {
   Id,
   SubstituteInstructorPayload,
 } from "@gestarahub/contracts";
+import { teamWords } from "@/services/world/nouns";
 import { format, parseISO } from "date-fns";
 import { notFoundError, nowIso, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
@@ -21,7 +22,7 @@ export const sessionOverridesService = {
       const { g, date, slot } = resolveSession(sessionId);
 
       const instructor = store.professionals.find((x) => x.id === payload.instructorId);
-      if (!instructor) throw notFoundError("Instrutor não encontrado.");
+      if (!instructor) throw notFoundError(`${teamWords().title} não encontrado.`);
       validateSubstituteConflict(sessionId, date, slot, instructor.id, instructor.name);
 
       if (!store.sessionOverrides) {
@@ -49,7 +50,7 @@ export const sessionOverridesService = {
       auditLogService.record({
         action: "updated",
         target: { type: "class_group", id: g.id, label: g.name },
-        predicate: `colocou ${instructor.name} no lugar de ${instructorName(g.instructorId) || "o instrutor"} na aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
+        predicate: `colocou ${instructor.name} no lugar de ${instructorName(g.instructorId) || `o ${teamWords().lower}`} na aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
       });
 
       return clone(buildSessionDetail(sessionId));
@@ -69,7 +70,7 @@ export const sessionOverridesService = {
           auditLogService.record({
             action: "updated",
             target: { type: "class_group", id: g.id, label: g.name },
-            predicate: `voltou ${instructorName(g.instructorId) || "o instrutor"} para a aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
+            predicate: `voltou ${instructorName(g.instructorId) || `o ${teamWords().lower}`} para a aula de ${format(parseISO(date), "dd/MM")} da turma ${g.name}`,
           });
         }
       }

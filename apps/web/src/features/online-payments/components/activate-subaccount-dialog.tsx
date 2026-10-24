@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/sheet";
 import { ASAAS_FEES, PLATFORM_SPLIT_CENTS, pixWithdrawalRuleText } from "@gestarahub/core/payment-fees";
 import { formatCents } from "@gestarahub/core/format";
+import { PERSON_ACCOUNT_NOTICE, showsPersonAccountNotice } from "../account-notice";
 import { useSetupGatewaySubaccount } from "../hooks/use-online-payments";
 import { requestSecurityPrompt } from "@/features/auth";
 import { todayISO } from "@gestarahub/core/date";
@@ -305,6 +306,11 @@ export function ActivateSubaccountDialog({
                     />
                   )}
                 </div>
+                {showsPersonAccountNotice(cpfCnpjValue) ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="person-account-notice">
+                    {PERSON_ACCOUNT_NOTICE}
+                  </p>
+                ) : null}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <InputText<FormValues>

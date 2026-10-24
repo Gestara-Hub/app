@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -140,6 +141,7 @@ function useCalendarFilters() {
 }
 
 export function TurmasCalendarView() {
+  const team = useTeamWords();
   const {
     anchor,
     view,
@@ -283,11 +285,11 @@ export function TurmasCalendarView() {
           </Select>
 
           <Select value={instructor} onValueChange={setInstructor}>
-            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label="Filtrar por instrutor">
-              <SelectValue placeholder="Instrutor" />
+            <SelectTrigger className="w-full sm:w-auto sm:min-w-44" aria-label={`Filtrar por ${team.lower}`}>
+              <SelectValue placeholder={team.title} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todos os instrutores</SelectItem>
+              <SelectItem value={ALL}>{`Todos os ${team.lowerPlural}`}</SelectItem>
               {instructorOptions.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name}
@@ -324,7 +326,7 @@ export function TurmasCalendarView() {
             }
             description={
               hasFilters
-                ? "Ajuste modalidade ou instrutor para ver a grade."
+                ? `Ajuste modalidade ou ${team.lower} para ver a grade.`
                 : "As aulas aparecem aqui a partir dos horários das turmas ativas."
             }
             actionLabel={hasFilters ? "Limpar filtros" : undefined}

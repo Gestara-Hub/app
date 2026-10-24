@@ -1,5 +1,10 @@
 import type { Charge, Client, Id, Plan } from "@gestarahub/contracts";
-import { chargesDueIn, resolveMembershipTerms, type CompetenceCharge } from "@gestarahub/core/billing";
+import {
+  chargesDueIn,
+  isCurrentOpenMembershipCharge,
+  resolveMembershipTerms,
+  type CompetenceCharge,
+} from "@gestarahub/core/billing";
 import {
   isPlanlessScholar as coreIsPlanlessScholar,
   membershipCompetencesToGenerate,
@@ -141,6 +146,23 @@ export function cancelOpenMembershipCharges(
     c.status = "canceled";
     c.canceledBy = "system";
     c.replaced = opts.replaced || undefined;
+    c.notes = note;
+    c.updatedAt = nowIso();
+    count += 1;
+  }
+  return count;
+}
+
+/**
+ * Pausa com a escolha de cancelar o mes em curso: cancela as mensalidades em
+ * aberto do periodo que inclui `today` (as pagas e as de periodos passados ficam).
+ */
+export function cancelCurrentMembershipCharges(studentId: Id, today: string, note: string): number {
+  let count = 0;
+  for (const c of store.charges) {
+    if (c.studentId !== studentId || !isCurrentOpenMembershipCharge(c, today)) continue;
+    c.status = "canceled";
+    c.canceledBy = "system";
     c.notes = note;
     c.updatedAt = nowIso();
     count += 1;

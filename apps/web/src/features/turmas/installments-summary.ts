@@ -53,3 +53,23 @@ export function pastDueHint(firstDueDate: string, today = dateInSpace()): string
   if (!DATE_RE.test(firstDueDate) || firstDueDate >= today) return undefined;
   return "Data que já passou: a cobrança entra atrasada.";
 }
+
+/**
+ * Parcelas que passam do fim (achados 26 e 33, decisao de 24/10): so avisa, nao
+ * trava, porque parcelar alem da validade e escolha comercial do dono. Fora
+ * disso (ou sem data de fim), `undefined`. `endLabel`: "o fim do curso",
+ * "a validade do pacote".
+ */
+export function pastEndHint(
+  installments: number,
+  firstDueDate: string,
+  endDate: string | undefined,
+  endLabel: string,
+): string | undefined {
+  if (!endDate || installments < 2 || !DATE_RE.test(firstDueDate) || Number.isNaN(parseISO(firstDueDate).getTime())) {
+    return undefined;
+  }
+  const last = splitInstallments(installments, installments, firstDueDate).at(-1)!.dueDate;
+  if (last <= endDate) return undefined;
+  return `A última parcela vence em ${fullDate(last)}, depois d${endLabel} (${fullDate(endDate)}). Pode seguir: a cobrança continua valendo.`;
+}

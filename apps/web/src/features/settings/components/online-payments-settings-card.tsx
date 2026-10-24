@@ -1,5 +1,6 @@
 "use client";
 
+import { platformFeeSentence } from "@gestarahub/core/payment-fees";
 import { useState } from "react";
 import Link from "next/link";
 import { useForm, FormProvider, useWatch, Controller } from "react-hook-form";
@@ -229,13 +230,12 @@ function OnlinePaymentsForm({
                         Conta de recebimentos ativa
                       </p>
                       <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
-                        Taxa do GestaraHub • R$ 1,99 no Grátis ou R$ 1,29 no Profissional por pagamento recebido, além da tarifa do parceiro
+                        {platformFeeSentence()}
                       </p>
                     </div>
                   </div>
                   <Button
                     asChild
-                    size="sm"
                     variant="outline"
                     className="gap-1.5 border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300 shrink-0"
                   >
@@ -256,13 +256,12 @@ function OnlinePaymentsForm({
                         Ativar recebimentos online
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Receba por Pix e link com desconto automático das taxas (taxa do GestaraHub de R$ 1,99 no Grátis ou R$ 1,29 no Profissional, mais a tarifa do parceiro).
+                        Receba por Pix e link, com as taxas descontadas sozinhas. {platformFeeSentence()}
                       </p>
                     </div>
                   </div>
                   <Button
                     type="button"
-                    size="sm"
                     onClick={() => setSubaccountDialogOpen(true)}
                     disabled={!canEdit}
                     className="shrink-0"

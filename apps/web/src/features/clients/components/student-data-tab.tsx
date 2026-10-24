@@ -234,7 +234,6 @@ export function StudentDataTab({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
                   onClick={handleSendWhatsApp}
                   className="h-8 gap-1.5 text-xs text-foreground"
                 >
@@ -244,7 +243,6 @@ export function StudentDataTab({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   onClick={handleCopyLink}
                   className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                 >
@@ -255,7 +253,6 @@ export function StudentDataTab({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={handleConfirmPaper}
                     disabled={confirmPaperMutation.isPending}
                     className="h-8 gap-1.5 text-xs text-foreground"
@@ -267,7 +264,6 @@ export function StudentDataTab({
                 {serverDocuments ? (
                   <Button
                     variant="ghost"
-                    size="sm"
                     asChild
                     className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                   >

@@ -207,7 +207,6 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={handleResetOnboarding}
             className="text-xs"
           >
@@ -218,7 +217,6 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={handleResetDismissedAlerts}
             className="text-xs"
           >
@@ -229,7 +227,6 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
           <Button
             type="button"
             variant="ghost"
-            size="sm"
             onClick={handleFullReset}
             className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
           >

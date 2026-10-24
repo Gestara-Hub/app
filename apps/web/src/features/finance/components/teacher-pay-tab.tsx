@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useMemo, useState } from "react";
 import { AlertTriangle, RotateCw, Settings2, Users, Wallet } from "lucide-react";
 import type { TeacherPayoutView } from "@gestarahub/contracts";
@@ -40,6 +41,7 @@ function noRuleReason(teacher: TeacherPayTeacher): string {
  * regra. Acoes que mexem em dinheiro so com `finance:manage`.
  */
 export function TeacherPayTab({ competence }: { competence: string }) {
+  const team = useTeamWords();
   const can = useCan();
   const canManage = can("finance:manage");
 
@@ -99,7 +101,7 @@ export function TeacherPayTab({ competence }: { competence: string }) {
           <div className="flex flex-col items-center gap-3 py-12 text-center">
             <AlertTriangle className="size-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Não foi possível carregar o pagamento dos professores. Tente novamente.
+              Não foi possível carregar o pagamento dos {team.lowerPlural}. Tente novamente.
             </p>
             <Button variant="outline" onClick={retry}>
               <RotateCw className="size-4" />
@@ -117,8 +119,8 @@ export function TeacherPayTab({ competence }: { competence: string }) {
         emptyState={
           <ModuleEmptyGuide
             icon={<Users className="size-7" />}
-            title="Nenhum professor cadastrado"
-            description="Cadastre os professores em Profissionais para configurar o pagamento de cada um."
+            title={`Nenhum ${team.lower} cadastrado`}
+            description={`Cadastre os ${team.lowerPlural} em ${team.titlePlural} para configurar o pagamento de cada um.`}
           />
         }
       />
@@ -131,8 +133,8 @@ export function TeacherPayTab({ competence }: { competence: string }) {
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder="Buscar professor..."
-          aria-label="Buscar professor"
+          placeholder={`Buscar ${team.lower}...`}
+          aria-label={`Buscar ${team.lower}`}
         />
       </div>
 
@@ -140,8 +142,8 @@ export function TeacherPayTab({ competence }: { competence: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
           <ListSummaryBar
             count={filteredPayouts.length}
-            singularLabel="professor com pagamento"
-            pluralLabel="professores com pagamento"
+            singularLabel={`${team.lower} com pagamento`}
+            pluralLabel={`${team.lowerPlural} com pagamento`}
             isLoading={false}
             hasFilters={false}
           />
@@ -166,10 +168,10 @@ export function TeacherPayTab({ competence }: { competence: string }) {
                 emptyGuide={
                   <ModuleEmptyGuide
                     icon={<Wallet className="size-7" />}
-                    title="Nenhum professor com pagamento neste mês"
+                    title={`Nenhum ${team.lower} com pagamento neste mês`}
                     description={
                       canManage
-                        ? "Use Configurar pagamento abaixo para definir como cada professor recebe (fixo, por aula, por aluno ou % do que os alunos pagaram)."
+                        ? `Use Configurar pagamento abaixo para definir como cada ${team.lower} recebe (fixo, por aula, por aluno ou % do que os alunos pagaram).`
                         : "Ainda não há regra de pagamento vigente neste mês."
                     }
                   />
@@ -314,8 +316,9 @@ function PayoutRow({
 }
 
 function TeacherPaySkeleton() {
+  const team = useTeamWords();
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="Carregando professores">
+    <div className="space-y-2" aria-busy="true" aria-label={`Carregando ${team.lowerPlural}`}>
       <Skeleton className="ml-1 h-4 w-48 rounded-sm" />
       <div className="overflow-hidden rounded-xl border border-border/60">
         {Array.from({ length: 4 }).map((_, i) => (

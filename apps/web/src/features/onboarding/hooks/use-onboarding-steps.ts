@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { teamWordsFor } from "@/lib/team-words";
 import { onboardingService } from "@/services/settings/onboardingService";
 import { useBusinessSegment, useOrganization, useUnit } from "@/features/settings";
 import { useModel } from "@/features/auth";
@@ -26,6 +27,7 @@ export { isStepSatisfied, type OnboardingStep } from "../onboarding-steps";
 export function useOnboardingSteps() {
   const model = useModel();
   const segment = useBusinessSegment();
+  const segmentTeam = teamWordsFor(true, segment.teacherTitle);
   const unitQuery = useUnit();
   const orgQuery = useOrganization();
   // Uma leitura com as contagens (antes: dez listas inteiras em toda pagina).
@@ -61,6 +63,7 @@ export function useOnboardingSteps() {
       clientsCount: snapshot?.clientsCount ?? 0,
       classGroups: snapshot?.classGroups ?? [],
       areaBillingMode,
+      teamWords: segmentTeam,
     });
   } else {
     isReady = !unitQuery.isPending && !snapshotQuery.isPending;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -67,6 +68,7 @@ function ProfessionalRow({
   onInactivate: (p: ProfessionalView) => void;
   onReactivate: (p: ProfessionalView) => void;
 }) {
+  const team = useTeamWords();
   const isActive = professional.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -106,7 +108,7 @@ function ProfessionalRow({
         canManage ? (
           <ListItemActionsMenu
             actions={actions}
-            title="Ações do profissional"
+            title={`Ações do ${team.lower}`}
             ariaLabel={`Ações de ${professional.name}`}
             variant="ghost"
           />
@@ -182,6 +184,7 @@ function ProfessionalCard({
   onInactivate: (p: ProfessionalView) => void;
   onReactivate: (p: ProfessionalView) => void;
 }) {
+  const team = useTeamWords();
   const isActive = professional.status === "active";
 
   const actions: ListItemAction[] = canManage
@@ -256,7 +259,7 @@ function ProfessionalCard({
           >
             <ListItemActionsMenu
               actions={actions}
-              title="Ações do profissional"
+              title={`Ações do ${team.lower}`}
               ariaLabel={`Ações de ${professional.name}`}
               variant="ghost"
             />
@@ -353,6 +356,7 @@ export function ProfessionalsList({
   onInactivate,
   onReactivate,
 }: ProfessionalsListProps) {
+  const team = useTeamWords();
   const [search, setSearch] = useState("");
   // Padrao: so ativos (o dia a dia); inativos ficam a um clique no filtro.
   const [status, setStatus] = useState<"all" | RecordStatus>(DEFAULT_STATUS);
@@ -406,13 +410,13 @@ export function ProfessionalsList({
         onClearFilters={clearAll}
         inactiveLeft={{
           count: inactiveProfessionals?.length ?? 0,
-          noun: "Nenhum profissional",
+          noun: `Nenhum ${team.lower}`,
           onShow: () => setStatus("inactive"),
         }}
         emptyGuide={
           <ModuleEmptyGuide
             icon={<Contact className="size-8" />}
-            title="Nenhum profissional cadastrado ainda."
+            title={`Nenhum ${team.lower} cadastrado ainda.`}
             description={
               isClasses
                 ? "Cadastre sua equipe, as modalidades que cada um leciona e a disponibilidade."
@@ -445,7 +449,7 @@ export function ProfessionalsList({
           onChange={setSearch}
           onClear={clearSearch}
           placeholder="Buscar por nome ou cargo..."
-          aria-label="Buscar profissional"
+          aria-label={`Buscar ${team.lower}`}
         />
 
         <div className="flex items-center gap-2">
@@ -463,8 +467,8 @@ export function ProfessionalsList({
         <ListSummaryBar
           isLoading={isPending}
           count={professionals.length}
-          singularLabel="profissional na equipe"
-          pluralLabel="profissionais na equipe"
+          singularLabel={`${team.lower} na equipe`}
+          pluralLabel={`${team.lowerPlural} na equipe`}
           hasFilters={hasSearch || hasFilters}
           onClearFilters={clearAll}
         />

@@ -315,7 +315,6 @@ export function OnlinePaymentsSettingsTab({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               onClick={() => setTermsOpen(true)}
               className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground -ml-2 sm:ml-0"
             >
@@ -327,7 +326,6 @@ export function OnlinePaymentsSettingsTab({
               <Button
                 type="submit"
                 disabled={pending || !dirty}
-                size="sm"
                 className="gap-2 w-full sm:w-auto"
               >
                 {pending ? (
