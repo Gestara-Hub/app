@@ -24,3 +24,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #14 senha do convite | feito | git log | typecheck, lint, Vitest 1025 | Regra única em lib/password-rules; mínimo do Supabase de produção virou pendência |
 | 4.1 #11 e #31 avisos cobrindo botões | feito | git log | typecheck, lint, Vitest 1026 | Toaster top-center; e2e de sobreposição na seção 6 |
 | 4.1 #69 jargão em Preferências | feito | git log | typecheck, lint, Vitest 1028 | Botão Copiar CSS removido (função segue no lib) |
+| 4.2 #3 seta sobre a lista | feito | git log | typecheck, lint, Vitest | Só visual; coberto pela bateria de tela |

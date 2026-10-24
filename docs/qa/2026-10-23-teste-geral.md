@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 25 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 26 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -114,6 +114,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 14 | 24/10 | A senha do convite pede no mínimo 8 caracteres, como criar conta, redefinir e entrar; o servidor confere de novo antes de tocar no banco. Uma regra só em `lib/password-rules.ts`. No Supabase de produção, ajustar o mínimo do Auth para 8 (pendência). | `services/users/__tests__/acceptInvitationPassword.test.ts` | — |
 | 11, 31 | 24/10 | Os avisos (toasts) saem no topo, centralizados, e não mais no canto inferior direito: não cobrem o botão "Aceitar e continuar" do contrato nem o rodapé das janelas laterais ao cadastrar em sequência. Regra escrita na doc `frontend/07`. | `app/__tests__/toaster-position.test.ts` (e2e de sobreposição na bateria final) | — |
 | 69 | 24/10 | Preferências e o painel de tema sem jargão: saiu o botão "Copiar CSS" (era para programador); "Bordas (Raio)" virou "Cantos"; "r:0.5" virou "cantos 0,5"; "Padrão (Default)" virou "Padrão"; "System (Nativo)" virou "Do aparelho"; "Sons e Feedback Operacional" virou "Sons", e "Check-in e presença" virou "presença". | `lib/__tests__/preferences-copy.test.ts` | — |
+| 3 | 24/10 | A seta "Mais aniversariantes" (e as outras listas com rolagem) fica abaixo da lista, com 36 px de altura, e não cobre mais nenhuma linha (`ScrollCueArea`). | conferido na bateria final (e2e de sobreposição) | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -144,7 +145,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2 | Painel | card "Mensalidades recebidas" | desktop 1280, claro | O selo diz "10 em atraso", mas o texto embaixo diz "R$ 491,61 atrasado". 10 é o total de cobranças em atraso de todos os meses (R$ 1.412,67, como nos Lembretes e no Financeiro); R$ 491,61 é só deste mês (3 cobranças, como em Cobranças). | Número e valor do mesmo recorte: "3 em atraso · R$ 491,61" ou "10 em atraso · R$ 1.412,67". | Demonstração, dono, `/dashboard`. Comparar com Cobranças (Em atraso: 3, R$ 491,61) e Financeiro (Em atraso R$ 1.412,67). Captura `tour-1280-dashboard.png`. | média (corrigido) |
-| 3 | Painel | card "Aniversariantes de outubro" | desktop 1280, claro | O botão "Mais aniversariantes" fica por cima da última linha (Isabela Moraes), cobrindo telefone e o próximo nome. O botão tem 23 px de altura. | Botão abaixo da lista, sem cobrir texto, com 36 px. | `/dashboard` na demonstração. Captura `tour-1280-dashboard.png`. | baixa |
+| 3 | Painel | card "Aniversariantes de outubro" | desktop 1280, claro | O botão "Mais aniversariantes" fica por cima da última linha (Isabela Moraes), cobrindo telefone e o próximo nome. O botão tem 23 px de altura. | Botão abaixo da lista, sem cobrir texto, com 36 px. | `/dashboard` na demonstração. Captura `tour-1280-dashboard.png`. | baixa (corrigido) |
 
 ### Cadastros
 

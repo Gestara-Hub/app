@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Area com altura limitada e rolagem que avisa quando ha mais conteudo abaixo:
- * esmaece a borda de baixo e mostra um botao ("Mais abaixo") que rola a lista.
+ * esmaece a borda de baixo e mostra, abaixo da lista, um botao ("Mais abaixo")
+ * de 36 px que rola a lista sem cobrir nenhuma linha.
  * Mesmo padrao do "Mais campos abaixo" dos modais (DialogBody).
  */
 export function ScrollCueArea({
@@ -52,18 +53,21 @@ export function ScrollCueArea({
       </div>
       {canScrollDown ? (
         <>
+          {/* Esmaece so o fim da lista; o botao fica abaixo dela, sem cobrir texto (achado 3). */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-10 h-8 bg-gradient-to-t from-card to-transparent"
           />
-          <button
-            type="button"
-            onClick={() => ref.current?.scrollBy({ top: 160, behavior: "smooth" })}
-            className="absolute bottom-0 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/60 bg-background/95 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs backdrop-blur hover:text-foreground"
-          >
-            {cueLabel}
-            <ChevronDown className="size-3 animate-bounce text-primary" aria-hidden />
-          </button>
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => ref.current?.scrollBy({ top: 160, behavior: "smooth" })}
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-muted-foreground shadow-xs hover:text-foreground"
+            >
+              {cueLabel}
+              <ChevronDown className="size-3.5 animate-bounce text-primary" aria-hidden />
+            </button>
+          </div>
         </>
       ) : null}
     </div>
