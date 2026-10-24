@@ -143,6 +143,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 71 | 24/10 | O cartão do plano na barra lateral ("Plano Grátis · Evoluir") só aparece para quem pode contratar plano (o dono); professor, recepção e gerente não o veem. | `components/layout/__tests__/sidebar-plan-card.test.ts` | — |
 | 73 | 24/10 | O selo de aniversário compacto diz "Aniv. em 5 dias" (antes "Em 5 dias", que parecia vencimento) e leva o texto completo para leitor de tela e para o title. | `components/shared/__tests__/birthday-badge.test.ts` | — |
 | 9 | 24/10 | Acertados os botões que o teste mediu no topo e na abertura de Recebimentos online ("Ver planos" e "Ativar conta de recebimento" na altura padrão de 36 px). Os outros cerca de 50 usos de `size` fora do padrão (paginação, painel de tema, evolução, checkout) viraram pendência: varrer por tela com captura. "Definir faixa", "Simplificada/Avançada" e "Dia a dia/Gestão" são etiquetas e seletores. | `components/layout/__tests__/button-height.test.ts` | — |
+| 27 | 24/10 | Só a parte que não depende da regra do dinheiro: a ficha do aluno com a assinatura trancada mostra o selo "Trancado" ao lado do nome, como a lista. O que fazer com a cobrança do mês em curso segue esperando decisão (docs/pendencias.md). | `features/clients/__tests__/paused-tag.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 

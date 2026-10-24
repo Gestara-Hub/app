@@ -22,6 +22,7 @@ import {
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { BackLink } from "@/components/shared/back-link";
 import { InitialsAvatar, RecordStatusBadge } from "@/components/shared/list";
+import { PausedTag } from "./paused-tag";
 import type { ListItemAction } from "@/components/shared/list-item-actions-menu";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { PageActionsMenu } from "@/components/shared/page-actions-menu";
@@ -522,6 +523,7 @@ export function StudentProfileView({ id }: { id: Id }) {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight break-words">{student.name}</h1>
             <RecordStatusBadge status={student.status} />
+            {student.status === "active" && student.membershipStatus === "paused" ? <PausedTag /> : null}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">

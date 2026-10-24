@@ -48,6 +48,7 @@ import {
 } from "@/components/shared/list-item-actions-menu";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { BirthdayBadge } from "@/components/shared/birthday-badge";
+import { PausedTag } from "./paused-tag";
 import { MinorConsentBadge, isMinorConsentPending } from "@/components/shared/minor-consent-badge";
 import { ModuleEmptyGuide } from "@/components/shared/module-empty-guide";
 import { sharedVocabularyFor, vocabularyForModality } from "@/lib/business-segment-presets";
@@ -237,14 +238,6 @@ function activeScholarship(client: Client) {
 
 const SCHOLARSHIP_BADGE_CLASS =
   "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25";
-
-function PausedTag() {
-  return (
-    <span className="rounded bg-amber-500/15 px-1 py-0.2 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-      Trancado
-    </span>
-  );
-}
 
 function ClientPlanBadge({ client, plan }: { client: Client; plan?: Plan }) {
   const scholarship = activeScholarship(client);
