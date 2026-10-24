@@ -23,6 +23,7 @@ import {
 import { useAbsenceStreaks, useChargeActions, useCharges } from "@/features/turmas";
 import { withKind } from "@/lib/text";
 import { minorConsentUrl } from "@/lib/minor-consent-link";
+import { minorConsentAlertDetail } from "../minor-consent";
 
 interface StudentAlert {
   key: string;
@@ -227,11 +228,8 @@ export function StudentProfileAlerts({
   }
 
   // Autorização de menor pendente (Art. 14 LGPD): se menor de 18 anos e termo pendente.
-  if (
-    summary.age !== null &&
-    summary.age < 18 &&
-    (student.minorConsentStatus === "pending" || !student.minorConsentStatus)
-  ) {
+  const minorConsentDetail = minorConsentAlertDetail(student);
+  if (minorConsentDetail) {
     const guardianWithPhone = student.guardians?.find((g) => Boolean(g.phone));
     const targetPhone = guardianWithPhone?.phone || student.phone;
     const targetName = guardianWithPhone?.name || "Responsável legal";
@@ -239,7 +237,7 @@ export function StudentProfileAlerts({
     alerts.push({
       key: "minor_consent",
       title: "Autorização de menor pendente (LGPD)",
-      detail: "O consentimento dos pais ou responsável ainda não foi confirmado.",
+      detail: minorConsentDetail,
       actions: (
         <>
           <Button

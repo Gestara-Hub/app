@@ -18,3 +18,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #61 CPF na janela Cobrar online | feito | git log | typecheck, lint, Vitest, core 282 | Tela conferida só por tipos; e2e fica para a bateria |
 | 4.1 #68 Auditoria da cobrança do curso | feito | git log | typecheck, lint, Vitest 1015 |  |
 | 4.1 #48 certificado (palavra repetida) | feito (parte); resto decisão | git log | typecheck, lint, Vitest, core 284 | Aulas/presença e cargo: análise em pendencias.md |
+| 4.1 #44 termo na ficha do menor | feito | git log | typecheck, lint, Vitest 1018 |  |
