@@ -1,6 +1,7 @@
 "use client";
 
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
+import { chargeAccessibleLabel } from "../charge-label";
 import { useState, type ReactElement, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
@@ -58,7 +59,10 @@ import { dateInSpace } from "@gestarahub/core/date";
  * As mesmas em Cobrancas e no extrato da ficha do aluno: renderize `dialogs`
  * uma vez na tela.
  */
-export function useChargeActions() {
+export function useChargeActions(options: { describeCharge?: boolean } = {}) {
+  // Na ficha do aluno todas as cobrancas sao dele: o nome acessivel diz qual cobranca (achado 46).
+  // Nas listas de Cobrancas fica so o nome do aluno.
+  const nameOf = (c: ChargeView) => (options.describeCharge ? `${c.studentName}: ${chargeAccessibleLabel(c)}` : c.studentName);
   const [chargeToCancel, setChargeToCancel] = useState<ChargeView | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   // O motivo limpa depois que a confirmacao fechou (evita o campo piscar vazio).
@@ -320,7 +324,7 @@ export function useChargeActions() {
         return (
           <ListItemActionsMenu
             title="Mais opções"
-            ariaLabel={`Ações de ${c.studentName}`}
+            ariaLabel={`Ações de ${nameOf(c)}`}
             variant="ghost"
             actions={contextActions(c)}
           />
@@ -345,7 +349,7 @@ export function useChargeActions() {
               target="_blank"
               rel="noopener"
               title="Baixar recibo"
-              aria-label={`Baixar recibo de ${c.studentName}`}
+              aria-label={`Baixar recibo de ${nameOf(c)}`}
               onClick={(event) => event.stopPropagation()}
             >
               <FileText className={iconCls} />
@@ -359,7 +363,7 @@ export function useChargeActions() {
     return (
       <ListItemActionsMenu
         title="Mais opções"
-        ariaLabel={`Ações de ${c.studentName}`}
+        ariaLabel={`Ações de ${nameOf(c)}`}
         variant="ghost"
         actions={openChargeActions(c)}
       />
