@@ -9,7 +9,8 @@ import { spawnSync } from "node:child_process";
 
 const AREAS = {
   acesso: ["acesso", "usuarios-perfis", "permissoes", "seguranca-aviso", "verificacao-email"],
-  configuracao: ["configuracao-inicial", "areas-setup", "areas-settings", "configuracoes", "vocabulario-modalidade"],
+  configuracao: ["configuracao-inicial", "areas-setup", "areas-settings", "configuracoes", "vocabulario-modalidade", "fuso-do-espaco"],
+  plano: ["plano-gestarahub", "plano-rotina-e-webhook"],
   turmas: ["turmas", "turmas-geral", "curso-fechado"],
   chamada: ["turmas-geral", "turmas", "dinheiro-pacotes", "evolucao-areas"],
   alunos: ["cadastros", "ficha-aluno", "formularios"],

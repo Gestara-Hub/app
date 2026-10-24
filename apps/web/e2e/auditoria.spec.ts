@@ -21,6 +21,11 @@ async function filterType(page: Page, label: string) {
   await page.getByRole("option", { name: label, exact: true }).click();
 }
 
+async function filterActor(page: Page, label: string) {
+  await page.getByRole("combobox", { name: "Filtrar por responsável" }).click();
+  await page.getByRole("option", { name: label, exact: true }).click();
+}
+
 const hasLog = (needle: string) => (t: Tenant) =>
   (t.auditLog ?? []).some((e: { summary: string }) => e.summary.includes(needle));
 
@@ -213,6 +218,47 @@ test.describe("tela de auditoria", () => {
     await expect(page.getByText("1 evento registrado")).toBeVisible();
     await page.getByLabel("Buscar no log de auditoria").fill("nada disso");
     await expect(page.getByRole("button", { name: /^Detalhes:/ })).toHaveCount(0);
+  });
+
+  test("filtro Pessoas, Sistema e Só o que falhou", async ({ page }) => {
+    await seedAudit(page, (t) => {
+      t.auditLog = [
+        ...LOG,
+        entry("a-sys-1", {
+          timestamp: "2026-09-21T20:00:00.000Z",
+          actor: { userId: "usr-ac-ana", name: "Rotina diária", profile: "owner", kind: "system" },
+          target: { type: "subscription", label: "Plano GestaraHub" },
+          source: "cron.daily",
+          summary: "Rotina diária voltou o Plano GestaraHub ao Grátis",
+        }),
+        entry("a-sys-2", {
+          timestamp: "2026-09-21T21:00:00.000Z",
+          actor: { userId: "usr-ac-ana", name: "Parceiro de pagamentos", profile: "owner", kind: "system" },
+          target: { type: "subscription", label: "Plano GestaraHub" },
+          source: "webhook.asaas",
+          failed: true,
+          errorReference: "K7Q2M9XD",
+          summary: "Parceiro de pagamentos: renovação do plano não foi registrada",
+        }),
+      ];
+    });
+    await page.goto("/audit");
+    await expect(page.getByText("7 eventos registrados")).toBeVisible();
+
+    await filterActor(page, "Sistema (rotinas e pagamentos)");
+    await expect(page.getByText("2 eventos registrados")).toBeVisible();
+    await expect(auditRow(page, "Rotina diária voltou o Plano GestaraHub ao Grátis")).toBeVisible();
+    await expect(auditRow(page, "Ana Ribeiro atualizou o aluno Aluno A20")).toHaveCount(0);
+
+    await filterActor(page, "Só o que falhou");
+    await expect(page.getByText("1 evento registrado")).toBeVisible();
+    await auditRow(page, "Parceiro de pagamentos: renovação do plano não foi registrada").click();
+    await expect(page.getByRole("dialog")).toContainText("K7Q2M9XD");
+    await page.getByRole("dialog").getByRole("button", { name: "Fechar" }).last().click();
+
+    await filterActor(page, "Pessoas");
+    await expect(page.getByText("5 eventos registrados")).toBeVisible();
+    await expect(auditRow(page, "Rotina diária voltou o Plano GestaraHub ao Grátis")).toHaveCount(0);
   });
 
   test("detalhe mostra alvo e alterações, sem editar", async ({ page }) => {

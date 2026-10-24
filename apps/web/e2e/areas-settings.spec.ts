@@ -241,39 +241,42 @@ test("menu e tela \"Planos e pacotes\"", async ({ page }) => {
   await expect(page.getByText("Mensalidades e pacotes de aulas.")).toBeVisible();
 });
 
-/** Aba Plano GestaraHub: ativa o Pro (demonstracao) pela tela. */
+/**
+ * Plano Profissional no banco: o plano pago so e gravado pelo servidor (achado
+ * 66), entao a conta real nao tem o botao de demonstracao. O pagamento do plano
+ * e a troca estao em `plano-gestarahub.spec.ts`.
+ */
 async function activatePro(page: Page) {
+  await editWorld(page, ORG, (t) => {
+    t.organization.subscription = { tier: "pro", interval: "monthly", status: "active", paymentMethod: "pix", priceCents: 7990, asaasSubscriptionId: "sub_mock_e2e", renewsOn: "2026-10-12", nextDueDate: "2026-10-12", changedAt: "2026-09-12T12:00:00.000Z" };
+  });
   await page.goto("/settings?tab=plano");
-  await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" });
-  await expect(confirm).toContainText("Nenhuma cobrança é feita.");
-  await confirm.getByRole("button", { name: "Ativar Profissional" }).click();
-  await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
-  await waitForStore(page, (t) => t.organization.subscription?.tier === "pro");
 }
 
-test("Plano GestaraHub: do Grátis ao Pro e de volta, com confirmação", async ({ page }) => {
+test("Plano GestaraHub: o Grátis assina pelo checkout; o Pro volta ao Grátis no fim do período", async ({ page }) => {
   await seedAcademy(page);
   await page.goto("/settings?tab=plano");
   const panel = page.locator("#settings-panel-plano");
   await expect(panel).toContainText("O cadastro e a operação do dia a dia são grátis.");
   await expect(panel.getByText("Certificado de conclusão", { exact: true })).toBeVisible();
   await expect(panel.getByText("Certificado de conclusão do curso para imprimir ou salvar em PDF.")).toBeVisible();
-
-  // Voltar na confirmacao nao troca.
-  await panel.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
-  await page.getByRole("alertdialog", { name: "Ativar o Plano Profissional?" }).getByRole("button", { name: "Voltar" }).click();
-  await expect(panel.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
+  // Conta real: nada de botão de demonstração, e o pagamento online ja e do Gratis.
+  await expect(panel.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toHaveCount(0);
+  await expect(panel.getByText("Pagamento online", { exact: true })).toHaveCount(0);
+  await expect(panel.getByRole("link", { name: "Assinar o Profissional" })).toHaveAttribute(
+    "href",
+    "/plans/checkout?tier=pro&interval=monthly",
+  );
   expect((await readTenant(page)).organization.subscription?.tier ?? "free").toBe("free");
 
   await activatePro(page);
   await expect(panel).toContainText("Sua organização tem todos os recursos do Profissional.");
   await panel.getByRole("button", { name: "Voltar ao Grátis" }).click();
-  const back = page.getByRole("alertdialog", { name: "Voltar ao Plano Grátis?" });
-  await expect(back).toContainText("Os recursos do Profissional ficam bloqueados.");
-  await back.getByRole("button", { name: "Voltar ao Grátis" }).click();
-  await expect(page.getByText("Plano Grátis ativado.")).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
+  const back = page.getByRole("dialog", { name: "Voltar ao Grátis?" });
+  await expect(back).toContainText("Volta ao Grátis em");
+  // Cancelar nao troca nada.
+  await back.getByRole("button", { name: "Cancelar" }).click();
+  await expect(panel.getByRole("button", { name: "Voltar ao Grátis" })).toBeVisible();
 });
 
 // ===========================================================================
@@ -321,7 +324,7 @@ test.describe("Configurações: Certificado", () => {
     await expect(cta).toHaveAttribute("href", "/settings?tab=plano");
     await cta.click();
     await expect(page).toHaveURL(/tab=plano/);
-    await expect(page.getByRole("button", { name: "Ativar Profissional (demonstração)" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Assinar o Profissional" })).toBeVisible();
   });
 
   async function openEditor(page: Page) {

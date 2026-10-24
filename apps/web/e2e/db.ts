@@ -263,8 +263,13 @@ function resolveAliases(value: unknown, tenant: E2ETenant): unknown {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function editTenant(tenant: E2ETenant, mutate: (t: any) => void | Promise<void>): Promise<void> {
+  // O plano pago e gravado so pelo servidor (achado 66): o cenario que o muda
+  // (`t.organization.subscription = ...`) vai direto para a coluna.
+  let subscription: Record<string, unknown> | undefined;
   await runInWorld(ownerContext(tenant), async () => {
+    const before = store.organization.subscription;
     await mutate(store);
+    if (store.organization.subscription !== before) subscription = structuredClone(store.organization.subscription) as never;
     // A auditoria do banco usa uuid; os cenarios usam ids curtos ("log-1").
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     for (const entry of store.auditLog ?? []) {
@@ -279,6 +284,12 @@ export async function editTenant(tenant: E2ETenant, mutate: (t: any) => void | P
     }
     repairOrphans(store);
   });
+  if (subscription) await setSubscription(tenant, subscription);
+}
+
+/** Grava o plano do espaco direto na coluna (o espaco do servidor nao a grava). */
+export async function setSubscription(tenant: E2ETenant, subscription: Record<string, unknown>): Promise<void> {
+  await admin().from("organizations").update({ subscription }).eq("id", tenant.organizationId).throwOnError();
 }
 
 

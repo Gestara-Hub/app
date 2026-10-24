@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, readAcademy, seedAcademy, student, test } from "./fixtures";
+import { editWorld, expect, readAcademy, seedAcademy, student, test } from "./fixtures";
 
 /**
  * Comunicacao pelo WhatsApp do proprio espaco (docs/product/13, secao 5 e
@@ -169,10 +169,10 @@ test.describe("WhatsApp oficial (Pro)", () => {
       },
     });
 
-    await page.goto("/settings?tab=plano");
-    await page.getByRole("button", { name: "Ativar Profissional (demonstração)" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Ativar Profissional" }).click();
-    await expect(page.getByText("Plano Profissional ativado.")).toBeVisible();
+    // Plano Profissional no banco (o plano pago so e gravado pelo servidor, achado 66).
+    await editWorld(page, "org-academia-x", (t) => {
+      t.organization.subscription = { tier: "pro", interval: "monthly", status: "active", paymentMethod: "pix", priceCents: 7990, asaasSubscriptionId: "sub_mock_e2e", renewsOn: "2026-10-12", nextDueDate: "2026-10-12", changedAt: "2026-09-12T12:00:00.000Z" };
+    });
 
     await page.goto("/communication");
     // Pro sem conexao: ainda assistido, com o atalho para conectar.
