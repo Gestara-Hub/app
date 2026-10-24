@@ -203,5 +203,7 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
   - `services/subscription/__tests__/plan-webhook.test.ts` (roteamento do webhook);
   - `services/subscription/__tests__/paidFeaturesOnServer.db.test.ts` (achado 80).
 
+- **Histórico do plano (23/10/2026):** cada mudança vira uma linha em `subscription_events` e a mesma frase na Auditoria, com quem fez (pessoa, rotina ou parceiro de pagamentos). Aparece em Configurações → Plano. Ver doc `technical/23`.
+
 ### Pendente
 - **Antes de produção:** cadastrar o webhook na conta principal do Asaas, com os eventos de cobrança e de assinatura e o mesmo token (`ASAAS_WEBHOOK_SECRET`). Hoje o webhook é cadastrado só nas subcontas. Sem ele, a rotina diária ainda confere a renovação, mas o upgrade pago com a tela fechada só liga na próxima conferência.

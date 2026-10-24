@@ -69,3 +69,5 @@ Na rotina diária: os erros **novos ou que voltaram** nas últimas 24 horas (no 
 
 - `lib/log/__tests__/log.test.ts`: máscara, impressão digital, a porta única e o destino que falha.
 - `services/server/__tests__/errorLogs.db.test.ts`: ação com erro (código na mensagem, espaço e usuário da sessão, o mesmo erro soma), erro de regra fora do registro, navegador sem sessão (não grava) e com sessão (espaço da sessão, mascarado), resumo diário.
+
+**Ligação com a Auditoria (23/10/2026, doc 23):** quando uma tarefa em segundo plano falha num espaço, a Auditoria ganha uma linha "falhou" com o mesmo código (`audit_logs.error_reference`), e as execuções e os avisos do Asaas guardam os códigos (`job_runs.error_references`, `webhook_events.error_reference`).
