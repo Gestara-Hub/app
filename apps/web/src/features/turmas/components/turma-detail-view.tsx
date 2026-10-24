@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { capacityLabel, promoteWaitlistDescription } from "../turma-copy";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -493,7 +494,6 @@ export function TurmaDetailView({
     if (mode === "free") return "Sem cobrança";
     return turma.planName ? `Plano ${turma.planName}` : null;
   })();
-  const isFull = turma.enrolledCount >= turma.capacity;
   const modalityInName = normalizeText(turma.name).includes(normalizeText(turma.modalityName ?? ""));
   const meta = [
     modalityInName ? null : turma.modalityName,
@@ -502,7 +502,7 @@ export function TurmaDetailView({
     turma.startDate > todayISO() ? `Começa em ${ddmm(turma.startDate)}` : null,
     turma.instructorName,
     billingShort,
-    isFull ? "Turma lotada" : `${turma.enrolledCount} de ${turma.capacity} alunos`,
+    capacityLabel(turma.enrolledCount, turma.capacity),
   ].filter((part): part is string => Boolean(part));
 
   const enrolledCount = (enrollments ?? []).length;
@@ -1010,7 +1010,7 @@ export function TurmaDetailView({
                           }
                           const ok = await confirmAction({
                             title: "Promover da lista de espera?",
-                            description: `${w.studentName} será matriculado na turma, mesmo que ela esteja lotada.`,
+                            description: promoteWaitlistDescription(w.studentName),
                             confirmLabel: "Matricular",
                           });
                           if (!ok) return;
