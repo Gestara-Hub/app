@@ -41,7 +41,7 @@ import {
   useFinanceUpcoming,
 } from "../hooks/use-finance";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
-import { competenceLabel, financeHref } from "../lib";
+import { competenceLabel, financeHref, payablesSubtitle } from "../lib";
 import { ALL_OVERDUE_BILLING_HREF, billingHref, overdueBreakdownText, shortDate } from "../finance-ui";
 import { FinanceCashFlowChart } from "./finance-cash-flow-chart";
 
@@ -329,7 +329,7 @@ function VariantSimplified({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-semibold text-foreground">Contas a pagar</h3>
-                <p className="text-xs text-muted-foreground">Atrasadas e as que vencem em 7 dias</p>
+                <p className="text-xs text-muted-foreground">{payablesSubtitle(todayISO())}</p>
               </div>
               <Clock className="size-4 text-muted-foreground" />
             </div>

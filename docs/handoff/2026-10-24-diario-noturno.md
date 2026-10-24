@@ -50,3 +50,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #49 Certificado no Grátis | adiado para a bateria 6B | git log | — | O clique leva à página que mostra o aviso do plano (código confere); reproduzir em tela antes de mexer |
 | 4.2 #50 retenção sem base | feito | git log | typecheck, lint, Vitest 1051 |  |
 | 4.2 #51 aula ao abrir a lista de presença | feito | git log | typecheck, lint, Vitest 1054 |  |
+| 4.2 #54 Contas a pagar em outro mês | feito | git log | typecheck, lint, Vitest 1055 | Escolhida a opção de deixar claro que é de hoje |

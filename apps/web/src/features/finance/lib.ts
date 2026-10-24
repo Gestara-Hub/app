@@ -48,3 +48,11 @@ export function financeHref(
   if (filter?.status) params.set("status", filter.status);
   return `/finance?${params.toString()}`;
 }
+
+/**
+ * Subtitulo de "Contas a pagar" no Resumo: o quadro e de hoje, nao do mes
+ * escolhido, e diz isso com a data (achado 54 do teste de 23/10).
+ */
+export function payablesSubtitle(todayIso: string): string {
+  return `A partir de hoje, ${todayIso.slice(8, 10)}/${todayIso.slice(5, 7)}: atrasadas e as que vencem em 7 dias`;
+}
