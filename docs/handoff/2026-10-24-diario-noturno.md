@@ -49,3 +49,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #47 Aluno desde na demonstração | feito (parte) | git log | demo:seed rodado; datas conferidas no banco | Auditoria da demo mantém a hora da criação |
 | 4.2 #49 Certificado no Grátis | adiado para a bateria 6B | git log | — | O clique leva à página que mostra o aviso do plano (código confere); reproduzir em tela antes de mexer |
 | 4.2 #50 retenção sem base | feito | git log | typecheck, lint, Vitest 1051 |  |
+| 4.2 #51 aula ao abrir a lista de presença | feito | git log | typecheck, lint, Vitest 1054 |  |

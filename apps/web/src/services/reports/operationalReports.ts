@@ -10,6 +10,7 @@ import type {
 import { firstDayOfCompetence, lastDayOfCompetence, localDateOf } from "@gestarahub/core/finance";
 import { store } from "@/services/world/store";
 import { sessionDetailOf, sessionsOfClass } from "../classes";
+import { pickAttendanceCandidate } from "./attendanceChoice";
 import { buildHeader } from "./reportCatalog";
 import type { ReportContext } from "./reportContext";
 import { dateInSpace } from "@gestarahub/core/date";
@@ -24,11 +25,32 @@ export async function buildAttendanceSheet({ competence, periodLabel, filter }: 
     const groups = store.classGroups
       .filter((g) => g.status === "active")
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    const classGroup = groups.find((g) => g.id === filter.classGroupId) ?? groups[0] ?? null;
     const today = dateInSpace();
     const monthEnd = lastDayOfCompetence(competence);
+    const rangeEnd = monthEnd < today ? monthEnd : today;
+    // Sem turma escolhida: a aula mais recente com chamada (achado 51); sem nenhuma, a primeira turma.
+    const chosenGroupId =
+      filter.classGroupId ??
+      pickAttendanceCandidate(
+        groups.flatMap((g) => {
+          const last = sessionsOfClass(g, firstDayOfCompetence(competence), rangeEnd).at(-1);
+          const roster = last ? (sessionDetailOf(last.id)?.roster ?? []) : [];
+          return last
+            ? [
+                {
+                  classGroupId: g.id,
+                  className: g.name,
+                  session: { id: last.id, date: last.date, start: last.start },
+                  rosterCount: roster.length,
+                  markedCount: roster.filter((r) => r.attendance).length,
+                },
+              ]
+            : [];
+        }),
+      )?.classGroupId;
+    const classGroup = groups.find((g) => g.id === chosenGroupId) ?? groups[0] ?? null;
     const sessions = classGroup
-      ? sessionsOfClass(classGroup, firstDayOfCompetence(competence), monthEnd < today ? monthEnd : today)
+      ? sessionsOfClass(classGroup, firstDayOfCompetence(competence), rangeEnd)
       : [];
     const session = sessions.find((x) => x.id === filter.sessionId) ?? sessions.at(-1);
     const detail = session ? sessionDetailOf(session.id) : undefined;
