@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import { cookies, headers } from "next/headers";
 import type {
   Category,
@@ -402,11 +403,11 @@ export async function completeSignupWithPassword(input: {
   token: string;
   password: string;
 }): Promise<CompleteSignupResult> {
-  if (!input.password || input.password.length < 8) {
+  if (!isPasswordLongEnough(input.password)) {
     return {
       ok: false,
       code: "error",
-      message: "A senha deve ter pelo menos 8 caracteres.",
+      message: PASSWORD_TOO_SHORT_MESSAGE,
     };
   }
 

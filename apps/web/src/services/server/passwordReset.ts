@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/log";
 
@@ -10,7 +11,7 @@ import { logError } from "@/lib/log";
  */
 
 export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
-export const MIN_PASSWORD_LENGTH = 8;
+export { MIN_PASSWORD_LENGTH };
 
 const hashToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
 

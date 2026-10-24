@@ -46,6 +46,7 @@ Decisão do usuário (23/10/2026): foco no desenvolvimento. O e2e e as conferên
 | --- | --- |
 | Escrever o roteiro de publicação: Supabase (`db push` antes do deploy do app), Vercel sem `DEMO_PASSWORD`, segredos no Vault, conferências depois do primeiro deploy | Ainda sem doc (combinado em 22/10, a escrever quando começar o deploy) |
 | GitHub Actions com as conferências rápidas e o e2e completo, e `main` protegida | `technical/20-tempo-dos-testes.md`, Etapa 2 |
+| Mínimo de senha do Supabase Auth em 8 caracteres no projeto de produção (o local segue em 6 em `apps/supabase/config.toml`; o app já exige 8 em todas as telas e no servidor) | `qa/2026-10-23-teste-geral.md`, achado 14 |
 | Webhook na conta principal do Asaas (eventos de cobrança e de assinatura, mesmo token): hoje só as subcontas têm | `product/13-modelo-de-negocio.md` §6, Pendente |
 | `ASAAS_API_URL` da API real antes do build (desliga os botões de simular pagamento) | `technical/14-asaas-mcp.md` |
 | `ASAAS_WEBHOOK_EMAIL` (contato@gestarahub.com.br) na Vercel; webhooks de subcontas já criadas só pegam ao registrar de novo | `technical/19-desempenho-e-escala.md` |

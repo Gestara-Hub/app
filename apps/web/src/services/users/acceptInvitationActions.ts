@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE, encodeSession } from "@/lib/session";
 import type { UserProfile, UserView } from "@gestarahub/contracts";
+import { PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import { hashToken } from "./userActionsShared";
 import { logError, logWarn } from "@/lib/log";
 
@@ -83,6 +84,8 @@ export async function acceptInvitationAction(input: {
   token: string;
   password: string;
 }): Promise<{ ok: boolean; message?: string }> {
+  // Mesma regra das outras telas de senha (o formulario confere, o servidor tambem).
+  if (!isPasswordLongEnough(input.password)) return { ok: false, message: PASSWORD_TOO_SHORT_MESSAGE };
   try {
     const admin = createSupabaseAdminClient();
     const tokenHash = hashToken(input.token.trim());

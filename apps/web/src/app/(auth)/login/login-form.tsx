@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -101,8 +102,8 @@ export function LoginForm({
       e.preventDefault();
       setPasswordError(null);
 
-      if (newPassword.length < 8) {
-        setPasswordError("A senha deve ter pelo menos 8 caracteres.");
+      if (!isPasswordLongEnough(newPassword)) {
+        setPasswordError(PASSWORD_TOO_SHORT_MESSAGE);
         return;
       }
       if (newPassword !== confirmPassword) {
@@ -181,7 +182,7 @@ export function LoginForm({
                 setNewPassword(e.target.value);
                 if (passwordError) setPasswordError(null);
               }}
-              placeholder="Mínimo de 8 caracteres"
+              placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
               autoComplete="new-password"
               required
               disabled={isCreatingAccount}

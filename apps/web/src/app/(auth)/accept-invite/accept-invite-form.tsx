@@ -13,18 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userProfileLabel } from "@/lib/labels";
+import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE } from "@/lib/password-rules";
 import { GoogleDivider, GoogleSignInButton } from "@/features/auth";
 import type { UserProfile } from "@gestarahub/contracts";
 import { acceptInvitationAction } from "@/services/users/actions";
 
 const acceptInviteSchema = z
   .object({
-    password: z
-      .string()
-      .min(6, "A senha deve ter no mínimo 6 caracteres."),
-    confirmPassword: z
-      .string()
-      .min(6, "Confirme sua senha."),
+    password: z.string().min(MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE),
+    confirmPassword: z.string().min(1, "Confirme sua senha."),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "As senhas não coincidem.",
@@ -126,7 +123,7 @@ export function AcceptInviteForm({
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-xs">
-              Nova Senha (mínimo 6 caracteres) *
+              Nova senha (mínimo de {MIN_PASSWORD_LENGTH} caracteres)*
             </Label>
             <Input
               id="password"

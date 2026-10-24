@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, isPasswordLongEnough } from "@/lib/password-rules";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
@@ -23,7 +24,7 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) return setError("A senha precisa ter pelo menos 8 caracteres.");
+    if (!isPasswordLongEnough(password)) return setError(PASSWORD_TOO_SHORT_MESSAGE);
     if (password !== confirm) return setError("As senhas não são iguais.");
     startTransition(async () => {
       const result = await completePasswordResetAction({ token, password });
@@ -64,7 +65,7 @@ export function ResetPasswordForm({ token, email }: { token: string; email: stri
               setPassword(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="Mínimo de 8 caracteres"
+            placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
             autoComplete="new-password"
             required
             disabled={pending}
