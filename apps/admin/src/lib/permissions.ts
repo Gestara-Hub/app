@@ -17,8 +17,10 @@ export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
 export type AdminPermission =
   | "dashboard:view"
   | "spaces:view"
+  | "spaces:annotate"
   | "support:view"
   | "support:reply"
+  | "support:access"
   | "plans:view"
   | "plans:grant"
   | "health:view"
@@ -33,8 +35,10 @@ export type AdminPermission =
 const OWNER: readonly AdminPermission[] = [
   "dashboard:view",
   "spaces:view",
+  "spaces:annotate",
   "support:view",
   "support:reply",
+  "support:access",
   "plans:view",
   "plans:grant",
   "health:view",
@@ -49,8 +53,8 @@ const OWNER: readonly AdminPermission[] = [
 
 export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   platform_owner: OWNER,
-  platform_support: ["dashboard:view", "spaces:view", "support:view", "support:reply", "health:view", "announcements:manage"],
-  platform_finance: ["dashboard:view", "spaces:view", "plans:view", "plans:grant", "revenue:view"],
+  platform_support: ["dashboard:view", "spaces:view", "spaces:annotate", "support:view", "support:reply", "support:access", "health:view", "announcements:manage"],
+  platform_finance: ["dashboard:view", "spaces:view", "spaces:annotate", "plans:view", "plans:grant", "revenue:view"],
   platform_viewer: ["dashboard:view", "spaces:view", "plans:view", "health:view", "revenue:view"],
 };
 

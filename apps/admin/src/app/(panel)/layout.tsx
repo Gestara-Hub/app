@@ -6,11 +6,16 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { ADMIN_ROLE_LABEL, can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { getEnv } from "@/lib/server/env";
+import { requestCounts } from "@/lib/server/privacy";
+import { threadCounts } from "@/lib/server/support";
 
 /** Casca do painel: so abre para quem passou por senha, segundo fator e tempo de sessao. */
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const { admin } = await requireAdmin();
-  const groups = visibleNav((permission) => can(admin.role, permission));
+  // Numeros ao lado do menu: conversas esperando resposta e pedidos LGPD fora do prazo.
+  const attention = can(admin.role, "support:view") ? (await threadCounts()).attention : 0;
+  const privacy = can(admin.role, "lgpd:manage") ? (await requestCounts()).overdue : 0;
+  const groups = visibleNav((permission) => can(admin.role, permission), { "/support": attention, "/privacy": privacy });
   return (
     <SidebarProvider>
       <AppSidebar groups={groups} />
@@ -20,7 +25,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <SidebarTrigger aria-label="Abrir ou fechar o menu" />
           <UserMenu name={admin.name} email={admin.email} roleLabel={ADMIN_ROLE_LABEL[admin.role]} />
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-6">{children}</main>
+        <div className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

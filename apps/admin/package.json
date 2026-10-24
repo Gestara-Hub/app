@@ -12,11 +12,13 @@
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
     "setup:local": "node scripts/setup-local.mjs",
-    "create-admin": "node scripts/create-admin.mjs"
+    "create-admin": "node scripts/create-admin.mjs",
+    "reset-mfa": "node scripts/reset-mfa.mjs"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
     "@gestarahub/core": "workspace:*",
+    "@hookform/resolvers": "^5.4.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",
@@ -29,6 +31,7 @@
     "radix-ui": "^1.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hook-form": "^7.80.0",
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",

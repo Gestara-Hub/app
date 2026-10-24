@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CheckCircle2, Database, ShieldCheck, Timer } from "lucide-react";
 import { formatDistanceToNowStrict, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -10,6 +11,10 @@ import { sql } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/context";
 import { auditActionLabel } from "@/lib/audit-labels";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-token";
+import { errorTotals } from "@/lib/server/health";
+import { overdueSpaces } from "@/lib/server/plans";
+import { requestCounts } from "@/lib/server/privacy";
+import { threadCounts } from "@/lib/server/support";
 
 export const metadata: Metadata = { title: "Início" };
 
@@ -23,14 +28,49 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     : [];
   const endsAt = new Date(startedAtMs + SESSION_MAX_AGE_SECONDS * 1000);
 
+  // O que pede ação hoje, só do que o papel enxerga.
+  const attention: { href: string; label: string; value: number; detail: string }[] = [];
+  if (can(admin.role, "support:view")) {
+    const t = await threadCounts();
+    attention.push({ href: "/support", label: "Conversas esperando resposta", value: t.attention, detail: t.urgent > 0 ? `${t.urgent} urgente${t.urgent > 1 ? "s" : ""}` : "Meta: até 2 dias úteis" });
+  }
+  if (can(admin.role, "health:view")) {
+    const e = await errorTotals();
+    attention.push({ href: "/health", label: "Erros hoje", value: e.today, detail: `${e.spacesAffected} espaço${e.spacesAffected === 1 ? "" : "s"} afetado${e.spacesAffected === 1 ? "" : "s"}, ${e.unknown} sem explicação` });
+  }
+  if (can(admin.role, "plans:view")) {
+    const o = await overdueSpaces();
+    attention.push({ href: "/plans", label: "Renovações atrasadas", value: o.length, detail: "Planos pagos com a data vencida" });
+  }
+  if (can(admin.role, "lgpd:manage")) {
+    const r = await requestCounts();
+    attention.push({ href: "/privacy", label: "Pedidos de dados (LGPD)", value: r.pending, detail: r.overdue > 0 ? `${r.overdue} fora do prazo de 15 dias` : "Prazo de 15 dias" });
+  }
+
   return (
     <>
-      <PageHeader title={`Olá, ${admin.name.split(" ")[0]}`} description="Alicerce do painel: acesso seguro e conexão com os dados. As telas de operação chegam nas próximas fases." />
+      <PageHeader title={`Olá, ${admin.name.split(" ")[0]}`} description="O que pede atenção hoje e o estado da sua sessão." />
 
       {denied ? (
         <p role="alert" className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Seu papel não tem acesso a essa tela.
         </p>
+      ) : null}
+
+      {attention.length > 0 ? (
+        <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {attention.map((item) => (
+            <Link key={item.href} href={item.href} className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring">
+              <Card className="h-full transition-colors hover:bg-muted/50">
+                <CardHeader className="pb-2">
+                  <CardDescription>{item.label}</CardDescription>
+                  <CardTitle className={`text-2xl tabular-nums ${item.value > 0 ? "" : "text-muted-foreground"}`}>{item.value}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">{item.detail}</CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">

@@ -24,6 +24,13 @@ describe("papéis do painel", () => {
     expect(can("platform_finance", "support:reply")).toBe(false);
   });
 
+  it("só proprietário e suporte abrem a visão de suporte; o financeiro e a leitura não", () => {
+    expect(can("platform_owner", "support:access")).toBe(true);
+    expect(can("platform_support", "support:access")).toBe(true);
+    expect(can("platform_finance", "support:access")).toBe(false);
+    expect(can("platform_viewer", "support:access")).toBe(false);
+  });
+
   it("a leitura só lê", () => {
     for (const permission of ROLE_PERMISSIONS.platform_viewer) {
       expect(permission.endsWith(":view")).toBe(true);

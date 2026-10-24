@@ -78,6 +78,8 @@ if (!has("NEXT_PUBLIC_SUPABASE_URL")) additions.push(["NEXT_PUBLIC_SUPABASE_URL"
 if (!has("NEXT_PUBLIC_SUPABASE_ANON_KEY")) additions.push(["NEXT_PUBLIC_SUPABASE_ANON_KEY", env.ANON_KEY]);
 if (!has("ADMIN_SESSION_SECRET")) additions.push(["ADMIN_SESSION_SECRET", randomBytes(48).toString("base64url")]);
 if (!has("ADMIN_ENV_LABEL")) additions.push(["ADMIN_ENV_LABEL", "local"]);
+if (!has("ADMIN_SERVICE_ROLE_KEY") && env.SERVICE_ROLE_KEY) additions.push(["ADMIN_SERVICE_ROLE_KEY", env.SERVICE_ROLE_KEY]);
+if (!has("CRON_SECRET")) additions.push(["CRON_SECRET", randomBytes(24).toString("base64url")]);
 
 console.log("3. Arquivo .env.local");
 for (const [name, value] of additions) content = set(name, value);

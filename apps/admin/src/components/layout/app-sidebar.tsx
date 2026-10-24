@@ -10,12 +10,13 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Brand } from "./brand";
-import { LayoutDashboard, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { Activity, Building2, CreditCard, LayoutDashboard, LifeBuoy, Megaphone, Scale, ShieldCheck, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import type { NavGroup, NavIconName } from "./nav";
 
 /** Menu lateral. Os grupos ja chegam filtrados pelo papel da pessoa (servidor). */
@@ -42,6 +43,7 @@ export function AppSidebar({ groups }: { groups: NavGroup[] }) {
                           <span>{item.label}</span>
                         </Link>
                       </SidebarMenuButton>
+                      {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
                     </SidebarMenuItem>
                   );
                 })}
@@ -55,7 +57,7 @@ export function AppSidebar({ groups }: { groups: NavGroup[] }) {
   );
 }
 
-const ICONS: Record<NavIconName, LucideIcon> = { LayoutDashboard, ShieldCheck, Users };
+const ICONS: Record<NavIconName, LucideIcon> = { Activity, Building2, CreditCard, LayoutDashboard, LifeBuoy, Megaphone, Scale, ShieldCheck, TrendingUp, Users };
 
 function NavIcon({ name }: { name: NavIconName }) {
   const Icon = ICONS[name];

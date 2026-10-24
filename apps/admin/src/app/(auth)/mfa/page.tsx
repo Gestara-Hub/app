@@ -1,3 +1,4 @@
+import { getEnv } from "@/lib/server/env";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdminContext } from "@/lib/server/context";
@@ -26,7 +27,11 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
   for (const stale of factors?.all.filter((f) => f.factor_type === "totp" && f.status !== "verified") ?? []) {
     await supabase.auth.mfa.unenroll({ factorId: stale.id });
   }
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Painel ${ctx.admin.email}` });
+  // O nome que aparece no aplicativo autenticador ("emissor: e-mail"). Fora da producao leva o
+  // ambiente, para nao confundir o painel local com o de verdade.
+  const env = getEnv().ADMIN_ENV_LABEL;
+  const issuer = env === "production" ? "GestaraHub Painel" : `GestaraHub Painel (${env})`;
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Painel ${ctx.admin.email}`, issuer });
   if (error || !data) {
     return <p role="alert" className="text-sm text-destructive">Não foi possível preparar o aplicativo autenticador. Recarregue a página.</p>;
   }

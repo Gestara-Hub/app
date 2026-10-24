@@ -1,0 +1,218 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { FormProvider, type DefaultValues, type FieldValues } from "react-hook-form";
+import type { z } from "zod";
+import { CheckboxField, FormFeedback, InputText, SelectField, TextArea, useActionForm, type ServerAction } from "@/components/form";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { courtesySchema, forceFreeSchema, graceSchema, reasonOnlySchema, userTwoFactorSchema } from "@/lib/form-schemas";
+import { inactivateSpaceAction, reactivateSpaceAction, resetUserTwoFactorAction } from "./privacy-actions";
+import { extendGraceAction, forceFreeAction, grantCourtesyAction, revokeCourtesyAction, type PlanFormState } from "./plan-actions";
+
+/**
+ * Cada acao de plano pede o motivo e uma confirmacao em dois toques ("Revisar"
+ * e depois "Confirmar"), porque mexe em dinheiro e no acesso do cliente. Os
+ * campos validam no navegador (React Hook Form + Zod) antes de pedir a
+ * confirmacao; a action valida de novo.
+ */
+export function ActionCard<S extends z.ZodType<FieldValues, FieldValues>>({
+  title,
+  description,
+  spaceId,
+  action,
+  schema,
+  defaultValues,
+  confirmText,
+  submitLabel,
+  destructive,
+  children,
+}: {
+  title: string;
+  description: string;
+  spaceId: string;
+  action: ServerAction<PlanFormState>;
+  schema: S;
+  defaultValues?: Record<string, unknown>;
+  confirmText: string;
+  submitLabel: string;
+  destructive?: boolean;
+  children?: React.ReactNode;
+}) {
+  const [armed, setArmed] = useState(false);
+  const { form, state, pending, submit } = useActionForm<S, PlanFormState>({
+    schema,
+    defaultValues: { spaceId, reason: "", ...defaultValues } as DefaultValues<z.input<S>>,
+    action: async (prev, formData) => {
+      const result = await action(prev, formData);
+      setArmed(false);
+      return result;
+    },
+  });
+  // Mudou algum campo depois de "Revisar": volta a pedir a revisao.
+  useEffect(() => {
+    const subscription = form.watch(() => setArmed(false));
+    return () => subscription.unsubscribe();
+  }, [form]);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FormProvider {...form}>
+          <form onSubmit={submit()} className="space-y-3" noValidate>
+            {children}
+            <TextArea name="reason" id={`reason-${title.normalize("NFD").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}`} label="Motivo (fica registrado)" rows={2} maxLength={300} />
+            {armed ? (
+              <p role="status" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                {confirmText}
+              </p>
+            ) : null}
+            <FormFeedback state={state} />
+            {armed ? (
+              <div className="flex gap-2">
+                <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={pending}>
+                  {pending ? "Aplicando..." : submitLabel}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setArmed(false)}>
+                  Voltar
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" onClick={form.handleSubmit(() => setArmed(true), () => setArmed(false))}>
+                Revisar
+              </Button>
+            )}
+          </form>
+        </FormProvider>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function CourtesyForm({ spaceId }: { spaceId: string }) {
+  return (
+    <ActionCard
+      title="Dar cortesia"
+      description="Plano pago de graça por um tempo. No fim, volta ao Grátis sozinho e o dono é avisado no histórico do plano."
+      spaceId={spaceId}
+      action={grantCourtesyAction}
+      schema={courtesySchema}
+      defaultValues={{ tier: "pro", days: 30 }}
+      confirmText="O espaço ganha o plano escolhido sem cobrança e volta ao Grátis no dia seguinte ao fim. O dono vê isso no histórico do plano."
+      submitLabel="Confirmar cortesia"
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <SelectField
+          name="tier"
+          label="Plano"
+          options={[
+            ["pro", "Profissional"],
+            ["scale", "Expansão"],
+          ]}
+        />
+        <InputText name="days" label="Dias" type="number" min={1} max={365} />
+      </div>
+    </ActionCard>
+  );
+}
+
+export function RevokeCourtesyForm({ spaceId }: { spaceId: string }) {
+  return (
+    <ActionCard
+      title="Encerrar a cortesia agora"
+      description="O espaço volta ao Grátis na hora."
+      spaceId={spaceId}
+      action={revokeCourtesyAction}
+      schema={reasonOnlySchema}
+      confirmText="O espaço perde o plano pago agora. Os dados ficam guardados."
+      submitLabel="Encerrar cortesia"
+      destructive
+    />
+  );
+}
+
+export function GraceForm({ spaceId }: { spaceId: string }) {
+  return (
+    <ActionCard
+      title="Dar mais dias para pagar"
+      description="Para renovação atrasada por problema nosso (Pix fora do ar, por exemplo). A nova data vale a partir de hoje."
+      spaceId={spaceId}
+      action={extendGraceAction}
+      schema={graceSchema}
+      defaultValues={{ days: 5 }}
+      confirmText="A data da renovação passa a ser hoje mais os dias escolhidos, e o espaço segue com o plano até lá."
+      submitLabel="Confirmar"
+    >
+      <InputText name="days" label="Dias (1 a 30)" type="number" min={1} max={30} inputClassName="w-28" />
+    </ActionCard>
+  );
+}
+
+export function ForceFreeForm({ spaceId, needsPartnerCheck }: { spaceId: string; needsPartnerCheck: boolean }) {
+  return (
+    <ActionCard
+      title="Voltar ao Grátis agora"
+      description="Para abuso ou pedido do cliente fora do aplicativo. Não cancela a cobrança no parceiro de pagamentos."
+      spaceId={spaceId}
+      action={forceFreeAction}
+      schema={forceFreeSchema(needsPartnerCheck)}
+      defaultValues={{ partnerCanceled: false }}
+      confirmText="O espaço perde o plano pago agora. Os dados ficam guardados."
+      submitLabel="Voltar ao Grátis"
+      destructive
+    >
+      {needsPartnerCheck ? <CheckboxField name="partnerCanceled" label="Já cancelei a assinatura deste espaço no parceiro de pagamentos." /> : null}
+    </ActionCard>
+  );
+}
+
+export function InactivateSpaceForm({ spaceId }: { spaceId: string }) {
+  return (
+    <ActionCard
+      title="Inativar o espaço"
+      description="Ninguém do espaço entra mais e as rotinas diárias pulam o espaço. Nada é apagado; dá para reativar."
+      spaceId={spaceId}
+      action={inactivateSpaceAction}
+      schema={reasonOnlySchema}
+      confirmText="Todas as pessoas deste espaço perdem o acesso agora, inclusive quem está logado. Os dados ficam guardados."
+      submitLabel="Inativar espaço"
+      destructive
+    />
+  );
+}
+
+export function ReactivateSpaceForm({ spaceId }: { spaceId: string }) {
+  return (
+    <ActionCard
+      title="Reativar o espaço"
+      description="Devolve o acesso a todos do espaço. Nada foi apagado."
+      spaceId={spaceId}
+      action={reactivateSpaceAction}
+      schema={reasonOnlySchema}
+      confirmText="As pessoas do espaço voltam a entrar e as rotinas diárias voltam a rodar."
+      submitLabel="Reativar espaço"
+    />
+  );
+}
+
+/** Reiniciar o 2FA de uma pessoa do espaco: escolhe a pessoa, diz o motivo e confirma. */
+export function ResetUserTwoFactorForm({ spaceId, users }: { spaceId: string; users: { id: string; label: string }[] }) {
+  return (
+    <ActionCard
+      title="Reiniciar a verificação em duas etapas de uma pessoa"
+      description="Para quem perdeu o aplicativo e não guardou os códigos de recuperação. Confirme quem é a pessoa por fora do sistema antes (por exemplo, pela conversa do Fale com a gente)."
+      spaceId={spaceId}
+      action={resetUserTwoFactorAction}
+      schema={userTwoFactorSchema}
+      defaultValues={{ userId: "" }}
+      confirmText="Remove o aplicativo e o código por e-mail da pessoa, os dispositivos lembrados e os códigos de recuperação. No próximo acesso ela entra só com a senha e a pessoa recebe um aviso por e-mail."
+      submitLabel="Reiniciar verificação"
+      destructive
+    >
+      <SelectField name="userId" label="Pessoa" options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
+    </ActionCard>
+  );
+}

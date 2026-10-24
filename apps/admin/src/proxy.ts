@@ -5,7 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
  * conferencia de verdade (sessao, administrador, tempo, segundo fator) e feita
  * no servidor, em cada pagina e action (`getAdminContext`).
  */
-const PUBLIC_PATHS = ["/login", "/session/end"];
+// /api/cron/* se protege sozinho (segredo no cabecalho), sem cookie de login.
+const PUBLIC_PATHS = ["/login", "/session/end", "/accept", "/api/cron"];
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;

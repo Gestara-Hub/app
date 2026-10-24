@@ -1,13 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { FormProvider } from "react-hook-form";
 import { verifyMfaAction, type FormState } from "@/app/actions/auth";
+import { FormFeedback, InputText, useActionForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-const INITIAL: FormState = {};
+import { mfaSchema } from "@/lib/form-schemas";
 
 interface Props {
   mode: "verify" | "enroll";
@@ -18,7 +16,11 @@ interface Props {
 }
 
 export function MfaForm({ mode, factorId, next, qrCode, secret }: Props) {
-  const [state, action, pending] = useActionState(verifyMfaAction, INITIAL);
+  const { form, state, pending, submit } = useActionForm<typeof mfaSchema, FormState>({
+    schema: mfaSchema,
+    defaultValues: { factorId, next: next === "/" ? "" : next, code: "" },
+    action: verifyMfaAction,
+  });
   const enrolling = mode === "enroll";
   return (
     <Card>
@@ -31,9 +33,8 @@ export function MfaForm({ mode, factorId, next, qrCode, secret }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="space-y-4" noValidate>
-          <input type="hidden" name="factorId" value={factorId} />
-          <input type="hidden" name="next" value={next === "/" ? "" : next} />
+        <FormProvider {...form}>
+          <form onSubmit={submit()} className="space-y-4" noValidate>
           {enrolling && qrCode ? (
             <div className="space-y-2">
               {/* QR gerado pelo Supabase (SVG em data URI). */}
@@ -45,27 +46,21 @@ export function MfaForm({ mode, factorId, next, qrCode, secret }: Props) {
               <p className="text-center font-mono text-xs break-all select-all">{secret}</p>
             </div>
           ) : null}
-          <div className="space-y-1.5">
-            <Label htmlFor="code">Código de 6 números</Label>
-            <Input
-              id="code"
-              name="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={7}
-              required
-              className="text-center font-mono text-base tracking-widest md:text-sm"
-            />
-          </div>
-          {state.error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
-            </p>
-          ) : null}
+          <InputText
+            name="code"
+            label="Código de 6 números"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={7}
+            required
+            inputClassName="text-center font-mono tracking-widest"
+          />
+          <FormFeedback state={state} />
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Conferindo..." : enrolling ? "Confirmar e entrar" : "Entrar"}
           </Button>
-        </form>
+          </form>
+        </FormProvider>
       </CardContent>
     </Card>
   );
