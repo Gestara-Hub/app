@@ -13,6 +13,7 @@ Tudo o que ficou combinado "para depois", num lugar só. Cada linha aponta para 
 | Resumo diário de lembretes por e-mail | `product/25-lembretes-e-seguranca.md` §7 | Adiado |
 | Primeiro desenho da tela no fuso do espaço (hoje sai em Brasília até o navegador ligar o fuso; afeta só outros fusos perto da meia-noite) | `qa/2026-10-23-teste-geral.md`, achado 81; `technical/22-fuso-do-espaco.md` | Registrado como `baixa` |
 | Fuso por unidade (multiunidade em fusos diferentes) | `technical/22-fuso-do-espaco.md`, Limites | Só com a multiunidade (Expansão) |
+| Botões com texto fora dos 36 px (doc `frontend/07` §1.5): cerca de 50 usos de `size="sm"`, `xs` ou `lg` (barra de paginação, painel de tema, evolução do aluno, Configurações, checkout do plano). O topo e a abertura de Recebimentos online já foram acertados | `qa/2026-10-23-teste-geral.md`, achado 9 | Varrer por tela, com captura, para não estragar telas densas; a do checkout fica junto com a revisão da tela de Planos |
 
 ## Testes deixados para o fim
 

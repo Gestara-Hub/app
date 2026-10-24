@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 56 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 57 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -142,6 +142,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 64 | 24/10 | Ao cancelar uma cobrança que tem Pix ou link em aberto, a confirmação avisa: "O Pix ou o link já enviado ao aluno deixa de funcionar." | `features/turmas/__tests__/charge-label.test.ts` | — |
 | 71 | 24/10 | O cartão do plano na barra lateral ("Plano Grátis · Evoluir") só aparece para quem pode contratar plano (o dono); professor, recepção e gerente não o veem. | `components/layout/__tests__/sidebar-plan-card.test.ts` | — |
 | 73 | 24/10 | O selo de aniversário compacto diz "Aniv. em 5 dias" (antes "Em 5 dias", que parecia vencimento) e leva o texto completo para leitor de tela e para o title. | `components/shared/__tests__/birthday-badge.test.ts` | — |
+| 9 | 24/10 | Acertados os botões que o teste mediu no topo e na abertura de Recebimentos online ("Ver planos" e "Ativar conta de recebimento" na altura padrão de 36 px). Os outros cerca de 50 usos de `size` fora do padrão (paginação, painel de tema, evolução, checkout) viraram pendência: varrer por tela com captura. "Definir faixa", "Simplificada/Avançada" e "Dia a dia/Gestão" são etiquetas e seletores. | `components/layout/__tests__/button-height.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -285,7 +286,7 @@ Nenhum achado próprio nesta passada (os pontos de tela já estão nas outras á
 
 | # | Tela | Fluxo/passo | Tamanho/tema | O que aconteceu | O que devia acontecer | Como repetir | Gravidade |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 9 | Topo e menu lateral | botões | desktop 1280, claro | Alturas fora do padrão de 36 px: "Ver planos" e o avatar (32), "Dia a dia"/"Gestão" (27), "Ativar conta de recebimento" (40), "Definir faixa" na lista de alunos (23), "Simplificada"/"Avançada" no Financeiro (24). | 36 px nos botões de texto (doc 07 §1.5) ou exceção registrada para seletores. | Medido pelo script em todas as telas. | baixa |
+| 9 | Topo e menu lateral | botões | desktop 1280, claro | Alturas fora do padrão de 36 px: "Ver planos" e o avatar (32), "Dia a dia"/"Gestão" (27), "Ativar conta de recebimento" (40), "Definir faixa" na lista de alunos (23), "Simplificada"/"Avançada" no Financeiro (24). | 36 px nos botões de texto (doc 07 §1.5) ou exceção registrada para seletores. | Medido pelo script em todas as telas. | baixa (corrigido) |
 | 31 | Janelas laterais (drawer) | aviso de sucesso | desktop 1280, claro | Os avisos ("Aluno criado com sucesso. Enviar boas-vindas") aparecem no canto inferior direito, em cima dos botões "Cancelar"/"Adicionar" do rodapé da janela aberta, e escondem o botão por alguns segundos ao cadastrar em sequência. | Aviso em outra posição quando há janela aberta (ex.: topo), sem cobrir o rodapé. | Cadastrar dois alunos seguidos. Captura `aluno-05-responsaveis.png`. | média (corrigido) |
 | 32 | Janelas com rolagem | seta "rolar para baixo" | desktop 1280, claro | A seta redonda de "rolar" fica por cima do conteúdo (ex.: cobre parte da mensagem "Horário fora do expediente da unidade..."). | Seta sem cobrir texto (ou some quando há mensagem embaixo). | Nova turma com horário fora do expediente. Captura no relatório do Playwright (`turma fora do horario`). | baixa |
 | 47 | Dados da demonstração | "Aluno desde" | desktop 1280, claro | Na demonstração, todos os alunos aparecem como "Aluno desde 23/10/2026" (dia do `pnpm demo:local`), mas têm mensalidades pagas desde agosto e aulas antigas; as entradas da auditoria também saem todas com a hora da criação. | Datas de cadastro coerentes com o histórico. | `pnpm demo:local` e abrir qualquer ficha. | baixa (corrigido) |

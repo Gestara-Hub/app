@@ -83,8 +83,7 @@ export function AppTopbar() {
         <Button
           asChild
           variant="outline"
-          size="sm"
-          className="hidden sm:inline-flex h-8 gap-1.5 px-2.5 text-xs font-semibold rounded-full border-border/80 hover:border-primary/50 transition-colors shadow-2xs"
+          className="hidden sm:inline-flex gap-1.5 rounded-full border-border/80 hover:border-primary/50 transition-colors shadow-2xs"
           title="Ver todos os planos e recursos"
         >
           <Link href="/plans">

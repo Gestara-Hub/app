@@ -49,10 +49,9 @@ export function OnlinePaymentsOnboarding({
 
             <div className="pt-2">
               <Button
-                size="lg"
                 onClick={() => setDialogOpen(true)}
                 disabled={!canManage}
-                className="gap-2 text-sm font-semibold shadow-md"
+                className="gap-2 shadow-md"
               >
                 Ativar conta de recebimento
                 <ArrowRight className="size-4" />
