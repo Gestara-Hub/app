@@ -42,6 +42,11 @@ const BENEFITS = [
 
 type OnlinePaymentsTab = "carteira" | "configuracoes";
 
+/** O selo "Ativação pendente" só depois de o dono ter começado a ativação (achado 5). */
+function showPendingBadge(status: string | undefined): boolean {
+  return status === "pending";
+}
+
 export function OnlinePaymentsView() {
   const router = useRouter();
   const pathname = usePathname();
@@ -69,7 +74,7 @@ export function OnlinePaymentsView() {
   if (!hasFeature("online_payments")) {
     return (
       <FeatureLocked
-        title="Recebimentos Online"
+        title="Recebimentos online"
         description="Receba pagamentos com baixa automática e repasses diretos na sua conta via Pix."
         benefits={BENEFITS}
         icon={<QrCode className="size-7" aria-hidden />}
@@ -120,7 +125,7 @@ export function OnlinePaymentsView() {
   return (
     <>
       <PageHeader
-        title="Recebimentos Online"
+        title="Recebimentos online"
         description="Saldos das mensalidades, histórico de cobranças e saques via Pix."
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -148,14 +153,14 @@ export function OnlinePaymentsView() {
                 </Button>
               ) : null}
             </>
-          ) : (
+          ) : showPendingBadge(onlineSettings?.gatewayStatus) ? (
             <Badge
               variant="outline"
               className="gap-1.5 border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
             >
               Ativação pendente
             </Badge>
-          )}
+          ) : null}
         </div>
       </PageHeader>
 
@@ -170,7 +175,7 @@ export function OnlinePaymentsView() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div
               role="tablist"
-              aria-label="Navegação de Recebimentos Online"
+              aria-label="Navegação de Recebimentos online"
               className="flex w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/60 p-1 text-muted-foreground sm:w-fit"
             >
               <button

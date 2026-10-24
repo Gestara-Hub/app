@@ -7,12 +7,10 @@ import {
   CreditCard,
   QrCode,
   Receipt,
-  Sparkles,
   Zap,
 } from "lucide-react";
 import type { Organization } from "@gestarahub/contracts";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -41,22 +39,12 @@ export function OnlinePaymentsOnboarding({
         {/* Hero Banner */}
         <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-card p-6 md:p-8">
           <div className="max-w-2xl space-y-4">
-            <Badge
-              variant="outline"
-              className="border-primary/30 bg-primary/10 text-primary"
-            >
-              <Sparkles className="mr-1.5 size-3.5" />
-              Ecossistema Financeiro GestaraHub
-            </Badge>
-
             <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Receba pagamentos com baixa automática e repasse direto no seu Pix
+              Receba pelo Pix com baixa automática
             </h2>
 
             <p className="text-sm text-muted-foreground sm:text-base leading-relaxed">
-              Diga adeus ao envio manual de comprovantes e conferência bancária.
-              Com a conta de recebimento ativa, suas cobranças geram Pix com QR Code
-              e links de cartão que baixam a fatura do aluno no mesmo instante em que ele paga.
+              Pix e link de cartão baixam a cobrança sozinhos, no instante em que o aluno paga.
             </p>
 
             <div className="pt-2">
@@ -184,7 +172,7 @@ export function OnlinePaymentsOnboarding({
             <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
               <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
               <span>
-                Processamento oficial via infraestrutura bancária autorizada pelo Banco Central (Asaas I.P. S.A.).
+                Processado por parceiro de pagamentos regulado pelo Banco Central.
               </span>
             </div>
           </CardContent>
