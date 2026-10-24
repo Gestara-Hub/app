@@ -130,7 +130,7 @@ describe("cobrança online: gerar Pix ou link", () => {
     await onlinePaymentsService.updateSettings({ enabled: false });
     await expect(onlinePaymentsService.createForCharge(charge.id, "pix")).rejects.toMatchObject({
       httpStatus: 409,
-      message: "A cobrança online está desligada. Ligue em Configurações → Pagamento online.",
+      message: "A cobrança online está desligada. Ligue em Recebimentos online, na aba Configurações.",
     });
   });
 

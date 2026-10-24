@@ -260,7 +260,7 @@ test.describe("Plano Profissional", () => {
     await page.goto("/clients/c-a?tab=charges");
     await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
     // Pagamento online vale no Gratis; sem ligar nas Configuracoes, fica travado.
-    await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
+    await expect(page.getByRole("menuitem", { name: "Cobrar online (ative em Recebimentos online)" })).toBeDisabled();
   });
 
   test("Pro: o certificado abre com o PDF, também para a atendente", { tag: "@smoke" }, async ({ page }) => {

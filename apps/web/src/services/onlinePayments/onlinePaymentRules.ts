@@ -119,7 +119,7 @@ export function assertOnlineEnabled(): void {
   if (!currentSettings().enabled) {
     throw apiError(
       "VALIDATION",
-      "A cobrança online está desligada. Ligue em Configurações → Pagamento online.",
+      "A cobrança online está desligada. Ligue em Recebimentos online, na aba Configurações.",
       { httpStatus: 409 },
     );
   }

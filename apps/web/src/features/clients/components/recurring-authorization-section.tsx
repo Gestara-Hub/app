@@ -251,8 +251,11 @@ export function RecurringAuthorizationSection({
 
           {!enabled && canRequest ? (
             <p className="text-xs text-muted-foreground">
-              A cobrança online está desligada em Configurações → Pagamento
-              online.
+              A cobrança online está desligada. Ligue em{" "}
+              <Link href="/online-payments" className="font-medium underline underline-offset-2">
+                Recebimentos online
+              </Link>
+              , na aba Configurações.
             </p>
           ) : null}
 
@@ -314,7 +317,7 @@ export function RecurringAuthorizationSection({
                     title={
                       enabled
                         ? undefined
-                        : "Ligue a cobrança online em Configurações → Pagamento online."
+                        : "Ligue a cobrança online em Recebimentos online, na aba Configurações."
                     }
                     className="inline-flex"
                   >

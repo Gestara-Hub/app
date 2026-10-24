@@ -149,11 +149,11 @@ test("avulsa: pagar, desfazer, cancelar com motivo e reabrir; clique direito esp
 
   // Em aberto: menu ⋮ e clique direito com as mesmas acoes. O gratis tem cobranca
   // online, mas ela vem desligada nas Configuracoes: fica travada.
-  const openActions = ["Marcar pago", "Lembrar no WhatsApp", "Cobrar online (desligado nas Configurações)", "Cancelar cobrança"];
+  const openActions = ["Marcar pago", "Lembrar no WhatsApp", "Cobrar online (ative em Recebimentos online)", "Cancelar cobrança"];
   expect(await openMenuItems(page, "Aluno Aberto")).toEqual(openActions);
   expect(await contextMenuItems(page, rowOf(page, "Aluno Aberto"))).toEqual(openActions);
   await page.getByRole("button", { name: "Ações de Aluno Aberto", exact: true }).click();
-  await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toHaveAttribute(
+  await expect(page.getByRole("menuitem", { name: "Cobrar online (ative em Recebimentos online)" })).toHaveAttribute(
     "aria-disabled",
     "true",
   );

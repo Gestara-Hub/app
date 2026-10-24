@@ -117,12 +117,12 @@ test("todos os tipos no mês: texto de cada linha, filtros de tipo e situação 
   await expect(page.getByText("1 cobrança substituída por troca de plano ou regra está oculta.")).toBeVisible();
 
   // Menus: avulsa nao tem lembrete; isenta e substituida nao tem acao.
-  expect(await openMenuItems(page, "Aluno Avulso")).toEqual(["Marcar pago", "Cobrar online (desligado nas Configurações)", "Cancelar cobrança"]);
+  expect(await openMenuItems(page, "Aluno Avulso")).toEqual(["Marcar pago", "Cobrar online (ative em Recebimentos online)", "Cancelar cobrança"]);
   for (const name of ["Aluna Extra", "Aluna Curso", "Aluno Pacote", "Aluno Mensal"]) {
     expect(await openMenuItems(page, name)).toEqual([
       "Marcar pago",
       "Lembrar no WhatsApp",
-      "Cobrar online (desligado nas Configurações)",
+      "Cobrar online (ative em Recebimentos online)",
       "Cancelar cobrança",
     ]);
   }
@@ -397,7 +397,7 @@ test.describe("Pro", () => {
     });
     await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluna Kimono", exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toHaveAttribute(
+    await expect(page.getByRole("menuitem", { name: "Cobrar online (ative em Recebimentos online)" })).toHaveAttribute(
       "aria-disabled",
       "true",
     );

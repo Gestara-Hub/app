@@ -218,11 +218,11 @@ test("filtro de situação abre direto pela URL em outro mês", async ({ page })
 });
 
 test.describe("cobrança online", () => {
-  test("desligado nas Configurações, \"Cobrar online\" fica bloqueado com o motivo", async ({ page }) => {
+  test("ative em Recebimentos online, \"Cobrar online\" fica bloqueado com o motivo", async ({ page }) => {
     await seedAcademy(page, { extra: (t) => (t.clients = [student("c-a", "Aluno A20")]) });
     await page.goto("/classes/billing?status=all");
     await page.getByRole("button", { name: "Ações de Aluno A20", exact: true }).click();
-    await expect(page.getByRole("menuitem", { name: "Cobrar online (desligado nas Configurações)" })).toBeDisabled();
+    await expect(page.getByRole("menuitem", { name: "Cobrar online (ative em Recebimentos online)" })).toBeDisabled();
     await expect(page.getByRole("menuitem", { name: "Marcar pago" })).toBeEnabled();
   });
 

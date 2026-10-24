@@ -88,7 +88,7 @@ export function useChargeActions() {
   const onlineBlockedReason = !hasOnlineFeature
     ? "Plano Profissional"
     : !onlineEnabled
-      ? "desligado nas Configurações"
+      ? "ative em Recebimentos online"
       : null;
 
   // Codigo em aberto da cobranca (Pix ou link): o lembrete manda o link junto.
