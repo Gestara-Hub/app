@@ -888,7 +888,7 @@ test.describe("comunicação", () => {
       page.locator("div.rounded-xl").filter({ has: page.getByText(title, { exact: true }) }).last();
     const reminder = card("Lembrete de cobrança");
     await expect(reminder).toContainText(
-      "Olá, Ana Souza! Lembrete da parcela 2 de 4 do curso Confeitaria de R$ 150,00 na Academia X, com vencimento em 10/11.",
+      "Olá, Ana Souza! Lembrete da mensalidade de novembro de R$ 150,00 na Academia X, com vencimento em 10/11.",
     );
     // Cobranca online desligada no espaco: a frase do link sai, como no envio.
     await expect(reminder).not.toContainText("{link_pagamento}");
@@ -917,7 +917,7 @@ test.describe("comunicação", () => {
     });
     await page.goto(`${PROFILE}?tab=charges`);
     const link = await openedWhatsApp(page, async () => {
-      await rowOf(page, "Kimono").getByRole("button", { name: `Ações de ${NAME}`, exact: true }).click();
+      await rowOf(page, "Kimono").getByRole("button", { name: `Ações de ${NAME}: cobrança Kimono`, exact: true }).click();
       await page.getByRole("menuitem", { name: "Lembrar no WhatsApp" }).click();
     });
     expect(link.phone).toBe("5511977770000");

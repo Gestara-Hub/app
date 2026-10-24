@@ -360,7 +360,7 @@ test.describe("lista de espera", () => {
 
     await panel.getByRole("button", { name: "Promover" }).first().click();
     const promote = page.getByRole("alertdialog", { name: "Promover da lista de espera?" });
-    await expect(promote).toContainText("Bruno Lima será matriculado na turma, mesmo que ela esteja lotada.");
+    await expect(promote).toContainText("A matrícula de Bruno Lima será feita na turma, mesmo que ela esteja lotada.");
     await promote.getByRole("button", { name: "Matricular" }).click();
     await expect(page.getByText("Aluno promovido para matrícula.")).toBeVisible();
     await expect(panel).toContainText("1. Carla Souza");
@@ -372,7 +372,7 @@ test.describe("lista de espera", () => {
     // Lista de espera vazia: as abas somem e volta a lista de alunos.
     await expect(page.getByRole("tablist", { name: "Seções da turma" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Ações de Bruno Lima", exact: true })).toBeVisible();
-    await expect(page.getByTestId("class-billing-summary")).toContainText("Turma lotada");
+    await expect(page.getByTestId("class-billing-summary")).toContainText("2 de 1 aluno (acima da capacidade)");
   });
 
   test("matricular acima da capacidade pede o botão explícito", async ({ page }) => {

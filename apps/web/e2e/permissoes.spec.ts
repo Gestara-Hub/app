@@ -258,7 +258,8 @@ test.describe("Plano Profissional", () => {
     await expect(page.getByRole("button", { name: "Imprimir ou salvar em PDF" })).toHaveCount(0);
 
     await page.goto("/clients/c-a?tab=charges");
-    await page.getByRole("button", { name: "Ações de Aluno Alfa", exact: true }).click();
+    // Na ficha, o botao diz de qual cobranca e (achado 46).
+    await page.getByRole("button", { name: /^Ações de Aluno Alfa: / }).click();
     // Pagamento online vale no Gratis; sem ligar nas Configuracoes, fica travado.
     await expect(page.getByRole("menuitem", { name: "Cobrar online (ative em Recebimentos online)" })).toBeDisabled();
   });
