@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { singularLabel } from "@/lib/text";
 import { cn } from "@/lib/utils";
 
 export interface PaginationBarProps {
@@ -65,7 +66,7 @@ export function PaginationBar({
         <span>
           Mostrando <span className="font-medium text-foreground">{start}</span>–
           <span className="font-medium text-foreground">{end}</span> de{" "}
-          <span className="font-medium text-foreground">{total}</span> {itemLabel}
+          <span className="font-medium text-foreground">{total}</span> {total === 1 ? singularLabel(itemLabel) : itemLabel}
         </span>
 
         {onPageSizeChange && (

@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 37 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 38 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -124,6 +124,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 22 | 24/10 | No modelo de turmas o subtítulo da Equipe diz "Quem dá aula na unidade." (antes prometia a disponibilidade de cada um, que no modelo de turmas vem do horário da turma). | `features/professionals/__tests__/team-copy.test.ts` | — |
 | 24 | 24/10 | Na janela Nova modalidade, as sugestões ("+ Pilates Reformer", "+ Yoga"...) só mostram o que ainda não existe, sem ligar para maiúscula ou acento (`suggestionsNotTaken`). | `lib/__tests__/text.test.ts` | — |
 | 29, 52 | 24/10 | Os avisos de cobrança online desligada apontam para o lugar certo: "Cobrar online (ative em Recebimentos online)" no menu da cobrança, e, no cadastro do aluno e na recusa do servidor, "Ligue em Recebimentos online, na aba Configurações" (no cadastro, com link). Os e2e que liam o texto antigo foram atualizados. | `services/__tests__/online-payments.test.ts` | — |
+| 30 | 24/10 | A contagem da lista concorda com o número: "Mostrando 1–1 de 1 aluno" (singular do rótulo, `singularLabel`). | `lib/__tests__/text.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -170,7 +171,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | 27 | Ficha do aluno | aluno pausado | desktop 1280, claro | Depois de pausar ("Trancada / Pausada (não gera cobrança)"), a ficha continua só com o selo "Ativo", sem sinal de pausa (a lista mostra "Trancado"). A cobrança de outubro, já gerada, continua em aberto. | Ficha com o estado "Pausado" e decisão clara sobre a cobrança do mês em curso (manter, perguntar ou cancelar). | Ficha de um aluno com mensal → Editar → Plano e mensalidade → Situação da assinatura: Trancada / Pausada → Salvar. Captura `ficha-07-ana-pausada.png`. | média |
 | 28 | Editar aluno | trocar plano | desktop 1280, claro | Trocar o plano (Quinzenal → Mensal) refaz a cobrança em aberto sem pedir confirmação (a regra do projeto pede confirmação em ações de dinheiro). | Confirmação dizendo o que acontece com a cobrança em aberto. | Ficha → Editar → Plano e mensalidade → trocar o plano → Salvar. | média (corrigido) |
 | 29 | Editar aluno | Pix Automático | desktop 1280, claro | O aviso diz "A cobrança online está desligada em Configurações → Pagamento online", mas Configurações não tem essa aba (fica em Recebimentos online). | Apontar para Recebimentos online (com link). | Ficha → Editar → Plano e mensalidade (conta sem recebimentos ativados). | baixa (corrigido) |
-| 30 | Alunos | filtro | desktop 1280, claro | Contagem com plural errado: "Mostrando 1–1 de 1 alunos". | "1 aluno". | Filtrar Inativos com um aluno inativo. | baixa |
+| 30 | Alunos | filtro | desktop 1280, claro | Contagem com plural errado: "Mostrando 1–1 de 1 alunos". | "1 aluno". | Filtrar Inativos com um aluno inativo. | baixa (corrigido) |
 
 ### Dia a dia
 

@@ -36,3 +36,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #24 sugestões de modalidade | feito | git log | typecheck, lint, Vitest 1037 |  |
 | 4.2 #23 nome do papel | decisão registrada | git log | só docs | Recomendação: palavra da área no vocabulário |
 | 4.2 #29 e #52 aviso de cobrança online desligada | feito | git log | typecheck, lint, Vitest 1038 | e2e de 4 specs ajustados (texto do menu); rodam na bateria |
+| 4.2 #30 plural na contagem | feito | git log | typecheck, lint, Vitest |  |

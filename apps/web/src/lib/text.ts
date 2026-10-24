@@ -49,3 +49,20 @@ export function suggestionsNotTaken(suggestions: readonly string[], existingName
   const taken = new Set(existingNames.map(normalizeText));
   return suggestions.filter((suggestion) => !taken.has(normalizeText(suggestion)));
 }
+
+/**
+ * Singular da palavra de contagem ("alunos" -> "aluno", "mensagens" -> "mensagem",
+ * "movimentações" -> "movimentação"; so a primeira palavra muda), para "Mostrando
+ * 1–1 de 1 aluno" (achado 30 do teste de 23/10).
+ */
+export function singularLabel(pluralLabel: string): string {
+  const [first = "", ...rest] = pluralLabel.split(" ");
+  const singular = first.endsWith("ões")
+    ? `${first.slice(0, -3)}ão`
+    : first.endsWith("ns")
+      ? `${first.slice(0, -2)}m`
+      : first.endsWith("s")
+        ? first.slice(0, -1)
+        : first;
+  return [singular, ...rest].join(" ");
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { charCount, normalizeText, suggestionsNotTaken, withKind } from "@/lib/text";
+import { charCount, normalizeText, singularLabel, suggestionsNotTaken, withKind } from "@/lib/text";
 
 describe("normalizeText", () => {
   it("remove acentos e cedilha", () => {
@@ -52,5 +52,15 @@ describe("suggestionsNotTaken (achado 24)", () => {
 
   it("sem nada criado, todas as sugestões ficam", () => {
     expect(suggestionsNotTaken(["Yoga"], [])).toEqual(["Yoga"]);
+  });
+});
+
+describe("singularLabel (achado 30)", () => {
+  it("tira o plural da primeira palavra", () => {
+    expect(singularLabel("alunos")).toBe("aluno");
+    expect(singularLabel("clientes")).toBe("cliente");
+    expect(singularLabel("mensagens")).toBe("mensagem");
+    expect(singularLabel("movimentações")).toBe("movimentação");
+    expect(singularLabel("alunos com cobranças")).toBe("aluno com cobranças");
   });
 });
