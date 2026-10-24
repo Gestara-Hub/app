@@ -109,7 +109,7 @@ export default function RootLayout({
           {children}
           <AnalyticsConsentBanner />
         </Providers>
-        <Toaster position="bottom-right" richColors closeButton />
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

@@ -268,6 +268,7 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Cadastro do aluno:** ano de nascimento de até 110 anos atrás; idade "menos de 1 ano"; observações até 1000 caracteres.
 - **Configuração inicial:** setas e Home/End na lista de áreas; trocar de passo leva o foco ao título; "Outra área" com nome de área da lista sugere usá-la; área sem trilha não pede revisão de níveis e metas.
 - **Destaque de seção** fecha os avisos (toasts) abertos.
+- **Posição dos avisos (toasts):** no topo, centralizados (`<Toaster position="top-center">` em `app/layout.tsx`). Nunca no canto inferior direito: lá cobrem os botões do rodapé das janelas laterais e o "Aceitar e continuar" do contrato por alguns segundos (achados 11 e 31 do teste de 23/10).
 - **Boas-vindas:** fecha só pelo X ou pelos botões (nem Esc nem clique fora).
 - **Landing com sessão:** "Ir para o painel" no cabeçalho e no lugar do cadastro.
 - **Dia de vencimento nas Configurações:** o erro sai numa linha própria.

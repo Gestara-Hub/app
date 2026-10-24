@@ -22,3 +22,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.1 #25 Definir nível na lista | feito | git log | typecheck, lint, Vitest 1020 |  |
 | 4.1 #21 Equipe vazia com inativos | feito | git log | typecheck, lint, Vitest 1023 | Só a Equipe usa a opção; as outras listas podem adotar |
 | 4.1 #14 senha do convite | feito | git log | typecheck, lint, Vitest 1025 | Regra única em lib/password-rules; mínimo do Supabase de produção virou pendência |
+| 4.1 #11 e #31 avisos cobrindo botões | feito | git log | typecheck, lint, Vitest 1026 | Toaster top-center; e2e de sobreposição na seção 6 |
