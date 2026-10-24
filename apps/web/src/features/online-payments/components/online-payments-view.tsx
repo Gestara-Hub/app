@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   ArrowUpRight,
+  ChevronDown,
   CheckCircle2,
   FileText,
   QrCode,
@@ -255,6 +256,8 @@ function StatementMenu() {
         <Button variant="outline" className="gap-1.5">
           <FileText className="size-4" />
           Extrato em PDF
+          {/* A seta mostra que ha escolha de mes (achado 63). */}
+          <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
