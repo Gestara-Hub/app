@@ -8,9 +8,9 @@ import { dateInSpace } from "@gestarahub/core/date";
  * Selo de aniversario. Sem `date`, compara com hoje ("Aniversário hoje"); com
  * `date` (ex.: dia da aula no calendario), avisa se faz aniversario naquele dia.
  * `showUpcoming` mostra tambem os proximos dias ("Aniversário em 3 dias"),
- * so quando a referencia e hoje. `compact` encurta o texto ("Hoje", "Em 3 dias")
- * quando o icone de bolo ja deixa claro que e aniversario; o texto completo
- * fica no title.
+ * so quando a referencia e hoje. `compact` encurta o texto ("Aniv. hoje", "Aniv. em 3 dias"); o
+ * texto completo fica no title e para leitor de tela (achado 73 do teste de 23/10:
+ * "Em 5 dias" sozinho parecia vencimento).
  */
 export function BirthdayBadge({
   birthDate,
@@ -35,7 +35,14 @@ export function BirthdayBadge({
         className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 text-[11px] font-medium text-pink-700 dark:text-pink-300"
       >
         <Cake className="size-3" aria-hidden />
-        {compact ? (day === today ? "Hoje" : "Neste dia") : full}
+        {compact ? (
+          <>
+            <span aria-hidden>{day === today ? "Aniv. hoje" : "Aniv. neste dia"}</span>
+            <span className="sr-only">{full}</span>
+          </>
+        ) : (
+          full
+        )}
       </span>
     );
   }
@@ -50,7 +57,14 @@ export function BirthdayBadge({
       className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300"
     >
       <Cake className="size-3" aria-hidden />
-      {compact ? (days === 1 ? "Amanhã" : `Em ${days} dias`) : full}
+      {compact ? (
+        <>
+          <span aria-hidden>{days === 1 ? "Aniv. amanhã" : `Aniv. em ${days} dias`}</span>
+          <span className="sr-only">{full}</span>
+        </>
+      ) : (
+        full
+      )}
     </span>
   );
 }

@@ -6,7 +6,7 @@ Plano: `docs/handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md`, Parte B. N
 
 **76 achados no teste** (5 `alta`, 24 `média`, 47 `baixa`) e mais 5 achados durante as correções (77 a 81). Por área: Entrada e conta 11 · Painel e lembretes 2 · Cadastros 11 · Dia a dia 15 · Dinheiro 21 · Comunicação 3 · Administração 5 · Perfis 3 · Geral 5. Celular e tema escuro: nenhum achado próprio (os problemas de tela que aparecem lá já estão nas outras áreas).
 
-**Andamento das correções:** 55 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
+**Andamento das correções:** 56 de 81 resolvidos (#13, #56, #60, #66, #75, #76, #77, #78, #79, #80). As 5 altas do teste estão corrigidas. Detalhes na seção [Correções](#correções). Cada linha corrigida na tabela da área leva "(corrigido)" na gravidade.
 
 **As 5 mais importantes (todas `alta`):**
 
@@ -141,6 +141,7 @@ Feitas depois do teste, uma alta por vez. Cada uma foi conferida com typecheck, 
 | 63 | 24/10 | O botão "Extrato em PDF" ganhou a seta de menu, porque abre a escolha do mês. | `features/online-payments/__tests__/statement-menu.test.ts` | — |
 | 64 | 24/10 | Ao cancelar uma cobrança que tem Pix ou link em aberto, a confirmação avisa: "O Pix ou o link já enviado ao aluno deixa de funcionar." | `features/turmas/__tests__/charge-label.test.ts` | — |
 | 71 | 24/10 | O cartão do plano na barra lateral ("Plano Grátis · Evoluir") só aparece para quem pode contratar plano (o dono); professor, recepção e gerente não o veem. | `components/layout/__tests__/sidebar-plan-card.test.ts` | — |
+| 73 | 24/10 | O selo de aniversário compacto diz "Aniv. em 5 dias" (antes "Em 5 dias", que parecia vencimento) e leva o texto completo para leitor de tela e para o title. | `components/shared/__tests__/birthday-badge.test.ts` | — |
 
 **Para o deploy:** em produção, `ASAAS_API_URL` precisa apontar para a API real antes do build, senão os botões de simular pagamento continuam ligados (doc `technical/14`).
 
@@ -207,7 +208,7 @@ Gravidade: `alta` (impede usar, dado ou valor errado, erro no console ou no serv
 | 46 | Ficha do aluno → Cobranças | acessibilidade | desktop 1280, claro | Os botões de cada cobrança se chamam todos "Ações de Ana Almeida" e os links, "Baixar recibo de Ana Almeida", sem dizer qual cobrança. | Nome com a cobrança ("Recibo da mensalidade de out/2026"). | Inspecionar a seção Cobranças da ficha. | baixa (corrigido) |
 | 48 | Certificado | texto e regra | desktop 1280, claro (plano Profissional, ligado só no banco local para o teste) | "Certificamos que Fábio Lins concluiu o curso Yoga Flow curso" (palavra repetida quando a turma já tem "curso" no nome; a regra `withKind` evita isso em outros lugares). "com 7 aulas" conta as aulas do curso, não a presença: o aluno teve zero presenças e saiu "Concluído". A instrutora sai como "Instrutor". | Nome sem repetir o tipo; número de aulas que o aluno fez (ou regra de conclusão por presença); cargo sem gênero fixo. | Curso encerrado com aluno matriculado → ⋮ do aluno → Certificado. Arquivo `pdf-certificado.pdf`. | média (corrigido) |
 | 49 | Turma → ⋮ do aluno → Certificado | plano Grátis | desktop 1280, claro | O item "Certificado (Plano Profissional)" aparece, mas clicar nele não faz nada (nem explica, nem oferece o plano). | Ao clicar, explicar e levar para Planos. | Conta Grátis, curso encerrado → ⋮ do aluno → Certificado. Captura `cert-06-certificado.png`. | baixa |
-| 73 | Aula → chamada | etiqueta "Em 5 dias" | desktop 1280, claro | Ao lado do nome de alguns alunos aparece "Em 5 dias" só com um ícone pequeno de bolo, sem a palavra "aniversário" (fácil de confundir com vencimento). | "Aniversário em 5 dias" ou ícone com nome acessível. | Demonstração → aula de Jiu-Jitsu adulto de hoje. | baixa |
+| 73 | Aula → chamada | etiqueta "Em 5 dias" | desktop 1280, claro | Ao lado do nome de alguns alunos aparece "Em 5 dias" só com um ícone pequeno de bolo, sem a palavra "aniversário" (fácil de confundir com vencimento). | "Aniversário em 5 dias" ou ícone com nome acessível. | Demonstração → aula de Jiu-Jitsu adulto de hoje. | baixa (corrigido) |
 
 ### Dinheiro
 

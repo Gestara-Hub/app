@@ -56,3 +56,4 @@ Plano: `2026-10-24-execucao-noturna.md`. Branch: `execucao-noturna-2026-10-24` (
 | 4.2 #63 botão Extrato em PDF | feito | git log | typecheck, lint, Vitest 1058 |  |
 | 4.2 #64 cancelar com Pix em aberto | feito | git log | typecheck, lint, Vitest 1059 |  |
 | 4.2 #71 cartão do plano para professor | feito | git log | typecheck, lint, Vitest 1061 |  |
+| 4.2 #73 selo de aniversário | feito | git log | typecheck, lint, Vitest 1063 |  |
