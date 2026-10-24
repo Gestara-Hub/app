@@ -64,7 +64,7 @@ export function ReportsView({
             Relatórios
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gere e exporte relatórios operacionais em PDF com layout timbrado para impressão e DRE gerencial completa.
+            Relatórios em PDF para imprimir ou enviar.
           </p>
         </div>
       )}
