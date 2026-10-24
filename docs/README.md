@@ -10,6 +10,8 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 > - **Interface do Usuário 100% em Português (`pt-BR`)**.
 > - **Isolamento de Modelos Operacionais:** Modelos específicos não poluem a fundação universal nem misturam regras de negócio.
 
+📌 **[Pendências registradas](pendencias.md):** tudo o que ficou combinado para depois (decidido e não implementado, esperando decisão, antes de produção).
+
 ---
 
 ## 1. Foco Ativo do MVP (Modelo 3 — Turmas & Academia)
@@ -57,7 +59,9 @@ Este diretório guarda a especificação viva da arquitetura, produto e engenhar
 - [technical/19-desempenho-e-escala.md](technical/19-desempenho-e-escala.md) — **Desempenho e escala:** medição com um espaço de 1 ano (1,4 s a 4 s por ação, crescendo com o histórico), gargalos (espaço inteiro por ação, versão única por espaço, corte em 1.000 linhas, chamadas demais do navegador, rotina diária) e proposta em 4 fases.
 - [technical/20-tempo-dos-testes.md](technical/20-tempo-dos-testes.md) — **Tempo dos testes:** medições (Vitest 20 s, e2e 30 a 45 min um por vez) e plano: Vitest sem isolar (6 s), e2e smoke e por área, e2e completo no GitHub Actions dividido em 4 máquinas (10 a 15 min).
 - [technical/21-registro-de-erros.md](technical/21-registro-de-erros.md) — **Registro de erros:** tabela `error_logs` no nosso banco (agrupada, mascarada, 120 dias), `logError`/`reportError` de `@/lib/log`, código do erro na mensagem ao usuário, erros do navegador e resumo diário por e-mail.
+- [technical/22-fuso-do-espaco.md](technical/22-fuso-do-espaco.md) — **Fuso do espaço:** os quatro fusos do Brasil, fuso escolhido ou pelo estado da unidade, "hoje" no fuso do espaço no servidor e no navegador, datas do Asaas no horário de Brasília.
 - [handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md](handoff/2026-10-23-plano-2fa-email-e-revisao-visual.md) — **Plano para outro agente:** verificação em duas etapas por e-mail e "lembrar este dispositivo" (parte A), depois o teste geral do sistema tela por tela, em desktop e celular, com subconta de recebimentos no sandbox, só registrando achados (parte B).
+- [qa/2026-10-23-teste-geral.md](qa/2026-10-23-teste-geral.md) — **Teste geral de 23/10/2026:** 80 achados por área e gravidade, as correções feitas (com commit e teste) e as perguntas de produto pendentes. As capturas ficam só na máquina local.
 
 ### Frontend
 - [frontend/00-estrategia-frontend.md](frontend/00-estrategia-frontend.md) — Abordagem frontend-first com mocks realistas.

@@ -80,6 +80,8 @@ Configurações ganha a aba **"Plano GestaraHub"**: mostra o plano atual, o que 
 
 Ainda em aberto: os recursos pagos são conferidos na tela e nos serviços do navegador. As actions do servidor não conferem o plano (ver o arquivo do teste geral).
 
+> ⚠️ **Regras de troca decididas e ainda não implementadas** (23/10/2026): upgrade proporcional na hora, downgrade no fim do período pago, mensal ↔ anual, 5 dias de tolerância e webhook da assinatura. Ver `docs/product/13-modelo-de-negocio.md` §6. Hoje o "Voltar ao Grátis" ainda é imediato e o Pro → Scale ainda cria uma segunda assinatura.
+
 ### 3.6 Permissões novas
 
 `Permission` ganha:
@@ -351,6 +353,11 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
 - Só cobranças `pending` ou `overdue` podem ser cobradas online. Pagar manualmente cancela os `OnlinePayment` em aberto da cobrança.
 - Cancelar a cobrança cancela os `OnlinePayment` dela.
 - Desfazer o pagamento de uma cobrança paga online **não é permitido** na demonstração (seria estorno). **[DECIDIR]**
+- **Conta real nunca recebe código de demonstração** (23/10/2026, achado 56). Se o parceiro falhar, a conta real recebe uma mensagem de erro e nada é gravado. Só o espaço de demonstração e o servidor do e2e caem no Pix simulado (`allowDemo` em `paymentGateway`, `services/payments/paymentGateway.ts`).
+- **Pix logo depois de ativar a conta de recebimento:** nos primeiros minutos, o Asaas cria a cobrança mas ainda não entrega o QR, porque a chave Pix está sendo cadastrada.
+  - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
+  - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
+  - Outro erro na busca do QR também cancela a cobrança no parceiro.
 
 ## 7. Telas
 

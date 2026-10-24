@@ -122,3 +122,45 @@ Os gatilhos de upgrade são contextuais e aparecem no ponto exato do atrito manu
 ### Alternativas
 - **Número único do GestaraHub:** rejeitado. O aluno não reconhece o remetente, as respostas caem no GestaraHub, o risco é dividido entre todos os espaços e conflita com a regra de um negócio por conta.
 - **Conexão por QR code (WhatsApp Web, não oficial):** rejeitado. É contra os termos do WhatsApp, o número do cliente pode ser banido (para um espaço pequeno, perder o WhatsApp é crítico) e exige servidor sempre ligado com uma conexão aberta por espaço.
+
+---
+
+## 6. Decisão: troca de plano, renovação e atraso (23/10/2026)
+
+**Ainda não implementado.** A implementação vem depois das correções `alta` do teste geral (`docs/qa/2026-10-23-teste-geral.md`). Os valores dos exemplos são os de hoje no código (`config/subscription.ts`), que seguem em aberto.
+
+### Decisao
+- **Upgrade (Grátis → Pro, Pro → Scale): na hora, com a diferença proporcional.** Os dias que sobram do plano atual viram crédito, e a **data de renovação não muda**. Exemplo: Pro mensal (R$ 79,90) → Scale mensal (R$ 199,00) no dia 10 de um ciclo de 30 dias, com 20 dias sobrando: hoje (199,00 − 79,90) × 20/30 = **R$ 79,40**; na renovação, R$ 199,00 por mês na mesma data. O plano novo liga quando a diferença é paga (cartão na hora, Pix ao confirmar).
+- **Confirmação com os valores antes de cobrar:** "Hoje: R$ 79,40 (20 dias de diferença). A partir de 10/11: R$ 199,00/mês." Nada é cobrado sem esse passo.
+- **Downgrade (Scale → Pro, pago → Grátis): no fim do período já pago.** Até lá nada muda, e a tela mostra a troca marcada ("Muda para o Grátis em 10/11"). O dono pode desmarcar antes da data.
+- **Mensal ↔ anual: o que aumenta o compromisso é na hora, o que reduz é no fim do período.**
+  - Mensal → anual: na hora. Os dias que sobram do mês abatem o anual, e o ciclo anual começa no dia da troca. Exemplo: Pro mensal, 20 dias sobrando: R$ 799,00 − R$ 53,27 = **R$ 745,73** hoje, renovação em um ano.
+  - Anual → mensal: no fim do ano pago.
+  - Combinações (Pro mensal → Scale anual) seguem a regra do upgrade.
+- **Uma assinatura por espaço no Asaas.** Troca de plano atualiza a assinatura existente (valor e ciclo) e cobra a diferença numa cobrança avulsa; nunca cria uma segunda assinatura ativa.
+- **Renovação não paga: 5 dias de tolerância**, com o plano funcionando nesse prazo. Avisos para **dono e gerente**, por **e-mail** e por **aviso fixo no topo do sistema**:
+
+  | Quando | Aviso |
+  | --- | --- |
+  | 3 dias antes (só Pix) | "Seu plano renova em 13/11" |
+  | No vencimento, sem pagamento | "Pagamento do plano pendente", com o Pix |
+  | 3 dias depois | "Faltam 2 dias para o plano voltar ao Grátis" |
+  | 5 dias depois | Volta ao Grátis e avisa |
+
+  Ao voltar ao Grátis os dados ficam guardados e só os recursos pagos ficam bloqueados. Pagar a cobrança atrasada depois religa o plano.
+- **O Asaas avisa o sistema (webhook) sobre a assinatura:** pagamento confirmado (primeiro e renovações, mesmo com a tela fechada), atraso e cancelamento feito direto no Asaas.
+
+### Contexto
+- Em 23/10/2026 o código só sabia assinar e cancelar. Pro → Scale criava uma segunda assinatura sem cancelar a primeira (cobrança dupla), o downgrade era imediato e perdia os dias pagos, mensal ↔ anual não era possível e o webhook não tratava pagamentos de assinatura: renovação não paga deixava o plano ligado para sempre, e Pix pago com a tela fechada não ligava o plano.
+- Desde o commit `42ffdc3` o plano pago é gravado só no servidor, depois de conferir o pagamento no Asaas (a assinatura leva espaço, plano e período em `externalReference`). As regras acima partem dessa base. Ver `docs/technical/05-modulo-financeiro.md` §3.5.
+- 5 dias e não 3: o Pix não é cobrado de novo sozinho (o dono precisa pagar), e 3 dias com fim de semana no meio ficam curtos.
+
+### Escopo
+- Vale para o Plano GestaraHub (assinatura do espaço), não para as mensalidades dos alunos (`docs/product/15-regras-de-cobranca.md`).
+- Onde vai morar: `services/subscription/*` (actions e serviço), `services/server/subscription.ts` (gravação no servidor), webhook `app/api/webhooks/asaas/route.ts`, aviso fixo no layout, e-mails em `lib/email/mailersend.ts`, tarefa diária para a tolerância (como as outras em `app/api/cron`).
+
+### Alternativas
+- **Upgrade só no próximo ciclo:** rejeitado. Quem precisa do recurso quer usar na hora.
+- **Upgrade começando um ciclo novo no dia da troca:** rejeitado para trocas no mesmo período (muda a data de cobrança sem necessidade). Fica só para mensal → anual.
+- **Downgrade na hora:** rejeitado. O período já foi pago.
+- **3 dias de tolerância:** considerado curto (ver Contexto). Pode ser revisto com dados de uso.
