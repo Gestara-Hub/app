@@ -4,7 +4,7 @@ import { useTeamWords } from "@/features/settings";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { RotateCcw, UserCheck } from "lucide-react";
 import {
   Dialog,

@@ -4,7 +4,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { AlertTriangle, Award, Check, GraduationCap, History, Lock, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   Client,
   ModalityProgressionTrack,

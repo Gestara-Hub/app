@@ -3,7 +3,7 @@
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Ban, Check, ChevronDown, ListPlus, Search, UserPlus, X } from "lucide-react";
 import {
   DialogFooter,

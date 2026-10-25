@@ -15,7 +15,7 @@ export async function markKnownAction(formData: FormData): Promise<void> {
   if (!parsed.success) return;
   await markKnown({ fingerprint: parsed.data, adminId: admin.id, adminName: admin.name });
   await recordAudit({ admin, action: "health.error_known", target: { fingerprint: parsed.data } });
-  revalidatePath("/health");
+  revalidatePath("/health", "layout");
 }
 
 export async function unmarkKnownAction(formData: FormData): Promise<void> {
@@ -24,5 +24,5 @@ export async function unmarkKnownAction(formData: FormData): Promise<void> {
   if (!parsed.success) return;
   await unmarkKnown(parsed.data);
   await recordAudit({ admin, action: "health.error_unknown", target: { fingerprint: parsed.data } });
-  revalidatePath("/health");
+  revalidatePath("/health", "layout");
 }

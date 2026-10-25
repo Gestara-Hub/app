@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   FileAttachment,
   FinancialEntry,

@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Bot, CheckCircle2, LifeBuoy, Loader2, MessageSquarePlus, Send, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Bot, Bug, CheckCircle2, Lightbulb, LifeBuoy, Loader2, MessageSquarePlus, Send, ThumbsUp } from "lucide-react";
 import { format, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { SupportMessage, SupportThreadSummary } from "@/services/support/supportTypes";
+import type { SupportKind, SupportMessage, SupportThreadSummary } from "@/services/support/supportTypes";
 import {
   useEscalateSupportThread,
   useMarkBotHelped,
@@ -20,9 +20,9 @@ import {
   useSupportThread,
   useSupportThreads,
 } from "../hooks/use-support";
-import { REPLY_PROMISE, STATUS_LABEL, authorLabel, statusNote } from "../support-copy";
+import { KIND_COPY, KIND_LABEL, REPLY_PROMISE, STATUS_LABEL, authorLabel, statusNote } from "../support-copy";
 
-type View = { kind: "list" } | { kind: "new" } | { kind: "chat"; threadId: string };
+type View = { kind: "list" } | { kind: "new"; supportKind: SupportKind } | { kind: "chat"; threadId: string };
 
 const MAX_MESSAGE = 2000;
 
@@ -41,12 +41,14 @@ export function SupportSheet({
   onOpenChange,
   origin,
   draft,
+  kind,
   errorReference,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   origin: string;
   draft?: string;
+  kind?: SupportKind;
   errorReference?: string;
 }) {
   const threads = useSupportThreads(open);
@@ -54,7 +56,7 @@ export function SupportSheet({
   // (ex.: duvida sobre planos) ou nao ha conversas, e na lista nos outros casos.
   const [chosen, setChosen] = useState<View | null>(null);
   const noThreads = threads.isSuccess && threads.data.length === 0;
-  const view: View = chosen ?? (draft || noThreads ? { kind: "new" } : { kind: "list" });
+  const view: View = chosen ?? (kind || draft || noThreads ? { kind: "new", supportKind: kind ?? "question" } : { kind: "list" });
   const setView = setChosen;
 
   return (
@@ -82,7 +84,7 @@ export function SupportSheet({
             threads={threads.data ?? []}
             loading={threads.isPending}
             error={threads.isError}
-            onNew={() => setView({ kind: "new" })}
+            onNew={(supportKind) => setView({ kind: "new", supportKind })}
             onOpen={(threadId) => setView({ kind: "chat", threadId })}
           />
         ) : (
@@ -91,6 +93,7 @@ export function SupportSheet({
             threadId={view.kind === "chat" ? view.threadId : null}
             open={open}
             origin={origin}
+            supportKind={view.kind === "new" ? view.supportKind : "question"}
             draft={view.kind === "new" ? draft : undefined}
             errorReference={errorReference}
             onBack={() => setView({ kind: "list" })}
@@ -112,15 +115,23 @@ function ThreadList({
   threads: SupportThreadSummary[];
   loading: boolean;
   error: boolean;
-  onNew: () => void;
+  onNew: (kind: SupportKind) => void;
   onOpen: (id: string) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-border/40 p-4">
-        <Button className="w-full" onClick={onNew}>
+      <div className="shrink-0 space-y-2 border-b border-border/40 p-4">
+        <Button className="w-full" onClick={() => onNew("question")}>
           <MessageSquarePlus className="size-4" /> Nova conversa
         </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" onClick={() => onNew("bug")}>
+            <Bug className="size-4" /> Relatar problema
+          </Button>
+          <Button variant="outline" onClick={() => onNew("suggestion")}>
+            <Lightbulb className="size-4" /> Sugerir melhoria
+          </Button>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading ? (
@@ -144,6 +155,7 @@ function ThreadList({
                   </div>
                   <p className="mt-0.5 line-clamp-1 break-words text-xs text-muted-foreground">{thread.lastPreview}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground">
+                    {thread.kind === "question" ? "" : `${KIND_LABEL[thread.kind]} · `}
                     {STATUS_LABEL[thread.status]} · {when(thread.lastMessageAt)}
                   </p>
                 </button>
@@ -200,6 +212,7 @@ function Chat({
   threadId,
   open,
   origin,
+  supportKind,
   draft,
   errorReference,
   onBack,
@@ -208,6 +221,7 @@ function Chat({
   threadId: string | null;
   open: boolean;
   origin: string;
+  supportKind: SupportKind;
   draft?: string;
   errorReference?: string;
   onBack: () => void;
@@ -235,7 +249,7 @@ function Chat({
     const message = text.trim();
     if (!message || pending) return;
     send.mutate(
-      { threadId: threadId ?? undefined, message, origin, errorReference },
+      { threadId: threadId ?? undefined, message, origin, errorReference, kind: threadId ? undefined : supportKind },
       {
         onSuccess: (result) => {
           setText("");
@@ -252,7 +266,9 @@ function Chat({
         <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar para as conversas">
           <ArrowLeft className="size-4" />
         </Button>
-        <p className="min-w-0 flex-1 break-words text-sm font-medium">{view?.subject ?? "Nova conversa"}</p>
+        <p className="min-w-0 flex-1 break-words text-sm font-medium">
+          {view?.subject ?? (supportKind === "bug" ? "Relatar problema" : supportKind === "suggestion" ? "Sugerir melhoria" : "Nova conversa")}
+        </p>
         {view ? (
           <Badge variant="secondary" className="shrink-0 font-normal">
             {STATUS_LABEL[view.status]}
@@ -263,7 +279,8 @@ function Chat({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
         {!threadId ? (
           <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            Conte o que você precisa. O assistente responde com base na ajuda do GestaraHub e, se não resolver, você envia para o suporte. Não escreva CPF, cartão nem senha: por segurança, esses dados são apagados da mensagem.
+            {KIND_COPY[supportKind].intro}
+            {errorReference ? ` O código do erro (${errorReference}) vai junto, e a equipe vê o que aconteceu.` : ""}
           </p>
         ) : thread.isPending ? (
           <p className="text-center text-sm text-muted-foreground">Carregando...</p>
@@ -325,7 +342,7 @@ function Chat({
               submit();
             }
           }}
-          placeholder="Escreva sua mensagem"
+          placeholder={view ? "Escreva sua mensagem" : KIND_COPY[supportKind].placeholder}
           aria-label="Mensagem"
           rows={2}
           className="min-h-0 flex-1 resize-none text-base md:text-sm"

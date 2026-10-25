@@ -2,7 +2,7 @@
 
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { cn } from "@/lib/utils";

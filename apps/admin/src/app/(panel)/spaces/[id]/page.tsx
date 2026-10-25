@@ -275,8 +275,16 @@ async function Health({ spaceId, page, href }: { spaceId: string; page: number; 
             ) : (
               errors.rows.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-mono text-xs break-all">{e.event}</TableCell>
-                  <TableCell className="max-w-80 break-words">{e.message}</TableCell>
+                  <TableCell className="font-mono text-xs break-all">
+                    <Link href={`/health/errors/${e.id}`} className="hover:underline">
+                      {e.event}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="max-w-80 break-words">
+                    <Link href={`/health/errors/${e.id}`} className="hover:underline">
+                      {e.message}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">{e.count}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{ago(e.lastSeen)}</TableCell>
                   <TableCell className="font-mono text-xs">{e.lastReference ?? "—"}</TableCell>

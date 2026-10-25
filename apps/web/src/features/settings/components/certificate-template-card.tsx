@@ -3,7 +3,7 @@
 import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Award, Check, Loader2, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import type { CertificateTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";

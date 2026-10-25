@@ -8,8 +8,14 @@ import { createTestTenant, ownerSql, signInAs, type TestTenant } from "@/test/db
  */
 const mail = vi.hoisted(() => ({ sendSupportNotice: vi.fn<(notice: unknown, to?: string) => Promise<boolean>>(async () => true) }));
 vi.mock("@/lib/email/support-mail", () => mail);
+// O cabeçalho do pedido (navegador) só existe dentro de uma requisição; o resto de next/headers segue como está.
+vi.mock("next/headers", async (original) => ({
+  ...(await original<typeof import("next/headers")>()),
+  headers: async () => new Headers({ "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36" }),
+}));
 
 const actions = await import("../supportActions");
+const { resetRateLimit } = await import("@/lib/security/rate-limit");
 const { unwrap } = await import("@/services/server/action");
 
 let tenant: TestTenant;
@@ -53,6 +59,9 @@ afterAll(async () => {
 beforeEach(async () => {
   await signInAs(tenant.owner);
   mail.sendSupportNotice.mockClear();
+  // O envio tem teto por minuto; cada teste começa com a conta zerada.
+  await resetRateLimit(`support:${tenant.owner.id}`);
+  await resetRateLimit(`support:${other.owner.id}`);
   vi.stubEnv("ANTHROPIC_API_KEY", "chave-de-teste");
   await owner`delete from platform.support_threads where organization_id = any(${[tenant.organizationId, other.organizationId]})`;
   await owner`update platform.settings set value = '15000'::jsonb where key = 'support.bot_monthly_budget_cents'`;
@@ -134,6 +143,47 @@ describe("assistente", () => {
     expect(claudeCalls).toHaveLength(0);
     expect(view.needsHuman).toBe(true);
     expect(view.botAvailable).toBe(false);
+  });
+});
+
+describe("problema e sugestão", () => {
+  it("problema vai direto para a equipe, sem chamar o assistente", async () => {
+    modelReplies("não deveria chamar");
+    const view = await unwrap(actions.sendSupportMessageAction({ message: "O botão Salvar não responde", origin: "/clients", kind: "bug" }));
+    expect(claudeCalls).toHaveLength(0);
+    expect(view.kind).toBe("bug");
+    expect(view.status).toBe("waiting_us");
+    expect(view.messages.map((m) => m.author)).toEqual(["customer", "system"]);
+    expect(view.messages[1].body).toContain("Recebemos seu relato");
+    expect(mail.sendSupportNotice).toHaveBeenCalledWith(expect.objectContaining({ kind: "new", topic: "bug" }), expect.anything());
+    // Problema leva o contexto técnico; dúvida e sugestão não.
+    const [row] = await owner<{ client_info: string | null }[]>`select client_info from platform.support_threads where id = ${view.threadId}`;
+    expect(row.client_info).toMatch(/Chrome 130 no macOS \(computador\) · perfil owner/);
+  });
+
+  it("sugestão e dúvida não guardam o contexto técnico", async () => {
+    modelReplies("Ok.");
+    const suggestion = await unwrap(actions.sendSupportMessageAction({ message: "Poderia ter modo escuro no calendário", kind: "suggestion" }));
+    const question = await unwrap(actions.sendSupportMessageAction({ message: "Como crio uma turma?" }));
+    const rows = await owner<{ client_info: string | null }[]>`
+      select client_info from platform.support_threads where id = any(${[suggestion.threadId, question.threadId]})`;
+    expect(rows.map((r) => r.client_info)).toEqual([null, null]);
+  });
+
+  it("sugestão vai direto para a equipe e aparece na lista com o tipo", async () => {
+    modelReplies("não deveria chamar");
+    const view = await unwrap(actions.sendSupportMessageAction({ message: "A agenda poderia mostrar a semana inteira", kind: "suggestion" }));
+    expect(claudeCalls).toHaveLength(0);
+    expect(view.messages[1].body).toContain("Recebemos sua sugestão");
+    const list = await unwrap(actions.listSupportThreadsAction());
+    expect(list.find((t) => t.id === view.threadId)?.kind).toBe("suggestion");
+  });
+
+  it("sem tipo, continua sendo dúvida e passa pelo assistente", async () => {
+    modelReplies("Confira em Cobranças.");
+    const view = await unwrap(actions.sendSupportMessageAction({ message: "Como vejo as cobranças do mês?" }));
+    expect(view.kind).toBe("question");
+    expect(view.status).toBe("bot");
   });
 });
 

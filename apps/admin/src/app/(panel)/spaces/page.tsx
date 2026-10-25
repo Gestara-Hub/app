@@ -125,7 +125,11 @@ export default async function SpacesPage({ searchParams }: { searchParams: Promi
                     </p>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {row.status === "inactive" ? <Badge variant="destructive" className="font-normal">Inativo</Badge> : null}
-                      {row.errors24h > 0 ? <Badge variant="outline" className="border-destructive/40 font-normal text-destructive">{row.errors24h} erro{row.errors24h > 1 ? "s" : ""} em 24 h</Badge> : null}
+                      {row.errors24h > 0 ? (
+                        <Link href={`/spaces/${row.id}?tab=saude`} title="Ver os erros deste espaço">
+                          <Badge variant="outline" className="border-destructive/40 font-normal text-destructive hover:bg-destructive/10">{row.errors24h} erro{row.errors24h > 1 ? "s" : ""} em 24 h</Badge>
+                        </Link>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell>

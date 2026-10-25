@@ -102,7 +102,7 @@ export async function listSpaces(filters: SpaceFilters, opts: { all?: boolean } 
     select * from (
       select o.id, o.name, o.class_segment, o.custom_segment_name, o.model, o.status, o.subscription, o.created_at,
              w.owner_name, s.students_active, s.classes_active, s.users_active, a.last_sign_in_at, o.gateway_status,
-             (select count(*)::int from public.error_logs e where e.organization_id = o.id and e.last_seen >= now() - interval '24 hours') as errors_24h
+             (select count(*)::int from public.error_logs e where e.organization_id = o.id and e.level = 'error' and e.last_seen >= now() - interval '24 hours') as errors_24h
         from public.organizations o
         left join platform.space_owners w on w.organization_id = o.id
         left join platform.space_stats s on s.organization_id = o.id
@@ -186,7 +186,7 @@ export async function getSpace(id: string): Promise<SpaceDetail | null> {
            w.owner_name, w.owner_email, w.terms_accepted_at, w.terms_version,
            s.students_active, s.students_total, s.classes_active, s.teachers_active, s.users_active, s.charges_open, s.charges_open_cents, s.last_attendance_at,
            a.last_sign_in_at,
-           (select count(*)::int from public.error_logs e where e.organization_id = o.id and e.last_seen >= now() - interval '24 hours') as errors_24h,
+           (select count(*)::int from public.error_logs e where e.organization_id = o.id and e.level = 'error' and e.last_seen >= now() - interval '24 hours') as errors_24h,
            p.paid_count, p.paid_cents, p.awaiting_count, p.lost_count, p.platform_fee_cents
       from public.organizations o
       left join platform.space_owners w on w.organization_id = o.id

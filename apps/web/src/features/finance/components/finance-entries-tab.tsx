@@ -4,7 +4,7 @@ import { useTeamWords } from "@/features/settings";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   AlertTriangle,
   ArrowDownLeft,

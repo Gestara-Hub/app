@@ -3,7 +3,7 @@
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ArrowUpRight } from "lucide-react";
 import { InputCurrency, InputText, DialogFormFooter } from "@/components/form";
 import { Button } from "@/components/ui/button";

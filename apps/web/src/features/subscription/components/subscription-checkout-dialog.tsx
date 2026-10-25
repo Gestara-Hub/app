@@ -18,7 +18,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { SubscriptionInterval } from "@gestarahub/contracts";
 import { Button } from "@/components/ui/button";
 import {

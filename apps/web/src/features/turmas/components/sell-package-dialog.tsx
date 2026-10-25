@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { format, parseISO } from "date-fns";
 import { AlertTriangle, Info } from "lucide-react";
 import type { Client, LessonPackage } from "@gestarahub/contracts";

@@ -15,6 +15,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const DIR = resolve(ROOT, "docs/ajuda");
 const OUT = resolve(ROOT, "apps/web/src/lib/support/help-kb.generated.json");
 
+// Passo do guia na tela (linha `+ tipo "rótulo": texto` depois de `Guia: /rota`).
+const STEP_LINE = /^\+\s+(botão|aba|campo|menu|item|texto)\s+"([^"]+)"\s*:\s*(.+)$/;
+
 export function buildChunks() {
   const chunks = [];
   for (const file of readdirSync(DIR).filter((f) => f.endsWith(".md") && f !== "README.md").sort()) {
@@ -28,6 +31,16 @@ export function buildChunks() {
         if (current) chunks.push(current);
         const title = line.slice(3).trim();
         current = { id: `${slug}#${title.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`, article, title, ...(route ? { route } : {}), text: "" };
+      } else if (current && line.startsWith("Guia: ")) {
+        // Guia na tela: rota onde começa; os passos vêm nas linhas `+ ...` seguintes.
+        current.guide = { route: line.slice(6).trim(), steps: [] };
+      } else if (current && current.guide && line.startsWith("+ ")) {
+        const match = STEP_LINE.exec(line.trim());
+        if (!match) throw new Error(`Passo de guia inválido em ${file} (${current.title}): ${line}`);
+        current.guide.steps.push({ kind: match[1], label: match[2], text: match[3].trim() });
+      } else if (current && line.startsWith("Resumo: ") && current.text === "" && !current.summary) {
+        // Descrição curta do card, escrita à mão; não entra no texto que abre no clique.
+        current.summary = line.slice(8).trim();
       } else if (current && !line.startsWith("# ") && !line.startsWith("Onde: ")) {
         current.text += `${line}\n`;
       }

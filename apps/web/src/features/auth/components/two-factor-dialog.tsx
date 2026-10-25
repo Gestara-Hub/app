@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Copy, Download, KeyRound, Loader2, Mail, Smartphone } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

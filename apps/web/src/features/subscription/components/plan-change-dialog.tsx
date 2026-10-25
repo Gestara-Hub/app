@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Copy, ExternalLink, FlaskConical, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, formatDate } from "@gestarahub/core/format";
 import type { PlanChangeQuote } from "@gestarahub/core/subscription-plan";

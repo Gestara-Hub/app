@@ -2,7 +2,7 @@
 
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";

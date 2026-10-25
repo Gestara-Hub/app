@@ -59,7 +59,7 @@ function SequenceBody({ group, onClose }: { group: ReminderGroup; onClose: () =>
   if (!current) {
     return (
       <>
-        <DialogBody className="flex flex-col items-center gap-3 py-10 text-center">
+        <DialogBody contentClassName="flex flex-col items-center gap-3 space-y-0 py-10 text-center">
           <CheckCircle2 className="size-10 text-emerald-600 dark:text-emerald-400" />
           <p className="text-base font-semibold text-foreground">Pronto</p>
           <p className="text-sm text-muted-foreground">

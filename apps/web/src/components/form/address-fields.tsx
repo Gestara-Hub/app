@@ -10,7 +10,7 @@ import {
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { BRAZIL_STATES, normalizeStateUf } from "@/lib/brazil-states";
 import { fetchAddressByCep } from "@/lib/cep";
 import { FieldShell, fieldAria } from "./field-shell";

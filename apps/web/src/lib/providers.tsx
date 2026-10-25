@@ -9,7 +9,7 @@ import {
 import { ThemeProvider } from "next-themes";
 import { initAnalytics } from "@/lib/analytics";
 import { reapplySavedTheme } from "@/lib/theme-customizer";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";
 import { useRefetchOnStoreChange } from "./use-refetch-on-store-change";

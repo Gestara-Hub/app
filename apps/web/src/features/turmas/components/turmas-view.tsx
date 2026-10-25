@@ -24,7 +24,7 @@ import {
   PowerOff,
   User,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   ListContainer,
   ListEmptyState,

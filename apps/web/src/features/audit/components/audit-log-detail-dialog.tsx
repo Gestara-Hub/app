@@ -5,7 +5,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronDown, Copy, Fingerprint, Lock, ShieldAlert } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Dialog,
   DialogContent,

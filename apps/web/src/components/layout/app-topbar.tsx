@@ -4,9 +4,9 @@ import { useTeamWords } from "@/features/settings";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { UserProfile } from "@gestarahub/contracts";
-import { Building2, Check, Crown, LifeBuoy, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
+import { Building2, Bug, Check, CircleHelp, Crown, Lightbulb, LifeBuoy, LogOut, ShieldCheck, SlidersHorizontal, Sparkles, Users } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { DEMO_USERS, isDemoOrganization, isDemoSpace } from "@/lib/demo";
 import { settingsService } from "@/services/settings/settingsService";
 import { UserPreferencesDialog } from "@/features/preferences";
 import { RemindersBell } from "@/features/dashboard";
-import { openSupport, useSupportUnread } from "@/features/support";
+import { openHelp, openSupport, useSupportUnread } from "@/features/support";
 
 export function AppTopbar() {
   const team = useTeamWords();
@@ -84,6 +84,9 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <Button type="button" variant="ghost" size="icon" onClick={() => openHelp()} aria-label="Abrir a ajuda" title="Ajuda">
+          <CircleHelp className="size-4" />
+        </Button>
         <RemindersBell />
         <Button
           asChild
@@ -143,6 +146,10 @@ export function AppTopbar() {
               </Link>
             </DropdownMenuItem>
 
+            <DropdownMenuItem onSelect={() => openHelp()} className="cursor-pointer">
+              <CircleHelp className="size-4" />
+              <span>Ajuda</span>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => openSupport()} className="cursor-pointer">
               <LifeBuoy className="size-4" />
               <span>Fale com a gente</span>
@@ -151,6 +158,14 @@ export function AppTopbar() {
                   {supportUnread}
                 </span>
               ) : null}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openSupport({ kind: "bug" })} className="cursor-pointer">
+              <Bug className="size-4" />
+              <span>Relatar um problema</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => openSupport({ kind: "suggestion" })} className="cursor-pointer">
+              <Lightbulb className="size-4" />
+              <span>Sugerir uma melhoria</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => setPreferencesOpen(true)}

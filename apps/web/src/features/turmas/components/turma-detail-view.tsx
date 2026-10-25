@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { capacityLabel, promoteWaitlistDescription } from "../turma-copy";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {

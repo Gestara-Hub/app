@@ -7,7 +7,7 @@ import { BRAZIL_TIME_ZONES, resolveSpaceTimeZone, timeZoneForState } from "@gest
 import { useForm, FormProvider, useFormState, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Building2,
   CalendarDays,

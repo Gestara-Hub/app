@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCents, formatPhone } from "@gestarahub/core/format";

@@ -3,7 +3,7 @@
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useState } from "react";
 import { Eye, MessageCircle, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { MessageLog, MessageLogKind, MessageLogStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDateTime, formatPhone } from "@gestarahub/core/format";

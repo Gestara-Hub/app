@@ -9,7 +9,7 @@ import {
   type Path,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Check, Mail } from "lucide-react";
 import {
   FieldShell,

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,

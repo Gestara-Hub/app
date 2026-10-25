@@ -164,13 +164,19 @@ async function Errors({ params, page, query }: { params: Record<string, string |
               list.rows.map((row) => (
                 <TableRow key={row.id} className={row.known ? "opacity-60" : undefined}>
                   <TableCell>
-                    <p className="font-mono text-xs break-all">{row.event}</p>
+                    <Link href={`/health/errors/${row.id}`} className="font-mono text-xs break-all hover:underline">
+                      {row.event}
+                    </Link>
                     <p className="text-xs text-muted-foreground">
                       {SOURCE_LABEL[row.source] ?? row.source}
                       {row.level === "warn" ? " · aviso" : ""}
                     </p>
                   </TableCell>
-                  <TableCell className="max-w-80 break-words">{row.message}</TableCell>
+                  <TableCell className="max-w-80 break-words">
+                    <Link href={`/health/errors/${row.id}`} className="hover:underline">
+                      {row.message}
+                    </Link>
+                  </TableCell>
                   <TableCell className="break-words">
                     {row.organizationId ? (
                       <Link href={`/spaces/${row.organizationId}?tab=saude`} className="hover:underline">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Pencil, Plus, X } from "lucide-react";
 import { useAttentionUntilInteraction } from "@/lib/use-attention-until-interaction";
 import { SectionSpotlight } from "@/components/shared/section-spotlight";

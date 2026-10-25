@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ClipboardCheck, ClipboardList, Pencil, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { AssessmentView, ClassGroupView, ModalityProgressionTrack } from "@gestarahub/contracts";
 import { formatAverage } from "@gestarahub/core/grades";
 import { getErrorMessage } from "@gestarahub/core/api-error";

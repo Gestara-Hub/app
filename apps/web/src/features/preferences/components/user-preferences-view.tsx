@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Check,
   Monitor,

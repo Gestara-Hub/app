@@ -1,5 +1,6 @@
 import { SUPPORT_EMAIL } from "@/config/site";
 import { logError } from "@/lib/log";
+import type { SupportKind } from "@/services/support/supportTypes";
 
 /**
  * Aviso interno de chamado (texto simples) para quem atende o suporte. Sem
@@ -8,6 +9,8 @@ import { logError } from "@/lib/log";
  */
 export interface SupportNotice {
   kind: "new" | "reply";
+  /** Tipo da conversa; sem tipo, é uma dúvida. */
+  topic?: SupportKind;
   urgent: boolean;
   subject: string;
   spaceName: string;
@@ -17,7 +20,8 @@ export interface SupportNotice {
 }
 
 export function supportNoticeText(notice: SupportNotice): { subject: string; text: string } {
-  const head = notice.kind === "new" ? "Novo chamado" : "Nova resposta do cliente";
+  const newHead = notice.topic === "bug" ? "Novo problema relatado" : notice.topic === "suggestion" ? "Nova sugestão" : "Novo chamado";
+  const head = notice.kind === "new" ? newHead : "Nova resposta do cliente";
   const subject = `${notice.urgent ? "[URGENTE] " : ""}${head}: ${notice.subject}`;
   const text = [
     `${head}${notice.urgent ? " (urgente)" : ""}`,

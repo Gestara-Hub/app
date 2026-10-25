@@ -84,6 +84,31 @@ export async function findErrorByReference(code: string): Promise<ErrorRow | nul
   return row ? toError(row) : null;
 }
 
+export interface ErrorDetail extends ErrorRow {
+  /** Contexto da última ocorrência (método, rota, tela), já mascarado pelo app dos clientes. */
+  context: Record<string, unknown>;
+  /** Conversas de suporte abertas com o código deste erro. */
+  threads: { id: string; subject: string; status: string }[];
+}
+
+/** Um erro com tudo o que o registro guarda (pilha, contexto) e as conversas ligadas ao código. */
+export async function getErrorDetail(id: string): Promise<ErrorDetail | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const [row] = await sql()<(DbError & { context: Record<string, unknown> })[]>`
+    select e.id, e.fingerprint, e.source, e.level, e.event, e.message, e.stack, e.count, e.first_seen, e.last_seen, e.last_reference,
+           e.organization_id, o.name as organization_name, (k.fingerprint is not null) as known, e.context
+      from public.error_logs e
+      left join public.organizations o on o.id = e.organization_id
+      left join platform.known_errors k on k.fingerprint = e.fingerprint
+     where e.id = ${id}`;
+  if (!row) return null;
+  const threads = row.last_reference
+    ? await sql()<{ id: string; subject: string; status: string }[]>`
+        select id, subject, status from platform.support_threads where error_reference = ${row.last_reference} order by created_at desc limit 10`
+    : [];
+  return { ...toError(row), context: row.context ?? {}, threads };
+}
+
 export async function errorTotals(): Promise<{ today: number; spacesAffected: number; unknown: number }> {
   const [row] = await sql()<{ today: number; spaces: number; unknown: number }[]>`
     select count(*)::int as today,

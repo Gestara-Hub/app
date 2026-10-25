@@ -2,7 +2,20 @@
 Onde: /settings
 
 ## Verificação em duas etapas
-Em Preferências, ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias.
+Resumo: Ligue o código extra no login, por aplicativo ou por e-mail.
+Guia: /dashboard
++ botão "Menu do usuário": Clique na bolinha com suas iniciais, no topo.
++ item "Segurança": Abra a segurança da conta.
++ botão "Usar aplicativo|Usar e-mail": Escolha receber o código por aplicativo ou por e-mail.
+Em Segurança, no menu do usuário (a bolinha com suas iniciais no topo), ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias.
+
+## Códigos de recuperação
+Resumo: Gere códigos de reserva para o caso de perder o aplicativo ou o e-mail.
+Guia: /dashboard
++ botão "Menu do usuário": Clique na bolinha com suas iniciais, no topo.
++ item "Segurança": Abra a segurança da conta.
++ botão "Gerar novos códigos": Gere os códigos e guarde em lugar seguro. Cada um vale uma vez.
+Com a verificação ligada, a janela Segurança mostra os códigos de recuperação. Eles servem se você perder o aplicativo ou o e-mail.
 
 ## Esqueci a senha
 Na tela de entrada, use "Esqueci minha senha" e siga o e-mail.
@@ -11,6 +24,11 @@ Na tela de entrada, use "Esqueci minha senha" e siga o e-mail.
 No primeiro acesso, o proprietário aceita os Termos de uso e a Política de privacidade. Quem aceita fica registrado.
 
 ## Fuso horário
+Resumo: Escolha o fuso do espaço em Configurações.
+Guia: /settings?tab=geral
++ botão "Endereço": O fuso fica na seção Endereço. Abra se estiver fechada.
++ campo "Fuso horário": Escolha o fuso do seu espaço.
++ botão "Salvar configurações": Clique aqui para guardar.
 Em Configurações, aba Geral, escolha o fuso do espaço (os quatro fusos do Brasil). Datas e vencimentos seguem esse fuso.
 
 ## Dados dos alunos e LGPD

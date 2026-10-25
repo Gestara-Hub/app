@@ -7,6 +7,21 @@ export const STATUS_LABEL: Record<ThreadStatus, string> = {
   resolved: "Encerrada",
 };
 
+export type ThreadKind = "question" | "bug" | "suggestion";
+
+export const KIND_LABEL: Record<ThreadKind, string> = { question: "Dúvida", bug: "Problema", suggestion: "Sugestão" };
+
+export const KIND_FILTERS: { value: ThreadKind | "all"; label: string }[] = [
+  { value: "all", label: "Todos os tipos" },
+  { value: "question", label: "Dúvidas" },
+  { value: "bug", label: "Problemas" },
+  { value: "suggestion", label: "Sugestões" },
+];
+
+export function isThreadKind(value: unknown): value is ThreadKind {
+  return value === "question" || value === "bug" || value === "suggestion";
+}
+
 export type ThreadFilter = "attention" | "waiting_customer" | "bot" | "resolved" | "all";
 
 export const FILTERS: { value: ThreadFilter; label: string }[] = [
@@ -23,6 +38,7 @@ export function isThreadFilter(value: unknown): value is ThreadFilter {
 
 export interface ThreadRow {
   id: string;
+  kind: ThreadKind;
   subject: string;
   status: ThreadStatus;
   urgent: boolean;
@@ -50,6 +66,7 @@ export interface ThreadDetail extends ThreadRow {
   summary: string | null;
   originScreen: string | null;
   errorReference: string | null;
+  clientInfo: string | null;
   botHelped: boolean | null;
   messages: ThreadMessage[];
 }

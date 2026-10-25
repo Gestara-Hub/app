@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {

@@ -4,7 +4,7 @@ import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useState } from "react";
 import { FileText, NotebookPen } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { Client, DateISO, EvaluationEntryTone, Id } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { plural } from "@gestarahub/core/format";

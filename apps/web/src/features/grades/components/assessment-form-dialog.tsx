@@ -5,7 +5,7 @@ import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { AssessmentView, Id, ModalityProgressionTrack } from "@gestarahub/contracts";
 import { validateWeight } from "@gestarahub/core/grades";
 import { todayISO } from "@gestarahub/core/date";

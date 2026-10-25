@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
+import { onReplayTour } from "@/features/support";
 import { DiscoveryChecklist } from "./discovery-checklist";
 import { OnboardingChecklist } from "./onboarding-checklist";
 import { OnboardingWelcomeDialog } from "./onboarding-welcome-dialog";
@@ -29,6 +30,9 @@ export function Onboarding() {
   // O fechar das boas-vindas pode vir depois do "tour guiado" (mesmo clique):
   // a ref evita destacar o passo quando a pessoa escolheu o tour.
   const tourChosenRef = useRef(false);
+
+  // "Rever o tour" na Ajuda do app.
+  useEffect(() => onReplayTour(() => setTourOpen(true)), []);
 
   if (!isReady || orgLoading) return null;
 

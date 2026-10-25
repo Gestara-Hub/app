@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { forbiddenError, validationError } from "@gestarahub/core/api-error";
 import { isDemoSpace } from "@/lib/demo";
 import { sendSupportNotice } from "@/lib/email/support-mail";
@@ -17,11 +18,12 @@ import {
   summaryFrom,
   type BotQuota,
 } from "@/lib/support/bot-rules";
+import { clientInfoText } from "@/lib/support/client-info";
 import { searchHelp } from "@/lib/support/help-search";
 import { runAction, type ActionResult } from "../server/action";
 import { askClaude, botEnabled, type ClaudeMessage } from "../server/supportBot";
 import { requireTenant } from "../server/tenant";
-import type { SupportMessage, SupportStatus, SupportThreadSummary, SupportThreadView } from "./supportTypes";
+import type { SupportKind, SupportMessage, SupportStatus, SupportThreadSummary, SupportThreadView } from "./supportTypes";
 
 /**
  * "Fale com a gente" do app dos clientes (doc technical/26, fase 1). Cada acao
@@ -49,6 +51,7 @@ async function caller() {
     admin,
     org: tenant.organizationId,
     userId: tenant.userId,
+    profile: tenant.profile,
     userName: String(user.name),
     userEmail: String(user.email),
     spaceName: String(org?.name ?? ""),
@@ -90,7 +93,7 @@ async function threadView(
 ): Promise<SupportThreadView> {
   const [messages, statusRows, quota] = await Promise.all([
     rpc<MessageRow[]>(c.admin, "support_thread_messages", { p_org: c.org, p_user: c.userId, p_thread: threadId, p_mark_seen: true }),
-    rpc<{ status: SupportStatus; bot_helped: boolean | null; subject: string }[]>(c.admin, "support_thread_status", {
+    rpc<{ status: SupportStatus; bot_helped: boolean | null; subject: string; kind: SupportKind }[]>(c.admin, "support_thread_status", {
       p_org: c.org,
       p_user: c.userId,
       p_thread: threadId,
@@ -101,6 +104,7 @@ async function threadView(
   if (!status) throw validationError([{ field: "message", message: "Conversa não encontrada." }]);
   return {
     threadId,
+    kind: status.kind,
     status: status.status,
     subject: status.subject,
     botHelped: status.bot_helped,
@@ -161,10 +165,11 @@ export async function listSupportThreadsAction(): Promise<ActionResult<SupportTh
   return runAction(async () => {
     const c = await caller();
     const rows = await rpc<
-      { id: string; subject: string; status: SupportStatus; urgent: boolean; created_at: string; last_message_at: string; unread: number; last_preview: string | null }[]
+      { id: string; subject: string; status: SupportStatus; urgent: boolean; created_at: string; last_message_at: string; unread: number; last_preview: string | null; kind: SupportKind }[]
     >(c.admin, "support_list_threads", { p_org: c.org, p_user: c.userId });
     return rows.map((r) => ({
       id: r.id,
+      kind: r.kind,
       subject: r.subject,
       status: r.status,
       urgent: r.urgent,
@@ -185,6 +190,8 @@ export async function sendSupportMessageAction(input: {
   message: string;
   origin?: string;
   errorReference?: string;
+  /** Só vale ao abrir a conversa; sem tipo é uma dúvida. */
+  kind?: SupportKind;
 }): Promise<ActionResult<SupportThreadView>> {
   return runAction(async () => {
     const c = await caller();
@@ -210,6 +217,16 @@ export async function sendSupportMessageAction(input: {
         p_origin: input.origin ?? null,
         p_error_ref: input.errorReference ?? null,
         p_tier: c.tier,
+        p_kind: input.kind ?? "question",
+        // Só no problema relatado: ajuda a reproduzir o erro.
+        p_client_info:
+          input.kind === "bug"
+            ? clientInfoText({
+                userAgent: (await headers()).get("user-agent"),
+                profile: c.profile,
+                version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
+              })
+            : null,
       });
     } else {
       const status = (await rpc<{ status: SupportStatus }[]>(c.admin, "support_thread_status", { p_org: c.org, p_user: c.userId, p_thread: threadId }))[0];
@@ -219,7 +236,10 @@ export async function sendSupportMessageAction(input: {
     }
 
     let needsHuman = false;
-    if (before === "bot") {
+    if (!input.threadId && input.kind && input.kind !== "question") {
+      // Problema e sugestao nao passam pelo assistente: vao direto para a equipe.
+      await escalate(c, threadId);
+    } else if (before === "bot") {
       ({ needsHuman } = await answerWithBot(c, threadId, message));
     } else {
       // Conversa que ja esta com o suporte: avisa que a pessoa respondeu.
@@ -233,27 +253,32 @@ export async function sendSupportMessageAction(input: {
   }, "support.send");
 }
 
-/** "Falar com o suporte": a conversa passa a ser nossa e chega o aviso por e-mail. */
+/** A conversa passa a ser nossa e chega o aviso por e-mail. */
+async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string): Promise<void> {
+  const history = await rpc<MessageRow[]>(c.admin, "support_thread_messages", { p_org: c.org, p_user: c.userId, p_thread: threadId, p_mark_seen: false });
+  const customerTexts = history.filter((m) => m.author === "customer").map((m) => m.body);
+  const urgent = looksUrgent(customerTexts);
+  const summary = summaryFrom(customerTexts);
+  const rows = await rpc<{ subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean; kind: SupportKind }[]>(
+    c.admin,
+    "support_escalate",
+    { p_org: c.org, p_user: c.userId, p_thread: threadId, p_summary: summary, p_urgent: urgent },
+  );
+  const sent = rows[0];
+  if (sent) {
+    const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
+    await sendSupportNotice(
+      { kind: "new", topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, preview: summary },
+      notifyTo,
+    );
+  }
+}
+
+/** "Falar com o suporte". */
 export async function escalateSupportThreadAction(threadId: string): Promise<ActionResult<SupportThreadView>> {
   return runAction(async () => {
     const c = await caller();
-    const history = await rpc<MessageRow[]>(c.admin, "support_thread_messages", { p_org: c.org, p_user: c.userId, p_thread: threadId, p_mark_seen: false });
-    const customerTexts = history.filter((m) => m.author === "customer").map((m) => m.body);
-    const urgent = looksUrgent(customerTexts);
-    const summary = summaryFrom(customerTexts);
-    const rows = await rpc<{ subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean }[]>(
-      c.admin,
-      "support_escalate",
-      { p_org: c.org, p_user: c.userId, p_thread: threadId, p_summary: summary, p_urgent: urgent },
-    );
-    const sent = rows[0];
-    if (sent) {
-      const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
-      await sendSupportNotice(
-        { kind: "new", urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, preview: summary },
-        notifyTo,
-      );
-    }
+    await escalate(c, threadId);
     return threadView(c, threadId);
   }, "support.escalate");
 }

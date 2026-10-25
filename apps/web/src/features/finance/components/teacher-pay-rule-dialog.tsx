@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { FormProvider, useFieldArray, useForm, useWatch, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addCompetence, competenceRange } from "@gestarahub/core/finance";
 import {
   DialogFormFooter,

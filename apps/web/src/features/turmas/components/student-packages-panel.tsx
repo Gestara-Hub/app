@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Ban, ChevronDown, Plus, RefreshCw, Ticket } from "lucide-react";
 import {
   ListContainer,

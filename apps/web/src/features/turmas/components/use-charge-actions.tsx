@@ -3,7 +3,7 @@
 import { useAfterDialogClose } from "@/lib/use-dialog-presence";
 import { cancelOpenCodeNote, chargeAccessibleLabel } from "../charge-label";
 import { useState, type ReactElement, type ReactNode } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Ban, CheckCircle2, FileText, Info, Lock, MessageCircle, Paperclip, QrCode, RotateCcw } from "lucide-react";
 import {
   ConfirmActionDialog,

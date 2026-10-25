@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, Bug, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { openSupport } from "@/features/support";
 import { reportError } from "@/lib/log";
 
 // Erro inesperado numa tela do app: mantem o shell e oferece nova tentativa.
@@ -41,6 +42,12 @@ export default function AppError({
         <Button variant="outline" asChild>
           <Link href="/dashboard">Voltar para o início</Link>
         </Button>
+        {reference ? (
+          <Button variant="outline" onClick={() => openSupport({ kind: "bug", errorReference: reference })}>
+            <Bug className="size-4" />
+            Relatar problema
+          </Button>
+        ) : null}
       </div>
     </div>
   );

@@ -65,7 +65,8 @@ for (const file of files) {
     if (inDocs && file.endsWith(".md")) {
       for (const match of text.matchAll(/\]\(([^)\s]+)\)/g)) {
         const target = match[1].split("#")[0];
-        if (!target || /^(https?:|mailto:|#)/.test(target)) continue;
+        // `/rota` é tela do app (artigos de docs/ajuda); quem confere é o teste help-search.
+        if (!target || /^(https?:|mailto:|#|\/)/.test(target)) continue;
         if (!existsSync(resolve(dirname(file), target))) report(file, line, `link quebrado: ${match[1]}`);
       }
     }

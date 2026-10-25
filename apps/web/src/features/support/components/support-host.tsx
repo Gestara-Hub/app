@@ -2,7 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { onOpenSupport, type OpenSupportDetail } from "../support-events";
+import { setErrorReporter } from "@/lib/toast";
+import { onOpenSupport, openSupport, type OpenSupportDetail } from "../support-events";
 import { SupportSheet } from "./support-sheet";
 
 /**
@@ -25,6 +26,12 @@ export function SupportHost() {
     [],
   );
 
+  // O botão "Relatar problema" dos avisos de erro abre a conversa de problema já com o código.
+  useEffect(() => {
+    setErrorReporter((errorReference) => openSupport({ kind: "bug", errorReference }));
+    return () => setErrorReporter(undefined);
+  }, []);
+
   return (
     <SupportSheet
       open={open}
@@ -34,6 +41,7 @@ export function SupportHost() {
       }}
       origin={origin}
       draft={detail.draft}
+      kind={detail.kind}
       errorReference={detail.errorReference}
     />
   );

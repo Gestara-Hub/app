@@ -10,7 +10,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { SubscriptionTier } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { useSetSubscriptionTier, useSubscription } from "@/features/settings";
+import { formatCents } from "@gestarahub/core/format";
+import { SUBSCRIPTION_PRICES } from "@/config/subscription";
 import { platformFeeSentence } from "@gestarahub/core/payment-fees";
 import { isDemoSpace } from "@/lib/demo";
 import { cn } from "@/lib/utils";
@@ -163,7 +165,7 @@ export function PlansView() {
           >
             <div>
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between pb-1">
+                <div className="flex min-h-[22px] items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Para começar
                   </span>
@@ -222,7 +224,7 @@ export function PlansView() {
           >
             <div>
               <CardHeader className="pb-4 pt-6">
-                <div className="flex items-center justify-between pb-1">
+                <div className="flex min-h-[22px] items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-primary">Para automatizar</span>
                   {currentTier === "pro" ? (
                     <Badge variant="secondary" className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
@@ -238,10 +240,16 @@ export function PlansView() {
                 </CardDescription>
 
                 <div className="pt-4">
-                  <p className="text-[11px] text-muted-foreground">
-                    {interval === "monthly"
-                      ? "Cobrança mensal, sem fidelidade. O valor aparece antes de você confirmar."
-                      : "Cobrança anual, com 2 meses grátis. O valor aparece antes de você confirmar."}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-foreground">
+                      {formatCents(SUBSCRIPTION_PRICES.pro[interval].priceCents)}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {interval === "monthly" ? "/ mês" : "/ ano"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground pt-0.5">
+                    {interval === "monthly" ? "Cobrança mensal, sem fidelidade." : "Cobrança anual, com 2 meses grátis."}
                   </p>
                 </div>
               </CardHeader>
@@ -279,7 +287,7 @@ export function PlansView() {
           {currentTier === "scale" ? (
             <Card className="flex flex-col justify-between rounded-2xl border border-indigo-500/60 bg-card shadow-xs ring-1 ring-indigo-500/20">
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between pb-1">
+                <div className="flex min-h-[22px] items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Seu plano
                   </span>

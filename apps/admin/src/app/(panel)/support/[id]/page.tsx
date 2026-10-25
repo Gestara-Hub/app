@@ -5,15 +5,16 @@ import { ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageHeader } from "@/components/layout/page-header";
-import { SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { KindBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
+import { findErrorByReference } from "@/lib/server/health";
 import { getThread, listMacros } from "@/lib/server/support";
 import { cn } from "@/lib/utils";
 import { reopenAction, resolveAction, urgentAction } from "../actions";
-import { NoteForm, ReplyForm } from "./reply-forms";
+import { Composer, ScrollToEnd } from "./reply-forms";
 
 export const metadata: Metadata = { title: "Conversa" };
 
@@ -26,6 +27,9 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   if (!thread) notFound();
   const canReply = can(admin.role, "support:reply");
   const macros = canReply ? await listMacros() : [];
+  // Conversa aberta a partir de um erro: o registro técnico (sem dado pessoal) já aparece aqui.
+  const techError =
+    thread.errorReference && can(admin.role, "health:view") ? await findErrorByReference(thread.errorReference) : null;
 
   return (
     <>
@@ -35,13 +39,14 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         </Link>
       </Button>
       <PageHeader title={thread.subject} description={`${thread.organizationName} · ${thread.userName}`}>
+        <KindBadge kind={thread.kind} />
         <StatusBadge status={thread.status} />
         {thread.urgent ? <UrgentBadge /> : null}
         <SlaBadge status={thread.status} since={thread.lastCustomerMessageAt ?? thread.createdAt} now={new Date()} />
       </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardContent className="space-y-3">
               {thread.messages.map((message) => (
@@ -67,15 +72,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
 
-          {canReply ? (
-            <>
-              <ReplyForm threadId={thread.id} macros={macros} disabled={false} />
-              <NoteForm threadId={thread.id} />
-            </>
-          ) : null}
+          <ScrollToEnd count={thread.messages.length} />
+          {canReply ? <Composer threadId={thread.id} macros={macros} /> : null}
         </div>
 
-        <aside className="space-y-4">
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Quem escreveu</CardTitle>
@@ -100,6 +101,25 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                 <span className="text-muted-foreground">Código do erro: </span>
                 <span className="font-mono text-xs">{thread.errorReference ?? "—"}</span>
               </p>
+              {techError ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs">
+                  <p className="font-medium">Erro registrado</p>
+                  <p className="mt-1 break-all font-mono">{techError.event}</p>
+                  <p className="mt-1 break-words">{techError.message}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {techError.count} {techError.count === 1 ? "ocorrência" : "ocorrências"} ·{" "}
+                    <Link href={`/health?tab=erros&q=${encodeURIComponent(thread.errorReference ?? "")}`} className="underline underline-offset-2">
+                      Ver em Saúde
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
+              {thread.clientInfo ? (
+                <p className="break-words">
+                  <span className="text-muted-foreground">Navegador: </span>
+                  {thread.clientInfo}
+                </p>
+              ) : null}
               <p>
                 <span className="text-muted-foreground">Aberta em: </span>
                 {format(thread.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}

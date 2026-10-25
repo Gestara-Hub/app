@@ -4,35 +4,341 @@
     "article": "Alunos e ficha do aluno",
     "title": "Cadastrar um aluno",
     "route": "/clients",
-    "text": "Em Alunos, clique em \"Novo aluno\". Informe nome e telefone (com DDD, para o WhatsApp). Escolha como ele paga: mensalidade com plano, pacote de aulas ou sem mensalidade. Para menor de idade, cadastre o responsável: nome, telefone e CPF do responsável financeiro."
+    "text": "Em Alunos, clique em \"Novo aluno\". Informe nome e telefone (com DDD, para o WhatsApp). Escolha como ele paga: mensalidade com plano, pacote de aulas ou sem mensalidade. Para menor de idade, cadastre o responsável: nome, telefone e CPF do responsável financeiro.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Novo aluno",
+          "text": "Clique aqui para abrir o cadastro."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome",
+          "text": "Escreva o nome completo do aluno."
+        },
+        {
+          "kind": "campo",
+          "label": "Telefone",
+          "text": "Informe o telefone com DDD, para o WhatsApp."
+        },
+        {
+          "kind": "texto",
+          "label": "Plano e mensalidade",
+          "text": "Escolha como o aluno paga: mensalidade com plano, pacote de aulas ou sem mensalidade."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Quando terminar de preencher, clique aqui para salvar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "alunos#editar-o-cadastro-de-um-aluno",
+    "article": "Alunos e ficha do aluno",
+    "title": "Editar o cadastro de um aluno",
+    "route": "/clients",
+    "text": "No menu ⋮ do aluno, escolha \"Editar cadastro\", mude os dados e clique em \"Salvar\". Também dá para editar pela ficha do aluno.",
+    "summary": "Mude telefone, plano ou outros dados do aluno.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno que você quer mudar."
+        },
+        {
+          "kind": "item",
+          "label": "Editar cadastro",
+          "text": "Escolha esta opção para abrir o cadastro."
+        },
+        {
+          "kind": "campo",
+          "label": "Telefone",
+          "text": "Mude o que for preciso, como o telefone."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar as mudanças."
+        }
+      ]
+    }
+  },
+  {
+    "id": "alunos#buscar-e-filtrar-alunos",
+    "article": "Alunos e ficha do aluno",
+    "title": "Buscar e filtrar alunos",
+    "route": "/clients",
+    "text": "Use a busca no topo da lista de Alunos. O filtro de situação começa em \"Ativos\"; escolha \"Inativos\" para ver quem saiu.",
+    "summary": "Ache um aluno pelo nome ou telefone e veja só os ativos ou inativos.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Digite o nome ou o telefone do aluno."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por status",
+          "text": "Escolha ver alunos ativos, inativos ou todos."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Aqui aparece quantos alunos a lista mostra."
+        }
+      ]
+    }
   },
   {
     "id": "alunos#ficha-do-aluno",
     "article": "Alunos e ficha do aluno",
     "title": "Ficha do aluno",
     "route": "/clients",
-    "text": "Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Cobranças, Pacotes, Evolução, Mensagens e Cadastro."
+    "text": "Clique no nome do aluno. A ficha mostra alertas no topo (atraso, faltas seguidas, pacote acabando, aniversário) e seções: Turmas, Cobranças, Pacotes, Evolução, Mensagens e Cadastro.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno pelo nome ou telefone."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Cobranças",
+          "text": "Veja as mensalidades do aluno e o que está em aberto."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Veja o nível do aluno e os registros de aula."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações",
+          "text": "Aqui ficam editar, vender pacote, inativar e outras ações."
+        }
+      ]
+    }
   },
   {
     "id": "alunos#pausar-a-assinatura",
     "article": "Alunos e ficha do aluno",
     "title": "Pausar a assinatura",
     "route": "/clients",
-    "text": "Edite o aluno e mude \"Situação da assinatura\" para \"Trancada / Pausada\". O sistema pede confirmação e pergunta o que fazer com a mensalidade em aberto do mês: cancelar ou manter. As mensalidades futuras deixam de valer e o lembrete de WhatsApp não sai enquanto estiver pausado."
+    "text": "Edite o aluno e mude \"Situação da assinatura\" para \"Trancada / Pausada\". O sistema pede confirmação e pergunta o que fazer com a mensalidade em aberto do mês: cancelar ou manter. As mensalidades futuras deixam de valer e o lembrete de WhatsApp não sai enquanto estiver pausado.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno que vai pausar."
+        },
+        {
+          "kind": "item",
+          "label": "Editar cadastro",
+          "text": "Abra o cadastro para mudar a situação."
+        },
+        {
+          "kind": "botão",
+          "label": "Plano e mensalidade",
+          "text": "Abra esta parte do cadastro."
+        },
+        {
+          "kind": "campo",
+          "label": "Situação da assinatura",
+          "text": "Escolha \"Trancada / Pausada\"."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Salve e confirme o que fazer com a mensalidade do mês."
+        }
+      ]
+    }
   },
   {
     "id": "alunos#inativar-e-reativar",
     "article": "Alunos e ficha do aluno",
     "title": "Inativar e reativar",
     "route": "/clients",
-    "text": "No menu ⋮ do aluno. Aluno inativo sai das listas e das novas matrículas. Ao reativar, a cobrança recomeça na data da volta."
+    "text": "No menu ⋮ do aluno. Aluno inativo sai das listas e das novas matrículas. Ao reativar, a cobrança recomeça na data da volta. Para ver os inativos, troque o filtro de situação.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Inativar",
+          "text": "Escolha esta opção para o aluno sair das listas."
+        },
+        {
+          "kind": "botão",
+          "label": "Inativar",
+          "text": "Confirme. Se ele estiver inativo, use \"Reativar\" no lugar."
+        }
+      ]
+    }
   },
   {
     "id": "alunos#aluno-menor-de-idade",
     "article": "Alunos e ficha do aluno",
     "title": "Aluno menor de idade",
     "route": "/clients",
-    "text": "A cobrança e os avisos de cobrança vão para o responsável financeiro. Para a autorização de matrícula e LGPD, use \"Enviar autorização (WhatsApp)\"."
+    "text": "A cobrança e os avisos de cobrança vão para o responsável financeiro. Para a autorização de matrícula e LGPD, use \"Enviar autorização (WhatsApp)\".",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu de um aluno menor de idade."
+        },
+        {
+          "kind": "item",
+          "label": "Enviar autorização",
+          "text": "Envia o link de autorização de matrícula e LGPD pelo WhatsApp."
+        }
+      ]
+    }
+  },
+  {
+    "id": "alunos#cadastrar-o-responsavel-de-um-menor",
+    "article": "Alunos e ficha do aluno",
+    "title": "Cadastrar o responsável de um menor",
+    "route": "/clients",
+    "text": "No cadastro, em \"Responsáveis\", adicione o responsável e marque quem é o responsável financeiro. A cobrança online usa o CPF dele.",
+    "summary": "Informe o responsável financeiro de um aluno menor de idade.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Novo aluno",
+          "text": "Abra o cadastro de um novo aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Responsáveis",
+          "text": "Abra esta parte do cadastro."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar responsável",
+          "text": "Informe nome, telefone e CPF de quem paga."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para salvar o cadastro."
+        }
+      ]
+    }
+  },
+  {
+    "id": "alunos#enviar-mensagem-pelo-whatsapp",
+    "article": "Alunos e ficha do aluno",
+    "title": "Enviar mensagem pelo WhatsApp",
+    "route": "/clients",
+    "text": "No menu ⋮ do aluno, escolha \"Enviar WhatsApp\". A opção só aparece quando o aluno tem um telefone válido.",
+    "summary": "Mande uma mensagem ao aluno direto da lista.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Enviar WhatsApp",
+          "text": "Abre a janela para escrever e enviar a mensagem."
+        }
+      ]
+    }
+  },
+  {
+    "id": "auditoria#o-que-a-auditoria-mostra",
+    "article": "Auditoria (quem fez o quê)",
+    "title": "O que a Auditoria mostra",
+    "route": "/audit",
+    "text": "Em Auditoria, o proprietário e o gerente veem cada ação feita no espaço: quem fez, o quê e quando. Aparecem também as rotinas do sistema e os pagamentos que chegam sozinhos. Uma ação que falhou aparece marcada como \"Falhou\".",
+    "summary": "O histórico de quem fez o quê no sistema, e quando."
+  },
+  {
+    "id": "auditoria#filtrar-o-historico",
+    "article": "Auditoria (quem fez o quê)",
+    "title": "Filtrar o histórico",
+    "route": "/audit",
+    "text": "Os filtros se combinam. \"Limpar filtros\" volta a lista inteira.",
+    "summary": "Filtre por texto, tipo de registro, responsável e período.",
+    "guide": {
+      "route": "/audit",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar",
+          "text": "Escreva um nome ou palavra para achar um registro."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por tipo",
+          "text": "Escolha o tipo de registro, como aluno, turma ou cobrança."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por responsável",
+          "text": "Escolha quem fez a ação, ou veja só o que falhou."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por período",
+          "text": "Escolha hoje, os últimos dias, o mês ou um intervalo."
+        }
+      ]
+    }
+  },
+  {
+    "id": "auditoria#abrir-um-registro",
+    "article": "Auditoria (quem fez o quê)",
+    "title": "Abrir um registro",
+    "route": "/audit",
+    "text": "O detalhe só mostra o registro, não dá para alterar nada ali.",
+    "summary": "Veja o detalhe de uma ação, com o que mudou.",
+    "guide": {
+      "route": "/audit",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "eventos registrados",
+          "text": "Esta linha mostra quantos registros a lista tem."
+        },
+        {
+          "kind": "botão",
+          "label": "Detalhes",
+          "text": "Clique em um registro para ver o detalhe, com o antes e o depois."
+        }
+      ]
+    }
   },
   {
     "id": "certificados#o-que-e",
@@ -53,7 +359,33 @@
     "article": "Certificados de conclusão",
     "title": "Personalizar o texto",
     "route": "/settings?tab=certificado",
-    "text": "Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase."
+    "text": "Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase.",
+    "summary": "Edite título, texto, assinaturas e cor do certificado.",
+    "guide": {
+      "route": "/settings?tab=certificado",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Título",
+          "text": "Escreva o título do certificado."
+        },
+        {
+          "kind": "campo",
+          "label": "Texto",
+          "text": "Edite o texto. Os botões de variável inserem aluno, curso, datas e outros dados."
+        },
+        {
+          "kind": "texto",
+          "label": "Assinaturas",
+          "text": "Aqui você define quem assina o certificado."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar o modelo."
+        }
+      ]
+    }
   },
   {
     "id": "certificados#frequencia",
@@ -67,14 +399,84 @@
     "article": "Chamada (lista de presença)",
     "title": "Fazer a chamada",
     "route": "/classes/calendar",
-    "text": "No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele."
+    "text": "No Calendário (ou na turma), abra a aula do dia. Marque cada aluno como Presente, Faltou ou Justificada. Funciona bem no celular. A chamada pode ser feita por quem dá a aula, só nas turmas dele.",
+    "summary": "Abra a aula do dia e marque quem veio.",
+    "guide": {
+      "route": "/classes/calendar",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Calendário de turmas",
+          "text": "Aqui ficam as aulas da semana. Clique na aula de hoje para abrir a chamada."
+        },
+        {
+          "kind": "texto",
+          "label": "Chamada",
+          "text": "Toque em cada aluno que veio. O círculo fica verde."
+        },
+        {
+          "kind": "botão",
+          "label": "Concluir chamada",
+          "text": "Quando terminar, clique aqui. Quem ficou sem marcação vira falta."
+        }
+      ]
+    }
+  },
+  {
+    "id": "chamada#marcar-falta-ou-justificar",
+    "article": "Chamada (lista de presença)",
+    "title": "Marcar falta ou justificar",
+    "route": "/classes/calendar",
+    "text": "Na aula, o menu do aluno tem \"Marcar falta\" e \"Justificar falta\". Falta sem justificativa pode gastar a aula do pacote.",
+    "summary": "Use o menu do aluno para marcar falta ou justificar.",
+    "guide": {
+      "route": "/classes/calendar",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Calendário de turmas",
+          "text": "Abra a aula do dia clicando nela."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno que faltou."
+        },
+        {
+          "kind": "item",
+          "label": "Marcar falta|Justificar falta",
+          "text": "Escolha se foi falta ou falta justificada."
+        }
+      ]
+    }
   },
   {
     "id": "chamada#aula-avulsa-e-pacote",
     "article": "Chamada (lista de presença)",
     "title": "Aula avulsa e pacote",
     "route": "/classes/calendar",
-    "text": "Quem não tem matrícula pode entrar como avulso, se a turma permitir. O aluno com pacote de aulas gasta uma aula quando é marcado presente. Falta sem justificativa pode gastar a aula, conforme a regra do pacote."
+    "text": "Quem não tem matrícula pode entrar como avulso, se a turma permitir. O aluno com pacote de aulas gasta uma aula quando é marcado presente. Falta sem justificativa pode gastar a aula, conforme a regra do pacote.",
+    "summary": "Quem não tem matrícula entra como avulso, e o pacote gasta uma aula.",
+    "guide": {
+      "route": "/classes/calendar",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Calendário de turmas",
+          "text": "Abra a aula que vai receber o aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações da aula",
+          "text": "Abra o menu da aula."
+        },
+        {
+          "kind": "item",
+          "label": "Adicionar aluno nesta aula",
+          "text": "Escolha o aluno e se ele vem como avulso, pacote ou experimental."
+        }
+      ]
+    }
   },
   {
     "id": "chamada#faltas-seguidas",
@@ -88,49 +490,227 @@
     "article": "Chamada (lista de presença)",
     "title": "Corrigir uma marcação",
     "route": "/classes/calendar",
-    "text": "Abra a aula de novo e mude o status do aluno. A alteração fica na Auditoria."
+    "text": "Abra a aula de novo e mude o status do aluno. A alteração fica na Auditoria.",
+    "summary": "Abra a aula de novo e mude o status do aluno.",
+    "guide": {
+      "route": "/classes/calendar",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Calendário de turmas",
+          "text": "Abra a aula que precisa de correção."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Desmarcar|Marcar falta|Justificar falta",
+          "text": "Desfaça ou troque a marcação."
+        }
+      ]
+    }
   },
   {
     "id": "cobrancas#ver-o-que-esta-em-aberto",
     "article": "Cobranças",
     "title": "Ver o que está em aberto",
     "route": "/classes/billing",
-    "text": "Em Cobranças, filtre por mês e situação (pendente, atrasada, paga, cancelada). O topo resume quanto há a receber e quanto está atrasado."
+    "text": "Em Cobranças, filtre por mês e situação (a receber, em atraso, pagas, isentas e encerradas). O topo resume quanto há a receber e quanto está atrasado.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Cobranças",
+          "text": "Aqui ficam as cobranças do mês escolhido, agrupadas por aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Escolher mês",
+          "text": "Troque o mês para ver outras cobranças."
+        },
+        {
+          "kind": "botão",
+          "label": "Em atraso",
+          "text": "Mostra só quem está com cobrança vencida."
+        },
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Digite o nome para achar um aluno."
+        }
+      ]
+    }
   },
   {
     "id": "cobrancas#marcar-como-pago",
     "article": "Cobranças",
     "title": "Marcar como pago",
     "route": "/classes/billing",
-    "text": "No menu ⋮ da cobrança, \"Marcar pago\". Escolha a forma (Pix, dinheiro, cartão ou outra), a data e, se quiser, anexe o comprovante. Dá para desfazer o pagamento depois, com confirmação."
+    "text": "No menu ⋮ da cobrança, \"Marcar pago\". Escolha a forma (Pix, dinheiro, cartão ou outra), a data e, se quiser, anexe o comprovante. Dá para desfazer o pagamento depois, com confirmação.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ver cobranças",
+          "text": "Abra as cobranças do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da cobrança que foi paga."
+        },
+        {
+          "kind": "item",
+          "label": "Marcar pago",
+          "text": "Escolha esta opção para registrar o pagamento."
+        },
+        {
+          "kind": "campo",
+          "label": "Forma de pagamento",
+          "text": "Escolha como o aluno pagou: Pix, dinheiro, cartão ou outra."
+        },
+        {
+          "kind": "botão",
+          "label": "Registrar pagamento",
+          "text": "Confirme para dar baixa na cobrança."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cobrancas#desfazer-um-pagamento",
+    "article": "Cobranças",
+    "title": "Desfazer um pagamento",
+    "route": "/classes/billing",
+    "text": "Cobrança paga online (Pix ou cartão pelo sistema) não permite desfazer.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Pagas",
+          "text": "Veja só as cobranças já pagas."
+        },
+        {
+          "kind": "botão",
+          "label": "Pagas",
+          "text": "Na linha da cobrança, o botão de seta volta o pagamento. Confirme e ela fica em aberto."
+        }
+      ]
+    }
   },
   {
     "id": "cobrancas#lembrar-no-whatsapp",
     "article": "Cobranças",
     "title": "Lembrar no WhatsApp",
     "route": "/classes/billing",
-    "text": "No menu ⋮, \"Lembrar no WhatsApp\" abre a conversa com o texto pronto. Para aluno menor, a mensagem vai ao responsável financeiro."
+    "text": "No menu ⋮, \"Lembrar no WhatsApp\" abre a conversa com o texto pronto. Para aluno menor, a mensagem vai ao responsável financeiro.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Em atraso",
+          "text": "Veja quem está com cobrança vencida."
+        },
+        {
+          "kind": "botão",
+          "label": "Ver cobranças",
+          "text": "Abra as cobranças do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da cobrança."
+        },
+        {
+          "kind": "item",
+          "label": "Lembrar no WhatsApp",
+          "text": "Abre a conversa com a mensagem pronta para enviar."
+        }
+      ]
+    }
   },
   {
     "id": "cobrancas#cobranca-avulsa",
     "article": "Cobranças",
     "title": "Cobrança avulsa",
     "route": "/classes/billing",
-    "text": "Na ficha do aluno ou em Cobranças, \"Nova cobrança\" cria uma cobrança única, à vista ou parcelada."
+    "text": "Na ficha do aluno ou em Cobranças, \"Nova cobrança\" cria uma cobrança única, à vista ou parcelada. Para parcelar, escolha o número em \"Parcelas\".",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova cobrança",
+          "text": "Clique aqui para criar uma cobrança única."
+        },
+        {
+          "kind": "campo",
+          "label": "Aluno",
+          "text": "Escolha o aluno que vai pagar."
+        },
+        {
+          "kind": "campo",
+          "label": "Descrição",
+          "text": "Diga o que está sendo cobrado."
+        },
+        {
+          "kind": "campo",
+          "label": "Valor",
+          "text": "Informe o valor total."
+        },
+        {
+          "kind": "campo",
+          "label": "Vencimento",
+          "text": "Escolha a data de vencimento."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Salve para lançar a cobrança."
+        }
+      ]
+    }
   },
   {
     "id": "cobrancas#gerar-as-mensalidades",
     "article": "Cobranças",
     "title": "Gerar as mensalidades",
     "route": "/classes/billing",
-    "text": "As mensalidades nascem sozinhas todo dia, pela regra de cada aluno. Em Cobranças, \"Gerar cobranças\" confere o mês se você quiser antecipar."
+    "text": "As mensalidades nascem sozinhas todo dia, pela regra de cada aluno. Em Cobranças você vê o que já foi gerado no mês. Para algo fora da regra, use \"Nova cobrança\"."
   },
   {
     "id": "cobrancas#cancelar-uma-cobranca",
     "article": "Cobranças",
     "title": "Cancelar uma cobrança",
     "route": "/classes/billing",
-    "text": "No menu ⋮, \"Cancelar\". Cobrança paga não se cancela: desfaça o pagamento antes."
+    "text": "No menu ⋮, \"Cancelar cobrança\". Cobrança paga não se cancela: desfaça o pagamento antes. Se cancelou sem querer, use \"Reverter cancelamento\" no mesmo menu.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ver cobranças",
+          "text": "Abra as cobranças do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da cobrança que quer cancelar."
+        },
+        {
+          "kind": "item",
+          "label": "Cancelar cobrança",
+          "text": "Escolha esta opção e confirme o cancelamento."
+        }
+      ]
+    }
   },
   {
     "id": "comunicacao-e-lembretes#como-o-whatsapp-funciona",
@@ -144,91 +724,748 @@
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Enviar uma mensagem",
     "route": "/communication",
-    "text": "Em Comunicação, \"Nova mensagem\". Escolha um ou vários alunos (há \"Selecionar todos com WhatsApp\"), escreva o texto e use {aluno} para o nome. Com vários, o envio segue em sequência: um toque por aluno."
+    "text": "Em Comunicação, \"Nova mensagem\". Escolha um ou vários alunos (há \"Selecionar todos com WhatsApp\"), escreva o texto e use {aluno} para o nome. Com vários, o envio segue em sequência: um toque por aluno.",
+    "summary": "Escolha os alunos, escreva o texto e envie pelo WhatsApp.",
+    "guide": {
+      "route": "/communication",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova mensagem",
+          "text": "Clique aqui para escrever uma mensagem."
+        },
+        {
+          "kind": "campo",
+          "label": "Alunos",
+          "text": "Escolha um ou vários alunos. Há \"Selecionar todos com WhatsApp\"."
+        },
+        {
+          "kind": "campo",
+          "label": "Mensagem",
+          "text": "Escreva o texto. Use {aluno} para o nome de cada um."
+        },
+        {
+          "kind": "botão",
+          "label": "Abrir no WhatsApp|Enviar|Começar o envio",
+          "text": "Clique aqui para abrir o WhatsApp com a mensagem pronta."
+        }
+      ]
+    }
   },
   {
     "id": "comunicacao-e-lembretes#modelos",
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Modelos",
     "route": "/communication",
-    "text": "Na aba Mensagens, edite o texto de cada aviso (atraso, vence hoje, aniversário, pacote acabando...). Variáveis como {aluno} e {valor} são trocadas no envio."
+    "text": "Na aba Mensagens, edite o texto de cada aviso (atraso, vence hoje, aniversário, pacote acabando...). Variáveis como {aluno} e {valor} são trocadas no envio.",
+    "summary": "Edite o texto de cada aviso e ligue o envio automático.",
+    "guide": {
+      "route": "/communication",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Mensagens",
+          "text": "Aqui ficam os modelos de aviso."
+        },
+        {
+          "kind": "botão",
+          "label": "Editar texto",
+          "text": "Abra o modelo que quer mudar."
+        },
+        {
+          "kind": "campo",
+          "label": "Texto",
+          "text": "Mude o texto. As variáveis como {aluno} e {valor} são trocadas no envio."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar o modelo."
+        }
+      ]
+    }
+  },
+  {
+    "id": "comunicacao-e-lembretes#horario-do-envio-automatico",
+    "article": "Comunicação, WhatsApp e lembretes",
+    "title": "Horário do envio automático",
+    "route": "/communication",
+    "text": "Fora desse horário, as mensagens automáticas esperam.",
+    "summary": "Defina o intervalo do dia em que as mensagens automáticas saem.",
+    "guide": {
+      "route": "/communication",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Conexão",
+          "text": "Aqui ficam as opções do WhatsApp."
+        },
+        {
+          "kind": "campo",
+          "label": "De",
+          "text": "Escolha a hora em que o envio automático começa."
+        },
+        {
+          "kind": "campo",
+          "label": "Até",
+          "text": "Escolha a hora em que ele termina."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar o horário."
+        }
+      ]
+    }
   },
   {
     "id": "comunicacao-e-lembretes#lembretes-o-sino",
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Lembretes (o sino)",
     "route": "/communication",
-    "text": "O sino no topo mostra o que lembrar hoje: mensalidades em atraso ou perto de vencer, pacotes acabando, faltas seguidas e aniversários. Cada item tem o botão do WhatsApp; no menu você pode adiar para amanhã ou não lembrar daquele aluno. \"Enviar em sequência\" percorre o grupo todo."
+    "text": "O sino no topo mostra o que lembrar hoje: mensalidades em atraso ou perto de vencer, pacotes acabando, faltas seguidas e aniversários. Cada item tem o botão do WhatsApp; no menu você pode adiar para amanhã ou não lembrar daquele aluno. \"Enviar em sequência\" percorre o grupo todo.",
+    "summary": "O sino mostra o que lembrar hoje, com WhatsApp pronto.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Lembretes",
+          "text": "Clique no sino para ver o que lembrar hoje."
+        },
+        {
+          "kind": "botão",
+          "label": "Ver",
+          "text": "Abra a linha do lembrete para ver os alunos e as ações."
+        },
+        {
+          "kind": "botão",
+          "label": "Mandar mensagem|Cobrar|Avisar|Mandar parabéns",
+          "text": "Clique no WhatsApp do aluno para abrir a mensagem pronta."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações de",
+          "text": "Abra este menu para adiar ou não lembrar daquele aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Lembrar amanhã|Não lembrar deste",
+          "text": "Escolha adiar para amanhã ou tirar o aluno da lista."
+        }
+      ]
+    }
   },
   {
     "id": "comunicacao-e-lembretes#historico",
     "article": "Comunicação, WhatsApp e lembretes",
     "title": "Histórico",
     "route": "/communication",
-    "text": "A aba Histórico lista as mensagens abertas ou enviadas, com o status."
+    "text": "A aba Histórico lista as mensagens abertas ou enviadas, com o status.",
+    "summary": "Veja as mensagens abertas ou enviadas e o status de cada uma.",
+    "guide": {
+      "route": "/communication",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Histórico",
+          "text": "Aqui ficam as mensagens abertas ou enviadas."
+        },
+        {
+          "kind": "campo",
+          "label": "Status",
+          "text": "Filtre por status, como Entregue ou Falhou."
+        },
+        {
+          "kind": "campo",
+          "label": "Tipo",
+          "text": "Filtre por tipo, como Cobrança ou Avulsa."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações da mensagem|Ações",
+          "text": "Abra o menu para ver a mensagem ou reenviar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#dados-do-espaco",
+    "article": "Configurações do espaço",
+    "title": "Dados do espaço",
+    "route": "/settings",
+    "text": "Em [Configurações, aba Geral](/settings?tab=geral), a seção \"Dados do espaço\" guarda o nome do espaço, o nome da unidade, o telefone e a área do espaço.",
+    "summary": "Nome do espaço, da unidade e telefone de contato.",
+    "guide": {
+      "route": "/settings?tab=geral",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Geral",
+          "text": "Aqui ficam os dados do espaço."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome do espaço",
+          "text": "Escreva o nome do seu espaço."
+        },
+        {
+          "kind": "campo",
+          "label": "Telefone / WhatsApp",
+          "text": "Escreva o telefone com DDD. Ele é usado no WhatsApp do espaço."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar configurações",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#regras-da-mensalidade",
+    "article": "Configurações do espaço",
+    "title": "Regras da mensalidade",
+    "route": "/settings",
+    "text": "Valem só para mensalidades. Curso, pacote e avulso têm valor e vencimento próprios.",
+    "summary": "Quando a mensalidade vence e como fica a primeira cobrança.",
+    "guide": {
+      "route": "/settings?tab=geral",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Regras da mensalidade",
+          "text": "Clique neste título para abrir as regras, se estiverem fechadas."
+        },
+        {
+          "kind": "campo",
+          "label": "Momento do pagamento",
+          "text": "Escolha se paga antes das aulas ou depois do uso."
+        },
+        {
+          "kind": "campo",
+          "label": "Entrada no meio do mês",
+          "text": "Escolha se a primeira cobrança é proporcional ou do mês cheio."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar configurações|Confirmar regras",
+          "text": "Clique aqui para guardar as regras."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#horario-de-funcionamento",
+    "article": "Configurações do espaço",
+    "title": "Horário de funcionamento",
+    "route": "/settings",
+    "text": "Para abrir só em alguns dias, use o botão de cada dia. Se já houver aulas fora do novo horário, o sistema avisa antes de salvar.",
+    "summary": "Ligue os dias em que o espaço abre e ajuste os horários.",
+    "guide": {
+      "route": "/settings?tab=horarios",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Horários",
+          "text": "Aqui ficam os dias e horários do espaço."
+        },
+        {
+          "kind": "botão",
+          "label": "Editar horários de",
+          "text": "Ajuste o horário de um dia, ou de vários."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar horários",
+          "text": "Clique aqui para guardar. As turmas seguem esse horário."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#aparencia-da-tela",
+    "article": "Configurações do espaço",
+    "title": "Aparência da tela",
+    "route": "/settings",
+    "text": "Vale só para o seu acesso. A escolha é guardada sozinha.",
+    "summary": "Escolha tema claro, escuro ou do sistema, e as cores.",
+    "guide": {
+      "route": "/settings?tab=preferencias",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Preferências",
+          "text": "Aqui ficam as escolhas só suas."
+        },
+        {
+          "kind": "botão",
+          "label": "Claro|Escuro|Sistema",
+          "text": "Escolha como a tela aparece para você."
+        },
+        {
+          "kind": "texto",
+          "label": "Estilização do Tema",
+          "text": "Aqui você muda cor de destaque, tipografia e bordas."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#reativar-dicas-e-primeiros-passos",
+    "article": "Configurações do espaço",
+    "title": "Reativar dicas e primeiros passos",
+    "route": "/settings",
+    "text": "\"Restaurar padrões de fábrica\" desfaz todas as suas preferências.",
+    "summary": "Traga de volta a lista de primeiros passos e as dicas dispensadas.",
+    "guide": {
+      "route": "/settings?tab=preferencias",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Preferências",
+          "text": "Abra as escolhas só suas."
+        },
+        {
+          "kind": "botão",
+          "label": "Reativar primeiros passos",
+          "text": "Mostra de novo a lista de primeiros passos no Painel."
+        },
+        {
+          "kind": "botão",
+          "label": "Restaurar dicas dispensadas",
+          "text": "Mostra de novo as dicas que você fechou."
+        }
+      ]
+    }
+  },
+  {
+    "id": "configuracoes#certificado-e-plano",
+    "article": "Configurações do espaço",
+    "title": "Certificado e plano",
+    "route": "/settings",
+    "text": "O modelo do certificado está em [Certificado](/settings?tab=certificado), e o plano do GestaraHub em [Plano GestaraHub](/settings?tab=plano). Veja os artigos \"Certificados de conclusão\" e \"Plano do GestaraHub\". Segurança da conta fica no menu do usuário, no topo.",
+    "summary": "Onde ficam o modelo de certificado e o plano do GestaraHub."
   },
   {
     "id": "equipe-e-usuarios#equipe-quem-da-aula",
     "article": "Equipe, usuários e permissões",
     "title": "Equipe (quem dá aula)",
     "route": "/team",
-    "text": "Em Equipe, \"Novo instrutor\" ou \"Novo professor\" (a palavra segue a área). Informe o nome, as modalidades que leciona e, se quiser, libere o acesso ao sistema."
+    "text": "Em Equipe, \"Novo instrutor\" ou \"Novo professor\" (a palavra segue a área). Informe o nome, as modalidades que leciona e, se quiser, libere o acesso ao sistema.",
+    "summary": "Cadastre quem dá aula, com as modalidades que leciona.",
+    "guide": {
+      "route": "/team",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Novo profissional",
+          "text": "Clique aqui para cadastrar quem dá aula."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome",
+          "text": "Escreva o nome completo."
+        },
+        {
+          "kind": "campo",
+          "label": "Modalidades que leciona",
+          "text": "Escolha as modalidades que a pessoa ensina."
+        },
+        {
+          "kind": "campo",
+          "label": "Cargo",
+          "text": "Escolha ou crie o cargo, se quiser. Ele é opcional."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para salvar."
+        }
+      ]
+    }
   },
   {
     "id": "equipe-e-usuarios#usuarios",
     "article": "Equipe, usuários e permissões",
     "title": "Usuários",
     "route": "/team",
-    "text": "Em Usuários, convide pessoas por e-mail. Os perfis são Proprietário, Gerente, Atendente e o perfil de quem dá aula (Instrutor ou Professor)."
+    "text": "Em Usuários, convide pessoas por e-mail. Os perfis são Proprietário, Gerente, Atendente e o perfil de quem dá aula (Instrutor ou Professor).",
+    "summary": "Convide pessoas por e-mail e escolha o perfil de acesso.",
+    "guide": {
+      "route": "/users",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Novo usuário",
+          "text": "Clique aqui para convidar alguém."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome",
+          "text": "Escreva o nome completo."
+        },
+        {
+          "kind": "campo",
+          "label": "E-mail",
+          "text": "Escreva o e-mail. O convite chega nele."
+        },
+        {
+          "kind": "campo",
+          "label": "Perfil de acesso",
+          "text": "Escolha o que a pessoa pode fazer."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para enviar o convite."
+        }
+      ]
+    }
   },
   {
     "id": "equipe-e-usuarios#o-que-cada-perfil-faz",
     "article": "Equipe, usuários e permissões",
     "title": "O que cada perfil faz",
     "route": "/team",
-    "text": "- Proprietário: tudo, inclusive o plano do GestaraHub.\n- Gerente: opera o dia a dia, financeiro e usuários, menos o plano.\n- Atendente: alunos, matrículas, chamada, cobranças (ver) e mensagens.\n- Quem dá aula: vê as próprias turmas, faz a chamada, avalia e gradua os alunos dele. Vê a ficha dos alunos dele, sem dinheiro. Recebe o sino com faltas seguidas e aniversários dos alunos dele."
+    "text": "- Proprietário: tudo, inclusive o plano do GestaraHub.\n- Gerente: opera o dia a dia, financeiro e usuários, menos o plano.\n- Atendente: alunos, matrículas, chamada, cobranças (ver) e mensagens.\n- Quem dá aula: vê as próprias turmas, faz a chamada, avalia e gradua os alunos dele. Vê a ficha dos alunos dele, sem dinheiro. Recebe o sino com faltas seguidas e aniversários dos alunos dele.",
+    "summary": "Proprietário, gerente, atendente e professor: o que cada um pode fazer."
   },
   {
     "id": "equipe-e-usuarios#convite",
     "article": "Equipe, usuários e permissões",
     "title": "Convite",
     "route": "/team",
-    "text": "A pessoa recebe um e-mail para criar a senha. Dá para reenviar o convite em Usuários. Quem é convidado entra só no espaço que convidou."
+    "text": "A pessoa recebe um e-mail para criar a senha. Dá para reenviar o convite em Usuários. Quem é convidado entra só no espaço que convidou.",
+    "summary": "A pessoa cria a senha pelo e-mail, e dá para reenviar.",
+    "guide": {
+      "route": "/users",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do usuário que ainda não entrou."
+        },
+        {
+          "kind": "item",
+          "label": "Reenviar convite",
+          "text": "Clique aqui para mandar o e-mail de novo."
+        }
+      ]
+    }
   },
   {
     "id": "equipe-e-usuarios#auditoria",
     "article": "Equipe, usuários e permissões",
     "title": "Auditoria",
     "route": "/team",
-    "text": "Em Auditoria o proprietário e o gerente veem quem fez o quê, e quando."
+    "text": "Em Auditoria o proprietário e o gerente veem quem fez o quê, e quando.",
+    "summary": "Proprietário e gerente veem quem fez o quê, e quando."
   },
   {
     "id": "evolucao-e-notas#trilha-de-evolucao",
     "article": "Evolução, graduação e notas",
     "title": "Trilha de evolução",
     "route": "/clients",
-    "text": "Cada modalidade pode ter uma trilha (faixas, níveis, módulos ou fases). Em Modalidades, edite a modalidade e escolha o modelo de trilha."
+    "text": "Cada modalidade pode ter uma trilha (faixas, níveis, módulos ou fases). Em Modalidades, edite a modalidade e escolha o modelo de trilha.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da modalidade que terá trilha."
+        },
+        {
+          "kind": "item",
+          "label": "Editar / Trilha|Editar",
+          "text": "Abra a modalidade para editar."
+        },
+        {
+          "kind": "texto",
+          "label": "Trilha de",
+          "text": "Ligue a chave desta parte para ter trilha de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Personalizar regras e níveis",
+          "text": "Escolha o modelo da trilha e ajuste os níveis."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar a trilha."
+        }
+      ]
+    }
   },
   {
     "id": "evolucao-e-notas#graduar-ou-avancar",
     "article": "Evolução, graduação e notas",
     "title": "Graduar ou avançar",
     "route": "/clients",
-    "text": "Na ficha do aluno, seção Evolução, abra a graduação (ou os níveis) e registre o avanço, com a data e quem avaliou. Quem dá aula pode graduar os alunos das próprias turmas."
+    "text": "Na ficha do aluno, seção Evolução, abra a graduação (ou os níveis) e registre o avanço, com a data e quem avaliou. Quem dá aula pode graduar os alunos das próprias turmas.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno que vai avançar."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Abra a seção de evolução do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Graduação|Níveis|Módulos|Fases",
+          "text": "Abra a trilha do aluno nesta modalidade."
+        },
+        {
+          "kind": "botão",
+          "label": "Graduar|Avançar",
+          "text": "Clique para registrar o avanço."
+        },
+        {
+          "kind": "botão",
+          "label": "Confirmar",
+          "text": "Confira a data e quem avaliou, e confirme."
+        }
+      ]
+    }
+  },
+  {
+    "id": "evolucao-e-notas#ajustar-o-ponto-de-partida",
+    "article": "Evolução, graduação e notas",
+    "title": "Ajustar o ponto de partida",
+    "route": "/clients",
+    "text": "Para um aluno que já tinha nível antes de usar o sistema, abra a trilha dele e use \"Ajustar ponto de partida\".",
+    "summary": "Informe em que nível um aluno antigo já estava ao entrar.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Abra a seção de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Graduação|Níveis|Módulos|Fases",
+          "text": "Abra a trilha do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Ajustar ponto de partida",
+          "text": "Informe o nível e a data em que ele já estava."
+        }
+      ]
+    }
   },
   {
     "id": "evolucao-e-notas#registros-de-aula",
     "article": "Evolução, graduação e notas",
     "title": "Registros de aula",
     "route": "/clients",
-    "text": "Anote observações e pontos fortes do aluno em \"Registros de aula\"."
+    "text": "Anote observações e pontos fortes do aluno em \"Registros de aula\".",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Abra a seção de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Registros de aula",
+          "text": "Abra os registros desta modalidade."
+        },
+        {
+          "kind": "campo",
+          "label": "Anotação da aula",
+          "text": "Escreva como o aluno foi na aula."
+        },
+        {
+          "kind": "botão",
+          "label": "Registrar",
+          "text": "Clique aqui para guardar o registro."
+        }
+      ]
+    }
   },
   {
-    "id": "evolucao-e-notas#notas",
+    "id": "evolucao-e-notas#metas-do-aluno",
     "article": "Evolução, graduação e notas",
-    "title": "Notas",
+    "title": "Metas do aluno",
     "route": "/clients",
-    "text": "Em modalidades com avaliações ligadas (idiomas, música e cursos livres), crie avaliações na aba Avaliações da turma e lance as notas. O boletim fica na ficha do aluno."
+    "text": "Nos registros de aula, use \"Nova meta\". Cada meta pode ter uma quantidade a atingir ou ser só marcada como feita.",
+    "summary": "Crie metas de treino para o aluno acompanhar.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Abra a seção de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Registros de aula",
+          "text": "Abra os registros desta modalidade."
+        },
+        {
+          "kind": "botão",
+          "label": "Nova meta",
+          "text": "Crie uma meta para acompanhar o treino."
+        }
+      ]
+    }
+  },
+  {
+    "id": "evolucao-e-notas#criar-uma-avaliacao-da-turma",
+    "article": "Evolução, graduação e notas",
+    "title": "Criar uma avaliação da turma",
+    "route": "/clients",
+    "text": "Em modalidades com avaliações ligadas (idiomas, música e cursos livres), crie avaliações na aba Avaliações da turma.",
+    "summary": "Crie uma prova ou trabalho para lançar notas da turma.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "aba",
+          "label": "Avaliações",
+          "text": "Abra a aba de avaliações da turma."
+        },
+        {
+          "kind": "botão",
+          "label": "Nova avaliação",
+          "text": "Clique para criar uma prova ou trabalho."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome",
+          "text": "Escreva o nome da avaliação."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para salvar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "evolucao-e-notas#lancar-notas",
+    "article": "Evolução, graduação e notas",
+    "title": "Lançar notas",
+    "route": "/clients",
+    "text": "Abra a avaliação, escolha \"Lançar notas\" e dê a nota de cada aluno matriculado.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "aba",
+          "label": "Avaliações",
+          "text": "Abra a aba de avaliações da turma."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da avaliação."
+        },
+        {
+          "kind": "item",
+          "label": "Lançar notas",
+          "text": "Escolha esta opção para dar a nota de cada aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar as notas."
+        }
+      ]
+    }
+  },
+  {
+    "id": "evolucao-e-notas#ver-o-boletim-do-aluno",
+    "article": "Evolução, graduação e notas",
+    "title": "Ver o boletim do aluno",
+    "route": "/clients",
+    "text": "O boletim fica na ficha do aluno, no botão \"Notas\" da seção Evolução. O botão só aparece em modalidades com avaliações.",
+    "summary": "Veja as notas e a média do aluno.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure o aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "aluno cadastrado|alunos cadastrados",
+          "text": "Clique no nome do aluno para abrir a ficha."
+        },
+        {
+          "kind": "botão",
+          "label": "Evolução",
+          "text": "Abra a seção de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Notas",
+          "text": "Veja as notas e a média do aluno."
+        }
+      ]
+    }
   },
   {
     "id": "evolucao-e-notas#troca-de-nivel-pela-idade",
@@ -242,28 +1479,209 @@
     "article": "Financeiro e pagamento de quem dá aula",
     "title": "Resumo do mês",
     "route": "/finance",
-    "text": "Em Financeiro, a aba Resumo mostra entradas, saídas e resultado do mês. Escolha o mês no topo."
+    "text": "Em Financeiro, a aba Resumo mostra entradas, saídas e resultado do mês. Escolha o mês no topo.",
+    "guide": {
+      "route": "/finance",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Escolher mês",
+          "text": "Escolha o mês que quer analisar."
+        },
+        {
+          "kind": "aba",
+          "label": "Resumo",
+          "text": "Mostra entradas, saídas e o resultado do mês."
+        },
+        {
+          "kind": "texto",
+          "label": "Ações rápidas do dia a dia",
+          "text": "Atalhos para lançar, ver cobranças e a folha de quem dá aula."
+        }
+      ]
+    }
   },
   {
     "id": "financeiro-e-professores#lancamentos",
     "article": "Financeiro e pagamento de quem dá aula",
     "title": "Lançamentos",
     "route": "/finance",
-    "text": "Em Lançamentos, registre despesas e outras receitas. Lançamentos podem se repetir todo mês. Dá para marcar como pago e anexar comprovante."
+    "text": "Em Lançamentos, registre despesas e outras receitas. Lançamentos podem se repetir todo mês: ligue \"Repetir todo mês\" no formulário. Dá para marcar como pago e anexar comprovante.",
+    "guide": {
+      "route": "/finance",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Lançamentos",
+          "text": "Aqui ficam as despesas e outras receitas do mês."
+        },
+        {
+          "kind": "botão",
+          "label": "Novo lançamento",
+          "text": "Clique aqui para registrar um lançamento."
+        },
+        {
+          "kind": "campo",
+          "label": "Descrição",
+          "text": "Diga o que foi pago ou recebido."
+        },
+        {
+          "kind": "campo",
+          "label": "Valor",
+          "text": "Informe o valor."
+        },
+        {
+          "kind": "campo",
+          "label": "Vencimento",
+          "text": "Escolha a data de vencimento."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Salve para criar o lançamento."
+        }
+      ]
+    }
+  },
+  {
+    "id": "financeiro-e-professores#editar-ou-excluir-um-lancamento",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Editar ou excluir um lançamento",
+    "route": "/finance",
+    "text": "No mesmo menu há \"Encerrar repetição\", \"Cancelar\" e \"Excluir\".",
+    "summary": "Mude os dados de um lançamento, encerre a repetição ou apague.",
+    "guide": {
+      "route": "/finance?tab=lancamentos",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar lançamento",
+          "text": "Digite parte da descrição para achar o lançamento."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do lançamento."
+        },
+        {
+          "kind": "item",
+          "label": "Editar",
+          "text": "Escolha para mudar os dados."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Salve a alteração."
+        }
+      ]
+    }
   },
   {
     "id": "financeiro-e-professores#pagamento-de-quem-da-aula",
     "article": "Financeiro e pagamento de quem dá aula",
     "title": "Pagamento de quem dá aula",
     "route": "/finance",
-    "text": "Na aba de quem dá aula (Instrutores ou Professores), configure a regra de cada pessoa: valor fixo no mês, por aula dada, por aluno ativo ou percentual do que os alunos pagaram. No fim do mês, \"Fechar o mês\" congela o valor; depois, \"Pagar\" lança a saída no caixa. Um mês fechado pode ser reaberto."
+    "text": "Na aba de quem dá aula (Instrutores ou Professores), configure a regra de cada pessoa: valor fixo no mês, por aula dada, por aluno ativo ou percentual do que os alunos pagaram. Para mudar a regra depois, use \"Editar pagamento\".",
+    "guide": {
+      "route": "/finance?tab=professores",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Instrutores|Professores",
+          "text": "Aqui ficam os pagamentos de quem dá aula."
+        },
+        {
+          "kind": "botão",
+          "label": "Configurar pagamento",
+          "text": "Defina a regra de quem ainda não tem pagamento."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar parte",
+          "text": "Combine valor fixo, por aula, por aluno ou percentual."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Salve a regra de pagamento."
+        }
+      ]
+    }
+  },
+  {
+    "id": "financeiro-e-professores#fechar-o-mes-e-pagar",
+    "article": "Financeiro e pagamento de quem dá aula",
+    "title": "Fechar o mês e pagar",
+    "route": "/finance",
+    "text": "No fim do mês, \"Fechar mês\" congela o valor; depois, \"Pagar\" lança a saída no caixa. Um mês fechado pode ser reaberto.",
+    "summary": "Congele o valor do mês de quem dá aula e registre o pagamento no caixa.",
+    "guide": {
+      "route": "/finance?tab=professores",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ver pagamento de",
+          "text": "Abra o pagamento de quem dá aula."
+        },
+        {
+          "kind": "botão",
+          "label": "Fechar mês",
+          "text": "Congela o valor do mês, depois da sua confirmação."
+        },
+        {
+          "kind": "botão",
+          "label": "Pagar",
+          "text": "Depois de fechar, clique aqui para registrar a saída."
+        },
+        {
+          "kind": "campo",
+          "label": "Forma de pagamento",
+          "text": "Escolha a forma usada para pagar."
+        },
+        {
+          "kind": "botão",
+          "label": "Registrar pagamento",
+          "text": "Confirme para lançar a saída no caixa."
+        }
+      ]
+    }
   },
   {
     "id": "financeiro-e-professores#ajustes",
     "article": "Financeiro e pagamento de quem dá aula",
     "title": "Ajustes",
     "route": "/finance",
-    "text": "No detalhe do pagamento, adicione ajustes (bônus ou desconto) antes de fechar."
+    "text": "No detalhe do pagamento, adicione ajustes (bônus ou desconto) antes de fechar.",
+    "guide": {
+      "route": "/finance?tab=professores",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ver pagamento de",
+          "text": "Abra o pagamento do mês."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar ajuste",
+          "text": "Clique para somar um bônus ou descontar um valor."
+        },
+        {
+          "kind": "campo",
+          "label": "Descrição",
+          "text": "Diga o motivo do ajuste."
+        },
+        {
+          "kind": "campo",
+          "label": "Valor",
+          "text": "Informe o valor do ajuste."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Salve o ajuste."
+        }
+      ]
+    }
   },
   {
     "id": "financeiro-e-professores#relatorio-de-resultado",
@@ -271,6 +1689,300 @@
     "title": "Relatório de resultado",
     "route": "/finance",
     "text": "O relatório do resultado do mês e a retenção de alunos fazem parte do plano Profissional."
+  },
+  {
+    "id": "modalidades#criar-uma-modalidade",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Criar uma modalidade",
+    "route": "/classes/modalities",
+    "text": "Em Modalidades, clique em \"Nova modalidade\", escreva o nome e, se quiser, ligue a trilha de evolução. As turmas e a equipe se organizam por modalidade.",
+    "summary": "Cadastre um tipo de aula, como Jiu-jitsu ou Inglês.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova modalidade",
+          "text": "Clique aqui para abrir o cadastro."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome da modalidade",
+          "text": "Escreva o nome do tipo de aula."
+        },
+        {
+          "kind": "texto",
+          "label": "Trilha de",
+          "text": "Ligue a chave desta parte se os alunos evoluem por níveis."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Quando terminar, clique aqui para salvar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "modalidades#ligar-a-trilha-de-evolucao",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Ligar a trilha de evolução",
+    "route": "/classes/modalities",
+    "text": "A trilha mostra a ordem de evolução e a meta para avaliar os alunos (por exemplo, número de aulas e tempo mínimo). Escolha um modelo pronto e ajuste os níveis, as cores e as idades.",
+    "summary": "Defina faixas, níveis, módulos ou fases e quando o aluno avança.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da modalidade."
+        },
+        {
+          "kind": "item",
+          "label": "Editar / Trilha|Editar",
+          "text": "Abra a modalidade para editar."
+        },
+        {
+          "kind": "texto",
+          "label": "Trilha de",
+          "text": "Ligue a chave para ter trilha de evolução."
+        },
+        {
+          "kind": "botão",
+          "label": "Personalizar regras e níveis",
+          "text": "Escolha o modelo e ajuste os níveis e a meta de avanço."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "modalidades#avaliacoes-e-notas-da-modalidade",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Avaliações e notas da modalidade",
+    "route": "/classes/modalities",
+    "text": "Com avaliações ligadas, as turmas da modalidade ganham a aba Avaliações e o aluno ganha o boletim.",
+    "summary": "Ligue as avaliações para lançar notas nas turmas.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da modalidade."
+        },
+        {
+          "kind": "item",
+          "label": "Editar / Trilha|Editar",
+          "text": "Abra a modalidade para editar."
+        },
+        {
+          "kind": "texto",
+          "label": "Esta modalidade tem avaliações",
+          "text": "Ligue a chave para poder lançar notas nas turmas."
+        },
+        {
+          "kind": "texto",
+          "label": "Escala da nota",
+          "text": "Escolha como a nota é dada (0 a 10, 0 a 100, A a E ou Apto)."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "modalidades#buscar-modalidades",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Buscar modalidades",
+    "route": "/classes/modalities",
+    "text": "Por padrão a lista mostra só as modalidades ativas.",
+    "summary": "Ache uma modalidade pelo nome e veja as inativas.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar modalidade",
+          "text": "Digite o nome da modalidade."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por status",
+          "text": "Escolha ver ativas, inativas ou todas."
+        }
+      ]
+    }
+  },
+  {
+    "id": "modalidades#inativar-e-reativar-uma-modalidade",
+    "article": "Modalidades e trilha de progressão",
+    "title": "Inativar e reativar uma modalidade",
+    "route": "/classes/modalities",
+    "text": "Modalidade inativa deixa de aparecer em novas turmas e no cadastro da equipe. As turmas que já existem continuam.",
+    "guide": {
+      "route": "/classes/modalities",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da modalidade."
+        },
+        {
+          "kind": "item",
+          "label": "Inativar",
+          "text": "Escolha esta opção para ela sair das novas turmas."
+        },
+        {
+          "kind": "botão",
+          "label": "Inativar",
+          "text": "Confirme. Para voltar, use \"Reativar\" no menu."
+        }
+      ]
+    }
+  },
+  {
+    "id": "painel#os-numeros-do-dia",
+    "article": "Painel",
+    "title": "Os números do dia",
+    "route": "/dashboard",
+    "text": "No topo, três números: \"Aulas hoje\", \"Presenças hoje\" e \"Mensalidades recebidas\". Em Presenças, \"Aguardando\" quer dizer que a chamada de hoje ainda está aberta. Em Mensalidades recebidas, o selo vermelho mostra quantas estão em atraso. Clique em um número para abrir a tela dele: [Calendário](/classes/calendar), [Turmas](/classes) ou [Cobranças](/classes/billing).",
+    "summary": "Aulas, presenças e mensalidades recebidas de hoje, com atalho.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Aulas hoje",
+          "text": "Este número mostra quantas aulas acontecem hoje."
+        },
+        {
+          "kind": "texto",
+          "label": "Presenças hoje",
+          "text": "Aqui você vê as presenças. Aguardando quer dizer que a chamada está aberta."
+        },
+        {
+          "kind": "texto",
+          "label": "Mensalidades recebidas",
+          "text": "Aqui entram as mensalidades pagas. O selo vermelho conta as em atraso."
+        }
+      ]
+    }
+  },
+  {
+    "id": "painel#aulas-de-hoje-e-ocupacao",
+    "article": "Painel",
+    "title": "Aulas de hoje e ocupação",
+    "route": "/dashboard",
+    "text": "O card \"Aulas de hoje\" lista as turmas com encontro hoje; \"Ver calendário\" abre a grade da semana. O card \"Ocupação das turmas\" mostra quantos alunos há em cada turma em relação à capacidade, e \"Ver turmas\" abre a lista.",
+    "summary": "Quais turmas têm aula hoje e quão cheias estão.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Aulas de hoje",
+          "text": "Aqui estão as turmas com aula hoje."
+        },
+        {
+          "kind": "texto",
+          "label": "Ocupação das turmas",
+          "text": "Este card mostra quantos alunos há em cada turma."
+        },
+        {
+          "kind": "botão",
+          "label": "Ver calendário",
+          "text": "Clique aqui para abrir a grade da semana."
+        }
+      ]
+    }
+  },
+  {
+    "id": "painel#lembretes-do-dia",
+    "article": "Painel",
+    "title": "Lembretes do dia",
+    "route": "/dashboard",
+    "text": "O card de lembretes junta o que pede atenção hoje: mensalidades em atraso ou perto de vencer, pacotes acabando e faltas seguidas. Cada item tem o botão do WhatsApp com a mensagem pronta. No menu do item, \"Lembrar amanhã\" adia e \"Não lembrar deste\" tira aquele aluno da lista. O mesmo aviso aparece no sino, no topo da tela.",
+    "summary": "Quem precisa de um aviso hoje, com WhatsApp pronto.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Lembretes",
+          "text": "Clique no sino para ver o que pede atenção hoje."
+        },
+        {
+          "kind": "botão",
+          "label": "Ver",
+          "text": "Abra a linha do lembrete para ver os alunos e as ações."
+        },
+        {
+          "kind": "botão",
+          "label": "Mandar mensagem|Cobrar|Avisar",
+          "text": "Clique no WhatsApp do aluno para abrir a mensagem pronta."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações de",
+          "text": "Abra o menu para adiar ou tirar o aluno da lista."
+        },
+        {
+          "kind": "item",
+          "label": "Lembrar amanhã|Não lembrar deste",
+          "text": "Escolha adiar para amanhã ou não lembrar deste aluno."
+        }
+      ]
+    }
+  },
+  {
+    "id": "painel#aniversarios",
+    "article": "Painel",
+    "title": "Aniversários",
+    "route": "/dashboard",
+    "text": "O card de aniversários mostra quem faz aniversário nos próximos dias. O botão do WhatsApp abre a mensagem de parabéns; depois de mandar, o botão avisa \"Parabéns já mandado hoje\".",
+    "summary": "Quem faz aniversário e o botão de parabéns no WhatsApp.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Mandar parabéns",
+          "text": "Clique no WhatsApp do aniversariante para abrir a mensagem pronta."
+        }
+      ]
+    }
+  },
+  {
+    "id": "painel#criar-uma-turma-pelo-painel",
+    "article": "Painel",
+    "title": "Criar uma turma pelo painel",
+    "route": "/dashboard",
+    "text": "No topo do Painel, \"Nova turma\" abre a tela de [Turmas](/classes) para criar uma. \"Ver calendário\" abre a grade da semana.",
+    "summary": "O botão \"Nova turma\" fica no topo do Painel.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova turma",
+          "text": "Clique aqui para ir à tela de turmas."
+        },
+        {
+          "kind": "botão",
+          "label": "Nova turma",
+          "text": "Na tela de turmas, clique aqui de novo para criar a turma."
+        }
+      ]
+    }
   },
   {
     "id": "plano-gestarahub#o-que-o-gratis-tem",
@@ -291,14 +2003,64 @@
     "article": "Plano GestaraHub (Grátis e Profissional)",
     "title": "Assinar o Profissional",
     "route": "/plans",
-    "text": "Em Planos, clique em \"Assinar o Profissional\", confira os dados e o valor antes de pagar, e pague por Pix ou cartão. O plano é liberado quando o pagamento é confirmado. Só o proprietário muda o plano."
+    "text": "Em Planos, clique em \"Assinar o Profissional\", confira os dados e o valor antes de pagar, e pague por Pix ou cartão. O plano é liberado quando o pagamento é confirmado. Só o proprietário muda o plano.",
+    "guide": {
+      "route": "/plans",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Mensal|Anual",
+          "text": "Escolha se quer pagar por mês ou por ano."
+        },
+        {
+          "kind": "botão",
+          "label": "Assinar o Profissional",
+          "text": "Clique aqui para ir ao pagamento."
+        },
+        {
+          "kind": "texto",
+          "label": "Plano escolhido",
+          "text": "Confira o plano e o período antes de pagar."
+        },
+        {
+          "kind": "botão",
+          "label": "Pix Automático",
+          "text": "Escolha pagar por Pix ou por cartão."
+        },
+        {
+          "kind": "botão",
+          "label": "Gerar Código Pix|Confirmar e Ativar",
+          "text": "Confira o valor e finalize o pagamento."
+        }
+      ]
+    }
   },
   {
     "id": "plano-gestarahub#trocar-de-plano",
     "article": "Plano GestaraHub (Grátis e Profissional)",
     "title": "Trocar de plano",
     "route": "/plans",
-    "text": "Mudar de mensal para anual aumenta o valor na hora: o sistema mostra a diferença proporcional e só cobra depois da sua confirmação. Reduzir (voltar ao Grátis ou de anual para mensal) vale no fim do período já pago. Dá para desmarcar uma troca marcada."
+    "text": "Mudar de mensal para anual aumenta o valor na hora: o sistema mostra a diferença proporcional e só cobra depois da sua confirmação. Reduzir (voltar ao Grátis ou de anual para mensal) vale no fim do período já pago. Dá para desmarcar uma troca marcada.",
+    "guide": {
+      "route": "/plans",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Mudar para o anual|Mudar para o mensal|Voltar ao Grátis",
+          "text": "Escolha a troca que quer fazer."
+        },
+        {
+          "kind": "texto",
+          "label": "Confira os valores antes de confirmar",
+          "text": "Veja a diferença e quando a troca vale."
+        },
+        {
+          "kind": "botão",
+          "label": "Confirmar troca|Voltar ao Grátis",
+          "text": "Confirme a troca."
+        }
+      ]
+    }
   },
   {
     "id": "plano-gestarahub#renovacao-e-atraso",
@@ -319,63 +2081,302 @@
     "article": "Planos, mensalidades e pacotes",
     "title": "Criar um plano de mensalidade",
     "route": "/classes/plans",
-    "text": "Em Planos e pacotes, aba de planos, clique em adicionar. Informe o nome, o valor e o período (mensal, quinzenal ou semanal). O aluno recebe uma mensalidade por período."
+    "text": "Em Planos e pacotes, aba de planos, clique em adicionar. Informe o nome, o valor e o período (mensal, quinzenal ou semanal). O aluno recebe uma mensalidade por período.",
+    "guide": {
+      "route": "/classes/plans",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Novo plano",
+          "text": "Clique aqui para abrir o cadastro do plano."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome",
+          "text": "Escreva o nome do plano."
+        },
+        {
+          "kind": "campo",
+          "label": "Periodicidade",
+          "text": "Escolha se a cobrança é mensal, quinzenal ou semanal."
+        },
+        {
+          "kind": "campo",
+          "label": "Valor",
+          "text": "Informe quanto o aluno paga por período."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para salvar o plano."
+        }
+      ]
+    }
+  },
+  {
+    "id": "planos-e-mensalidades#editar-inativar-e-reativar-um-plano",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Editar, inativar e reativar um plano",
+    "route": "/classes/plans",
+    "text": "Quem já tem o plano inativo continua sendo cobrado. Para voltar, mostre os inativos no filtro e use \"Reativar\".",
+    "summary": "Mude o valor de um plano ou tire ele do cadastro de novos alunos.",
+    "guide": {
+      "route": "/classes/plans",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do plano."
+        },
+        {
+          "kind": "item",
+          "label": "Editar",
+          "text": "Mude o nome ou o valor. Para tirar o plano do cadastro de novos alunos, use \"Inativar\"."
+        }
+      ]
+    }
   },
   {
     "id": "planos-e-mensalidades#regras-da-mensalidade",
     "article": "Planos, mensalidades e pacotes",
     "title": "Regras da mensalidade",
     "route": "/classes/plans",
-    "text": "Em Configurações você define o dia de vencimento padrão, se cobra antes ou depois do uso e como fica o primeiro mês (proporcional aos dias ou mês cheio). Cada aluno pode ter regra própria no cadastro."
+    "text": "Em Configurações você define o dia de vencimento padrão, se cobra antes ou depois do uso e como fica o primeiro mês (proporcional aos dias ou mês cheio). Cada aluno pode ter regra própria no cadastro.",
+    "guide": {
+      "route": "/settings",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Regras da mensalidade",
+          "text": "Abra esta seção para ver as regras de todas as mensalidades."
+        },
+        {
+          "kind": "texto",
+          "label": "Momento do pagamento",
+          "text": "Escolha se cobra antes ou depois do uso."
+        },
+        {
+          "kind": "texto",
+          "label": "Entrada no meio do mês",
+          "text": "Escolha se o primeiro mês é proporcional ou cheio."
+        },
+        {
+          "kind": "texto",
+          "label": "Dia de vencimento",
+          "text": "Defina o dia fixo em que as mensalidades vencem."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar configurações|Confirmar regras",
+          "text": "Clique aqui para guardar as regras."
+        }
+      ]
+    }
   },
   {
     "id": "planos-e-mensalidades#desconto-e-bolsa",
     "article": "Planos, mensalidades e pacotes",
     "title": "Desconto e bolsa",
     "route": "/classes/plans",
-    "text": "No cadastro do aluno, ative \"Conceder desconto na mensalidade\". Bolsa integral gera mensalidades isentas."
+    "text": "No cadastro do aluno, ative \"Conceder desconto na mensalidade\". Bolsa integral gera mensalidades isentas.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Editar cadastro",
+          "text": "Abra o cadastro do aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "Plano e mensalidade",
+          "text": "Abra esta seção, que cuida da mensalidade."
+        },
+        {
+          "kind": "texto",
+          "label": "Conceder desconto na mensalidade",
+          "text": "Ligue a chave para dar desconto. Para bolsa, escolha \"Bolsista\" em como o aluno paga."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
   },
   {
     "id": "planos-e-mensalidades#trocar-o-plano-do-aluno",
     "article": "Planos, mensalidades e pacotes",
     "title": "Trocar o plano do aluno",
     "route": "/classes/plans",
-    "text": "Edite o aluno e escolha outro plano. O sistema mostra o que muda antes de salvar: as mensalidades em aberto do plano antigo são refeitas pelo plano novo, e o que já foi pago não muda."
+    "text": "Edite o aluno e escolha outro plano. O sistema mostra o que muda antes de salvar: as mensalidades em aberto do plano antigo são refeitas pelo plano novo, e o que já foi pago não muda.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Editar cadastro",
+          "text": "Abra o cadastro do aluno."
+        },
+        {
+          "kind": "texto",
+          "label": "Plano e mensalidade",
+          "text": "Abra esta seção, que cuida da mensalidade."
+        },
+        {
+          "kind": "campo",
+          "label": "Plano de acesso",
+          "text": "Escolha o plano novo."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "O sistema mostra o que muda. Confirme para guardar."
+        }
+      ]
+    }
   },
   {
     "id": "planos-e-mensalidades#pacote-de-aulas",
     "article": "Planos, mensalidades e pacotes",
     "title": "Pacote de aulas",
     "route": "/classes/plans",
-    "text": "Em Planos e pacotes, aba Pacotes de aulas, crie o pacote (quantidade de aulas, valor e validade). Venda pelo menu do aluno em \"Vender pacote\". O pacote pode ser parcelado."
+    "text": "Em Planos e pacotes, aba Pacotes de aulas, crie o pacote (quantidade de aulas, valor e validade). Venda pelo menu do aluno em \"Vender pacote\". O pacote pode ser parcelado.",
+    "guide": {
+      "route": "/classes/plans?tab=packages",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Pacotes de aulas",
+          "text": "Aqui ficam os pacotes que você vende."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do pacote para editar, inativar ou reativar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "planos-e-mensalidades#vender-um-pacote-ao-aluno",
+    "article": "Planos, mensalidades e pacotes",
+    "title": "Vender um pacote ao aluno",
+    "route": "/classes/plans",
+    "text": "A opção também está na ficha do aluno, em \"Mais ações do aluno\".",
+    "summary": "Venda um pacote de aulas, à vista ou parcelado.",
+    "guide": {
+      "route": "/clients",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno."
+        },
+        {
+          "kind": "item",
+          "label": "Vender pacote",
+          "text": "Escolha esta opção para vender um pacote."
+        },
+        {
+          "kind": "campo",
+          "label": "Pacote",
+          "text": "Escolha qual pacote o aluno compra."
+        },
+        {
+          "kind": "campo",
+          "label": "Parcelas",
+          "text": "Escolha à vista ou parcelado."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Clique aqui para registrar a venda e gerar a cobrança."
+        }
+      ]
+    }
   },
   {
     "id": "planos-e-mensalidades#cursos",
     "article": "Planos, mensalidades e pacotes",
     "title": "Cursos",
     "route": "/classes/plans",
-    "text": "Em áreas de curso, a turma tem valor fechado e parcelas. A cobrança sai na matrícula, pelo valor da turma ou com desconto."
+    "text": "A cobrança sai na matrícula, pelo valor da turma ou com desconto.\nEm áreas de curso, a turma tem valor fechado e parcelas. A cobrança sai na matrícula, pelo valor da turma ou com desconto."
   },
   {
     "id": "primeiros-passos#configuracao-inicial",
     "article": "Primeiros passos",
     "title": "Configuração inicial",
     "route": "/dashboard",
-    "text": "Ao criar a conta, o GestaraHub pede o nome do espaço, a área (Lutas, Pilates e yoga, Funcional, Dança, Música, Idiomas, Natação, Gastronomia, Artes, Beleza ou outra) e as aulas que você oferece. Depois, o Painel mostra os \"Primeiros passos\": horário de funcionamento, modalidades, planos, professores, alunos e a primeira turma. Cada passo concluído fica marcado."
+    "text": "Ao criar a conta, o GestaraHub pede o nome do espaço, a área (Lutas, Pilates e yoga, Funcional, Dança, Música, Idiomas, Natação, Gastronomia, Artes, Beleza ou outra) e as aulas que você oferece. Depois, o Painel mostra os \"Primeiros passos\": horário de funcionamento, modalidades, planos, professores, alunos e a primeira turma. Cada passo concluído fica marcado.",
+    "summary": "O que o GestaraHub pergunta ao criar a conta e como o Painel guia o resto."
   },
   {
     "id": "primeiros-passos#ordem-recomendada",
     "article": "Primeiros passos",
     "title": "Ordem recomendada",
     "route": "/dashboard",
-    "text": "1. Defina o horário de funcionamento em Configurações, aba Horários.\n2. Confira as modalidades em Modalidades.\n3. Crie os planos de mensalidade (ou pacotes, ou cursos) em Planos e pacotes.\n4. Cadastre quem dá aula em Equipe.\n5. Cadastre os alunos em Alunos.\n6. Crie as turmas em Turmas e matricule os alunos."
+    "text": "1. Defina o horário de funcionamento em [Configurações, aba Horários](/settings?tab=horarios).\n2. Confira as modalidades em [Modalidades](/classes/modalities).\n3. Crie os planos de mensalidade (ou pacotes, ou cursos) em [Planos e pacotes](/classes/plans).\n4. Cadastre quem dá aula em [Equipe](/team).\n5. Cadastre os alunos em [Alunos](/clients).\n6. Crie as turmas em [Turmas](/classes) e matricule os alunos.",
+    "summary": "6 passos para deixar o espaço pronto: horário, modalidades, planos, equipe, alunos e turmas.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Primeiros passos|Descubra o dia a dia",
+          "text": "Esta lista mostra o que falta para o espaço ficar pronto."
+        },
+        {
+          "kind": "menu",
+          "label": "Configurações",
+          "text": "Comece pelo horário de funcionamento, em Configurações."
+        },
+        {
+          "kind": "aba",
+          "label": "Horários",
+          "text": "Ligue os dias em que o espaço abre e salve."
+        }
+      ]
+    }
   },
   {
     "id": "primeiros-passos#mudar-a-area-do-espaco",
     "article": "Primeiros passos",
     "title": "Mudar a área do espaço",
     "route": "/dashboard",
-    "text": "Em Configurações, aba Geral, você troca a área e a forma de cobrança padrão. As palavras do sistema (Faixa, Nível, Módulo, Instrutor ou Professor) mudam junto."
+    "text": "Em [Configurações, aba Geral](/settings?tab=geral), você troca a área e a forma de cobrança padrão. As palavras do sistema (Faixa, Nível, Módulo, Instrutor ou Professor) mudam junto.",
+    "summary": "Troque a área e a forma de cobrança em Configurações.",
+    "guide": {
+      "route": "/settings?tab=geral",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Dados do espaço",
+          "text": "Aqui ficam os dados do espaço. Abra esta seção se estiver fechada."
+        },
+        {
+          "kind": "campo",
+          "label": "Área do espaço",
+          "text": "Escolha a área do seu espaço."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar configurações",
+          "text": "Clique aqui para guardar a mudança."
+        }
+      ]
+    }
   },
   {
     "id": "recebimentos-online#o-que-e",
@@ -389,21 +2390,128 @@
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Ativar",
     "route": "/online-payments",
-    "text": "Em Recebimentos online, clique em \"Ativar recebimentos online\" e preencha os dados da conta (CPF ou CNPJ, nascimento ou tipo de empresa, renda ou faturamento e endereço). Com CPF, a fatura do cartão mostra ao aluno seu CPF, e-mail e telefone; se você tem CNPJ ou MEI, use ele. Depois de aprovada, a conta fica ativa."
+    "text": "Em Recebimentos online, clique em \"Ativar conta de recebimento\" e preencha os dados da conta (CPF ou CNPJ, nascimento ou tipo de empresa, renda ou faturamento e endereço). Com CPF, a fatura do cartão mostra ao aluno seu CPF, e-mail e telefone; se você tem CNPJ ou MEI, use ele. Depois de aprovada, a conta fica ativa.",
+    "guide": {
+      "route": "/online-payments",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ativar conta de recebimento",
+          "text": "Clique aqui para abrir o formulário da conta."
+        },
+        {
+          "kind": "campo",
+          "label": "CPF ou CNPJ",
+          "text": "Informe o documento de quem recebe."
+        },
+        {
+          "kind": "campo",
+          "label": "E-mail financeiro",
+          "text": "Informe o e-mail da conta."
+        },
+        {
+          "kind": "botão",
+          "label": "Ativar recebimentos",
+          "text": "Quando terminar, clique aqui para enviar."
+        }
+      ]
+    }
   },
   {
     "id": "recebimentos-online#cobrar-um-aluno",
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Cobrar um aluno",
     "route": "/online-payments",
-    "text": "Em Cobranças, no menu ⋮ da cobrança, \"Cobrar online\". Escolha Pix ou link, gere e envie ao aluno pelo WhatsApp. O pagamento é conferido sozinho e a cobrança é baixada."
+    "text": "Em Cobranças, no menu ⋮ da cobrança, \"Cobrar online\". Escolha Pix ou link, gere e envie ao aluno pelo WhatsApp. O pagamento é conferido sozinho e a cobrança é baixada.",
+    "guide": {
+      "route": "/classes/billing",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ver cobranças",
+          "text": "Abra as cobranças do aluno."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da cobrança."
+        },
+        {
+          "kind": "item",
+          "label": "Cobrar online",
+          "text": "Escolha esta opção para gerar Pix ou link de cartão."
+        },
+        {
+          "kind": "item",
+          "label": "Pix",
+          "text": "Escolha entre Pix e link de cartão."
+        },
+        {
+          "kind": "botão",
+          "label": "Gerar Pix|Gerar link",
+          "text": "Gere o código e envie ao aluno pelo WhatsApp."
+        }
+      ]
+    }
+  },
+  {
+    "id": "recebimentos-online#configurar-as-cobrancas-online",
+    "article": "Recebimentos online (Pix e cartão)",
+    "title": "Configurar as cobranças online",
+    "route": "/online-payments",
+    "text": "Só aparece depois que a conta de recebimento estiver ativa.",
+    "guide": {
+      "route": "/online-payments",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Configurações",
+          "text": "Aqui você ajusta como as cobranças online funcionam."
+        },
+        {
+          "kind": "campo",
+          "label": "Chave Pix para saque",
+          "text": "Informe a chave que recebe as retiradas."
+        },
+        {
+          "kind": "campo",
+          "label": "Validade padrão do Pix",
+          "text": "Escolha por quanto tempo o QR Code vale."
+        },
+        {
+          "kind": "texto",
+          "label": "Formas de pagamento",
+          "text": "Marque quais formas o aluno pode usar."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar alterações",
+          "text": "Salve para valer a nova configuração."
+        }
+      ]
+    }
   },
   {
     "id": "recebimentos-online#taxas",
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Taxas",
     "route": "/online-payments",
-    "text": "Taxa do GestaraHub: R$ 1,99 por Pix pago no Grátis (R$ 1,29 nos pagos), mais a tarifa do parceiro. Você pode repassar a taxa ao aluno nas configurações de recebimento."
+    "text": "Taxa do GestaraHub: R$ 1,99 por Pix pago no Grátis (R$ 1,29 nos pagos), mais a tarifa do parceiro. Você pode repassar a taxa ao aluno nas configurações de recebimento.",
+    "guide": {
+      "route": "/online-payments",
+      "steps": [
+        {
+          "kind": "aba",
+          "label": "Configurações",
+          "text": "Abra as configurações das cobranças online."
+        },
+        {
+          "kind": "botão",
+          "label": "Ver termos e taxas contratadas",
+          "text": "Veja as taxas da sua conta."
+        }
+      ]
+    }
   },
   {
     "id": "recebimentos-online#pix-automatico",
@@ -417,21 +2525,96 @@
     "article": "Recebimentos online (Pix e cartão)",
     "title": "Retirada para o banco",
     "route": "/online-payments",
-    "text": "O saldo pode ser transferido para sua conta bancária em Recebimentos online. Há um número de retiradas grátis por mês e uma tarifa nas seguintes."
+    "text": "O saldo pode ser transferido para sua conta bancária em Recebimentos online. Há um número de retiradas grátis por mês e uma tarifa nas seguintes.",
+    "guide": {
+      "route": "/online-payments",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Sacar via Pix",
+          "text": "Clique aqui para tirar o saldo para o seu banco."
+        },
+        {
+          "kind": "campo",
+          "label": "Valor a transferir",
+          "text": "Informe quanto quer sacar, ou use \"Sacar tudo\"."
+        },
+        {
+          "kind": "campo",
+          "label": "Chave Pix de destino",
+          "text": "Confirme a chave que vai receber."
+        },
+        {
+          "kind": "botão",
+          "label": "Confirmar transferência Pix",
+          "text": "Confirme para enviar o dinheiro."
+        }
+      ]
+    }
   },
   {
     "id": "relatorios#relatorios-disponiveis",
     "article": "Relatórios e documentos",
     "title": "Relatórios disponíveis",
     "route": "/reports",
-    "text": "Em Relatórios: lista de presença, relação de alunos, cobranças, cursos, pacotes e aniversariantes do mês. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional."
+    "text": "Em Relatórios: lista de presença, relação de alunos, cobranças, cursos, pacotes e aniversariantes do mês. O relatório do resultado do mês (DRE) e a retenção fazem parte do plano Profissional.",
+    "guide": {
+      "route": "/reports",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar relatório",
+          "text": "Digite o nome para achar o relatório."
+        },
+        {
+          "kind": "botão",
+          "label": "Operacionais",
+          "text": "Filtre os relatórios do dia a dia."
+        },
+        {
+          "kind": "botão",
+          "label": "Financeiros",
+          "text": "Filtre os relatórios de dinheiro."
+        },
+        {
+          "kind": "botão",
+          "label": "Abrir",
+          "text": "Abra o relatório que quer ver."
+        }
+      ]
+    }
   },
   {
     "id": "relatorios#gerar-pdf-e-planilha",
     "article": "Relatórios e documentos",
     "title": "Gerar PDF e planilha",
     "route": "/reports",
-    "text": "Abra o relatório, ajuste o período ou a turma e use as opções de PDF ou CSV."
+    "text": "Abra o relatório, ajuste o período ou a turma e use as opções de PDF ou CSV.",
+    "guide": {
+      "route": "/reports",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Escolher mês",
+          "text": "Escolha o mês do relatório."
+        },
+        {
+          "kind": "botão",
+          "label": "Abrir",
+          "text": "Abra o relatório que quer baixar."
+        },
+        {
+          "kind": "botão",
+          "label": "Baixar PDF",
+          "text": "Baixe o relatório em PDF."
+        },
+        {
+          "kind": "botão",
+          "label": "Exportar CSV",
+          "text": "Baixe a planilha para abrir no Excel."
+        }
+      ]
+    }
   },
   {
     "id": "relatorios#recibos-e-demonstrativos",
@@ -445,7 +2628,56 @@
     "article": "Conta, senha e segurança",
     "title": "Verificação em duas etapas",
     "route": "/settings",
-    "text": "Em Preferências, ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias."
+    "text": "Em Segurança, no menu do usuário (a bolinha com suas iniciais no topo), ligue a verificação em duas etapas por aplicativo autenticador ou por código no e-mail. Depois disso, o login pede o código. Dá para lembrar o dispositivo por 30 dias.",
+    "summary": "Ligue o código extra no login, por aplicativo ou por e-mail.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Menu do usuário",
+          "text": "Clique na bolinha com suas iniciais, no topo."
+        },
+        {
+          "kind": "item",
+          "label": "Segurança",
+          "text": "Abra a segurança da conta."
+        },
+        {
+          "kind": "botão",
+          "label": "Usar aplicativo|Usar e-mail",
+          "text": "Escolha receber o código por aplicativo ou por e-mail."
+        }
+      ]
+    }
+  },
+  {
+    "id": "seguranca-e-conta#codigos-de-recuperacao",
+    "article": "Conta, senha e segurança",
+    "title": "Códigos de recuperação",
+    "route": "/settings",
+    "text": "Com a verificação ligada, a janela Segurança mostra os códigos de recuperação. Eles servem se você perder o aplicativo ou o e-mail.",
+    "summary": "Gere códigos de reserva para o caso de perder o aplicativo ou o e-mail.",
+    "guide": {
+      "route": "/dashboard",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Menu do usuário",
+          "text": "Clique na bolinha com suas iniciais, no topo."
+        },
+        {
+          "kind": "item",
+          "label": "Segurança",
+          "text": "Abra a segurança da conta."
+        },
+        {
+          "kind": "botão",
+          "label": "Gerar novos códigos",
+          "text": "Gere os códigos e guarde em lugar seguro. Cada um vale uma vez."
+        }
+      ]
+    }
   },
   {
     "id": "seguranca-e-conta#esqueci-a-senha",
@@ -466,7 +2698,28 @@
     "article": "Conta, senha e segurança",
     "title": "Fuso horário",
     "route": "/settings",
-    "text": "Em Configurações, aba Geral, escolha o fuso do espaço (os quatro fusos do Brasil). Datas e vencimentos seguem esse fuso."
+    "text": "Em Configurações, aba Geral, escolha o fuso do espaço (os quatro fusos do Brasil). Datas e vencimentos seguem esse fuso.",
+    "summary": "Escolha o fuso do espaço em Configurações.",
+    "guide": {
+      "route": "/settings?tab=geral",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Endereço",
+          "text": "O fuso fica na seção Endereço. Abra se estiver fechada."
+        },
+        {
+          "kind": "campo",
+          "label": "Fuso horário",
+          "text": "Escolha o fuso do seu espaço."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar configurações",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
   },
   {
     "id": "seguranca-e-conta#dados-dos-alunos-e-lgpd",
@@ -480,34 +2733,346 @@
     "article": "Turmas e matrículas",
     "title": "Criar uma turma",
     "route": "/classes",
-    "text": "Em Turmas, clique em \"Nova turma\". Informe o nome, a modalidade, quem dá a aula, a capacidade e os horários (dias da semana, início e fim). O sistema avisa na hora se a pessoa já dá aula em outro horário igual. A forma de cobrança da turma segue a área (mensalidade, curso com valor fechado, pacote ou sem cobrança) e pode ser trocada no formulário."
+    "text": "Em Turmas, clique em \"Nova turma\". Informe o nome, a modalidade, quem dá a aula, a capacidade e os horários (dias da semana, início e fim). O sistema avisa na hora se a pessoa já dá aula em outro horário igual. A forma de cobrança da turma segue a área (mensalidade, curso com valor fechado, pacote ou sem cobrança) e pode ser trocada no formulário.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova turma",
+          "text": "Clique aqui para abrir o cadastro da turma."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome da turma",
+          "text": "Escreva o nome da turma."
+        },
+        {
+          "kind": "campo",
+          "label": "Modalidade",
+          "text": "Escolha o tipo de aula."
+        },
+        {
+          "kind": "campo",
+          "label": "Capacidade",
+          "text": "Informe quantas vagas a turma tem."
+        },
+        {
+          "kind": "texto",
+          "label": "Encontros e Horários",
+          "text": "Marque os dias da semana e o início e o fim da aula."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar",
+          "text": "Quando terminar, clique aqui para salvar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#dar-aula-em-mais-de-um-horario",
+    "article": "Turmas e matrículas",
+    "title": "Dar aula em mais de um horário",
+    "route": "/classes",
+    "text": "No formulário da turma, clique em \"Adicionar outro horário\" para ter, por exemplo, segunda e quarta cedo e sábado de manhã.",
+    "summary": "Coloque dois ou mais horários na mesma turma.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Nova turma",
+          "text": "Abra o cadastro da turma (ou edite uma existente)."
+        },
+        {
+          "kind": "texto",
+          "label": "Encontros e Horários",
+          "text": "Aqui ficam os dias e as horas da turma."
+        },
+        {
+          "kind": "botão",
+          "label": "Adicionar outro horário",
+          "text": "Crie um segundo horário, com outros dias e horas."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#editar-uma-turma",
+    "article": "Turmas e matrículas",
+    "title": "Editar uma turma",
+    "route": "/classes",
+    "text": "No menu ⋮ da turma, escolha \"Editar\". Dentro da turma, o mesmo está em \"Mais ações da turma\".",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da turma que quer mudar."
+        },
+        {
+          "kind": "item",
+          "label": "Editar",
+          "text": "Escolha esta opção para abrir o cadastro."
+        },
+        {
+          "kind": "campo",
+          "label": "Nome da turma",
+          "text": "Mude o que precisar, como nome, horário ou vagas."
+        },
+        {
+          "kind": "botão",
+          "label": "Salvar",
+          "text": "Clique aqui para guardar."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#buscar-turmas",
+    "article": "Turmas e matrículas",
+    "title": "Buscar turmas",
+    "route": "/classes",
+    "text": "A lista começa só com as turmas ativas.",
+    "summary": "Ache uma turma pelo nome e veja as inativas.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "campo",
+          "label": "Buscar turma",
+          "text": "Digite o nome da turma."
+        },
+        {
+          "kind": "campo",
+          "label": "Filtrar por status",
+          "text": "Escolha ver ativas, inativas ou todas."
+        },
+        {
+          "kind": "texto",
+          "label": "turma cadastrada|turmas cadastradas",
+          "text": "Aqui aparece quantas turmas a lista mostra."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#ver-as-aulas-no-calendario",
+    "article": "Turmas e matrículas",
+    "title": "Ver as aulas no calendário",
+    "route": "/classes",
+    "text": "No topo de Turmas, clique em \"Calendário\". Dentro de uma turma, \"Mais ações da turma\" tem \"Ver aulas no calendário\".",
+    "summary": "Veja as aulas das turmas num calendário.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Calendário",
+          "text": "Abra o calendário com as aulas de todas as turmas."
+        }
+      ]
+    }
   },
   {
     "id": "turmas-e-matriculas#matricular-alunos",
     "article": "Turmas e matrículas",
     "title": "Matricular alunos",
     "route": "/classes",
-    "text": "Abra a turma e use \"Matricular alunos\". Escolha um ou mais alunos. Em turma de curso, a janela pede o valor, as parcelas e o primeiro vencimento. Se a turma estiver lotada, o aluno pode entrar na lista de espera."
+    "text": "Abra a turma e use \"Matricular alunos\". Escolha um ou mais alunos. Em turma de curso, a janela pede o valor, as parcelas e o primeiro vencimento. Se a turma estiver lotada, o aluno pode entrar na lista de espera.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "botão",
+          "label": "Matricular alunos",
+          "text": "Clique para escolher quem entra na turma."
+        },
+        {
+          "kind": "campo",
+          "label": "Buscar aluno",
+          "text": "Procure e marque um ou mais alunos."
+        },
+        {
+          "kind": "botão",
+          "label": "Matricular",
+          "text": "Clique aqui para confirmar a matrícula."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#lista-de-espera",
+    "article": "Turmas e matrículas",
+    "title": "Lista de espera",
+    "route": "/classes",
+    "text": "A aba \"Lista de espera\" só aparece quando há alguém na fila. Use \"Promover\" para matricular ou a lixeira ao lado para tirar da fila.",
+    "summary": "Quando a turma lota, o aluno entra na fila e depois vira matrícula.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha uma turma lotada e clique nela."
+        },
+        {
+          "kind": "aba",
+          "label": "Lista de espera",
+          "text": "Veja quem está na fila, em ordem."
+        },
+        {
+          "kind": "botão",
+          "label": "Promover",
+          "text": "Quando abrir vaga, matricule o primeiro da fila."
+        }
+      ]
+    }
   },
   {
     "id": "turmas-e-matriculas#cancelar-a-matricula",
     "article": "Turmas e matrículas",
     "title": "Cancelar a matrícula",
     "route": "/classes",
-    "text": "No menu ⋮ do aluno dentro da turma, escolha \"Cancelar matrícula\". Parcelas de curso que vencem depois de hoje saem; o que já venceu continua como dívida."
+    "text": "No menu ⋮ do aluno dentro da turma, escolha \"Cancelar matrícula\". Parcelas de curso que vencem depois de hoje saem; o que já venceu continua como dívida.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu do aluno dentro da turma."
+        },
+        {
+          "kind": "item",
+          "label": "Cancelar matrícula",
+          "text": "Escolha esta opção para tirar o aluno da turma."
+        },
+        {
+          "kind": "botão",
+          "label": "Cancelar matrícula",
+          "text": "Confirme para cancelar de vez."
+        }
+      ]
+    }
+  },
+  {
+    "id": "turmas-e-matriculas#cancelar-varias-matriculas-de-uma-vez",
+    "article": "Turmas e matrículas",
+    "title": "Cancelar várias matrículas de uma vez",
+    "route": "/classes",
+    "text": "Use \"Sair da seleção\" para desistir sem cancelar nada.",
+    "summary": "Selecione vários alunos da turma e cancele juntos.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações da turma",
+          "text": "Abra o menu da turma."
+        },
+        {
+          "kind": "item",
+          "label": "Selecionar alunos",
+          "text": "Ligue a seleção para marcar vários alunos."
+        },
+        {
+          "kind": "botão",
+          "label": "Todos",
+          "text": "Marque todos, ou toque nos alunos um a um."
+        },
+        {
+          "kind": "botão",
+          "label": "Cancelar matrícula",
+          "text": "Confirme o cancelamento dos selecionados."
+        }
+      ]
+    }
   },
   {
     "id": "turmas-e-matriculas#trocar-a-pessoa-de-uma-aula",
     "article": "Turmas e matrículas",
     "title": "Trocar a pessoa de uma aula",
     "route": "/classes",
-    "text": "Na aula do dia, use \"Trocar instrutor\" (ou \"Trocar professor\") para colocar um substituto só naquela data. As outras aulas seguem com o titular."
+    "text": "Na aula do dia, use \"Trocar instrutor\" (ou \"Trocar professor\") para colocar um substituto só naquela data. As outras aulas seguem com o titular. Para voltar atrás, use \"Restaurar titular\" na mesma janela.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "texto",
+          "label": "Turmas",
+          "text": "Escolha a turma na lista e clique nela para abrir."
+        },
+        {
+          "kind": "botão",
+          "label": "Próxima aula",
+          "text": "Abra a aula do dia que terá substituto."
+        },
+        {
+          "kind": "botão",
+          "label": "Mais ações da aula",
+          "text": "Abra o menu da aula."
+        },
+        {
+          "kind": "item",
+          "label": "Trocar|Alterar substituto",
+          "text": "Escolha esta opção para pôr um substituto."
+        },
+        {
+          "kind": "campo",
+          "label": "substituto",
+          "text": "Escolha quem dá a aula nesta data."
+        },
+        {
+          "kind": "botão",
+          "label": "Confirmar alteração",
+          "text": "Clique aqui para guardar a troca."
+        }
+      ]
+    }
   },
   {
     "id": "turmas-e-matriculas#inativar-e-reativar-uma-turma",
     "article": "Turmas e matrículas",
     "title": "Inativar e reativar uma turma",
     "route": "/classes",
-    "text": "No menu ⋮ da turma. Turma inativa não aparece para novas matrículas."
+    "text": "No menu ⋮ da turma. Turma inativa não aparece para novas matrículas.",
+    "guide": {
+      "route": "/classes",
+      "steps": [
+        {
+          "kind": "botão",
+          "label": "Ações de",
+          "text": "Abra o menu da turma."
+        },
+        {
+          "kind": "item",
+          "label": "Inativar",
+          "text": "Escolha esta opção para a turma sair das novas matrículas."
+        },
+        {
+          "kind": "botão",
+          "label": "Inativar",
+          "text": "Confirme. Para voltar, use \"Reativar\" no menu."
+        }
+      ]
+    }
   }
 ]

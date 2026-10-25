@@ -10,7 +10,7 @@ import {
   type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Clock, MailCheck, MapPin, Sparkles, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";

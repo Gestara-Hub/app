@@ -3,7 +3,7 @@
 import { useTeamWords } from "@/features/settings";
 import type { DocumentModel, GeneratedReportData } from "@gestarahub/contracts";
 import { ArrowLeft, Download, FileText } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { DocumentPreview } from "@/components/shared/document-preview";
 import { Button } from "@/components/ui/button";
 import { documentToCsv } from "@/lib/documents/csv";

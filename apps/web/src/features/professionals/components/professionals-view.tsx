@@ -4,7 +4,7 @@ import { useTeamWords } from "@/features/settings";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Briefcase, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { getErrorMessage } from "@gestarahub/core/api-error";

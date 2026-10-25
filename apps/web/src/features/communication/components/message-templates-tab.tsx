@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, HeartHandshake, Megaphone, Pencil, Wallet } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";

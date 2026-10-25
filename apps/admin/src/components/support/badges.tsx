@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { SLA_LABEL, slaFor, type SlaState } from "@/lib/sla";
-import { STATUS_LABEL, type ThreadStatus } from "@/lib/support-types";
+import { KIND_LABEL, STATUS_LABEL, type ThreadKind, type ThreadStatus } from "@/lib/support-types";
 import { cn } from "@/lib/utils";
 
 const SLA_STYLE: Record<SlaState, string> = {
@@ -32,6 +32,16 @@ export function UrgentBadge() {
   return (
     <Badge variant="destructive" className="font-normal">
       Urgente
+    </Badge>
+  );
+}
+
+/** Tipo da conversa; dúvida é o comum e não leva selo. */
+export function KindBadge({ kind }: { kind: ThreadKind }) {
+  if (kind === "question") return null;
+  return (
+    <Badge variant="outline" className={cn("font-normal", kind === "bug" ? "border-destructive/40 text-destructive" : "border-primary/40 text-primary")}>
+      {KIND_LABEL[kind]}
     </Badge>
   );
 }

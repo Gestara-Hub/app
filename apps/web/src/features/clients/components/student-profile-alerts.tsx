@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Cake, Copy, MessageCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { ChargeView, Id, MessageTrigger, StudentSummary } from "@gestarahub/contracts";
 import { todayISO, dateInSpace, timeInSpace } from "@gestarahub/core/date";
 import { formatCents } from "@gestarahub/core/format";

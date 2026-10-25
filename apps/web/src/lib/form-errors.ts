@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 

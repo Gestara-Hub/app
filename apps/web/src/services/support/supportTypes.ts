@@ -1,8 +1,12 @@
 /** Tipos do "Fale com a gente" (conversas do app dos clientes com o assistente e o suporte). */
 export type SupportStatus = "bot" | "waiting_us" | "waiting_customer" | "resolved";
 
+/** question: duvida (passa pelo assistente); bug e suggestion vao direto para a equipe. */
+export type SupportKind = "question" | "bug" | "suggestion";
+
 export interface SupportThreadSummary {
   id: string;
+  kind: SupportKind;
   subject: string;
   status: SupportStatus;
   urgent: boolean;
@@ -23,6 +27,7 @@ export interface SupportMessage {
 
 export interface SupportThreadView {
   threadId: string;
+  kind: SupportKind;
   status: SupportStatus;
   subject: string;
   botHelped: boolean | null;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Check, Lock, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { PaidFeature } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDateTime } from "@gestarahub/core/format";

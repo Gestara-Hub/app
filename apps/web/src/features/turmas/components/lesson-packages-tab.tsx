@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Pencil, Power, PowerOff, Ticket } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { LessonPackage, RecordStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatCents, plural } from "@gestarahub/core/format";

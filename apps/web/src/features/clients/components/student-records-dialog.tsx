@@ -7,7 +7,7 @@ import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Check, CheckCircle2, MessageSquarePlus, NotebookPen, RotateCcw, Target, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   Client,
   DateISO,

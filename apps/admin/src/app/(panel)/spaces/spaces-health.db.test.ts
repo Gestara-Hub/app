@@ -234,6 +234,25 @@ describe("saúde", () => {
     expect(byCode.rows.map((r) => r.fingerprint)).toEqual([`fp-livre-${tag}`]);
   });
 
+  it("detalhe do erro traz o contexto e as conversas com o código", async () => {
+    const health = await import("@/lib/server/health");
+    const code = `ZZ${tag.toUpperCase()}1`;
+    const { id } = (await health.findErrorByReference(code))!;
+    await owner`update public.error_logs set stack = 'Error: Falha ao marcar presença\n    at markAttendance', context = ${owner.json({ route: "/classes/x" })} where id = ${id}`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, 'user-detalhe', 'Pessoa', 'p@teste.com', null, 'Não consegui marcar a presença', 'Deu erro', '/classes/x', ${code}, 'free', 'bug') as id`;
+    try {
+      const detail = await health.getErrorDetail(id);
+      expect(detail).toMatchObject({ event: "turmas.markAttendance", count: 3, context: { route: "/classes/x" } });
+      expect(detail?.stack).toContain("markAttendance");
+      expect(detail?.threads).toEqual([{ id: thread.id, subject: "Não consegui marcar a presença", status: "bot" }]);
+    } finally {
+      await owner`delete from platform.support_threads where id = ${thread.id}`;
+    }
+    expect(await health.getErrorDetail("00000000-0000-0000-0000-000000000000")).toBeNull();
+    expect(await health.getErrorDetail("não-é-id")).toBeNull();
+  });
+
   it("marcar como conhecido esconde da lista, desmarcar volta, e fica registrado", async () => {
     const admin = await createAdminUser("platform_support", "Atendente Saúde");
     admins.push(admin);

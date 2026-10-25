@@ -1,7 +1,7 @@
 "use client";
 
 import { useTeamWords } from "@/features/settings";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { getErrorMessage } from "@gestarahub/core/api-error";

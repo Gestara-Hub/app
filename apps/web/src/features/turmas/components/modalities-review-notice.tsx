@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ListChecks, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { useModalitiesReviewOnBanner } from "@/lib/modalities-review-signal";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageHeader } from "@/components/layout/page-header";
-import { SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { KindBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,25 +11,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { PAGE_SIZE, listThreads, threadCounts } from "@/lib/server/support";
-import { FILTERS, isThreadFilter } from "@/lib/support-types";
+import { FILTERS, KIND_FILTERS, isThreadFilter, isThreadKind } from "@/lib/support-types";
 
 export const metadata: Metadata = { title: "Suporte" };
 
 /** Caixa de entrada do "Fale com a gente": quem espera resposta nossa vem primeiro (urgentes e mais antigos). */
-export default async function SupportPage({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string; page?: string }> }) {
+export default async function SupportPage({ searchParams }: { searchParams: Promise<{ filter?: string; kind?: string; q?: string; page?: string }> }) {
   const { admin } = await requireAdmin("support:view");
   const params = await searchParams;
   const filter = isThreadFilter(params.filter) ? params.filter : "attention";
+  const kind = isThreadKind(params.kind) ? params.kind : undefined;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const q = params.q?.trim() ?? "";
-  const [{ rows, hasNext }, counts] = await Promise.all([listThreads({ filter, q, page }), threadCounts()]);
+  const [{ rows, hasNext }, counts] = await Promise.all([listThreads({ filter, kind, q, page }), threadCounts()]);
   const now = new Date();
-  const link = (nextFilter: string, nextPage = 1) =>
-    `/support?filter=${nextFilter}${q ? `&q=${encodeURIComponent(q)}` : ""}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
+  const link = (nextFilter: string, nextPage = 1, nextKind: string | undefined = kind) =>
+    `/support?filter=${nextFilter}${nextKind ? `&kind=${nextKind}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
 
   return (
     <>
       <PageHeader title="Suporte" description="Conversas do Fale com a gente. A meta é responder em até 2 dias úteis.">
+        <Button asChild variant="outline">
+          <Link href="/support/help">Uso da ajuda</Link>
+        </Button>
         {can(admin.role, "support:reply") ? (
           <Button asChild variant="outline">
             <Link href="/support/macros">Respostas prontas</Link>
@@ -52,6 +56,14 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
         </Card>
       </div>
 
+      <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
+        {KIND_FILTERS.map((item) => (
+          <Button key={item.value} asChild size="sm" variant={(kind ?? "all") === item.value ? "secondary" : "ghost"}>
+            <Link href={link(filter, 1, item.value === "all" ? undefined : item.value)}>{item.label}</Link>
+          </Button>
+        ))}
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar conversas">
           {FILTERS.map((item) => (
@@ -62,6 +74,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
         </div>
         <form className="flex gap-2" action="/support">
           <input type="hidden" name="filter" value={filter} />
+          {kind ? <input type="hidden" name="kind" value={kind} /> : null}
           <Input name="q" defaultValue={q} placeholder="Buscar espaço, pessoa ou assunto" aria-label="Buscar conversas" className="w-64 text-base md:text-sm" />
           <Button type="submit" variant="outline">
             Buscar
@@ -100,6 +113,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1.5">
+                      <KindBadge kind={row.kind} />
                       <StatusBadge status={row.status} />
                       {row.urgent ? <UrgentBadge /> : null}
                       <SlaBadge status={row.status} since={row.lastCustomerMessageAt ?? row.createdAt} now={now} />

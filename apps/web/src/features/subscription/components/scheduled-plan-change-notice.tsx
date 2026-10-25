@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarClock } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { formatDate } from "@gestarahub/core/format";
 import type { Subscription } from "@gestarahub/contracts";

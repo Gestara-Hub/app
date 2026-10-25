@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { ClassGroupView, CreateLessonPackage, LessonPackage } from "@gestarahub/contracts";
 import { classBillingMode } from "@gestarahub/core/billing";
 import { MAX_PACKAGE_LESSONS } from "@gestarahub/core/packages";

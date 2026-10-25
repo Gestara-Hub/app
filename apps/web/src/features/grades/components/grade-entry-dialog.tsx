@@ -3,7 +3,7 @@
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useDialogPresence } from "@/lib/use-dialog-presence";
 import { useMemo, useState, type FormEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type {
   AssessmentGradeInput,
   AssessmentGradeStatus,

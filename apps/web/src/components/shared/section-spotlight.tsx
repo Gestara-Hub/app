@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Rect {
   top: number;

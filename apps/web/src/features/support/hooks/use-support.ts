@@ -10,7 +10,7 @@ import {
   sendSupportMessageAction,
   supportUnreadCountAction,
 } from "@/services/support/supportActions";
-import type { SupportThreadView } from "@/services/support/supportTypes";
+import type { SupportKind, SupportThreadView } from "@/services/support/supportTypes";
 
 const keys = {
   all: ["support"] as const,
@@ -63,7 +63,7 @@ function useSyncThread() {
 export function useSendSupportMessage() {
   const sync = useSyncThread();
   return useMutation({
-    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string }) =>
+    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string; kind?: SupportKind }) =>
       unwrap(sendSupportMessageAction(input)),
     onSuccess: sync,
   });
