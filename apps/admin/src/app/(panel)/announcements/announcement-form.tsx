@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { FormProvider, useWatch } from "react-hook-form";
 import { CheckboxGroupField, FormFeedback, InputText, SelectField, TextArea, useActionForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { announcementSchema } from "@/lib/form-schemas";
 import { previewAudienceAction, saveAnnouncementAction, type AnnouncementFormState } from "./actions";
 
@@ -55,61 +56,83 @@ export function AnnouncementForm({ values }: { values: FormValues }) {
       return {} as AnnouncementFormState;
     });
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <FormProvider {...form}>
-          <form onSubmit={submit()} className="space-y-4" noValidate>
-            <InputText name="title" label="Título" required maxLength={120} />
-            <TextArea name="body" label="Mensagem" required rows={4} maxLength={1000} />
-            <SelectField
-              name="severity"
-              label="Importância"
-              options={[
-                ["info", "Aviso (pode dispensar)"],
-                ["warning", "Atenção (pode dispensar)"],
-                ["urgent", "Urgente (fica até acabar)"],
-              ]}
-            />
-            <SelectField
-              name="audience"
-              label="Quem recebe"
-              options={[
-                ["all", "Todos os espaços"],
-                ["tier", "Por plano"],
-                ["area", "Por área"],
-                ["spaces", "Espaços escolhidos"],
-              ]}
-              onValueChange={() => setPreview({})}
-            />
-            {audience === "tier" ? <CheckboxGroupField name="tiers" legend="Planos" options={TIER_OPTIONS} /> : null}
-            {audience === "area" ? <CheckboxGroupField name="areas" legend="Áreas" options={Object.entries(AREA_LABEL)} columns /> : null}
-            {audience === "spaces" ? <TextArea name="spaces" label="Códigos dos espaços (um por linha)" rows={3} inputClassName="font-mono" /> : null}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <InputText name="startsAt" label="Começa em (Brasília)" type="datetime-local" hint="Vazio: começa agora." />
-              <InputText name="endsAt" label="Termina em (Brasília)" type="datetime-local" hint="Vazio: fica até você arquivar." />
-            </div>
-            <FormFeedback state={state} />
-            {preview.error ? (
-              <p role="alert" className="text-sm text-destructive">
-                {preview.error}
-              </p>
-            ) : null}
+    <FormProvider {...form}>
+      <form onSubmit={submit()} className="max-w-2xl space-y-4" noValidate>
+        <Section title="Mensagem" description="O que as pessoas vão ler no topo do app.">
+          <InputText name="title" label="Título" required maxLength={120} />
+          <TextArea name="body" label="Mensagem" required rows={4} maxLength={1000} />
+          <SelectField
+            name="severity"
+            label="Importância"
+            options={[
+              ["info", "Aviso (pode dispensar)"],
+              ["warning", "Atenção (pode dispensar)"],
+              ["urgent", "Urgente (fica até acabar)"],
+            ]}
+          />
+        </Section>
+
+        <Section title="Quem recebe" description="Confira a quantidade antes de publicar.">
+          <SelectField
+            name="audience"
+            label="Público"
+            options={[
+              ["all", "Todos os espaços"],
+              ["tier", "Por plano"],
+              ["area", "Por área"],
+              ["spaces", "Espaços escolhidos"],
+            ]}
+            onValueChange={() => setPreview({})}
+          />
+          {audience === "tier" ? <CheckboxGroupField name="tiers" legend="Planos" options={TIER_OPTIONS} /> : null}
+          {audience === "area" ? <CheckboxGroupField name="areas" legend="Áreas" options={Object.entries(AREA_LABEL)} columns /> : null}
+          {audience === "spaces" ? <TextArea name="spaces" label="Códigos dos espaços (um por linha)" rows={3} inputClassName="font-mono text-xs" /> : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" disabled={pending} onClick={submit(showPreview)}>
+              Ver quantos recebem
+            </Button>
             {preview.preview ? (
-              <p role="status" className="text-sm text-muted-foreground">
+              <p role="status" className="min-w-0 break-words text-sm text-muted-foreground">
                 {preview.preview}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={pending}>
-                {pending ? "Salvando..." : values.id ? "Salvar" : "Publicar"}
-              </Button>
-              <Button type="button" variant="outline" disabled={pending} onClick={submit(showPreview)}>
-                Ver quantos recebem
-              </Button>
-            </div>
-          </form>
-        </FormProvider>
-      </CardContent>
+          </div>
+          {preview.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {preview.error}
+            </p>
+          ) : null}
+        </Section>
+
+        <Section title="Quando vale" description="Horário de Brasília.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <InputText name="startsAt" label="Começa em" type="datetime-local" hint="Vazio: começa agora." />
+            <InputText name="endsAt" label="Termina em" type="datetime-local" hint="Vazio: fica até você arquivar." />
+          </div>
+        </Section>
+
+        <FormFeedback state={state} />
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button asChild variant="outline">
+            <Link href="/announcements">Cancelar</Link>
+          </Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Salvando..." : values.id ? "Salvar" : "Publicar"}
+          </Button>
+        </div>
+      </form>
+    </FormProvider>
+  );
+}
+
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent className="space-y-4">{children}</CardContent>
     </Card>
   );
 }

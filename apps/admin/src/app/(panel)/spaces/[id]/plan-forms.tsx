@@ -1,24 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FormProvider, type DefaultValues, type FieldValues } from "react-hook-form";
+import { toast } from "sonner";
 import type { z } from "zod";
 import { CheckboxField, FormFeedback, InputText, SelectField, TextArea, useActionForm, type ServerAction } from "@/components/form";
+import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
+import { DrawerBody, DrawerFooter, FormDrawer, useDrawerClose } from "@/components/shared/form-drawer";
+import { ListRow } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { courtesySchema, forceFreeSchema, graceSchema, reasonOnlySchema, userTwoFactorSchema } from "@/lib/form-schemas";
 import { inactivateSpaceAction, reactivateSpaceAction, resetUserTwoFactorAction } from "./privacy-actions";
 import { extendGraceAction, forceFreeAction, grantCourtesyAction, revokeCourtesyAction, type PlanFormState } from "./plan-actions";
 
 /**
- * Cada acao de plano pede o motivo e uma confirmacao em dois toques ("Revisar"
- * e depois "Confirmar"), porque mexe em dinheiro e no acesso do cliente. Os
- * campos validam no navegador (React Hook Form + Zod) antes de pedir a
- * confirmacao; a action valida de novo.
+ * Cada ação do espaço é uma linha com um botão que abre a gaveta do formulário. O motivo fica
+ * registrado e, como mexe em dinheiro ou no acesso do cliente, o envio sempre passa por uma
+ * confirmação. Os campos validam no navegador (React Hook Form + Zod) antes da confirmação;
+ * a action valida de novo.
  */
-export function ActionCard<S extends z.ZodType<FieldValues, FieldValues>>({
+export function ActionRow<S extends z.ZodType<FieldValues, FieldValues>>({
   title,
   description,
+  buttonLabel,
   spaceId,
   action,
   schema,
@@ -30,6 +34,7 @@ export function ActionCard<S extends z.ZodType<FieldValues, FieldValues>>({
 }: {
   title: string;
   description: string;
+  buttonLabel: string;
   spaceId: string;
   action: ServerAction<PlanFormState>;
   schema: S;
@@ -39,63 +44,112 @@ export function ActionCard<S extends z.ZodType<FieldValues, FieldValues>>({
   destructive?: boolean;
   children?: React.ReactNode;
 }) {
-  const [armed, setArmed] = useState(false);
+  return (
+    <ListRow
+      actions={
+        <FormDrawer
+          title={title}
+          description={description}
+          trigger={
+            <Button variant="outline" className={destructive ? "text-destructive hover:text-destructive" : undefined}>
+              {buttonLabel}
+            </Button>
+          }
+        >
+          <ActionDrawerForm
+            spaceId={spaceId}
+            action={action}
+            schema={schema}
+            defaultValues={defaultValues}
+            confirmText={confirmText}
+            confirmTitle={title}
+            submitLabel={submitLabel}
+            destructive={destructive}
+          >
+            {children}
+          </ActionDrawerForm>
+        </FormDrawer>
+      }
+    >
+      <p className="font-medium">{title}</p>
+      <p className="min-w-0 break-words text-sm text-muted-foreground">{description}</p>
+    </ListRow>
+  );
+}
+
+function ActionDrawerForm<S extends z.ZodType<FieldValues, FieldValues>>({
+  spaceId,
+  action,
+  schema,
+  defaultValues,
+  confirmText,
+  confirmTitle,
+  submitLabel,
+  destructive,
+  children,
+}: {
+  spaceId: string;
+  action: ServerAction<PlanFormState>;
+  schema: S;
+  defaultValues?: Record<string, unknown>;
+  confirmText: string;
+  confirmTitle: string;
+  submitLabel: string;
+  destructive?: boolean;
+  children?: React.ReactNode;
+}) {
+  const close = useDrawerClose();
+  const [confirming, setConfirming] = useState(false);
   const { form, state, pending, submit } = useActionForm<S, PlanFormState>({
     schema,
     defaultValues: { spaceId, reason: "", ...defaultValues } as DefaultValues<z.input<S>>,
-    action: async (prev, formData) => {
-      const result = await action(prev, formData);
-      setArmed(false);
-      return result;
+    action,
+    onSuccess: (result) => {
+      toast.success(result.message ?? "Pronto.");
+      close();
     },
   });
-  // Mudou algum campo depois de "Revisar": volta a pedir a revisao.
-  useEffect(() => {
-    const subscription = form.watch(() => setArmed(false));
-    return () => subscription.unsubscribe();
-  }, [form]);
+  const send = submit();
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FormProvider {...form}>
-          <form onSubmit={submit()} className="space-y-3" noValidate>
-            {children}
-            <TextArea name="reason" id={`reason-${title.normalize("NFD").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}`} label="Motivo (fica registrado)" rows={2} maxLength={300} />
-            {armed ? (
-              <p role="status" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-                {confirmText}
-              </p>
-            ) : null}
-            <FormFeedback state={state} />
-            {armed ? (
-              <div className="flex gap-2">
-                <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={pending}>
-                  {pending ? "Aplicando..." : submitLabel}
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setArmed(false)}>
-                  Voltar
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" onClick={form.handleSubmit(() => setArmed(true), () => setArmed(false))}>
-                Revisar
-              </Button>
-            )}
-          </form>
-        </FormProvider>
-      </CardContent>
-    </Card>
+    <FormProvider {...form}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          // Valida os campos e só então pede a confirmação.
+          void form.handleSubmit(() => setConfirming(true))(event);
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+        noValidate
+      >
+        <DrawerBody>
+          {children}
+          <TextArea name="reason" label="Motivo (fica registrado)" rows={3} maxLength={300} />
+          <FormFeedback state={state} />
+        </DrawerBody>
+        <DrawerFooter submitLabel={submitLabel} pendingLabel="Aplicando..." pending={pending} />
+      </form>
+      <ConfirmActionDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={confirmTitle}
+        description={confirmText}
+        confirmLabel={submitLabel}
+        variant={destructive ? "destructive" : "default"}
+        isPending={pending}
+        onConfirm={async () => {
+          setConfirming(false);
+          await send();
+        }}
+      />
+    </FormProvider>
   );
 }
 
 export function CourtesyForm({ spaceId }: { spaceId: string }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Dar cortesia"
+      buttonLabel="Dar cortesia"
       description="Plano pago de graça por um tempo. No fim, volta ao Grátis sozinho e o dono é avisado no histórico do plano."
       spaceId={spaceId}
       action={grantCourtesyAction}
@@ -115,14 +169,15 @@ export function CourtesyForm({ spaceId }: { spaceId: string }) {
         />
         <InputText name="days" label="Dias" type="number" min={1} max={365} />
       </div>
-    </ActionCard>
+    </ActionRow>
   );
 }
 
 export function RevokeCourtesyForm({ spaceId }: { spaceId: string }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Encerrar a cortesia agora"
+      buttonLabel="Encerrar cortesia"
       description="O espaço volta ao Grátis na hora."
       spaceId={spaceId}
       action={revokeCourtesyAction}
@@ -136,8 +191,9 @@ export function RevokeCourtesyForm({ spaceId }: { spaceId: string }) {
 
 export function GraceForm({ spaceId }: { spaceId: string }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Dar mais dias para pagar"
+      buttonLabel="Dar mais dias"
       description="Para renovação atrasada por problema nosso (Pix fora do ar, por exemplo). A nova data vale a partir de hoje."
       spaceId={spaceId}
       action={extendGraceAction}
@@ -147,14 +203,15 @@ export function GraceForm({ spaceId }: { spaceId: string }) {
       submitLabel="Confirmar"
     >
       <InputText name="days" label="Dias (1 a 30)" type="number" min={1} max={30} inputClassName="w-28" />
-    </ActionCard>
+    </ActionRow>
   );
 }
 
 export function ForceFreeForm({ spaceId, needsPartnerCheck }: { spaceId: string; needsPartnerCheck: boolean }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Voltar ao Grátis agora"
+      buttonLabel="Voltar ao Grátis"
       description="Para abuso ou pedido do cliente fora do aplicativo. Não cancela a cobrança no parceiro de pagamentos."
       spaceId={spaceId}
       action={forceFreeAction}
@@ -165,14 +222,15 @@ export function ForceFreeForm({ spaceId, needsPartnerCheck }: { spaceId: string;
       destructive
     >
       {needsPartnerCheck ? <CheckboxField name="partnerCanceled" label="Já cancelei a assinatura deste espaço no parceiro de pagamentos." /> : null}
-    </ActionCard>
+    </ActionRow>
   );
 }
 
 export function InactivateSpaceForm({ spaceId }: { spaceId: string }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Inativar o espaço"
+      buttonLabel="Inativar"
       description="Ninguém do espaço entra mais e as rotinas diárias pulam o espaço. Nada é apagado; dá para reativar."
       spaceId={spaceId}
       action={inactivateSpaceAction}
@@ -186,8 +244,9 @@ export function InactivateSpaceForm({ spaceId }: { spaceId: string }) {
 
 export function ReactivateSpaceForm({ spaceId }: { spaceId: string }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Reativar o espaço"
+      buttonLabel="Reativar"
       description="Devolve o acesso a todos do espaço. Nada foi apagado."
       spaceId={spaceId}
       action={reactivateSpaceAction}
@@ -201,8 +260,9 @@ export function ReactivateSpaceForm({ spaceId }: { spaceId: string }) {
 /** Reiniciar o 2FA de uma pessoa do espaco: escolhe a pessoa, diz o motivo e confirma. */
 export function ResetUserTwoFactorForm({ spaceId, users }: { spaceId: string; users: { id: string; label: string }[] }) {
   return (
-    <ActionCard
+    <ActionRow
       title="Reiniciar a verificação em duas etapas de uma pessoa"
+      buttonLabel="Reiniciar"
       description="Para quem perdeu o aplicativo e não guardou os códigos de recuperação. Confirme quem é a pessoa por fora do sistema antes (por exemplo, pela conversa do Fale com a gente)."
       spaceId={spaceId}
       action={resetUserTwoFactorAction}
@@ -213,6 +273,6 @@ export function ResetUserTwoFactorForm({ spaceId, users }: { spaceId: string; us
       destructive
     >
       <SelectField name="userId" label="Pessoa" options={[["", "Escolha a pessoa..."], ...users.map((u) => [u.id, u.label] as const)]} />
-    </ActionCard>
+    </ActionRow>
   );
 }

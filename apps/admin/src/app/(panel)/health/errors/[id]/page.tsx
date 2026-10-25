@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { BackLink } from "@/components/shared/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +27,8 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <Button asChild variant="ghost" className="mb-2 -ml-2">
-        <Link href={error.organizationId ? `/spaces/${error.organizationId}?tab=saude` : "/health"}>
-          <ArrowLeft className="size-4" /> Voltar
-        </Link>
-      </Button>
-      <PageHeader title={error.event} description={error.message}>
+      <BackLink href={error.organizationId ? `/spaces/${error.organizationId}?tab=saude` : "/health"} />
+      <PageHeader title="Detalhe do erro" description={error.message}>
         <Badge variant="secondary" className="font-normal">
           {SOURCE_LABEL[error.source] ?? error.source}
         </Badge>
@@ -43,6 +39,7 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
         ) : null}
         {error.known ? <Badge className="font-normal">Conhecido</Badge> : null}
       </PageHeader>
+      <p className="-mt-3 mb-6 break-all font-mono text-xs text-muted-foreground">{error.event}</p>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-4">
@@ -79,7 +76,7 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                   {contextEntries.map(([key, value]) => (
                     <div key={key} className="contents">
-                      <dt className="text-muted-foreground">{key}</dt>
+                      <dt className="break-all font-mono text-xs text-muted-foreground">{key}</dt>
                       <dd className="min-w-0 break-all font-mono text-xs">{typeof value === "string" ? value : JSON.stringify(value)}</dd>
                     </div>
                   ))}

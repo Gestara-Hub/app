@@ -31,7 +31,11 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
   // ambiente, para nao confundir o painel local com o de verdade.
   const env = getEnv().ADMIN_ENV_LABEL;
   const issuer = env === "production" ? "GestaraHub Painel" : `GestaraHub Painel (${env})`;
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Painel ${ctx.admin.email}`, issuer });
+  // Uma segunda tentativa cobre falha momentânea do serviço de login (o fator da primeira não chega a existir).
+  let { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Painel ${ctx.admin.email}`, issuer });
+  if (error || !data) {
+    ({ data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Painel ${ctx.admin.email} (2)`, issuer }));
+  }
   if (error || !data) {
     return <p role="alert" className="text-sm text-destructive">Não foi possível preparar o aplicativo autenticador. Recarregue a página.</p>;
   }

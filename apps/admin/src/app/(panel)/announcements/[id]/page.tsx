@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
+import { BackLink } from "@/components/shared/back-link";
 import { toBrasiliaInput } from "@/lib/format";
 import { getAnnouncement } from "@/lib/server/announcements";
 import { requireAdmin } from "@/lib/server/context";
@@ -15,6 +16,7 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
   if (!row) notFound();
   return (
     <>
+      <BackLink href="/announcements" label="Voltar aos Comunicados" />
       <PageHeader title="Editar comunicado" description={`${row.dismissed} ${row.dismissed === 1 ? "pessoa dispensou" : "pessoas dispensaram"}.`} />
       <AnnouncementForm
         values={{

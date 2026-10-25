@@ -447,3 +447,23 @@ Status: Proposta, não implementada. Motivo do dono: lançar sem custo de IA, co
 - Teste `lib/support/__tests__/help-guides.test.ts`: a rota do guia é uma tela do app, 1 a 8 passos, texto até 160 caracteres e cada rótulo existe no código. Rótulo que mudou reprova o teste.
 - Eventos de uso (PostHog, com consentimento): `help_guide_started`, `help_guide_finished`, `help_guide_closed` (com o id do guia e o passo).
 - Limites: o guia depende do texto da tela, então renomear botão exige ajustar o artigo (o teste avisa); passos em listas dinâmicas usam rótulos fixos vizinhos; o Esc fecha o guia (e a janela que estiver aberta).
+
+## 19. Redesenho da interface do painel (25/10/2026)
+
+Status: Feito. O painel passou a seguir os componentes e padrões do app dos clientes (docs/frontend/07), em vez de páginas com formulários soltos e tabelas cruas.
+
+**Base (`apps/admin/src/components`)**
+- Primitivos idênticos aos do web: `ui/*` (Button, Badge, Card, Select Radix, Dialog, AlertDialog, Sheet, DropdownMenu...) e `PageHeader` (título 2xl, botão primário no canto direito).
+- `shared/list/*` (ListContainer, ListRow, ListSummaryBar, SearchInput, InitialsAvatar), `shared/stat-card.tsx` (StatCard/StatGrid, no máximo 4 por linha), `shared/segmented-links.tsx` (filtro por link com contagem), `shared/tab-links.tsx` (abas de detalhe), `shared/url-filters.tsx` (UrlSearch, UrlSelect, UrlClearFilters: filtros no endereço; as páginas continuam renderizadas no servidor), `shared/form-drawer.tsx` (FormDrawer, DrawerBody, DrawerFooter: formulário em gaveta, rodapé "Cancelar" e "Adicionar"/"Salvar"), `shared/confirm-submit.tsx` e `shared/confirm-action-dialog.tsx` (ação crítica sempre confirmada), `shared/empty-state.tsx`, `shared/back-link.tsx`, `shared/auth-card.tsx`, `shared/fact-list.tsx`, `shared/copy-code.tsx`.
+- `useActionForm` ganhou `onSuccess` (fechar a gaveta e avisar por toast); `SelectField` virou o Radix do web.
+
+**Telas**
+- Cadastros saem de cima das listas e abrem em gaveta pelo botão do cabeçalho (Equipe, Respostas prontas, LGPD, anotações do espaço, ações do plano, exportação e inativação, visão de suporte).
+- Listas com busca/filtro, contagem e linhas com avatar, selos e menu ⋮ (Início, Suporte, Espaços, Equipe, Saúde, Auditoria, Comunicados, LGPD); tabela só onde os dados são numéricos (catálogo de planos, receita).
+- Ações críticas agora pedem confirmação (encerrar e reabrir conversa, arquivar comunicado, excluir resposta, mudar papel, desativar, reiniciar 2FA, ações do plano, encerrar visão de suporte).
+- Telas de entrada com o visual do web (cartão centralizado, QR e chave do autenticador organizados, passos numerados).
+- Bugs de texto e dado corrigidos: "O em aberto" na LGPD, "há 0 segundos", plano "Grátis" duplicado, UUID cru na Auditoria (agora o nome do espaço com link), origem "::1" (agora "Este computador"), status do parceiro em inglês.
+- Decisões: comunicados novo e editar continuam páginas (a action faz `redirect`); o menu ⋮ de linha aciona gaveta e confirmação por gatilhos ocultos (testado em navegador).
+
+**Testes (`apps/admin/e2e`, Playwright, `pnpm --filter @gestarahub/admin e2e`)**: porta 3101 com `.next-e2e`, um teste por vez, só quando pedido. `acesso.spec.ts` (validação do login, senha errada, autenticador, código errado, sair e entrar, cliente barrado, destino do login), `fluxos.spec.ts` (convidar e desativar, respostas prontas, comunicado, LGPD, conversa de suporte, filtros e abas de espaço, anotação e ações do plano, erro conhecido, papéis) e `telas.spec.ts` (todas as telas, desktop e celular: sem erro de console, sem 5xx, com título e sem rolagem horizontal, mais capturas em `test-results/telas`). Os dados de teste levam a marca "E2E" e são apagados no início e no fim.
+- O cadastro do autenticador tenta de novo uma vez se o serviço de login falhar na primeira (a falha apareceu uma vez, não se repetiu).

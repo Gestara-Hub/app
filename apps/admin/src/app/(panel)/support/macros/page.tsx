@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { BackLink } from "@/components/shared/back-link";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FormDrawer } from "@/components/shared/form-drawer";
+import { ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/server/context";
 import { listMacros } from "@/lib/server/support";
-import { deleteMacroAction } from "../actions";
 import { MacroForm } from "./macro-form";
+import { MacroRowActions } from "./macro-row-actions";
 
 export const metadata: Metadata = { title: "Respostas prontas" };
 
@@ -16,37 +18,33 @@ export default async function MacrosPage() {
   const macros = await listMacros();
   return (
     <>
-      <Button asChild variant="ghost" className="mb-2 -ml-2">
-        <Link href="/support">
-          <ArrowLeft className="size-4" /> Voltar ao Suporte
-        </Link>
-      </Button>
-      <PageHeader title="Respostas prontas" description="Textos que você insere na resposta ao cliente com um clique." />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Nova resposta pronta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MacroForm />
-          </CardContent>
-        </Card>
-        {macros.map((macro) => (
-          <Card key={macro.id}>
-            <CardHeader>
-              <CardTitle className="text-base break-words">{macro.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <MacroForm macro={macro} />
-              <form action={deleteMacroAction}>
-                <input type="hidden" name="id" value={macro.id} />
-                <Button type="submit" variant="ghost" className="text-destructive">
-                  Excluir
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        ))}
+      <BackLink href="/support" label="Voltar ao Suporte" />
+      <PageHeader title="Respostas prontas" description="Textos que você insere na resposta ao cliente com um clique.">
+        <FormDrawer title="Nova resposta pronta" description="Fica disponível na caixa de resposta de cada conversa." trigger={<Button>+ Nova resposta pronta</Button>}>
+          <MacroForm />
+        </FormDrawer>
+      </PageHeader>
+
+      <div className="space-y-2">
+        <ListSummaryBar count={macros.length} singularLabel="resposta pronta" pluralLabel="respostas prontas" />
+        <ListContainer
+          emptyState={
+            macros.length === 0 ? (
+              <EmptyState icon={MessageSquareText} title="Nenhuma resposta pronta ainda" description="Crie textos para as respostas que você repete.">
+                <FormDrawer title="Nova resposta pronta" trigger={<Button>+ Nova resposta pronta</Button>}>
+                  <MacroForm />
+                </FormDrawer>
+              </EmptyState>
+            ) : undefined
+          }
+        >
+          {macros.map((macro) => (
+            <ListRow key={macro.id} actions={<MacroRowActions macro={macro} />}>
+              <p className="min-w-0 break-words font-medium">{macro.title}</p>
+              <p className="mt-1 min-w-0 whitespace-pre-wrap break-words text-sm text-muted-foreground">{macro.body}</p>
+            </ListRow>
+          ))}
+        </ListContainer>
       </div>
     </>
   );

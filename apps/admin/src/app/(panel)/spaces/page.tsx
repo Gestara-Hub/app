@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
+import { Building2 } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { InitialsAvatar, ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
+import { SpaceRowMenu } from "./space-row-menu";
 import { PlanBadge } from "@/components/shared/plan-badge";
 import { Pager } from "@/components/shared/pager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ago, dateOnly } from "@/lib/format";
+import { dateOnly } from "@/lib/format";
+import { agoFriendly } from "@/lib/friendly-time";
 import { brasiliaDay } from "@/lib/sla";
 import { requireAdmin } from "@/lib/server/context";
 import { SPACE_SITUATIONS, SPACE_SORTS, listSpaces, spaceTotals, type SpaceFilters, type SpaceSituation, type SpaceSort } from "@/lib/server/spaces";
@@ -55,9 +59,12 @@ export default async function SpacesPage({ searchParams }: { searchParams: Promi
   };
   const exportHref = `/spaces/export?${query({ page: undefined })}`;
 
+  const clearable = ["q", "tier", "situation", "area", "created", "sort"];
+  const hasFilters = clearable.some((key) => params[key]);
+
   return (
     <>
-      <PageHeader title="Espaços" description="Todos os espaços (tenants) e a situação de cada um. Só números: nenhum dado de aluno.">
+      <PageHeader title="Espaços" description="Todos os espaços e a situação de cada um. Só números: nenhum dado de aluno.">
         <Button asChild variant="outline">
           <Link href={exportHref} prefetch={false}>
             Exportar CSV
@@ -65,105 +72,71 @@ export default async function SpacesPage({ searchParams }: { searchParams: Promi
         </Button>
       </PageHeader>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
-        {[
-          ["Espaços", totals.total],
-          ["Com plano pago", totals.paid],
-          ["Sem acesso há 30 dias", totals.noAccess30d],
-          ["Inativos", totals.inactive],
-        ].map(([label, value]) => (
-          <Card key={label} className="gap-1 p-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold tabular-nums">{value}</p>
-          </Card>
-        ))}
+      <StatGrid>
+        <StatCard label="Espaços" value={totals.total} />
+        <StatCard label="Com plano pago" value={totals.paid} />
+        <StatCard label="Sem acesso há 30 dias" value={totals.noAccess30d} tone={totals.noAccess30d > 0 ? "warning" : "default"} />
+        <StatCard label="Inativos" value={totals.inactive} />
+      </StatGrid>
+
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+        <UrlSearch placeholder="Buscar por nome, dono, e-mail ou código" ariaLabel="Buscar espaços" />
+        <div className="flex flex-wrap items-center gap-2">
+          <UrlSelect param="tier" ariaLabel="Plano" allLabel="Todos os planos" options={[["free", "Grátis"], ["pro", "Profissional"], ["scale", "Expansão"]]} />
+          <UrlSelect param="situation" ariaLabel="Situação" allLabel="Todas as situações" className="sm:w-52" options={SPACE_SITUATIONS.filter((s) => s !== "all").map((s) => [s, SITUATION_LABEL[s]] as const)} />
+          <UrlSelect param="area" ariaLabel="Área" allLabel="Todas as áreas" options={Object.entries(AREA_LABEL)} />
+          <UrlSelect param="created" ariaLabel="Criado" allLabel="Qualquer data" options={[["7", "Últimos 7 dias"], ["30", "Últimos 30 dias"]]} />
+          <UrlSelect param="sort" ariaLabel="Ordem" allLabel="Mais novos" options={SPACE_SORTS.filter((s) => s !== "recent").map((s) => [s, SORT_LABEL[s]] as const)} />
+          <UrlClearFilters params={clearable} />
+        </div>
       </div>
 
-      <form action="/spaces" className="mb-4 flex flex-wrap items-end gap-2">
-        <Input name="q" defaultValue={filters.q} placeholder="Nome, dono, e-mail ou código" aria-label="Buscar espaços" className="w-64 text-base md:text-sm" />
-        <Select name="tier" label="Plano" value={filters.tier} options={[["", "Todos os planos"], ["free", "Grátis"], ["pro", "Profissional"], ["scale", "Expansão"]]} />
-        <Select name="situation" label="Situação" value={filters.situation} options={SPACE_SITUATIONS.map((s) => [s === "all" ? "" : s, SITUATION_LABEL[s]])} />
-        <Select name="area" label="Área" value={filters.area} options={[["", "Todas as áreas"], ...Object.entries(AREA_LABEL)]} />
-        <Select name="created" label="Criado" value={params.created} options={[["", "Qualquer data"], ["7", "Últimos 7 dias"], ["30", "Últimos 30 dias"]]} />
-        <Select name="sort" label="Ordem" value={filters.sort} options={SPACE_SORTS.map((s) => [s, SORT_LABEL[s]])} />
-        <Button type="submit">Filtrar</Button>
-        {Object.keys(params).some((k) => k !== "page" && params[k]) ? (
-          <Button asChild variant="ghost">
-            <Link href="/spaces">Limpar</Link>
-          </Button>
-        ) : null}
-      </form>
-
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Espaço</TableHead>
-              <TableHead>Plano</TableHead>
-              <TableHead className="text-right">Alunos</TableHead>
-              <TableHead className="text-right">Turmas</TableHead>
-              <TableHead>Último acesso</TableHead>
-              <TableHead>Criado em</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  Nenhum espaço com esses filtros.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="max-w-72">
-                    <Link href={`/spaces/${row.id}`} className="font-medium break-words hover:underline">
+      <div className="space-y-2">
+        <ListSummaryBar count={rows.length} singularLabel="espaço" pluralLabel="espaços" />
+        <ListContainer
+          emptyState={
+            rows.length === 0 ? (
+              <EmptyState icon={Building2} title="Nenhum espaço com esses filtros" description={hasFilters ? "Tire um filtro ou limpe a busca." : "Os espaços aparecem aqui quando alguém se cadastra."} />
+            ) : undefined
+          }
+        >
+          {rows.map((row) => (
+            <ListRow key={row.id} actions={<SpaceRowMenu id={row.id} name={row.name} hasErrors={row.errors24h > 0} />}>
+              <div className="flex min-w-0 items-start gap-3">
+                <InitialsAvatar name={row.name} />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Link href={`/spaces/${row.id}`} className="min-w-0 break-words font-medium hover:underline">
                       {row.name}
                     </Link>
-                    <p className="text-xs text-muted-foreground break-words">
-                      {row.ownerName ?? "Sem dono ativo"} · {row.customAreaName || AREA_LABEL[row.area ?? ""] || "Sem área"}
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {row.status === "inactive" ? <Badge variant="destructive" className="font-normal">Inativo</Badge> : null}
-                      {row.errors24h > 0 ? (
-                        <Link href={`/spaces/${row.id}?tab=saude`} title="Ver os erros deste espaço">
-                          <Badge variant="outline" className="border-destructive/40 font-normal text-destructive hover:bg-destructive/10">{row.errors24h} erro{row.errors24h > 1 ? "s" : ""} em 24 h</Badge>
-                        </Link>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm">{planName(row.subscription)}</p>
                     <PlanBadge subscription={row.subscription} today={today} />
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{row.studentsActive}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.classesActive}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{ago(row.lastSignInAt)}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{dateOnly(row.createdAt)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+                    {row.subscription?.tier && row.subscription.tier !== "free" ? <span className="text-xs text-muted-foreground">{planName(row.subscription)}</span> : null}
+                    {row.status === "inactive" ? (
+                      <Badge variant="destructive" className="font-normal">
+                        Inativo
+                      </Badge>
+                    ) : null}
+                    {row.errors24h > 0 ? (
+                      <Link href={`/spaces/${row.id}?tab=saude`} title="Ver os erros deste espaço">
+                        <Badge variant="outline" className="border-destructive/40 font-normal text-destructive hover:bg-destructive/10">
+                          {row.errors24h} {row.errors24h > 1 ? "erros" : "erro"} em 24 h
+                        </Badge>
+                      </Link>
+                    ) : null}
+                  </div>
+                  <p className="min-w-0 break-words text-xs text-muted-foreground">
+                    {row.ownerName ?? "Sem dono ativo"} · {row.customAreaName || AREA_LABEL[row.area ?? ""] || "Sem área"}
+                  </p>
+                  <p className="min-w-0 break-words text-xs text-muted-foreground tabular-nums">
+                    {row.studentsActive} {row.studentsActive === 1 ? "aluno" : "alunos"} · {row.classesActive} {row.classesActive === 1 ? "turma" : "turmas"} · acesso {agoFriendly(row.lastSignInAt)} · criado em {dateOnly(row.createdAt)}
+                  </p>
+                </div>
+              </div>
+            </ListRow>
+          ))}
+        </ListContainer>
+      </div>
       <Pager page={filters.page} hasNext={hasNext} href={(page) => `/spaces?${query({ page: page > 1 ? String(page) : undefined })}`} />
     </>
-  );
-}
-
-function Select({ name, label, value, options }: { name: string; label: string; value?: string; options: (readonly [string, string])[] | [string, string][] }) {
-  return (
-    <select
-      name={name}
-      defaultValue={value ?? ""}
-      aria-label={label}
-      className="h-9 rounded-md border bg-background px-2 text-base md:text-sm"
-    >
-      {options.map(([optionValue, optionLabel]) => (
-        <option key={optionValue} value={optionValue}>
-          {optionLabel}
-        </option>
-      ))}
-    </select>
   );
 }

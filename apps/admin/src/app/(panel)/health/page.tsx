@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Activity, AlertTriangle, Bell } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
 import { Pager } from "@/components/shared/pager";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { TabLinks } from "@/components/shared/tab-links";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ago, dateTime } from "@/lib/format";
 import { requireAdmin } from "@/lib/server/context";
 import {
@@ -23,7 +26,7 @@ import {
   webhookStats,
   type Period,
 } from "@/lib/server/health";
-import { markKnownAction, unmarkKnownAction } from "./actions";
+import { ErrorRowMenu } from "./known-menu";
 
 export const metadata: Metadata = { title: "Saúde" };
 
@@ -38,6 +41,10 @@ const JOB_LABEL: Record<string, string> = { "cron.daily": "Rotina diária (mensa
 const JOB_STATUS_LABEL: Record<string, string> = { running: "Rodando", ok: "Tudo certo", partial: "Terminou com falhas", failed: "Falhou" };
 const SOURCE_LABEL: Record<string, string> = { server: "Servidor", browser: "Navegador", cron: "Rotina", webhook: "Aviso do parceiro" };
 const GATEWAY_LABEL: Record<string, string> = { not_configured: "Sem conta de recebimento", pending: "Em análise no parceiro", approved: "Aprovada", rejected: "Recusada" };
+const WEBHOOK_STATUS_LABEL: Record<string, string> = { received: "Recebido", processed: "Processado", ignored: "Ignorado", failed: "Falhou" };
+
+/** Código ou identificador técnico: fonte mono pequena, quebrando em qualquer ponto. */
+const MONO = "break-all font-mono text-xs";
 
 export default async function HealthPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   await requireAdmin("health:view");
@@ -70,53 +77,46 @@ async function Errors({ params, page, query }: { params: Record<string, string |
     listErrors({ period, source: params.source || undefined, level: params.level || undefined, q, hideKnown: params.known === "hide", page }),
     q && /^[A-Za-z0-9]{6,10}$/.test(q) ? findErrorByReference(q) : Promise.resolve(null),
   ]);
+  const hasFilters = Boolean(q || params.period || params.source || params.level || params.known);
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Erros nas últimas 24 h</p>
-          <p className="text-2xl font-semibold tabular-nums">{totals.today}</p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Espaços afetados</p>
-          <p className="text-2xl font-semibold tabular-nums">{totals.spacesAffected}</p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Ainda não conhecidos</p>
-          <p className="text-2xl font-semibold tabular-nums">{totals.unknown}</p>
-        </Card>
-      </div>
+      <StatGrid className="mb-0">
+        <StatCard label="Erros nas últimas 24 h" value={totals.today} tone={totals.today > 0 ? "warning" : "default"} />
+        <StatCard label="Espaços afetados" value={totals.spacesAffected} />
+        <StatCard label="Ainda não conhecidos" value={totals.unknown} tone={totals.unknown > 0 ? "danger" : "default"} />
+      </StatGrid>
 
-      <form action="/health" className="flex flex-wrap items-end gap-2">
-        <input type="hidden" name="tab" value="erros" />
-        <Input name="q" defaultValue={q} placeholder="Código do erro, onde ou mensagem" aria-label="Buscar erros" className="w-72 text-base md:text-sm" />
-        <select name="period" defaultValue={period} aria-label="Período" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          {Object.entries(PERIODS).map(([value, label]) => (
-            <option key={value} value={value}>{`Últimos ${label}`}</option>
-          ))}
-        </select>
-        <select name="source" defaultValue={params.source ?? ""} aria-label="Origem" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          <option value="">Todas as origens</option>
-          {Object.entries(SOURCE_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <select name="level" defaultValue={params.level ?? ""} aria-label="Nível" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          <option value="">Erros e avisos</option>
-          <option value="error">Só erros</option>
-          <option value="warn">Só avisos</option>
-        </select>
-        <select name="known" defaultValue={params.known ?? ""} aria-label="Conhecidos" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          <option value="">Com os conhecidos</option>
-          <option value="hide">Esconder os conhecidos</option>
-        </select>
-        <Button type="submit">Filtrar</Button>
-      </form>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <UrlSearch placeholder="Código, local ou mensagem" ariaLabel="Buscar erros" />
+        <UrlSelect
+          param="period"
+          ariaLabel="Período"
+          allLabel={`Últimas ${PERIODS["24h"]}`}
+          options={[
+            ["7d", `Últimos ${PERIODS["7d"]}`],
+            ["30d", `Últimos ${PERIODS["30d"]}`],
+          ]}
+        />
+        <UrlSelect param="source" ariaLabel="Origem" allLabel="Todas as origens" options={Object.entries(SOURCE_LABEL)} />
+        <UrlSelect
+          param="level"
+          ariaLabel="Nível"
+          allLabel="Erros e avisos"
+          options={[
+            ["error", "Só erros"],
+            ["warn", "Só avisos"],
+          ]}
+        />
+        <UrlSelect param="known" ariaLabel="Conhecidos" allLabel="Com os conhecidos" options={[["hide", "Esconder os conhecidos"]]} className="sm:w-52" />
+        <UrlClearFilters params={["q", "period", "source", "level", "known"]} />
+      </div>
 
       {byCode ? (
         <Card className="border-primary/40">
           <CardHeader>
-            <CardTitle className="text-base">Código {byCode.lastReference}</CardTitle>
+            <CardTitle className="text-base">
+              Código <span className="font-mono">{byCode.lastReference}</span>
+            </CardTitle>
             <CardDescription>
               {byCode.organizationId ? (
                 <>
@@ -131,7 +131,7 @@ async function Errors({ params, page, query }: { params: Record<string, string |
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
-            <p className="font-mono text-xs break-all">{byCode.event}</p>
+            <p className={MONO}>{byCode.event}</p>
             <p className="break-words">{byCode.message}</p>
             <p className="text-muted-foreground">
               {byCode.count} vez{byCode.count > 1 ? "es" : ""} · último {ago(byCode.lastSeen)}
@@ -140,71 +140,46 @@ async function Errors({ params, page, query }: { params: Record<string, string |
         </Card>
       ) : null}
 
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Onde</TableHead>
-              <TableHead>Mensagem</TableHead>
-              <TableHead>Espaço</TableHead>
-              <TableHead className="text-right">Vezes</TableHead>
-              <TableHead>Último</TableHead>
-              <TableHead>Código</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  Nenhum erro com esses filtros.
-                </TableCell>
-              </TableRow>
-            ) : (
-              list.rows.map((row) => (
-                <TableRow key={row.id} className={row.known ? "opacity-60" : undefined}>
-                  <TableCell>
-                    <Link href={`/health/errors/${row.id}`} className="font-mono text-xs break-all hover:underline">
-                      {row.event}
+      <div className="space-y-2">
+        <ListSummaryBar count={list.rows.length} singularLabel="erro nesta página" pluralLabel="erros nesta página" />
+        <ListContainer
+          emptyState={list.rows.length === 0 ? <EmptyState icon={AlertTriangle} title="Nenhum erro com esses filtros." description={hasFilters ? "Tente outro período ou limpe os filtros." : undefined} /> : undefined}
+        >
+          {list.rows.map((row) => (
+            <ListRow key={row.id} className={row.known ? "opacity-60" : undefined} actions={<ErrorRowMenu id={row.id} fingerprint={row.fingerprint} known={row.known} event={row.event} />}>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Link href={`/health/errors/${row.id}`} className={`${MONO} hover:underline`}>
+                    {row.event}
+                  </Link>
+                  <Badge variant="secondary" className="font-normal">
+                    {SOURCE_LABEL[row.source] ?? row.source}
+                  </Badge>
+                  {row.level === "warn" ? (
+                    <Badge variant="outline" className="font-normal">
+                      Aviso
+                    </Badge>
+                  ) : null}
+                  {row.known ? <Badge className="font-normal">Conhecido</Badge> : null}
+                </div>
+                <p className="min-w-0 break-words text-sm">{row.message}</p>
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>
+                    {row.count} vez{row.count > 1 ? "es" : ""}
+                  </span>
+                  <span title={dateTime(row.lastSeen)}>último {ago(row.lastSeen)}</span>
+                  {row.organizationId ? (
+                    <Link href={`/spaces/${row.organizationId}?tab=saude`} className="break-words underline underline-offset-2">
+                      {row.organizationName}
                     </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {SOURCE_LABEL[row.source] ?? row.source}
-                      {row.level === "warn" ? " · aviso" : ""}
-                    </p>
-                  </TableCell>
-                  <TableCell className="max-w-80 break-words">
-                    <Link href={`/health/errors/${row.id}`} className="hover:underline">
-                      {row.message}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="break-words">
-                    {row.organizationId ? (
-                      <Link href={`/spaces/${row.organizationId}?tab=saude`} className="hover:underline">
-                        {row.organizationName}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{row.count}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground" title={dateTime(row.lastSeen)}>
-                    {ago(row.lastSeen)}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{row.lastReference ?? "—"}</TableCell>
-                  <TableCell>
-                    <form action={row.known ? unmarkKnownAction : markKnownAction}>
-                      <input type="hidden" name="fingerprint" value={row.fingerprint} />
-                      <Button type="submit" variant="ghost" size="xs">
-                        {row.known ? "Desmarcar conhecido" : "Marcar conhecido"}
-                      </Button>
-                    </form>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+                  ) : null}
+                  {row.lastReference ? <span className="font-mono">{row.lastReference}</span> : null}
+                </p>
+              </div>
+            </ListRow>
+          ))}
+        </ListContainer>
+      </div>
       <Pager page={page} hasNext={list.hasNext} href={(p) => `/health?${query({ page: p > 1 ? String(p) : undefined })}`} />
     </div>
   );
@@ -214,44 +189,45 @@ async function Jobs() {
   const [runs, last] = await Promise.all([listJobRuns(30), lastRunPerJob()]);
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {last.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma rotina rodou ainda.</p> : null}
-        {last.map((job) => (
-          <Card key={job.job} className="gap-1 p-4">
-            <p className="text-xs text-muted-foreground">{JOB_LABEL[job.job] ?? job.job}</p>
-            <p className="text-base font-semibold">{ago(job.startedAt)}</p>
-            <Badge variant={job.status === "ok" ? "secondary" : "destructive"} className="w-fit font-normal">
-              {job.failures ? `${job.failures} falha${job.failures > 1 ? "s" : ""}` : JOB_STATUS_LABEL[job.status] ?? job.status}
-            </Badge>
-          </Card>
-        ))}
+      {last.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhuma rotina rodou ainda.</p>
+      ) : (
+        <StatGrid className="mb-0">
+          {last.map((job) => (
+            <StatCard
+              key={job.job}
+              label={JOB_LABEL[job.job] ?? job.job}
+              value={<span className="text-lg">{ago(job.startedAt)}</span>}
+              tone={job.status === "ok" ? "success" : "danger"}
+              sub={job.failures ? `${job.failures} falha${job.failures > 1 ? "s" : ""}` : JOB_STATUS_LABEL[job.status] ?? job.status}
+            />
+          ))}
+        </StatGrid>
+      )}
+      <div className="space-y-2">
+        <ListSummaryBar count={runs.length} singularLabel="execução" pluralLabel="execuções" />
+        <ListContainer emptyState={runs.length === 0 ? <EmptyState icon={Activity} title="Nenhuma execução registrada." /> : undefined}>
+          {runs.map((run) => (
+            <ListRow key={run.id}>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="min-w-0 break-words text-sm font-medium">{JOB_LABEL[run.job] ?? run.job}</p>
+                  {run.failures ? (
+                    <Badge variant="destructive">
+                      {run.failures} falha{run.failures > 1 ? "s" : ""}
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="min-w-0 break-words text-xs text-muted-foreground">
+                  {dateTime(run.startedAt)} · {run.durationSeconds === null ? "Rodando" : `${run.durationSeconds} s`}
+                  {run.organizations !== null ? ` · ${run.organizations} espaço${run.organizations === 1 ? "" : "s"}` : ""}
+                </p>
+                {run.errorReferences.length > 0 ? <p className={`${MONO} text-muted-foreground`}>{run.errorReferences.join(", ")}</p> : null}
+              </div>
+            </ListRow>
+          ))}
+        </ListContainer>
       </div>
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Rotina</TableHead>
-              <TableHead>Início</TableHead>
-              <TableHead>Duração</TableHead>
-              <TableHead className="text-right">Espaços</TableHead>
-              <TableHead className="text-right">Falhas</TableHead>
-              <TableHead>Códigos de erro</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {runs.map((run) => (
-              <TableRow key={run.id}>
-                <TableCell>{JOB_LABEL[run.job] ?? run.job}</TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">{dateTime(run.startedAt)}</TableCell>
-                <TableCell>{run.durationSeconds === null ? "Rodando" : `${run.durationSeconds} s`}</TableCell>
-                <TableCell className="text-right tabular-nums">{run.organizations ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{run.failures ?? 0}</TableCell>
-                <TableCell className="font-mono text-xs break-all">{run.errorReferences.join(", ") || "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
     </div>
   );
 }
@@ -260,62 +236,54 @@ async function Webhooks({ params, page, query }: { params: Record<string, string
   const [stats, list] = await Promise.all([webhookStats(), listWebhooks({ status: params.status || undefined, event: params.event || undefined, page })]);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <span>Últimas 24 h:</span>
-        {stats.byStatus.length === 0 ? <span>nenhum aviso</span> : stats.byStatus.map((s) => <Badge key={s.status} variant="secondary" className="font-normal">{s.status}: {s.count}</Badge>)}
+        {stats.byStatus.length === 0 ? (
+          <span>nenhum aviso</span>
+        ) : (
+          stats.byStatus.map((s) => (
+            <Badge key={s.status} variant={s.status === "failed" ? "destructive" : "secondary"} className="font-normal">
+              {WEBHOOK_STATUS_LABEL[s.status] ?? s.status}: {s.count}
+            </Badge>
+          ))
+        )}
         <span>· Último aviso {ago(stats.lastReceivedAt)}</span>
       </div>
-      <form action="/health" className="flex flex-wrap items-end gap-2">
-        <input type="hidden" name="tab" value="avisos" />
-        <select name="status" defaultValue={params.status ?? ""} aria-label="Situação" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          <option value="">Todas as situações</option>
-          {["received", "processed", "ignored", "failed"].map((s) => (
-            <option key={s} value={s}>{s}</option>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <UrlSelect param="status" ariaLabel="Situação" allLabel="Todas as situações" options={Object.entries(WEBHOOK_STATUS_LABEL)} className="sm:w-52" />
+        <UrlSelect param="event" ariaLabel="Evento" allLabel="Todos os eventos" options={stats.events.map((e) => [e, e] as const)} className="sm:w-64" />
+        <UrlClearFilters params={["status", "event"]} />
+      </div>
+      <div className="space-y-2">
+        <ListSummaryBar count={list.rows.length} singularLabel="aviso nesta página" pluralLabel="avisos nesta página" />
+        <ListContainer emptyState={list.rows.length === 0 ? <EmptyState icon={Bell} title="Nenhum aviso com esses filtros." /> : undefined}>
+          {list.rows.map((row) => (
+            <ListRow key={row.id}>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className={MONO}>{row.event}</p>
+                  <Badge variant={row.status === "failed" ? "destructive" : "secondary"} className="font-normal">
+                    {WEBHOOK_STATUS_LABEL[row.status] ?? row.status}
+                  </Badge>
+                  {row.attempts > 1 ? <span className="text-xs text-muted-foreground">{row.attempts} tentativas</span> : null}
+                </div>
+                {row.outcome ?? row.errorReference ? <p className="min-w-0 break-words text-sm text-muted-foreground">{row.outcome ?? row.errorReference}</p> : null}
+                <p className="min-w-0 break-words text-xs text-muted-foreground">
+                  {dateTime(row.receivedAt)}
+                  {row.organizationId ? (
+                    <>
+                      {" · "}
+                      <Link href={`/spaces/${row.organizationId}?tab=saude`} className="underline underline-offset-2">
+                        {row.organizationName}
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </ListRow>
           ))}
-        </select>
-        <select name="event" defaultValue={params.event ?? ""} aria-label="Evento" className="h-9 rounded-md border bg-background px-2 text-base md:text-sm">
-          <option value="">Todos os eventos</option>
-          {stats.events.map((e) => (
-            <option key={e} value={e}>{e}</option>
-          ))}
-        </select>
-        <Button type="submit">Filtrar</Button>
-      </form>
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Quando</TableHead>
-              <TableHead>Evento</TableHead>
-              <TableHead>Espaço</TableHead>
-              <TableHead>Situação</TableHead>
-              <TableHead>Resultado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  Nenhum aviso com esses filtros.
-                </TableCell>
-              </TableRow>
-            ) : (
-              list.rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{dateTime(row.receivedAt)}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.event}</TableCell>
-                  <TableCell>{row.organizationId ? <Link href={`/spaces/${row.organizationId}?tab=saude`} className="hover:underline">{row.organizationName}</Link> : "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={row.status === "failed" ? "destructive" : "secondary"} className="font-normal">{row.status}</Badge>
-                    {row.attempts > 1 ? <span className="ml-1 text-xs text-muted-foreground">{row.attempts} tentativas</span> : null}
-                  </TableCell>
-                  <TableCell className="break-words text-muted-foreground">{row.outcome ?? row.errorReference ?? "—"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+        </ListContainer>
+      </div>
       <Pager page={page} hasNext={list.hasNext} href={(p) => `/health?${query({ page: p > 1 ? String(p) : undefined })}`} />
     </div>
   );
@@ -334,8 +302,8 @@ async function Integrations() {
         <CardContent>
           <ul className="divide-y text-sm">
             {gateway.map((g) => (
-              <li key={g.status} className="flex items-center justify-between py-2">
-                <span>{GATEWAY_LABEL[g.status] ?? g.status}</span>
+              <li key={g.status} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0 break-words">{GATEWAY_LABEL[g.status] ?? g.status}</span>
                 <span className="font-medium tabular-nums">{g.count}</span>
               </li>
             ))}
@@ -350,7 +318,9 @@ async function Integrations() {
         <CardContent className="text-sm">
           <p>
             {failed > 0 ? (
-              <span className="text-destructive">{failed} aviso{failed > 1 ? "s" : ""} com falha nas últimas 24 h.</span>
+              <span className="text-destructive">
+                {failed} aviso{failed > 1 ? "s" : ""} com falha nas últimas 24 h.
+              </span>
             ) : (
               <span className="text-success">Nenhuma falha nas últimas 24 h.</span>
             )}

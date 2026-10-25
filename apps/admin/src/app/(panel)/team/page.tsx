@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { FormDrawer } from "@/components/shared/form-drawer";
+import { InitialsAvatar, ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { dateTime } from "@/lib/format";
 import { ADMIN_ROLE_LABEL, can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { inviteEnabled } from "@/lib/server/auth-admin";
 import { listTeam } from "@/lib/server/team";
-import { InviteForm, MemberActions } from "./team-forms";
+import { InviteForm, MemberMenu } from "./team-forms";
 
 export const metadata: Metadata = { title: "Equipe" };
 
@@ -25,50 +27,50 @@ export default async function TeamPage() {
       <PageHeader
         title="Equipe"
         description="Pessoas com acesso ao painel. Elas nunca entram no app dos clientes, e quem é cliente nunca entra aqui."
-      />
-      {manage ? (
-        <div className="mb-6">
-          <InviteForm enabled={inviteEnabled()} />
-        </div>
-      ) : null}
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Papel</TableHead>
-              <TableHead>Situação</TableHead>
-              <TableHead>Último acesso</TableHead>
-              {manage ? <TableHead className="text-right">Ações</TableHead> : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium break-words">{row.name}</TableCell>
-                <TableCell className="break-all text-muted-foreground">{row.email}</TableCell>
-                <TableCell>{ADMIN_ROLE_LABEL[row.role]}</TableCell>
-                <TableCell>
-                  <Badge variant={row.status === "active" ? "secondary" : "outline"} className="font-normal">
-                    {STATUS_LABEL[row.status] ?? row.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {row.lastLoginAt ? format(row.lastLoginAt, "dd/MM/yyyy HH:mm", { locale: ptBR }) : "Nunca entrou"}
-                </TableCell>
-                {manage ? (
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <MemberActions id={row.id} role={row.role} status={row.status} isSelf={row.id === admin.id} />
+      >
+        {manage ? (
+          <FormDrawer
+            title="Convidar administrador"
+            description="A pessoa recebe um convite por e-mail."
+            trigger={
+              <Button>
+                <Plus className="size-4" /> Convidar
+              </Button>
+            }
+          >
+            <InviteForm enabled={inviteEnabled()} />
+          </FormDrawer>
+        ) : null}
+      </PageHeader>
+      <div className="space-y-2">
+        <ListSummaryBar count={rows.length} singularLabel="pessoa" pluralLabel="pessoas" />
+        <ListContainer emptyState={rows.length === 0 ? <EmptyState icon={Users} title="Ninguém na equipe ainda." /> : undefined}>
+          {rows.map((row) => {
+            const isSelf = row.id === admin.id;
+            return (
+              <ListRow key={row.id} actions={manage && !isSelf ? <MemberMenu id={row.id} name={row.name} role={row.role} status={row.status} /> : undefined}>
+                <div className="flex items-start gap-3">
+                  <InitialsAvatar name={row.name} />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="min-w-0 break-words text-sm font-medium">{row.name}</p>
+                      {isSelf ? <span className="text-xs text-muted-foreground">Você</span> : null}
+                      <Badge variant="outline" className="font-normal">
+                        {ADMIN_ROLE_LABEL[row.role]}
+                      </Badge>
+                      <Badge variant={row.status === "active" ? "secondary" : "outline"} className="font-normal">
+                        {STATUS_LABEL[row.status] ?? row.status}
+                      </Badge>
                     </div>
-                  </TableCell>
-                ) : null}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+                    <p className="min-w-0 break-all text-xs text-muted-foreground">{row.email}</p>
+                    <p className="text-xs text-muted-foreground">{row.lastLoginAt ? `Último acesso em ${dateTime(row.lastLoginAt)}` : "Nunca entrou"}</p>
+                  </div>
+                </div>
+              </ListRow>
+            );
+          })}
+        </ListContainer>
+      </div>
     </>
   );
 }

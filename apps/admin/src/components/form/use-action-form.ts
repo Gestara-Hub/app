@@ -33,6 +33,8 @@ interface Options<S extends z.ZodType<FieldValues, FieldValues>, State extends A
   action: ServerAction<State>;
   /** Limpa o formulario depois de um envio com sucesso (notas, respostas, novos cadastros). */
   resetOnSuccess?: boolean;
+  /** Chamado depois de um envio com sucesso (ex.: fechar a gaveta do formulario e avisar por toast). */
+  onSuccess?: (state: State) => void;
 }
 
 export interface ActionForm<S extends z.ZodType<FieldValues, FieldValues>, State extends ActionState> {
@@ -53,6 +55,7 @@ export function useActionForm<S extends z.ZodType<FieldValues, FieldValues>, Sta
   defaultValues,
   action,
   resetOnSuccess,
+  onSuccess,
 }: Options<S, State>): ActionForm<S, State> {
   const form = useForm<z.input<S>, unknown, z.output<S>>({ resolver: zodResolver(schema), defaultValues, mode: "onSubmit" });
   const [state, setState] = useState<State>({} as State);
@@ -67,6 +70,7 @@ export function useActionForm<S extends z.ZodType<FieldValues, FieldValues>, Sta
               const result = await (override ?? action)(state, toFormData(form.getValues() as Record<string, unknown>));
               setState(result);
               if (result.ok && resetOnSuccess) form.reset();
+              if (result.ok) onSuccess?.(result);
               resolve();
             } catch (error) {
               reject(error);

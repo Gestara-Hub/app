@@ -1,9 +1,9 @@
 "use client";
 
 import { FormProvider } from "react-hook-form";
+import { toast } from "sonner";
 import { FormFeedback, InputText, SelectField, TextArea, useActionForm } from "@/components/form";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DrawerBody, DrawerFooter, useDrawerClose } from "@/components/shared/form-drawer";
 import { privacyRequestSchema, privacyUpdateSchema } from "@/lib/form-schemas";
 import { createRequestAction, updateRequestAction, type PrivacyFormState } from "./actions";
 
@@ -22,64 +22,64 @@ const STATUSES = [
   ["rejected", "Recusado"],
 ] as const;
 
+/** Conteúdo da gaveta "Registrar pedido": o botão que abre fica no cabeçalho da tela. */
 export function NewRequestForm() {
+  const close = useDrawerClose();
   const { form, state, pending, submit } = useActionForm<typeof privacyRequestSchema, PrivacyFormState>({
     schema: privacyRequestSchema,
     defaultValues: { requesterName: "", requesterEmail: "", kind: "access", description: "", spaceId: "" },
     action: createRequestAction,
     resetOnSuccess: true,
+    onSuccess: (result) => {
+      toast.success(result.message ?? "Pedido registrado.");
+      close();
+    },
   });
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Registrar pedido do titular</CardTitle>
-        <CardDescription>Quando alguém pede acesso, correção, exclusão ou portabilidade dos dados. O prazo de resposta é de 15 dias.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FormProvider {...form}>
-          <form onSubmit={submit()} className="space-y-3" noValidate>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InputText name="requesterName" id="req-name" label="Nome de quem pediu" required maxLength={120} />
-              <InputText name="requesterEmail" id="req-email" label="E-mail" type="email" required />
-              <SelectField name="kind" id="req-kind" label="Tipo" options={KINDS} />
-              <InputText name="spaceId" id="req-space" label="Código do espaço (se souber)" inputClassName="font-mono" />
-            </div>
-            <TextArea name="description" id="req-description" label="O que foi pedido" required rows={3} maxLength={2000} />
-            <FormFeedback state={state} />
-            <Button type="submit" disabled={pending}>
-              {pending ? "Registrando..." : "Registrar pedido"}
-            </Button>
-          </form>
-        </FormProvider>
-      </CardContent>
-    </Card>
+    <FormProvider {...form}>
+      <form onSubmit={submit()} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <DrawerBody>
+          <InputText name="requesterName" id="req-name" label="Nome de quem pediu" required maxLength={120} />
+          <InputText name="requesterEmail" id="req-email" label="E-mail" type="email" required />
+          <SelectField name="kind" id="req-kind" label="Tipo" options={KINDS} />
+          <InputText name="spaceId" id="req-space" label="Código do espaço (se souber)" inputClassName="font-mono" />
+          <TextArea name="description" id="req-description" label="O que foi pedido" required rows={4} maxLength={2000} />
+          <FormFeedback state={{ error: state.error }} />
+        </DrawerBody>
+        <DrawerFooter submitLabel="Adicionar" pending={pending} />
+      </form>
+    </FormProvider>
   );
 }
 
+/** Conteúdo da gaveta "Atualizar pedido": situação e o que foi feito. */
 export function UpdateRequestForm({ id, status, resolution }: { id: string; status: string; resolution: string }) {
+  const close = useDrawerClose();
   const { form, state, pending, submit } = useActionForm<typeof privacyUpdateSchema, PrivacyFormState>({
     schema: privacyUpdateSchema,
     defaultValues: { id, status: status as "open", resolution },
     action: updateRequestAction,
+    onSuccess: (result) => {
+      toast.success(result.message ?? "Pedido atualizado.");
+      close();
+    },
   });
   return (
     <FormProvider {...form}>
-      <form onSubmit={submit()} className="space-y-2" noValidate>
-        <div className="flex flex-wrap items-start gap-2">
-          <SelectField name="status" id={`status-${id}`} options={STATUSES} className="w-auto" />
-          <Button type="submit" size="sm" variant="outline" disabled={pending}>
-            Salvar
-          </Button>
-        </div>
-        <TextArea
-          name="resolution"
-          id={`resolution-${id}`}
-          rows={2}
-          placeholder="O que foi feito (obrigatório para concluir ou recusar)"
-          maxLength={2000}
-          ariaLabel="O que foi feito"
-        />
-        <FormFeedback state={state} />
+      <form onSubmit={submit()} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <DrawerBody>
+          <SelectField name="status" id={`status-${id}`} label="Situação" options={STATUSES} />
+          <TextArea
+            name="resolution"
+            id={`resolution-${id}`}
+            label="O que foi feito"
+            hint="Obrigatório para concluir ou recusar."
+            rows={5}
+            maxLength={2000}
+          />
+          <FormFeedback state={{ error: state.error }} />
+        </DrawerBody>
+        <DrawerFooter submitLabel="Salvar" pending={pending} />
       </form>
     </FormProvider>
   );

@@ -13,7 +13,8 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "setup:local": "node scripts/setup-local.mjs",
     "create-admin": "node scripts/create-admin.mjs",
-    "reset-mfa": "node scripts/reset-mfa.mjs"
+    "reset-mfa": "node scripts/reset-mfa.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@gestarahub/contracts": "workspace:*",
@@ -38,6 +39,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

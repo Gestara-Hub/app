@@ -63,6 +63,15 @@ pnpm --filter @gestarahub/web test         # inclui a recusa do administrador no
 
 Os testes de banco criam e apagam as próprias contas e espaços; a auditoria de teste é removida por uma função de teste (o gatilho que protege a auditoria volta a ligar na mesma transação).
 
+## 3B. Testes de tela e ponta a ponta (navegador)
+
+```bash
+pnpm --filter @gestarahub/admin e2e                       # todos (~1 min), servidor próprio na porta 3101
+pnpm --filter @gestarahub/admin e2e -- e2e/telas.spec.ts  # só a passada de telas (desktop e celular)
+```
+
+Só quando pedido (usa o Supabase local e sobe um `next dev` próprio). As capturas ficam em `apps/admin/test-results/telas`. Detalhes na seção 19 do [doc 26](../technical/26-painel-admin-gestarahub.md).
+
 ## 4. Problemas comuns
 
 - **Perdi o aplicativo autenticador (2FA):** outro proprietário usa "Reiniciar 2FA" na tela Equipe. Se você é o único proprietário, rode `pnpm admin:reset-mfa -- --email voce@exemplo.com` (precisa de acesso à infraestrutura, pede confirmação e registra na auditoria). No próximo login o painel pede o cadastro de um novo QR. Guarde a chave que aparece abaixo do QR num gerenciador de senhas: com ela se recadastra o mesmo código em outro aparelho.

@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Eye, EyeOff, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { BackLink } from "@/components/shared/back-link";
+import { ConfirmSubmit } from "@/components/shared/confirm-submit";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Fact, FactCard, SectionHeading } from "@/components/shared/fact-list";
+import { ListContainer, ListRow } from "@/components/shared/list";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { brl, dateOnly, dateTime } from "@/lib/format";
@@ -23,14 +28,11 @@ function Counts({ data, empty = "Nenhum.", labels = STATUS }: { data: Record<str
   const entries = Object.entries(data);
   if (entries.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
-    <ul className="divide-y text-sm">
+    <dl>
       {entries.map(([key, n]) => (
-        <li key={key} className="flex justify-between py-1.5">
-          <span>{labels[key] ?? key}</span>
-          <span className="tabular-nums">{n}</span>
-        </li>
+        <Fact key={key} label={labels[key] ?? key} value={<span className="tabular-nums">{n}</span>} />
       ))}
-    </ul>
+    </dl>
   );
 }
 
@@ -52,52 +54,52 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
   });
   return (
     <>
-      <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
-        <span>
-          Visão de suporte, <strong>somente leitura</strong>. Termina às {dateTime(new Date(data.expiresAt)).slice(11)}.
+      <BackLink href={`/spaces/${data.organizationId}?tab=suporte`} label="Voltar ao espaço" />
+      <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+        <span className="flex min-w-0 items-center gap-2">
+          <Eye className="size-4 shrink-0 text-warning" aria-hidden />
+          <span>
+            Visão de suporte, <strong>somente leitura</strong>. Termina às {dateTime(new Date(data.expiresAt)).slice(11)}.
+          </span>
         </span>
         <form action={endAccessAction}>
           <input type="hidden" name="sessionId" value={session} />
           <input type="hidden" name="spaceId" value={data.organizationId} />
-          <Button type="submit" size="sm" variant="outline">
+          <ConfirmSubmit title="Encerrar a visão de suporte" description="A visão fecha agora e você volta para o espaço. Para ver de novo, é preciso abrir outra com um novo motivo." confirmLabel="Encerrar visão">
             Encerrar visão
-          </Button>
+          </ConfirmSubmit>
         </form>
       </div>
       <PageHeader title={data.space.name} description={`${data.space.customArea || AREA_LABEL[data.space.area ?? ""] || "Sem área"} · ${MODEL_LABEL[data.space.model] ?? data.space.model} · criado em ${dateOnly(new Date(data.space.createdAt))}`}>
         {data.space.status === "inactive" ? <Badge variant="destructive">Inativo</Badge> : null}
       </PageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Configuração</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <p>Plano: {planName(data.space.subscription as never)}</p>
-            <p>Unidades ativas: {data.units}</p>
-            <p>Fuso: {data.space.timeZone ?? "padrão"}</p>
-            <p>Pagamento online: {GATEWAY[data.space.onlinePayments] ?? data.space.onlinePayments}</p>
-            <p>
-              Termos aceitos pelo proprietário: {data.owner?.termsVersion ? `versão ${data.owner.termsVersion}` : "sem registro"}
-              {data.owner?.termsAcceptedAt ? ` em ${dateOnly(new Date(data.owner.termsAcceptedAt))}` : ""}
-            </p>
-          </CardContent>
-        </Card>
+      <StatGrid>
+        <StatCard label="Plano" value={planName(data.space.subscription as never)} />
+        <StatCard label="Unidades ativas" value={data.units} />
+        <StatCard label="Pagamento online" value={GATEWAY[data.space.onlinePayments] ?? data.space.onlinePayments} />
+        <StatCard label="Fuso" value={data.space.timeZone ?? "Padrão"} />
+      </StatGrid>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-3">
+        <FactCard title="Termos de uso">
+          <Fact label="Aceitos pelo proprietário" value={data.owner?.termsVersion ? `versão ${data.owner.termsVersion}` : "Sem registro"} />
+          {data.owner?.termsAcceptedAt ? <Fact label="Em" value={dateOnly(new Date(data.owner.termsAcceptedAt))} /> : null}
+        </FactCard>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pessoas do espaço</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="divide-y text-sm">
-              {people.length === 0 ? <li className="py-1.5 text-muted-foreground">Nenhuma.</li> : null}
-              {people.map((p) => (
-                <li key={p.label} className="flex justify-between py-1.5">
-                  <span>{p.label}</span>
-                  <span className="tabular-nums">{p.n}</span>
-                </li>
-              ))}
-            </ul>
+            {people.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma.</p>
+            ) : (
+              <dl>
+                {people.map((p) => (
+                  <Fact key={p.label} label={p.label} value={<span className="tabular-nums">{p.n}</span>} />
+                ))}
+              </dl>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -106,83 +108,67 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
           </CardHeader>
           <CardContent>
             <Counts data={data.students} />
-            <p className="mt-3 text-xs text-muted-foreground">Matrículas</p>
+            <p className="mt-3 text-xs font-medium text-muted-foreground">Matrículas</p>
             <Counts data={data.enrollments} />
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card className="py-0">
-          <CardHeader className="pt-4">
-            <CardTitle className="text-base">Turmas</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            {data.classes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma turma.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Turma</TableHead>
-                    <TableHead>Matriculados</TableHead>
-                    <TableHead>Horários</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.classes.map((c) => (
-                    <TableRow key={c.name}>
-                      <TableCell className="break-words">
-                        {c.name} {c.status !== "active" ? <span className="text-muted-foreground">({c.status})</span> : null}
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        {c.enrolled}
-                        {c.capacity ? ` de ${c.capacity}` : ""}
-                      </TableCell>
-                      <TableCell className="tabular-nums">{c.slots}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="py-0">
-          <CardHeader className="pt-4">
-            <CardTitle className="text-base">Planos de mensalidade</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            {data.plans.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum plano.</p>
-            ) : (
-              <ul className="divide-y text-sm">
-                {data.plans.map((p) => (
-                  <li key={p.name} className="flex justify-between gap-2 py-1.5">
-                    <span className="break-words">{p.name}</span>
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <section>
+          <SectionHeading title="Turmas" />
+          {data.classes.length === 0 ? (
+            <ListContainer emptyState={<EmptyState icon={Users} title="Nenhuma turma" />} />
+          ) : (
+            <ListContainer>
+              {data.classes.map((c) => (
+                <ListRow key={c.name}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    <p className="min-w-0 break-words font-medium">
+                      {c.name} {c.status !== "active" ? <span className="font-normal text-muted-foreground">({c.status})</span> : null}
+                    </p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {c.enrolled}
+                      {c.capacity ? ` de ${c.capacity}` : ""} matriculados · {c.slots} {c.slots === 1 ? "horário" : "horários"}
+                    </p>
+                  </div>
+                </ListRow>
+              ))}
+            </ListContainer>
+          )}
+        </section>
+        <section>
+          <SectionHeading title="Planos de mensalidade" />
+          {data.plans.length === 0 ? (
+            <ListContainer emptyState={<EmptyState icon={Wallet} title="Nenhum plano" />} />
+          ) : (
+            <ListContainer>
+              {data.plans.map((p) => (
+                <ListRow key={p.name}>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 break-words font-medium">{p.name}</span>
                     <span className="tabular-nums">{brl(p.priceCents)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                  </div>
+                </ListRow>
+              ))}
+            </ListContainer>
+          )}
+        </section>
       </div>
 
-      <Card className="mt-4 py-0">
-        <CardHeader className="pt-4">
-          <CardTitle className="text-base">Cobranças dos últimos 6 meses (totais)</CardTitle>
-        </CardHeader>
-        <CardContent className="pb-4">
-          {data.charges.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma cobrança no período.</p>
-          ) : (
+      <section>
+        <SectionHeading title="Cobranças dos últimos 6 meses" description="Só totais." />
+        {data.charges.length === 0 ? (
+          <ListContainer emptyState={<EmptyState icon={Wallet} title="Nenhuma cobrança no período" />} />
+        ) : (
+          <Card className="py-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Competência</TableHead>
                   <TableHead>Situação</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Total</TableHead>
+                  <TableHead className="text-right">Quantidade</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -190,30 +176,34 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
                   <TableRow key={`${c.competence}-${c.status}`}>
                     <TableCell>{c.competence}</TableCell>
                     <TableCell>{CHARGE_STATUS[c.status] ?? c.status}</TableCell>
-                    <TableCell className="tabular-nums">{c.count}</TableCell>
-                    <TableCell className="tabular-nums">{brl(c.totalCents)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.count}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(c.totalCents)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">Recebimentos online</p>
-          <Counts data={data.onlinePaymentsByStatus} empty="Nenhum recebimento online." labels={CHARGE_STATUS} />
-        </CardContent>
-      </Card>
+          </Card>
+        )}
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">Recebimentos online</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Counts data={data.onlinePaymentsByStatus} empty="Nenhum recebimento online." labels={CHARGE_STATUS} />
+          </CardContent>
+        </Card>
+      </section>
     </>
   );
 }
 
 function Ended({ message }: { message?: string }) {
   return (
-    <Card>
-      <CardContent className="space-y-3 pt-6 text-sm">
-        <p>{message ?? "Esta visão de suporte não existe ou terminou."}</p>
-        <Button asChild variant="outline">
-          <Link href="/spaces">Voltar aos espaços</Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <>
+      <BackLink href="/spaces" label="Voltar aos espaços" />
+      <Card>
+        <EmptyState icon={EyeOff} title={message ?? "Esta visão de suporte não existe ou terminou."} description="Abra uma nova pela aba Suporte e notas do espaço." />
+      </Card>
+    </>
   );
 }

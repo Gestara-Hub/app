@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { FormProvider } from "react-hook-form";
+import { Check, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { verifyMfaAction, type FormState } from "@/app/actions/auth";
 import { FormFeedback, InputText, useActionForm } from "@/components/form";
+import { AuthCard } from "@/components/shared/auth-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mfaSchema } from "@/lib/form-schemas";
 
 interface Props {
@@ -22,28 +25,43 @@ export function MfaForm({ mode, factorId, next, qrCode, secret }: Props) {
     action: verifyMfaAction,
   });
   const enrolling = mode === "enroll";
+  const [copied, setCopied] = useState(false);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{enrolling ? "Configure o aplicativo autenticador" : "Digite o código"}</CardTitle>
-        <CardDescription>
-          {enrolling
-            ? "O painel exige verificação em duas etapas. Escaneie o QR com o Google Authenticator, 1Password ou similar e digite o código de 6 números."
-            : "Abra o aplicativo autenticador e digite o código de 6 números."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FormProvider {...form}>
-          <form onSubmit={submit()} className="space-y-4" noValidate>
+    <AuthCard
+      title={enrolling ? "Configure o aplicativo autenticador" : "Digite o código"}
+      subtitle={enrolling ? "O painel exige verificação em duas etapas. Siga os passos abaixo." : "Abra o aplicativo autenticador e digite o código de 6 números."}
+    >
+      <FormProvider {...form}>
+        <form onSubmit={submit()} className="space-y-4" noValidate>
           {enrolling && qrCode ? (
-            <div className="space-y-2">
+            <div className="space-y-4">
+              <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>Abra o Google Authenticator, o 1Password ou similar.</li>
+                <li>Escaneie o QR code abaixo.</li>
+                <li>Digite o código de 6 números que aparecer.</li>
+              </ol>
               {/* QR gerado pelo Supabase (SVG em data URI). */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrCode} alt="QR code do aplicativo autenticador" className="mx-auto size-44 rounded-md bg-white p-2" />
-              <p className="text-center text-xs text-muted-foreground">
-                Sem câmera? Digite este código no aplicativo:
-              </p>
-              <p className="text-center font-mono text-xs break-all select-all">{secret}</p>
+              <img src={qrCode} alt="QR code do aplicativo autenticador" className="mx-auto size-44 rounded-lg border bg-white p-2" />
+              <div className="space-y-2 rounded-md border bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Sem câmera? Digite esta chave no aplicativo:</p>
+                <p data-mfa-secret className="break-all font-mono text-xs select-all">{secret}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(secret ?? "");
+                      setCopied(true);
+                    } catch {
+                      toast.error("Não foi possível copiar. Selecione a chave e copie.");
+                    }
+                  }}
+                >
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {copied ? "Copiada" : "Copiar chave"}
+                </Button>
+              </div>
             </div>
           ) : null}
           <InputText
@@ -59,9 +77,8 @@ export function MfaForm({ mode, factorId, next, qrCode, secret }: Props) {
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Conferindo..." : enrolling ? "Confirmar e entrar" : "Entrar"}
           </Button>
-          </form>
-        </FormProvider>
-      </CardContent>
-    </Card>
+        </form>
+      </FormProvider>
+    </AuthCard>
   );
 }

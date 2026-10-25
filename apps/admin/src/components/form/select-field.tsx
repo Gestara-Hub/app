@@ -1,7 +1,7 @@
 "use client";
 
 import { Controller, useFormContext, type FieldValues, type Path } from "react-hook-form";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldShell, fieldAria } from "./field-shell";
 
 interface SelectFieldProps<T extends FieldValues = FieldValues> {
@@ -17,7 +17,7 @@ interface SelectFieldProps<T extends FieldValues = FieldValues> {
   onValueChange?: (value: string) => void;
 }
 
-/** Lista de escolha simples (select nativo, que no celular abre a roda do aparelho). */
+/** Lista de escolha (a mesma do app dos clientes: lista do Radix, que no celular abre por cima da tela). */
 export function SelectField<T extends FieldValues = FieldValues>({ name, label, options, hint, required, disabled, id, className, onValueChange }: SelectFieldProps<T>) {
   const { control } = useFormContext<T>();
   const fieldId = id ?? String(name);
@@ -25,30 +25,34 @@ export function SelectField<T extends FieldValues = FieldValues>({ name, label, 
     <Controller
       control={control}
       name={name}
-      render={({ field, fieldState }) => (
-        <FieldShell id={fieldId} label={label} hint={hint} error={fieldState.error?.message} required={required} className={className}>
-          <select
-            id={fieldId}
-            disabled={disabled}
-            className={cn("h-9 w-full rounded-md border bg-background px-3 text-base aria-invalid:border-destructive md:text-sm")}
-            value={(field.value as string | undefined) ?? ""}
-            onChange={(event) => {
-              field.onChange(event.target.value);
-              onValueChange?.(event.target.value);
-            }}
-            onBlur={field.onBlur}
-            name={field.name}
-            ref={field.ref}
-            {...fieldAria(fieldId, fieldState.error?.message, hint)}
-          >
-            {options.map(([value, text]) => (
-              <option key={value} value={value}>
-                {text}
-              </option>
-            ))}
-          </select>
-        </FieldShell>
-      )}
+      render={({ field, fieldState }) => {
+        const value = (field.value as string | undefined) ?? "";
+        const current = options.find(([option]) => option === value)?.[1];
+        return (
+          <FieldShell id={fieldId} label={label} hint={hint} error={fieldState.error?.message} required={required} className={className}>
+            <Select
+              value={value}
+              disabled={disabled}
+              onValueChange={(next) => {
+                field.onChange(next);
+                onValueChange?.(next);
+              }}
+              name={field.name}
+            >
+              <SelectTrigger id={fieldId} ref={field.ref} onBlur={field.onBlur} className="w-full" {...fieldAria(fieldId, fieldState.error?.message, hint)}>
+                <SelectValue>{current}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {options.map(([option, text]) => (
+                  <SelectItem key={option} value={option}>
+                    {text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldShell>
+        );
+      }}
     />
   );
 }

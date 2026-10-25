@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { FormFeedback, TextArea, useActionForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { replySchema, threadNoteSchema } from "@/lib/form-schemas";
 import { cn } from "@/lib/utils";
 import { noteAction, replyAction, type SupportFormState } from "../actions";
@@ -71,25 +72,26 @@ function ReplyForm({ threadId, macros }: { threadId: string; macros: Macro[] }) 
       <form onSubmit={submit()} className="space-y-2" noValidate>
         <TextArea name="body" rows={3} maxLength={4000} ariaLabel="Mensagem para o cliente" placeholder="Escreva a resposta ao cliente. Ela vai por e-mail também." inputClassName="max-h-48 resize-none" />
         <FormFeedback state={state} okText="Resposta enviada." />
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {macros.length > 0 ? (
-            <select
-              aria-label="Resposta pronta"
-              className="h-9 min-w-0 max-w-[60%] rounded-md border bg-background px-3 text-base md:text-sm"
-              defaultValue=""
-              onChange={(event) => {
-                const macro = macros.find((m) => m.id === event.target.value);
+            <Select
+              value=""
+              onValueChange={(id) => {
+                const macro = macros.find((m) => m.id === id);
                 if (macro) form.setValue("body", macro.body, { shouldDirty: true, shouldValidate: true });
-                event.target.value = "";
               }}
             >
-              <option value="">Resposta pronta...</option>
-              {macros.map((macro) => (
-                <option key={macro.id} value={macro.id}>
-                  {macro.title}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label="Resposta pronta" className="min-w-0 max-w-[60%] sm:w-56">
+                <SelectValue placeholder="Inserir resposta pronta" />
+              </SelectTrigger>
+              <SelectContent>
+                {macros.map((macro) => (
+                  <SelectItem key={macro.id} value={macro.id}>
+                    {macro.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <span />
           )}

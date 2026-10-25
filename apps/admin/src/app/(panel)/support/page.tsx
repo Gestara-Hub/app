@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { format, formatDistanceToNowStrict } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { InitialsAvatar, ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Pager } from "@/components/shared/pager";
+import { SegmentedLinks } from "@/components/shared/segmented-links";
+import { StatCard, StatGrid } from "@/components/shared/stat-card";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
 import { KindBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { can } from "@/lib/permissions";
+import { agoOrNow } from "@/lib/relative-time";
 import { requireAdmin } from "@/lib/server/context";
-import { PAGE_SIZE, listThreads, threadCounts } from "@/lib/server/support";
+import { listThreads, threadCounts } from "@/lib/server/support";
 import { FILTERS, KIND_FILTERS, isThreadFilter, isThreadKind } from "@/lib/support-types";
 
 export const metadata: Metadata = { title: "Suporte" };
+
+const KIND_OPTIONS = KIND_FILTERS.filter((item) => item.value !== "all").map((item) => [item.value, item.label] as const);
 
 /** Caixa de entrada do "Fale com a gente": quem espera resposta nossa vem primeiro (urgentes e mais antigos). */
 export default async function SupportPage({ searchParams }: { searchParams: Promise<{ filter?: string; kind?: string; q?: string; page?: string }> }) {
@@ -25,8 +32,8 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   const q = params.q?.trim() ?? "";
   const [{ rows, hasNext }, counts] = await Promise.all([listThreads({ filter, kind, q, page }), threadCounts()]);
   const now = new Date();
-  const link = (nextFilter: string, nextPage = 1, nextKind: string | undefined = kind) =>
-    `/support?filter=${nextFilter}${nextKind ? `&kind=${nextKind}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
+  const link = (nextFilter: string, nextPage = 1) =>
+    `/support?filter=${nextFilter}${kind ? `&kind=${kind}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}${nextPage > 1 ? `&page=${nextPage}` : ""}`;
 
   return (
     <>
@@ -41,110 +48,58 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
         ) : null}
       </PageHeader>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Precisam de resposta</p>
-          <p className="text-2xl font-semibold tabular-nums">{counts.attention}</p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Urgentes</p>
-          <p className="text-2xl font-semibold tabular-nums">{counts.urgent}</p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-xs text-muted-foreground">Aguardando o cliente</p>
-          <p className="text-2xl font-semibold tabular-nums">{counts.waitingCustomer}</p>
-        </Card>
+      <StatGrid>
+        <StatCard label="Precisam de resposta" value={counts.attention} tone={counts.attention > 0 ? "warning" : "default"} sub="Meta: até 2 dias úteis" />
+        <StatCard label="Urgentes" value={counts.urgent} tone={counts.urgent > 0 ? "danger" : "default"} />
+        <StatCard label="Aguardando o cliente" value={counts.waitingCustomer} />
+      </StatGrid>
+
+      <div className="mb-3 space-y-3">
+        <SegmentedLinks
+          label="Filtrar conversas"
+          active={filter}
+          href={(value) => link(value)}
+          items={FILTERS.map((item) => ({ value: item.value, label: item.label, count: item.value === "attention" ? counts.attention : undefined }))}
+        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <UrlSearch placeholder="Buscar espaço, pessoa ou assunto" ariaLabel="Buscar conversas" />
+          <UrlSelect param="kind" options={KIND_OPTIONS} allLabel="Todos os tipos" ariaLabel="Filtrar por tipo" />
+          <UrlClearFilters params={["q", "kind"]} />
+        </div>
       </div>
 
-      <div className="mb-2 flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-        {KIND_FILTERS.map((item) => (
-          <Button key={item.value} asChild size="sm" variant={(kind ?? "all") === item.value ? "secondary" : "ghost"}>
-            <Link href={link(filter, 1, item.value === "all" ? undefined : item.value)}>{item.label}</Link>
-          </Button>
-        ))}
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar conversas">
-          {FILTERS.map((item) => (
-            <Button key={item.value} asChild size="sm" variant={item.value === filter ? "default" : "outline"}>
-              <Link href={link(item.value)}>{item.label}</Link>
-            </Button>
+      <div className="space-y-2">
+        <ListSummaryBar count={rows.length} singularLabel="conversa nesta página" pluralLabel="conversas nesta página" />
+        <ListContainer
+          emptyState={rows.length === 0 ? <EmptyState icon={MessageSquare} title="Nenhuma conversa aqui" description="Mude o filtro ou a busca para ver outras." /> : undefined}
+        >
+          {rows.map((row) => (
+            <ListRow key={row.id} className="relative">
+              <div className="flex min-w-0 items-start gap-3">
+                <InitialsAvatar name={row.organizationName} />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Link href={`/support/${row.id}`} className="block min-w-0 break-words font-medium after:absolute after:inset-0 hover:underline">
+                    {row.subject}
+                  </Link>
+                  <p className="min-w-0 break-words text-xs text-muted-foreground">
+                    {row.organizationName} · {row.userName}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <KindBadge kind={row.kind} />
+                    <StatusBadge status={row.status} />
+                    {row.urgent ? <UrgentBadge /> : null}
+                    <SlaBadge status={row.status} since={row.lastCustomerMessageAt ?? row.createdAt} now={now} />
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground" title={format(row.lastMessageAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}>
+                  {agoOrNow(row.lastMessageAt, now)}
+                </span>
+              </div>
+            </ListRow>
           ))}
-        </div>
-        <form className="flex gap-2" action="/support">
-          <input type="hidden" name="filter" value={filter} />
-          {kind ? <input type="hidden" name="kind" value={kind} /> : null}
-          <Input name="q" defaultValue={q} placeholder="Buscar espaço, pessoa ou assunto" aria-label="Buscar conversas" className="w-64 text-base md:text-sm" />
-          <Button type="submit" variant="outline">
-            Buscar
-          </Button>
-        </form>
+        </ListContainer>
       </div>
-
-      <Card className="py-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Assunto</TableHead>
-              <TableHead>Espaço e pessoa</TableHead>
-              <TableHead>Situação</TableHead>
-              <TableHead>Última mensagem</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  Nenhuma conversa aqui.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="max-w-72">
-                    <Link href={`/support/${row.id}`} className="font-medium break-words hover:underline">
-                      {row.subject}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="break-words">
-                    <p>{row.organizationName}</p>
-                    <p className="text-xs text-muted-foreground">{row.userName}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <KindBadge kind={row.kind} />
-                      <StatusBadge status={row.status} />
-                      {row.urgent ? <UrgentBadge /> : null}
-                      <SlaBadge status={row.status} since={row.lastCustomerMessageAt ?? row.createdAt} now={now} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground" title={format(row.lastMessageAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}>
-                    {formatDistanceToNowStrict(row.lastMessageAt, { locale: ptBR, addSuffix: true })}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-      <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          Página {page} · até {PAGE_SIZE} por página
-        </span>
-        <div className="flex gap-2">
-          {page > 1 ? (
-            <Button asChild variant="outline">
-              <Link href={link(filter, page - 1)}>Anterior</Link>
-            </Button>
-          ) : null}
-          {hasNext ? (
-            <Button asChild variant="outline">
-              <Link href={link(filter, page + 1)}>Próxima</Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <Pager page={page} hasNext={hasNext} href={(next) => link(filter, next)} />
     </>
   );
 }
