@@ -18,6 +18,7 @@ import {
   summaryFrom,
   type BotQuota,
 } from "@/lib/support/bot-rules";
+import { sanitizeCrumbs, type Crumb } from "@/lib/breadcrumbs";
 import { clientInfoText } from "@/lib/support/client-info";
 import { searchHelp } from "@/lib/support/help-search";
 import { runAction, type ActionResult } from "../server/action";
@@ -195,6 +196,8 @@ export async function sendSupportMessageAction(input: {
   errorReference?: string;
   /** Só vale ao abrir a conversa; sem tipo é uma dúvida. */
   kind?: SupportKind;
+  /** Passos antes do relato (telas e ações); só entram no problema, ao abrir a conversa. */
+  breadcrumbs?: Crumb[];
 }): Promise<ActionResult<SupportThreadView>> {
   return runAction(async () => {
     const c = await caller();
@@ -222,6 +225,7 @@ export async function sendSupportMessageAction(input: {
         p_error_ref: input.errorReference ?? null,
         p_tier: c.tier,
         p_kind: input.kind ?? "question",
+        p_breadcrumbs: input.kind === "bug" ? (sanitizeCrumbs(input.breadcrumbs).length > 0 ? sanitizeCrumbs(input.breadcrumbs) : null) : null,
         // Só no problema relatado: ajuda a reproduzir o erro.
         p_client_info:
           input.kind === "bug"

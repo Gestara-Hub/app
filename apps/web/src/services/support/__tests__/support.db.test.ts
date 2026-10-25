@@ -161,6 +161,32 @@ describe("problema e sugestão", () => {
     expect(row.client_info).toMatch(/Chrome 130 no macOS \(computador\) · perfil owner/);
   });
 
+  it("o problema guarda os passos antes do relato; dúvida e sugestão não, e o que é inválido cai fora", async () => {
+    modelReplies("Ok.");
+    const bug = await unwrap(
+      actions.sendSupportMessageAction({
+        message: "A tela travou ao salvar",
+        kind: "bug",
+        breadcrumbs: [
+          { s: 40, k: "nav", v: "/classes/:id" },
+          { s: 9, k: "action_error", v: "turmas.save (K7Q2M9XD)" },
+          { s: 1, k: "clique", v: "inválido" } as never,
+        ],
+      }),
+    );
+    const suggestion = await unwrap(actions.sendSupportMessageAction({ message: "Melhorar o calendário", kind: "suggestion", breadcrumbs: [{ s: 1, k: "nav", v: "/x" }] }));
+    const noCrumbs = await unwrap(actions.sendSupportMessageAction({ message: "Outra falha qualquer", kind: "bug", breadcrumbs: [{ s: 1, k: "clique", v: "x" } as never] }));
+    const rows = await owner<{ id: string; breadcrumbs: unknown }[]>`
+      select id, breadcrumbs from platform.support_threads where id = any(${[bug.threadId, suggestion.threadId, noCrumbs.threadId]})`;
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r.breadcrumbs]));
+    expect(byId[bug.threadId]).toEqual([
+      { s: 40, k: "nav", v: "/classes/:id" },
+      { s: 9, k: "action_error", v: "turmas.save (K7Q2M9XD)" },
+    ]);
+    expect(byId[suggestion.threadId]).toBeNull();
+    expect(byId[noCrumbs.threadId]).toBeNull();
+  });
+
   it("sugestão e dúvida não guardam o contexto técnico", async () => {
     modelReplies("Ok.");
     const suggestion = await unwrap(actions.sendSupportMessageAction({ message: "Poderia ter modo escuro no calendário", kind: "suggestion" }));

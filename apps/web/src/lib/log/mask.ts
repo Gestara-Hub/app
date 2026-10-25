@@ -11,6 +11,9 @@ export const MAX_STACK = 8000;
 const MAX_DEPTH = 4;
 const MAX_KEYS = 40;
 
+/** Sequência longa de letras e números: provavelmente chave. Num quadro de pilha é só o nome de um arquivo do pacote. */
+const LONG_TOKEN = /\b[A-Za-z0-9_-]{40,}\b/g;
+
 const RULES: [RegExp, string][] = [
   // Tokens e chaves conhecidos antes dos numeros (contem digitos).
   [/eyJ[\w-]+\.[\w-]+\.[\w-]+/g, "[token]"],
@@ -19,7 +22,7 @@ const RULES: [RegExp, string][] = [
   [/\bmlsn\.\S+/g, "[token]"],
   [/\b(sk|pk|rk)_(live|test)_\w+/g, "[token]"],
   [/((?:api[_-]?key|token|secret|senha|password|access[_-]?token)["']?\s*[:=]\s*["']?)[^\s"',}]+/gi, "$1[oculto]"],
-  [/\b[A-Za-z0-9_-]{40,}\b/g, "[token]"],
+  [LONG_TOKEN, "[token]"],
   // Documentos e contatos.
   [/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, "[cnpj]"],
   [/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, "[cpf]"],
@@ -31,9 +34,31 @@ const RULES: [RegExp, string][] = [
 ];
 
 export function maskText(text: string, max = MAX_STRING): string {
-  let out = text.length > max ? `${text.slice(0, max)}...` : text;
-  for (const [pattern, replacement] of RULES) out = out.replace(pattern, replacement);
+  return applyRules(text.length > max ? `${text.slice(0, max)}...` : text, RULES);
+}
+
+function applyRules(text: string, rules: [RegExp, string][]): string {
+  let out = text;
+  for (const [pattern, replacement] of rules) out = out.replace(pattern, replacement);
   return out;
+}
+
+const RULES_WITHOUT_LONG_TOKEN = RULES.filter(([pattern]) => pattern !== LONG_TOKEN);
+const FRAME = /^\s+at\s/;
+
+/**
+ * Máscara da pilha: as linhas de quadro ("    at fn (arquivo:linha:coluna)") não passam pela
+ * regra de "token" longo, senão o nome do arquivo do pacote vira `[token]` e a
+ * pilha perde onde o erro aconteceu. O resto (a primeira linha e o que não é
+ * quadro) segue com todas as regras. Chave de verdade ainda sai pelas regras
+ * de formato conhecido (JWT, Bearer, chaves do Asaas e do e-mail...).
+ */
+export function maskStack(stack: string, max = MAX_STACK): string {
+  const cut = stack.length > max ? `${stack.slice(0, max)}...` : stack;
+  return cut
+    .split("\n")
+    .map((line) => applyRules(line, FRAME.test(line) ? RULES_WITHOUT_LONG_TOKEN : RULES))
+    .join("\n");
 }
 
 /** Copia mascarada de um valor qualquer (chaves sensiveis viram "[oculto]"). */

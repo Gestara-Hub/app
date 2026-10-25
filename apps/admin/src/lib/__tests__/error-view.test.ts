@@ -45,6 +45,11 @@ describe("contexto do erro", () => {
     ]);
   });
 
+  it("os passos têm card próprio: não aparecem como linha crua do contexto", () => {
+    const rows = contextRows({ route: "/classes", breadcrumbs: [{ s: 1, k: "nav", v: "/classes" }] });
+    expect(rows.map((r) => r.key)).toEqual(["route"]);
+  });
+
   it("contexto vazio não dá linha", () => {
     expect(contextRows({})).toEqual([]);
   });

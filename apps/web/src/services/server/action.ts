@@ -1,5 +1,7 @@
 import { isApiError, type ApiError } from "@gestarahub/contracts";
 import { networkError } from "@gestarahub/core/api-error";
+import { noteActionResult } from "@/lib/breadcrumbs";
+import { referenceOf } from "@/lib/error-reference";
 import { reportError, withErrorScope } from "@/lib/log";
 
 /**
@@ -7,7 +9,7 @@ import { reportError, withErrorScope } from "@/lib/log";
  * ao navegador sem a mensagem em producao, entao o servidor devolve o
  * `ApiError` como valor e o servico do navegador relanca com `unwrap`.
  */
-export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: ApiError };
+export type ActionResult<T> = { ok: true; data: T; event?: string } | { ok: false; error: ApiError; event?: string };
 
 /**
  * No servidor: roda a action e transforma erro em valor. Erro inesperado (nao
@@ -18,7 +20,7 @@ export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: ApiErr
 export async function runAction<T>(fn: () => Promise<T>, event = "action"): Promise<ActionResult<T>> {
   return withErrorScope(async () => {
     try {
-      return { ok: true as const, data: await fn() };
+      return { ok: true as const, data: await fn(), event };
     } catch (error) {
       if (isApiError(error)) {
         return {
@@ -29,11 +31,12 @@ export async function runAction<T>(fn: () => Promise<T>, event = "action"): Prom
             fields: error.fields,
             httpStatus: error.httpStatus,
           },
+          event,
         };
       }
       const reference = await reportError(event, error);
       const generic = networkError();
-      return { ok: false as const, error: { ...generic, message: `${generic.message} Código do erro: ${reference}.` } };
+      return { ok: false as const, error: { ...generic, message: `${generic.message} Código do erro: ${reference}.` }, event };
     }
   });
 }
@@ -41,6 +44,8 @@ export async function runAction<T>(fn: () => Promise<T>, event = "action"): Prom
 /** No navegador: devolve o dado ou relanca o `ApiError` da action. */
 export async function unwrap<T>(result: Promise<ActionResult<T>>): Promise<T> {
   const settled = await result;
+  // Rastro de passos (doc technical/21): anota a ação e, se foi erro com código, manda os passos.
+  noteActionResult(settled, settled.ok ? undefined : referenceOf(settled.error.message));
   if (!settled.ok) throw settled.error;
   return settled.data;
 }

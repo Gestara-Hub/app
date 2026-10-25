@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { snapshotCrumbs } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
 import type { SupportKind, SupportMessage, SupportThreadSummary } from "@/services/support/supportTypes";
 import {
@@ -250,7 +251,7 @@ function Chat({
     const message = text.trim();
     if (!message || pending) return;
     send.mutate(
-      { threadId: threadId ?? undefined, message, origin, errorReference, kind: threadId ? undefined : supportKind },
+      { threadId: threadId ?? undefined, message, origin, errorReference, kind: threadId ? undefined : supportKind, breadcrumbs: !threadId && supportKind === "bug" ? snapshotCrumbs() : undefined },
       {
         onSuccess: (result) => {
           setText("");

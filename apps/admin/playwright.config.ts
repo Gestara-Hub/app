@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 // Testes de ponta a ponta do painel admin, no navegador, contra o Supabase local.
 // Porta 3101 com pasta de build propria: o `pnpm dev:admin` (3001) fica livre e

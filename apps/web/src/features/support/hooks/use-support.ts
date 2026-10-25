@@ -10,6 +10,7 @@ import {
   sendSupportMessageAction,
   supportUnreadCountAction,
 } from "@/services/support/supportActions";
+import type { Crumb } from "@/lib/breadcrumbs";
 import type { SupportKind, SupportThreadView } from "@/services/support/supportTypes";
 
 const keys = {
@@ -63,7 +64,7 @@ function useSyncThread() {
 export function useSendSupportMessage() {
   const sync = useSyncThread();
   return useMutation({
-    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string; kind?: SupportKind }) =>
+    mutationFn: (input: { threadId?: string; message: string; origin?: string; errorReference?: string; kind?: SupportKind; breadcrumbs?: Crumb[] }) =>
       unwrap(sendSupportMessageAction(input)),
     onSuccess: sync,
   });

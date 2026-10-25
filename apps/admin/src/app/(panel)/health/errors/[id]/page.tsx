@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BugStatusBadge, ProtocolTag } from "@/components/support/badges";
 import { can } from "@/lib/permissions";
+import { CrumbList } from "@/components/health/crumb-list";
+import { parseCrumbs } from "@/lib/crumbs-view";
 import { contextRows, splitStack } from "@/lib/error-view";
 import { requireAdmin } from "@/lib/server/context";
 import { getErrorDetail } from "@/lib/server/health";
@@ -27,6 +29,8 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
   if (!error) notFound();
   const context = contextRows(error.context);
   const stack = error.stack ? splitStack(error.stack) : null;
+  // Os passos da ocorrência mais recente que os tem (o navegador manda depois do erro).
+  const withCrumbs = error.occurrences.find((o) => parseCrumbs(o.context.breadcrumbs).length > 0);
 
   return (
     <>
@@ -97,6 +101,24 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
                   ))}
                 </dl>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Passos antes do erro</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {withCrumbs ? (
+                  <>
+                    Da ocorrência <span className="select-all font-mono">{withCrumbs.reference ?? "sem código"}</span>. Telas abertas e ações, sem nada do que foi digitado.
+                  </>
+                ) : (
+                  "Telas abertas e ações, sem nada do que foi digitado."
+                )}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <CrumbList crumbs={parseCrumbs(withCrumbs?.context.breadcrumbs)} empty="Nenhuma ocorrência recente trouxe os passos (só erros de ação com código e erros do navegador enviam)." />
             </CardContent>
           </Card>
 

@@ -14,7 +14,7 @@ import { organizationModelById } from "@/mocks/store";
 import { DiscoveryNextStepBar, OnboardingTopBanner, SetupGuard } from "@/features/onboarding";
 import { WhatsAppConfirmHost } from "@/features/communication";
 import { PlanNoticeBanner } from "@/features/subscription";
-import { AnnouncementBanner, HelpHost, SupportHost } from "@/features/support";
+import { AnnouncementBanner, CrumbTracker, HelpHost, SupportHost } from "@/features/support";
 import { UserPreferencesProvider } from "@/features/preferences";
 import {
   VIEW_MODE_STORAGE_PREFIX,
@@ -63,6 +63,7 @@ export default async function AppLayout({
             <NavigationTracker />
             <WhatsAppConfirmHost />
             <SupportHost />
+            <CrumbTracker />
             <HelpHost />
             <BrowserErrorReporter />
             <SecurityPromptHost />

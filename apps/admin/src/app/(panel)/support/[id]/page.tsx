@@ -7,12 +7,14 @@ import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { BugStatusBadge, KindBadge, ProtocolTag, RegressionBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { BackLink } from "@/components/shared/back-link";
 import { ConfirmSubmit } from "@/components/shared/confirm-submit";
+import { CrumbList } from "@/components/health/crumb-list";
 import { TimelineList } from "@/components/health/timeline-list";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
+import { parseCrumbs } from "@/lib/crumbs-view";
 import { contextRows } from "@/lib/error-view";
 import { userTimeline } from "@/lib/server/activity";
 import { findErrorByReference, getOccurrenceByReference } from "@/lib/server/health";
@@ -47,6 +49,9 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         userTimeline({ userId: thread.userId, organizationId: thread.organizationId, around: thread.createdAt, windowMinutes: 30, limit: 15 }),
       ])
     : [null, null, []];
+
+  // Passos do erro que a pessoa viu (se o código tem); senão os do próprio relato.
+  const occurrenceCrumbs = parseCrumbs(occurrence?.context.breadcrumbs);
 
   return (
     <>
@@ -221,6 +226,17 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                 ) : (
                   <p className="text-muted-foreground">{thread.bugStatus ? BUG_STATUS_LABEL[thread.bugStatus] : "Sem andamento"}</p>
                 )}
+              </CardContent>
+            </Card>
+          ) : null}
+          {thread.breadcrumbs.length > 0 || occurrenceCrumbs.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Passos antes {occurrenceCrumbs.length > 0 ? "do erro" : "do relato"}</CardTitle>
+                <p className="text-xs text-muted-foreground">Telas abertas e ações, sem nada do que foi digitado.</p>
+              </CardHeader>
+              <CardContent>
+                <CrumbList crumbs={occurrenceCrumbs.length > 0 ? occurrenceCrumbs : thread.breadcrumbs} empty="" />
               </CardContent>
             </Card>
           ) : null}

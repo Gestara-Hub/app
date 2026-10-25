@@ -1,3 +1,5 @@
+import type { Crumb } from "./crumbs-view";
+
 export type ThreadStatus = "bot" | "waiting_us" | "waiting_customer" | "resolved";
 
 export const STATUS_LABEL: Record<ThreadStatus, string> = {
@@ -91,6 +93,8 @@ export interface ThreadDetail extends ThreadRow {
   originScreen: string | null;
   errorReference: string | null;
   clientInfo: string | null;
+  /** Passos antes do relato (telas e ações), se o app mandou; vazio se não. */
+  breadcrumbs: Crumb[];
   /** Em que versão (ou texto livre) foi corrigido, e quando. */
   fixedIn: string | null;
   fixedAt: Date | null;

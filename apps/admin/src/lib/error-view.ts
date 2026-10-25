@@ -46,6 +46,7 @@ export function contextRows(context: Record<string, unknown>): ContextRow[] {
     rows.push({ key, label, value: show(context[key]) });
     used.add(key);
   }
+  used.add("breadcrumbs"); // os passos têm card próprio (crumb-list)
   const cause = context.cause;
   if (cause && typeof cause === "object" && !Array.isArray(cause)) {
     const { code, details, hint, ...rest } = cause as Record<string, unknown>;

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { setCrumbSender, snapshotCrumbs } from "@/lib/breadcrumbs";
 import { reportError, setErrorSink, type ErrorEntry } from "@/lib/log";
+import { attachBreadcrumbsAction } from "@/services/server/breadcrumbs";
 import { reportBrowserErrorAction } from "@/services/server/browserErrors";
 
 /** O mesmo erro (impressao digital) so sai uma vez por minuto deste navegador. */
@@ -36,10 +38,13 @@ export function BrowserErrorReporter() {
         level: entry.level,
         message: entry.message,
         stack: entry.stack,
-        context: { ...entry.context, path: window.location.pathname },
+        // Os passos até aqui (telas e ações, sem texto digitado) ajudam a reproduzir.
+        context: { ...entry.context, path: window.location.pathname, breadcrumbs: snapshotCrumbs() },
         reference: entry.reference,
       });
     });
+    // Erro de ação do servidor com código: o servidor já gravou; aqui vão os passos.
+    setCrumbSender((reference) => void attachBreadcrumbsAction({ reference, crumbs: snapshotCrumbs() }));
     const onError = (event: ErrorEvent) => {
       if (isBenign(String(event.message ?? ""))) return;
       void reportError("unhandled", event.error ?? event.message, {
@@ -55,6 +60,7 @@ export function BrowserErrorReporter() {
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onRejection);
       setErrorSink(undefined);
+      setCrumbSender(undefined);
     };
   }, []);
   return null;

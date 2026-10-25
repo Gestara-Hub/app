@@ -5,6 +5,7 @@ import { recordErrorToDb, runWithErrorScope } from "@/lib/log/server-sink";
 import { runAction } from "../action";
 import { requireTenant } from "../tenant";
 import { reportBrowserErrorAction } from "../browserErrors";
+import { attachBreadcrumbsAction } from "../breadcrumbs";
 import { sendDailyErrorDigest } from "../errorDigest";
 
 /**
@@ -130,6 +131,70 @@ describe("registro de erros", () => {
     expect(refs).toContain("FIX00006");
     expect(refs).not.toContain("FIX00002");
     expect(refs).toHaveLength(21);
+  });
+
+  it("o resultado da ação leva o nome dela, com sucesso ou erro", async () => {
+    await signInAs(tenant.owner);
+    expect(await runAction(async () => 1, "teste.nome")).toMatchObject({ ok: true, data: 1, event: "teste.nome" });
+    expect(await runAction(async () => { throw new Error("falhou"); }, "teste.nome")).toMatchObject({ ok: false, event: "teste.nome" });
+  });
+
+  it("os passos do navegador completam a ocorrência: só a mesma pessoa, só uma vez, só o que é válido", async () => {
+    await signInAs(tenant.owner);
+    const result = await runAction(async () => {
+      await requireTenant();
+      throw new Error("falhou ao gravar a presença");
+    }, "teste.passos");
+    const code = /Código do erro: ([A-Z2-9]{8})\./.exec(result.ok ? "" : result.error.message)![1];
+    const occurrence = async () => {
+      const [row] = await rows("teste.passos");
+      const { data } = await adminClient().from("error_occurrences").select("context").eq("error_id", row.id).eq("reference", code).single();
+      return data?.context as { breadcrumbs?: { s: number; k: string; v: string }[] };
+    };
+    expect((await occurrence()).breadcrumbs).toBeUndefined();
+
+    // Outra pessoa, de outro espaço, não completa a ocorrência dos outros.
+    const stranger = await createTestTenant();
+    try {
+      await signInAs(stranger.owner);
+      await attachBreadcrumbsAction({ reference: code, crumbs: [{ s: 3, k: "nav", v: "/intruso" }] });
+      expect((await occurrence()).breadcrumbs).toBeUndefined();
+    } finally {
+      await stranger.remove();
+    }
+
+    await signInAs(tenant.owner);
+    // Código inválido e passos inválidos não gravam nada.
+    await attachBreadcrumbsAction({ reference: "curto", crumbs: [{ s: 3, k: "nav", v: "/x" }] });
+    await attachBreadcrumbsAction({ reference: code, crumbs: [{ s: 3, k: "clique", v: "/x" } as never] });
+    expect((await occurrence()).breadcrumbs).toBeUndefined();
+
+    await attachBreadcrumbsAction({
+      reference: code,
+      crumbs: [
+        { s: 12, k: "nav", v: "/classes/:id" },
+        { s: 4, k: "action", v: "turmas.markAttendance" },
+        { s: 0, k: "action_error", v: "turmas.save (K7Q2M9XD) 529.982.247-25" },
+      ],
+    });
+    const saved = (await occurrence()).breadcrumbs!;
+    expect(saved.map((c) => c.k)).toEqual(["nav", "action", "action_error"]);
+    expect(saved[2].v).toBe("turmas.save (K7Q2M9XD) [cpf]");
+
+    // Uma vez só: um segundo envio não troca o que já está.
+    await attachBreadcrumbsAction({ reference: code, crumbs: [{ s: 1, k: "nav", v: "/outra" }] });
+    expect((await occurrence()).breadcrumbs).toHaveLength(3);
+  });
+
+  it("erro do navegador leva os passos no próprio contexto", async () => {
+    await signInAs(tenant.owner);
+    await reportBrowserErrorAction({
+      event: "teste.navegador",
+      message: "Falha na tela",
+      context: { path: "/classes", breadcrumbs: [{ s: 2, k: "nav", v: "/classes" }] },
+    });
+    const [row] = await rows("browser.teste.navegador");
+    expect(row.context).toMatchObject({ path: "/classes", breadcrumbs: [{ s: 2, k: "nav", v: "/classes" }] });
   });
 
   it("erro de regra (ApiError) não vai para o registro", async () => {

@@ -1,7 +1,7 @@
 "use server";
 
 import { reportError } from "@/lib/log";
-import { maskText, maskValue } from "@/lib/log/mask";
+import { maskStack, maskText, maskValue } from "@/lib/log/mask";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { requireTenant } from "./tenant";
 
@@ -31,7 +31,7 @@ export async function reportBrowserErrorAction(input: BrowserErrorInput): Promis
     const allowed = await checkRateLimit({ key: `browser-error:${ctx.userId}`, maxRequests: 30, windowSeconds: 600 });
     if (!allowed) return;
     const error = new Error(maskText(input.message.slice(0, 2000)));
-    error.stack = typeof input.stack === "string" ? maskText(input.stack.slice(0, 8000)) : undefined;
+    error.stack = typeof input.stack === "string" ? maskStack(input.stack.slice(0, 8000)) : undefined;
     await reportError(`browser.${String(input.event ?? "erro").slice(0, 80)}`, error, {
       source: "browser",
       level: input.level === "warn" ? "warn" : "error",

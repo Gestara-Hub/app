@@ -387,6 +387,37 @@ describe("saúde", () => {
     await expect(panel`select 1 from public.audit_logs limit 1`).rejects.toThrow(/permission denied/i);
   });
 
+  it("os passos antes do relato e antes do erro chegam ao painel, sem o que não tem a forma certa", async () => {
+    const health = await import("@/lib/server/health");
+    const support = await import("@/lib/server/support");
+    const { parseCrumbs, crumbRows } = await import("@/lib/crumbs-view");
+    const code = `PAS${tag.toUpperCase()}`.slice(0, 8);
+    const { id: errorId } = (await health.findErrorByReference(`ZZ${tag.toUpperCase()}1`))!;
+    const crumbs = [
+      { s: 40, k: "nav", v: "/classes/:id" },
+      { s: 9, k: "action_error", v: "turmas.save (K7Q2M9XD)" },
+    ];
+    await owner`insert into public.error_occurrences (error_id, reference, message, user_id, context)
+                values (${errorId}, ${code}, 'Falha com passos', 'user-passos', ${owner.json({ route: "/classes/a", breadcrumbs: [...crumbs, { s: 1, k: "clique", v: "lixo" }] })})`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, 'user-passos', 'Pessoa Passos', 'passos@teste.com', null, 'Travou', 'Travou ao salvar', '/classes/a', null, 'free', 'bug', null, ${owner.json(crumbs)}) as id`;
+    const [noCrumbs] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, 'user-passos', 'Pessoa Passos', 'passos@teste.com', null, 'Sem passos', 'Sem passos', '/x', null, 'free', 'bug', null, '[]'::jsonb) as id`;
+    try {
+      // Relato: os passos que o app mandou; lista vazia no banco vira "sem passos".
+      expect((await support.getThread(thread.id))!.breadcrumbs).toEqual(crumbs);
+      expect((await support.getThread(noCrumbs.id))!.breadcrumbs).toEqual([]);
+      // Erro: os passos do contexto da ocorrência; o item inválido fica de fora.
+      const detail = await health.getErrorDetail(errorId);
+      const occurrence = detail!.occurrences.find((o) => o.reference === code)!;
+      expect(parseCrumbs(occurrence.context.breadcrumbs)).toEqual(crumbs);
+      expect(crumbRows(parseCrumbs(occurrence.context.breadcrumbs)).map((r) => r.when)).toEqual(["40 s antes", "9 s antes"]);
+    } finally {
+      await owner`delete from platform.support_threads where id = any(${[thread.id, noCrumbs.id]})`;
+      await owner`delete from public.error_occurrences where error_id = ${errorId}`;
+    }
+  });
+
   it("marcar como conhecido esconde da lista, desmarcar volta, e fica registrado", async () => {
     const admin = await createAdminUser("platform_support", "Atendente Saúde");
     admins.push(admin);

@@ -1,4 +1,4 @@
-import { fingerprintOf, MAX_STACK, maskText, maskValue, newReference } from "./mask";
+import { fingerprintOf, maskStack, maskText, maskValue, newReference } from "./mask";
 
 export { dbError } from "./db-error";
 
@@ -151,7 +151,7 @@ function buildEntry(event: string, error: unknown, options: ReportOptions, messa
     (err ? err.message : typeof error === "string" ? error : safeJson(error)) ??
     "erro sem mensagem";
   const message = maskText(raw);
-  const stack = err?.stack ? maskText(err.stack, MAX_STACK) : undefined;
+  const stack = err?.stack ? maskStack(err.stack) : undefined;
   const cause = err && "cause" in err && err.cause ? { cause: maskValue(err.cause) } : {};
   const errorCode = (err as { code?: unknown } | undefined)?.code;
   const code = typeof errorCode === "string" ? { code: errorCode } : {};

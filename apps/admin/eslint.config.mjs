@@ -5,7 +5,8 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  // `.next-e2e*`: build do servidor dos testes do navegador (mesma regra do apps/web).
+  globalIgnores([".next/**", ".next-e2e/**", ".next-e2e-prod/**", "out/**", "build/**", "next-env.d.ts"]),
   {
     // Componentes do shadcn/ui copiados do apps/web: mesmas excecoes de la.
     files: ["src/components/ui/**"],

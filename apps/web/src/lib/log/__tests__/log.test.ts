@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isApiError } from "@gestarahub/contracts";
 import { dbError, logError, reportError, setErrorSink, type ErrorEntry } from "../index";
-import { fingerprintOf, maskText, maskValue } from "../mask";
+import { fingerprintOf, maskStack, maskText, maskValue } from "../mask";
 
 /** Registro de erros (doc technical/21): mascara, agrupamento e a porta unica. */
 
@@ -127,3 +127,30 @@ describe("detalhe do erro", () => {
     }
   });
 });
+
+describe("máscara da pilha", () => {
+  const FILE = "apps_web_src_lib_supabase_admin_ts_1olr2y2_abcdefghijklmnop._.js";
+
+  it("nome de arquivo longo nos quadros fica; a regra de token longo só vale fora dos quadros", () => {
+    expect(FILE.replace("._.js", "").length).toBeGreaterThanOrEqual(40);
+    const stack = `Error: falhou com ${"A1b2".repeat(12)}\n    at fn (.next/server/chunks/${FILE}:24:62199)`;
+    const masked = maskStack(stack);
+    expect(masked).toContain(`chunks/${FILE}:24:62199`);
+    expect(masked.split("\n")[0]).toBe("Error: falhou com [token]");
+    // O maskText comum continua apagando (é o que protege mensagem e contexto).
+    expect(maskText(`at fn (${FILE}:1:1)`)).toContain("[token]");
+  });
+
+  it("chave de formato conhecido ainda sai, mesmo dentro de um quadro", () => {
+    const stack = "Error: x\n    at fn (/app/x.js:1:1) token=abcdef123456 eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.assinatura1234";
+    const masked = maskStack(stack);
+    expect(masked).not.toContain("abcdef123456");
+    expect(masked).not.toContain("eyJhbGci");
+  });
+
+  it("CPF e e-mail em quadro de pilha continuam mascarados e o teto vale", () => {
+    expect(maskStack("Error: x\n    at fn (/app/529.982.247-25.js:1:1)")).toContain("[cpf]");
+    expect(maskStack("x".repeat(9000)).length).toBeLessThanOrEqual(8003);
+  });
+});
+

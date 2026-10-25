@@ -1,4 +1,5 @@
 import { toast as sonnerToast, type ExternalToast } from "sonner";
+import { referenceOf } from "./error-reference";
 
 /**
  * `toast` do app: igual ao do sonner, mas o aviso de erro inesperado (o que traz
@@ -15,12 +16,7 @@ export function setErrorReporter(next: ErrorReporter | undefined): void {
   reporter = next;
 }
 
-const REFERENCE = /Código do erro: ([A-Z0-9]{8})\b/;
-
-/** O código do erro dentro da mensagem, se houver. */
-export function referenceOf(message: unknown): string | undefined {
-  return typeof message === "string" ? REFERENCE.exec(message)?.[1] : undefined;
-}
+export { referenceOf };
 
 /** Tempo na tela do aviso com botão: o dobro do padrão, para dar tempo de tocar. */
 const REPORTABLE_DURATION_MS = 10_000;

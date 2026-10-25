@@ -65,7 +65,10 @@ Na rotina diária: os erros **novos ou que voltaram** nas últimas 24 horas (no 
 
 Decidido em 25/10: **source maps de produção ficam de fora por ora.** O build mostrou que o servidor gera os mapas, mas eles não entram no pacote do deploy (0 `.map` no rastreio de arquivos) e a nossa pilha gravada não é traduzida sozinha; além disso, a máscara de "token" apaga nomes de arquivo de 40 ou mais caracteres na pilha (`chunks/[token]._.js`), o que já atrapalha hoje. Se voltar: ajustar a máscara nos quadros, traduzir pelo `.map` ao lado do arquivo (`module.SourceMap`, validado) e incluir os `.map` no `outputFileTracingIncludes` (conferir num preview na Vercel).
 
-Falta (Entrega 3 do levantamento de 25/10): o rastro do que a pessoa fez antes do erro além das ações auditadas (telas e cliques).
+- **Rastro de passos (25/10/2026):** o navegador guarda na memória da aba os últimos 30 passos (`lib/breadcrumbs.ts`): telas abertas (caminho com ids trocados por `:id`, anotadas pelo `CrumbTracker`) e o **nome fixo** de cada ação do servidor, com erro ou sem (o `runAction` devolve `event` no resultado e o `unwrap` anota). **Nunca** texto digitado, valor de campo nem rótulo de botão. Os passos (até 20, tempo em segundos antes do envio) vão em três casos: (1) erro de ação com código: o `unwrap` manda `attachBreadcrumbsAction` e a função `error_attach_breadcrumbs` completa a ocorrência (mesma pessoa e espaço, uma vez só); (2) erro do navegador: vão no contexto; (3) relato de problema: `support_threads.breadcrumbs`. O servidor mascara e limita tudo (`sanitizeCrumbs`). No painel: card "Passos antes do erro" na tela do erro e "Passos antes do relato" na conversa (migração `…068`).
+- **Máscara da pilha:** `maskStack` não aplica a regra de token longo às linhas de quadro (antes o nome do arquivo do pacote virava `[token]`); chave de formato conhecido ainda sai.
+
+Falta: nada do levantamento de 25/10, além dos source maps (decididos fora acima). Cliques e navegação fora das telas e ações do servidor não entram no rastro.
 
 ## 6. Como investigar
 

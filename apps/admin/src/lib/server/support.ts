@@ -4,6 +4,7 @@ import { sql } from "./db";
 import { likePattern, normalizeSearch } from "../filter-input";
 import { LIST_PAGE_SIZE } from "../pagination";
 import { fetchPage } from "./page-fetch";
+import { parseCrumbs } from "../crumbs-view";
 import type { BugStatus, ThreadDetail, ThreadFilter, ThreadKind, ThreadMessage, ThreadRow, ThreadStatus } from "../support-types";
 
 /** Consultas e gravacoes do Suporte (schema `platform`). Quem chama confere o papel e grava a auditoria. */
@@ -118,7 +119,7 @@ export async function threadCounts(): Promise<{ attention: number; urgent: numbe
 
 export async function getThread(id: string): Promise<ThreadDetail | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const [row] = await sql()<(Row & { user_id: string; fixed_in: string | null; fixed_at: Date | null; summary: string | null; origin_screen: string | null; error_reference: string | null; client_info: string | null; bot_helped: boolean | null })[]>`
+  const [row] = await sql()<(Row & { user_id: string; breadcrumbs: unknown; fixed_in: string | null; fixed_at: Date | null; summary: string | null; origin_screen: string | null; error_reference: string | null; client_info: string | null; bot_helped: boolean | null })[]>`
     select t.id, t.number, t.kind, t.bug_status,
            (t.bug_status = 'fixed' and t.fixed_at is not null and exists (
               select 1 from public.error_occurrences oc
@@ -126,7 +127,7 @@ export async function getThread(id: string): Promise<ThreadDetail | null> {
                  and oc.occurred_at > t.fixed_at)) as regressed,
            t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
            t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at,
-           t.fixed_in, t.fixed_at, t.user_id, t.summary, t.origin_screen, t.error_reference, t.client_info, t.bot_helped
+           t.fixed_in, t.fixed_at, t.breadcrumbs, t.user_id, t.summary, t.origin_screen, t.error_reference, t.client_info, t.bot_helped
       from platform.support_threads t join public.organizations o on o.id = t.organization_id
      where t.id = ${id}`;
   if (!row) return null;
@@ -148,6 +149,7 @@ export async function getThread(id: string): Promise<ThreadDetail | null> {
     originScreen: row.origin_screen,
     errorReference: row.error_reference,
     clientInfo: row.client_info,
+    breadcrumbs: parseCrumbs(row.breadcrumbs),
     fixedIn: row.fixed_in,
     fixedAt: row.fixed_at,
     regression: back ? { count: back.count, lastAt: back.last_at, lastRelease: back.last_release } : null,
