@@ -19,6 +19,10 @@ export interface SupportNotice {
   spaceName: string;
   userName: string;
   userEmail: string;
+  /** Tela de onde a conversa saiu, quando se sabe. */
+  originScreen?: string;
+  /** Código do erro que a pessoa viu (liga a conversa ao registro de erros). */
+  errorReference?: string;
   preview: string;
 }
 
@@ -34,6 +38,8 @@ export function supportNoticeText(notice: SupportNotice): { subject: string; tex
     `Espaço: ${notice.spaceName}`,
     `Pessoa: ${notice.userName} (${notice.userEmail})`,
     `Assunto: ${notice.subject}`,
+    ...(notice.originScreen ? [`Tela: ${notice.originScreen}`] : []),
+    ...(notice.errorReference ? [`Código do erro: ${notice.errorReference} (busque em Saúde, no painel)`] : []),
     "",
     notice.preview,
     "",
@@ -66,7 +72,8 @@ export async function sendSupportNotice(notice: SupportNotice, to?: string): Pro
       }),
     });
     if (!response.ok) {
-      logError("[support] Erro ao enviar o aviso de chamado:", response.status);
+      // O corpo da resposta diz o motivo (ex.: destinatário não liberado na conta).
+      logError("[support] Erro ao enviar o aviso de chamado:", response.status, await response.text().catch(() => ""));
       return false;
     }
     return true;

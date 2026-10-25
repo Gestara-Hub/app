@@ -4,7 +4,7 @@ import { sql } from "./db";
 import { likePattern, normalizeSearch } from "../filter-input";
 import { LIST_PAGE_SIZE } from "../pagination";
 import { fetchPage } from "./page-fetch";
-import type { ThreadDetail, ThreadFilter, ThreadKind, ThreadMessage, ThreadRow, ThreadStatus } from "../support-types";
+import type { BugStatus, ThreadDetail, ThreadFilter, ThreadKind, ThreadMessage, ThreadRow, ThreadStatus } from "../support-types";
 
 /** Consultas e gravacoes do Suporte (schema `platform`). Quem chama confere o papel e grava a auditoria. */
 
@@ -12,6 +12,8 @@ type Row = {
   id: string;
   number: number;
   kind: ThreadKind;
+  bug_status: BugStatus | null;
+  regressed: boolean;
   subject: string;
   status: ThreadStatus;
   urgent: boolean;
@@ -30,6 +32,8 @@ const toRow = (r: Row): ThreadRow => ({
   id: r.id,
   number: r.number,
   kind: r.kind,
+  bugStatus: r.kind === "bug" ? (r.bug_status ?? "new") : null,
+  regressed: r.regressed,
   subject: r.subject,
   status: r.status,
   urgent: r.urgent,
@@ -73,7 +77,12 @@ export async function listThreads(input: {
   const order = input.order ?? null;
   const result = await fetchPage(input.page, (page) =>
     sql()<(Row & { total: number })[]>`
-      select t.id, t.number, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
+      select t.id, t.number, t.kind, t.bug_status,
+             (t.bug_status = 'fixed' and t.fixed_at is not null and exists (
+                select 1 from public.error_occurrences oc
+                 where oc.error_id = (select o2.error_id from public.error_occurrences o2 where o2.reference = t.error_reference)
+                   and oc.occurred_at > t.fixed_at)) as regressed,
+             t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
              t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at, (count(*) over ())::int as total
         from platform.support_threads t
         join public.organizations o on o.id = t.organization_id
@@ -109,21 +118,39 @@ export async function threadCounts(): Promise<{ attention: number; urgent: numbe
 
 export async function getThread(id: string): Promise<ThreadDetail | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const [row] = await sql()<(Row & { summary: string | null; origin_screen: string | null; error_reference: string | null; client_info: string | null; bot_helped: boolean | null })[]>`
-    select t.id, t.number, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
+  const [row] = await sql()<(Row & { user_id: string; fixed_in: string | null; fixed_at: Date | null; summary: string | null; origin_screen: string | null; error_reference: string | null; client_info: string | null; bot_helped: boolean | null })[]>`
+    select t.id, t.number, t.kind, t.bug_status,
+           (t.bug_status = 'fixed' and t.fixed_at is not null and exists (
+              select 1 from public.error_occurrences oc
+               where oc.error_id = (select o2.error_id from public.error_occurrences o2 where o2.reference = t.error_reference)
+                 and oc.occurred_at > t.fixed_at)) as regressed,
+           t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
            t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at,
-           t.summary, t.origin_screen, t.error_reference, t.client_info, t.bot_helped
+           t.fixed_in, t.fixed_at, t.user_id, t.summary, t.origin_screen, t.error_reference, t.client_info, t.bot_helped
       from platform.support_threads t join public.organizations o on o.id = t.organization_id
      where t.id = ${id}`;
   if (!row) return null;
   const messages = await sql()<{ id: string; author: ThreadMessage["author"]; staff_name: string | null; body: string; internal: boolean; created_at: Date }[]>`
     select id, author, staff_name, body, internal, created_at from platform.support_messages where thread_id = ${id} order by created_at`;
+  // Corrigido e o erro voltou: quantas vezes, quando foi a última e em que versão.
+  const [back] = row.regressed
+    ? await sql()<{ count: number; last_at: Date; last_release: string | null }[]>`
+        select count(*)::int as count, max(oc.occurred_at) as last_at,
+               (array_agg(oc.context ->> 'release' order by oc.occurred_at desc))[1] as last_release
+          from public.error_occurrences oc
+         where oc.error_id = (select o2.error_id from public.error_occurrences o2 where o2.reference = ${row.error_reference})
+           and oc.occurred_at > ${row.fixed_at}`
+    : [];
   return {
     ...toRow(row),
+    userId: row.user_id,
     summary: row.summary,
     originScreen: row.origin_screen,
     errorReference: row.error_reference,
     clientInfo: row.client_info,
+    fixedIn: row.fixed_in,
+    fixedAt: row.fixed_at,
+    regression: back ? { count: back.count, lastAt: back.last_at, lastRelease: back.last_release } : null,
     botHelped: row.bot_helped,
     messages: messages.map((m) => ({ id: m.id, author: m.author, staffName: m.staff_name, body: m.body, internal: m.internal, createdAt: m.created_at })),
   };
@@ -151,6 +178,23 @@ export async function setThreadStatus(threadId: string, status: "resolved" | "wa
     await sql()`update platform.support_threads set status = 'waiting_us', resolved_at = null,
                        last_customer_message_at = coalesce(last_customer_message_at, now()) where id = ${threadId}`;
   }
+}
+
+/**
+ * Andamento de um problema relatado. "Corrigido" guarda quando e em que versão (texto
+ * livre, em geral o commit); os outros estados limpam isso. Só vale para conversa do
+ * tipo problema. Devolve falso se a conversa não é um problema.
+ */
+export async function setBugStatus(input: { threadId: string; status: BugStatus; fixedIn?: string | null }): Promise<boolean> {
+  const fixed = input.status === "fixed";
+  const rows = await sql()<{ id: string }[]>`
+    update platform.support_threads set
+      bug_status = ${input.status},
+      fixed_in = ${fixed ? (input.fixedIn?.trim() || null) : null},
+      fixed_at = ${fixed ? sql()`now()` : null}
+    where id = ${input.threadId} and kind = 'bug'
+    returning id`;
+  return rows.length > 0;
 }
 
 export async function setThreadUrgent(threadId: string, urgent: boolean): Promise<void> {
@@ -253,4 +297,13 @@ export async function listHelpFeedback(days = 30): Promise<HelpFeedbackRow[]> {
      order by not_helpful desc, helpful asc, chunk_id
      limit 50`;
   return rows.map((r) => ({ chunkId: r.chunk_id, helpful: r.helpful, notHelpful: r.not_helpful }));
+}
+
+/** As conversas de uma pessoa (mais novas primeiro), para a visão "tudo desta pessoa". */
+export async function listUserThreads(userId: string): Promise<{ id: string; number: number; kind: ThreadKind; subject: string; status: ThreadStatus; createdAt: Date; userName: string; userEmail: string; organizationId: string; organizationName: string }[]> {
+  const rows = await sql()<{ id: string; number: number; kind: ThreadKind; subject: string; status: ThreadStatus; created_at: Date; user_name: string; user_email: string; organization_id: string; organization_name: string }[]>`
+    select t.id, t.number, t.kind, t.subject, t.status, t.created_at, t.user_name, t.user_email, t.organization_id, o.name as organization_name
+      from platform.support_threads t join public.organizations o on o.id = t.organization_id
+     where t.user_id = ${userId} order by t.created_at desc limit 20`;
+  return rows.map((r) => ({ id: r.id, number: r.number, kind: r.kind, subject: r.subject, status: r.status, createdAt: r.created_at, userName: r.user_name, userEmail: r.user_email, organizationId: r.organization_id, organizationName: r.organization_name }));
 }

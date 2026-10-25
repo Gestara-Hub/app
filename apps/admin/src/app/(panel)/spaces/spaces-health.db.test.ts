@@ -271,12 +271,120 @@ describe("saúde", () => {
       const detail = await health.getErrorDetail(id);
       expect(detail).toMatchObject({ event: "turmas.markAttendance", count: 3, context: { route: "/classes/x" } });
       expect(detail?.stack).toContain("markAttendance");
-      expect(detail?.threads).toEqual([{ id: thread.id, subject: "Não consegui marcar a presença", status: "bot" }]);
+      expect(detail?.threads).toEqual([expect.objectContaining({ id: thread.id, subject: "Não consegui marcar a presença", status: "bot" })]);
     } finally {
       await owner`delete from platform.support_threads where id = ${thread.id}`;
     }
     expect(await health.getErrorDetail("00000000-0000-0000-0000-000000000000")).toBeNull();
     expect(await health.getErrorDetail("não-é-id")).toBeNull();
+  });
+
+  it("o código de uma ocorrência antiga continua achando o erro depois que ele se repete", async () => {
+    const health = await import("@/lib/server/health");
+    const last = `ZZ${tag.toUpperCase()}1`;
+    const old = `OLD${tag.toUpperCase()}`.slice(0, 8);
+    const { id } = (await health.findErrorByReference(last))!;
+    await owner`insert into public.error_occurrences (error_id, reference, occurred_at, message, context)
+                values (${id}, ${old}, now() - interval '2 hours', 'Falha ao marcar presença', ${owner.json({ route: "/classes/a", profile: "owner", release: "abc1234" })}),
+                       (${id}, ${last}, now(), 'Falha ao marcar presença', ${owner.json({ route: "/classes/b", profile: "manager" })})`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, 'user-antigo', 'Pessoa', 'p@teste.com', null, 'Falhou de manhã', 'Deu erro', '/classes/a', ${old}, 'free', 'bug') as id`;
+    try {
+      expect((await health.findErrorByReference(old))?.id).toBe(id);
+      expect((await health.listErrors({ period: "24h", q: old, page: 1 })).rows.map((r) => r.id)).toContain(id);
+      const detail = await health.getErrorDetail(id);
+      expect(detail?.occurrences.map((o) => o.reference)).toEqual([last, old]);
+      expect(detail?.occurrences[1].context).toMatchObject({ route: "/classes/a", profile: "owner", release: "abc1234" });
+      // A conversa aberta com o código antigo aparece, não só as do último.
+      expect(detail?.threads.map((t) => t.id)).toContain(thread.id);
+    } finally {
+      await owner`delete from platform.support_threads where id = ${thread.id}`;
+      await owner`delete from public.error_occurrences where error_id = ${id}`;
+    }
+  });
+
+  it("rastreia um relato: a ocorrência exata, os erros da pessoa na hora e a visão dela", async () => {
+    const health = await import("@/lib/server/health");
+    const support = await import("@/lib/server/support");
+    const last = `ZZ${tag.toUpperCase()}1`;
+    const { id } = (await health.findErrorByReference(last))!;
+    const user = `user-rastreio-${tag}`;
+    await owner`insert into public.error_occurrences (error_id, reference, occurred_at, message, user_id, context) values
+      (${id}, ${last}, now() - interval '5 minutes', 'Falha ao marcar presença', ${user}, ${owner.json({ route: "/classes/a", profile: "owner", plan: "free", release: "abc1234", ms: 420 })}),
+      (${id}, ${`FAR${tag.toUpperCase()}`.slice(0, 8)}, now() - interval '3 hours', 'Falha antiga', ${user}, ${owner.json({ route: "/classes/b" })}),
+      (${id}, ${`OTH${tag.toUpperCase()}`.slice(0, 8)}, now() - interval '4 minutes', 'Falha de outra pessoa', ${`outra-${tag}`}, '{}'::jsonb)`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, ${user}, 'Pessoa Rastreada', 'rastreada@teste.com', null, 'Não marca presença', 'Deu erro', '/classes/a', ${last}, 'free', 'bug') as id`;
+    try {
+      // A ocorrência com o código: tela, perfil, plano, versão e tempo da hora.
+      const hit = await health.getOccurrenceByReference(last.toLowerCase());
+      expect(hit).toMatchObject({ errorId: id, userId: user, context: { route: "/classes/a", profile: "owner", release: "abc1234", ms: 420 } });
+      expect(await health.getOccurrenceByReference("NAOEXISTE")).toBeNull();
+      // Perto da hora do relato: só desta pessoa e só da janela (a de 3 h atrás fica de fora).
+      const detail = await support.getThread(thread.id);
+      expect(detail?.userId).toBe(user);
+      const near = await health.listUserOccurrences({ userId: user, around: detail!.createdAt, windowMinutes: 30 });
+      expect(near.map((o) => o.message)).toEqual(["Falha ao marcar presença"]);
+      // A visão da pessoa pega os dois, da mais nova para a mais antiga.
+      const all = await health.listUserOccurrences({ userId: user, days: 30 });
+      expect(all.map((o) => o.message)).toEqual(["Falha ao marcar presença", "Falha antiga"]);
+      expect((await support.listUserThreads(user)).map((t) => t.id)).toEqual([thread.id]);
+      // A tela do erro diz quem estava e qual conversa veio daquele código.
+      const errorDetail = await health.getErrorDetail(id);
+      const row = errorDetail?.occurrences.find((o) => o.reference === last);
+      expect(row).toMatchObject({ userId: user, thread: { id: thread.id } });
+    } finally {
+      await owner`delete from platform.support_threads where id = ${thread.id}`;
+      await owner`delete from public.error_occurrences where error_id = ${id}`;
+    }
+  });
+
+  it("linha do tempo: erros, ações e conversas juntos, sem nome de aluno nem rótulo", async () => {
+    const health = await import("@/lib/server/health");
+    const { userTimeline } = await import("@/lib/server/activity");
+    const user = `user-linha-${tag}`;
+    const code = `LIN${tag.toUpperCase()}`.slice(0, 8);
+    const { id: errorId } = (await health.findErrorByReference(`ZZ${tag.toUpperCase()}1`))!;
+    const actor = owner.json({ userId: user, name: "Pessoa da Linha", profile: "owner" });
+    await owner`insert into public.audit_logs (organization_id, actor, action, target, summary, changes, timestamp) values
+      (${org.livre}, ${actor}, 'created', ${owner.json({ id: "x1", type: "message_log", label: "Mensagem para Aluno Sigiloso Um" })}, 'Mensagem para Aluno Sigiloso Um', null, now() - interval '10 minutes'),
+      (${org.livre}, ${actor}, 'status_changed', ${owner.json({ id: "x2", type: "charge", label: "mensalidade de Aluno Sigiloso Dois" })}, 'mensalidade de Aluno Sigiloso Dois', null, now() - interval '6 minutes'),
+      (${org.livre}, ${actor}, 'updated', ${owner.json({ id: "x3", type: "client", label: "Aluno Antigo" })}, 'Aluno Antigo', null, now() - interval '3 days'),
+      (${org.livre}, ${owner.json({ userId: "system", kind: "system", name: "Rotina" })}, 'created', ${owner.json({ id: "x4", type: "charge", label: "Cobrança da rotina" })}, 'Cobrança da rotina', null, now() - interval '5 minutes')`;
+    await owner`insert into public.error_occurrences (error_id, reference, occurred_at, message, user_id, context)
+                values (${errorId}, ${code}, now() - interval '8 minutes', 'Falha ao marcar presença', ${user}, ${owner.json({ route: "/classes/a", release: "abc1234" })})`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${org.livre}, ${user}, 'Pessoa da Linha', 'linha@teste.com', null, 'Falhou na linha', 'Deu erro', '/classes/a', ${code}, 'free', 'bug') as id`;
+    try {
+      const timeline = await userTimeline({ userId: user, organizationId: org.livre, days: 7 });
+      // A ação de 3 dias atrás cabe em 7 dias; a da rotina (sistema) nunca entra.
+      expect(timeline.map((i) => `${i.kind}:${i.title}`)).toEqual([
+        "thread:Falhou na linha",
+        "action:Mudou a situação de · cobrança",
+        "error:turmas.markAttendance",
+        "action:Criou · mensagem de WhatsApp",
+        "action:Atualizou · aluno",
+      ]);
+      // Janela curta em volta de agora: sem a de 3 dias.
+      const near = await userTimeline({ userId: user, organizationId: org.livre, around: new Date(), windowMinutes: 15 });
+      expect(near.map((i) => i.kind)).toEqual(["thread", "action", "error", "action"]);
+      // Nada de nome de aluno em lugar nenhum do que o painel recebe.
+      expect(JSON.stringify(timeline)).not.toMatch(/Sigiloso|Aluno Antigo|rotina/i);
+      // Sem espaço conhecido, não há ações (só erros e conversas).
+      const noOrg = await userTimeline({ userId: user, organizationId: null, days: 7 });
+      expect(noOrg.every((i) => i.kind !== "action")).toBe(true);
+    } finally {
+      await owner`delete from platform.support_threads where id = ${thread.id}`;
+      await owner`delete from public.error_occurrences where error_id = ${errorId}`;
+      await owner`delete from public.audit_logs where organization_id = ${org.livre} and actor ->> 'userId' in (${user}, 'system')`;
+    }
+  });
+
+  it("o painel lê a visão da atividade, mas não a tabela da Auditoria", async () => {
+    const columns = await owner<{ column_name: string }[]>`
+      select column_name from information_schema.columns where table_schema = 'platform' and table_name = 'user_activity' order by ordinal_position`;
+    expect(columns.map((c) => c.column_name)).toEqual(["organization_id", "user_id", "occurred_at", "action", "target_type", "failed", "error_reference", "security"]);
+    await expect(panel`select 1 from public.audit_logs limit 1`).rejects.toThrow(/permission denied/i);
   });
 
   it("marcar como conhecido esconde da lista, desmarcar volta, e fica registrado", async () => {

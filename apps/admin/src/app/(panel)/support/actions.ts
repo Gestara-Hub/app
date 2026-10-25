@@ -13,9 +13,11 @@ import {
   deleteMacro,
   getThread,
   saveMacro,
+  setBugStatus,
   setThreadStatus,
   setThreadUrgent,
 } from "@/lib/server/support";
+import { BUG_STATUSES, type BugStatus } from "@/lib/support-types";
 
 export interface SupportFormState {
   ok?: boolean;
@@ -125,4 +127,25 @@ export async function deleteMacroAction(formData: FormData): Promise<void> {
   await deleteMacro(macroId.data);
   await recordAudit({ admin, action: "support.macro_delete", target: { id: macroId.data } });
   revalidatePath("/support/macros");
+}
+
+/** Andamento do bug (novo, investigando, corrigido, não reproduzi) e, ao corrigir, em que versão. */
+export async function bugStatusAction(formData: FormData): Promise<void> {
+  const { admin } = await requireAdmin("support:reply");
+  const parsed = z
+    .object({ threadId: id, status: z.enum(BUG_STATUSES as [BugStatus, ...BugStatus[]]), fixedIn: z.string().trim().max(80).optional() })
+    .safeParse({ threadId: formData.get("threadId"), status: formData.get("status"), fixedIn: formData.get("fixedIn") ?? undefined });
+  if (!parsed.success) return;
+  const thread = await getThread(parsed.data.threadId);
+  if (!thread || thread.kind !== "bug") return;
+  const changed = await setBugStatus({ threadId: thread.id, status: parsed.data.status, fixedIn: parsed.data.fixedIn });
+  if (!changed) return;
+  await recordAudit({
+    admin,
+    action: "support.bug_status",
+    organizationId: thread.organizationId,
+    target: { threadId: thread.id, from: thread.bugStatus, to: parsed.data.status, fixedIn: parsed.data.fixedIn || null },
+  });
+  revalidatePath("/support");
+  revalidatePath(`/support/${thread.id}`);
 }

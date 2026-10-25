@@ -10,4 +10,16 @@ describe("supportNoticeText", () => {
     expect(novo.text).toContain("Protocolo: GH-1042");
     expect(supportNoticeText({ ...base, kind: "reply", urgent: true }).subject).toBe("[URGENTE] [GH-1042] Nova resposta do cliente: Não consigo entrar");
   });
+
+  it("problema com código leva a tela e o código do erro no corpo", () => {
+    const { text } = supportNoticeText({ ...base, kind: "new", topic: "bug", originScreen: "/classes/abc", errorReference: "K7Q2M9XD" });
+    expect(text).toContain("Tela: /classes/abc");
+    expect(text).toContain("Código do erro: K7Q2M9XD");
+  });
+
+  it("sem tela nem código, o corpo não tem essas linhas", () => {
+    const { text } = supportNoticeText({ ...base, kind: "new" });
+    expect(text).not.toContain("Tela:");
+    expect(text).not.toContain("Código do erro:");
+  });
 });

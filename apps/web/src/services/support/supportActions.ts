@@ -24,6 +24,7 @@ import { runAction, type ActionResult } from "../server/action";
 import { askClaude, botEnabled, type ClaudeMessage } from "../server/supportBot";
 import { requireTenant } from "../server/tenant";
 import type { SupportKind, SupportMessage, SupportStatus, SupportThreadSummary, SupportThreadView } from "./supportTypes";
+import { dbError } from "@/lib/log";
 
 /**
  * "Fale com a gente" do app dos clientes (doc technical/26, fase 1). Cada acao
@@ -63,7 +64,7 @@ async function rpc<T>(admin: Admin, fn: string, args: Record<string, unknown>): 
   const { data, error } = await admin.rpc(fn, args);
   if (error) {
     if (error.code === "P0002" || error.code === "22023") throw validationError([{ field: "message", message: error.message }]);
-    throw new Error(`${fn}: ${error.message}`);
+    throw dbError(`${fn}`, error);
   }
   return data as T;
 }
@@ -263,7 +264,7 @@ async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string)
   const customerTexts = history.filter((m) => m.author === "customer").map((m) => m.body);
   const urgent = looksUrgent(customerTexts);
   const summary = summaryFrom(customerTexts);
-  const rows = await rpc<{ number: number; subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean; kind: SupportKind }[]>(
+  const rows = await rpc<{ number: number; subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean; kind: SupportKind; origin_screen: string | null; error_reference: string | null }[]>(
     c.admin,
     "support_escalate",
     { p_org: c.org, p_user: c.userId, p_thread: threadId, p_summary: summary, p_urgent: urgent },
@@ -272,7 +273,7 @@ async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string)
   if (sent) {
     const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
     await sendSupportNotice(
-      { kind: "new", number: sent.number, topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, preview: summary },
+      { kind: "new", number: sent.number, topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, originScreen: sent.origin_screen ?? undefined, errorReference: sent.error_reference ?? undefined, preview: summary },
       notifyTo,
     );
   }

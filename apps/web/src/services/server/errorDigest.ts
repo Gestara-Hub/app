@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { reportError } from "@/lib/log";
+import { reportError, dbError } from "@/lib/log";
 import { sendErrorDigestEmail, type ErrorDigestItem } from "@/lib/email/mailersend";
 
 /**
@@ -21,7 +21,7 @@ export async function sendDailyErrorDigest(): Promise<{ errors: number; sent: bo
     .gte("last_seen", since)
     .order("count", { ascending: false })
     .limit(500);
-  if (error) throw new Error(`resumo de erros: leitura: ${error.message}`);
+  if (error) throw dbError(`resumo de erros: leitura`, error);
   const pending = (data ?? []).filter((row) => !row.notified_at || row.last_seen > row.notified_at);
   if (pending.length === 0 || !to) return { errors: pending.length, sent: false };
 

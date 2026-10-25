@@ -1,4 +1,6 @@
-import { fingerprintOf, maskText, maskValue, newReference } from "./mask";
+import { fingerprintOf, MAX_STACK, maskText, maskValue, newReference } from "./mask";
+
+export { dbError } from "./db-error";
 
 /**
  * Registro de erros (doc technical/21). Uma porta so, no servidor e no
@@ -149,11 +151,13 @@ function buildEntry(event: string, error: unknown, options: ReportOptions, messa
     (err ? err.message : typeof error === "string" ? error : safeJson(error)) ??
     "erro sem mensagem";
   const message = maskText(raw);
-  const stack = err?.stack ? maskText(err.stack) : undefined;
+  const stack = err?.stack ? maskText(err.stack, MAX_STACK) : undefined;
   const cause = err && "cause" in err && err.cause ? { cause: maskValue(err.cause) } : {};
   const errorCode = (err as { code?: unknown } | undefined)?.code;
   const code = typeof errorCode === "string" ? { code: errorCode } : {};
-  const context = { ...code, ...cause, ...((maskValue(options.context ?? {}) as Record<string, unknown>) ?? {}) };
+  // Versão do app (commit) em todo erro de servidor: mostra se o erro nasceu num deploy.
+  const release = isServer && process.env.VERCEL_GIT_COMMIT_SHA ? { release: process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) } : {};
+  const context = { ...release, ...code, ...cause, ...((maskValue(options.context ?? {}) as Record<string, unknown>) ?? {}) };
   return {
     level: options.level ?? "error",
     source: options.source ?? (isServer ? "server" : "browser"),

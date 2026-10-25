@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logError, reportError, setErrorSink, type ErrorEntry } from "../index";
+import { isApiError } from "@gestarahub/contracts";
+import { dbError, logError, reportError, setErrorSink, type ErrorEntry } from "../index";
 import { fingerprintOf, maskText, maskValue } from "../mask";
 
 /** Registro de erros (doc technical/21): mascara, agrupamento e a porta unica. */
@@ -68,5 +69,61 @@ describe("porta única", () => {
       throw new Error("banco fora");
     });
     await expect(reportError("x", new Error("y"))).resolves.toMatch(/^[A-Z2-9]{8}$/);
+  });
+});
+
+describe("detalhe do erro", () => {
+  const capture = async (run: () => void) => {
+    quiet();
+    const entries: ErrorEntry[] = [];
+    setErrorSink(async (entry) => {
+      entries.push(entry);
+    });
+    run();
+    await vi.waitFor(() => expect(entries).toHaveLength(1));
+    return entries[0];
+  };
+
+  it("a pilha longa não é cortada em 2.000 caracteres", async () => {
+    const error = new Error("falhou");
+    error.stack = `Error: falhou\n${"    at quadro (/app/x.js:1:1)\n".repeat(150)}    at ultimoQuadro (/app/x.js:9:9)`;
+    expect(error.stack.length).toBeGreaterThan(2000);
+    const entry = await capture(() => void reportError("teste.pilha", error));
+    expect(entry.stack).toContain("ultimoQuadro");
+    expect(entry.stack!.length).toBeGreaterThan(2000);
+  });
+
+  it("pilha enorme ainda tem teto (8.000)", async () => {
+    const error = new Error("falhou");
+    error.stack = `Error: falhou\n${"    at quadro (/app/x.js:1:1)\n".repeat(1000)}`;
+    const entry = await capture(() => void reportError("teste.teto", error));
+    expect(entry.stack!.length).toBeLessThanOrEqual(8003);
+  });
+
+  it("dbError guarda o código, o detalhe e a dica do banco", async () => {
+    const error = dbError("world: gravação", { message: "duplicate key value", code: "23505", details: "Key (id)=(1) already exists.", hint: "Use outro id" });
+    expect(error.message).toBe("world: gravação: duplicate key value");
+    const entry = await capture(() => void reportError("teste.db", error));
+    expect(entry.context).toMatchObject({ cause: { code: "23505", details: "Key (id)=(1) already exists.", hint: "Use outro id" } });
+  });
+
+  it("dbError sem detalhe nem dica não inventa causa", () => {
+    expect(dbError("x", { message: "falhou" }).cause).toBeUndefined();
+  });
+
+  it("dbError nunca tem `code` próprio: não pode passar por erro de regra", () => {
+    const error = dbError("x", { message: "falhou", code: "42501" });
+    expect("code" in error).toBe(false);
+    expect(isApiError(error)).toBe(false);
+  });
+
+  it("a versão do app (commit) entra no contexto do erro de servidor", async () => {
+    vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "0123456789abcdef");
+    try {
+      const entry = await capture(() => void reportError("teste.versao", new Error("falhou")));
+      expect(entry.context).toMatchObject({ release: "0123456" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

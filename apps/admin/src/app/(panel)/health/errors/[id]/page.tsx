@@ -7,8 +7,9 @@ import { BackLink } from "@/components/shared/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProtocolTag } from "@/components/support/badges";
+import { BugStatusBadge, ProtocolTag } from "@/components/support/badges";
 import { can } from "@/lib/permissions";
+import { contextRows, splitStack } from "@/lib/error-view";
 import { requireAdmin } from "@/lib/server/context";
 import { getErrorDetail } from "@/lib/server/health";
 import { markKnownAction, unmarkKnownAction } from "../../actions";
@@ -24,7 +25,8 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const error = await getErrorDetail(id);
   if (!error) notFound();
-  const contextEntries = Object.entries(error.context);
+  const context = contextRows(error.context);
+  const stack = error.stack ? splitStack(error.stack) : null;
 
   return (
     <>
@@ -58,8 +60,18 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
               <CardTitle className="text-base">Pilha</CardTitle>
             </CardHeader>
             <CardContent>
-              {error.stack ? (
-                <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">{error.stack}</pre>
+              {stack ? (
+                <div className="space-y-3">
+                  <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">
+                    {[stack.head, ...(stack.appFrames.length > 0 ? stack.appFrames : stack.otherFrames)].filter(Boolean).join("\n")}
+                  </pre>
+                  {stack.appFrames.length > 0 && stack.otherFrames.length > 0 ? (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground">Quadros do framework e do Node ({stack.otherFrames.length})</summary>
+                      <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">{stack.otherFrames.join("\n")}</pre>
+                    </details>
+                  ) : null}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Este erro foi registrado sem pilha (por exemplo, uma mensagem de log).</p>
               )}
@@ -71,18 +83,75 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
               <CardTitle className="text-base">Contexto da última vez</CardTitle>
             </CardHeader>
             <CardContent>
-              {contextEntries.length === 0 ? (
+              {context.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Sem contexto registrado.</p>
               ) : (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                  {contextEntries.map(([key, value]) => (
-                    <div key={key} className="contents">
-                      <dt className="break-all font-mono text-xs text-muted-foreground">{key}</dt>
-                      <dd className="min-w-0 break-all font-mono text-xs">{typeof value === "string" ? value : JSON.stringify(value)}</dd>
+                  {context.map((row) => (
+                    <div key={row.key} className="contents">
+                      <dt className="text-muted-foreground" title={row.key}>
+                        {row.label}
+                      </dt>
+                      <dd className="min-w-0 break-all font-mono text-xs">{row.value}</dd>
                     </div>
                   ))}
                 </dl>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Últimas ocorrências</CardTitle>
+              <p className="text-xs text-muted-foreground">Até 20. O código é o que a pessoa viu na tela naquela vez.</p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="pb-2 pr-3 font-normal">Código</th>
+                      <th className="pb-2 pr-3 font-normal">Quando</th>
+                      <th className="pb-2 pr-3 font-normal">Tela</th>
+                      <th className="pb-2 pr-3 font-normal">Perfil</th>
+                      <th className="pb-2 pr-3 font-normal">Versão</th>
+                      <th className="pb-2 pr-3 font-normal">Pessoa</th>
+                      <th className="pb-2 font-normal">Conversa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {error.occurrences.map((occurrence, index) => (
+                      <tr key={`${occurrence.reference ?? "sem-codigo"}-${index}`} className="border-t align-top">
+                        <td className="py-1.5 pr-3 font-mono text-xs select-all">{occurrence.reference ?? "—"}</td>
+                        <td className="py-1.5 pr-3 whitespace-nowrap text-muted-foreground">
+                          <RelativeTime date={occurrence.occurredAt} />
+                        </td>
+                        <td className="py-1.5 pr-3 break-all font-mono text-xs">{String(occurrence.context.route ?? occurrence.context.path ?? "—")}</td>
+                        <td className="py-1.5 pr-3 text-xs">{String(occurrence.context.profile ?? "—")}</td>
+                        <td className="py-1.5 pr-3 font-mono text-xs">{String(occurrence.context.release ?? "—")}</td>
+                        <td className="py-1.5 pr-3 text-xs">
+                          {occurrence.userId ? (
+                            <Link href={`/health/users/${encodeURIComponent(occurrence.userId)}`} className="font-mono underline underline-offset-2" title={occurrence.userId}>
+                              {occurrence.userId.slice(0, 8)}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="py-1.5 text-xs">
+                          {occurrence.thread ? (
+                            <Link href={`/support/${occurrence.thread.id}`} className="underline underline-offset-2">
+                              <ProtocolTag number={occurrence.thread.number} />
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -137,6 +206,12 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
                       {thread.subject}
                     </Link>
                     <span className="text-muted-foreground"> · {STATUS_LABEL[thread.status] ?? thread.status}</span>
+                    {thread.bugStatus ? (
+                      <>
+                        {" "}
+                        <BugStatusBadge status={thread.bugStatus} />
+                      </>
+                    ) : null}
                   </p>
                 ))
               )}

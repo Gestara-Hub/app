@@ -41,6 +41,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   "support.resolve": "Encerrou uma conversa do suporte",
   "support.reopen": "Reabriu uma conversa do suporte",
   "support.mark_urgent": "Marcou uma conversa como urgente",
+  "support.bug_status": "Mudou o andamento de um problema relatado",
   "support.unmark_urgent": "Tirou a marca de urgente de uma conversa",
   "support.macro_create": "Criou uma resposta pronta",
   "support.macro_update": "Editou uma resposta pronta",

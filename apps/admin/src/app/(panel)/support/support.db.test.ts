@@ -246,6 +246,72 @@ describe("responder e administrar uma conversa", () => {
   });
 });
 
+describe("andamento do bug", () => {
+  it("novo, investigando, corrigido (com a versão) e o aviso quando o erro volta", async () => {
+    const tag = Date.now().toString(36);
+    const code = `BUG${tag.toUpperCase()}`.slice(0, 8);
+    const [error] = await owner<{ id: string }[]>`
+      insert into public.error_logs (organization_id, fingerprint, source, event, message, last_reference)
+      values (${orgA}, ${`fp-bug-${tag}`}, 'server', 'teste.bug', 'Falhou ao salvar', ${code}) returning id`;
+    await owner`insert into public.error_occurrences (error_id, reference, occurred_at, message, context)
+                values (${error.id}, ${code}, now() - interval '2 days', 'Falhou ao salvar', ${owner.json({ release: "aaa1111" })})`;
+    const [thread] = await owner<{ id: string }[]>`
+      select public.support_open_thread(${orgA}, 'user-bug', 'Eva Bug', 'eva@alfa.teste', null, 'Não salva', 'Deu erro ao salvar', '/classes', ${code}, 'free', 'bug') as id`;
+    try {
+      const admin = await createAdminUser("platform_support");
+      admins.push(admin);
+      await signInAdmin(admin);
+      const { bugStatusAction } = await import("./actions");
+      const { getThread, listThreads } = await import("@/lib/server/support");
+
+      // Problema sem triagem conta como novo.
+      expect(await getThread(thread.id)).toMatchObject({ bugStatus: "new", regressed: false, regression: null, fixedIn: null });
+
+      await bugStatusAction(form({ threadId: thread.id, status: "investigating" }));
+      expect((await getThread(thread.id))!.bugStatus).toBe("investigating");
+
+      await bugStatusAction(form({ threadId: thread.id, status: "fixed", fixedIn: "bbb2222" }));
+      let detail = (await getThread(thread.id))!;
+      expect(detail).toMatchObject({ bugStatus: "fixed", fixedIn: "bbb2222", regressed: false, regression: null });
+      expect(detail.fixedAt).toBeInstanceOf(Date);
+
+      // O erro volta depois da correção: o painel avisa, com a versão em que voltou.
+      await owner`insert into public.error_occurrences (error_id, reference, message, context)
+                  values (${error.id}, ${`${code.slice(0, 5)}NEW`}, 'Falhou ao salvar', ${owner.json({ release: "aaa1111" })})`;
+      detail = (await getThread(thread.id))!;
+      expect(detail.regressed).toBe(true);
+      expect(detail.regression).toMatchObject({ count: 1, lastRelease: "aaa1111" });
+      const row = (await listThreads({ filter: "all", organizationId: orgA, page: 1 })).rows.find((r) => r.id === thread.id);
+      expect(row).toMatchObject({ bugStatus: "fixed", regressed: true });
+
+      // Mudar de estado limpa a versão e o aviso.
+      await bugStatusAction(form({ threadId: thread.id, status: "cannot_reproduce", fixedIn: "ignorada" }));
+      expect(await getThread(thread.id)).toMatchObject({ bugStatus: "cannot_reproduce", fixedIn: null, fixedAt: null, regressed: false });
+
+      const audits = await owner<{ action: string; target: { to?: string } }[]>`
+        select action, target from platform.audit_logs where admin_id = ${admin.adminId} and action = 'support.bug_status' order by created_at`;
+      expect(audits.map((a) => a.target.to)).toEqual(["investigating", "fixed", "cannot_reproduce"]);
+
+      // Só problema tem andamento: dúvida e estado inválido são ignorados.
+      await bugStatusAction(form({ threadId: created.antiga, status: "fixed" }));
+      expect((await getThread(created.antiga))!.bugStatus).toBeNull();
+      await bugStatusAction(form({ threadId: thread.id, status: "inventado" }));
+      expect((await getThread(thread.id))!.bugStatus).toBe("cannot_reproduce");
+    } finally {
+      await owner`delete from platform.support_threads where id = ${thread.id}`;
+      await owner`delete from public.error_logs where id = ${error.id}`;
+    }
+  });
+
+  it("quem só lê não muda o andamento", async () => {
+    const viewer = await createAdminUser("platform_viewer");
+    admins.push(viewer);
+    await signInAdmin(viewer);
+    const { bugStatusAction } = await import("./actions");
+    expect(await redirectedTo(() => bugStatusAction(form({ threadId: created.antiga, status: "fixed" })))).toBe("/?denied=1");
+  });
+});
+
 describe("papéis", () => {
   it("leitura (só números e saúde) não abre o suporte nem responde; suporte responde", async () => {
     const viewer = await createAdminUser("platform_viewer");

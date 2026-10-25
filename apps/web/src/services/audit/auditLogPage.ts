@@ -1,6 +1,7 @@
 import { paginateArray, type AuditLogEntry, type AuditLogFilter, type PaginatedResult } from "@gestarahub/contracts";
 import { endOfDayInSpace, startOfDayInSpace } from "@gestarahub/core/date";
 import type { TenantContext } from "../server/tenant";
+import { dbError } from "@/lib/log";
 
 /** Linha do banco para o contrato. */
 function entryOf(row: Record<string, unknown>): AuditLogEntry {
@@ -70,7 +71,7 @@ export async function auditLogPageFor(
     .order("timestamp", { ascending: false })
     .order("id", { ascending: false })
     .range(from, from + safeSize - 1);
-  if (error) throw new Error(`auditoria: leitura: ${error.message}`);
+  if (error) throw dbError(`auditoria: leitura`, error);
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / safeSize));
   return {

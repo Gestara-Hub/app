@@ -1,7 +1,7 @@
 import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { Badge } from "@/components/ui/badge";
 import { SLA_LABEL, slaFor, type SlaState } from "@/lib/sla";
-import { KIND_LABEL, STATUS_LABEL, type ThreadKind, type ThreadStatus } from "@/lib/support-types";
+import { BUG_STATUS_LABEL, KIND_LABEL, STATUS_LABEL, type BugStatus, type ThreadKind, type ThreadStatus } from "@/lib/support-types";
 import { cn } from "@/lib/utils";
 
 const SLA_STYLE: Record<SlaState, string> = {
@@ -55,3 +55,31 @@ export function KindBadge({ kind }: { kind: ThreadKind }) {
     </Badge>
   );
 }
+
+const BUG_STYLE: Record<BugStatus, string> = {
+  new: "border-warning/40 bg-warning/10 text-warning",
+  investigating: "border-primary/40 text-primary",
+  fixed: "border-success/40 bg-success/10 text-success",
+  cannot_reproduce: "text-muted-foreground",
+};
+
+/** Andamento do bug; só problema relatado tem. */
+export function BugStatusBadge({ status }: { status: BugStatus | null }) {
+  if (!status) return null;
+  return (
+    <Badge variant="outline" className={cn("font-normal", BUG_STYLE[status])}>
+      {BUG_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+/** Bug corrigido cujo erro aconteceu de novo depois da correção. */
+export function RegressionBadge({ regressed }: { regressed: boolean }) {
+  if (!regressed) return null;
+  return (
+    <Badge variant="destructive" className="font-normal" title="O erro ligado a este relato voltou a acontecer depois de corrigido">
+      Voltou
+    </Badge>
+  );
+}
+

@@ -4,18 +4,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { formatProtocol } from "@gestarahub/core/support-protocol";
-import { KindBadge, ProtocolTag, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { BugStatusBadge, KindBadge, ProtocolTag, RegressionBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { BackLink } from "@/components/shared/back-link";
 import { ConfirmSubmit } from "@/components/shared/confirm-submit";
+import { TimelineList } from "@/components/health/timeline-list";
 import { InitialsAvatar } from "@/components/shared/list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
-import { findErrorByReference } from "@/lib/server/health";
+import { contextRows } from "@/lib/error-view";
+import { userTimeline } from "@/lib/server/activity";
+import { findErrorByReference, getOccurrenceByReference } from "@/lib/server/health";
 import { getThread, listMacros } from "@/lib/server/support";
 import { cn } from "@/lib/utils";
-import { reopenAction, resolveAction, urgentAction } from "../actions";
+import { BUG_STATUSES, BUG_STATUS_LABEL } from "@/lib/support-types";
+import { bugStatusAction, reopenAction, resolveAction, urgentAction } from "../actions";
 import { Composer, ScrollToEnd } from "./reply-forms";
 
 // O título do navegador leva o protocolo.
@@ -34,8 +38,15 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   const canReply = can(admin.role, "support:reply");
   const macros = canReply ? await listMacros() : [];
   // Conversa aberta a partir de um erro: o registro técnico (sem dado pessoal) já aparece aqui.
-  const techError =
-    thread.errorReference && can(admin.role, "health:view") ? await findErrorByReference(thread.errorReference) : null;
+  const canSeeHealth = can(admin.role, "health:view");
+  const [techError, occurrence, nearby] = canSeeHealth
+    ? await Promise.all([
+        thread.errorReference ? findErrorByReference(thread.errorReference) : null,
+        thread.errorReference ? getOccurrenceByReference(thread.errorReference) : null,
+        // O que a pessoa fez e os erros dela na hora do relato (30 min antes e depois), com ou sem código.
+        userTimeline({ userId: thread.userId, organizationId: thread.organizationId, around: thread.createdAt, windowMinutes: 30, limit: 15 }),
+      ])
+    : [null, null, []];
 
   return (
     <>
@@ -43,6 +54,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
       <PageHeader title={thread.subject} description={`${thread.organizationName} · ${thread.userName}`}>
         <ProtocolTag number={thread.number} />
         <KindBadge kind={thread.kind} />
+        <BugStatusBadge status={thread.bugStatus} />
+        <RegressionBadge regressed={thread.regressed} />
         <StatusBadge status={thread.status} />
         {thread.urgent ? <UrgentBadge /> : null}
         <SlaBadge status={thread.status} since={thread.lastCustomerMessageAt ?? thread.createdAt} now={new Date()} />
@@ -113,10 +126,20 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                   <p className="font-medium">Erro registrado</p>
                   <p className="mt-1 break-all font-mono text-[11px]">{techError.event}</p>
                   <p className="mt-1 break-words">{techError.message}</p>
-                  <p className="mt-1 text-muted-foreground">
+                  {occurrence ? (
+                    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-t border-destructive/20 pt-2">
+                      {contextRows(occurrence.context).map((row) => (
+                        <div key={row.key} className="contents">
+                          <dt className="text-muted-foreground">{row.label}</dt>
+                          <dd className="min-w-0 break-all font-mono text-[11px]">{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                  <p className="mt-2 text-muted-foreground">
                     {techError.count} {techError.count === 1 ? "ocorrência" : "ocorrências"} ·{" "}
-                    <Link href={`/health?tab=erros&q=${encodeURIComponent(thread.errorReference ?? "")}`} className="underline underline-offset-2">
-                      Ver em Saúde
+                    <Link href={`/health/errors/${techError.id}`} className="underline underline-offset-2">
+                      Ver o erro
                     </Link>
                   </p>
                 </div>
@@ -145,6 +168,76 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
               ) : null}
             </CardContent>
           </Card>
+          {thread.kind === "bug" ? (
+            <Card className={cn(thread.regressed && "border-destructive/50")}>
+              <CardHeader>
+                <CardTitle className="text-base">Andamento do bug</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {thread.regression ? (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs">
+                    <span className="font-medium">O erro voltou depois da correção.</span> {thread.regression.count}{" "}
+                    {thread.regression.count === 1 ? "ocorrência" : "ocorrências"}, a última <RelativeTime date={thread.regression.lastAt} />
+                    {thread.regression.lastRelease ? <> na versão <span className="font-mono">{thread.regression.lastRelease}</span></> : null}
+                    {thread.fixedIn && thread.regression.lastRelease && thread.regression.lastRelease !== thread.fixedIn ? (
+                      <> (a correção foi na versão <span className="font-mono">{thread.fixedIn}</span>: pode ser um deploy ainda não feito)</>
+                    ) : null}
+                    .
+                  </p>
+                ) : null}
+                {thread.bugStatus === "fixed" && !thread.regression ? (
+                  <p className="text-xs text-muted-foreground">
+                    Corrigido <RelativeTime date={thread.fixedAt} />
+                    {thread.fixedIn ? <> na versão <span className="font-mono">{thread.fixedIn}</span></> : null}. Se o erro voltar, o painel avisa aqui.
+                  </p>
+                ) : null}
+                {canReply ? (
+                  <form action={bugStatusAction} className="space-y-2">
+                    <input type="hidden" name="threadId" value={thread.id} />
+                    <select
+                      name="status"
+                      defaultValue={thread.bugStatus ?? "new"}
+                      aria-label="Andamento do bug"
+                      className="h-9 w-full rounded-md border bg-background px-3 text-base md:text-sm"
+                    >
+                      {BUG_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {BUG_STATUS_LABEL[status]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      name="fixedIn"
+                      defaultValue={thread.fixedIn ?? ""}
+                      maxLength={80}
+                      placeholder="Corrigido na versão (opcional)"
+                      aria-label="Corrigido na versão"
+                      className="h-9 w-full rounded-md border bg-background px-3 text-base md:text-sm"
+                    />
+                    <Button type="submit" variant="outline" className="w-full">
+                      Salvar andamento
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="text-muted-foreground">{thread.bugStatus ? BUG_STATUS_LABEL[thread.bugStatus] : "Sem andamento"}</p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+          {canSeeHealth ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Em volta do relato</CardTitle>
+                <p className="text-xs text-muted-foreground">O que esta pessoa fez e os erros dela, de 30 min antes a 30 min depois.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <TimelineList items={nearby} compact empty="Nada registrado dela nesse intervalo." />
+                <Link href={`/health/users/${encodeURIComponent(thread.userId)}`} className="block text-xs underline underline-offset-2">
+                  Linha do tempo completa desta pessoa
+                </Link>
+              </CardContent>
+            </Card>
+          ) : null}
           {canReply ? (
             <Card>
               <CardHeader>

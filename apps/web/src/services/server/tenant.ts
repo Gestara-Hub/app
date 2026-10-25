@@ -1,4 +1,5 @@
 import type { Id, Permission, UserProfile } from "@gestarahub/contracts";
+import { requestRoute } from "./requestRoute";
 import { apiError, forbiddenError } from "@gestarahub/core/api-error";
 import { resolveSpaceTimeZone, type SpaceTimeZone } from "@gestarahub/core/date";
 import { can } from "@/lib/permissions";
@@ -46,7 +47,7 @@ export async function requireTenant(): Promise<TenantContext> {
 
   const { data: row, error } = await client
     .from("users")
-    .select("id, organization_id, profile, professional_id, organizations(status, settings, units(address))")
+    .select("id, organization_id, profile, professional_id, organizations(status, settings, subscription, units(address))")
     .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
     .eq("status", "active")
     .limit(1)
@@ -57,6 +58,7 @@ export async function requireTenant(): Promise<TenantContext> {
   const organization = (row.organizations ?? null) as {
     status?: string;
     settings?: { timeZone?: string } | null;
+    subscription?: { tier?: string } | null;
     units?: { address?: { state?: string } | string | null }[];
   } | null;
   // Espaco inativado pelo painel: nenhuma acao passa (a sessao tambem acaba em getCurrentUser).
@@ -64,7 +66,7 @@ export async function requireTenant(): Promise<TenantContext> {
   const timeZone = resolveSpaceTimeZone(organization?.settings, organization?.units?.[0]?.address);
   // Erros registrados dentro desta requisicao saem com o espaco e o usuario da
   // sessao; o "hoje" da acao sai do fuso do espaco.
-  setErrorScope({ organizationId: String(row.organization_id), userId: String(row.id), timeZone });
+  setErrorScope({ organizationId: String(row.organization_id), userId: String(row.id), timeZone, profile, tier: organization?.subscription?.tier ?? "free", route: await requestRoute() });
   return {
     client,
     organizationId: String(row.organization_id),

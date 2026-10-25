@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { maskSensitive } from "@/lib/support/bot-rules";
 import { runAction, type ActionResult } from "../server/action";
 import { requireTenant } from "../server/tenant";
+import { dbError } from "@/lib/log";
 
 /**
  * Uso da ajuda do app (doc technical/26, 18.2): busca sem resultado e "isso
@@ -29,7 +30,7 @@ export async function logHelpEventAction(event: HelpEvent): Promise<ActionResult
       p_route: event.route ?? null,
       p_org: tenant.organizationId,
     });
-    if (error) throw new Error(`help_log_event: ${error.message}`);
+    if (error) throw dbError(`help_log_event`, error);
     return null;
   }, "help.log");
 }

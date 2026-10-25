@@ -5,7 +5,7 @@ import type { TenantContext } from "../server/tenant";
 import type { MethodSlice } from "../world/slices";
 import { runInWorld } from "../world/runWorld";
 import { runBirthdayGreetings } from "./communicationRules";
-import { reportError } from "@/lib/log";
+import { reportError, dbError } from "@/lib/log";
 
 /**
  * Parabens automatico na rotina de hora em hora (doc 19, secao 12): antes rodava
@@ -64,7 +64,7 @@ export async function runAllBirthdayGreetings(deadline: number): Promise<{ sent:
     () => admin.from("whatsapp_connections").select("organization_id").eq("official_status", "connected"),
     { tieBreaker: "organization_id" },
   );
-  if (error) throw new Error(`parabéns: leitura das conexões: ${error.message}`);
+  if (error) throw dbError(`parabéns: leitura das conexões`, error);
   const result = { sent: 0, failures: 0, skipped: 0 };
   const run = await mapWithConcurrency(
     connections,

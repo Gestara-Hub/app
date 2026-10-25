@@ -22,6 +22,22 @@ export function isThreadKind(value: unknown): value is ThreadKind {
   return value === "question" || value === "bug" || value === "suggestion";
 }
 
+/** Andamento de um problema relatado; só conversa do tipo problema tem. */
+export type BugStatus = "new" | "investigating" | "fixed" | "cannot_reproduce";
+
+export const BUG_STATUS_LABEL: Record<BugStatus, string> = {
+  new: "Novo",
+  investigating: "Investigando",
+  fixed: "Corrigido",
+  cannot_reproduce: "Não reproduzi",
+};
+
+export const BUG_STATUSES = Object.keys(BUG_STATUS_LABEL) as BugStatus[];
+
+export function isBugStatus(value: unknown): value is BugStatus {
+  return typeof value === "string" && value in BUG_STATUS_LABEL;
+}
+
 export type ThreadFilter = "attention" | "waiting_customer" | "bot" | "resolved" | "all";
 
 export const FILTERS: { value: ThreadFilter; label: string }[] = [
@@ -41,6 +57,10 @@ export interface ThreadRow {
   /** Número do protocolo (GH-n). */
   number: number;
   kind: ThreadKind;
+  /** Andamento do bug (problema sem triagem conta como novo); vazio nos outros tipos. */
+  bugStatus: BugStatus | null;
+  /** Corrigido, e o erro ligado ao relato aconteceu de novo depois disso. */
+  regressed: boolean;
   subject: string;
   status: ThreadStatus;
   urgent: boolean;
@@ -65,10 +85,17 @@ export interface ThreadMessage {
 }
 
 export interface ThreadDetail extends ThreadRow {
+  /** Id interno do usuário (o mesmo do registro de erros). */
+  userId: string;
   summary: string | null;
   originScreen: string | null;
   errorReference: string | null;
   clientInfo: string | null;
+  /** Em que versão (ou texto livre) foi corrigido, e quando. */
+  fixedIn: string | null;
+  fixedAt: Date | null;
+  /** Ocorrências do erro ligado depois da correção; vazio se não voltou ou não há código. */
+  regression: { count: number; lastAt: Date; lastRelease: string | null } | null;
   botHelped: boolean | null;
   messages: ThreadMessage[];
 }

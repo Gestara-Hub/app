@@ -1,5 +1,6 @@
 import type { MessageLog, MessageLogFilter, PaginatedResult } from "@gestarahub/contracts";
 import type { TenantContext } from "../server/tenant";
+import { dbError } from "@/lib/log";
 
 /** Linha do banco para o contrato. */
 function logOf(row: Record<string, unknown>): MessageLog {
@@ -61,7 +62,7 @@ export async function messageLogPageFor(
     .order("sent_at", { ascending: false })
     .order("id", { ascending: false })
     .range(from, from + pageSize - 1);
-  if (error) throw new Error(`mensagens: leitura: ${error.message}`);
+  if (error) throw dbError(`mensagens: leitura`, error);
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return { items: (data ?? []).map(logOf), total, page, pageSize, totalPages, hasMore: page < totalPages };

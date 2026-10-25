@@ -3,6 +3,7 @@ import { sql } from "./db";
 import { likePattern, normalizeSearch } from "../filter-input";
 import { LIST_PAGE_SIZE } from "../pagination";
 import { fetchPage } from "./page-fetch";
+import type { BugStatus } from "../support-types";
 
 /**
  * Saude do sistema para o painel (doc technical/26, fase 4): erros agrupados
@@ -68,14 +69,14 @@ export async function listErrors(input: {
          and (${input.level ?? null}::text is null or e.level = ${input.level ?? null})
          and (${input.organizationId ?? null}::text is null or e.organization_id = ${input.organizationId ?? null})
          and (${input.hideKnown ?? false} = false or k.fingerprint is null)
-         and (${q}::text is null or e.last_reference = ${reference} or e.event ilike ${q} or e.message ilike ${q} or o.name ilike ${q})
+         and (${q}::text is null or e.last_reference = ${reference} or exists (select 1 from public.error_occurrences oc where oc.error_id = e.id and oc.reference = ${reference}) or e.event ilike ${q} or e.message ilike ${q} or o.name ilike ${q})
        order by e.last_seen desc, e.id
        limit ${HEALTH_PAGE_SIZE} offset ${(page - 1) * HEALTH_PAGE_SIZE}`,
   );
   return { rows: result.rows.map(toError), hasNext: result.page * HEALTH_PAGE_SIZE < result.total, total: result.total, page: result.page };
 }
 
-/** O codigo que o cliente viu ("K7Q2M9XD") leva direto a linha e ao espaco. */
+/** O codigo que o cliente viu ("K7Q2M9XD") leva direto a linha e ao espaco, mesmo que o erro tenha se repetido depois. */
 export async function findErrorByReference(code: string): Promise<ErrorRow | null> {
   const [row] = await sql()<DbError[]>`
     select e.id, e.fingerprint, e.source, e.level, e.event, e.message, e.stack, e.count, e.first_seen, e.last_seen, e.last_reference,
@@ -84,6 +85,7 @@ export async function findErrorByReference(code: string): Promise<ErrorRow | nul
       left join public.organizations o on o.id = e.organization_id
       left join platform.known_errors k on k.fingerprint = e.fingerprint
      where e.last_reference = ${code.trim().toUpperCase()}
+        or exists (select 1 from public.error_occurrences oc where oc.error_id = e.id and oc.reference = ${code.trim().toUpperCase()})
      order by e.last_seen desc limit 1`;
   return row ? toError(row) : null;
 }
@@ -92,7 +94,21 @@ export interface ErrorDetail extends ErrorRow {
   /** Contexto da última ocorrência (método, rota, tela), já mascarado pelo app dos clientes. */
   context: Record<string, unknown>;
   /** Conversas de suporte abertas com o código deste erro. */
-  threads: { id: string; number: number; subject: string; status: string }[];
+  threads: { id: string; number: number; subject: string; status: string; bugStatus: BugStatus | null }[];
+  /** As ocorrências mais recentes (até 20), da mais nova para a mais antiga. */
+  occurrences: ErrorOccurrence[];
+}
+
+export interface ErrorOccurrence {
+  reference: string | null;
+  /** Quem estava no sistema (id interno do usuário); vazio se o erro foi antes do login ou numa rotina. */
+  userId: string | null;
+  /** Conversa de suporte aberta com o código desta ocorrência. */
+  thread: { id: string; number: number } | null;
+  occurredAt: Date;
+  message: string;
+  /** Tela, perfil, plano, versão e tempo da hora (já mascarado pelo app dos clientes). */
+  context: Record<string, unknown>;
 }
 
 /** Um erro com tudo o que o registro guarda (pilha, contexto) e as conversas ligadas ao código. */
@@ -106,11 +122,90 @@ export async function getErrorDetail(id: string): Promise<ErrorDetail | null> {
       left join platform.known_errors k on k.fingerprint = e.fingerprint
      where e.id = ${id}`;
   if (!row) return null;
-  const threads = row.last_reference
-    ? await sql()<{ id: string; number: number; subject: string; status: string }[]>`
-        select id, number, subject, status from platform.support_threads where error_reference = ${row.last_reference} order by created_at desc limit 10`
+  const occurrences = await sql()<
+    { reference: string | null; user_id: string | null; occurred_at: Date; message: string; context: Record<string, unknown>; thread_id: string | null; thread_number: number | null }[]
+  >`
+    select oc.reference, oc.user_id, oc.occurred_at, oc.message, oc.context, t.id as thread_id, t.number as thread_number
+      from public.error_occurrences oc
+      left join lateral (
+        select id, number from platform.support_threads where error_reference = oc.reference order by created_at limit 1
+      ) t on true
+     where oc.error_id = ${id} order by oc.occurred_at desc, oc.id desc limit 20`;
+  // Conversas abertas com o código de qualquer uma das ocorrências (não só a última).
+  const codes = [...new Set([row.last_reference, ...occurrences.map((o) => o.reference)].filter((c): c is string => Boolean(c)))];
+  const threads = codes.length
+    ? await sql()<{ id: string; number: number; subject: string; status: string; kind: string; bug_status: BugStatus | null }[]>`
+        select id, number, subject, status, kind, bug_status from platform.support_threads where error_reference in ${sql()(codes)} order by created_at desc limit 10`
     : [];
-  return { ...toError(row), context: row.context ?? {}, threads };
+  return {
+    ...toError(row),
+    context: row.context ?? {},
+    threads: threads.map((t) => ({ id: t.id, number: t.number, subject: t.subject, status: t.status, bugStatus: t.kind === "bug" ? (t.bug_status ?? "new") : null })),
+    occurrences: occurrences.map((o) => ({
+      reference: o.reference,
+      userId: o.user_id,
+      thread: o.thread_id && o.thread_number !== null ? { id: o.thread_id, number: o.thread_number } : null,
+      occurredAt: o.occurred_at,
+      message: o.message,
+      context: o.context ?? {},
+    })),
+  };
+}
+
+/** Uma ocorrência com o erro a que pertence e o espaço (a visão "o que aconteceu com esta pessoa"). */
+export interface OccurrenceHit {
+  errorId: string;
+  event: string;
+  source: string;
+  level: string;
+  reference: string | null;
+  userId: string | null;
+  occurredAt: Date;
+  message: string;
+  context: Record<string, unknown>;
+  organizationId: string | null;
+  organizationName: string | null;
+}
+
+type DbHit = {
+  error_id: string; event: string; source: string; level: string; reference: string | null; user_id: string | null; occurred_at: Date;
+  message: string; context: Record<string, unknown>; organization_id: string | null; organization_name: string | null;
+};
+
+const toHit = (r: DbHit): OccurrenceHit => ({
+  errorId: r.error_id, event: r.event, source: r.source, level: r.level, reference: r.reference, userId: r.user_id, occurredAt: r.occurred_at,
+  message: r.message, context: r.context ?? {}, organizationId: r.organization_id, organizationName: r.organization_name,
+});
+
+/** A ocorrência exata que tem este código (o que a pessoa viu na tela), com a tela, o perfil e a versão da hora. */
+export async function getOccurrenceByReference(code: string): Promise<OccurrenceHit | null> {
+  const [row] = await sql()<DbHit[]>`
+    select oc.error_id, e.event, e.source, e.level, oc.reference, oc.user_id, oc.occurred_at, oc.message, oc.context,
+           e.organization_id, o.name as organization_name
+      from public.error_occurrences oc
+      join public.error_logs e on e.id = oc.error_id
+      left join public.organizations o on o.id = e.organization_id
+     where oc.reference = ${code.trim().toUpperCase()}`;
+  return row ? toHit(row) : null;
+}
+
+/** Ocorrências de uma pessoa, da mais nova para a mais antiga: numa janela em volta de um instante ou nos últimos dias. */
+export async function listUserOccurrences(input: { userId: string; around?: Date; windowMinutes?: number; days?: number; limit?: number }): Promise<OccurrenceHit[]> {
+  const window = input.windowMinutes ?? 30;
+  const rows = await sql()<DbHit[]>`
+    select oc.error_id, e.event, e.source, e.level, oc.reference, oc.user_id, oc.occurred_at, oc.message, oc.context,
+           e.organization_id, o.name as organization_name
+      from public.error_occurrences oc
+      join public.error_logs e on e.id = oc.error_id
+      left join public.organizations o on o.id = e.organization_id
+     where oc.user_id = ${input.userId}
+       and (${input.around ?? null}::timestamptz is null
+            or oc.occurred_at between ${input.around ?? null}::timestamptz - make_interval(mins => ${window})
+                                  and ${input.around ?? null}::timestamptz + make_interval(mins => ${window}))
+       and (${input.around ? null : (input.days ?? 30)}::int is null or oc.occurred_at > now() - make_interval(days => ${input.around ? 0 : (input.days ?? 30)}))
+     order by oc.occurred_at desc, oc.id desc
+     limit ${input.limit ?? 50}`;
+  return rows.map(toHit);
 }
 
 export async function errorTotals(): Promise<{ today: number; spacesAffected: number; unknown: number }> {

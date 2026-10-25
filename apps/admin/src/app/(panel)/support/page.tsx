@@ -9,7 +9,7 @@ import { Pager } from "@/components/shared/pager";
 import { SegmentedLinks } from "@/components/shared/segmented-links";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
-import { KindBadge, ProtocolTag, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { BugStatusBadge, KindBadge, ProtocolTag, RegressionBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { Button } from "@/components/ui/button";
 import { normalizeSearch, pickOption } from "@/lib/filter-input";
 import { pageInfo, parsePage, rangeLabel } from "@/lib/pagination";
@@ -122,6 +122,8 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <KindBadge kind={row.kind} />
+                    <BugStatusBadge status={row.bugStatus} />
+                    <RegressionBadge regressed={row.regressed} />
                     <StatusBadge status={row.status} />
                     {row.urgent ? <UrgentBadge /> : null}
                     <SlaBadge status={row.status} since={row.lastCustomerMessageAt ?? row.createdAt} now={now} />

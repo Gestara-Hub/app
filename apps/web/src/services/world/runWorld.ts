@@ -20,7 +20,7 @@ import {
   type Row,
   type WorldCollection,
 } from "./tables";
-import { logError, logWarn } from "@/lib/log";
+import { logError, logWarn, dbError } from "@/lib/log";
 
 /**
  * Roda um metodo de servico no servidor sobre o espaco carregado do banco e
@@ -99,7 +99,7 @@ async function loadRows(
     if (filter) query = query.eq(filter.column, filter.value);
     if (last !== undefined) query = query.gt(pk, last);
     const { data, error } = await query.order(pk, { ascending: true }).limit(PAGE);
-    if (error) throw new Error(`world: leitura de ${table}: ${error.message}`);
+    if (error) throw dbError(`world: leitura de ${table}`, error);
     rows.push(...((data ?? []) as Row[]));
     if (!data || data.length < PAGE) return rows;
     last = (data[data.length - 1] as Row)[pk];
@@ -112,7 +112,7 @@ async function loadVersion(ctx: TenantContext): Promise<number> {
     .select("version")
     .eq("organization_id", ctx.organizationId)
     .maybeSingle();
-  if (error) throw new Error(`world: leitura da versão: ${error.message}`);
+  if (error) throw dbError(`world: leitura da versão`, error);
   return Number(data?.version ?? 0);
 }
 
@@ -323,7 +323,7 @@ async function loadSlicedWorld(ctx: TenantContext, slice: MethodSlice, args: unk
           () => admin.from(table).select("*").eq(scopeColumn(table), ctx.organizationId).in(column, chunk),
           { tieBreaker: schemaOf(table).primaryKey },
         );
-        if (error) throw new Error(`world: leitura de ${table}: ${error.message}`);
+        if (error) throw dbError(`world: leitura de ${table}`, error);
         rows.push(...(data as Row[]));
       }
       if (!raws.has(key)) raws.set(key, new Map());
@@ -477,7 +477,7 @@ async function applyChanges(
   if (error.code === "42501") {
     throw apiError("FORBIDDEN", "Você não tem permissão para esta ação.", { httpStatus: 403 });
   }
-  throw new Error(`world: gravação: ${error.code} ${error.message}`);
+  throw dbError("world: gravação", error);
 }
 
 async function actorOf(ctx: TenantContext): Promise<AuditActor> {

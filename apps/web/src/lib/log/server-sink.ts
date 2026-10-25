@@ -20,6 +20,13 @@ interface ErrorScope {
   organizationId?: string;
   userId?: string;
   timeZone?: string;
+  /** Perfil e plano da sessão: entram no contexto do erro (sem dado pessoal). */
+  profile?: string;
+  tier?: string;
+  /** Tela de onde a ação saiu (caminho, sem query). */
+  route?: string;
+  /** Quando a requisição começou (para o tempo gasto até o erro). */
+  startedAt?: number;
 }
 
 // Um so por processo (mesmo motivo do destino em `index.ts`: pacotes separados).
@@ -35,7 +42,7 @@ export function requestTimeZone(): string | undefined {
 
 /** Roda `fn` num escopo de erro novo (uma acao, uma rota). */
 export function runWithErrorScope<T>(fn: () => Promise<T>): Promise<T> {
-  return scope.run({}, fn);
+  return scope.run({ startedAt: Date.now() }, fn);
 }
 
 /** Anota o espaco e o usuario da sessao no escopo da requisicao (se houver). */
@@ -54,7 +61,14 @@ export async function recordErrorToDb(entry: ErrorEntry): Promise<void> {
     p_event: entry.event,
     p_message: entry.message,
     p_stack: entry.stack ?? null,
-    p_context: entry.context ?? {},
+    // O que a requisição sabe (perfil, plano, tempo até o erro); o que o erro trouxe vale mais.
+    p_context: {
+      ...(current?.profile ? { profile: current.profile } : {}),
+      ...(current?.tier ? { plan: current.tier } : {}),
+      ...(current?.route ? { route: current.route } : {}),
+      ...(current?.startedAt ? { ms: Date.now() - current.startedAt } : {}),
+      ...(entry.context ?? {}),
+    },
     p_reference: entry.reference,
     p_user_id: entry.userId ?? current?.userId ?? null,
   });

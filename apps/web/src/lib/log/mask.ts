@@ -6,6 +6,8 @@
 
 const SECRET_KEY = /pass|senha|token|secret|cpf|cnpj|authorization|cookie|api.?key|card|cartao|cvv/i;
 const MAX_STRING = 2000;
+/** A pilha é longa por natureza: os quadros do app costumam vir depois dos do framework. */
+export const MAX_STACK = 8000;
 const MAX_DEPTH = 4;
 const MAX_KEYS = 40;
 
@@ -28,8 +30,8 @@ const RULES: [RegExp, string][] = [
   [/\b([\w.+-])[\w.+-]*@[a-z][\w-]*(\.[a-z][\w-]*)*\.[a-z]{2,24}\b/gi, "$1***@[email]"],
 ];
 
-export function maskText(text: string): string {
-  let out = text.length > MAX_STRING ? `${text.slice(0, MAX_STRING)}...` : text;
+export function maskText(text: string, max = MAX_STRING): string {
+  let out = text.length > max ? `${text.slice(0, max)}...` : text;
   for (const [pattern, replacement] of RULES) out = out.replace(pattern, replacement);
   return out;
 }

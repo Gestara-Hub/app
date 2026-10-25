@@ -5,6 +5,7 @@ import { isDemoSpace } from "@/lib/demo";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runAction, type ActionResult } from "../server/action";
 import { requireTenant } from "../server/tenant";
+import { dbError } from "@/lib/log";
 
 /**
  * Comunicados do GestaraHub (painel admin, doc technical/26, fase 5) para quem esta
@@ -24,7 +25,7 @@ export async function listAnnouncementsAction(): Promise<ActionResult<Announceme
     // Demonstracao nao recebe comunicado (e compartilhada).
     if (isDemoSpace(tenant.organizationId)) return [];
     const { data, error } = await createSupabaseAdminClient().rpc("announcements_for", { p_org: tenant.organizationId, p_user: tenant.userId });
-    if (error) throw new Error(`announcements_for: ${error.message}`);
+    if (error) throw dbError(`announcements_for`, error);
     return (data ?? []).map((row: { id: string; title: string; body: string; severity: AnnouncementView["severity"] }) => ({
       id: row.id,
       title: row.title,
@@ -39,7 +40,7 @@ export async function dismissAnnouncementAction(id: string): Promise<ActionResul
     const tenant = await requireTenant();
     const parsed = z.string().uuid().parse(id);
     const { error } = await createSupabaseAdminClient().rpc("announcement_dismiss", { p_org: tenant.organizationId, p_user: tenant.userId, p_id: parsed });
-    if (error) throw new Error(`announcement_dismiss: ${error.message}`);
+    if (error) throw dbError(`announcement_dismiss`, error);
     return true as const;
   }, "announcements.dismiss");
 }
