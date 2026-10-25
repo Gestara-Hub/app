@@ -1,10 +1,10 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { PageHeader } from "@/components/layout/page-header";
-import { KindBadge, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { formatProtocol } from "@gestarahub/core/support-protocol";
+import { KindBadge, ProtocolTag, SlaBadge, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { BackLink } from "@/components/shared/back-link";
 import { ConfirmSubmit } from "@/components/shared/confirm-submit";
 import { InitialsAvatar } from "@/components/shared/list";
@@ -18,7 +18,11 @@ import { cn } from "@/lib/utils";
 import { reopenAction, resolveAction, urgentAction } from "../actions";
 import { Composer, ScrollToEnd } from "./reply-forms";
 
-export const metadata: Metadata = { title: "Conversa" };
+// O título do navegador leva o protocolo.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const thread = await getThread((await params).id);
+  return { title: thread ? `${formatProtocol(thread.number)} · Conversa` : "Conversa" };
+}
 
 const AUTHOR_LABEL = { customer: "Cliente", bot: "Assistente", staff: "Suporte", system: "Sistema" } as const;
 
@@ -37,6 +41,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
     <>
       <BackLink href="/support" label="Voltar ao Suporte" />
       <PageHeader title={thread.subject} description={`${thread.organizationName} · ${thread.userName}`}>
+        <ProtocolTag number={thread.number} />
         <KindBadge kind={thread.kind} />
         <StatusBadge status={thread.status} />
         {thread.urgent ? <UrgentBadge /> : null}
@@ -64,7 +69,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                     >
                       <p className="mb-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">{name}</span>
-                        <span>{format(message.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                        <RelativeTime date={message.createdAt} />
                       </p>
                       <p className="whitespace-pre-wrap break-words">{message.body}</p>
                     </div>
@@ -123,8 +128,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
                 </p>
               ) : null}
               <p>
-                <span className="text-muted-foreground">Aberta em: </span>
-                {format(thread.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                <span className="text-muted-foreground">Aberta: </span>
+                <RelativeTime date={thread.createdAt} />
               </p>
               {thread.botHelped !== null ? (
                 <p>

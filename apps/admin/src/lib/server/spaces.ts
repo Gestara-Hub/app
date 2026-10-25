@@ -1,5 +1,7 @@
 import "server-only";
 import { sql } from "./db";
+import { escapeLike as escapeLikeText, normalizeSearch } from "../list-filters";
+import { pageInfo } from "../pagination";
 import type { SubscriptionJson } from "../space-plan";
 
 /**
@@ -88,18 +90,19 @@ const toSpace = (r: DbRow): SpaceRow => ({
   errors24h: r.errors_24h,
 });
 
-const escapeLike = (value: string) => value.replace(/[%_\\]/g, "\\$&");
 
 /** Lista filtrada; `limit` maior que a pagina serve a exportacao. */
-export async function listSpaces(filters: SpaceFilters, opts: { all?: boolean } = {}): Promise<{ rows: SpaceRow[]; hasNext: boolean }> {
-  const q = filters.q?.trim() ? `%${escapeLike(filters.q.trim())}%` : null;
+export async function listSpaces(filters: SpaceFilters, opts: { all?: boolean } = {}): Promise<{ rows: SpaceRow[]; hasNext: boolean; total: number; page: number }> {
+  const term = normalizeSearch(filters.q);
+  const q = term ? `%${escapeLikeText(term)}%` : null;
   const situation = filters.situation ?? "all";
-  const limit = opts.all ? 5000 : SPACES_PAGE_SIZE + 1;
-  const offset = opts.all ? 0 : (filters.page - 1) * SPACES_PAGE_SIZE;
   const sort = filters.sort ?? "recent";
 
-  const rows = await sql()<DbRow[]>`
-    select * from (
+  const run = (page: number) => {
+    const limit = opts.all ? 5000 : SPACES_PAGE_SIZE;
+    const offset = opts.all ? 0 : (page - 1) * SPACES_PAGE_SIZE;
+    return sql()<(DbRow & { total: number })[]>`
+    select *, count(*) over()::int as total from (
       select o.id, o.name, o.class_segment, o.custom_segment_name, o.model, o.status, o.subscription, o.created_at,
              w.owner_name, s.students_active, s.classes_active, s.users_active, a.last_sign_in_at, o.gateway_status,
              (select count(*)::int from public.error_logs e where e.organization_id = o.id and e.level = 'error' and e.last_seen >= now() - interval '24 hours') as errors_24h
@@ -128,9 +131,20 @@ export async function listSpaces(filters: SpaceFilters, opts: { all?: boolean } 
       )
     order by case when ${sort} = 'name' then t.name end asc,
              case when ${sort} = 'activity' then t.last_sign_in_at end desc nulls last,
-             t.created_at desc
+             t.created_at desc, t.id
     limit ${limit} offset ${offset}`;
-  return { rows: rows.slice(0, opts.all ? rows.length : SPACES_PAGE_SIZE).map(toSpace), hasNext: !opts.all && rows.length > SPACES_PAGE_SIZE };
+  };
+  let page = Math.max(1, filters.page);
+  let rows = await run(page);
+  let total = rows[0]?.total ?? 0;
+  if (!opts.all && rows.length === 0 && page > 1) {
+    // Página além do fim: mostra a última que existe.
+    const first = await run(1);
+    total = first[0]?.total ?? 0;
+    page = pageInfo(1, total, SPACES_PAGE_SIZE).totalPages;
+    rows = page > 1 ? await run(page) : first;
+  }
+  return { rows: rows.map(toSpace), hasNext: !opts.all && page * SPACES_PAGE_SIZE < total, total, page };
 }
 
 export async function spaceTotals(): Promise<{ total: number; paid: number; inactive: number; noAccess30d: number }> {

@@ -196,6 +196,11 @@ describe("suporte", () => {
     expect(escalated.messages.at(-1)).toMatchObject({ author: "system" });
     expect(mail.sendSupportNotice).toHaveBeenCalledTimes(1);
     expect(mail.sendSupportNotice.mock.calls[0][0]).toMatchObject({ kind: "new", urgent: true, spaceName: "Espaço de suporte" });
+    expect(Number.isInteger(first.number)).toBe(true);
+    expect(first.number).toBeGreaterThanOrEqual(1001);
+    expect(escalated.number).toBe(first.number);
+    expect(mail.sendSupportNotice.mock.calls[0][0]).toMatchObject({ number: first.number });
+    expect(escalated.messages.at(-1)?.body).toContain(`GH-${first.number}`);
 
     // Escalar de novo nao repete o aviso.
     await unwrap(actions.escalateSupportThreadAction(first.threadId));
@@ -207,7 +212,7 @@ describe("suporte", () => {
     await owner`update platform.support_threads set status = 'waiting_customer', last_message_at = now() where id = ${first.threadId}`;
     expect(await unwrap(actions.supportUnreadCountAction())).toBe(1);
     const list = await unwrap(actions.listSupportThreadsAction());
-    expect(list[0]).toMatchObject({ id: first.threadId, status: "waiting_customer", urgent: true, unread: 1 });
+    expect(list[0]).toMatchObject({ id: first.threadId, number: first.number, status: "waiting_customer", urgent: true, unread: 1 });
 
     const opened = await unwrap(actions.getSupportThreadAction(first.threadId));
     expect(opened.messages.at(-1)).toMatchObject({ author: "staff", staffName: "Marcello", body: "Já estamos olhando." });
@@ -217,7 +222,7 @@ describe("suporte", () => {
     const replied = await unwrap(actions.sendSupportMessageAction({ threadId: first.threadId, message: "Obrigado, aguardo." }));
     expect(replied.status).toBe("waiting_us");
     expect(mail.sendSupportNotice).toHaveBeenCalledTimes(2);
-    expect(mail.sendSupportNotice.mock.calls[1][0]).toMatchObject({ kind: "reply" });
+    expect(mail.sendSupportNotice.mock.calls[1][0]).toMatchObject({ kind: "reply", number: first.number });
   });
 
   it("notas internas nunca chegam ao cliente", async () => {

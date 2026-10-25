@@ -25,3 +25,7 @@ Guia: /settings?tab=geral
 + campo "Área do espaço": Escolha a área do seu espaço.
 + botão "Salvar configurações": Clique aqui para guardar a mudança.
 Em [Configurações, aba Geral](/settings?tab=geral), você troca a área e a forma de cobrança padrão. As palavras do sistema (Faixa, Nível, Módulo, Instrutor ou Professor) mudam junto.
+
+## Falar com o suporte
+Resumo: Cada conversa do Fale com a gente tem um protocolo GH-n; cite-o por outro canal.
+Use o botão "Fale com a gente" para tirar dúvidas, relatar um problema ou sugerir uma melhoria. Cada conversa recebe um protocolo, como GH-1042, que aparece na lista e no topo da conversa, com um botão para copiar. Se for falar com a gente por outro canal, como e-mail ou WhatsApp, cite o protocolo para localizarmos a conversa na hora.

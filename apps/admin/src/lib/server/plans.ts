@@ -1,5 +1,8 @@
 import "server-only";
 import { sql } from "./db";
+import { likePattern, normalizeSearch } from "../filter-input";
+import { LIST_PAGE_SIZE } from "../pagination";
+import { fetchPage } from "./page-fetch";
 import { requestInfo } from "./request";
 
 /**
@@ -89,6 +92,37 @@ export async function listGrants(input: { organizationId?: string; activeOnly?: 
     id: r.id, organizationId: r.organization_id, organizationName: r.organization_name, kind: r.kind, tier: r.tier, startsOn: r.starts_on, endsOn: r.ends_on,
     days: r.days, reason: r.reason, grantedByName: r.granted_by_name, revokedAt: r.revoked_at, createdAt: r.created_at,
   }));
+}
+
+export const GRANT_KINDS = ["courtesy", "grace", "forced_free"] as const;
+
+/** Concessões com filtro por tipo e busca pelo nome do espaço, paginadas com o total (25 por página). */
+export async function listGrantsPage(input: { kind?: GrantRow["kind"]; q?: string; page: number }): Promise<{ rows: GrantRow[]; total: number; page: number; hasNext: boolean }> {
+  const q = likePattern(normalizeSearch(input.q));
+  const result = await fetchPage(input.page, (page) =>
+    sql()<
+      {
+        id: string; organization_id: string; organization_name: string; kind: GrantRow["kind"]; tier: string | null; starts_on: string; ends_on: string | null;
+        days: number | null; reason: string; granted_by_name: string | null; revoked_at: Date | null; created_at: Date; total: number;
+      }[]
+    >`
+      select g.id, g.organization_id, o.name as organization_name, g.kind, g.tier, g.starts_on::text, g.ends_on::text, g.days, g.reason,
+             g.granted_by_name, g.revoked_at, g.created_at, (count(*) over ())::int as total
+        from platform.plan_grants g join public.organizations o on o.id = g.organization_id
+       where (${input.kind ?? null}::text is null or g.kind = ${input.kind ?? null})
+         and (${q}::text is null or o.name ilike ${q})
+       order by g.created_at desc, g.id
+       limit ${LIST_PAGE_SIZE} offset ${(page - 1) * LIST_PAGE_SIZE}`,
+  );
+  return {
+    rows: result.rows.map((r) => ({
+      id: r.id, organizationId: r.organization_id, organizationName: r.organization_name, kind: r.kind, tier: r.tier, startsOn: r.starts_on, endsOn: r.ends_on,
+      days: r.days, reason: r.reason, grantedByName: r.granted_by_name, revokedAt: r.revoked_at, createdAt: r.created_at,
+    })),
+    total: result.total,
+    page: result.page,
+    hasNext: result.page * LIST_PAGE_SIZE < result.total,
+  };
 }
 
 export async function tierCounts(): Promise<{ tier: string; interval: string; count: number; courtesy: number }[]> {

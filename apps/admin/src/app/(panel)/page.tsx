@@ -1,3 +1,4 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock, Database, ShieldCheck, Timer } from "lucide-react";
@@ -11,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ADMIN_ROLE_LABEL, can } from "@/lib/permissions";
 import { sql } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/context";
-import { agoOrNow } from "@/lib/relative-time";
 import { auditActionLabel } from "@/lib/audit-labels";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-token";
 import { errorTotals } from "@/lib/server/health";
@@ -106,7 +106,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <CardDescription className="flex items-center gap-1.5">
               <Clock className="size-4" /> Último acesso
             </CardDescription>
-            <CardTitle className="text-base">{admin.lastLoginAt ? agoOrNow(admin.lastLoginAt) : "Primeiro acesso"}</CardTitle>
+            <CardTitle className="text-base"><RelativeTime date={admin.lastLoginAt} empty="Primeiro acesso" /></CardTitle>
           </CardHeader>
           <CardContent className="break-all text-sm text-muted-foreground">{admin.email}</CardContent>
         </Card>
@@ -127,7 +127,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                     {entry.admin_name ? <span className="text-muted-foreground"> · {entry.admin_name}</span> : null}
                   </span>
                   <Badge variant="secondary" className="font-normal">
-                    {format(entry.created_at, "dd/MM HH:mm", { locale: ptBR })}
+                    <RelativeTime date={entry.created_at} />
                   </Badge>
                 </div>
               </ListRow>

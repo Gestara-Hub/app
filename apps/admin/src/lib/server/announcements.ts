@@ -1,4 +1,6 @@
 import "server-only";
+import { clampPage, likePattern, normalizeSearch } from "../filter-input";
+import { LIST_PAGE_SIZE } from "../pagination";
 import { sql } from "./db";
 
 /**
@@ -81,6 +83,75 @@ export async function listAnnouncements(): Promise<AnnouncementRow[]> {
      order by a.created_at desc
      limit 200`;
   return rows.map(map);
+}
+
+export const SEVERITIES: readonly Severity[] = ["info", "warning", "urgent"];
+export const AUDIENCES: readonly Audience[] = ["all", "tier", "area", "spaces"];
+export const STATES: readonly AnnouncementState[] = ["active", "scheduled", "ended", "archived"];
+
+export interface AnnouncementQuery {
+  /** Situação (ausente = todas). */
+  state?: AnnouncementState;
+  /** Busca pelo título (já normalizada, até 100 caracteres). */
+  q?: string;
+  severity?: Severity;
+  audience?: Audience;
+  page?: number;
+}
+
+/** Mesma regra de `stateOf`, em SQL, para filtrar e contar no banco. */
+const STATE_SQL = `case when a.archived_at is not null then 'archived'
+                        when a.starts_at > now() then 'scheduled'
+                        when a.ends_at is not null and a.ends_at <= now() then 'ended'
+                        else 'active' end`;
+
+/**
+ * Comunicados paginados (25 por página), do mais recente ao mais antigo, com o total do filtro.
+ * `counts` são as contagens por situação sobre o conjunto filtrado por busca, importância e público
+ * (sem a situação): assim cada aba do SegmentedLinks mostra quantos resultados terá ao clicar.
+ */
+export async function listAnnouncementsPage(query: AnnouncementQuery): Promise<{ rows: AnnouncementRow[]; total: number; page: number; counts: Record<AnnouncementState | "all", number> }> {
+  const pattern = likePattern(normalizeSearch(query.q));
+  const severity = query.severity ?? null;
+  const audience = query.audience ?? null;
+  const state = query.state ?? null;
+  const base = sql()`
+    (${pattern}::text is null or a.title ilike ${pattern}::text escape '\\')
+    and (${severity}::text is null or a.severity::text = ${severity}::text)
+    and (${audience}::text is null or a.audience::text = ${audience}::text)`;
+  const stateWhere = sql()`(${state}::text is null or ${sql().unsafe(STATE_SQL)} = ${state}::text)`;
+  const grouped = await sql()<{ state: AnnouncementState; n: number }[]>`
+    select ${sql().unsafe(STATE_SQL)} as state, count(*)::int as n from platform.announcements a where ${base} group by 1`;
+  const counts = { all: 0, active: 0, scheduled: 0, ended: 0, archived: 0 };
+  for (const row of grouped) {
+    counts[row.state] = row.n;
+    counts.all += row.n;
+  }
+  const total = state ? counts[state] : counts.all;
+  const page = clampPage(query.page ?? 1, total, LIST_PAGE_SIZE);
+  const rows = await sql()<Raw[]>`
+    select a.id, a.title, a.body, a.severity, a.audience, a.audience_filter, a.starts_at, a.ends_at,
+           a.created_by_name, a.archived_at,
+           (select count(*)::int from platform.announcement_reads r where r.announcement_id = a.id) as dismissed
+      from platform.announcements a
+     where ${base} and ${stateWhere}
+     order by a.created_at desc, a.id
+     limit ${LIST_PAGE_SIZE} offset ${(page - 1) * LIST_PAGE_SIZE}`;
+  return { rows: rows.map(map), total, page, counts };
+}
+
+/** Totais gerais dos cartões do topo (sem filtro): por situação e dispensas. */
+export async function announcementTotals(): Promise<{ active: number; scheduled: number; ended: number; archived: number; dismissed: number }> {
+  const [row] = await sql()<{ active: number; scheduled: number; ended: number; archived: number; dismissed: number }[]>`
+    select count(*) filter (where s.state = 'active')::int as active,
+           count(*) filter (where s.state = 'scheduled')::int as scheduled,
+           count(*) filter (where s.state = 'ended')::int as ended,
+           count(*) filter (where s.state = 'archived')::int as archived,
+           coalesce(sum(s.dismissed), 0)::int as dismissed
+      from (select ${sql().unsafe(STATE_SQL)} as state,
+                   (select count(*) from platform.announcement_reads r where r.announcement_id = a.id) as dismissed
+              from platform.announcements a) s`;
+  return row;
 }
 
 export async function getAnnouncement(id: string): Promise<AnnouncementRow | null> {

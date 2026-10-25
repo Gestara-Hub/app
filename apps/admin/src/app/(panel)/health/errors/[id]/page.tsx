@@ -1,3 +1,4 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +7,7 @@ import { BackLink } from "@/components/shared/back-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ago, dateTime } from "@/lib/format";
+import { ProtocolTag } from "@/components/support/badges";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { getErrorDetail } from "@/lib/server/health";
@@ -98,11 +99,11 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
               </p>
               <p>
                 <span className="text-muted-foreground">Primeira vez: </span>
-                {dateTime(error.firstSeen)}
+                <RelativeTime date={error.firstSeen} />
               </p>
-              <p title={dateTime(error.lastSeen)}>
+              <p>
                 <span className="text-muted-foreground">Última vez: </span>
-                {ago(error.lastSeen)}
+                <RelativeTime date={error.lastSeen} />
               </p>
               <p>
                 <span className="text-muted-foreground">Código: </span>
@@ -131,6 +132,7 @@ export default async function ErrorDetailPage({ params }: { params: Promise<{ id
               ) : (
                 error.threads.map((thread) => (
                   <p key={thread.id} className="break-words">
+                    <ProtocolTag number={thread.number} className="mr-2" />
                     <Link href={`/support/${thread.id}`} className="underline underline-offset-2">
                       {thread.subject}
                     </Link>

@@ -467,3 +467,30 @@ Status: Feito. O painel passou a seguir os componentes e padrões do app dos cli
 
 **Testes (`apps/admin/e2e`, Playwright, `pnpm --filter @gestarahub/admin e2e`)**: porta 3101 com `.next-e2e`, um teste por vez, só quando pedido. `acesso.spec.ts` (validação do login, senha errada, autenticador, código errado, sair e entrar, cliente barrado, destino do login), `fluxos.spec.ts` (convidar e desativar, respostas prontas, comunicado, LGPD, conversa de suporte, filtros e abas de espaço, anotação e ações do plano, erro conhecido, papéis) e `telas.spec.ts` (todas as telas, desktop e celular: sem erro de console, sem 5xx, com título e sem rolagem horizontal, mais capturas em `test-results/telas`). Os dados de teste levam a marca "E2E" e são apagados no início e no fim.
 - O cadastro do autenticador tenta de novo uma vez se o serviço de login falhar na primeira (a falha apareceu uma vez, não se repetiu).
+
+## 20. Filtros e paginação das listas (25/10/2026)
+
+Status: Feito. Toda lista do painel guarda busca, filtros e página no endereço (`?q=`, `?tier=`, `?page=`...): o link é compartilhável, o voltar do navegador funciona e a página segue renderizada no servidor. Trocar um filtro volta à página 1; "Limpar filtros" aparece quando há algum.
+
+- **Regras comuns** (`lib/pagination.ts`, `lib/filter-input.ts`, `lib/list-filters.ts`, `lib/server/page-fetch.ts`): 25 por página; o total vem do banco (`count(*) over()` na mesma consulta); página além do fim mostra a última existente; a barra de resumo diz "Mostrando X a Y de N" e o `Pager` "Página N de M"; todo valor do endereço é validado no servidor (fora da lista vira "sem filtro", datas inválidas são ignoradas, busca limitada a 100 caracteres e sempre parâmetro do SQL, com `%`, `_` e `\` escapados).
+- **Espaços:** total filtrado; a exportação CSV usa os mesmos filtros e a lista inteira.
+- **Auditoria:** busca (ação em português, pessoa, motivo, espaço), pessoa, espaço (`?space=`), período (hoje, 7 e 30 dias) e datas "de" e "até" (dia de Brasília, inclusivas).
+- **Equipe:** busca, papel e situação (sem paginação, a lista é curta).
+- **LGPD:** 25 por página, busca (nome, e-mail, descrição, código do espaço) e tipo, além da situação.
+- **Comunicados:** 25 por página, importância e público; os 4 cartões do topo agora são totais gerais; as contagens das abas de situação valem para o conjunto já filtrado por busca, importância e público.
+- **Respostas prontas:** busca no título e no texto (50 por página).
+- **Saúde:** total e páginas em erros e avisos; erros também por espaço (`?space=`) e busca pelo nome do espaço; rotinas por rotina, situação e período, paginadas; avisos por busca e período.
+- **Suporte:** total, só urgentes, período da última mensagem e ordem (a fila de "precisam de resposta" mantém a regra de antes por padrão).
+- **Planos:** concessões com tipo, busca pelo espaço e página própria (`?grants_*`).
+- **Uso da ajuda:** período (7, 30 ou 90 dias) e busca nas buscas sem resultado, paginadas.
+- **Testes:** `*.db.test.ts` (total, página 2, página além do fim, busca, filtros) e `e2e/filtros-a|b|c.spec.ts`; cada arquivo apaga os dados em massa que criou ao terminar.
+
+## 21. Protocolo das conversas e linha clicável (25/10/2026)
+
+Status: Feito.
+
+- **Protocolo (`GH-1042`):** cada conversa do "Fale com a gente" tem um número sequencial legível (`platform.support_threads.number`, migração `20261025000063`, sequência a partir de 1001; as antigas foram numeradas na ordem de abertura). O `id` (uuid) segue sendo a chave. O formato e a leitura ficam em `@gestarahub/core/support-protocol` (`formatProtocol`, `parseProtocol`: aceita `GH-1042`, `gh1042`, `#1042` e `1042`).
+- **No web:** aparece na lista de conversas e no cabeçalho da conversa (com botão de copiar), na mensagem de confirmação do encaminhamento e nos e-mails (assunto `[GH-1042]`). No painel: na lista de Suporte, no título da conversa e do navegador, nas conversas do espaço e nas ligadas a um erro, e no e-mail de resposta ao cliente. A busca do Suporte acha pelo protocolo.
+- **Corrigido junto:** a aba "Suporte e notas" da ficha do espaço parecia sempre vazia (filtrava o código do espaço como texto de busca); agora `listThreads` tem o filtro `organizationId`.
+- **Linha inteira clicável:** nas listas que levam a um detalhe, o link do título é esticado sobre a linha (`after:absolute after:inset-0`, linha `relative`) e o menu ⋮ da linha fica por cima (`ListRow` põe `relative z-10` nas ações). Vale em Suporte, Espaços, Comunicados, erros da Saúde, Planos (espaços por plano, cortesias e renovações) e nas conversas e erros da ficha do espaço. Fora: Auditoria, LGPD, Equipe e Respostas prontas (abrem gaveta ou não têm detalhe).
+- **Testes:** `support.db.test.ts` (protocolo, busca, filtro por espaço), `e2e/protocolo.spec.ts` e `e2e/linhas.spec.ts`.

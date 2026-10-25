@@ -6,6 +6,8 @@ export type SupportKind = "question" | "bug" | "suggestion";
 
 export interface SupportThreadSummary {
   id: string;
+  /** Número do protocolo (GH-n); veja formatProtocol. */
+  number: number;
   kind: SupportKind;
   subject: string;
   status: SupportStatus;
@@ -27,6 +29,8 @@ export interface SupportMessage {
 
 export interface SupportThreadView {
   threadId: string;
+  /** Número do protocolo (GH-n). */
+  number: number;
   kind: SupportKind;
   status: SupportStatus;
   subject: string;

@@ -88,6 +88,13 @@ export async function cleanupAll(): Promise<void> {
     await owner`delete from platform.announcements where created_by_name like 'E2E %'`.catch(() => undefined);
     await owner`delete from platform.privacy_requests where requester_email like ${`%@${E2E_DOMAIN}`}`.catch(() => undefined);
     await owner`delete from platform.support_macros where title like 'Resposta %' and body = 'Oi! Pode me contar mais detalhes?'`.catch(() => undefined);
+    await owner`delete from platform.support_macros where title like 'E2E %'`.catch(() => undefined);
+    // Filtros do grupo C: erros, rotinas, avisos do parceiro, buscas da ajuda e conversas de teste.
+    await owner`delete from public.error_logs where fingerprint like 'e2e-filtros-c-%'`.catch(() => undefined);
+    await owner`delete from public.job_runs where job like 'e2e_filtros_c%'`.catch(() => undefined);
+    await owner`delete from public.webhook_events where event_id like 'e2e-filtros-c-%'`.catch(() => undefined);
+    await owner`delete from platform.help_events where route = 'e2e-filtros-c'`.catch(() => undefined);
+    await owner`delete from platform.support_threads where organization_id in (select id from public.organizations where name like ${`${E2E_SPACE_PREFIX}%`})`.catch(() => undefined);
     const spaces = await owner<{ id: string }[]>`select id from public.organizations where name like ${`${E2E_SPACE_PREFIX}%`}`;
     for (const space of spaces) {
       await purgeAudit(owner, [], `organization_id = '${space.id}'`).catch(() => undefined);

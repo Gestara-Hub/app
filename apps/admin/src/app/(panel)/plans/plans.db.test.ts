@@ -202,3 +202,27 @@ describe("permissões e visão geral", () => {
     ).rejects.toMatchObject({ code: "42501" });
   });
 });
+
+describe("concessões: filtros e paginação", () => {
+  it("filtra por tipo, busca pelo nome do espaço e pagina com o total", async () => {
+    const plans = await import("@/lib/server/plans");
+    const [row] = await owner<{ id: string }[]>`insert into public.organizations (name, model, subscription) values ('Estúdio Concede Muito', 'classes', ${owner.json({ tier: "free" } as never)}) returning id`;
+    org.muito = row.id;
+    await owner`
+      insert into platform.plan_grants (organization_id, kind, tier, starts_on, ends_on, days, reason, granted_by_name)
+      select ${row.id}, case when i <= 20 then 'courtesy' else 'grace' end, 'pro', platform.brasilia_today(), platform.brasilia_today() + 5, 5, 'Concessão de teste ' || i, 'Teste'
+        from generate_series(1, 27) i`;
+    const all = await plans.listGrantsPage({ q: "Concede Muito", page: 1 });
+    expect(all.total).toBe(27);
+    expect(all.rows).toHaveLength(25);
+    expect(all.hasNext).toBe(true);
+    const second = await plans.listGrantsPage({ q: "Concede Muito", page: 2 });
+    expect(second.rows).toHaveLength(2);
+    expect(await plans.listGrantsPage({ q: "Concede Muito", page: 50 })).toMatchObject({ page: 2, total: 27 });
+    expect(await plans.listGrantsPage({ q: "Concede Muito", kind: "grace", page: 1 })).toMatchObject({ total: 7 });
+    expect(await plans.listGrantsPage({ q: "Concede Muito", kind: "courtesy", page: 1 })).toMatchObject({ total: 20 });
+    expect((await plans.listGrantsPage({ q: "Concede Muito", kind: "forced_free", page: 1 })).total).toBe(0);
+    // O "%" do texto não vira curinga.
+    expect((await plans.listGrantsPage({ q: "%", page: 1 })).total).toBe(0);
+  });
+});

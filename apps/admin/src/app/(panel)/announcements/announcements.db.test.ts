@@ -128,3 +128,57 @@ describe("comunicados", () => {
     expect(await owner`select 1 from platform.announcements where title = 'Indevido'`).toHaveLength(0);
   });
 });
+
+describe("lista de comunicados: total, página, busca, importância e público", () => {
+  const mark = `PgCom${Date.now().toString(36)}`;
+  beforeAll(async () => {
+    // 27 no ar (os 4 últimos urgentes, 3 para um plano), 1 arquivado e 1 agendado.
+    for (let i = 1; i <= 29; i++) {
+      const title = `${mark} ${String(i).padStart(2, "0")}`;
+      titles.add(title);
+      const severity = i > 23 && i <= 27 ? "urgent" : i > 20 && i <= 23 ? "warning" : "info";
+      const audience = i <= 3 ? "tier" : "all";
+      await owner`
+        insert into platform.announcements (title, body, severity, audience, audience_filter, starts_at, archived_at, created_at, created_by_name)
+        values (${title}, 'Corpo de teste', ${severity}, ${audience}, ${owner.json((audience === "tier" ? { tiers: ["pro"] } : {}) as never)},
+                ${i === 29 ? new Date("2099-01-01") : new Date("2020-01-01")}, ${i === 28 ? new Date() : null}, now() + make_interval(mins => ${i}::int), 'Teste')`;
+    }
+  });
+
+  it("pagina com total, do mais recente ao mais antigo, e limita a página", async () => {
+    const { listAnnouncementsPage } = await import("@/lib/server/announcements");
+    const first = await listAnnouncementsPage({ q: mark });
+    expect(first.total).toBe(29);
+    expect(first.rows).toHaveLength(25);
+    expect(first.rows[0].title).toBe(`${mark} 29`);
+    const second = await listAnnouncementsPage({ q: mark, page: 2 });
+    expect(second.rows.map((r) => r.title)).toEqual([`${mark} 04`, `${mark} 03`, `${mark} 02`, `${mark} 01`]);
+    expect((await listAnnouncementsPage({ q: mark, page: 50 })).page).toBe(2);
+  });
+
+  it("filtra por situação, importância, público e título, e conta por situação sobre o conjunto filtrado", async () => {
+    const { listAnnouncementsPage } = await import("@/lib/server/announcements");
+    const all = await listAnnouncementsPage({ q: mark });
+    expect(all.counts).toMatchObject({ all: 29, active: 27, scheduled: 1, archived: 1, ended: 0 });
+    const active = await listAnnouncementsPage({ q: mark, state: "active" });
+    expect(active.total).toBe(27);
+    expect(active.page).toBe(1);
+    expect((await listAnnouncementsPage({ q: mark, state: "active", page: 2 })).rows).toHaveLength(2);
+    const urgent = await listAnnouncementsPage({ q: mark, severity: "urgent" });
+    expect(urgent.total).toBe(4);
+    expect(urgent.counts.active).toBe(4);
+    expect((await listAnnouncementsPage({ q: mark, severity: "warning" })).total).toBe(3);
+    expect((await listAnnouncementsPage({ q: mark, audience: "tier" })).total).toBe(3);
+    expect((await listAnnouncementsPage({ q: mark, audience: "tier", severity: "urgent" })).total).toBe(0);
+    expect((await listAnnouncementsPage({ q: `${mark} 07` })).total).toBe(1);
+    expect((await listAnnouncementsPage({ q: `${mark} %` })).total).toBe(0);
+  });
+
+  it("os totais gerais e a lista antiga seguem funcionando", async () => {
+    const { announcementTotals, listAnnouncements } = await import("@/lib/server/announcements");
+    const totals = await announcementTotals();
+    expect(totals.active).toBeGreaterThanOrEqual(27);
+    expect(totals.scheduled).toBeGreaterThanOrEqual(1);
+    expect((await listAnnouncements()).length).toBeGreaterThan(0);
+  });
+});

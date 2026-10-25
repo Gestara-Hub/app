@@ -2379,6 +2379,14 @@
     }
   },
   {
+    "id": "primeiros-passos#falar-com-o-suporte",
+    "article": "Primeiros passos",
+    "title": "Falar com o suporte",
+    "route": "/dashboard",
+    "text": "Use o botão \"Fale com a gente\" para tirar dúvidas, relatar um problema ou sugerir uma melhoria. Cada conversa recebe um protocolo, como GH-1042, que aparece na lista e no topo da conversa, com um botão para copiar. Se for falar com a gente por outro canal, como e-mail ou WhatsApp, cite o protocolo para localizarmos a conversa na hora.",
+    "summary": "Cada conversa do Fale com a gente tem um protocolo GH-n; cite-o por outro canal."
+  },
+  {
     "id": "recebimentos-online#o-que-e",
     "article": "Recebimentos online (Pix e cartão)",
     "title": "O que é",

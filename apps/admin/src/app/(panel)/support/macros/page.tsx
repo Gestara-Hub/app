@@ -4,18 +4,32 @@ import { PageHeader } from "@/components/layout/page-header";
 import { BackLink } from "@/components/shared/back-link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormDrawer } from "@/components/shared/form-drawer";
-import { ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { ListContainer, ListRow } from "@/components/shared/list";
+import { Pager } from "@/components/shared/pager";
+import { UrlClearFilters, UrlSearch } from "@/components/shared/url-filters";
 import { Button } from "@/components/ui/button";
+import { normalizeSearch } from "@/lib/filter-input";
+import { pageInfo, parsePage, rangeLabel } from "@/lib/pagination";
 import { requireAdmin } from "@/lib/server/context";
-import { listMacros } from "@/lib/server/support";
+import { MACRO_PAGE_SIZE, searchMacros } from "@/lib/server/macros";
 import { MacroForm } from "./macro-form";
 import { MacroRowActions } from "./macro-row-actions";
 
 export const metadata: Metadata = { title: "Respostas prontas" };
 
-export default async function MacrosPage() {
+export default async function MacrosPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
   await requireAdmin("support:reply");
-  const macros = await listMacros();
+  const params = await searchParams;
+  const q = normalizeSearch(params.q);
+  const { rows: macros, total, page } = await searchMacros({ q, page: parsePage(params.page) });
+  const info = pageInfo(page, total, MACRO_PAGE_SIZE);
+  const href = (next: number) => {
+    const query = new URLSearchParams();
+    if (q) query.set("q", q);
+    if (next > 1) query.set("page", String(next));
+    const text = query.toString();
+    return text ? `/support/macros?${text}` : "/support/macros";
+  };
   return (
     <>
       <BackLink href="/support" label="Voltar ao Suporte" />
@@ -25,16 +39,27 @@ export default async function MacrosPage() {
         </FormDrawer>
       </PageHeader>
 
+      {total > 0 || q ? (
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <UrlSearch placeholder="Buscar no título ou no texto" ariaLabel="Buscar respostas prontas" />
+          <UrlClearFilters params={["q"]} />
+        </div>
+      ) : null}
+
       <div className="space-y-2">
-        <ListSummaryBar count={macros.length} singularLabel="resposta pronta" pluralLabel="respostas prontas" />
+        {total > 0 ? <p className="px-1 text-xs text-muted-foreground">{rangeLabel(info, "resposta pronta", "respostas prontas")}</p> : null}
         <ListContainer
           emptyState={
             macros.length === 0 ? (
-              <EmptyState icon={MessageSquareText} title="Nenhuma resposta pronta ainda" description="Crie textos para as respostas que você repete.">
-                <FormDrawer title="Nova resposta pronta" trigger={<Button>+ Nova resposta pronta</Button>}>
-                  <MacroForm />
-                </FormDrawer>
-              </EmptyState>
+              q ? (
+                <EmptyState icon={MessageSquareText} title="Nenhuma resposta para esta busca" description="Mude o texto da busca ou limpe o filtro." />
+              ) : (
+                <EmptyState icon={MessageSquareText} title="Nenhuma resposta pronta ainda" description="Crie textos para as respostas que você repete.">
+                  <FormDrawer title="Nova resposta pronta" trigger={<Button>+ Nova resposta pronta</Button>}>
+                    <MacroForm />
+                  </FormDrawer>
+                </EmptyState>
+              )
             ) : undefined
           }
         >
@@ -46,6 +71,7 @@ export default async function MacrosPage() {
           ))}
         </ListContainer>
       </div>
+      <Pager page={page} hasNext={info.hasNext} totalPages={info.totalPages} href={href} />
     </>
   );
 }

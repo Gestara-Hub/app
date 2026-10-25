@@ -1,11 +1,16 @@
 import "server-only";
+import { parseProtocol } from "@gestarahub/core/support-protocol";
 import { sql } from "./db";
+import { likePattern, normalizeSearch } from "../filter-input";
+import { LIST_PAGE_SIZE } from "../pagination";
+import { fetchPage } from "./page-fetch";
 import type { ThreadDetail, ThreadFilter, ThreadKind, ThreadMessage, ThreadRow, ThreadStatus } from "../support-types";
 
 /** Consultas e gravacoes do Suporte (schema `platform`). Quem chama confere o papel e grava a auditoria. */
 
 type Row = {
   id: string;
+  number: number;
   kind: ThreadKind;
   subject: string;
   status: ThreadStatus;
@@ -23,6 +28,7 @@ type Row = {
 
 const toRow = (r: Row): ThreadRow => ({
   id: r.id,
+  number: r.number,
   kind: r.kind,
   subject: r.subject,
   status: r.status,
@@ -38,25 +44,57 @@ const toRow = (r: Row): ThreadRow => ({
   escalatedAt: r.escalated_at,
 });
 
-export const PAGE_SIZE = 25;
+export const PAGE_SIZE = LIST_PAGE_SIZE;
 
-export async function listThreads(input: { filter: ThreadFilter; kind?: ThreadKind; q?: string; page: number }): Promise<{ rows: ThreadRow[]; hasNext: boolean }> {
+/** Período da última mensagem e ordem da lista (sem ordem escolhida vale a regra da fila). */
+export const THREAD_PERIODS = { today: "Hoje", "7d": "Últimos 7 dias", "30d": "Últimos 30 dias" } as const;
+export type ThreadPeriod = keyof typeof THREAD_PERIODS;
+export type ThreadOrder = "oldest" | "newest";
+
+
+export async function listThreads(input: {
+  filter: ThreadFilter;
+  kind?: ThreadKind;
+  q?: string;
+  /** Só as conversas deste espaço (ficha do espaço). */
+  organizationId?: string;
+  urgent?: boolean;
+  period?: ThreadPeriod;
+  order?: ThreadOrder;
+  page: number;
+}): Promise<{ rows: ThreadRow[]; hasNext: boolean; total: number; page: number }> {
   const status = input.filter === "attention" ? "waiting_us" : input.filter === "all" ? null : input.filter;
-  const q = input.q?.trim() ? `%${input.q.trim().replace(/[%_\\]/g, "\\$&")}%` : null;
-  const rows = await sql()<Row[]>`
-    select t.id, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
-           t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at
-      from platform.support_threads t
-      join public.organizations o on o.id = t.organization_id
-     where (${status}::text is null or t.status = ${status})
-       and (${input.kind ?? null}::text is null or t.kind = ${input.kind ?? null})
-       and (${q}::text is null or t.subject ilike ${q} or o.name ilike ${q} or t.user_name ilike ${q} or t.user_email ilike ${q})
-     order by case when t.status = 'waiting_us' then 0 else 1 end,
-              t.urgent desc,
-              case when t.status = 'waiting_us' then coalesce(t.last_customer_message_at, t.created_at) end asc,
-              t.last_message_at desc
-     limit ${PAGE_SIZE + 1} offset ${(input.page - 1) * PAGE_SIZE}`;
-  return { rows: rows.slice(0, PAGE_SIZE).map(toRow), hasNext: rows.length > PAGE_SIZE };
+  const q = likePattern(normalizeSearch(input.q));
+  // Protocolo (GH-1042, #1042, 1042): acha pelo número, além do texto.
+  const protocol = parseProtocol(normalizeSearch(input.q));
+  const organizationId = input.organizationId ?? null;
+  const urgent = input.urgent ? true : null;
+  const period = input.period ?? null;
+  const order = input.order ?? null;
+  const result = await fetchPage(input.page, (page) =>
+    sql()<(Row & { total: number })[]>`
+      select t.id, t.number, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
+             t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at, (count(*) over ())::int as total
+        from platform.support_threads t
+        join public.organizations o on o.id = t.organization_id
+       where (${status}::text is null or t.status = ${status})
+         and (${input.kind ?? null}::text is null or t.kind = ${input.kind ?? null})
+         and (${organizationId}::text is null or t.organization_id = ${organizationId})
+         and (${urgent}::boolean is null or t.urgent = ${urgent})
+         and (${period}::text is null
+              or (${period}::text = 'today' and t.last_message_at >= date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')
+              or (${period}::text = '7d' and t.last_message_at >= now() - interval '7 days')
+              or (${period}::text = '30d' and t.last_message_at >= now() - interval '30 days'))
+         and (${q}::text is null or t.number = ${protocol}::int or t.subject ilike ${q} or o.name ilike ${q} or t.user_name ilike ${q} or t.user_email ilike ${q})
+       order by case when ${order}::text is not null then 0 when t.status = 'waiting_us' then 0 else 1 end,
+                case when ${order}::text is null then t.urgent end desc,
+                case when ${order}::text is null and t.status = 'waiting_us' then coalesce(t.last_customer_message_at, t.created_at) end asc,
+                case when ${order}::text = 'oldest' then t.last_message_at end asc,
+                t.last_message_at desc,
+                t.id
+       limit ${PAGE_SIZE} offset ${(page - 1) * PAGE_SIZE}`,
+  );
+  return { rows: result.rows.map(toRow), hasNext: result.page * PAGE_SIZE < result.total, total: result.total, page: result.page };
 }
 
 export async function threadCounts(): Promise<{ attention: number; urgent: number; waitingCustomer: number; bot: number }> {
@@ -72,7 +110,7 @@ export async function threadCounts(): Promise<{ attention: number; urgent: numbe
 export async function getThread(id: string): Promise<ThreadDetail | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const [row] = await sql()<(Row & { summary: string | null; origin_screen: string | null; error_reference: string | null; client_info: string | null; bot_helped: boolean | null })[]>`
-    select t.id, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
+    select t.id, t.number, t.kind, t.subject, t.status, t.urgent, t.user_name, t.user_email, t.organization_id, o.name as organization_name,
            t.plan_tier, t.created_at, t.last_message_at, t.last_customer_message_at, t.escalated_at,
            t.summary, t.origin_screen, t.error_reference, t.client_info, t.bot_helped
       from platform.support_threads t join public.organizations o on o.id = t.organization_id
@@ -160,6 +198,8 @@ export interface HelpFeedbackRow {
   notHelpful: number;
 }
 
+export const HELP_DAYS = [7, 30, 90] as const;
+
 /** Buscas da ajuda do app sem resultado, mais repetidas primeiro (doc technical/26, 18.2): o que falta escrever. */
 export async function listHelpMisses(days = 30): Promise<HelpMiss[]> {
   const rows = await sql()<{ term: string; searches: number; spaces: number; last_at: Date }[]>`
@@ -170,6 +210,35 @@ export async function listHelpMisses(days = 30): Promise<HelpMiss[]> {
      order by searches desc, last_at desc
      limit 50`;
   return rows.map((r) => ({ term: r.term, searches: r.searches, spaces: r.spaces, lastAt: r.last_at }));
+}
+
+/** O mesmo, com busca pelo termo e paginação com o total de termos. */
+export async function listHelpMissesPage(input: { days: number; q?: string; page: number }): Promise<{ rows: HelpMiss[]; total: number; page: number; hasNext: boolean }> {
+  const q = likePattern(normalizeSearch(input.q));
+  const result = await fetchPage(input.page, (page) =>
+    sql()<{ term: string; searches: number; spaces: number; last_at: Date; total: number }[]>`
+      select term, count(*)::int as searches, count(distinct organization_id)::int as spaces, max(created_at) as last_at, (count(*) over ())::int as total
+        from platform.help_events
+       where kind = 'miss' and created_at > now() - make_interval(days => ${input.days})
+         and (${q}::text is null or term ilike ${q})
+       group by term
+       order by searches desc, last_at desc, term
+       limit ${PAGE_SIZE} offset ${(page - 1) * PAGE_SIZE}`,
+  );
+  return {
+    rows: result.rows.map((r) => ({ term: r.term, searches: r.searches, spaces: r.spaces, lastAt: r.last_at })),
+    total: result.total,
+    page: result.page,
+    hasNext: result.page * PAGE_SIZE < result.total,
+  };
+}
+
+/** Totais do período (sem a busca): quantas buscas sem resultado e de quantos termos. */
+export async function helpMissTotals(days: number): Promise<{ searches: number; terms: number }> {
+  const [row] = await sql()<{ searches: number; terms: number }[]>`
+    select count(*)::int as searches, count(distinct term)::int as terms
+      from platform.help_events where kind = 'miss' and created_at > now() - make_interval(days => ${days})`;
+  return { searches: row.searches, terms: row.terms };
 }
 
 /** "Isso ajudou?" por trecho; os que menos ajudam vêm primeiro. */

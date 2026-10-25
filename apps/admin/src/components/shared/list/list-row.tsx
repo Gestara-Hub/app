@@ -53,7 +53,7 @@ export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow
       <div className="min-w-0 flex-1">{children}</div>
       {actions ? (
         <div
-          className="flex items-center gap-1 shrink-0"
+          className="relative z-10 flex items-center gap-1 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           {actions}

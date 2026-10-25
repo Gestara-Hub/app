@@ -1,4 +1,5 @@
 import { SUPPORT_EMAIL } from "@/config/site";
+import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { logError } from "@/lib/log";
 import type { SupportKind } from "@/services/support/supportTypes";
 
@@ -9,6 +10,8 @@ import type { SupportKind } from "@/services/support/supportTypes";
  */
 export interface SupportNotice {
   kind: "new" | "reply";
+  /** Número do protocolo da conversa. */
+  number: number;
   /** Tipo da conversa; sem tipo, é uma dúvida. */
   topic?: SupportKind;
   urgent: boolean;
@@ -22,10 +25,12 @@ export interface SupportNotice {
 export function supportNoticeText(notice: SupportNotice): { subject: string; text: string } {
   const newHead = notice.topic === "bug" ? "Novo problema relatado" : notice.topic === "suggestion" ? "Nova sugestão" : "Novo chamado";
   const head = notice.kind === "new" ? newHead : "Nova resposta do cliente";
-  const subject = `${notice.urgent ? "[URGENTE] " : ""}${head}: ${notice.subject}`;
+  const protocol = formatProtocol(notice.number);
+  const subject = `${notice.urgent ? "[URGENTE] " : ""}[${protocol}] ${head}: ${notice.subject}`;
   const text = [
     `${head}${notice.urgent ? " (urgente)" : ""}`,
     "",
+    `Protocolo: ${protocol}`,
     `Espaço: ${notice.spaceName}`,
     `Pessoa: ${notice.userName} (${notice.userEmail})`,
     `Assunto: ${notice.subject}`,

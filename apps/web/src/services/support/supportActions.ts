@@ -93,7 +93,7 @@ async function threadView(
 ): Promise<SupportThreadView> {
   const [messages, statusRows, quota] = await Promise.all([
     rpc<MessageRow[]>(c.admin, "support_thread_messages", { p_org: c.org, p_user: c.userId, p_thread: threadId, p_mark_seen: true }),
-    rpc<{ status: SupportStatus; bot_helped: boolean | null; subject: string; kind: SupportKind }[]>(c.admin, "support_thread_status", {
+    rpc<{ number: number; status: SupportStatus; bot_helped: boolean | null; subject: string; kind: SupportKind }[]>(c.admin, "support_thread_status", {
       p_org: c.org,
       p_user: c.userId,
       p_thread: threadId,
@@ -104,6 +104,7 @@ async function threadView(
   if (!status) throw validationError([{ field: "message", message: "Conversa não encontrada." }]);
   return {
     threadId,
+    number: status.number,
     kind: status.kind,
     status: status.status,
     subject: status.subject,
@@ -165,10 +166,11 @@ export async function listSupportThreadsAction(): Promise<ActionResult<SupportTh
   return runAction(async () => {
     const c = await caller();
     const rows = await rpc<
-      { id: string; subject: string; status: SupportStatus; urgent: boolean; created_at: string; last_message_at: string; unread: number; last_preview: string | null; kind: SupportKind }[]
+      { id: string; number: number; subject: string; status: SupportStatus; urgent: boolean; created_at: string; last_message_at: string; unread: number; last_preview: string | null; kind: SupportKind }[]
     >(c.admin, "support_list_threads", { p_org: c.org, p_user: c.userId });
     return rows.map((r) => ({
       id: r.id,
+      number: r.number,
       kind: r.kind,
       subject: r.subject,
       status: r.status,
@@ -205,6 +207,7 @@ export async function sendSupportMessageAction(input: {
 
     let threadId = input.threadId;
     let before: SupportStatus = "bot";
+    let number = 0;
     if (!threadId) {
       threadId = await rpc<string>(c.admin, "support_open_thread", {
         p_org: c.org,
@@ -229,9 +232,10 @@ export async function sendSupportMessageAction(input: {
             : null,
       });
     } else {
-      const status = (await rpc<{ status: SupportStatus }[]>(c.admin, "support_thread_status", { p_org: c.org, p_user: c.userId, p_thread: threadId }))[0];
+      const status = (await rpc<{ status: SupportStatus; number: number }[]>(c.admin, "support_thread_status", { p_org: c.org, p_user: c.userId, p_thread: threadId }))[0];
       if (!status) throw validationError([{ field: "message", message: "Conversa não encontrada." }]);
       before = status.status;
+      number = status.number;
       await rpc<void>(c.admin, "support_add_customer_message", { p_org: c.org, p_user: c.userId, p_thread: threadId, p_body: message });
     }
 
@@ -245,7 +249,7 @@ export async function sendSupportMessageAction(input: {
       // Conversa que ja esta com o suporte: avisa que a pessoa respondeu.
       const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
       await sendSupportNotice(
-        { kind: "reply", urgent: false, subject: subjectFrom(message), spaceName: c.spaceName, userName: c.userName, userEmail: c.userEmail, preview: message.slice(0, 600) },
+        { kind: "reply", number, urgent: false, subject: subjectFrom(message), spaceName: c.spaceName, userName: c.userName, userEmail: c.userEmail, preview: message.slice(0, 600) },
         notifyTo,
       );
     }
@@ -259,7 +263,7 @@ async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string)
   const customerTexts = history.filter((m) => m.author === "customer").map((m) => m.body);
   const urgent = looksUrgent(customerTexts);
   const summary = summaryFrom(customerTexts);
-  const rows = await rpc<{ subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean; kind: SupportKind }[]>(
+  const rows = await rpc<{ number: number; subject: string; user_name: string; user_email: string; organization_name: string; urgent: boolean; kind: SupportKind }[]>(
     c.admin,
     "support_escalate",
     { p_org: c.org, p_user: c.userId, p_thread: threadId, p_summary: summary, p_urgent: urgent },
@@ -268,7 +272,7 @@ async function escalate(c: Awaited<ReturnType<typeof caller>>, threadId: string)
   if (sent) {
     const notifyTo = await rpc<string>(c.admin, "support_notify_email", {});
     await sendSupportNotice(
-      { kind: "new", topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, preview: summary },
+      { kind: "new", number: sent.number, topic: sent.kind, urgent: sent.urgent, subject: sent.subject, spaceName: sent.organization_name, userName: sent.user_name, userEmail: sent.user_email, preview: summary },
       notifyTo,
     );
   }

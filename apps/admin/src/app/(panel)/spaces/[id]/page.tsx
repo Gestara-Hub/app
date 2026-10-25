@@ -1,3 +1,4 @@
+import { RelativeDay, RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,10 +13,9 @@ import { Pager } from "@/components/shared/pager";
 import { PlanBadge } from "@/components/shared/plan-badge";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { TabLinks } from "@/components/shared/tab-links";
-import { StatusBadge, UrgentBadge } from "@/components/support/badges";
+import { ProtocolTag, StatusBadge, UrgentBadge } from "@/components/support/badges";
 import { Badge } from "@/components/ui/badge";
-import { ago, brDay, brl, dateOnly, dateTime } from "@/lib/format";
-import { agoFriendly } from "@/lib/friendly-time";
+import { brl } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/server/context";
 import { listErrors, listWebhooks } from "@/lib/server/health";
@@ -116,13 +116,13 @@ function Summary({ space }: { space: Space }) {
         <FactCard title="Quem é" description="Contato do dono, para falar com o cliente. Nenhum dado de aluno.">
           <Fact label="Dono" value={space.ownerName ?? "Sem dono ativo"} />
           <Fact label="E-mail do dono" value={space.ownerEmail ?? "—"} />
-          <Fact label="Criado em" value={dateOnly(space.createdAt)} />
+          <Fact label="Criado" value={<RelativeTime date={space.createdAt} />} />
           <Fact label="Fuso" value={timeZone ?? "Padrão (Brasília)"} />
-          <Fact label="Termos de uso" value={space.termsAcceptedAt ? `${space.termsVersion ?? ""} · aceitos em ${dateOnly(space.termsAcceptedAt)}` : "Ainda não aceitos"} />
+          <Fact label="Termos de uso" value={space.termsAcceptedAt ? <>{space.termsVersion ?? ""} · aceitos <RelativeTime date={space.termsAcceptedAt} /></> : "Ainda não aceitos"} />
         </FactCard>
         <FactCard title="Atividade">
-          <Fact label="Último acesso de alguém" value={agoFriendly(space.lastSignInAt)} />
-          <Fact label="Última chamada" value={ago(space.lastAttendanceAt)} />
+          <Fact label="Último acesso de alguém" value={<RelativeTime date={space.lastSignInAt} empty="Nunca" />} />
+          <Fact label="Última chamada" value={<RelativeTime date={space.lastAttendanceAt} empty="Nunca" />} />
         </FactCard>
       </div>
     </div>
@@ -165,13 +165,13 @@ async function Subscription({ space, today, canGrant }: { space: Space; today: s
                   <div className="min-w-0">
                     <p className="min-w-0 break-words font-medium">
                       {GRANT_LABEL[grant.kind]}
-                      {grant.endsOn ? ` até ${brDay(grant.endsOn)}` : ""}
+                      {grant.endsOn ? <> · termina <RelativeDay day={grant.endsOn} /></> : null}
                       {grant.revokedAt ? <span className="font-normal text-muted-foreground"> (encerrada)</span> : null}
                     </p>
                     <p className="min-w-0 break-words text-sm text-muted-foreground">{grant.reason}</p>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {grant.grantedByName} · {dateTime(grant.createdAt)}
+                    {grant.grantedByName} · <RelativeTime date={grant.createdAt} />
                   </span>
                 </div>
               </ListRow>
@@ -195,7 +195,7 @@ async function Subscription({ space, today, canGrant }: { space: Space; today: s
                   </p>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {e.actorName ?? (e.source ? `Sistema (${e.source})` : "—")} · {dateTime(e.createdAt)}
+                  {e.actorName ?? (e.source ? `Sistema (${e.source})` : "—")} · <RelativeTime date={e.createdAt} />
                 </span>
               </div>
             </ListRow>
@@ -218,10 +218,10 @@ async function Health({ spaceId, page, href }: { spaceId: string; page: number; 
         <ListSummaryBar count={errors.rows.length} singularLabel="erro" pluralLabel="erros" />
         <ListContainer emptyState={errors.rows.length === 0 ? <EmptyState icon={Activity} title="Nenhum erro neste período" /> : undefined} className="mt-2">
           {errors.rows.map((e) => (
-            <ListRow key={e.id}>
+            <ListRow key={e.id} className="relative">
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0 space-y-0.5">
-                  <Link href={`/health/errors/${e.id}`} className="min-w-0 break-words font-medium hover:underline">
+                  <Link href={`/health/errors/${e.id}`} className="min-w-0 break-words font-medium after:absolute after:inset-0 hover:underline">
                     {e.message}
                   </Link>
                   <p className="break-all font-mono text-[11px] text-muted-foreground">{e.event}</p>
@@ -230,7 +230,7 @@ async function Health({ spaceId, page, href }: { spaceId: string; page: number; 
                   <Badge variant="outline" className="font-normal tabular-nums">
                     {e.count} {e.count === 1 ? "vez" : "vezes"}
                   </Badge>
-                  <span>{ago(e.lastSeen)}</span>
+                  <span><RelativeTime date={e.lastSeen} /></span>
                   {e.lastReference ? <code className="break-all font-mono text-[11px]">{e.lastReference}</code> : null}
                 </div>
               </div>
@@ -253,7 +253,7 @@ async function Health({ spaceId, page, href }: { spaceId: string; page: number; 
                   <Badge variant="secondary" className="font-normal">
                     {w.status}
                   </Badge>
-                  <span>{dateTime(w.receivedAt)}</span>
+                  <span><RelativeTime date={w.receivedAt} /></span>
                 </div>
               </div>
             </ListRow>
@@ -279,15 +279,15 @@ function Online({ space }: { space: Space }) {
       <FactCard title="Conta de recebimento">
         <Fact label="Situação" value={GATEWAY_LABEL[space.gatewayStatus ?? "not_configured"] ?? space.gatewayStatus} />
         <Fact label="Parceiro" value={space.gatewayProvider ?? "—"} />
-        <Fact label="Tarifas sincronizadas" value={ago(space.gatewayFeesSyncedAt)} />
+        <Fact label="Tarifas sincronizadas" value={<RelativeTime date={space.gatewayFeesSyncedAt} empty="Nunca" />} />
       </FactCard>
     </div>
   );
 }
 
 async function SupportTab({ spaceId, canAnnotate, canAccess }: { spaceId: string; canAnnotate: boolean; canAccess: boolean }) {
-  const [{ rows }, notes] = await Promise.all([listThreads({ filter: "all", q: spaceId, page: 1 }), listSpaceNotes(spaceId)]);
-  const mine = rows.filter((r) => r.organizationId === spaceId);
+  const [{ rows }, notes] = await Promise.all([listThreads({ filter: "all", organizationId: spaceId, page: 1 }), listSpaceNotes(spaceId)]);
+  const mine = rows;
   return (
     <div className="space-y-6">
       {canAccess ? <AccessForm spaceId={spaceId} /> : null}
@@ -296,9 +296,10 @@ async function SupportTab({ spaceId, canAnnotate, canAccess }: { spaceId: string
         <ListSummaryBar count={mine.length} singularLabel="conversa" pluralLabel="conversas" />
         <ListContainer emptyState={mine.length === 0 ? <EmptyState icon={MessageSquare} title="Nenhuma conversa deste espaço" /> : undefined} className="mt-2">
           {mine.map((thread) => (
-            <ListRow key={thread.id}>
+            <ListRow key={thread.id} className="relative">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Link href={`/support/${thread.id}`} className="min-w-0 break-words font-medium hover:underline">
+                <Link href={`/support/${thread.id}`} className="min-w-0 break-words font-medium after:absolute after:inset-0 hover:underline">
+                  <ProtocolTag number={thread.number} className="mr-2 align-middle" />
                   {thread.subject}
                 </Link>
                 <span className="flex items-center gap-1.5">
@@ -325,7 +326,7 @@ async function SupportTab({ spaceId, canAnnotate, canAccess }: { spaceId: string
                   </Badge>
                 ) : null}
                 <span>
-                  {note.adminName ?? "—"} · {dateTime(note.createdAt)}
+                  {note.adminName ?? "—"} · <RelativeTime date={note.createdAt} />
                 </span>
               </p>
             </ListRow>
@@ -352,7 +353,7 @@ async function PanelAudit({ spaceId }: { spaceId: string }) {
                 {row.reason ? <p className="min-w-0 break-words text-sm text-muted-foreground">{row.reason}</p> : null}
               </div>
               <span className="text-xs text-muted-foreground">
-                {row.admin_name ?? "—"} · {dateTime(row.created_at)}
+                {row.admin_name ?? "—"} · <RelativeTime date={row.created_at} />
               </span>
             </div>
           </ListRow>

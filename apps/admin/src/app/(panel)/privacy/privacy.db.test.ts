@@ -166,3 +166,46 @@ describe("2FA de usuário de espaço", () => {
     await expect(actions.resetUserTwoFactorAction({}, form({ spaceId: orgId, userId: "x", reason: "Tentativa indevida" }))).rejects.toBeDefined();
   });
 });
+
+describe("lista de pedidos: total, página, busca e tipo", () => {
+  const mark = `Pglista${Date.now().toString(36)}`;
+  beforeAll(async () => {
+    // 27 pedidos em aberto (2 de exclusão) e 2 concluídos, todos com a marca no nome.
+    for (let i = 1; i <= 29; i++) {
+      const kind = i > 25 && i <= 27 ? "deletion" : "access";
+      const status = i >= 28 ? "done" : "open";
+      await owner`
+        insert into platform.privacy_requests (organization_id, requester_name, requester_email, kind, description, status, due_at, created_by_name)
+        values (${i === 1 ? orgId : null}, ${`${mark} ${String(i).padStart(2, "0")}`}, ${`p${i}-${mark.toLowerCase()}@lgpd.teste`}, ${kind}, ${i === 2 ? `Quero 100% dos dados ${mark}` : "Pedido de teste"}, ${status}, now() + make_interval(hours => ${i}::int), 'Teste')`;
+    }
+  });
+
+  it("pagina de 25 em 25 com o total e mantém a ordem por prazo", async () => {
+    const { listRequests } = await import("@/lib/server/privacy");
+    const first = await listRequests({ filter: "pending", q: mark });
+    expect(first.total).toBe(27);
+    expect(first.rows).toHaveLength(25);
+    expect(first.rows[0].requesterName).toBe(`${mark} 01`);
+    const second = await listRequests({ filter: "pending", q: mark, page: 2 });
+    expect(second.rows.map((r) => r.requesterName)).toEqual([`${mark} 26`, `${mark} 27`]);
+    // Página acima do total vira a última.
+    const beyond = await listRequests({ filter: "pending", q: mark, page: 99 });
+    expect(beyond.page).toBe(2);
+    expect(beyond.rows).toHaveLength(2);
+  });
+
+  it("filtra por situação, tipo e busca (nome, e-mail, descrição, código do espaço)", async () => {
+    const { listRequests } = await import("@/lib/server/privacy");
+    expect((await listRequests({ filter: "closed", q: mark })).total).toBe(2);
+    expect((await listRequests({ filter: "all", q: mark })).total).toBe(29);
+    expect((await listRequests({ filter: "pending", q: mark, kind: "deletion" })).total).toBe(2);
+    expect((await listRequests({ filter: "pending", q: `${mark} 07` })).total).toBe(1);
+    expect((await listRequests({ filter: "pending", q: `p3-${mark.toLowerCase()}` })).rows[0].requesterName).toBe(`${mark} 03`);
+    expect((await listRequests({ filter: "pending", q: "100% dos dados" })).rows.map((r) => r.requesterName)).toContain(`${mark} 02`);
+    const bySpace = await listRequests({ filter: "all", q: orgId });
+    expect(bySpace.rows.some((r) => r.requesterName === `${mark} 01`)).toBe(true);
+    // Curinga digitado vale como letra: "%" sozinho não casa tudo.
+    expect((await listRequests({ filter: "all", q: `${mark} %` })).total).toBe(0);
+    expect((await listRequests({ filter: "all", q: `'; drop table x; --` })).total).toBe(0);
+  });
+});

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Bot, Bug, CheckCircle2, Lightbulb, LifeBuoy, Loader2, MessageSquarePlus, Send, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Bot, Bug, CheckCircle2, Copy, Lightbulb, LifeBuoy, Loader2, MessageSquarePlus, Send, ThumbsUp } from "lucide-react";
 import { format, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@gestarahub/core/api-error";
+import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -154,8 +155,8 @@ function ThreadList({
                     ) : null}
                   </div>
                   <p className="mt-0.5 line-clamp-1 break-words text-xs text-muted-foreground">{thread.lastPreview}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {thread.kind === "question" ? "" : `${KIND_LABEL[thread.kind]} · `}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Protocolo {formatProtocol(thread.number)} · {thread.kind === "question" ? "" : `${KIND_LABEL[thread.kind]} · `}
                     {STATUS_LABEL[thread.status]} · {when(thread.lastMessageAt)}
                   </p>
                 </button>
@@ -266,9 +267,29 @@ function Chat({
         <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar para as conversas">
           <ArrowLeft className="size-4" />
         </Button>
-        <p className="min-w-0 flex-1 break-words text-sm font-medium">
-          {view?.subject ?? (supportKind === "bug" ? "Relatar problema" : supportKind === "suggestion" ? "Sugerir melhoria" : "Nova conversa")}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium">
+            {view?.subject ?? (supportKind === "bug" ? "Relatar problema" : supportKind === "suggestion" ? "Sugerir melhoria" : "Nova conversa")}
+          </p>
+          {view ? (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              Protocolo {formatProtocol(view.number)}
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Copiar protocolo"
+                onClick={() => {
+                  navigator.clipboard?.writeText(formatProtocol(view.number)).then(
+                    () => toast.success("Protocolo copiado."),
+                    () => toast.error("Não foi possível copiar."),
+                  );
+                }}
+              >
+                <Copy className="size-3.5" />
+              </Button>
+            </p>
+          ) : null}
+        </div>
         {view ? (
           <Badge variant="secondary" className="shrink-0 font-normal">
             {STATUS_LABEL[view.status]}

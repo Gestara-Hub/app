@@ -1,34 +1,50 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { SearchX, ThumbsUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { BackLink } from "@/components/shared/back-link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { Pager } from "@/components/shared/pager";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
+import { normalizeSearch } from "@/lib/filter-input";
+import { pageInfo, parsePage, rangeLabel } from "@/lib/pagination";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { requireAdmin } from "@/lib/server/context";
-import { listHelpFeedback, listHelpMisses } from "@/lib/server/support";
+import { HELP_DAYS, helpMissTotals, listHelpFeedback, listHelpMissesPage } from "@/lib/server/support";
 
 export const metadata: Metadata = { title: "Uso da ajuda" };
 
-const DAYS = 30;
+const DEFAULT_DAYS = 30;
 
 /** Pelo que o app mostra: o que as pessoas buscam e não acham, e quais artigos não ajudam. */
-export default async function HelpUsagePage() {
+export default async function HelpUsagePage({ searchParams }: { searchParams: Promise<{ days?: string; q?: string; page?: string }> }) {
   await requireAdmin("support:view");
-  const [misses, feedback] = await Promise.all([listHelpMisses(DAYS), listHelpFeedback(DAYS)]);
-  const missSearches = misses.reduce((sum, miss) => sum + miss.searches, 0);
+  const params = await searchParams;
+  const days = HELP_DAYS.find((value) => String(value) === params.days) ?? DEFAULT_DAYS;
+  const q = normalizeSearch(params.q);
+  const [list, totals, feedback] = await Promise.all([listHelpMissesPage({ days, q, page: parsePage(params.page) }), helpMissTotals(days), listHelpFeedback(days)]);
+  const misses = list.rows;
+  const info = pageInfo(list.page, list.total);
+  const query = (page: number) => {
+    const usp = new URLSearchParams();
+    if (params.days) usp.set("days", String(days));
+    if (q) usp.set("q", q);
+    if (page > 1) usp.set("page", String(page));
+    const text = usp.toString();
+    return text ? `/support/help?${text}` : "/support/help";
+  };
+  const missSearches = totals.searches;
   const helpful = feedback.reduce((sum, row) => sum + row.helpful, 0);
   const notHelpful = feedback.reduce((sum, row) => sum + row.notHelpful, 0);
   return (
     <>
       <BackLink href="/support" label="Voltar ao Suporte" />
-      <PageHeader title="Uso da ajuda" description={`Últimos ${DAYS} dias. Mostra o que falta escrever e o que precisa melhorar nos artigos.`} />
+      <PageHeader title="Uso da ajuda" description={`Últimos ${days} dias. Mostra o que falta escrever e o que precisa melhorar nos artigos.`} />
 
       <StatGrid>
-        <StatCard label="Buscas sem resultado" value={missSearches} tone={missSearches > 0 ? "warning" : "default"} sub={`${misses.length} ${misses.length === 1 ? "termo diferente" : "termos diferentes"}`} />
+        <StatCard label="Buscas sem resultado" value={missSearches} tone={missSearches > 0 ? "warning" : "default"} sub={`${totals.terms} ${totals.terms === 1 ? "termo diferente" : "termos diferentes"}`} />
         <StatCard label="Avaliações" value={helpful + notHelpful} sub={`${feedback.length} ${feedback.length === 1 ? "trecho avaliado" : "trechos avaliados"}`} />
         <StatCard label="Ajudou" value={helpful} tone={helpful > 0 ? "success" : "default"} />
         <StatCard label="Não ajudou" value={notHelpful} tone={notHelpful > 0 ? "danger" : "default"} />
@@ -36,14 +52,27 @@ export default async function HelpUsagePage() {
 
       <section className="mb-8 space-y-2">
         <h2 className="px-1 text-base font-semibold">Buscas sem resultado</h2>
-        <ListSummaryBar count={misses.length} singularLabel="termo" pluralLabel="termos" />
-        <ListContainer emptyState={misses.length === 0 ? <EmptyState icon={SearchX} title="Nenhuma busca sem resultado no período" /> : undefined}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <UrlSearch param="q" placeholder="Buscar um termo" ariaLabel="Buscar termos sem resultado" />
+          <UrlSelect param="days" ariaLabel="Período" allLabel="Últimos 30 dias" options={HELP_DAYS.filter((value) => value !== DEFAULT_DAYS).map((value) => [String(value), `Últimos ${value} dias`] as const)} />
+          <UrlClearFilters params={["q", "days"]} />
+        </div>
+        <p className="px-1 text-xs text-muted-foreground">{rangeLabel(info, "termo", "termos")}</p>
+        <ListContainer
+          emptyState={
+            misses.length === 0 ? (
+              <EmptyState icon={SearchX} title={q ? "Nenhum termo com essa busca" : "Nenhuma busca sem resultado no período"} description={q ? "Tente outro termo ou limpe a busca." : undefined}>
+                <UrlClearFilters params={["q"]} />
+              </EmptyState>
+            ) : undefined
+          }
+        >
           {misses.map((miss) => (
             <ListRow key={miss.term}>
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0">
                   <p className="min-w-0 break-words font-medium">{miss.term}</p>
-                  <p className="text-xs text-muted-foreground">Última vez em {format(miss.lastAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                  <p className="text-xs text-muted-foreground">Última vez <RelativeTime date={miss.lastAt} /></p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Badge variant="secondary" className="font-normal tabular-nums">
@@ -57,6 +86,7 @@ export default async function HelpUsagePage() {
             </ListRow>
           ))}
         </ListContainer>
+        <Pager page={list.page} hasNext={list.hasNext} totalPages={info.totalPages} href={query} />
       </section>
 
       <section className="space-y-2">

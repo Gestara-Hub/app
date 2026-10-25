@@ -104,6 +104,37 @@ describe("fila do suporte", () => {
     expect(await ids({ filter: "all", q: "%", page: 1 })).toEqual([]);
   });
 
+  it("filtra só as conversas de um espaço (ficha do espaço)", async () => {
+    const { listThreads } = await import("@/lib/server/support");
+    const ids = async (organizationId: string) => (await listThreads({ filter: "all", organizationId, page: 1 })).rows.map((r) => r.id);
+    expect(await ids(orgA)).toEqual(expect.arrayContaining([created.antiga, created.aguardando]));
+    expect(await ids(orgA)).not.toContain(created.urgente);
+    expect(await ids("espaco-que-nao-existe")).toEqual([]);
+  });
+
+  it("cada conversa tem um protocolo próprio e crescente, e a busca acha por ele", async () => {
+    const { listThreads } = await import("@/lib/server/support");
+    const { formatProtocol } = await import("@gestarahub/core/support-protocol");
+    const numbers = await owner<{ id: string; number: number }[]>`select id, number from platform.support_threads where id = any(${Object.values(created)})`;
+    const numberOf = (id: string) => numbers.find((n) => n.id === id)!.number;
+    const order = [created.antiga, created.urgente, created.aguardando, created.encerrada].map(numberOf);
+    expect(new Set(order).size).toBe(4);
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+    expect(order[0]).toBeGreaterThanOrEqual(1001);
+
+    const ids = async (q: string) => (await listThreads({ filter: "all", q, page: 1 })).rows.map((r) => r.id);
+    const n = numberOf(created.urgente);
+    expect(await ids(formatProtocol(n))).toEqual([created.urgente]);
+    expect(await ids(`gh${n}`)).toEqual([created.urgente]);
+    expect(await ids(`#${n}`)).toEqual([created.urgente]);
+    expect(await ids(String(n))).toContain(created.urgente);
+    const row = (await listThreads({ filter: "all", q: formatProtocol(n), page: 1 })).rows[0];
+    expect(row.number).toBe(n);
+    // Número que não existe não acha nada; texto normal continua achando.
+    expect(await ids("GH-99999999")).toEqual([]);
+    expect(await ids("Certificado")).toEqual([created.encerrada]);
+  });
+
   it("conta o que precisa de atenção", async () => {
     const { threadCounts } = await import("@/lib/server/support");
     const counts = await threadCounts();
@@ -132,6 +163,9 @@ describe("responder e administrar uma conversa", () => {
     expect(mails).toHaveLength(1);
     expect(mails[0]).toMatchObject({ to: "ana@alfa.teste" });
     expect(mails[0].subject).toContain("Como pauso um aluno");
+    const [{ number: antigaNumber }] = await owner<{ number: number }[]>`select number from platform.support_threads where id = ${created.antiga}`;
+    expect(mails[0].subject).toBe(`Resposta do suporte do GestaraHub [GH-${antigaNumber}]: Como pauso um aluno`);
+    expect(mails[0].text).toContain(`GH-${antigaNumber}`);
     expect(mails[0].text).toContain("Edite o aluno e mude a situação para Pausada.");
     expect(mails[0].text).toContain("Fale com a gente");
 
@@ -264,5 +298,70 @@ describe("resumo diário", () => {
     expect(mails[0].to).toBe("suporte@gestarahub.teste");
     expect(mails[0].subject).toContain("Suporte GestaraHub:");
     expect(mails[0].text).toContain("/support");
+  });
+});
+
+describe("filtros e paginação da fila", () => {
+  let orgC = "";
+  const ids: Record<string, string> = {};
+
+  beforeAll(async () => {
+    const [c] = await owner<{ id: string }[]>`insert into public.organizations (name, model) values ('Clínica Gama do Teste', 'classes') returning id`;
+    orgC = c.id;
+    for (let i = 1; i <= 27; i++) {
+      const id = await openThread(orgC, `Pessoa ${i}`, `p${i}@gama.teste`, `Pergunta ${String(i).padStart(2, "0")}`, "Texto");
+      await owner`update platform.support_threads set status = 'waiting_us', last_message_at = now() - ${i + " minutes"}::interval, last_customer_message_at = now() - ${i + " minutes"}::interval where id = ${id}`;
+      ids[`p${i}`] = id;
+    }
+    // Uma urgente e uma parada há 40 dias, para os filtros.
+    await owner`update platform.support_threads set urgent = true where id = ${ids.p5}`;
+    await owner`update platform.support_threads set last_message_at = now() - interval '40 days', last_customer_message_at = now() - interval '40 days' where id = ${ids.p27}`;
+  });
+
+  afterAll(async () => {
+    await owner`delete from platform.support_threads where organization_id = ${orgC}`;
+    await owner`delete from public.organizations where id = ${orgC}`;
+  });
+
+  it("devolve o total filtrado, página 2 e a última página quando passa do fim", async () => {
+    const { listThreads } = await import("@/lib/server/support");
+    const first = await listThreads({ filter: "all", q: "gama do teste", page: 1 });
+    expect(first.total).toBe(27);
+    expect(first.rows).toHaveLength(25);
+    expect(first.hasNext).toBe(true);
+    const second = await listThreads({ filter: "all", q: "gama do teste", page: 2 });
+    expect(second.rows).toHaveLength(2);
+    expect(second.hasNext).toBe(false);
+    expect(second.page).toBe(2);
+    const beyond = await listThreads({ filter: "all", q: "gama do teste", page: 99 });
+    expect(beyond).toMatchObject({ page: 2, total: 27 });
+    expect(beyond.rows).toHaveLength(2);
+    expect((await listThreads({ filter: "all", q: "nenhum espaço assim", page: 3 })).total).toBe(0);
+  });
+
+  it("filtra só urgentes e por período da última mensagem", async () => {
+    const { listThreads } = await import("@/lib/server/support");
+    const urgent = await listThreads({ filter: "all", q: "gama do teste", urgent: true, page: 1 });
+    expect(urgent.rows.map((r) => r.id)).toEqual([ids.p5]);
+    expect(urgent.total).toBe(1);
+    const month = await listThreads({ filter: "all", q: "gama do teste", period: "30d", page: 1 });
+    expect(month.total).toBe(26);
+    expect(month.rows.some((r) => r.id === ids.p27)).toBe(false);
+    const week = await listThreads({ filter: "all", q: "gama do teste", period: "7d", page: 1 });
+    expect(week.total).toBe(26);
+  });
+
+  it("ordem escolhida troca a regra da fila; sem ordem a fila continua como estava", async () => {
+    const { listThreads } = await import("@/lib/server/support");
+    const base = { filter: "attention" as const, q: "gama do teste", page: 1 };
+    const queue = await listThreads(base);
+    // Fila: urgente primeiro, depois o que espera há mais tempo.
+    expect(queue.rows[0].id).toBe(ids.p5);
+    expect(queue.rows[1].id).toBe(ids.p27);
+    const newest = await listThreads({ ...base, order: "newest" });
+    expect(newest.rows[0].id).toBe(ids.p1);
+    const oldest = await listThreads({ ...base, order: "oldest" });
+    expect(oldest.rows[0].id).toBe(ids.p27);
+    expect(oldest.rows[1].id).toBe(ids.p26);
   });
 });

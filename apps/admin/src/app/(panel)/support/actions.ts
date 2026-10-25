@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/server/audit";
 import { requireAdmin } from "@/lib/server/context";
+import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { sendEmail } from "@/lib/server/email";
 import { getEnv } from "@/lib/server/env";
 import {
@@ -35,11 +36,11 @@ export async function replyAction(_prev: SupportFormState, formData: FormData): 
   await addStaffReply({ threadId: thread.id, adminId: admin.id, adminName: admin.name, body: parsed.data.body });
   const emailed = await sendEmail({
     to: { email: thread.userEmail, name: thread.userName },
-    subject: `Resposta do suporte do GestaraHub: ${thread.subject}`,
+    subject: `Resposta do suporte do GestaraHub [${formatProtocol(thread.number)}]: ${thread.subject}`,
     text: [
       `Olá, ${thread.userName.split(" ")[0]}!`,
       "",
-      "O suporte do GestaraHub respondeu à sua conversa:",
+      `O suporte do GestaraHub respondeu à sua conversa (protocolo ${formatProtocol(thread.number)}):`,
       "",
       parsed.data.body,
       "",

@@ -1,3 +1,5 @@
+import { RelativeTime } from "@/components/shared/relative-time";
+import { relativeTime } from "@/lib/relative-time";
 import type { Metadata } from "next";
 import { Eye, EyeOff, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,7 +12,7 @@ import { ListContainer, ListRow } from "@/components/shared/list";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { brl, dateOnly, dateTime } from "@/lib/format";
+import { brl } from "@/lib/format";
 import { requireAdmin } from "@/lib/server/context";
 import { SupportAccessError, loadSnapshot } from "@/lib/server/support-access";
 import { AREA_LABEL, MODEL_LABEL, planName } from "@/lib/space-plan";
@@ -59,7 +61,7 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
         <span className="flex min-w-0 items-center gap-2">
           <Eye className="size-4 shrink-0 text-warning" aria-hidden />
           <span>
-            Visão de suporte, <strong>somente leitura</strong>. Termina às {dateTime(new Date(data.expiresAt)).slice(11)}.
+            Visão de suporte, <strong>somente leitura</strong>. Termina <RelativeTime date={new Date(data.expiresAt)} />.
           </span>
         </span>
         <form action={endAccessAction}>
@@ -70,7 +72,7 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
           </ConfirmSubmit>
         </form>
       </div>
-      <PageHeader title={data.space.name} description={`${data.space.customArea || AREA_LABEL[data.space.area ?? ""] || "Sem área"} · ${MODEL_LABEL[data.space.model] ?? data.space.model} · criado em ${dateOnly(new Date(data.space.createdAt))}`}>
+      <PageHeader title={data.space.name} description={`${data.space.customArea || AREA_LABEL[data.space.area ?? ""] || "Sem área"} · ${MODEL_LABEL[data.space.model] ?? data.space.model} · criado ${relativeTime(new Date(data.space.createdAt))}`}>
         {data.space.status === "inactive" ? <Badge variant="destructive">Inativo</Badge> : null}
       </PageHeader>
 
@@ -84,7 +86,7 @@ export default async function SupportViewPage({ params }: { params: Promise<{ se
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <FactCard title="Termos de uso">
           <Fact label="Aceitos pelo proprietário" value={data.owner?.termsVersion ? `versão ${data.owner.termsVersion}` : "Sem registro"} />
-          {data.owner?.termsAcceptedAt ? <Fact label="Em" value={dateOnly(new Date(data.owner.termsAcceptedAt))} /> : null}
+          {data.owner?.termsAcceptedAt ? <Fact label="Em" value={<RelativeTime date={new Date(data.owner.termsAcceptedAt)} />} /> : null}
         </FactCard>
         <Card>
           <CardHeader>

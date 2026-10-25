@@ -38,6 +38,8 @@ export function isThreadFilter(value: unknown): value is ThreadFilter {
 
 export interface ThreadRow {
   id: string;
+  /** Número do protocolo (GH-n). */
+  number: number;
   kind: ThreadKind;
   subject: string;
   status: ThreadStatus;

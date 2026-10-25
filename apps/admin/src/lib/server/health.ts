@@ -1,12 +1,15 @@
 import "server-only";
 import { sql } from "./db";
+import { likePattern, normalizeSearch } from "../filter-input";
+import { LIST_PAGE_SIZE } from "../pagination";
+import { fetchPage } from "./page-fetch";
 
 /**
  * Saude do sistema para o painel (doc technical/26, fase 4): erros agrupados
  * (ja mascarados pelo app dos clientes), rotinas, avisos do parceiro de
  * pagamentos e o estado das integracoes. So leitura, mais "erro conhecido".
  */
-export const HEALTH_PAGE_SIZE = 25;
+export const HEALTH_PAGE_SIZE = LIST_PAGE_SIZE;
 
 export const PERIODS = { "24h": "24 horas", "7d": "7 dias", "30d": "30 dias" } as const;
 export type Period = keyof typeof PERIODS;
@@ -41,8 +44,6 @@ const toError = (r: DbError): ErrorRow => ({
   organizationName: r.organization_name, known: r.known,
 });
 
-const escapeLike = (value: string) => value.replace(/[%_\\]/g, "\\$&");
-
 export async function listErrors(input: {
   period: Period;
   source?: string;
@@ -51,24 +52,27 @@ export async function listErrors(input: {
   q?: string;
   hideKnown?: boolean;
   page: number;
-}): Promise<{ rows: ErrorRow[]; hasNext: boolean }> {
-  const q = input.q?.trim() ? `%${escapeLike(input.q.trim())}%` : null;
-  const reference = input.q?.trim().toUpperCase() ?? null;
-  const rows = await sql()<DbError[]>`
-    select e.id, e.fingerprint, e.source, e.level, e.event, e.message, e.stack, e.count, e.first_seen, e.last_seen, e.last_reference,
-           e.organization_id, o.name as organization_name, (k.fingerprint is not null) as known
-      from public.error_logs e
-      left join public.organizations o on o.id = e.organization_id
-      left join platform.known_errors k on k.fingerprint = e.fingerprint
-     where e.last_seen >= now() - make_interval(hours => ${PERIOD_HOURS[input.period]})
-       and (${input.source ?? null}::text is null or e.source = ${input.source ?? null})
-       and (${input.level ?? null}::text is null or e.level = ${input.level ?? null})
-       and (${input.organizationId ?? null}::text is null or e.organization_id = ${input.organizationId ?? null})
-       and (${input.hideKnown ?? false} = false or k.fingerprint is null)
-       and (${q}::text is null or e.last_reference = ${reference} or e.event ilike ${q} or e.message ilike ${q})
-     order by e.last_seen desc
-     limit ${HEALTH_PAGE_SIZE + 1} offset ${(input.page - 1) * HEALTH_PAGE_SIZE}`;
-  return { rows: rows.slice(0, HEALTH_PAGE_SIZE).map(toError), hasNext: rows.length > HEALTH_PAGE_SIZE };
+}): Promise<{ rows: ErrorRow[]; hasNext: boolean; total: number; page: number }> {
+  const search = normalizeSearch(input.q);
+  const q = likePattern(search);
+  const reference = search.toUpperCase() || null;
+  const result = await fetchPage(input.page, (page) =>
+    sql()<(DbError & { total: number })[]>`
+      select e.id, e.fingerprint, e.source, e.level, e.event, e.message, e.stack, e.count, e.first_seen, e.last_seen, e.last_reference,
+             e.organization_id, o.name as organization_name, (k.fingerprint is not null) as known, (count(*) over ())::int as total
+        from public.error_logs e
+        left join public.organizations o on o.id = e.organization_id
+        left join platform.known_errors k on k.fingerprint = e.fingerprint
+       where e.last_seen >= now() - make_interval(hours => ${PERIOD_HOURS[input.period]})
+         and (${input.source ?? null}::text is null or e.source = ${input.source ?? null})
+         and (${input.level ?? null}::text is null or e.level = ${input.level ?? null})
+         and (${input.organizationId ?? null}::text is null or e.organization_id = ${input.organizationId ?? null})
+         and (${input.hideKnown ?? false} = false or k.fingerprint is null)
+         and (${q}::text is null or e.last_reference = ${reference} or e.event ilike ${q} or e.message ilike ${q} or o.name ilike ${q})
+       order by e.last_seen desc, e.id
+       limit ${HEALTH_PAGE_SIZE} offset ${(page - 1) * HEALTH_PAGE_SIZE}`,
+  );
+  return { rows: result.rows.map(toError), hasNext: result.page * HEALTH_PAGE_SIZE < result.total, total: result.total, page: result.page };
 }
 
 /** O codigo que o cliente viu ("K7Q2M9XD") leva direto a linha e ao espaco. */
@@ -88,7 +92,7 @@ export interface ErrorDetail extends ErrorRow {
   /** Contexto da última ocorrência (método, rota, tela), já mascarado pelo app dos clientes. */
   context: Record<string, unknown>;
   /** Conversas de suporte abertas com o código deste erro. */
-  threads: { id: string; subject: string; status: string }[];
+  threads: { id: string; number: number; subject: string; status: string }[];
 }
 
 /** Um erro com tudo o que o registro guarda (pilha, contexto) e as conversas ligadas ao código. */
@@ -103,8 +107,8 @@ export async function getErrorDetail(id: string): Promise<ErrorDetail | null> {
      where e.id = ${id}`;
   if (!row) return null;
   const threads = row.last_reference
-    ? await sql()<{ id: string; subject: string; status: string }[]>`
-        select id, subject, status from platform.support_threads where error_reference = ${row.last_reference} order by created_at desc limit 10`
+    ? await sql()<{ id: string; number: number; subject: string; status: string }[]>`
+        select id, number, subject, status from platform.support_threads where error_reference = ${row.last_reference} order by created_at desc limit 10`
     : [];
   return { ...toError(row), context: row.context ?? {}, threads };
 }
@@ -140,21 +144,41 @@ export interface JobRunRow {
   errorReferences: string[];
 }
 
+type DbJobRun = { id: string; job: string; started_at: Date; finished_at: Date | null; status: string; organizations: number | null; failures: number | null; error_references: string[] | null };
+
+const toJobRun = (r: DbJobRun): JobRunRow => ({
+  id: r.id,
+  job: r.job,
+  startedAt: r.started_at,
+  finishedAt: r.finished_at,
+  status: r.status,
+  organizations: r.organizations,
+  failures: r.failures,
+  durationSeconds: r.finished_at ? Math.max(0, Math.round((r.finished_at.getTime() - r.started_at.getTime()) / 1000)) : null,
+  errorReferences: r.error_references ?? [],
+});
+
 export async function listJobRuns(limit = 30): Promise<JobRunRow[]> {
-  const rows = await sql()<
-    { id: string; job: string; started_at: Date; finished_at: Date | null; status: string; organizations: number | null; failures: number | null; error_references: string[] | null }[]
-  >`select id, job, started_at, finished_at, status, organizations, failures, error_references from public.job_runs order by started_at desc limit ${limit}`;
-  return rows.map((r) => ({
-    id: r.id,
-    job: r.job,
-    startedAt: r.started_at,
-    finishedAt: r.finished_at,
-    status: r.status,
-    organizations: r.organizations,
-    failures: r.failures,
-    durationSeconds: r.finished_at ? Math.max(0, Math.round((r.finished_at.getTime() - r.started_at.getTime()) / 1000)) : null,
-    errorReferences: r.error_references ?? [],
-  }));
+  const rows = await sql()<DbJobRun[]>`select id, job, started_at, finished_at, status, organizations, failures, error_references from public.job_runs order by started_at desc limit ${limit}`;
+  return rows.map(toJobRun);
+}
+
+export const JOB_RUN_STATUSES = ["ok", "partial", "failed", "running"] as const;
+
+/** Execuções das rotinas com filtro por rotina, situação e período, paginadas com o total. */
+export async function listJobRunsPage(input: { job?: string; status?: string; period?: Period; page: number }): Promise<{ rows: JobRunRow[]; total: number; page: number; hasNext: boolean }> {
+  const hours = input.period ? PERIOD_HOURS[input.period] : null;
+  const result = await fetchPage(input.page, (page) =>
+    sql()<(DbJobRun & { total: number })[]>`
+      select id, job, started_at, finished_at, status, organizations, failures, error_references, (count(*) over ())::int as total
+        from public.job_runs
+       where (${input.job ?? null}::text is null or job = ${input.job ?? null})
+         and (${input.status ?? null}::text is null or status = ${input.status ?? null})
+         and (${hours}::int is null or started_at >= now() - make_interval(hours => ${hours}::int))
+       order by started_at desc, id
+       limit ${HEALTH_PAGE_SIZE} offset ${(page - 1) * HEALTH_PAGE_SIZE}`,
+  );
+  return { rows: result.rows.map(toJobRun), total: result.total, page: result.page, hasNext: result.page * HEALTH_PAGE_SIZE < result.total };
 }
 
 /** Ultima execucao de cada rotina (para o aviso "a rotina nao rodou hoje"). */
@@ -177,23 +201,32 @@ export interface WebhookRow {
   errorReference: string | null;
 }
 
-export async function listWebhooks(input: { status?: string; event?: string; organizationId?: string; page: number }): Promise<{ rows: WebhookRow[]; hasNext: boolean }> {
-  const rows = await sql()<
-    { id: string; provider: string; event: string; status: string; outcome: string | null; attempts: number; organization_id: string | null; organization_name: string | null; received_at: Date; error_reference: string | null }[]
-  >`
-    select w.id, w.provider, w.event, w.status, w.outcome, w.attempts, w.organization_id, o.name as organization_name, w.received_at, w.error_reference
-      from public.webhook_events w left join public.organizations o on o.id = w.organization_id
-     where (${input.status ?? null}::text is null or w.status = ${input.status ?? null})
-       and (${input.event ?? null}::text is null or w.event = ${input.event ?? null})
-       and (${input.organizationId ?? null}::text is null or w.organization_id = ${input.organizationId ?? null})
-     order by w.received_at desc
-     limit ${HEALTH_PAGE_SIZE + 1} offset ${(input.page - 1) * HEALTH_PAGE_SIZE}`;
+export async function listWebhooks(input: { status?: string; event?: string; organizationId?: string; q?: string; period?: Period; page: number }): Promise<{ rows: WebhookRow[]; hasNext: boolean; total: number; page: number }> {
+  const q = likePattern(normalizeSearch(input.q));
+  const hours = input.period ? PERIOD_HOURS[input.period] : null;
+  const result = await fetchPage(input.page, (page) =>
+    sql()<
+      { id: string; provider: string; event: string; status: string; outcome: string | null; attempts: number; organization_id: string | null; organization_name: string | null; received_at: Date; error_reference: string | null; total: number }[]
+    >`
+      select w.id, w.provider, w.event, w.status, w.outcome, w.attempts, w.organization_id, o.name as organization_name, w.received_at, w.error_reference,
+             (count(*) over ())::int as total
+        from public.webhook_events w left join public.organizations o on o.id = w.organization_id
+       where (${input.status ?? null}::text is null or w.status = ${input.status ?? null})
+         and (${input.event ?? null}::text is null or w.event = ${input.event ?? null})
+         and (${input.organizationId ?? null}::text is null or w.organization_id = ${input.organizationId ?? null})
+         and (${hours}::int is null or w.received_at >= now() - make_interval(hours => ${hours}::int))
+         and (${q}::text is null or w.event ilike ${q} or w.event_id ilike ${q} or o.name ilike ${q})
+       order by w.received_at desc, w.id
+       limit ${HEALTH_PAGE_SIZE} offset ${(page - 1) * HEALTH_PAGE_SIZE}`,
+  );
   return {
-    rows: rows.slice(0, HEALTH_PAGE_SIZE).map((r) => ({
+    rows: result.rows.map((r) => ({
       id: r.id, provider: r.provider, event: r.event, status: r.status, outcome: r.outcome, attempts: r.attempts, organizationId: r.organization_id,
       organizationName: r.organization_name, receivedAt: r.received_at, errorReference: r.error_reference,
     })),
-    hasNext: rows.length > HEALTH_PAGE_SIZE,
+    hasNext: result.page * HEALTH_PAGE_SIZE < result.total,
+    total: result.total,
+    page: result.page,
   };
 }
 

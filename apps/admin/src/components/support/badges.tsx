@@ -1,3 +1,4 @@
+import { formatProtocol } from "@gestarahub/core/support-protocol";
 import { Badge } from "@/components/ui/badge";
 import { SLA_LABEL, slaFor, type SlaState } from "@/lib/sla";
 import { KIND_LABEL, STATUS_LABEL, type ThreadKind, type ThreadStatus } from "@/lib/support-types";
@@ -17,6 +18,15 @@ export function SlaBadge({ status, since, now }: { status: ThreadStatus; since: 
     <Badge variant="outline" className={cn("font-normal", SLA_STYLE[sla.state])} title={`Prazo: ${sla.dueOn.split("-").reverse().join("/")}`}>
       {SLA_LABEL[sla.state]}
     </Badge>
+  );
+}
+
+/** Protocolo da conversa (GH-1042), em fonte mono pequena. */
+export function ProtocolTag({ number, className }: { number: number; className?: string }) {
+  return (
+    <span className={cn("shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] font-medium text-foreground", className)} title="Protocolo">
+      {formatProtocol(number)}
+    </span>
   );
 }
 

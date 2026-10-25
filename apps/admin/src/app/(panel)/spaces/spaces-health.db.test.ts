@@ -121,6 +121,31 @@ describe("lista de espaços", () => {
     expect(all.rows.length).toBeLessThanOrEqual(SPACES_PAGE_SIZE);
   });
 
+  it("devolve o total filtrado e a página 2", async () => {
+    const { listSpaces, SPACES_PAGE_SIZE } = await import("@/lib/server/spaces");
+    const marker = `Paginado ${tag}`;
+    const extra = await owner<{ id: string }[]>`
+      insert into public.organizations (name, model, class_segment, subscription, status)
+      select ${marker} || ' ' || lpad(g::text, 2, '0'), 'classes', 'martial_arts', ${owner.json({ tier: "free" } as never)}, 'active' from generate_series(1, 27) g
+      returning id`;
+    try {
+      const first = await listSpaces({ q: marker, page: 1, sort: "name" });
+      expect(first).toMatchObject({ total: 27, hasNext: true, page: 1 });
+      expect(first.rows).toHaveLength(SPACES_PAGE_SIZE);
+      const second = await listSpaces({ q: marker, page: 2, sort: "name" });
+      expect(second).toMatchObject({ total: 27, hasNext: false, page: 2 });
+      expect(second.rows).toHaveLength(2);
+      const far = await listSpaces({ q: marker, page: 8, sort: "name" });
+      expect(far).toMatchObject({ page: 2, total: 27 });
+      const all = await listSpaces({ q: marker, page: 1 }, { all: true });
+      expect(all.rows).toHaveLength(27);
+      expect((await listSpaces({ q: `${marker} 05`, page: 1 })).total).toBe(1);
+      expect((await listSpaces({ q: `nada-${tag}`, page: 3 }))).toMatchObject({ total: 0, page: 1, rows: [] });
+    } finally {
+      await owner`delete from public.organizations where id = any(${extra.map((r) => r.id)})`;
+    }
+  });
+
   it("caracteres do LIKE não viram curinga", async () => {
     expect(await names({ q: "%" })).toEqual([]);
   });
@@ -225,7 +250,8 @@ describe("saúde", () => {
     expect((await health.listErrors({ period: "24h", source: "cron", page: 1 })).rows.some((r) => r.fingerprint === `fp-cron-${tag}`)).toBe(true);
     expect((await health.listErrors({ period: "24h", level: "warn", page: 1 })).rows.every((r) => r.level === "warn")).toBe(true);
     expect((await health.listErrors({ period: "24h", organizationId: org.livre, page: 1 })).rows.map((r) => r.fingerprint)).toEqual([`fp-livre-${tag}`]);
-    expect(await mine({})).toEqual([]);
+    // O texto não casa com evento nem mensagem, só com o nome do espaço (que leva a marca do teste).
+    expect(await mine({})).toEqual(["fp-livre"]);
 
     const found = await health.findErrorByReference(`zz${tag}1`);
     expect(found).toMatchObject({ organizationId: org.livre, event: "turmas.markAttendance", count: 3 });

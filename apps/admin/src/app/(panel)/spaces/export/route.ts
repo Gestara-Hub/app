@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { recordAudit } from "@/lib/server/audit";
 import { getAdminContext } from "@/lib/server/context";
 import { SPACE_SITUATIONS, SPACE_SORTS, listSpaces, type SpaceFilters } from "@/lib/server/spaces";
+import { normalizeSearch, pickOne } from "@/lib/list-filters";
 import { can } from "@/lib/permissions";
 import { AREA_LABEL, planName, planSituation } from "@/lib/space-plan";
 import { brasiliaDay } from "@/lib/sla";
@@ -13,9 +14,9 @@ export async function GET(request: NextRequest) {
   const ctx = await getAdminContext();
   if (ctx.stage !== "ok" || !can(ctx.admin.role, "spaces:view")) return new NextResponse("Sem acesso.", { status: 403 });
   const p = request.nextUrl.searchParams;
-  const pick = <T extends string>(value: string | null, list: readonly T[]) => ((list as readonly string[]).includes(value ?? "") ? (value as T) : undefined);
+  const pick = pickOne;
   const filters: SpaceFilters = {
-    q: p.get("q")?.trim() || undefined,
+    q: normalizeSearch(p.get("q")),
     tier: pick(p.get("tier"), ["free", "pro", "scale"] as const),
     situation: pick(p.get("situation"), SPACE_SITUATIONS),
     area: p.get("area") && (p.get("area") as string) in AREA_LABEL ? (p.get("area") as string) : undefined,

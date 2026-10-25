@@ -1,4 +1,6 @@
 import "server-only";
+import { clampPage, likePattern, normalizeSearch } from "../filter-input";
+import { LIST_PAGE_SIZE } from "../pagination";
 import { sql } from "./db";
 import { requestInfo } from "./request";
 
@@ -72,19 +74,43 @@ const map = (r: Raw): PrivacyRequest => ({
 
 export type RequestFilter = "pending" | "overdue" | "closed" | "all";
 
-export async function listRequests(filter: RequestFilter): Promise<PrivacyRequest[]> {
+export interface RequestQuery {
+  filter: RequestFilter;
+  /** Busca por nome, e-mail, descrição ou código do espaço (já normalizada, até 100 caracteres). */
+  q?: string;
+  kind?: RequestKind;
+  page?: number;
+}
+
+/**
+ * Pedidos paginados (25 por página) com o total do filtro. Ordem: em aberto primeiro, por prazo.
+ * Página acima do total devolve a última existente (`page` no retorno).
+ */
+export async function listRequests(query: RequestQuery): Promise<{ rows: PrivacyRequest[]; total: number; page: number }> {
+  const pattern = likePattern(normalizeSearch(query.q));
+  const kind = query.kind ?? null;
+  const where = sql()`
+    case ${query.filter}::text
+      when 'pending' then p.status in ('open', 'in_progress')
+      when 'overdue' then p.status in ('open', 'in_progress') and p.due_at < now()
+      when 'closed' then p.status in ('done', 'rejected')
+      else true end
+    and (${kind}::text is null or p.kind::text = ${kind}::text)
+    and (${pattern}::text is null
+         or p.requester_name ilike ${pattern}::text escape '\\'
+         or p.requester_email ilike ${pattern}::text escape '\\'
+         or p.description ilike ${pattern}::text escape '\\'
+         or p.organization_id::text ilike ${pattern}::text escape '\\')`;
+  const [{ total }] = await sql()<{ total: number }[]>`select count(*)::int as total from platform.privacy_requests p where ${where}`;
+  const page = clampPage(query.page ?? 1, total, LIST_PAGE_SIZE);
   const rows = await sql()<Raw[]>`
     select p.id, p.organization_id, o.name as space_name, p.requester_name, p.requester_email, p.kind, p.description,
            p.status, p.received_at, p.due_at, p.resolution, p.handled_by_name, p.closed_at
       from platform.privacy_requests p left join public.organizations o on o.id = p.organization_id
-     where case ${filter}
-             when 'pending' then p.status in ('open', 'in_progress')
-             when 'overdue' then p.status in ('open', 'in_progress') and p.due_at < now()
-             when 'closed' then p.status in ('done', 'rejected')
-             else true end
-     order by (p.status in ('open', 'in_progress')) desc, p.due_at asc
-     limit 200`;
-  return rows.map(map);
+     where ${where}
+     order by (p.status in ('open', 'in_progress')) desc, p.due_at asc, p.id
+     limit ${LIST_PAGE_SIZE} offset ${(page - 1) * LIST_PAGE_SIZE}`;
+  return { rows: rows.map(map), total, page };
 }
 
 export async function requestCounts(): Promise<{ pending: number; overdue: number }> {

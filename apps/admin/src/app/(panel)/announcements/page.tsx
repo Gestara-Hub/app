@@ -1,17 +1,20 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle, Info, Megaphone, Siren } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { ListContainer, ListRow } from "@/components/shared/list";
 import { SegmentedLinks } from "@/components/shared/segmented-links";
 import { StatCard, StatGrid } from "@/components/shared/stat-card";
-import { UrlSearch } from "@/components/shared/url-filters";
+import { Pager } from "@/components/shared/pager";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { dateTime } from "@/lib/format";
+import { normalizeSearch, pickOption } from "@/lib/filter-input";
+import { pageInfo, parsePage, rangeLabel } from "@/lib/pagination";
 import { can } from "@/lib/permissions";
-import { listAnnouncements, type AnnouncementRow } from "@/lib/server/announcements";
+import { AUDIENCES, SEVERITIES, STATES, announcementTotals, listAnnouncementsPage, type AnnouncementRow } from "@/lib/server/announcements";
 import { requireAdmin } from "@/lib/server/context";
 import { cn } from "@/lib/utils";
 import { AnnouncementRowActions } from "./announcement-row-actions";
@@ -40,18 +43,44 @@ function audienceText(row: AnnouncementRow): string {
   return n === 1 ? "1 espaço" : `${n} espaços`;
 }
 
+const SEVERITY_OPTIONS = SEVERITIES.map((value) => [value, SEVERITY_LABEL[value]] as const);
+const AUDIENCE_OPTIONS = [
+  ["all", "Todos os espaços"],
+  ["tier", "Por plano"],
+  ["area", "Por área"],
+  ["spaces", "Espaços escolhidos"],
+] as const;
+
 /** Comunicados aos espaços (manutenção, novidade, termo novo, incidente). */
-export default async function AnnouncementsPage({ searchParams }: { searchParams: Promise<{ state?: string; q?: string }> }) {
+/** "começa" para o comunicado agendado, "começou" para o que já está no ar. */
+const startWord = (date: Date) => (date.getTime() > Date.now() ? "começa" : "começou");
+
+export default async function AnnouncementsPage({ searchParams }: { searchParams: Promise<{ state?: string; q?: string; severity?: string; audience?: string; page?: string }> }) {
   const { admin } = await requireAdmin("announcements:manage");
   const params = await searchParams;
-  const all = await listAnnouncements();
   const manage = can(admin.role, "announcements:manage");
-  const state = STATE_FILTERS.some(([value]) => value === params.state) ? (params.state as string) : "all";
-  const q = params.q?.trim().toLowerCase() ?? "";
-  const count = (value: string) => all.filter((row) => row.state === value).length;
-  const rows = all.filter((row) => (state === "all" || row.state === state) && (!q || row.title.toLowerCase().includes(q)));
-  const dismissedTotal = all.reduce((sum, row) => sum + row.dismissed, 0);
-  const href = (value: string) => `/announcements?${new URLSearchParams({ ...(value !== "all" ? { state: value } : {}), ...(q ? { q: params.q!.trim() } : {}) }).toString()}`;
+  const state = pickOption(params.state, STATES);
+  const severity = pickOption(params.severity, SEVERITIES);
+  const audience = pickOption(params.audience, AUDIENCES);
+  const q = normalizeSearch(params.q);
+  const [{ rows, total, page, counts }, totals] = await Promise.all([
+    listAnnouncementsPage({ state, q, severity, audience, page: parsePage(params.page) }),
+    announcementTotals(),
+  ]);
+  const info = pageInfo(page, total);
+  const hasFilter = Boolean(q || severity || audience);
+  const empty = totals.active + totals.scheduled + totals.ended + totals.archived === 0;
+  const count = (value: string) => counts[value as keyof typeof counts];
+  const link = (nextState: string | undefined, nextPage = 1) => {
+    const query = new URLSearchParams();
+    if (nextState && nextState !== "all") query.set("state", nextState);
+    if (severity) query.set("severity", severity);
+    if (audience) query.set("audience", audience);
+    if (q) query.set("q", q);
+    if (nextPage > 1) query.set("page", String(nextPage));
+    const text = query.toString();
+    return text ? `/announcements?${text}` : "/announcements";
+  };
 
   return (
     <>
@@ -64,31 +93,34 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
       </PageHeader>
 
       <StatGrid>
-        <StatCard label="No ar" value={count("active")} tone={count("active") > 0 ? "success" : "default"} />
-        <StatCard label="Agendados" value={count("scheduled")} />
-        <StatCard label="Encerrados" value={count("ended")} />
-        <StatCard label="Dispensas" value={dismissedTotal} sub="Pessoas que fecharam um aviso" />
+        <StatCard label="No ar" value={totals.active} tone={totals.active > 0 ? "success" : "default"} />
+        <StatCard label="Agendados" value={totals.scheduled} />
+        <StatCard label="Encerrados" value={totals.ended} />
+        <StatCard label="Dispensas" value={totals.dismissed} sub="Pessoas que fecharam um aviso" />
       </StatGrid>
 
       <div className="mb-3 space-y-3">
         <SegmentedLinks
           label="Filtrar por situação"
-          active={state}
-          href={href}
+          active={state ?? "all"}
+          href={(value) => link(value)}
           items={STATE_FILTERS.map(([value, label]) => ({ value, label, count: value === "all" ? undefined : count(value) }))}
         />
-        <div className="flex">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <UrlSearch placeholder="Buscar pelo título" ariaLabel="Buscar comunicados" />
+          <UrlSelect param="severity" options={SEVERITY_OPTIONS} allLabel="Toda importância" ariaLabel="Filtrar por importância" />
+          <UrlSelect param="audience" options={AUDIENCE_OPTIONS} allLabel="Todos os públicos" ariaLabel="Filtrar por público" className="sm:w-52" />
+          <UrlClearFilters params={["q", "severity", "audience"]} />
         </div>
       </div>
 
       <div className="space-y-2">
-        <ListSummaryBar count={rows.length} singularLabel="comunicado" pluralLabel="comunicados" />
+        {total > 0 ? <p className="px-1 text-xs text-muted-foreground">{rangeLabel(info, "comunicado", "comunicados")}</p> : null}
         <ListContainer
           emptyState={
             rows.length === 0 ? (
-              <EmptyState icon={Megaphone} title={all.length === 0 ? "Nenhum comunicado ainda" : "Nenhum comunicado aqui"} description={all.length === 0 ? "Avise os espaços sobre manutenção, novidades e incidentes." : "Mude o filtro ou a busca."}>
-                {all.length === 0 && manage ? (
+              <EmptyState icon={Megaphone} title={empty ? "Nenhum comunicado ainda" : hasFilter ? "Nenhum comunicado para este filtro" : "Nenhum comunicado aqui"} description={empty ? "Avise os espaços sobre manutenção, novidades e incidentes." : hasFilter ? "Mude a busca, a importância ou o público, ou limpe os filtros." : "Mude a situação para ver outros comunicados."}>
+                {empty && manage ? (
                   <Button asChild>
                     <Link href="/announcements/new">+ Novo comunicado</Link>
                   </Button>
@@ -118,7 +150,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
                       </Badge>
                     </div>
                     <p className="min-w-0 break-words text-xs text-muted-foreground">
-                      {audienceText(row)} · {dateTime(row.startsAt)} até {row.endsAt ? dateTime(row.endsAt) : "arquivar"} · {row.dismissed} {row.dismissed === 1 ? "dispensa" : "dispensas"}
+                      {audienceText(row)} · {startWord(row.startsAt)} <RelativeTime date={row.startsAt} /> · {row.endsAt ? <>termina <RelativeTime date={row.endsAt} /></> : "fica até arquivar"} · {row.dismissed} {row.dismissed === 1 ? "dispensa" : "dispensas"}
                     </p>
                   </div>
                 </div>
@@ -127,6 +159,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
           })}
         </ListContainer>
       </div>
+      <Pager page={page} hasNext={info.hasNext} totalPages={info.totalPages} href={(next) => link(state, next)} />
     </>
   );
 }

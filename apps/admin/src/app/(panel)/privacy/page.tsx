@@ -1,15 +1,19 @@
+import { RelativeTime } from "@/components/shared/relative-time";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormDrawer } from "@/components/shared/form-drawer";
-import { InitialsAvatar, ListContainer, ListRow, ListSummaryBar } from "@/components/shared/list";
+import { InitialsAvatar, ListContainer, ListRow } from "@/components/shared/list";
+import { Pager } from "@/components/shared/pager";
 import { SegmentedLinks } from "@/components/shared/segmented-links";
+import { UrlClearFilters, UrlSearch, UrlSelect } from "@/components/shared/url-filters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { dateOnly } from "@/lib/format";
-import { REQUEST_KINDS, REQUEST_STATUS, listRequests, requestCounts, type RequestFilter } from "@/lib/server/privacy";
+import { normalizeSearch, pickOption } from "@/lib/filter-input";
+import { pageInfo, parsePage, rangeLabel } from "@/lib/pagination";
+import { REQUEST_KINDS, REQUEST_STATUS, listRequests, requestCounts, type RequestFilter, type RequestKind } from "@/lib/server/privacy";
 import { requireAdmin } from "@/lib/server/context";
 import { NewRequestForm, UpdateRequestForm } from "./privacy-forms";
 
@@ -22,12 +26,27 @@ const FILTERS: { value: RequestFilter; label: string }[] = [
   { value: "all", label: "Todos" },
 ];
 
+const KIND_OPTIONS = (Object.keys(REQUEST_KINDS) as RequestKind[]).map((kind) => [kind, REQUEST_KINDS[kind]] as const);
+
 /** Pedidos dos titulares de dados (LGPD): prazo de 15 dias, motivo e o que foi feito. */
-export default async function PrivacyPage({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
+export default async function PrivacyPage({ searchParams }: { searchParams: Promise<{ filter?: string; q?: string; kind?: string; page?: string }> }) {
   await requireAdmin("lgpd:manage");
-  const { filter: raw } = await searchParams;
-  const filter = FILTERS.some((f) => f.value === raw) ? (raw as RequestFilter) : "pending";
-  const [rows, counts] = await Promise.all([listRequests(filter), requestCounts()]);
+  const params = await searchParams;
+  const filter = pickOption(params.filter, FILTERS.map((f) => f.value)) ?? "pending";
+  const kind = pickOption(params.kind, Object.keys(REQUEST_KINDS) as RequestKind[]);
+  const q = normalizeSearch(params.q);
+  const [{ rows, total, page }, counts] = await Promise.all([listRequests({ filter, q, kind, page: parsePage(params.page) }), requestCounts()]);
+  const info = pageInfo(page, total);
+  const hasFilter = Boolean(q || kind);
+  const link = (nextFilter: string, nextPage = 1) => {
+    const query = new URLSearchParams();
+    if (nextFilter !== "pending") query.set("filter", nextFilter);
+    if (kind) query.set("kind", kind);
+    if (q) query.set("q", q);
+    if (nextPage > 1) query.set("page", String(nextPage));
+    const text = query.toString();
+    return text ? `/privacy?${text}` : "/privacy";
+  };
   const now = new Date();
   const summary =
     counts.pending === 0
@@ -48,17 +67,32 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
           <NewRequestForm />
         </FormDrawer>
       </PageHeader>
-      <div className="mb-4">
+      <div className="mb-4 space-y-3">
         <SegmentedLinks
           label="Filtro"
           items={FILTERS.map((f) => ({ ...f, count: f.value === "pending" ? counts.pending : f.value === "overdue" ? counts.overdue : undefined }))}
           active={filter}
-          href={(value) => `/privacy?filter=${value}`}
+          href={(value) => link(value)}
         />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <UrlSearch placeholder="Buscar nome, e-mail, descrição ou código do espaço" ariaLabel="Buscar pedidos" />
+          <UrlSelect param="kind" options={KIND_OPTIONS} allLabel="Todos os tipos" ariaLabel="Filtrar por tipo de pedido" className="sm:w-52" />
+          <UrlClearFilters params={["q", "kind"]} />
+        </div>
       </div>
       <div className="space-y-2">
-        <ListSummaryBar count={rows.length} singularLabel="pedido" pluralLabel="pedidos" />
-        <ListContainer emptyState={rows.length === 0 ? <EmptyState icon={ShieldCheck} title="Nenhum pedido aqui." /> : undefined}>
+        {total > 0 ? <p className="px-1 text-xs text-muted-foreground">{rangeLabel(info, "pedido", "pedidos")}</p> : null}
+        <ListContainer
+          emptyState={
+            rows.length === 0 ? (
+              <EmptyState
+                icon={ShieldCheck}
+                title={hasFilter ? "Nenhum pedido para este filtro" : filter === "all" ? "Nenhum pedido registrado ainda" : "Nenhum pedido aqui"}
+                description={hasFilter ? "Mude a busca ou o tipo, ou limpe os filtros." : filter === "all" ? "Registre quando um titular pedir seus dados." : "Mude a situação para ver outros pedidos."}
+              />
+            ) : undefined
+          }
+        >
           {rows.map((row) => {
             const open = row.status === "open" || row.status === "in_progress";
             const overdue = open && row.dueAt < now;
@@ -91,7 +125,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
                       </p>
                     ) : null}
                     <p className="min-w-0 break-words text-xs text-muted-foreground">
-                      Recebido em {dateOnly(row.receivedAt)} · prazo {dateOnly(row.dueAt)}
+                      Recebido <RelativeTime date={row.receivedAt} /> · prazo <RelativeTime date={row.dueAt} />
                       {row.organizationId ? (
                         <>
                           {" · Espaço: "}
@@ -108,6 +142,7 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
           })}
         </ListContainer>
       </div>
+      <Pager page={page} hasNext={info.hasNext} totalPages={info.totalPages} href={(next) => link(filter, next)} />
     </>
   );
 }

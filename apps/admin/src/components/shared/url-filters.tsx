@@ -20,7 +20,8 @@ export function useUrlParams() {
         if (value) next.set(key, value);
         else next.delete(key);
       }
-      next.delete("page");
+      // Trocar um filtro volta à primeira página: `page` e as páginas de seções próprias (`grants_page`).
+      for (const key of [...next.keys()]) if (key === "page" || key.endsWith("_page")) next.delete(key);
       const query = next.toString();
       startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }));
     },
