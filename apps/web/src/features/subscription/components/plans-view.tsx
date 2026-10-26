@@ -223,7 +223,7 @@ export function PlansView() {
             )}
           >
             <div>
-              <CardHeader className="pb-4 pt-6">
+              <CardHeader className="pb-4">
                 <div className="flex min-h-[22px] items-center justify-between pb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-primary">Para automatizar</span>
                   {currentTier === "pro" ? (
