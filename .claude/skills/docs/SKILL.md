@@ -33,6 +33,9 @@ Sections `## Decisao` / `## Contexto` / `## Escopo` / `## Alternativas`, in the 
 ## Reversed or replaced
 The old doc gets `> Histórico: substituído por <link>` and moves to `docs/archive/` (`git mv`), then every link to it is fixed (`pnpm --filter @gestarahub/web docs:check` must report zero: it checks relative links, `docs/...` paths and `technical/NN`-style shortcuts in docs, code and skills). A decision the code contradicts is worse than no decision.
 
+## Agent rules for other tools
+`AGENTS.md` (root) and `.claude/skills/` are the source. `.agents/` (read by Antigravity) is a copy: after changing either, run `pnpm agents:sync`. Never edit `.agents/` by hand.
+
 ## Memory
 A durable convention future sessions need also gets a one-line memory (`[[slug]]`) that links to the doc; never duplicate the doc.
 

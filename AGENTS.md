@@ -1,6 +1,6 @@
 # GestaraHub — Guidelines for AI Agents (Antigravity, Claude, Cursor)
 
-> **Current work (24/10/2026):** the overnight run is described in [`docs/handoff/2026-10-24-execucao-noturna.md`](docs/handoff/2026-10-24-execucao-noturna.md); its progress and decisions are in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md) (read the diary first when resuming). `CLAUDE.md` has the full, current rules (this file is a summary).
+> **Current state (26/10/2026):** all recent work is on the branch `painel-admin` (ahead of `main`, not merged, no push): work there, never on `main`. What is decided and still to do, the tests left for the final round, the decisions waiting for the user and the pre-production checklist are in [`docs/pendencias.md`](docs/pendencias.md); the "Mapa por assunto" of [`docs/README.md`](docs/README.md) says where each subject lives. The overnight run of 24/10 is finished (report in [`docs/handoff/2026-10-24-diario-noturno.md`](docs/handoff/2026-10-24-diario-noturno.md)). `CLAUDE.md` has the full, current rules (this file is a summary). `.agents/` (read by Antigravity) is a copy of this file and of `.claude/skills`: refresh it with `pnpm agents:sync` after changing either.
 
 ## 1. Project Overview & Architecture
 GestaraHub is a modern multi-tenant management platform for service businesses, studios, academies, and appointment-based businesses.
