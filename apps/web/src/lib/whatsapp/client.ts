@@ -1,4 +1,6 @@
 import type {
+  MetaTemplateInfo,
+  MetaTemplateStatus,
   SendWhatsAppTemplateMessagePayload,
   SendWhatsAppTextMessagePayload,
   WhatsAppConfig,
@@ -170,4 +172,143 @@ export async function sendWhatsAppTemplateMessage(
   }
 
   return data as WhatsAppMessageResponse;
+}
+
+/**
+ * Converte o texto com variáveis no formato do GestaraHub ({aluno}, {valor}...)
+ * para o formato posicional da Meta ({{1}}, {{2}}...), garantindo que o texto
+ * não termine em variável (regra de rejeição da Meta).
+ */
+export function convertGestaraVariablesToMetaPositional(content: string): {
+  metaText: string;
+  variables: string[];
+} {
+  const variables: string[] = [];
+  let index = 1;
+  const converted = content.replace(/\{(\w+)\}/g, (match) => {
+    variables.push(match);
+    return `{{${index++}}}`;
+  });
+
+  let safeText = converted.trim();
+  if (safeText.endsWith("}}")) {
+    safeText += ".";
+  }
+
+  return { metaText: safeText, variables };
+}
+
+/**
+ * Consulta a lista oficial de templates cadastrados na Meta WhatsApp Business Account (WABA)
+ * e devolve os status em tempo real (APPROVED, PENDING, REJECTED, PAUSED).
+ */
+export async function listWhatsAppTemplates(
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<MetaTemplateInfo[]> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken || !config.businessAccountId) {
+    return [];
+  }
+
+  const url = `${config.apiUrl}/${config.businessAccountId}/message_templates`;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+      },
+    });
+
+    if (!res.ok) {
+      logError("[WhatsApp] Falha ao listar templates da Meta:", res.status);
+      return [];
+    }
+
+    const data = await res.json();
+    const list = (data.data || []) as Array<{
+      name: string;
+      status: MetaTemplateStatus;
+      category: string;
+      id: string;
+      rejected_reason?: string;
+    }>;
+
+    return list.map((item) => ({
+      name: item.name,
+      status: item.status,
+      category: item.category,
+      id: item.id,
+      rejectionReason: item.rejected_reason,
+    }));
+  } catch (err) {
+    logError("[WhatsApp] Erro de rede ao buscar templates da Meta:", err);
+    return [];
+  }
+}
+
+/**
+ * Cria ou atualiza um template oficial na Meta WhatsApp Business Account via Graph API.
+ */
+export async function createOrUpdateWhatsAppTemplate(
+  payload: {
+    name: string;
+    category: "UTILITY" | "MARKETING";
+    content: string;
+    languageCode?: string;
+  },
+  overrideConfig?: Partial<WhatsAppConfig>,
+): Promise<{ id: string; status: MetaTemplateStatus }> {
+  const config = { ...getWhatsAppConfig(), ...overrideConfig };
+  if (!config.apiToken || !config.businessAccountId) {
+    throw new Error("[WhatsApp] Credenciais WHATSAPP_API_TOKEN e WHATSAPP_BUSINESS_ACCOUNT_ID são obrigatórias.");
+  }
+
+  const { metaText, variables } = convertGestaraVariablesToMetaPositional(payload.content);
+
+  const exampleValues = variables.map((v) => {
+    if (v === "{aluno}") return "João";
+    if (v === "{valor}") return "R$ 150,00";
+    if (v === "{vencimento}") return "10/11/2026";
+    if (v === "{empresa}") return "Academia Gestara";
+    if (v === "{link_pagamento}") return "https://gestarahub.com/p/exemplo";
+    return "exemplo";
+  });
+
+  const body = {
+    name: payload.name,
+    category: payload.category,
+    language: payload.languageCode || "pt_BR",
+    components: [
+      {
+        type: "BODY",
+        text: metaText,
+        ...(exampleValues.length > 0 ? { example: { body_text: [exampleValues] } } : {}),
+      },
+    ],
+  };
+
+  const url = `${config.apiUrl}/${config.businessAccountId}/message_templates`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    const err = data as WhatsAppErrorResponse;
+    const msg = err.error?.message || "Erro desconhecido ao cadastrar template na Meta.";
+    logError("[WhatsApp Template Submit Error]:", err);
+    throw new WhatsAppApiError(msg, err.error?.code || res.status, err.error?.type || "ApiError", err.error?.fbtrace_id);
+  }
+
+  return {
+    id: data.id,
+    status: data.status || "PENDING",
+  };
 }

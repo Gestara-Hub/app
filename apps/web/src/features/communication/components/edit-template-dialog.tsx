@@ -93,7 +93,11 @@ function EditTemplateForm({
         content,
         ...(automatic ? { enabled, sendHour } : {}),
       });
-      toast.success("Mensagem salva.");
+      toast.success(
+        official && template.metaTemplateName
+          ? "Mensagem salva e enviada para análise da Meta."
+          : "Mensagem salva.",
+      );
       onClose();
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível salvar a mensagem."));
@@ -113,6 +117,34 @@ function EditTemplateForm({
   return (
     <>
       <DialogBody className="space-y-4">
+        {official && template.metaStatus ? (
+          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">Status na Meta:</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                template.metaStatus === "APPROVED" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                template.metaStatus === "PENDING" && "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                template.metaStatus === "REJECTED" && "bg-destructive/10 text-destructive",
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  template.metaStatus === "APPROVED" && "bg-emerald-500",
+                  template.metaStatus === "PENDING" && "bg-amber-500",
+                  template.metaStatus === "REJECTED" && "bg-destructive",
+                )}
+              />
+              {template.metaStatus === "APPROVED"
+                ? "Aprovado na Meta"
+                : template.metaStatus === "PENDING"
+                  ? "Em análise na Meta"
+                  : "Recusado na Meta"}
+            </span>
+          </div>
+        ) : null}
+
         {automatic ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
             <label className="flex items-center gap-2 text-sm font-medium text-foreground">

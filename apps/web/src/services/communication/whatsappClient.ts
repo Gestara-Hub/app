@@ -1,15 +1,20 @@
 import {
   sendWhatsAppTextMessage as libSendText,
   sendWhatsAppTemplateMessage as libSendTemplate,
+  listWhatsAppTemplates as libListTemplates,
+  createOrUpdateWhatsAppTemplate as libCreateOrUpdateTemplate,
   normalizeWhatsAppNumber,
   getWhatsAppConfig,
   WhatsAppApiError,
+  type MetaTemplateInfo,
+  type MetaTemplateStatus,
   type WhatsAppMessageResponse,
   type WhatsAppTemplateComponent,
 } from "@/lib/whatsapp";
 import { logError } from "@/lib/log";
 
 export { WhatsAppApiError };
+export type { MetaTemplateInfo, MetaTemplateStatus };
 
 /**
  * Cliente de alto nível para envio de mensagens via Meta WhatsApp Cloud API.
@@ -88,5 +93,34 @@ export const whatsappClient = {
    */
   normalizePhone(phone: string): string {
     return normalizeWhatsAppNumber(phone);
+  },
+
+  /**
+   * Lista os templates oficiais cadastrados na Meta WhatsApp Business Account
+   * com seus status reais em tempo real (APPROVED, PENDING, REJECTED, PAUSED).
+   */
+  async listTemplates(): Promise<MetaTemplateInfo[]> {
+    if (!this.isConfigured()) return [];
+    try {
+      return await libListTemplates();
+    } catch (err) {
+      logError("[WhatsApp] Erro ao listar templates da Meta:", err);
+      return [];
+    }
+  },
+
+  /**
+   * Submete ou atualiza um template oficial na Meta WhatsApp Business Account.
+   */
+  async createOrUpdateTemplate(payload: {
+    name: string;
+    category: "UTILITY" | "MARKETING";
+    content: string;
+    languageCode?: string;
+  }): Promise<{ id: string; status: MetaTemplateStatus }> {
+    if (!this.isConfigured()) {
+      throw new Error("Meta WhatsApp Cloud API não está configurada.");
+    }
+    return libCreateOrUpdateTemplate(payload);
   },
 };

@@ -1,4 +1,4 @@
-import type { WhatsAppWebhookPayload, WhatsAppWebhookStatus } from "@/lib/whatsapp";
+import type { MetaTemplateStatus, WhatsAppWebhookPayload, WhatsAppWebhookStatus } from "@/lib/whatsapp";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { logError, logWarn } from "@/lib/log";
 import { store } from "@/services/world/store";
@@ -78,21 +78,42 @@ export async function handleWhatsAppWebhookPayload(payload: WhatsAppWebhookPaylo
       if (change.field !== "messages" || !change.value) continue;
 
       // 1. Processar atualizações de status (sent, delivered, read, failed)
-      if (Array.isArray(change.value.statuses)) {
-        for (const status of change.value.statuses) {
-          try {
-            await processWhatsAppStatusUpdate(status);
-            statusesProcessed++;
-          } catch (err) {
-            logError("[WhatsApp Webhook] Erro ao processar atualização de status:", err);
+      if (change.field === "messages" && change.value) {
+        if (Array.isArray(change.value.statuses)) {
+          for (const status of change.value.statuses) {
+            try {
+              await processWhatsAppStatusUpdate(status);
+              statusesProcessed++;
+            } catch (err) {
+              logError("[WhatsApp Webhook] Erro ao processar atualização de status:", err);
+            }
           }
+        }
+
+        // 2. Mensagens recebidas (respostas de alunos)
+        if (Array.isArray(change.value.messages)) {
+          messagesReceived += change.value.messages.length;
+          // Futuramente podemos direcionar para atendimento ou histórico de conversa
         }
       }
 
-      // 2. Mensagens recebidas (respostas de alunos)
-      if (Array.isArray(change.value.messages)) {
-        messagesReceived += change.value.messages.length;
-        // Futuramente podemos direcionar para atendimento ou histórico de conversa
+      // 3. Atualização de status de template da Meta (APPROVED, REJECTED, PAUSED)
+      if ((change.field as string) === "message_template_status_update" && change.value) {
+        const templateEvent = change.value as unknown as {
+          event?: MetaTemplateStatus;
+          message_template_name?: string;
+          reason?: string;
+        };
+        if (templateEvent.message_template_name && templateEvent.event) {
+          logWarn(
+            `[WhatsApp Webhook] Template '${templateEvent.message_template_name}' atualizado na Meta para ${templateEvent.event}`,
+          );
+          for (const t of store.messageTemplates ?? []) {
+            if (t.metaTemplateName === templateEvent.message_template_name) {
+              t.metaStatus = templateEvent.event;
+            }
+          }
+        }
       }
     }
   }

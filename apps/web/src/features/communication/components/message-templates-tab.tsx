@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HeartHandshake, Megaphone, MessageSquare, Pencil, Wallet } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { MessageTemplate } from "@gestarahub/contracts";
+import type { MessageTemplate, MetaTemplateStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,60 @@ import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from ".
 import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues, templatePreview } from "../message-meta";
 import { EditTemplateDialog } from "./edit-template-dialog";
 import { MessageBubble } from "./message-bubble";
+
+function MetaStatusBadge({ status }: { status?: MetaTemplateStatus }) {
+  if (!status) return null;
+
+  if (status === "APPROVED") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Aprovado na Meta
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          Modelo oficial aprovado pela Meta. Disparos automáticos liberados 24h para qualquer aluno.
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (status === "PENDING") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            Em análise na Meta
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          A Meta está revisando este modelo. A aprovação costuma levar alguns minutos.
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (status === "REJECTED") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-destructive/30 bg-destructive/10 text-destructive">
+            <span className="size-1.5 rounded-full bg-destructive" />
+            Recusado na Meta
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          Este modelo não foi aprovado pela Meta. Edite o texto para reavaliar.
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return null;
+}
 
 function TemplateCard({
   template,
@@ -71,7 +125,10 @@ function TemplateCard({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground">{meta.label}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-foreground">{meta.label}</p>
+            {official ? <MetaStatusBadge status={template.metaStatus} /> : null}
+          </div>
           <p className="text-xs text-muted-foreground">{automatic ? automationTiming(template) : meta.where}</p>
         </div>
 

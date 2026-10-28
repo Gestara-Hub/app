@@ -66,6 +66,16 @@ export type MessageTrigger =
 
 export type MessageCategory = "billing" | "retention" | "administrative";
 
+export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED";
+
+export interface MetaTemplateInfo {
+  name: string;
+  status: MetaTemplateStatus;
+  category: string;
+  id: string;
+  rejectionReason?: string;
+}
+
 export interface MessageTemplate {
   id: Id;
   organizationId: Id;
@@ -78,6 +88,8 @@ export interface MessageTemplate {
   daysOffset: number;
   content: string;
   availableVariables: string[];
+  metaStatus?: MetaTemplateStatus;
+  metaTemplateName?: string;
   updatedAt: DateTimeISO;
 }
 

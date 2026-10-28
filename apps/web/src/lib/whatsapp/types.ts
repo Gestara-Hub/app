@@ -65,6 +65,28 @@ export interface WhatsAppErrorResponse {
 
 export type WhatsAppStatusType = "sent" | "delivered" | "read" | "failed";
 
+export type MetaTemplateStatus = "APPROVED" | "PENDING" | "REJECTED" | "PAUSED";
+
+export interface MetaTemplateInfo {
+  name: string;
+  status: MetaTemplateStatus;
+  category: string;
+  id: string;
+  rejectionReason?: string;
+}
+
+export const TRIGGER_TO_META_TEMPLATE: Record<
+  string,
+  { templateName: string; category: "UTILITY" | "MARKETING" }
+> = {
+  billing_before_due: { templateName: "billing_reminder", category: "UTILITY" },
+  billing_due_date: { templateName: "billing_reminder", category: "UTILITY" },
+  billing_after_due: { templateName: "billing_reminder", category: "UTILITY" },
+  charge_reminder: { templateName: "billing_reminder", category: "UTILITY" },
+  birthday_greeting: { templateName: "birthday_greeting", category: "MARKETING" },
+  welcome_student: { templateName: "welcome_student", category: "MARKETING" },
+};
+
 export interface WhatsAppWebhookStatus {
   id: string; // wamid
   status: WhatsAppStatusType;
