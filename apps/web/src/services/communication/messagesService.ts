@@ -23,6 +23,7 @@ import {
   newLog,
 } from "./communicationRules";
 import { dateInSpace } from "@gestarahub/core/date";
+import { whatsappClient } from "./whatsappClient";
 
 /**
  * Tipo da mensagem no filtro do historico. A mesma regra vale na consulta do
@@ -95,7 +96,29 @@ export const messagesService = {
       }
       validateMessage(payload);
       const connection = ensureConnection();
-      const log = newLog(payload, "delivered");
+
+      let messageId: string | undefined;
+      let status: MessageLog["status"] = "sent";
+      let errorReason: string | undefined;
+
+      if (whatsappClient.isConfigured()) {
+        try {
+          const res = await whatsappClient.sendTextMessage(payload.recipientPhone, payload.content);
+          messageId = res.messages?.[0]?.id;
+          status = "sent";
+        } catch (err: unknown) {
+          const errorMsg = err instanceof Error ? err.message : "Erro desconhecido ao enviar mensagem.";
+          status = "failed";
+          errorReason = errorMsg;
+        }
+      } else {
+        status = "delivered";
+      }
+
+      const log = newLog(payload, status, messageId);
+      if (errorReason) {
+        log.errorReason = errorReason;
+      }
       ensureLogs().unshift(log);
       connection.monthlyQuota.used += 1;
 
@@ -104,6 +127,13 @@ export const messagesService = {
         target: { type: "message_log", id: log.id, label: `Mensagem para ${log.recipientName}` },
         predicate: `enviou mensagem de WhatsApp para ${log.recipientName}`,
       });
+
+      if (status === "failed") {
+        throw apiError("SERVICE_UNAVAILABLE", errorReason ?? "Falha ao enviar mensagem de WhatsApp.", {
+          httpStatus: 502,
+        });
+      }
+
       return { ...log };
     });
   },
@@ -117,9 +147,26 @@ export const messagesService = {
       }
       const log = ensureLogs().find((l) => l.id === id);
       if (!log) throw apiError("NOT_FOUND", "Mensagem não encontrada.", { httpStatus: 404 });
-      log.status = "delivered";
-      delete log.errorReason;
-      log.sentAt = nowIso();
+
+      if (whatsappClient.isConfigured()) {
+        try {
+          const res = await whatsappClient.sendTextMessage(log.recipientPhone, log.content);
+          if (res.messages?.[0]?.id) {
+            log.id = res.messages[0].id;
+          }
+          log.status = "sent";
+          delete log.errorReason;
+          log.sentAt = nowIso();
+        } catch (err: unknown) {
+          log.status = "failed";
+          log.errorReason = err instanceof Error ? err.message : "Falha ao reenviar mensagem.";
+          throw apiError("SERVICE_UNAVAILABLE", log.errorReason, { httpStatus: 502 });
+        }
+      } else {
+        log.status = "delivered";
+        delete log.errorReason;
+        log.sentAt = nowIso();
+      }
 
       auditLogService.record({
         action: "updated",

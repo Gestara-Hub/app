@@ -98,9 +98,9 @@ export function validateMessage(payload: SendMessagePayload): void {
   if (fields.length > 0) throw validationError(fields);
 }
 
-export function newLog(payload: SendMessagePayload, status: MessageLog["status"]): MessageLog {
+export function newLog(payload: SendMessagePayload, status: MessageLog["status"], idOverride?: string): MessageLog {
   return {
-    id: newId(),
+    id: idOverride ?? newId(),
     organizationId: store.organization.id,
     recipientName: payload.recipientName.trim(),
     recipientPhone: whatsappNumber(payload.recipientPhone) ?? payload.recipientPhone.replace(/\D/g, ""),
