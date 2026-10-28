@@ -9,6 +9,7 @@ import { remindersService } from "./remindersService";
 export { connectionService, templatesService, messagesService };
 export { whatsappClient } from "./whatsappClient";
 export { processWhatsAppStatusUpdate, handleWhatsAppWebhookPayload } from "./whatsappWebhook";
+export { runBillingReminders, runBirthdayGreetings } from "./communicationRules";
 export { messageKindMatches } from "./messagesService";
 
 /** Objeto legado: os mesmos metodos de antes, compostos dos sub-servicos. */

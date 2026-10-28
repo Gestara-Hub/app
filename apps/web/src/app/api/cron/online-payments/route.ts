@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAllBirthdayGreetings } from "@/services/communication/birthdayGreetingsCron";
+import { runAllBillingReminders } from "@/services/communication/billingRemindersCron";
 import { expireAllDueOnlinePayments, retryAllPendingGatewayCancels } from "@/services/onlinePayments/gateway";
 import { reportError } from "@/lib/log";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   const runId = await startJobRun(admin, "cron.online-payments");
   const errorReferences: string[] = [];
-  const result = { expired: 0, retriedCancels: 0, birthdayGreetings: 0, failures: 0 };
+  const result = { expired: 0, retriedCancels: 0, birthdayGreetings: 0, billingReminders: 0, failures: 0 };
   try {
     result.expired = await expireAllDueOnlinePayments();
   } catch (err) {
@@ -50,6 +51,15 @@ export async function POST(req: Request) {
     result.failures += greetings.failures;
   } catch (err) {
     errorReferences.push(await reportError("cron.hourly.parabens", err, { source: "cron" }));
+    result.failures += 1;
+  }
+
+  try {
+    const reminders = await runAllBillingReminders(started + 240_000);
+    result.billingReminders = reminders.sent;
+    result.failures += reminders.failures;
+  } catch (err) {
+    errorReferences.push(await reportError("cron.hourly.lembretes", err, { source: "cron" }));
     result.failures += 1;
   }
 
