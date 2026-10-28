@@ -10,6 +10,7 @@ import type { GuideStep } from "@/lib/support/help-search";
 
 const CLICKABLE = 'button, a[href], [role="button"], [role="menuitem"], [role="tab"], [role="option"], [role="radio"], summary, label';
 const FIELD_CONTROLS = 'input:not([type="hidden"]), textarea, select, button[role="combobox"], [role="combobox"], [role="switch"], [role="checkbox"]';
+const CARD_CONTAINERS = '[data-slot="card"], [data-card], article, [class*="bg-card"]';
 
 const insideGuide = (el: Element) => Boolean(el.closest("[data-guide-ui], [data-product-tour]"));
 
@@ -61,6 +62,29 @@ function findField(labels: string[], root: ParentNode): Element | null {
 /** Fora da barra lateral: "Turmas" como botão da ficha não é o item "Turmas" do menu (esse é o passo `menu`). */
 const outsideSidebar = (els: Element[]) => els.filter((el) => !el.closest('[data-sidebar="sidebar"]'));
 
+function findCard(labels: string[], root: ParentNode): Element | null {
+  const candidates = [...root.querySelectorAll('[data-slot="card-title"], [data-slot="card-header"], h1, h2, h3, h4, legend, label, th, p, span, div')].filter(
+    (el) => matchScore(el.textContent ?? "", labels) > 0 && visible(el) && !insideGuide(el),
+  );
+  candidates.sort((a, b) => {
+    const scoreDiff = matchScore(b.textContent ?? "", labels) - matchScore(a.textContent ?? "", labels);
+    if (scoreDiff !== 0) return scoreDiff;
+    return (a.textContent?.length ?? 0) - (b.textContent?.length ?? 0);
+  });
+
+  for (const textEl of candidates) {
+    const card = textEl.closest(CARD_CONTAINERS);
+    if (card && visible(card) && !insideGuide(card)) {
+      return card;
+    }
+  }
+
+  const allCards = [...root.querySelectorAll(CARD_CONTAINERS)].filter(
+    (el) => visible(el) && !insideGuide(el) && matchScore(el.textContent ?? "", labels) > 0,
+  );
+  return allCards[0] ?? candidates[0] ?? null;
+}
+
 function findIn(step: GuideStep, root: ParentNode): Element | null {
   const labels = stepLabels(step);
   switch (step.kind) {
@@ -72,6 +96,8 @@ function findIn(step: GuideStep, root: ParentNode): Element | null {
       return best([...root.querySelectorAll('[data-sidebar="sidebar"] a, [data-sidebar="sidebar"] button, [data-sidebar="menu-button"]')], labels);
     case "item":
       return best(outsideSidebar([...root.querySelectorAll('[role="menuitem"], [role="option"], [role="radio"], [role="row"], li, tr, article')]), labels);
+    case "card":
+      return findCard(labels, root);
     case "texto": {
       // O menor elemento que carrega o texto: o título, não o bloco todo.
       const all = [...root.querySelectorAll("h1, h2, h3, h4, legend, label, th, p, span, div")].filter((el) => matchScore(el.textContent ?? "", labels) > 0 && visible(el) && !insideGuide(el));

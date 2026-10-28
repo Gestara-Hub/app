@@ -6,6 +6,7 @@ import type {
   WhatsAppMessageResponse,
 } from "./types";
 import { logError } from "@/lib/log";
+import { whatsappDigits } from "@gestarahub/core/phone";
 
 export function getWhatsAppConfig(): WhatsAppConfig {
   const apiUrl = process.env.WHATSAPP_API_URL || "https://graph.facebook.com/v21.0";
@@ -26,6 +27,10 @@ export function getWhatsAppConfig(): WhatsAppConfig {
  * Somente dígitos com DDI e DDD (ex: 5592991844219).
  */
 export function normalizeWhatsAppNumber(phone: string): string {
+  if (!phone) return "";
+  const parsed = whatsappDigits(phone);
+  if (parsed) return parsed;
+
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("55") && digits.length >= 12) {
     return digits;
@@ -65,6 +70,10 @@ export async function sendWhatsAppTextMessage(
   }
 
   const cleanTo = normalizeWhatsAppNumber(payload.to);
+  if (!cleanTo) {
+    throw new Error("[WhatsApp] Número de destinatário inválido.");
+  }
+
   const url = `${config.apiUrl}/${config.phoneNumberId}/messages`;
 
   const body = {
@@ -100,7 +109,7 @@ export async function sendWhatsAppTextMessage(
 
 /**
  * Envia uma mensagem baseada em Modelo (Template) aprovado pela Meta.
- * (Ex: hello_world, ou templates de cobrança e lembrete).
+ * (Ex: lembrete de cobrança, aniversários, boas-vindas).
  */
 export async function sendWhatsAppTemplateMessage(
   payload: SendWhatsAppTemplateMessagePayload,
@@ -112,19 +121,23 @@ export async function sendWhatsAppTemplateMessage(
   }
 
   const cleanTo = normalizeWhatsAppNumber(payload.to);
+  if (!cleanTo) {
+    throw new Error("[WhatsApp] Número de destinatário inválido.");
+  }
+
   const url = `${config.apiUrl}/${config.phoneNumberId}/messages`;
 
-  const components = payload.bodyParameters?.length
+  const components = payload.components ?? (payload.bodyParameters?.length
     ? [
         {
-          type: "body",
+          type: "body" as const,
           parameters: payload.bodyParameters.map((param) => ({
-            type: "text",
+            type: "text" as const,
             text: param,
           })),
         },
       ]
-    : undefined;
+    : undefined);
 
   const body = {
     messaging_product: "whatsapp",

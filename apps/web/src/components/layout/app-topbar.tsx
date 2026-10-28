@@ -84,9 +84,11 @@ export function AppTopbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        {/* Botão de ajuda desativado temporariamente no header (mantido no menu do usuário):
         <Button type="button" variant="ghost" size="icon" onClick={() => openHelp()} aria-label="Abrir a ajuda" title="Ajuda">
           <CircleHelp className="size-4" />
         </Button>
+        */}
         <RemindersBell />
         <Button
           asChild

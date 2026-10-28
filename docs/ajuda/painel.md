@@ -4,16 +4,16 @@ Onde: /dashboard
 ## Os números do dia
 Resumo: Aulas, presenças e mensalidades recebidas de hoje, com atalho.
 Guia: /dashboard
-+ texto "Aulas hoje": Este número mostra quantas aulas acontecem hoje.
-+ texto "Presenças hoje": Aqui você vê as presenças. Aguardando quer dizer que a chamada está aberta.
-+ texto "Mensalidades recebidas": Aqui entram as mensalidades pagas. O selo vermelho conta as em atraso.
++ card "Aulas hoje": Este número mostra quantas aulas acontecem hoje.
++ card "Presenças hoje": Aqui você vê as presenças. Aguardando quer dizer que a chamada está aberta.
++ card "Mensalidades recebidas": Aqui entram as mensalidades pagas. O selo vermelho conta as em atraso.
 No topo, três números: "Aulas hoje", "Presenças hoje" e "Mensalidades recebidas". Em Presenças, "Aguardando" quer dizer que a chamada de hoje ainda está aberta. Em Mensalidades recebidas, o selo vermelho mostra quantas estão em atraso. Clique em um número para abrir a tela dele: [Calendário](/classes/calendar), [Turmas](/classes) ou [Cobranças](/classes/billing).
 
 ## Aulas de hoje e ocupação
 Resumo: Quais turmas têm aula hoje e quão cheias estão.
 Guia: /dashboard
-+ texto "Aulas de hoje": Aqui estão as turmas com aula hoje.
-+ texto "Ocupação das turmas": Este card mostra quantos alunos há em cada turma.
++ card "Aulas de hoje": Aqui estão as turmas com aula hoje.
++ card "Ocupação das turmas": Este card mostra quantos alunos há em cada turma.
 + botão "Ver calendário": Clique aqui para abrir a grade da semana.
 O card "Aulas de hoje" lista as turmas com encontro hoje; "Ver calendário" abre a grade da semana. O card "Ocupação das turmas" mostra quantos alunos há em cada turma em relação à capacidade, e "Ver turmas" abre a lista.
 

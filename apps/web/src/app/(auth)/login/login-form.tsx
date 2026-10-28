@@ -308,7 +308,7 @@ export function LoginForm({
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Enviamos um novo link de criação de conta (válido por 24 horas) para{" "}
-                <strong className="font-semibold text-foreground break-all">{resentToEmail}</strong>.
+                <strong className="font-semibold text-foreground break-words">{resentToEmail}</strong>.
                 Abra seu e-mail e clique no botão para definir sua senha.
               </p>
             </div>
@@ -340,7 +340,7 @@ export function LoginForm({
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 O link enviado para{" "}
-                <strong className="font-medium text-foreground break-all">
+                <strong className="font-medium text-foreground break-words">
                   {tokenState.email}
                 </strong>{" "}
                 passou do prazo de 24 horas ou foi substituído por um envio mais recente.

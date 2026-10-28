@@ -7,6 +7,7 @@ import { messagesService } from "./messagesService";
 import { remindersService } from "./remindersService";
 
 export { connectionService, templatesService, messagesService };
+export { whatsappClient } from "./whatsappClient";
 export { messageKindMatches } from "./messagesService";
 
 /** Objeto legado: os mesmos metodos de antes, compostos dos sub-servicos. */

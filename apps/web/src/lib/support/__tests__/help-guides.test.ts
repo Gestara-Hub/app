@@ -6,7 +6,7 @@ import { matchScore, normalizeLabel, stepLabels } from "../guide-match";
 import { HELP_CHUNKS, routePath } from "../help-search";
 
 const SRC = fileURLToPath(new URL("../../..", import.meta.url));
-const KINDS = ["botão", "aba", "campo", "menu", "item", "texto"];
+const KINDS = ["botão", "aba", "campo", "menu", "item", "texto", "card"];
 
 function files(dir: string, test: (name: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

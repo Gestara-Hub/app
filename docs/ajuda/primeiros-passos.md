@@ -8,7 +8,7 @@ Ao criar a conta, o GestaraHub pede o nome do espaço, a área (Lutas, Pilates e
 ## Ordem recomendada
 Resumo: 6 passos para deixar o espaço pronto: horário, modalidades, planos, equipe, alunos e turmas.
 Guia: /dashboard
-+ texto "Primeiros passos|Descubra o dia a dia": Esta lista mostra o que falta para o espaço ficar pronto.
++ card "Primeiros passos|Descubra o dia a dia": Esta lista mostra o que falta para o espaço ficar pronto.
 + menu "Configurações": Comece pelo horário de funcionamento, em Configurações.
 + aba "Horários": Ligue os dias em que o espaço abre e salve.
 1. Defina o horário de funcionamento em [Configurações, aba Horários](/settings?tab=horarios).

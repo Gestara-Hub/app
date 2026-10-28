@@ -89,7 +89,7 @@ function Kpi({
 
   if (href) {
     return (
-      <div className={cardClasses}>
+      <div data-slot="card" className={cardClasses}>
         <Link href={href} className="block">
           {content}
         </Link>
@@ -97,7 +97,11 @@ function Kpi({
     );
   }
 
-  return <div className={cardClasses}>{content}</div>;
+  return (
+    <div data-slot="card" className={cardClasses}>
+      {content}
+    </div>
+  );
 }
 
 /** Dados do dashboard da academia (consultas + derivados), usados pelos blocos. */

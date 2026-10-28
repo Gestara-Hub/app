@@ -151,14 +151,21 @@ export function SignupForm({ idPrefix, className, onSignIn }: SignupFormProps) {
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
             <Mail className="size-5" aria-hidden />
           </div>
-          <div className="min-w-0 space-y-1">
-            <h3 className="text-base font-semibold text-foreground">Confira seu e-mail</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Enviamos um link para{" "}
-              <strong className="font-semibold text-foreground break-all">{sentToEmail}</strong> para você criar
-              sua senha.
-            </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Confira seu e-mail</h3>
+              <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                Enviamos um link para você criar sua senha:
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+              <p className="text-sm font-medium text-foreground break-words select-all">
+                {sentToEmail}
+              </p>
+            </div>
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
               Ele vale por 24 horas. Não chegou? Veja o spam.
             </p>
           </div>
@@ -310,7 +317,7 @@ export function SignupForm({ idPrefix, className, onSignIn }: SignupFormProps) {
             <DialogTitle>Link de acesso já enviado</DialogTitle>
             <DialogDescription>
               Já enviamos um link de criação de conta para{" "}
-              <strong className="font-semibold text-foreground break-all">
+              <strong className="font-semibold text-foreground break-words">
                 {pendingModal?.email}
               </strong>
               . Ele continua válido e expira em <strong>24 horas</strong> a partir do envio.

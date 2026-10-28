@@ -1,16 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, HeartHandshake, Megaphone, Pencil, Wallet } from "lucide-react";
+import { HeartHandshake, Megaphone, MessageSquare, Pencil, Wallet } from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { fillMessage, isManualTrigger } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
@@ -34,6 +45,7 @@ function TemplateCard({
   canManage: boolean;
   onEdit: () => void;
 }) {
+  const [showPreview, setShowPreview] = useState(false);
   const updateMut = useUpdateTemplate();
   const meta = TRIGGER_META[template.trigger];
   const preview = templatePreview(template.trigger, fillMessage(template.content, sampleValues(orgName, withPaymentLink)));
@@ -51,33 +63,80 @@ function TemplateCard({
   }
 
   return (
-    <div className={cn("space-y-3 rounded-xl border bg-card p-4", automatic && !template.enabled && "opacity-75")}>
-      <div className="flex items-start justify-between gap-3">
+    <div
+      className={cn(
+        "rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 transition-colors space-y-2.5",
+        automatic && !template.enabled && "opacity-75",
+      )}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{meta.label}</p>
           <p className="text-xs text-muted-foreground">{automatic ? automationTiming(template) : meta.where}</p>
         </div>
-        {automatic ? (
-          <label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-            Automático
-            <Switch
-              checked={template.enabled}
-              disabled={!canManage || updateMut.isPending}
-              onCheckedChange={toggle}
-              aria-label={`Envio automático: ${meta.label}`}
-            />
-          </label>
-        ) : null}
-      </div>
-      <MessageBubble text={preview} />
-      {canManage ? (
-        <div className="flex justify-end">
-          <Button type="button" variant="ghost" className="gap-1.5 text-xs" onClick={onEdit}>
-            <Pencil className="size-3" />
-            Editar texto
-          </Button>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {automatic ? (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground mr-1.5">
+              Automático
+              <Switch
+                checked={template.enabled}
+                disabled={!canManage || updateMut.isPending}
+                onCheckedChange={toggle}
+                aria-label={`Envio automático: ${meta.label}`}
+              />
+            </label>
+          ) : null}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={showPreview ? "secondary" : "ghost"}
+                size="icon-sm"
+                className={cn(
+                  "text-muted-foreground hover:text-foreground",
+                  showPreview && "bg-muted text-foreground",
+                )}
+                onClick={() => setShowPreview((prev) => !prev)}
+                aria-label={showPreview ? "Ocultar exemplo" : "Ver exemplo"}
+                aria-expanded={showPreview}
+              >
+                <MessageSquare className="size-4" />
+                <span className="sr-only">{showPreview ? "Ocultar exemplo" : "Ver exemplo"}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{showPreview ? "Ocultar exemplo" : "Ver exemplo"}</TooltipContent>
+          </Tooltip>
+
+          {canManage ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={onEdit}
+                  aria-label="Editar texto"
+                >
+                  <Pencil className="size-4" />
+                  <span className="sr-only">Editar texto</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Editar texto</TooltipContent>
+            </Tooltip>
+          ) : null}
         </div>
-      ) : null}
+      </div>
+
+      {showPreview ? (
+        <div className="pt-1 border-t border-border/40">
+          <MessageBubble text={preview} />
+        </div>
+      ) : (
+        <span className="sr-only">{preview}</span>
+      )}
     </div>
   );
 }
@@ -104,8 +163,8 @@ const GROUPS = [
 ];
 
 /**
- * Textos das mensagens. No envio assistido mostra onde cada botao aparece; no
- * WhatsApp oficial, quando sai sozinho e o interruptor de envio automatico.
+ * Textos das mensagens organizados em seções (Accordions).
+ * Cada modelo é exibido em linha limpa e escaneável, com exemplo do WhatsApp sob demanda.
  */
 export function MessageTemplatesTab() {
   const { data: templates, isPending } = useMessageTemplates();
@@ -114,79 +173,87 @@ export function MessageTemplatesTab() {
   const hasFeature = useHasFeature();
   const canManage = useCan()("communication:manage");
   const [editing, setEditing] = useState<MessageTemplate | null>(null);
-  // Grupos em sanfona: no celular so o primeiro abre (eram 14 cartoes seguidos).
-  const isMobile = useIsMobile();
-  const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const official = connection?.mode === "official";
   // Link so quando o espaco cobra online (ligado em Recebimentos online), como no envio.
   const withPaymentLink = hasFeature("online_payments") && Boolean(organization?.settings?.onlinePayments?.enabled);
 
   if (isPending) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-44 rounded-xl" />
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {GROUPS.map((group, index) => {
-        const items = (templates ?? [])
-          .filter((t) => t.category === group.category)
-          .sort((a, b) => TRIGGER_ORDER.indexOf(a.trigger) - TRIGGER_ORDER.indexOf(b.trigger));
-        if (items.length === 0) return null;
-        const open = toggled[group.category] ?? (!isMobile || index === 0);
-        const panelId = `templates-${group.category}`;
-        return (
-          <section key={group.category} className="space-y-3">
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls={panelId}
-              onClick={() => setToggled((prev) => ({ ...prev, [group.category]: !open }))}
-              className="flex w-full cursor-pointer items-start justify-between gap-3 text-left"
-            >
-              <span>
-                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <group.icon className="size-4 text-muted-foreground" />
-                  {group.title}
-                  <span className="text-xs font-normal text-muted-foreground tabular-nums">({items.length})</span>
-                </span>
-                <span className="block text-xs text-muted-foreground">{group.hint}</span>
-              </span>
-              <ChevronDown
-                className={cn("mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
-                aria-hidden
-              />
-            </button>
-            <div id={panelId} hidden={!open} className="grid gap-4 md:grid-cols-2">
-              {items.map((template) => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  official={official}
-                  orgName={organization?.name}
-                  withPaymentLink={withPaymentLink}
-                  canManage={canManage}
-                  onEdit={() => setEditing(template)}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })}
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-4">
+        <Accordion
+          type="multiple"
+          defaultValue={["billing", "retention", "administrative"]}
+          className="space-y-4"
+        >
+          {GROUPS.map((group) => {
+            const items = (templates ?? [])
+              .filter((t) => t.category === group.category)
+              .sort((a, b) => TRIGGER_ORDER.indexOf(a.trigger) - TRIGGER_ORDER.indexOf(b.trigger));
+            if (items.length === 0) return null;
 
-      <EditTemplateDialog
-        template={editing}
-        official={official}
-        open={Boolean(editing)}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null);
-        }}
-      />
-    </div>
+            return (
+              <AccordionItem
+                key={group.category}
+                value={group.category}
+                className="rounded-xl border border-border/70 bg-card px-4 sm:px-5 shadow-xs transition-colors overflow-hidden"
+              >
+                <AccordionTrigger className="py-3.5 hover:no-underline cursor-pointer">
+                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <group.icon className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground text-sm leading-tight">
+                          {group.title}
+                        </h3>
+                        <span className="text-xs text-muted-foreground font-normal tabular-nums">
+                          ({items.length})
+                        </span>
+                      </div>
+                      <p className="min-w-0 text-xs text-muted-foreground break-words mt-0.5 font-normal">
+                        {group.hint}
+                      </p>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 border-t border-border/40 mt-1 space-y-2.5">
+                  {items.map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      official={official}
+                      orgName={organization?.name}
+                      withPaymentLink={withPaymentLink}
+                      canManage={canManage}
+                      onEdit={() => setEditing(template)}
+                    />
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+
+        <EditTemplateDialog
+          template={editing}
+          official={official}
+          open={Boolean(editing)}
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+        />
+      </div>
+    </TooltipProvider>
   );
 }

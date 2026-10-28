@@ -17,7 +17,7 @@ export interface HelpChunk {
   text: string;
 }
 
-export type GuideStepKind = "botão" | "aba" | "campo" | "menu" | "item" | "texto";
+export type GuideStepKind = "botão" | "aba" | "campo" | "menu" | "item" | "texto" | "card";
 
 export interface GuideStep {
   kind: GuideStepKind;

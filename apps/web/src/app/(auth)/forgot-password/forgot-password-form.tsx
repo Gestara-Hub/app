@@ -35,7 +35,7 @@ export function ForgotPasswordForm({ initialEmail }: { initialEmail?: string }) 
           <div className="min-w-0 space-y-1 text-sm">
             <p className="text-base font-semibold text-foreground">Confira seu e-mail</p>
             <p className="leading-relaxed text-muted-foreground">
-              Se <strong className="break-all text-foreground">{sentTo}</strong> tiver uma conta com senha, o link chega
+              Se <strong className="break-words text-foreground">{sentTo}</strong> tiver uma conta com senha, o link chega
               em instantes. Ele vale por 1 hora. Não chegou? Veja o spam.
             </p>
           </div>

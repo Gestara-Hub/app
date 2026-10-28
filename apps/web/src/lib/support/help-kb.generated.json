@@ -1860,17 +1860,17 @@
       "route": "/dashboard",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Aulas hoje",
           "text": "Este número mostra quantas aulas acontecem hoje."
         },
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Presenças hoje",
           "text": "Aqui você vê as presenças. Aguardando quer dizer que a chamada está aberta."
         },
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Mensalidades recebidas",
           "text": "Aqui entram as mensalidades pagas. O selo vermelho conta as em atraso."
         }
@@ -1888,12 +1888,12 @@
       "route": "/dashboard",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Aulas de hoje",
           "text": "Aqui estão as turmas com aula hoje."
         },
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Ocupação das turmas",
           "text": "Este card mostra quantos alunos há em cada turma."
         },
@@ -2333,7 +2333,7 @@
       "route": "/dashboard",
       "steps": [
         {
-          "kind": "texto",
+          "kind": "card",
           "label": "Primeiros passos|Descubra o dia a dia",
           "text": "Esta lista mostra o que falta para o espaço ficar pronto."
         },

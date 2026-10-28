@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FormProvider } from "react-hook-form";
 import { FormFeedback, TextArea, useActionForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,6 @@ import { cn } from "@/lib/utils";
 import { noteAction, replyAction, type SupportFormState } from "../actions";
 
 type Macro = { id: string; title: string; body: string };
-
-/** Leva a tela ao fim da conversa ao abrir e quando chega mensagem nova. */
-export function ScrollToEnd({ count }: { count: number }) {
-  useEffect(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight });
-  }, [count]);
-  return null;
-}
 
 /** Caixa fixa no pé da tela: as mensagens rolam por trás; resposta e nota interna em abas. */
 export function Composer({ threadId, macros }: { threadId: string; macros: Macro[] }) {

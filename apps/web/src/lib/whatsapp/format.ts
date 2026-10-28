@@ -36,7 +36,7 @@ export function whatsappNumber(phone?: string | null): string | null {
 /**
  * Link que abre o WhatsApp do aparelho com a conversa e o texto prontos.
  * Usa `api.whatsapp.com/send`, nao o atalho `wa.me`: o redirecionamento do
- * `wa.me` estraga emojis (chegam como "�" no WhatsApp).
+ * `wa.me` estraga emojis (chegam como "" no WhatsApp).
  */
 export function whatsappLink(phone: string, text: string): string {
   const number = whatsappNumber(phone) ?? phone.replace(/\D/g, "");

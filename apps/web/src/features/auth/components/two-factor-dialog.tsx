@@ -5,15 +5,14 @@ import { Copy, Download, KeyRound, Loader2, Mail, Smartphone } from "lucide-reac
 import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DialogBody } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -129,8 +128,8 @@ function RecoveryField({
   );
 }
 
-/** Um metodo (app ou e-mail): estado e, desligado, o botao para usar. */
-function MethodCard({
+/** Um método (app, e-mail ou recuperação): estado e, desligado, o botão para usar. */
+function MethodRow({
   icon,
   title,
   description,
@@ -144,18 +143,20 @@ function MethodCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border p-4">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <Badge variant={on ? "default" : "secondary"}>{on ? "Ligada" : "Desligada"}</Badge>
+    <div className="flex flex-col gap-2.5 py-3.5 sm:flex-row sm:items-center sm:justify-between first:pt-1 last:pb-1">
+      <div className="flex items-start gap-3 min-w-0">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground mt-0.5">
+          {icon}
+        </span>
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-foreground">{title}</p>
+            <Badge variant={on ? "default" : "secondary"}>{on ? "Ligada" : "Desligada"}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{description}</p>
-        {action ? <div className="pt-2">{action}</div> : null}
       </div>
+      {action ? <div className="shrink-0 self-start sm:self-center">{action}</div> : null}
     </div>
   );
 }
@@ -332,14 +333,17 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const waitingSend = emailStep && !sentTo;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={submit} noValidate className="contents">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>Segurança</DialogTitle>
-            <DialogDescription>Verificação em duas etapas no login.</DialogDescription>
-          </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col gap-0 overflow-hidden border-l border-border/60 p-0 shadow-2xl sm:max-w-md"
+      >
+        <SheetHeader className="shrink-0 border-b border-border/40 p-6 pb-4 pr-16 text-left">
+          <SheetTitle className="text-lg font-semibold text-foreground">Segurança</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">Verificação em duas etapas no login.</SheetDescription>
+        </SheetHeader>
 
+        <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DialogBody className="space-y-4">
             {view.kind === "loading" ? (
               <div className="flex justify-center py-6 text-muted-foreground">
@@ -360,63 +364,65 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
             ) : null}
 
             {view.kind === "overview" ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {!enabled ? (
                   <p className="text-sm text-muted-foreground">Escolha como receber o código depois da senha.</p>
                 ) : null}
-                <MethodCard
-                  icon={<Smartphone className="size-4" aria-hidden />}
-                  title="Aplicativo autenticador"
-                  description={status.app ? "O login pede o código do aplicativo." : "Mais seguro. Código no app do celular."}
-                  on={status.app}
-                  action={
-                    status.app ? undefined : (
-                      <Button type="button" variant="outline" onClick={startAppEnrollment} disabled={pending}>
-                        Usar aplicativo
-                      </Button>
-                    )
-                  }
-                />
-                <MethodCard
-                  icon={<Mail className="size-4" aria-hidden />}
-                  title="Código por e-mail"
-                  description={
-                    status.email
-                      ? `O código vai para ${status.maskedEmail}.`
-                      : "Mais simples. Código no seu e-mail."
-                  }
-                  on={status.email}
-                  action={
-                    status.email ? undefined : (
-                      <Button type="button" variant="outline" onClick={() => go({ kind: "enroll-email" })} disabled={pending}>
-                        Usar e-mail
-                      </Button>
-                    )
-                  }
-                />
-
-                {enabled ? (
-                  <MethodCard
-                    icon={<KeyRound className="size-4" aria-hidden />}
-                    title="Códigos de recuperação"
-                    description={
-                      status.recoveryLeft > 0
-                        ? `${status.recoveryLeft} ${status.recoveryLeft === 1 ? "código vale" : "códigos valem"}. Servem se você perder o aplicativo ou o e-mail.`
-                        : "Você não tem códigos valendo. Gere novos e guarde em lugar seguro."
-                    }
-                    on={status.recoveryLeft > 0}
+                <div className="divide-y divide-border/60">
+                  <MethodRow
+                    icon={<Smartphone className="size-4" aria-hidden />}
+                    title="Aplicativo autenticador"
+                    description={status.app ? "O login pede o código do aplicativo." : "Mais seguro. Código no app do celular."}
+                    on={status.app}
                     action={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => go({ kind: "regenerate", method: status.app ? "app" : "email" })}
-                        disabled={pending}
-                      >
-                        Gerar novos códigos
-                      </Button>
+                      status.app ? undefined : (
+                        <Button type="button" variant="outline" onClick={startAppEnrollment} disabled={pending}>
+                          Usar aplicativo
+                        </Button>
+                      )
                     }
                   />
-                ) : null}
+                  <MethodRow
+                    icon={<Mail className="size-4" aria-hidden />}
+                    title="Código por e-mail"
+                    description={
+                      status.email
+                        ? `O código vai para ${status.maskedEmail}.`
+                        : "Mais simples. Código no seu e-mail."
+                    }
+                    on={status.email}
+                    action={
+                      status.email ? undefined : (
+                        <Button type="button" variant="outline" onClick={() => go({ kind: "enroll-email" })} disabled={pending}>
+                          Usar e-mail
+                        </Button>
+                      )
+                    }
+                  />
+
+                  {enabled ? (
+                    <MethodRow
+                      icon={<KeyRound className="size-4" aria-hidden />}
+                      title="Códigos de recuperação"
+                      description={
+                        status.recoveryLeft > 0
+                          ? `${status.recoveryLeft} ${status.recoveryLeft === 1 ? "código vale" : "códigos valem"}. Servem se você perder o aplicativo ou o e-mail.`
+                          : "Você não tem códigos valendo. Gere novos e guarde em lugar seguro."
+                      }
+                      on={status.recoveryLeft > 0}
+                      action={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => go({ kind: "regenerate", method: status.app ? "app" : "email" })}
+                          disabled={pending}
+                        >
+                          Gerar novos códigos
+                        </Button>
+                      }
+                    />
+                  ) : null}
+                </div>
 
                 {enabled ? (
                   <div className="space-y-2 pt-2">
@@ -627,7 +633,7 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
             ) : null}
           </DialogBody>
 
-          <DialogFooter className="shrink-0">
+          <div className="shrink-0 border-t border-border/40 bg-background p-6 pt-4 flex items-center justify-end gap-2">
             {isForm ? (
               <>
                 <Button type="button" variant="outline" disabled={pending} onClick={() => go({ kind: "overview" })}>
@@ -675,9 +681,11 @@ export function TwoFactorDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 Fechar
               </Button>
             )}
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export const TwoFactorDrawer = TwoFactorDialog;
