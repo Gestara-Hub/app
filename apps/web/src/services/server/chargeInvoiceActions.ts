@@ -44,6 +44,8 @@ export interface CreatePublicPaymentResult {
   pixCopyPaste?: string;
   linkUrl?: string;
   expiresAt?: string;
+  /** Valor do codigo gerado (com a taxa repassada, quando ha): o que o aluno paga. */
+  amountCents?: number;
 }
 
 type Row = Record<string, unknown>;
@@ -183,7 +185,7 @@ export async function createPublicChargePaymentAction(input: {
   // Ja existe um codigo valido na mesma forma: devolve o mesmo.
   const { data: existing, error: existingError } = await admin
     .from("online_payments")
-    .select("id, method, pix_copy_paste, link_url, public_code, expires_at")
+    .select("id, method, pix_copy_paste, link_url, public_code, expires_at, amount_cents")
     .eq("charge_id", chargeId)
     .eq("method", method)
     .eq("status", "awaiting")
@@ -200,6 +202,7 @@ export async function createPublicChargePaymentAction(input: {
       pixCopyPaste: existing.pix_copy_paste ? String(existing.pix_copy_paste) : undefined,
       linkUrl: existing.link_url ? String(existing.link_url) : undefined,
       expiresAt: new Date(String(existing.expires_at)).toISOString(),
+      amountCents: Number(existing.amount_cents) || undefined,
     };
   }
 
@@ -293,6 +296,7 @@ export async function createPublicChargePaymentAction(input: {
     pixCopyPaste: provided.pixCopyPaste,
     linkUrl: provided.linkUrl,
     expiresAt: provided.expiresAt,
+    amountCents: chargedAmountCents,
   };
 }
 

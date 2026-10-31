@@ -198,6 +198,8 @@ export interface ChargeInvoiceView {
     linkUrl?: string;
     publicCode?: string;
     expiresAt: string;
+    /** O que este codigo cobra (achado V11 de 31/10/2026: a tela mostrava o valor da regra padrao). */
+    amountCents?: number;
   };
   acceptedMethods: OnlinePaymentMethod[];
   amountsByMethod: Partial<Record<OnlinePaymentMethod, number>>;
@@ -230,7 +232,7 @@ export async function loadChargeInvoice(
         .maybeSingle(),
       admin
         .from("online_payments")
-        .select("id, method, status, pix_copy_paste, link_url, public_code, expires_at")
+        .select("id, method, status, pix_copy_paste, link_url, public_code, expires_at, amount_cents")
         .eq("charge_id", chargeId)
         .eq("status", "awaiting")
         .gt("expires_at", now.toISOString())
@@ -388,6 +390,7 @@ export async function loadChargeInvoice(
       linkUrl: existingPaymentRow.link_url ? String(existingPaymentRow.link_url) : undefined,
       publicCode: existingPaymentRow.public_code ? String(existingPaymentRow.public_code) : undefined,
       expiresAt: new Date(String(existingPaymentRow.expires_at)).toISOString(),
+      amountCents: Number(existingPaymentRow.amount_cents) || undefined,
     };
   }
 

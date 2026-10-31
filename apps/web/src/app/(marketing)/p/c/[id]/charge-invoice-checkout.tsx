@@ -113,6 +113,7 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
           method: "pix",
           pixCopyPaste: res.pixCopyPaste,
           expiresAt: res.expiresAt || "",
+          amountCents: res.amountCents,
         });
       } else if (res.linkUrl) {
         window.location.href = res.linkUrl;
@@ -156,8 +157,9 @@ export function ChargeInvoiceCheckout({ invoice }: { invoice: ChargeInvoiceView 
 
   // 2. Tela de Pix Gerado (QR Code + Copia e Cola)
   if (activePayment?.pixCopyPaste) {
+    // O valor do proprio codigo: o Pix pode ter sido gerado com outra regra de repasse.
     const formattedAmount = formatCents(
-      invoice.amountsByMethod.pix ?? invoice.amountCents,
+      activePayment.amountCents ?? invoice.amountsByMethod.pix ?? invoice.amountCents,
     );
 
     return (
