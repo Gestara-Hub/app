@@ -109,7 +109,7 @@ function label(m: Pick<StudentMeasurement, "studentId" | "modalityId">): string 
   return `${studentOf(m.studentId).name} · ${modalityName(m.modalityId)}`;
 }
 
-export const measurementsService = {
+export const measurementsServiceImpl = {
   /**
    * Testes e medidas do aluno, por modalidade com medidas ligadas em que ele
    * tem turma ativa ou alguma avaliacao: evolucao de cada medida e historico.

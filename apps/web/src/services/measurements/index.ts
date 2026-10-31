@@ -1,5 +1,5 @@
 import { delegateAll } from "../world/delegate";
-import { measurementsService as measurementsServiceImpl } from "./measurementsService";
+import { measurementsServiceImpl } from "./measurementsService";
 
 export { measurementsServiceImpl };
 

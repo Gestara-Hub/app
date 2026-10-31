@@ -1,4 +1,5 @@
 import type { MeasureProgress, ModalityMeasure, StudentMeasurement } from "@gestarahub/contracts";
+import { parseDecimal } from "@gestarahub/core/format";
 
 /**
  * Testes e medidas dos alunos (doc 21 §2.4, fase B de 31/10/2026): validacao
@@ -15,17 +16,10 @@ const MAX_ABS_VALUE = 100_000;
 
 export type MeasureCheck<T> = { ok: true; value: T } | { ok: false; message: string };
 
-function toNumber(raw: unknown): number | null {
-  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-  if (typeof raw !== "string") return null;
-  const text = raw.trim().replace(",", ".");
-  if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
-  return Number(text);
-}
 
 /** Valor de uma medida: numero com ate duas casas decimais (pode ser negativo, como no alcance). */
 export function normalizeMeasureValue(raw: unknown): MeasureCheck<number> {
-  const n = toNumber(raw);
+  const n = parseDecimal(raw);
   if (n === null) return { ok: false, message: "Use um número, como 12,5." };
   if (Math.abs(n) > MAX_ABS_VALUE) return { ok: false, message: "Número grande demais." };
   if (Math.round(n * 100) / 100 !== n) return { ok: false, message: "Use no máximo duas casas decimais." };

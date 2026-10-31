@@ -1,5 +1,6 @@
 "use client";
 
+import { PillTabs } from "@/components/shared/pill-tabs";
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { Pencil, Plus, Ruler, Trash2 } from "lucide-react";
@@ -214,27 +215,11 @@ function MeasurementsContent({
   }
   return (
     <div className="space-y-4">
-      {modalities.length > 1 ? (
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Modalidade">
-          {modalities.map((m) => (
-            <button
-              key={m.modalityId}
-              type="button"
-              role="tab"
-              aria-selected={m.modalityId === active.modalityId}
-              onClick={() => setSelected(m.modalityId)}
-              className={cn(
-                "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                m.modalityId === active.modalityId
-                  ? "border-foreground/50 bg-foreground/5 text-foreground"
-                  : "text-muted-foreground hover:bg-accent/50",
-              )}
-            >
-              {m.modalityName}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <PillTabs
+        tabs={modalities.map((m) => ({ value: m.modalityId, label: m.modalityName }))}
+        value={active.modalityId}
+        onChange={setSelected}
+      />
       <ModalityMeasurements key={active.modalityId} studentId={studentId} studentName={studentName} modality={active} />
     </div>
   );

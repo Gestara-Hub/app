@@ -62,3 +62,15 @@ export function plural(count: number, singular: string, pluralForm: string): str
 export function pluralWord(count: number, singular: string, pluralForm: string): string {
   return count === 1 ? singular : pluralForm;
 }
+
+/**
+ * Numero digitado com virgula ou ponto ("7,5", "7.5", "-3"); `null` se nao for
+ * numero. Um so leitor para notas, pontos e medidas (revisao geral de 31/10/2026).
+ */
+export function parseDecimal(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== "string") return null;
+  const text = raw.trim().replace(",", ".");
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
+  return Number(text);
+}

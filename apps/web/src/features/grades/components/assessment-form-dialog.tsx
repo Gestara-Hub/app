@@ -9,6 +9,7 @@ import { z } from "zod";
 import { toast } from "@/lib/toast";
 import type { AssessmentView, Id, ModalityAssessmentSettings, ModalityProgressionTrack } from "@gestarahub/contracts";
 import { scaleMax, usesPointsSum, validatePoints, validateWeight } from "@gestarahub/core/grades";
+import { parseDecimal } from "@gestarahub/core/format";
 import { todayISO } from "@gestarahub/core/date";
 import {
   DateField,
@@ -76,7 +77,7 @@ function toDefaults(assessment?: AssessmentView): Values {
   };
 }
 
-const toNumber = (raw: string) => Number(raw.trim().replace(",", "."));
+const toNumber = (raw: string) => parseDecimal(raw) ?? Number.NaN;
 
 function AssessmentForm({
   classGroupId,

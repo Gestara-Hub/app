@@ -1,5 +1,6 @@
 "use client";
 
+import { PillTabs } from "@/components/shared/pill-tabs";
 import { useMemo, useState } from "react";
 import { addDays, differenceInCalendarDays, parseISO } from "date-fns";
 import type {
@@ -13,7 +14,6 @@ import type {
 } from "@gestarahub/contracts";
 import { BeltBadge } from "@/components/shared/belt-badge";
 import { currentLevelOf, resolveModalityTrack, resolveTrackStyle } from "@/lib/progression-tracks";
-import { cn } from "@/lib/utils";
 import { useStudentProgressionOverview } from "../hooks/use-clients";
 
 /**
@@ -117,26 +117,18 @@ export function ModalityPicker({
 }) {
   if (items.length < 2) return null;
   return (
-    <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Modalidade">
-      {items.map((item) => {
+    <PillTabs
+      value={activeId}
+      onChange={onSelect}
+      tabs={items.map((item) => {
         const track = resolveModalityTrack(item.modality);
         const style = resolveTrackStyle(track);
         const level = levelOf(track, item.progression, age);
-        const selected = item.modality.id === activeId;
-        return (
-          <button
-            key={item.modality.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onSelect(item.modality.id)}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              selected ? "border-foreground/50 bg-foreground/5 text-foreground" : "text-muted-foreground hover:bg-accent/50",
-            )}
-          >
-            {item.modality.name}
-            {level && (style === "belt" || level.color) ? (
+        return {
+          value: item.modality.id,
+          label: item.modality.name,
+          extra:
+            level && (style === "belt" || level.color) ? (
               <BeltBadge
                 name={level.name}
                 color={level.color}
@@ -146,10 +138,9 @@ export function ModalityPicker({
                 size="xs"
                 showLabel={false}
               />
-            ) : null}
-          </button>
-        );
+            ) : null,
+        };
       })}
-    </div>
+    />
   );
 }

@@ -8,6 +8,7 @@ import type {
   ModalityAssessmentSettings,
   PassFailGrade,
 } from "@gestarahub/contracts";
+import { parseDecimal } from "@gestarahub/core/format";
 
 /**
  * Notas dos alunos (doc 21 §2.1, fase 1): escala, validacao, media ponderada e
@@ -91,13 +92,6 @@ export function roundHalfUp(value: number, decimals = 0): number {
 
 export type GradeCheck = { ok: true; value: GradeValue } | { ok: false; message: string };
 
-function toNumber(raw: unknown): number | null {
-  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-  if (typeof raw !== "string") return null;
-  const text = raw.trim().replace(",", ".");
-  if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
-  return Number(text);
-}
 
 /**
  * Valida e normaliza uma nota na escala. Aceita numero ou texto ("7,5", "7.5",
@@ -112,14 +106,14 @@ export function normalizeGrade(scale: AssessmentScale, raw: unknown, max?: numbe
   switch (scale) {
     case "zero_ten": {
       const top = max ?? 10;
-      const n = toNumber(raw);
+      const n = parseDecimal(raw);
       if (n === null || n < 0 || n > top) return { ok: false, message: `A nota vai de 0 a ${decimal(top, 1)}.` };
       if (roundHalfUp(n, 1) !== n) return { ok: false, message: "Use no máximo uma casa decimal." };
       return { ok: true, value: n };
     }
     case "zero_hundred": {
       const top = max ?? 100;
-      const n = toNumber(raw);
+      const n = parseDecimal(raw);
       if (n === null || n < 0 || n > top) return { ok: false, message: `A nota vai de 0 a ${decimal(top, 0)}.` };
       if (!Number.isInteger(n)) return { ok: false, message: "Use uma nota inteira." };
       return { ok: true, value: n };
@@ -374,7 +368,7 @@ export function averagesByLevel(
 
 /** Peso valido: maior que zero, ate 100, no maximo uma casa decimal. */
 export function validateWeight(raw: unknown): { ok: true; value: number } | { ok: false; message: string } {
-  const n = toNumber(raw);
+  const n = parseDecimal(raw);
   if (n === null || n <= 0) return { ok: false, message: "O peso precisa ser maior que zero." };
   if (n > MAX_ASSESSMENT_WEIGHT) return { ok: false, message: `O peso vai até ${MAX_ASSESSMENT_WEIGHT}.` };
   if (roundHalfUp(n, 1) !== n) return { ok: false, message: "Use no máximo uma casa decimal no peso." };
@@ -387,7 +381,7 @@ export function validateWeight(raw: unknown): { ok: true; value: number } | { ok
  */
 export function validatePoints(scale: AssessmentScale, raw: unknown): { ok: true; value: number } | { ok: false; message: string } {
   const top = scaleMax(scale) ?? 100;
-  const n = toNumber(raw);
+  const n = parseDecimal(raw);
   if (n === null || n <= 0) return { ok: false, message: "Informe quanto a avaliação vale." };
   if (n > top) return { ok: false, message: `Vale no máximo ${decimal(top, 1)} pontos.` };
   const decimals = scale === "zero_ten" ? 1 : 0;
@@ -399,7 +393,7 @@ export function validatePoints(scale: AssessmentScale, raw: unknown): { ok: true
 
 /** Frequencia minima valida: inteiro de 1 a 100 (%). */
 export function validateMinAttendance(raw: unknown): { ok: true; value: number } | { ok: false; message: string } {
-  const n = toNumber(raw);
+  const n = parseDecimal(raw);
   if (n === null || !Number.isInteger(n) || n < 1 || n > 100) {
     return { ok: false, message: "Use um número inteiro de 1 a 100." };
   }
