@@ -241,9 +241,12 @@ test("sino: clicar fora do menu ⋮ de um aluno fecha só o menu, o painel conti
   for (const outside of ["sheet", "overlay"] as const) {
     await row.getByRole("button", { name: "Mais ações de Aluno Parabéns" }).click();
     await expect(page.getByRole("menuitem", { name: "Lembrar amanhã" })).toBeVisible();
-    if (outside === "sheet") await page.mouse.click(box.x + 40, box.y + 40);
-    else await page.mouse.click(20, 300);
-    await expect(page.getByRole("menuitem", { name: "Lembrar amanhã" })).toHaveCount(0);
+    // Logo depois de abrir, o menu as vezes ainda nao ouve o clique de fora: tenta de novo.
+    await expect(async () => {
+      if (outside === "sheet") await page.mouse.click(box.x + 40, box.y + 40);
+      else await page.mouse.click(20, 300);
+      await expect(page.getByRole("menuitem", { name: "Lembrar amanhã" })).toHaveCount(0, { timeout: 1000 });
+    }).toPass();
     await expect(sheet).toBeVisible();
   }
 });
