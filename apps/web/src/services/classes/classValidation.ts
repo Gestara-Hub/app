@@ -1,3 +1,5 @@
+import { can } from "@/lib/permissions";
+import { getCurrentActor } from "@/services/world/actor";
 import { isIsoDate } from "@gestarahub/core/date";
 import type {
   ApiErrorField,
@@ -216,7 +218,12 @@ export function resolveCourseChoice(g: ClassGroup, choice?: EnrollmentCourseChoi
     fields.push({ field: "course.firstDueDate", message: "Informe o 1º vencimento." });
   }
   if (fields.length > 0) throw validationError(fields);
-  return { priceCents: choice.priceCents, installments: choice.installments, firstDueDate: choice.firstDueDate };
+  // Preco do curso diferente do da turma so com a permissao de cobrancas; quem
+  // matricula sem ela fica com o da turma (achado V10 de 31/10/2026).
+  const actor = getCurrentActor();
+  const mayAdjust = !actor || can(actor.profile, "billing:manage");
+  const priceCents = mayAdjust || !g.coursePriceCents ? choice.priceCents : g.coursePriceCents;
+  return { priceCents, installments: choice.installments, firstDueDate: choice.firstDueDate };
 }
 
 export function validateGroup(payload: Partial<CreateClassGroup>, currentGroupId?: Id): void {

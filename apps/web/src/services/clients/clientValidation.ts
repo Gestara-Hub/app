@@ -1,3 +1,5 @@
+import { can } from "@/lib/permissions";
+import { getCurrentActor } from "@/services/world/actor";
 import type { ApiErrorField, Client, CreateClient, DateISO } from "@gestarahub/contracts";
 import { formatCents } from "@gestarahub/core/format";
 import { store } from "@/services/world/store";
@@ -72,4 +74,16 @@ export function assertRecordDate(date: DateISO): void {
   if (date > todayISO()) {
     throw validationError([{ field: "date", message: "Registre a aula no dia dela ou depois." }]);
   }
+}
+
+/**
+ * Desconto e bolsa sao dinheiro: so quem tem a permissao de cobrancas da ou
+ * muda (revisao geral de 31/10/2026, achado V10; mesma regra da 1a
+ * mensalidade). Sem ator (scripts) passa.
+ */
+export function assertCanSetDiscount(next: Client["discount"] | undefined, current?: Client["discount"]): void {
+  const actor = getCurrentActor();
+  if (!actor || can(actor.profile, "billing:manage")) return;
+  if (JSON.stringify(next ?? null) === JSON.stringify(current ?? null)) return;
+  throw validationError([{ field: "discount", message: "Desconto e bolsa só com a permissão de cobranças." }]);
 }

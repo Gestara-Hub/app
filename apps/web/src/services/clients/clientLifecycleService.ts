@@ -21,7 +21,7 @@ import {
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
 import { consentFieldsFor } from "./clientConsentRules";
-import { validateClient } from "./clientValidation";
+import { validateClient, assertCanSetDiscount } from "./clientValidation";
 
 /** Edicao (com efeitos na cobranca) e inativacao do aluno. */
 export const clientLifecycleService = {
@@ -33,6 +33,7 @@ export const clientLifecycleService = {
       if (idx === -1) throw notFoundError(NOT_FOUND);
       current = store.clients[idx];
       validateClient(payload, { partial: true, current });
+      if (Object.prototype.hasOwnProperty.call(payload, "discount")) assertCanSetDiscount(payload.discount, current.discount);
       const ts = nowIso();
       // A 1a mensalidade do formulario vira cobranca abaixo; nao fica no cadastro.
       // Id, espaco e datas, a graduacao (permissao propria, pelo servico de

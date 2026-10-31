@@ -63,3 +63,27 @@ describe("1ª mensalidade do cadastro", () => {
     expect(first.amountCents).not.toBe(9000);
   });
 });
+
+describe("desconto, bolsa e preço do curso (achado V10 de 31/10/2026)", () => {
+  it("atendente não dá desconto nem bolsa; o dono dá", async () => {
+    const plan = await createPlan("monthly", 15000);
+    setCurrentActor({ userId: "usr-atendente", name: "Atendente", profile: "attendant" });
+    await expect(
+      clientsService.create({ ...base(plan.id), discount: { type: "percentage", value: 100, scholarship: true } }),
+    ).rejects.toMatchObject({ fields: [{ field: "discount", message: "Desconto e bolsa só com a permissão de cobranças." }] });
+    const plain = await clientsService.create({ ...base(plan.id), name: "Bia" });
+    await expect(
+      clientsService.update(plain.id, { discount: { type: "fixed", value: 5000 } }),
+    ).rejects.toMatchObject({ fields: [{ field: "discount" }] });
+    // Mudar outro campo, sem mexer no desconto, segue valendo.
+    await expect(clientsService.update(plain.id, { notes: "Faixa azul" })).resolves.toBeTruthy();
+
+    setCurrentActor({ userId: "usr-dono", name: "Dono", profile: "owner" });
+    const scholar = await clientsService.create({
+      ...base(plan.id),
+      name: "Caio",
+      discount: { type: "percentage", value: 50, scholarship: true },
+    });
+    expect(scholar.discount?.value).toBe(50);
+  });
+});

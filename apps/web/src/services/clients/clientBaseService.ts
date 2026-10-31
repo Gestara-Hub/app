@@ -14,7 +14,7 @@ import { auditLogService } from "../audit/auditLogService";
 import { clientNoun } from "../world/nouns";
 import { alignFullCycleDueDay, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
-import { validateClient } from "./clientValidation";
+import { assertCanSetDiscount, validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
 import { teacherStudentIds } from "../classes/teacherScope";
 import { clientWithoutMoney } from "./studentSummaryRules";
@@ -99,6 +99,7 @@ export const clientBaseService = {
   create(payload: CreateClient): Promise<Client> {
     return writeOp(async () => {
       validateClient(payload, { partial: false });
+      assertCanSetDiscount(payload.discount);
 
       const ts = nowIso();
       const client: Client = {
