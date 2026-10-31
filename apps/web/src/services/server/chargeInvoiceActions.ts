@@ -20,6 +20,7 @@ import { getPaymentGateway } from "@/services/payments/registry";
 import { cancelGatewayPayment } from "@/services/onlinePayments/gatewayCleanup";
 import { realSubaccountKey } from "@/services/onlinePayments/gatewaySetup";
 import { newPublicCode } from "@/services/onlinePayments/onlinePaymentRules";
+import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 /**
  * Fatura publica da cobranca (/p/c/<id>, doc technical/25 §7): o aluno escolhe
@@ -142,6 +143,15 @@ export async function createPublicChargePaymentAction(input: {
   const chargeId = String(input?.chargeId ?? "");
   const method = input?.method;
   if (!chargeId || !method) return { ok: false, error: "Dados inválidos." };
+
+  // Pagina publica (auditoria de 30/10/2026): cada pedido cria um pagamento no
+  // parceiro e cancela o anterior. Sem limite, alternar a forma gerava e
+  // cancelava sem parar (e podia cancelar o Pix que o aluno estava pagando).
+  const ip = await getClientIp().catch(() => "desconhecido");
+  const allowed =
+    (await checkRateLimit({ key: `public_invoice:${ip}:${chargeId}`, maxRequests: 6, windowSeconds: 600 })) &&
+    (await checkRateLimit({ key: `public_invoice_charge:${chargeId}`, maxRequests: 15, windowSeconds: 3600 }));
+  if (!allowed) return { ok: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
 
   const admin = createSupabaseAdminClient();
   const now = new Date();

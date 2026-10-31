@@ -1,6 +1,7 @@
 "use server";
 
 import { requireTenant } from "@/services/server/tenant";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/features/auth/get-current-user";
@@ -34,16 +35,29 @@ export async function confirmMinorConsentAction(
   const ipAddress = rawIp.split(",")[0].trim();
   const userAgent = headerList.get("user-agent") || "unknown";
 
+  // Pagina publica (auditoria de 30/10/2026): limite por IP, so registra o que
+  // ainda esta pendente (nao sobrescreve uma autorizacao dada) e texto com tamanho maximo.
+  if (!(await checkRateLimit({ key: `minor_consent:${ipAddress}`, maxRequests: 10, windowSeconds: 3600 }))) {
+    return { success: false, error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  }
+  const tooLong = (value: string | undefined, max: number) => (value ?? "").trim().length > max;
+  if (tooLong(input.guardianName, 120) || tooLong(input.guardianPhone, 20) || tooLong(input.relationship, 60)) {
+    return { success: false, error: "Confira os dados digitados." };
+  }
+
   const adminClient = createSupabaseAdminClient();
 
   const { data: student, error: studentErr } = await adminClient
     .from("clients")
-    .select("id, organization_id, name, guardians")
+    .select("id, organization_id, name, guardians, minor_consent_status")
     .eq("id", input.studentId)
     .maybeSingle();
 
   if (studentErr || !student) {
     return { success: false, error: "Aluno não encontrado." };
+  }
+  if (student.minor_consent_status === "confirmed_whatsapp" || student.minor_consent_status === "confirmed_paper") {
+    return { success: false, error: "A autorização deste aluno já está registrada." };
   }
 
   const acceptedAt = new Date().toISOString();
@@ -93,7 +107,8 @@ export async function confirmMinorConsentAction(
         acceptedAt,
       },
     })
-    .eq("id", student.id);
+    .eq("id", student.id)
+    .not("minor_consent_status", "in", "(confirmed_whatsapp,confirmed_paper)");
 
   return { success: true };
 }

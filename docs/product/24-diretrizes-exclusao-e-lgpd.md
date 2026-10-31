@@ -132,6 +132,7 @@ Toda página aberta sem login (link que circula por WhatsApp: fatura da cobranç
 Também valem nessas páginas:
 - Formulário não vem preenchido com dado pessoal: no termo do responsável, quem assina digita o próprio nome e telefone (o nome digitado vai para a prova do consentimento).
 - Página pública não grava no cadastro: o CPF digitado na fatura vale só para aquela cobrança.
+- **Limites contra abuso (30/10/2026, auditoria):** a fatura pública aceita até 6 pedidos de pagamento por IP e cobrança a cada 10 minutos e 15 por cobrança por hora (cada pedido cria um pagamento no parceiro e cancela o anterior). O termo do responsável aceita até 10 envios por IP por hora, texto com tamanho máximo, e **não sobrescreve uma autorização já registrada** (termo impresso ou pelo WhatsApp). O link do termo segue sem prazo (é o id do aluno, impossível de adivinhar); depois de autorizado, deixa de valer.
 
 ### Contexto
 Quem tem o link nem sempre é o aluno: o link é encaminhado, fica no histórico do WhatsApp e no navegador. Antes, a fatura mostrava o nome completo do aluno, e o termo mostrava o nome completo e o nascimento da criança e o telefone do responsável.
