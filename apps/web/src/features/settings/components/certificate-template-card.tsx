@@ -464,10 +464,12 @@ function CertificateTemplateForm({
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-sm">Layout</Label>
+                  {/* Cartoes 2x2: na coluna estreita do editor, 4 opcoes lado a lado ficavam espremidas. */}
                   <SegmentedChoiceField<Values>
                     name="layout"
                     options={LAYOUT_OPTIONS}
                     ariaLabel="Layout"
+                    variant="cards"
                     disabled={pending}
                   />
                 </div>
