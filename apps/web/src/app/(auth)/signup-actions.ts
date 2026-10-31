@@ -731,13 +731,12 @@ export async function persistSetupToBackendAction(input: {
       })
       .eq("id", orgId);
 
+    // So o nome: o assistente nao edita telefone nem endereco, e regravar o que
+    // veio do navegador (sem conferir) ja deixou um telefone de 16 digitos salvo
+    // (revisao de Configuracoes, 31/10/2026). Os dois mudam pela aba Geral.
     await admin
       .from("units")
-      .update({
-        name: input.unit.name,
-        address: input.unit.address ?? null,
-        phone: input.unit.phone ?? null,
-      })
+      .update({ name: input.unit.name })
       .eq("organization_id", orgId);
 
     if (input.categories.length > 0) {

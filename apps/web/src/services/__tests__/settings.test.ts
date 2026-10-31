@@ -32,6 +32,31 @@ describe("dados da organizacao", () => {
     await settingsService.updateOrganization({ name: "Academia Y" });
     expect(store.organization.settings?.defaultDueDay).toBe(10);
   });
+
+  it("settings junta as chaves: a aba Cobranca nao apaga o fuso salvo pela Geral", async () => {
+    await settingsService.updateOrganization({ settings: { timeZone: "America/Manaus" } });
+    await settingsService.updateOrganization({ settings: { billingTiming: "postpaid", defaultDueDay: 5 } });
+    expect(store.organization.settings).toMatchObject({
+      timeZone: "America/Manaus",
+      billingTiming: "postpaid",
+      defaultDueDay: 5,
+    });
+  });
+});
+
+describe("dados da unidade", () => {
+  beforeEach(() => resetAcademy());
+
+  it("telefone invalido e recusado no servico (a tela tambem confere)", async () => {
+    await expect(settingsService.updateUnit({ phone: "+551389977084195435" })).rejects.toMatchObject({
+      code: "VALIDATION",
+      fields: [{ field: "phone", message: "Telefone inválido." }],
+    });
+    const unit = await settingsService.updateUnit({ phone: "+5513997708419" });
+    expect(unit.phone).toBe("+5513997708419");
+    // Vazio apaga o telefone.
+    expect((await settingsService.updateUnit({ phone: "" })).phone).toBeUndefined();
+  });
 });
 
 describe("area do espaco e textos das mensagens", () => {

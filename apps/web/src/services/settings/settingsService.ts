@@ -9,6 +9,7 @@ import type {
   Unit,
   User,
 } from "@gestarahub/contracts";
+import { isPossiblePhone } from "@gestarahub/core/phone";
 import { hydrateTenantStore, persist, setActiveOrganization, store } from "@/mocks/store";
 import { unwrap } from "../server/action";
 import { serviceAction } from "../world/serviceActions";
@@ -94,7 +95,12 @@ const settingsServiceImpl = {
             ? payload.segment.trim() || store.organization.segment
             : store.organization.segment,
         model: payload.model || store.organization.model,
-        settings: payload.settings !== undefined ? payload.settings : store.organization.settings,
+        // Junta com o que ja esta salvo: cada aba de Configuracoes manda so as
+        // chaves dela (Geral o fuso, Cobranca as regras), sem apagar as outras.
+        settings:
+          payload.settings !== undefined
+            ? { ...store.organization.settings, ...payload.settings }
+            : store.organization.settings,
       };
       if (store.organization.classSegment !== previousSegment) {
         syncTemplatesWithSegment(previousSegment);
@@ -129,6 +135,11 @@ const settingsServiceImpl = {
     return writeOp(async () => {
       if ((payload.name?.trim().length ?? 0) > MAX_NAME) {
         throw validationError([{ field: "unitName", message: "Use até 80 caracteres." }]);
+      }
+      // O servidor confere o telefone tambem: so a tela conferia, e um numero de
+      // 16 digitos chegou a ser gravado (revisao de Configuracoes, 31/10/2026).
+      if (typeof payload.phone === "string" && payload.phone.trim() && !isPossiblePhone(payload.phone)) {
+        throw validationError([{ field: "phone", message: "Telefone inválido." }]);
       }
       store.unit = {
         ...store.unit,
