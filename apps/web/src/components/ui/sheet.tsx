@@ -5,7 +5,12 @@ import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { DialogDirtyProvider, useDiscardGuard } from "@/components/ui/dialog"
+import {
+  DialogDirtyProvider,
+  isInsideAnotherDialog,
+  useDiscardGuard,
+  useOutsideClickGuard,
+} from "@/components/ui/dialog"
 
 /** Mesmo "Descartar alteracoes?" do Dialog: formulario em painel lateral tambem pede confirmacao. */
 function Sheet({
@@ -65,15 +70,19 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   onOpenAutoFocus,
+  onInteractOutside,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const [outsideGuardId, startedCovered] = useOutsideClickGuard()
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        data-outside-guard={outsideGuardId}
         data-slot="sheet-content"
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
@@ -97,21 +106,22 @@ function SheetContent({
         }}
         onInteractOutside={(e) => {
           const target = e.target as HTMLElement | null
-          if (target?.closest?.("[data-product-tour]")) {
+          if (target?.closest?.("[data-product-tour]") || isInsideAnotherDialog(e)) {
             e.preventDefault()
           }
-          props.onInteractOutside?.(e)
+          onInteractOutside?.(e)
         }}
         onPointerDownOutside={(e) => {
           const target = e.target as HTMLElement | null
           if (
             target?.closest?.("[data-sonner-toaster]") ||
             target?.closest?.("[data-sonner-toast]") ||
-            target?.closest?.("[data-product-tour]")
+            target?.closest?.("[data-product-tour]") ||
+            startedCovered(e)
           ) {
             e.preventDefault()
           }
-          props.onPointerDownOutside?.(e)
+          onPointerDownOutside?.(e)
         }}
         {...props}
       >

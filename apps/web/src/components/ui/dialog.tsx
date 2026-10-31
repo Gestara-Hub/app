@@ -163,6 +163,45 @@ export function useDiscardGuard(
 
 export const DialogDirtyProvider = DialogDirtyContext.Provider
 
+/**
+ * Toque ou foco numa janela aberta por cima, montada fora desta arvore React
+ * (a confirmacao do envio pelo WhatsApp oficial vive no layout): nao e "fora".
+ * O Radix so reconhece as camadas filhas na arvore; o foco nessa janela fechava
+ * a janela ou o painel de baixo (Lembretes no sino, 31/10/2026).
+ */
+export function isInsideAnotherDialog(event: Event): boolean {
+  const target = event.target as HTMLElement | null
+  return Boolean(target?.closest?.('[role="dialog"], [role="alertdialog"]'))
+}
+
+/**
+ * O Radix Dialog 1.1.17 adia o "clique fora" da janela modal para o `click`.
+ * Com um menu ou uma lista aberta por cima, o `pointerdown` fecha o menu e, no
+ * `click`, a janela ja e a camada de cima e fechava junto (menu ⋮ nos
+ * Lembretes, 31/10/2026). Coberta, a janela fica com `pointer-events: none`
+ * (regra do Radix): o toque que comecou assim nao conta como "fora".
+ */
+export function useOutsideClickGuard(): [
+  guardId: string,
+  startedCovered: (event: CustomEvent<{ originalEvent: PointerEvent }>) => boolean,
+] {
+  const guardId = React.useId()
+  const blockedRef = React.useRef(new WeakSet<Event>())
+  React.useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const node = document.querySelector<HTMLElement>(`[data-outside-guard="${guardId}"]`)
+      if (node?.style.pointerEvents === "none") blockedRef.current.add(event)
+    }
+    document.addEventListener("pointerdown", onPointerDown, true)
+    return () => document.removeEventListener("pointerdown", onPointerDown, true)
+  }, [guardId])
+  const startedCovered = React.useCallback(
+    (event: CustomEvent<{ originalEvent: PointerEvent }>) => blockedRef.current.has(event.detail.originalEvent),
+    []
+  )
+  return [guardId, startedCovered]
+}
+
 function Dialog({
   open,
   onOpenChange,
@@ -269,6 +308,7 @@ function DialogContent({
   )
   const isExpanded =
     controlledExpanded !== undefined ? controlledExpanded : uncontrolledExpanded
+  const [outsideGuardId, startedCovered] = useOutsideClickGuard()
 
   // No Chrome iOS (WKWebView), abrir o teclado virtual reduz `window.innerHeight`
   // e todas as unidades CSS (`vh`, `dvh`, `svh`), fazendo `max-h-[90vh]` cair para ~280px
@@ -334,6 +374,7 @@ function DialogContent({
       <DialogPortal data-slot="dialog-portal">
         <DialogOverlay />
         <DialogPrimitive.Content
+          data-outside-guard={outsideGuardId}
           data-slot="dialog-content"
           style={{
             ...(mobileMaxHeightPx && !isExpanded
@@ -367,13 +408,13 @@ function DialogContent({
             onOpenAutoFocus?.(e)
           }}
           onInteractOutside={(e) => {
-            if (!closeOnInteractOutside) {
+            if (!closeOnInteractOutside || isInsideAnotherDialog(e)) {
               e.preventDefault()
             }
             onInteractOutside?.(e)
           }}
           onPointerDownOutside={(e) => {
-            if (!closeOnInteractOutside) {
+            if (!closeOnInteractOutside || startedCovered(e)) {
               e.preventDefault()
             }
             const target = e.target as HTMLElement | null

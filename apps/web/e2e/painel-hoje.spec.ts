@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { classGroup, enrollment, expect, seedAcademy, skipWelcome, student, test } from "./fixtures";
+import type { Tenant } from "./geral-fixtures";
 
 /**
  * Dashboard "Lembretes" (doc product/25): um bloco no topo so com as pendencias do dia
@@ -37,7 +38,7 @@ const absence = (studentId: string, sessionId: string, status = "absent") => ({
  * - Aluno Parabéns: faz 31 anos hoje; Aluno Quinta: faz aniversario em 2 dias;
  * - Aluno Verde: 16 anos na faixa Verde (vai ate 15 anos).
  */
-async function seedTodo(page: Page) {
+async function seedTodo(page: Page, more?: (t: Tenant) => void) {
   await seedAcademy(page, {
     extra: (t) => {
       const noPlan = { planId: undefined };
@@ -92,6 +93,7 @@ async function seedTodo(page: Page) {
         absence("c-v", fri),
         absence("c-v", mon, "present"),
       ];
+      more?.(t);
     },
   });
   await skipWelcome(page);
@@ -219,6 +221,62 @@ test("sino no topo: o número de pendências e a mesma lista num painel lateral,
   await expect(row).toContainText("Parabéns enviado hoje");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Lembretes: 3 lembretes pendentes" })).toBeVisible();
+});
+
+/** Painel do sino aberto, com a linha dos aniversariantes aberta. */
+async function openBellBirthdays(page: Page) {
+  await page.goto("/classes");
+  await page.getByRole("button", { name: /^Lembretes:/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Lembretes" });
+  const row = sheet.getByRole("listitem").filter({ has: page.getByText("1 aniversariante hoje") }).first();
+  await row.getByRole("button", { name: "Ver" }).click();
+  return { sheet, row };
+}
+
+test("sino: clicar fora do menu ⋮ de um aluno fecha só o menu, o painel continua", async ({ page }) => {
+  await seedTodo(page);
+  const { sheet, row } = await openBellBirthdays(page);
+  // Com o menu aberto o painel fica oculto aos leitores de tela: o clique vai por coordenada.
+  const box = (await sheet.boundingBox())!;
+  for (const outside of ["sheet", "overlay"] as const) {
+    await row.getByRole("button", { name: "Mais ações de Aluno Parabéns" }).click();
+    await expect(page.getByRole("menuitem", { name: "Lembrar amanhã" })).toBeVisible();
+    if (outside === "sheet") await page.mouse.click(box.x + 40, box.y + 40);
+    else await page.mouse.click(20, 300);
+    await expect(page.getByRole("menuitem", { name: "Lembrar amanhã" })).toHaveCount(0);
+    await expect(sheet).toBeVisible();
+  }
+});
+
+test("sino com o WhatsApp oficial: cancelar ou enviar na confirmação não fecha o painel", async ({ page }) => {
+  await seedTodo(page, (t) => {
+    t.organization.subscription = { tier: "pro" };
+    t.unit.phone = "1140028922";
+    t.whatsAppConnection = {
+      organizationId: t.organization.id,
+      officialStatus: "connected",
+      phoneNumber: "551140028922",
+      displayName: "Academia X",
+      connectedAt: TS,
+      allowedSendHours: { start: "08:00", end: "20:00" },
+      monthlyQuota: { used: 0, included: 1000 },
+    };
+  });
+  const { sheet, row } = await openBellBirthdays(page);
+  const send = row.getByRole("button", { name: "Mandar parabéns para Aluno Parabéns no WhatsApp" });
+  const confirm = page.getByRole("alertdialog", { name: "Enviar para Aluno Parabéns?" });
+
+  await send.click();
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancelar" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(sheet).toBeVisible();
+
+  await send.click();
+  await confirm.getByRole("button", { name: "Enviar" }).click();
+  await expect(page.getByText("Mensagem enviada para Aluno Parabéns.")).toBeVisible();
+  await expect(sheet).toBeVisible();
+  await expect(row).toContainText("Parabéns enviado hoje");
 });
 
 test("sem pendências o bloco não aparece", async ({ page }) => {
