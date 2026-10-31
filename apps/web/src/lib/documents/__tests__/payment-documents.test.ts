@@ -49,6 +49,28 @@ describe("documentos de pagamento", () => {
     expect((await pdf(model)).subarray(0, 4).toString()).toBe("%PDF");
   });
 
+  // Revisao de valores de 30/10/2026: com a taxa repassada, o recibo mostrava so o valor da cobranca.
+  it("pago online com a taxa repassada: recibo com o valor pago, o da cobrança e a taxa", () => {
+    const model = paymentRecordDocument({
+      chargeId: "3f2a9c1e-0000-4000-8000-000000000000",
+      organizationName: "Academia Exemplo",
+      payer: { name: "Ana Souza" },
+      studentName: "Ana Souza",
+      label: "Mensalidade",
+      amountCents: 15328,
+      chargeAmountCents: 15000,
+      paidAt: "2026-10-05T13:00:00.000Z",
+      methodLabel: "Pix",
+      issuedAt: ISSUED,
+    });
+    const text = model.blocks[0];
+    expect(text.type === "text" && text.text).toMatch(/R\$\s153,28/);
+    const fields = model.blocks[1];
+    const labels = fields.type === "fields" ? fields.items.map((i) => [i.label, i.value]) : [];
+    expect(labels).toContainEqual(["Valor da cobrança", 15000]);
+    expect(labels).toContainEqual(["Taxa do pagamento online", 328]);
+  });
+
   it("declaração soma os pagamentos do ano", async () => {
     const model = paymentsStatementDocument({
       organizationName: "Academia Exemplo",

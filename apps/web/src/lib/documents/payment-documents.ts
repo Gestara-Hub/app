@@ -28,6 +28,8 @@ export interface PaymentRecordInput {
   label: string;
   competenceLabel?: string;
   amountCents: number;
+  /** Valor da cobranca, quando o pago foi maior (taxa do pagamento online repassada ao aluno). */
+  chargeAmountCents?: number;
   paidAt?: string;
   methodLabel?: string;
   issuedAt: string;
@@ -44,6 +46,12 @@ export function paymentRecordDocument(input: PaymentRecordInput): DocumentModel 
   const reference = [input.label, input.competenceLabel].filter(Boolean).join(" · ");
   const items: DocumentField[] = [
     { label: "Valor", value: input.amountCents, format: "money", strong: true },
+    ...(input.chargeAmountCents !== undefined && input.chargeAmountCents < input.amountCents
+      ? [
+          { label: "Valor da cobrança", value: input.chargeAmountCents, format: "money" as const },
+          { label: "Taxa do pagamento online", value: input.amountCents - input.chargeAmountCents, format: "money" as const },
+        ]
+      : []),
     { label: "Referente a", value: reference },
     ...(input.payer.name !== input.studentName ? [{ label: "Aluno", value: input.studentName }] : []),
     { label: "Pago em", value: input.paidAt, format: "datetime" },

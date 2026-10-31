@@ -87,11 +87,23 @@ export async function paymentRecordModel(chargeId: Id): Promise<DocumentModel> {
     payer: payerOf(student),
     studentName: student.name,
     ...chargeReference(charge),
-    amountCents: charge.amountCents,
+    amountCents: paidAmountOf(charge),
+    chargeAmountCents: charge.amountCents,
     paidAt: charge.paidAt,
     methodLabel: methodLabelOf(charge),
     issuedAt: new Date().toISOString(),
   });
+}
+
+/**
+ * Quanto a pessoa pagou: no pagamento online com a taxa repassada, o valor do
+ * Pix ou do link (maior que a cobranca). Revisao de valores de 30/10/2026: o
+ * recibo e a declaracao mostravam so o valor da cobranca.
+ */
+function paidAmountOf(charge: Charge): number {
+  if (charge.paidVia !== "online") return charge.amountCents;
+  const paid = store.onlinePayments.find((p) => p.chargeId === charge.id && p.status === "paid");
+  return paid && paid.amountCents > charge.amountCents ? paid.amountCents : charge.amountCents;
 }
 
 /** Declaracao dos pagamentos do aluno no ano (pelo dia em que pagou). */
@@ -111,7 +123,7 @@ export async function paymentsStatementModel(studentId: Id, year: number): Promi
         paidAt: String(c.paidAt),
         label: [reference.label, reference.competenceLabel].filter(Boolean).join(" · "),
         methodLabel: methodLabelOf(c),
-        amountCents: c.amountCents,
+        amountCents: paidAmountOf(c),
       };
     });
   return paymentsStatementDocument({
