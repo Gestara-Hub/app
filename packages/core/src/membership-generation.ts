@@ -37,6 +37,12 @@ export function membershipStartDate(student: Pick<Client, "planStartDate" | "cre
   return student.planStartDate || dateInSpace(student.createdAt);
 }
 
+/** Primeiro dia cobrado: o inicio ou, para o aluno antigo sem os meses passados, `chargesFrom`. */
+export function membershipBillingFrom(student: Pick<Client, "planStartDate" | "createdAt" | "chargesFrom">): DateISO {
+  const start = membershipStartDate(student);
+  return student.chargesFrom && student.chargesFrom > start ? student.chargesFrom : start;
+}
+
 /** Bolsista integral sem plano: gera mensalidades isentas. */
 export function isPlanlessScholar(student: Pick<Client, "planId" | "discount">): boolean {
   return !student.planId && Boolean(student.discount?.scholarship);
@@ -113,6 +119,7 @@ export function studentMembershipTerms(student: Client, plan: Plan, settings?: B
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
       discount: student.discount,
+      chargesFrom: student.chargesFrom,
     },
     settings,
   );
@@ -159,7 +166,7 @@ export function membershipCompetencesToGenerate(
   let from = current;
   for (const student of world.clients) {
     if (student.status !== "active") continue;
-    const start = membershipStartDate(student).slice(0, 7);
+    const start = membershipBillingFrom(student).slice(0, 7);
     if (start < from) from = start;
   }
   for (let month = parseISO(`${from}-01`); ; month = addMonths(month, 1)) {
@@ -204,6 +211,7 @@ export function planMembershipCharges(world: MembershipWorld, competences: strin
             strategy: student.billingStrategy,
             timing: student.cyclePaymentTiming,
             dueDay: student.dueDay,
+            chargesFrom: student.chargesFrom,
           },
           world.settings,
         );

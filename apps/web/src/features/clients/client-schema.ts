@@ -92,6 +92,8 @@ export const clientFormSchema = z.object({
   // Plano e Mensalidade (vínculo no aluno)
   planId: z.string().optional(),
   planStartDate: z.string().optional(),
+  /** Aluno antigo: cobrar os meses passados ("yes") ou so deste mes em diante ("no"). */
+  billPastMonths: z.enum(["no", "yes"]).optional(),
   billingStrategy: z.enum(["prorated", "full_cycle"], { error: "Selecione como cobrar a entrada." }).optional(),
   cyclePaymentTiming: z.enum(["prepaid", "postpaid"], { error: "Selecione o momento do pagamento." }).optional(),
   firstChargeAmount: z

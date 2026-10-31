@@ -202,6 +202,11 @@ export interface Client {
   // Gestão de planos e mensalidade (vínculo no aluno)
   planId?: Id;
   planStartDate?: DateISO; // Data de início da vigência do plano (ex: '2026-09-21')
+  /**
+   * Aluno antigo cadastrado agora sem os meses passados: as mensalidades que
+   * vencem antes desta data nao sao cobradas (pergunta do cadastro, 31/10/2026).
+   */
+  chargesFrom?: DateISO;
   billingStrategy?: StudentBillingStrategy; // Estratégia de cobrança inicial: proporcional ou ciclo completo
   cyclePaymentTiming?: StudentCyclePaymentTiming; // 'prepaid' (antes do período) ou 'postpaid' (depois do uso)
   dueDay?: number; // 1 a 31 (dia preferencial de vencimento da mensalidade)

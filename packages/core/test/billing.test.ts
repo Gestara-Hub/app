@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   applyDiscount,
+  chargesDueBefore,
   chargesDueIn,
   firstCharge,
   isCurrentOpenMembershipCharge,
@@ -168,5 +169,28 @@ describe("isCurrentOpenMembershipCharge (pausa do aluno)", () => {
     assert.equal(isCurrentOpenMembershipCharge({ ...base, status: "paid" }, "2026-10-24"), false);
     assert.equal(isCurrentOpenMembershipCharge({ ...base, status: "canceled" }, "2026-10-24"), false);
     assert.equal(isCurrentOpenMembershipCharge({ ...base, kind: "dropin" }, "2026-10-24"), false);
+  });
+});
+
+describe("aluno antigo sem os meses passados (chargesFrom, 31/10/2026)", () => {
+  // Entrou em 20/09/2025, proporcional, vence dia 10; cadastrado em outubro de 2026.
+  const all = monthly({ startDate: "2025-09-20" });
+  const fromOct = monthly({ startDate: "2025-09-20", chargesFrom: "2026-10-01" });
+
+  it("chargesDueBefore lista o que venceria antes do mês atual", () => {
+    const past = chargesDueBefore(all, "2026-10-01");
+    assert.equal(past.length, 13);
+    assert.equal(brief(past[0]), "2025-09-20 5500");
+    assert.equal(past.at(-1)?.dueDate, "2026-09-10");
+  });
+
+  it("a 1ª cobrança é a do mês atual, cheia e no dia de sempre", () => {
+    assert.equal(brief(firstCharge(fromOct)), "2026-10-10 15000");
+    assert.deepEqual(upcomingCharges(fromOct, 2).map(brief), ["2026-10-10 15000", "2026-11-10 15000"]);
+  });
+
+  it("competências anteriores ficam vazias; a do mês segue igual", () => {
+    assert.deepEqual(dueIn(fromOct, "2026-09"), []);
+    assert.deepEqual(dueIn(fromOct, "2026-10"), dueIn(all, "2026-10"));
   });
 });

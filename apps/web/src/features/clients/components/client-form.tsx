@@ -84,9 +84,11 @@ import { cpfDigits } from "@gestarahub/core/payer";
 import { NOTES_MAX, clientFormSchema, defaultPaymentMode, isPackageSale, type ClientFormValues } from "../client-schema";
 import { RecurringAuthorizationSection } from "./recurring-authorization-section";
 import { addDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { whatsappNumber } from "@/lib/whatsapp";
 import {
   MAX_INSTALLMENTS,
+  chargesDueBefore,
   isCurrentOpenMembershipCharge,
   resolveMembershipTerms,
   upcomingCharges,
@@ -200,6 +202,7 @@ function toDefaults(
     },
     planId: client?.planId ?? "",
     planStartDate: initialStartDate,
+    billPastMonths: "no",
     billingStrategy: initialStrategy,
     cyclePaymentTiming: initialTiming,
     firstChargeAmount: undefined,
@@ -315,6 +318,10 @@ export function ClientForm({
   const planStartDate = useWatch({
     control: form.control,
     name: "planStartDate",
+  });
+  const billPastMonths = useWatch({
+    control: form.control,
+    name: "billPastMonths",
   });
   const billingStrategy = useWatch({
     control: form.control,
@@ -670,26 +677,61 @@ export function ClientForm({
     return price;
   }, [selectedPlan, effectiveDiscount]);
 
+  // Aluno antigo cadastrado agora (decisao de 31/10/2026): o que venceria antes
+  // deste mes so e cobrado se o dono escolher "Desde o início".
+  const currentMonthStart = `${todayDateISO().slice(0, 7)}-01`;
+
   // Mesmo motor da geracao em lote e da previa das Configuracoes.
   const billingCalculation = useMemo(() => {
     if (!selectedPlan) return null;
-    const terms = resolveMembershipTerms(
-      {
-        period: selectedPlan.period,
-        planPriceCents: basePriceCents,
-        startDate: planStartDate || todayDateISO(),
-        strategy: billingStrategy,
-        timing: cyclePaymentTiming,
-        dueDay: billingStrategy === "full_cycle" ? undefined : defaultDueDay,
-      },
-      orgSettings,
-    );
+    const input = {
+      period: selectedPlan.period,
+      planPriceCents: basePriceCents,
+      startDate: planStartDate || todayDateISO(),
+      strategy: billingStrategy,
+      timing: cyclePaymentTiming,
+      dueDay: billingStrategy === "full_cycle" ? undefined : defaultDueDay,
+    };
+    const fullTerms = resolveMembershipTerms(input, orgSettings);
+    const pastCharges = isEdit || isFullScholarship ? [] : chargesDueBefore(fullTerms, currentMonthStart);
+    const terms =
+      pastCharges.length > 0 && billPastMonths !== "yes"
+        ? resolveMembershipTerms({ ...input, chargesFrom: currentMonthStart }, orgSettings)
+        : fullTerms;
     const [first, next] = upcomingCharges(terms, 2);
-    return { terms, first, next };
-  }, [selectedPlan, basePriceCents, planStartDate, billingStrategy, cyclePaymentTiming, defaultDueDay, orgSettings]);
+    return { terms, first, next, pastCharges };
+  }, [
+    selectedPlan,
+    basePriceCents,
+    planStartDate,
+    billingStrategy,
+    cyclePaymentTiming,
+    defaultDueDay,
+    orgSettings,
+    isEdit,
+    isFullScholarship,
+    billPastMonths,
+    currentMonthStart,
+  ]);
 
   // A 1a cobranca aparece no cadastro e quando o aluno troca de plano.
   const showFirstCharge = Boolean(usesPlan && selectedPlanId && (!isEdit || selectedPlanId !== client?.planId));
+  const pastCharges = showFirstCharge ? (billingCalculation?.pastCharges ?? []) : [];
+  const asksPastMonths = pastCharges.length > 0;
+  const pastMonthsOptions: SegmentedChoiceOption[] = asksPastMonths
+    ? [
+        {
+          value: "no",
+          label: "A partir deste mês",
+          description: `Cobra a partir de ${format(parseISO(currentMonthStart), "MMMM", { locale: ptBR })}`,
+        },
+        {
+          value: "yes",
+          label: "Desde o início",
+          description: `${plural(pastCharges.length, "mensalidade vencida", "mensalidades vencidas")}, desde ${format(parseISO(pastCharges[0].dueDate), "MMM/yyyy", { locale: ptBR })}`,
+        },
+      ]
+    : [];
 
   // Troca de plano com periodo ja pago: o plano novo comeca no periodo seguinte
   // (o servico tambem nunca cobra os mesmos dias duas vezes).
@@ -747,6 +789,7 @@ export function ClientForm({
   const prevStrategyRef = useRef(billingStrategy);
   const prevTimingRef = useRef(cyclePaymentTiming);
   const prevPriceRef = useRef(basePriceCents);
+  const prevPastRef = useRef(billPastMonths);
 
   useEffect(() => {
     const dateChanged = prevDateRef.current !== planStartDate;
@@ -754,6 +797,7 @@ export function ClientForm({
     const strategyChanged = prevStrategyRef.current !== billingStrategy;
     const timingChanged = prevTimingRef.current !== cyclePaymentTiming;
     const priceChanged = prevPriceRef.current !== basePriceCents;
+    const pastChanged = prevPastRef.current !== billPastMonths;
     const isUninitialized = Boolean(selectedPlanId && billingCalculation && firstChargeAmount === undefined);
 
     prevDateRef.current = planStartDate;
@@ -761,10 +805,11 @@ export function ClientForm({
     prevStrategyRef.current = billingStrategy;
     prevTimingRef.current = cyclePaymentTiming;
     prevPriceRef.current = basePriceCents;
+    prevPastRef.current = billPastMonths;
 
     if (
       showFirstCharge &&
-      (dateChanged || planChanged || strategyChanged || timingChanged || priceChanged || isUninitialized) &&
+      (dateChanged || planChanged || strategyChanged || timingChanged || priceChanged || pastChanged || isUninitialized) &&
       billingCalculation
     ) {
       form.setValue("dueDay", billingCalculation.terms.dueDay, { shouldDirty: true });
@@ -777,6 +822,7 @@ export function ClientForm({
     billingStrategy,
     cyclePaymentTiming,
     basePriceCents,
+    billPastMonths,
     billingCalculation,
     showFirstCharge,
     form,
@@ -1039,6 +1085,7 @@ export function ClientForm({
       // Bolsista integral sem plano tambem tem inicio, vencimento e situacao
       // (as mensalidades isentas seguem essa regra).
       planStartDate: planId || isFull ? values.planStartDate || todayDateISO() : undefined,
+      chargesFrom: planId && asksPastMonths && values.billPastMonths !== "yes" ? currentMonthStart : undefined,
       billingStrategy: planId || isFull ? values.billingStrategy || "prorated" : undefined,
       cyclePaymentTiming: planId || isFull ? values.cyclePaymentTiming || "prepaid" : undefined,
       dueDay: planId || isFull ? values.dueDay || defaultDueDay : undefined,
@@ -1420,6 +1467,18 @@ export function ClientForm({
                       />
                     </div>
                   ) : null}
+                </div>
+              ) : null}
+
+              {asksPastMonths ? (
+                <div className="space-y-2" data-testid="client-past-months">
+                  <p className="text-sm font-medium text-foreground">Cobrar os meses desde o início?</p>
+                  <SegmentedChoiceField<ClientFormValues>
+                    name="billPastMonths"
+                    ariaLabel="Cobrar os meses desde o início?"
+                    options={pastMonthsOptions}
+                    disabled={pending}
+                  />
                 </div>
               ) : null}
 

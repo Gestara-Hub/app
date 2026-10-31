@@ -270,3 +270,14 @@ Prioridade 1 do [relatório da rodada](../qa/2026-10-18-rodada-de-testes.md), co
 - **Aluno pausado:** o lembrete de cobrança por WhatsApp não sai; a linha em Cobranças e a ficha levam o selo "Trancado".
 - **Parcelas depois do fim** (curso ou validade do pacote): só aviso na janela de venda ou matrícula, sem travar. A dívida de uma venda feita continua valendo.
 - **Aluno menor:** cobrança e avisos de cobrança vão para o responsável financeiro (o marcado, ou o primeiro com telefone), com o texto falando do aluno; sem responsável com telefone, vão para o aluno (`messageGuardian`).
+
+## Aluno antigo: meses passados (31/10/2026)
+
+Decisão 3 do diário da noite de 30 para 31/10/2026, escolhida pelo usuário: perguntar no cadastro.
+
+- **Quando aparece:** no cadastro do aluno com plano (não na edição nem na bolsa integral), se o "Início do plano" faz o motor ter mensalidades com vencimento antes do dia 1º do mês atual.
+- **A pergunta:** "Cobrar os meses desde o início?", com duas opções:
+  - **"A partir deste mês"** (padrão): o que venceria antes do mês atual não é cobrado, nem no cadastro nem na geração em lote;
+  - **"Desde o início"**: mostra quantas mensalidades vencidas serão geradas e desde quando.
+- **Como fica gravado:** `Client.chargesFrom` (coluna `clients.charges_from`) guarda o dia 1º do mês do cadastro. O motor (`MembershipTerms.chargesFrom`, `@gestarahub/core/billing`) pula os vencimentos anteriores e mantém os períodos alinhados ao início real: quem paga todo dia 15 continua pagando no dia 15. O "Início do plano" fica como a data real de entrada.
+- **Servidor:** aceita a data só com plano, depois do início e até hoje (`validChargesFrom` em `clientBaseService`). A edição do aluno não muda a data, porque a escolha é só do cadastro.

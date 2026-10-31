@@ -48,6 +48,12 @@ export interface MembershipTerms {
   strategy: BillingStrategy;
   /** Dia de vencimento recorrente (1 a 31; dia inexistente cai no ultimo dia do mes). */
   dueDay: number;
+  /**
+   * Vencimentos antes desta data nao sao cobrados: aluno antigo cadastrado agora,
+   * sem os meses passados (decisao de 31/10/2026). Os periodos seguem alinhados
+   * ao inicio real.
+   */
+  chargesFrom?: DateISO;
 }
 
 export interface ScheduledCharge {
@@ -111,6 +117,7 @@ export interface MembershipTermsInput {
   timing?: BillingTiming;
   dueDay?: number;
   discount?: StudentDiscount;
+  chargesFrom?: DateISO;
 }
 
 export interface BillingDefaults {
@@ -138,6 +145,7 @@ export function resolveMembershipTerms(
     timing: input.timing ?? defaults.billingTiming ?? "prepaid",
     strategy,
     dueDay: input.dueDay ?? (strategy === "full_cycle" ? startDay : defaults.defaultDueDay ?? 10),
+    ...(input.chargesFrom ? { chargesFrom: input.chargesFrom } : {}),
   };
 }
 
@@ -282,17 +290,42 @@ function toScheduled(t: MembershipTerms, p: RawPeriod): ScheduledCharge {
   };
 }
 
+/** Cobrancas em ordem de periodo, sem as que vencem antes de `chargesFrom`. */
+function* scheduledCharges(terms: MembershipTerms): Generator<ScheduledCharge> {
+  for (const p of periodsFor(terms)) {
+    const c = toScheduled(terms, p);
+    if (terms.chargesFrom && c.dueDate < terms.chargesFrom) continue;
+    yield c;
+  }
+}
+
 /** Primeira cobranca do aluno (a gerada no cadastro/matricula no plano). */
 export function firstCharge(terms: MembershipTerms): ScheduledCharge {
-  return toScheduled(terms, periodsFor(terms).next().value as RawPeriod);
+  return scheduledCharges(terms).next().value as ScheduledCharge;
 }
 
 /** As `count` primeiras cobrancas, em ordem de periodo. */
 export function upcomingCharges(terms: MembershipTerms, count: number): ScheduledCharge[] {
   const out: ScheduledCharge[] = [];
-  for (const p of periodsFor(terms)) {
+  for (const c of scheduledCharges(terms)) {
     if (out.length >= count) break;
-    out.push(toScheduled(terms, p));
+    out.push(c);
+  }
+  return out;
+}
+
+/**
+ * Cobrancas que venceriam antes de `date`, ignorando `chargesFrom`: os meses
+ * passados de um aluno antigo cadastrado agora (a pergunta do cadastro).
+ */
+export function chargesDueBefore(terms: MembershipTerms, date: DateISO): ScheduledCharge[] {
+  const out: ScheduledCharge[] = [];
+  let i = 0;
+  for (const p of periodsFor(terms)) {
+    if (++i > MAX_PERIODS) break;
+    const c = toScheduled(terms, p);
+    if (c.dueDate >= date) break;
+    out.push(c);
   }
   return out;
 }
@@ -310,7 +343,10 @@ export function chargesDueIn(terms: MembershipTerms, competence: string): Compet
     if (c.competence > competence) break;
     if (c.competence === competence) found.push(c);
   }
-  return found.map((c, idx) => ({ ...c, cycleIndex: idx + 1, cycleTotal: found.length }));
+  // A posicao conta o calendario inteiro; depois saem as anteriores a `chargesFrom`.
+  return found
+    .map((c, idx) => ({ ...c, cycleIndex: idx + 1, cycleTotal: found.length }))
+    .filter((c) => !terms.chargesFrom || c.dueDate >= terms.chargesFrom);
 }
 
 // --- Cobranca avulsa (parcelas) ---------------------------------------------

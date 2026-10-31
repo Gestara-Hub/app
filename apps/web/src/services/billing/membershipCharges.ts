@@ -64,6 +64,7 @@ export function planlessScholarCharges(student: Client, competence: string): num
       strategy: student.billingStrategy,
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
+      chargesFrom: student.chargesFrom,
     },
     store.organization.settings,
   );
@@ -119,6 +120,7 @@ export function studentMembershipTerms(student: Client, plan: Plan) {
       timing: student.cyclePaymentTiming,
       dueDay: student.dueDay,
       discount: student.discount,
+      chargesFrom: student.chargesFrom,
     },
     store.organization.settings,
   );

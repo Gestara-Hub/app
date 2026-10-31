@@ -25,6 +25,7 @@ function mapRowToClient(row: Record<string, unknown>): Client {
     address: (row.address as Client["address"]) || undefined,
     planId: row.plan_id ? String(row.plan_id) : undefined,
     planStartDate: row.plan_start_date ? String(row.plan_start_date) : undefined,
+    chargesFrom: row.charges_from ? String(row.charges_from) : undefined,
     billingStrategy: (row.billing_strategy as Client["billingStrategy"]) || undefined,
     cyclePaymentTiming: (row.cycle_payment_timing as Client["cyclePaymentTiming"]) || undefined,
     dueDay: typeof row.due_day === "number" ? row.due_day : 10,

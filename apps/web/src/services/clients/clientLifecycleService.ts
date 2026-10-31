@@ -51,10 +51,12 @@ export const clientLifecycleService = {
         minorConsentAt: _minorConsentAt,
         minorConsentBy: _minorConsentBy,
         minorConsentEvidence: _minorConsentEvidence,
+        // Os meses passados se decidem so no cadastro (pergunta de 31/10/2026).
+        chargesFrom: _chargesFrom,
         ...fields
       } = payload as UpdateClient & Partial<Client> & { unitId?: string };
       void [_initialCharge, _id, _organizationId, _unitId, _createdAt, _updatedAt, _progressions];
-      void [_minorConsentStatus, _minorConsentAt, _minorConsentBy, _minorConsentEvidence];
+      void [_minorConsentStatus, _minorConsentAt, _minorConsentBy, _minorConsentEvidence, _chargesFrom];
       const updated: Client = {
         ...current,
         ...fields,

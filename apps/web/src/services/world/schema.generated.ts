@@ -759,6 +759,11 @@ export const WORLD_SCHEMA: Record<string, WorldTableSchema> = {
         "type": "text",
         "nullable": true,
         "hasDefault": false
+      },
+      "charges_from": {
+        "type": "date",
+        "nullable": true,
+        "hasDefault": false
       }
     }
   },

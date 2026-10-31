@@ -13,7 +13,7 @@ import {
 import { auditLogService } from "../audit/auditLogService";
 import { clientNoun } from "../world/nouns";
 import { alignFullCycleDueDay, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
-import { NOT_FOUND, clone } from "./clientStore";
+import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
 import { teacherStudentIds } from "../classes/teacherScope";
@@ -27,6 +27,16 @@ import { consentFieldsFor } from "./clientConsentRules";
 function visibleClients(): Client[] {
   const allowed = teacherStudentIds();
   return allowed ? store.clients.filter((c) => allowed.has(c.id)).map(clientWithoutMoney) : store.clients;
+}
+
+/**
+ * Aluno antigo sem os meses passados: so com plano, depois do inicio e ate hoje
+ * (nunca uma data futura que pularia as cobrancas que vem por ai).
+ */
+function validChargesFrom(payload: CreateClient): string | undefined {
+  const from = payload.chargesFrom;
+  if (!from || !payload.planId || !payload.planStartDate) return undefined;
+  return from > payload.planStartDate && from <= todayISO() ? from : undefined;
 }
 
 /** Cadastro, lista e leitura do aluno. */
@@ -102,6 +112,7 @@ export const clientBaseService = {
         address: payload.address,
         planId: payload.planId || undefined,
         planStartDate: payload.planStartDate || undefined,
+        chargesFrom: validChargesFrom(payload),
         billingStrategy: payload.billingStrategy || undefined,
         cyclePaymentTiming: payload.cyclePaymentTiming || undefined,
         dueDay: payload.dueDay || store.organization.settings?.defaultDueDay || 10,

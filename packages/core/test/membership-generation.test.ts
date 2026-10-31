@@ -113,4 +113,22 @@ describe("mensalidades automáticas (planejamento puro, doc 15 fatia 1)", () => 
       [["leg", "t1"]],
     );
   });
+
+  it("aluno antigo sem os meses passados: começa a gerar em chargesFrom, alinhado ao início real", () => {
+    // Entrou em 15/01/2025 (mês cheio, vence todo dia 15); cadastrado agora sem os meses passados.
+    const old = student("velho", {
+      planStartDate: "2025-01-15",
+      billingStrategy: "full_cycle",
+      dueDay: 15,
+      chargesFrom: "2026-10-01",
+    });
+    const w = world({ clients: [old] });
+    assert.deepEqual(membershipCompetencesToGenerate(w), ["2026-10"]);
+    // Mesmo pedindo os meses antigos, nada vence antes de chargesFrom.
+    const planned = planMembershipCharges(w, ["2026-08", "2026-09", "2026-10"]);
+    assert.equal(planned.length, 1);
+    assert.equal(planned[0].periodStart, "2026-10-15");
+    assert.equal(planned[0].dueDate, "2026-10-15");
+    assert.equal(planned[0].amountCents, 10000);
+  });
 });
