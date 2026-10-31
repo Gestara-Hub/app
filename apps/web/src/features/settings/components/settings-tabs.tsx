@@ -136,8 +136,8 @@ export function SettingsTabs() {
   };
 
   return (
-    // Uma largura so para todas as abas; o Certificado poe a previa ao lado dentro dela.
-    <div className="max-w-5xl">
+    // Uma largura so para as abas; o Certificado usa a tela toda, para a previa ficar grande (pedido de 31/10/2026).
+    <div className={tab === "certificado" ? undefined : "max-w-5xl"}>
       <PageTabs
         tabs={visibleTabs.map((t) => ({
           ...t,
