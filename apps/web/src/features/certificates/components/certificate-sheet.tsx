@@ -4,7 +4,7 @@ import { renderCertificate, type RenderedCertificate } from "@gestarahub/core/ce
 import { QRCodeSVG } from "qrcode.react";
 import { cn } from "@/lib/utils";
 import { ACCENT_COLORS } from "../certificate-meta";
-import { certificateVerifyUrl } from "../certificate-verify";
+import { certificateLookupAddress, certificateVerifyUrl } from "../certificate-verify";
 
 /**
  * Rodape de verificacao (doc 21 §1.3): codigo e QR no canto, por cima de
@@ -20,7 +20,7 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
       )}
       data-testid="certificate-verification"
     >
-      {/* So o QR e o codigo embaixo (o endereco esta dentro do QR). */}
+      {/* QR, o codigo embaixo e o endereco curto para quem digita (o QR ja leva direto). */}
       <QRCodeSVG
         value={url}
         level="M"
@@ -32,6 +32,7 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
         className="size-[4.5cqw] rounded-[0.3cqw] bg-white p-[0.3cqw]"
       />
       <p className="text-[0.85cqw] font-semibold tracking-wide">{code}</p>
+      <p className="text-[0.65cqw]">{certificateLookupAddress()}</p>
     </div>
   );
 }

@@ -57,6 +57,13 @@ export interface CertificateTemplate {
   updatedAt?: DateTimeISO;
 }
 
+/** Aluno concluido, para a previa do editor de modelos ("Previa com"). */
+export interface CompletedEnrollmentOption {
+  enrollmentId: Id;
+  studentName: string;
+  courseName: string;
+}
+
 /** Emissao em lote da turma (doc 21 §1.4): os certificados dos alunos e o modelo que vale para eles. */
 export interface CourseCertificatesBatch {
   classGroupId: Id;

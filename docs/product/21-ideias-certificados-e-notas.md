@@ -52,6 +52,8 @@ No menu ⋮ da turma de curso terminada, "Emitir certificados" emite para todos 
 - **Código:** `GH-XXXX-XXXX`, 8 caracteres de um alfabeto sem 0, O, 1 e I (`newCertificateCode`, core). Sai no rodapé do certificado (tela e PDF) com "Confira em <endereço>" e um QR Code; a prévia do editor mostra um código de exemplo.
 - **Página pública** `/p/certificado/<código>`: confirma que existe e vale, com nome do aluno mascarado ("Ana S."), curso, período, carga horária, frequência e emissão; cancelado diz que não vale; código desconhecido, "não encontrado". Só leitura, nada é gravado (doc product/24 §6). Fora dos buscadores.
 - **Cancelar:** na tela do certificado, quem gere turmas cancela com confirmação (sem desfazer); o PDF e a impressão somem e a página passa a dizer "cancelado". Reemitir fica para o suporte (apagar o registro) até alguém pedir na tela.
+- **Página para digitar o código** (`/p/certificado`, 31/10/2026): para quem não lê o QR; o rodapé traz o endereço curto embaixo do código. Aceita minúsculas e sem traços.
+- **Prévia com aluno real** (31/10/2026): no editor, "Prévia com" troca os dados de exemplo por um concluído (`turmas.listCompletedEnrollments` e `previewCourseCertificate`, só leitura; o professor só vê os cursos dele). "Ver em PDF" segue a mesma escolha. A logo foi para dentro de Aparência.
 - **Fora, por ora:** assinatura digital ICP-Brasil (caro e pouco pedido; a página resolve a confiança do dia a dia).
 
 **"Ver em PDF" (31/10/2026):** ao lado da prévia, abre o PDF do modelo em edição com os dados de exemplo (`POST /api/documents/certificates/preview`, sem gravar; só conta real, porque o PDF sai do servidor). Logo e arte só as já salvas.

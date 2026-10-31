@@ -108,3 +108,35 @@ test("emitir em lote: ação na turma, tela com um certificado por aluno e PDF �
   // De novo nao emite outra vez.
   expect((await readTenant(page)).issuedCertificates).toHaveLength(2);
 });
+
+test("página para digitar o código e prévia do editor com um aluno de verdade", async ({ page, context }) => {
+  await seedCourse(page);
+  await page.goto("/classes/cg-course/certificate/e-course");
+  await waitForStore(page, (t) => t.issuedCertificates?.length === 1);
+  const code: string = (await readTenant(page)).issuedCertificates[0].code;
+  // O rodape traz o endereco curto para quem digita.
+  await expect(page.getByTestId("certificate-verification")).toContainText("/p/certificado");
+
+  // Sem login: digita o codigo (minusculas, sem tracos) e chega na pagina do certificado.
+  const anonymous = await context.browser()!.newContext();
+  const pub = await anonymous.newPage();
+  await pub.goto("/p/certificado");
+  await pub.getByLabel("Código").fill("abc");
+  await pub.getByRole("button", { name: "Verificar" }).click();
+  await expect(pub.getByText("O código tem o formato GH-XXXX-XXXX.")).toBeVisible();
+  await pub.getByLabel("Código").fill(code.toLowerCase().replace(/-/g, ""));
+  await pub.getByRole("button", { name: "Verificar" }).click();
+  await expect(pub).toHaveURL(new RegExp(`/p/certificado/${code}$`));
+  await expect(pub.getByRole("heading", { name: "Certificado válido" })).toBeVisible();
+  await anonymous.close();
+
+  // Editor: "Previa com" um aluno concluido mostra o nome e o curso reais, sem emitir de novo.
+  await page.goto("/settings?tab=certificado");
+  const panel = page.locator("#settings-panel-certificado");
+  await panel.getByRole("combobox", { name: "Prévia com" }).click();
+  await page.getByRole("option", { name: "Ana Souza · Defesa Pessoal" }).click();
+  await expect(panel.locator("article.certificate-sheet")).toContainText("Ana Souza concluiu o curso Defesa Pessoal");
+  await expect(panel.getByTestId("certificate-verification")).toContainText(code);
+  await expect(panel.getByText("Dados de verdade, como sairiam agora.")).toBeVisible();
+  expect((await readTenant(page)).issuedCertificates).toHaveLength(1);
+});

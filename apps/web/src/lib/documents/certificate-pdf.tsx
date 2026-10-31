@@ -245,13 +245,14 @@ function CustomSheet({
 }
 
 /** Rodape de verificacao (doc 21 §1.3): codigo, endereco e QR no canto. */
-function Verification({ code, qr, light }: { code: string; url: string; qr: DocumentLogo; light: boolean }) {
+function Verification({ code, qr, lookup, light }: { code: string; url: string; qr: DocumentLogo; lookup: string; light: boolean }) {
   const color = light ? "#ffffffd9" : GRAY_500;
   return (
     <View style={{ position: "absolute", right: cq(2.2), bottom: cq(1.8), alignItems: "center", gap: cq(0.4) }}>
       {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
       <Image src={qr.src} style={{ width: cq(4.5), height: cq(4.5), backgroundColor: "#ffffff", padding: cq(0.3) }} />
       <Text style={{ fontSize: cq(0.85), fontFamily: "Helvetica-Bold", color }}>{code}</Text>
+      <Text style={{ fontSize: cq(0.65), color }}>{lookup}</Text>
     </View>
   );
 }
@@ -266,7 +267,7 @@ export interface CertificatePageProps {
   artwork?: DocumentLogo | null;
   artworkSettings?: Omit<CertificateArtwork, "fileId">;
   /** Codigo de verificacao com o QR ja desenhado (a previa do editor nao tem). */
-  verification?: { code: string; url: string; qr: DocumentLogo };
+  verification?: { code: string; url: string; qr: DocumentLogo; lookup: string };
 }
 
 /** Uma folha (A4 deitado) no modelo escolhido. */

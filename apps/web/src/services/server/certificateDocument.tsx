@@ -12,7 +12,7 @@ import { CertificatePdf, CertificatesPdf, type CertificatePageProps } from "@/li
 import { courseCertificateService } from "../classes/courseCertificateService";
 import { runInWorld } from "../world/runWorld";
 import { documentSlices } from "./documentSlices";
-import { certificateVerifyUrl } from "@/features/certificates/certificate-verify";
+import { certificateLookupAddress, certificateVerifyUrl } from "@/features/certificates/certificate-verify";
 import { loadSpaceImage, loadSpaceLogo } from "./documents";
 import type { TenantContext } from "./tenant";
 
@@ -37,7 +37,12 @@ async function certificatePage(
 ): Promise<CertificatePageProps> {
   const code = certificate.verificationCode;
   const verification = code
-    ? { code, url: certificateVerifyUrl(code), qr: { src: await QRCode.toDataURL(certificateVerifyUrl(code), { margin: 0, width: 240 }) } }
+    ? {
+        code,
+        url: certificateVerifyUrl(code),
+        qr: { src: await QRCode.toDataURL(certificateVerifyUrl(code), { margin: 0, width: 240 }) },
+        lookup: certificateLookupAddress(),
+      }
     : undefined;
   return {
     text: renderCertificate(certificate, template),
@@ -105,6 +110,8 @@ export async function renderCertificatePdf(
 export async function renderCertificatePreviewPdf(
   ctx: TenantContext,
   input: SaveCertificateTemplate,
+  /** Um aluno concluido no lugar dos dados de exemplo ("Previa com"). */
+  enrollmentId?: Id,
 ): Promise<{ pdf: Buffer; fileName: string }> {
   const admin = createSupabaseAdminClient();
   const [{ data: org }, { data: units }] = await Promise.all([
@@ -127,11 +134,16 @@ export async function renderCertificatePreviewPdf(
   const issues = validateCertificateTemplate(template);
   if (issues.length > 0) throw validationError(issues);
   const address = units?.[0]?.address as { city?: string } | string | null | undefined;
-  const certificate = sampleCertificate({
-    organizationName: String(org?.name ?? ""),
-    city: typeof address === "object" ? address?.city : undefined,
-    today: todayISO(),
-  });
+  const certificate = enrollmentId
+    ? await runInWorld(ctx, () => courseCertificateService.previewCourseCertificate(enrollmentId), {
+        fn: documentSlices.certificatePreview,
+        args: [enrollmentId],
+      })
+    : sampleCertificate({
+        organizationName: String(org?.name ?? ""),
+        city: typeof address === "object" ? address?.city : undefined,
+        today: todayISO(),
+      });
   const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
   const pdf = await renderToBuffer(<CertificatePdf {...page} />);
   return { pdf, fileName: "certificado-previa" };

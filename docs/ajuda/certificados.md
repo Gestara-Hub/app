@@ -17,7 +17,7 @@ Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e 
 
 ## Ver o PDF antes de salvar
 Resumo: Confira como o certificado sai no papel, com dados de exemplo.
-Ao lado da prévia, "Ver em PDF" abre o PDF do modelo como está na tela, com dados de exemplo, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar.
+Ao lado da prévia, "Ver em PDF" abre o PDF do modelo como está na tela, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar. Em "Prévia com" dá para trocar os dados de exemplo por um aluno que concluiu um curso: assim você vê como fica com nome e curso de verdade.
 
 ## Um modelo por modalidade
 Resumo: Cursos de uma modalidade podem ter o próprio certificado.
@@ -50,7 +50,7 @@ Sai um PDF com um certificado por aluno, cada um com o próprio código de verif
 
 ## Código de verificação
 Resumo: Quem recebe o certificado confere se ele é verdadeiro.
-Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) abre o endereço do rodapé ou lê o QR e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.
+Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) lê o QR, ou abre o endereço curto do rodapé e digita o código, e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.
 
 ## Cancelar um certificado
 Resumo: Emitiu errado? Cancele e a página de verificação passa a dizer que não vale.

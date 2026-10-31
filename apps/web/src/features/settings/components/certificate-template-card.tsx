@@ -44,6 +44,7 @@ import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
 import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
+import { useCompletedEnrollments, usePreviewCourseCertificate } from "@/features/turmas";
 import {
   ACCENT_COLORS,
   CertificateSheet,
@@ -153,6 +154,7 @@ function artworkOf(values: Pick<Values, "textPosition" | "ink" | "hidden">, file
 }
 
 const SPACE = "space";
+const SAMPLE = "sample";
 
 /**
  * Configuracoes -> "Certificado" (Plano Profissional): o modelo do certificado de
@@ -391,11 +393,17 @@ function CertificateTemplateForm({
     });
 
   const address = unit?.address;
-  const sample = sampleCertificate({
-    organizationName: organization?.name,
-    city: typeof address === "object" ? address?.city : undefined,
-    today: todayISO(),
-  });
+  // "Previa com": dados de exemplo ou um aluno concluido de verdade (nome e curso compridos aparecem aqui).
+  const [previewEnrollmentId, setPreviewEnrollmentId] = useState<string | undefined>(undefined);
+  const completed = useCompletedEnrollments();
+  const realPreview = usePreviewCourseCertificate(previewEnrollmentId);
+  const sample =
+    (previewEnrollmentId ? realPreview.data : undefined) ??
+    sampleCertificate({
+      organizationName: organization?.name,
+      city: typeof address === "object" ? address?.city : undefined,
+      today: todayISO(),
+    });
 
   // Insere a variavel onde esta o cursor do texto (ou no fim).
   function insertVariable(variable: CertificateVariable) {
@@ -470,6 +478,7 @@ function CertificateTemplateForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          enrollmentId: previewEnrollmentId,
           template: {
             layout: v.layout,
             accentColor: v.accentColor,
@@ -522,6 +531,39 @@ function CertificateTemplateForm({
                     variant="cards"
                     disabled={pending}
                   />
+                </div>
+                {/* A logo perto do layout (antes ficava num cartao no fim da coluna). */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Logo</Label>
+
+                {values.keepLogo && template.logoFileId ? (
+                  <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                    {savedLogoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
+                      <img src={savedLogoUrl} alt="" className="size-10 shrink-0 rounded-md border bg-white object-contain" />
+                    ) : (
+                      <Skeleton className="size-10 shrink-0 rounded-md" />
+                    )}
+                    <p className="flex-1 text-sm text-foreground">Logo atual</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="gap-1.5"
+                      disabled={pending}
+                      onClick={() => form.setValue("keepLogo", false, { shouldDirty: true })}
+                    >
+                      <Trash2 className="size-4" />
+                      Remover
+                    </Button>
+                  </div>
+                ) : (
+                  <FileDropField<Values>
+                    name="logo"
+                    multiple={false}
+                    disabled={pending}
+                    {...CERTIFICATE_LOGO_RULES}
+                  />
+                )}
                 </div>
                 {!isCustom ? (
                   <div className="space-y-1.5">
@@ -756,46 +798,28 @@ function CertificateTemplateForm({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Logo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {values.keepLogo && template.logoFileId ? (
-                  <div className="flex items-center gap-3 rounded-lg border px-3 py-2">
-                    {savedLogoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
-                      <img src={savedLogoUrl} alt="" className="size-10 shrink-0 rounded-md border bg-white object-contain" />
-                    ) : (
-                      <Skeleton className="size-10 shrink-0 rounded-md" />
-                    )}
-                    <p className="flex-1 text-sm text-foreground">Logo atual</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="gap-1.5"
-                      disabled={pending}
-                      onClick={() => form.setValue("keepLogo", false, { shouldDirty: true })}
-                    >
-                      <Trash2 className="size-4" />
-                      Remover
-                    </Button>
-                  </div>
-                ) : (
-                  <FileDropField<Values>
-                    name="logo"
-                    multiple={false}
-                    disabled={pending}
-                    {...CERTIFICATE_LOGO_RULES}
-                  />
-                )}
-              </CardContent>
-            </Card>
           </div>
 
           <div className="space-y-2 lg:sticky lg:top-20">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-foreground">Prévia</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-foreground">Prévia</p>
+                {(completed.data?.length ?? 0) > 0 ? (
+                  <Select value={previewEnrollmentId ?? SAMPLE} onValueChange={(v) => setPreviewEnrollmentId(v === SAMPLE ? undefined : v)}>
+                    <SelectTrigger aria-label="Prévia com" className="h-8 w-auto min-w-44 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SAMPLE}>Dados de exemplo</SelectItem>
+                      {completed.data!.map((option) => (
+                        <SelectItem key={option.enrollmentId} value={option.enrollmentId}>
+                          {option.studentName} · {option.courseName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
               {serverDocuments ? (
                 <Button type="button" variant="outline" className="gap-1.5" disabled={pending || previewing} onClick={() => void previewPdf()}>
                   <FileText className="size-4" />
@@ -809,7 +833,9 @@ function CertificateTemplateForm({
               logoUrl={logoUrl}
               artworkUrl={artworkUrl}
             />
-            <p className="text-xs text-muted-foreground">Dados de exemplo.</p>
+            <p className="text-xs text-muted-foreground">
+              {previewEnrollmentId && realPreview.data ? "Dados de verdade, como sairiam agora." : "Dados de exemplo."}
+            </p>
           </div>
         </div>
 

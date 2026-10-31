@@ -536,7 +536,8 @@ test.describe("Configurações: Certificado", () => {
     await panel.getByRole("button", { name: "Salvar", exact: true }).click();
     await expect(panel.getByText("Envie a arte de fundo.")).toBeVisible();
 
-    await panel.locator("input[type=file]").first().setInputFiles(files.png);
+    // Dois campos de arquivo (logo em Aparencia e a arte): o da arte.
+    await panel.locator("input[type=file]#artwork").setInputFiles(files.png);
     await expect(sheet.locator("img")).toHaveAttribute("src", /^blob:/);
     await panel.getByRole("radio", { name: "Embaixo" }).click();
     await panel.getByRole("radio", { name: /^Claro/ }).click();

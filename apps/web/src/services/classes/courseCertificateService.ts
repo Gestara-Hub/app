@@ -1,9 +1,16 @@
-import { assertTeacherSeesClass } from "./teacherScope";
-import type { CourseCertificateDocument, CourseCertificatesBatch, Id, IssuedCertificate } from "@gestarahub/contracts";
+import { assertTeacherSeesClass, teacherSeesClass } from "./teacherScope";
+import type {
+  CompletedEnrollmentOption,
+  CourseCertificate,
+  CourseCertificateDocument,
+  CourseCertificatesBatch,
+  Id,
+  IssuedCertificate,
+} from "@gestarahub/contracts";
 import { isCourseEnded } from "@gestarahub/core/billing";
 import { buildCourseCertificate, newCertificateCode } from "@gestarahub/core/certificate";
 import { getCurrentActor } from "@/mocks/currentActor";
-import { apiError, newId, notFoundError, nowIso, writeOp } from "@/services/world/ops";
+import { apiError, newId, notFoundError, nowIso, readOp, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { auditLogService } from "../audit/auditLogService";
 import { currentCertificateTemplate } from "../settings/certificatesService";
@@ -24,13 +31,11 @@ export function issuedCertificateOf(enrollmentId: Id): IssuedCertificate | undef
 type Enrollment = (typeof store.enrollments)[number];
 type ClassGroup = (typeof store.classGroups)[number];
 
-/** Emite (1a vez) ou devolve o ja emitido; a turma ja foi conferida por quem chama. */
-function issueFor(e: Enrollment, g: ClassGroup & { endDate: string }): IssuedCertificate {
-  const existing = issuedCertificateOf(e.id);
-  if (existing) return existing;
+/** Os dados do certificado de uma matricula, como sairiam agora (sem emitir). */
+function certificateDataOf(e: Enrollment, g: ClassGroup & { endDate: string }): CourseCertificate {
   const address = store.unit.address;
   const { presentCount, absentCount } = frequencyOf(g.id, e.studentId);
-  const certificate = buildCourseCertificate({
+  return buildCourseCertificate({
     enrollmentId: e.id,
     classGroupId: g.id,
     organizationName: store.organization.name,
@@ -46,6 +51,13 @@ function issueFor(e: Enrollment, g: ClassGroup & { endDate: string }): IssuedCer
     city: typeof address === "object" ? address?.city : undefined,
     issuedOn: todayISO(),
   });
+}
+
+/** Emite (1a vez) ou devolve o ja emitido; a turma ja foi conferida por quem chama. */
+function issueFor(e: Enrollment, g: ClassGroup & { endDate: string }): IssuedCertificate {
+  const existing = issuedCertificateOf(e.id);
+  if (existing) return existing;
+  const certificate = certificateDataOf(e, g);
   const now = nowIso();
   const issued: IssuedCertificate = {
     id: newId(),
@@ -89,6 +101,36 @@ function endedCourseOf(classGroupId: Id): ClassGroup & { endDate: string } {
 }
 
 export const courseCertificateService = {
+  /**
+   * Alunos concluidos (matricula ativa em curso terminado) para a previa do
+   * editor de modelos; o professor so ve os cursos dele. Sem gravar nada.
+   */
+  listCompletedEnrollments(): Promise<CompletedEnrollmentOption[]> {
+    return readOp(async () => {
+      const today = todayISO();
+      const options: CompletedEnrollmentOption[] = [];
+      for (const g of store.classGroups) {
+        if (!g.endDate || !isCourseEnded(g, today) || !teacherSeesClass(g)) continue;
+        for (const e of store.enrollments) {
+          if (e.classGroupId !== g.id || e.status !== "active") continue;
+          options.push({ enrollmentId: e.id, studentName: studentName(e.studentId), courseName: g.name });
+        }
+      }
+      return clone(options.sort((a, b) => a.courseName.localeCompare(b.courseName, "pt-BR") || a.studentName.localeCompare(b.studentName, "pt-BR")));
+    });
+  },
+
+  /** Os dados do certificado de um aluno, como sairiam agora, para a previa do editor (sem emitir). */
+  previewCourseCertificate(enrollmentId: Id): Promise<CourseCertificate> {
+    return readOp(async () => {
+      const e = store.enrollments.find((x) => x.id === enrollmentId);
+      if (!e || e.status === "canceled") throw notFoundError("Matrícula não encontrada.");
+      const g = endedCourseOf(e.classGroupId);
+      const issued = issuedCertificateOf(e.id);
+      return clone({ ...certificateDataOf(e, g), verificationCode: issued?.code ?? "GH-7K3M-2A9F" });
+    });
+  },
+
   /**
    * Certificado de conclusao (doc 20, fase D; recurso pago `certificates`).
    * So para matricula ativa em curso ja terminado ("Concluído"). Devolve os

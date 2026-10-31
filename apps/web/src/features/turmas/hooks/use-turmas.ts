@@ -103,6 +103,25 @@ export function useCourseCertificate(enrollmentId: Id) {
   });
 }
 
+/** Alunos concluidos, para a previa do editor de modelos. */
+export function useCompletedEnrollments(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.classes.completedEnrollments,
+    queryFn: () => turmasService.listCompletedEnrollments(),
+    enabled,
+  });
+}
+
+/** Dados do certificado de um aluno para a previa do editor (sem emitir). */
+export function usePreviewCourseCertificate(enrollmentId?: Id) {
+  return useQuery({
+    queryKey: queryKeys.classes.certificatePreview(enrollmentId ?? ""),
+    queryFn: () => turmasService.previewCourseCertificate(enrollmentId!),
+    enabled: Boolean(enrollmentId),
+    retry: false,
+  });
+}
+
 /** Emite os certificados de todos os concluidos da turma (doc 21 §1.4). */
 export function useIssueCourseCertificates() {
   const qc = useQueryClient();

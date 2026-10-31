@@ -12,3 +12,8 @@ export function certificateVerifyUrl(code: string): string {
       : (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.gestarahub.com.br").replace(/\/$/, "");
   return `${origin}${CERTIFICATE_VERIFY_PATH}/${code}`;
 }
+
+/** Endereco curto para quem digita o codigo: "app.gestarahub.com.br/p/certificado". */
+export function certificateLookupAddress(): string {
+  return certificateVerifyUrl("").replace(/^https?:\/\//, "").replace(/\/$/, "");
+}

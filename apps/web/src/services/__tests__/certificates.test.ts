@@ -350,6 +350,19 @@ describe("modelo de certificado", () => {
     await expect(turmasService.issueCourseCertificates("cg-nao-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("prévia do editor: lista os concluídos e monta os dados de um sem emitir", async () => {
+    setTier("pro");
+    const { g, student, enrollment } = await completedEnrollment();
+    const options = await turmasService.listCompletedEnrollments();
+    expect(options).toEqual([{ enrollmentId: enrollment.id, studentName: student.name, courseName: g.name }]);
+    const preview = await turmasService.previewCourseCertificate(enrollment.id);
+    expect(preview).toMatchObject({ studentName: student.name, courseName: g.name, verificationCode: "GH-7K3M-2A9F" });
+    expect(store.issuedCertificates ?? []).toHaveLength(0);
+    // Depois de emitir, a previa mostra o codigo de verdade.
+    const issued = await turmasService.getCourseCertificate(enrollment.id);
+    expect((await turmasService.previewCourseCertificate(enrollment.id)).verificationCode).toBe(issued.issued.code);
+  });
+
   it("o certificado do aluno vem com o modelo do espaco", async () => {
     setTier("pro");
     const { g, student, enrollment } = await completedEnrollment();

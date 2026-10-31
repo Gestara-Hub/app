@@ -106,6 +106,8 @@ export const queryKeys = {
     enrolledModalities: ["classes", "enrolledModalities"] as const,
     certificates: ["classes", "certificate"] as const,
     certificate: (enrollmentId: Id) => ["classes", "certificate", enrollmentId] as const,
+    completedEnrollments: ["classes", "certificate", "completed"] as const,
+    certificatePreview: (enrollmentId: Id) => ["classes", "certificate", "preview", enrollmentId] as const,
   },
   // Notas dos alunos (avaliacoes da turma, lancamento e boletim).
   grades: {

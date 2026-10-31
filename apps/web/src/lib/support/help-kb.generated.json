@@ -387,7 +387,7 @@
     "article": "Certificados de conclusão",
     "title": "Ver o PDF antes de salvar",
     "route": "/settings?tab=certificado",
-    "text": "Ao lado da prévia, \"Ver em PDF\" abre o PDF do modelo como está na tela, com dados de exemplo, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar.",
+    "text": "Ao lado da prévia, \"Ver em PDF\" abre o PDF do modelo como está na tela, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar. Em \"Prévia com\" dá para trocar os dados de exemplo por um aluno que concluiu um curso: assim você vê como fica com nome e curso de verdade.",
     "summary": "Confira como o certificado sai no papel, com dados de exemplo."
   },
   {
@@ -492,7 +492,7 @@
     "article": "Certificados de conclusão",
     "title": "Código de verificação",
     "route": "/settings?tab=certificado",
-    "text": "Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) abre o endereço do rodapé ou lê o QR e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.",
+    "text": "Todo certificado emitido sai com um código no rodapé, no formato GH-XXXX-XXXX, e um QR Code. Quem recebe (empresa, escola, federação) lê o QR, ou abre o endereço curto do rodapé e digita o código, e vê uma página que confirma o certificado: aluno (nome abreviado), curso, período, carga horária, frequência e data de emissão. O código nasce na primeira vez que o certificado é aberto e não muda depois, mesmo que a turma mude.",
     "summary": "Quem recebe o certificado confere se ele é verdadeiro."
   },
   {

@@ -174,6 +174,12 @@ export const classSlices: Record<string, MethodSlice> = {
     await classOfRow("enrollments")([id], load);
     await load.where("issuedCertificates", "enrollmentId", [id as Id]);
   },
+  // Previa do editor com um aluno real: lista dos concluidos (turmas, matriculas, alunos) e os dados de um.
+  listCompletedEnrollments: classList,
+  previewCourseCertificate: async ([id], load) => {
+    await classOfRow("enrollments")([id], load);
+    await load.where("issuedCertificates", "enrollmentId", [id as Id]);
+  },
   // Emissao em lote (doc 21 §1.4): a turma com os alunos e os certificados ja emitidos dela.
   issueCourseCertificates: async ([id], load) => {
     await classWithStudents(id as Id, load);

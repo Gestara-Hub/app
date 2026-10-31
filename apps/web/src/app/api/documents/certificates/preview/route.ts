@@ -15,11 +15,12 @@ export async function POST(request: Request) {
   try {
     const ctx = await requireTenant();
     ctx.require("classes:manage");
-    const body = (await request.json().catch(() => null)) as { template?: SaveCertificateTemplate } | null;
+    const body = (await request.json().catch(() => null)) as { template?: SaveCertificateTemplate; enrollmentId?: unknown } | null;
     if (!body?.template || typeof body.template !== "object") {
       return Response.json({ message: "Modelo ausente." }, { status: 400 });
     }
-    const { pdf, fileName } = await renderCertificatePreviewPdf(ctx, body.template);
+    const enrollmentId = typeof body.enrollmentId === "string" && body.enrollmentId ? body.enrollmentId : undefined;
+    const { pdf, fileName } = await renderCertificatePreviewPdf(ctx, body.template, enrollmentId);
     return pdfResponse(pdf, fileName);
   } catch (error) {
     return documentErrorResponse(error);
