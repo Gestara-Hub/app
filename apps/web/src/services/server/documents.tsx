@@ -54,7 +54,8 @@ export async function loadSpaceLogo(organizationId: string): Promise<DocumentLog
         .eq("organization_id", organizationId)
         .maybeSingle();
       const type = String(file?.content_type ?? "").toLowerCase();
-      if (file?.storage_path && LOGO_TYPES.has(type)) {
+      // So a pasta do proprio espaco (revisao geral de 31/10/2026, achado S5).
+      if (file?.storage_path && String(file.storage_path).startsWith(`${organizationId}/`) && LOGO_TYPES.has(type)) {
         const { data: blob } = await admin.storage.from("attachments").download(String(file.storage_path));
         if (blob) {
           const buffer = Buffer.from(await blob.arrayBuffer());
