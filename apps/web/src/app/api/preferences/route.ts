@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE, decodeSession } from "@/lib/session";
-import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "@/services/preferences/preferencesBackend";
+import { getMyPreferencesAction, saveMyPreferencesAction } from "@/services/preferences/preferencesBackend";
 import { DEFAULT_USER_PREFERENCES } from "@gestarahub/contracts";
 import { logError } from "@/lib/log";
 import { isApiError } from "@gestarahub/contracts";
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const rawSession = cookieStore.get(SESSION_COOKIE)?.value;
-    const session = decodeSession(rawSession);
-
-    if (!session?.id) {
-      return NextResponse.json({ preferences: DEFAULT_USER_PREFERENCES });
-    }
-
-    const preferences = await getUserPreferencesFromDb(session.id);
+    // O usuario vem da sessao do Supabase, nao do cookie do app (auditoria de 30/10/2026).
+    const preferences = await getMyPreferencesAction();
     return NextResponse.json({ preferences: preferences ?? DEFAULT_USER_PREFERENCES });
   } catch (error) {
     logError("[GET /api/preferences] Erro:", error);
@@ -26,14 +17,6 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const rawSession = cookieStore.get(SESSION_COOKIE)?.value;
-    const session = decodeSession(rawSession);
-
-    if (!session?.id) {
-      return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
-    }
-
     let payload: Record<string, unknown> = {};
     const contentType = req.headers.get("content-type") || "";
 
@@ -48,7 +31,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const updated = await saveUserPreferencesInDb(session.id, payload);
+    const updated = await saveMyPreferencesAction(payload);
+    if (!updated) return NextResponse.json({ message: "Não autorizado." }, { status: 401 });
     return NextResponse.json({ success: true, preferences: updated });
   } catch (error) {
     // Sem sessao do banco (demonstracao): as preferencias ficam so no navegador.

@@ -38,11 +38,18 @@ export function unitFromRow(row: Record<string, unknown>): Unit {
   };
 }
 
+/**
+ * Colunas do espaco que a sessao le (migracao 69: a chave do parceiro de
+ * pagamentos nao esta entre elas; `select("*")` seria recusado).
+ */
+const ORGANIZATION_COLUMNS =
+  "id, name, segment, model, class_segment, custom_segment_name, custom_segment_progression, custom_segment_billing, settings, subscription, status";
+
 /** Espaco da sessao. */
 export async function loadOrganization(ctx: TenantContext): Promise<Organization> {
   const { data, error } = await ctx.client
     .from("organizations")
-    .select("*")
+    .select(ORGANIZATION_COLUMNS)
     .eq("id", ctx.organizationId)
     .single();
   if (error || !data) throw new Error(`Espaço não encontrado: ${error?.message ?? ""}`);

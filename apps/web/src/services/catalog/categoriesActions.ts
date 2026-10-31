@@ -1,6 +1,7 @@
 "use server";
 
 import { selectAllRows } from "@/lib/supabase/select-all";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Category, CategoryFilter, Client, CreateCategory, Id, UpdateCategory } from "@gestarahub/contracts";
 import { notFoundError } from "@gestarahub/core/api-error";
 import { textIncludes } from "@/lib/text";
@@ -147,7 +148,8 @@ export async function updateCategoryAction(
       settings?.modalitiesReviewed === false &&
       (payload.name !== undefined || payload.progressionTrack !== undefined)
     ) {
-      await ctx.client
+      // So o servidor grava o espaco (migracao 69); o recorte e o da sessao.
+      await createSupabaseAdminClient()
         .from("organizations")
         .update({ settings: { ...settings, modalitiesReviewed: true } })
         .eq("id", ctx.organizationId);

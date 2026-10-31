@@ -2,7 +2,7 @@ import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { readOp, writeOp } from "@/services/world/ops";
 import { realAccountInBrowser } from "../world/delegate";
-import { getUserPreferencesFromDb, saveUserPreferencesInDb } from "./preferencesBackend";
+import { getMyPreferencesAction, saveMyPreferencesAction } from "./preferencesBackend";
 
 export const PREFERENCES_STORAGE_KEY = "gestarahub_user_preferences";
 
@@ -10,7 +10,7 @@ export const preferencesService = {
   getPreferences(userId?: string): Promise<UserPreferences> {
     return readOp(async () => {
       if (userId && realAccountInBrowser()) {
-        const remote = await getUserPreferencesFromDb(userId);
+        const remote = await getMyPreferencesAction();
         if (remote) return remote;
       }
       if (typeof window !== "undefined") {
@@ -44,7 +44,8 @@ export const preferencesService = {
       }
 
       if (userId && realAccountInBrowser()) {
-        return saveUserPreferencesInDb(userId, partial);
+        const saved = await saveMyPreferencesAction(partial);
+        if (saved) return saved;
       }
 
       return mergeUserPreferences(null, partial);
@@ -65,7 +66,8 @@ export const preferencesService = {
       }
 
       if (userId && realAccountInBrowser()) {
-        return saveUserPreferencesInDb(userId, DEFAULT_USER_PREFERENCES);
+        const saved = await saveMyPreferencesAction(DEFAULT_USER_PREFERENCES);
+        if (saved) return saved;
       }
 
       return { ...DEFAULT_USER_PREFERENCES };
