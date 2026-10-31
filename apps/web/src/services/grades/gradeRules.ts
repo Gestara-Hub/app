@@ -31,7 +31,7 @@ import { apiError, notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { can } from "@/lib/permissions";
 import { resolveModalityTrack } from "@/lib/progression-tracks";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, isIsoDate } from "@gestarahub/core/date";
 
 /**
  * Notas dos alunos (doc 21 §2.1, fase 1): avaliacoes da turma, lancamento por
@@ -51,8 +51,6 @@ import { dateInSpace } from "@gestarahub/core/date";
 export const NOT_FOUND = "Avaliação não encontrada.";
 
 export const CLASS_NOT_FOUND = "Turma não encontrada.";
-
-export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function clone<T>(value: T): T {
   return structuredClone(value);
@@ -154,7 +152,7 @@ export function validateFields(
     }
   }
   if (!partial || has("date")) {
-    if (!payload.date || !DATE_PATTERN.test(payload.date)) {
+    if (!isIsoDate(payload.date)) {
       fields.push({ field: "date", message: "Informe a data da avaliação." });
     } else if (payload.date > dateInSpace()) {
       fields.push({ field: "date", message: "A avaliação não pode ter data futura." });

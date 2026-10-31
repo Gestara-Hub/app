@@ -1,3 +1,4 @@
+import { isIsoDate } from "@gestarahub/core/date";
 import type {
   ClassGroup,
   ApiErrorField,
@@ -9,7 +10,6 @@ import type {
 } from "@gestarahub/contracts";
 import { MAX_INSTALLMENTS } from "@gestarahub/core/billing";
 import { MAX_PACKAGE_LESSONS, MAX_PACKAGE_VALIDITY_DAYS } from "@gestarahub/core/packages";
-import { parseISO } from "date-fns";
 import { apiError, validationError } from "@gestarahub/core/api-error";
 import { acceptsPackages } from "./packageRules";
 
@@ -27,12 +27,9 @@ export function assertNotPaidOnline(c: Charge, verb: "desfazer" | "cancelar"): v
   );
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EXTRA_DESCRIPTION_MAX = 80;
 
-function isValidDate(value: unknown): value is string {
-  return typeof value === "string" && DATE_RE.test(value) && !Number.isNaN(parseISO(value).getTime());
-}
+const isValidDate = isIsoDate;
 
 export function validateExtraCharge(payload: Partial<CreateExtraCharge>): void {
   const fields: ApiErrorField[] = [];

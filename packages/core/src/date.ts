@@ -126,6 +126,18 @@ export function timeInSpace(value: string | Date = new Date(), timeZone: string 
 }
 
 /** Data de hoje ('YYYY-MM-DD') no fuso do espaco. "Hoje" real da UI e das regras. */
+/**
+ * "AAAA-MM-DD" de um dia que existe (2026-02-31 nao). Um so validador para os
+ * servicos (revisao geral de 31/10/2026: havia quatro copias, e notas e
+ * medidas so conferiam o formato).
+ */
+export function isIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
 export function todayISO(): string {
   return dateInSpace(new Date());
 }

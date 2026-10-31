@@ -12,6 +12,7 @@ import {
   setSpaceTimeZoneProvider,
   timeZoneForState,
   todayISO,
+  isIsoDate,
 } from "../src/date.ts";
 
 const TODAY = "2026-10-14";
@@ -258,5 +259,17 @@ describe("fuso do espaço: os quatro fusos do Brasil", () => {
     assert.equal(resolveSpaceTimeZone(undefined, "Rua sem estado"), "America/Sao_Paulo");
     assert.equal(timeZoneForState("MS"), "America/Manaus");
     assert.equal(timeZoneForState("PE"), "America/Sao_Paulo");
+  });
+});
+
+describe("isIsoDate (revisão geral de 31/10/2026)", () => {
+  it("aceita só dias que existem, no formato AAAA-MM-DD", () => {
+    assert.equal(isIsoDate("2026-02-28"), true);
+    assert.equal(isIsoDate("2028-02-29"), true);
+    assert.equal(isIsoDate("2026-02-29"), false);
+    assert.equal(isIsoDate("2026-02-31"), false);
+    assert.equal(isIsoDate("2026-13-01"), false);
+    assert.equal(isIsoDate("2026-9-1"), false);
+    assert.equal(isIsoDate(undefined), false);
   });
 });

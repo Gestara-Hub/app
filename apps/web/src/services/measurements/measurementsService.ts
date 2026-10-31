@@ -9,7 +9,7 @@ import type {
   UpdateStudentMeasurement,
 } from "@gestarahub/contracts";
 import { MAX_MEASUREMENT_NOTES_LENGTH, measureProgress, normalizeMeasureValue } from "@gestarahub/core/measurements";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, isIsoDate } from "@gestarahub/core/date";
 import { apiError, newId, notFoundError, nowIso, readOp, validationError, writeOp } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { getCurrentActor } from "@/services/world/actor";
@@ -27,7 +27,6 @@ import { assertCanManageProgression, assertTeacherSeesStudent } from "../classes
  */
 
 const NOT_FOUND = "Avaliação não encontrada.";
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -72,7 +71,7 @@ function validate(
   const fields: ApiErrorField[] = [];
   const has = (key: string) => Object.prototype.hasOwnProperty.call(payload, key);
   if (!partial || has("date")) {
-    if (!payload.date || !DATE_PATTERN.test(payload.date)) fields.push({ field: "date", message: "Informe a data." });
+    if (!isIsoDate(payload.date)) fields.push({ field: "date", message: "Informe a data." });
     else if (payload.date > dateInSpace()) fields.push({ field: "date", message: "A data não pode ser futura." });
   }
   let values: Record<string, number> | undefined;

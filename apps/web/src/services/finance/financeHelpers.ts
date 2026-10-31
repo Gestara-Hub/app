@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PAYMENT_METHODS } from "@/lib/labels";
 import { apiError } from "@/services/world/ops";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, isIsoDate } from "@gestarahub/core/date";
 
 export function clone<T>(value: T): T {
   return structuredClone(value);
@@ -27,12 +27,7 @@ export function monthName(competence: string): string {
   return format(parseISO(`${competence}-01`), "MMMM", { locale: ptBR });
 }
 
-export function isValidDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
-}
+export const isValidDate = isIsoDate;
 
 export function isEntryType(value: unknown): value is FinancialEntryType {
   return value === "income" || value === "expense";

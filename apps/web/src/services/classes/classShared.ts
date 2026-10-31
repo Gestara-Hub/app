@@ -3,7 +3,7 @@ import { meetingSlotsOn, weekdayOf } from "@gestarahub/core/scheduling";
 import { addDays, format, parseISO } from "date-fns";
 import { notFoundError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
-import { dateInSpace } from "@gestarahub/core/date";
+import { dateInSpace, isIsoDate } from "@gestarahub/core/date";
 
 /**
  * Modelo 3 (turmas) — Fatia 1. Sessoes/aulas sao GERADAS on-the-fly a partir dos
@@ -72,11 +72,7 @@ export function parseSessionId(
 }
 
 /** Data real no formato yyyy-MM-dd (31/02 ou texto solto nao valem). */
-function isRealDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = parseISO(value);
-  return !Number.isNaN(parsed.getTime()) && format(parsed, "yyyy-MM-dd") === value;
-}
+const isRealDate = isIsoDate;
 
 /**
  * Aula que existe de verdade: data valida, dentro do inicio e do fim da turma,

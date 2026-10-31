@@ -1,3 +1,4 @@
+import { isIsoDate } from "@gestarahub/core/date";
 import type {
   ApiErrorField,
   ClassGroup,
@@ -18,7 +19,6 @@ import {
   periodsOverlap,
   weekdayOf,
 } from "@gestarahub/core/scheduling";
-import { parseISO } from "date-fns";
 import { apiError, validationError } from "@/services/world/ops";
 import { store } from "@/services/world/store";
 import { todayISO, brDate, makeSessionId, upcomingPeriod } from "./classShared";
@@ -136,11 +136,8 @@ function validateMeetingSlotsBusinessHours(slots?: ClassMeetingSlot[]): void {
   }
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function isValidDate(value: unknown): value is DateISO {
-  return typeof value === "string" && DATE_RE.test(value) && !Number.isNaN(parseISO(value).getTime());
-}
+const isValidDate = isIsoDate;
 
 /**
  * Forma de cobranca da turma. Curso: valor > 0, de 1 a 12 parcelas e data de
