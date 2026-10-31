@@ -15,6 +15,7 @@ import { clientNoun } from "../world/nouns";
 import { endStudentEnrollments, ensurePlanlessScholarCharges, initialMembershipCharge } from "./clientMembership";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 import { cancelOnlinePaymentsForCharge } from "../onlinePayments";
+import { consentFieldsFor } from "./clientConsentRules";
 import { validateClient } from "./clientValidation";
 
 /** Edicao (com efeitos na cobranca) e inativacao do aluno. */
@@ -29,11 +30,30 @@ export const clientLifecycleService = {
       validateClient(payload, { partial: true, current });
       const ts = nowIso();
       // A 1a mensalidade do formulario vira cobranca abaixo; nao fica no cadastro.
-      const { initialCharge: _initialCharge, cancelCurrentMembershipCharge, ...fields } = payload;
-      void _initialCharge;
+      // Id, espaco e datas, a graduacao (permissao propria, pelo servico de
+      // evolucao) e a autorizacao do menor nao vem do navegador (auditoria de
+      // 30/10/2026: antes o atendente gravava qualquer um deles pelo cadastro).
+      const {
+        initialCharge: _initialCharge,
+        cancelCurrentMembershipCharge,
+        id: _id,
+        organizationId: _organizationId,
+        unitId: _unitId,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        progressions: _progressions,
+        minorConsentStatus: _minorConsentStatus,
+        minorConsentAt: _minorConsentAt,
+        minorConsentBy: _minorConsentBy,
+        minorConsentEvidence: _minorConsentEvidence,
+        ...fields
+      } = payload as UpdateClient & Partial<Client> & { unitId?: string };
+      void [_initialCharge, _id, _organizationId, _unitId, _createdAt, _updatedAt, _progressions];
+      void [_minorConsentStatus, _minorConsentAt, _minorConsentBy, _minorConsentEvidence];
       const updated: Client = {
         ...current,
         ...fields,
+        ...consentFieldsFor(payload, current),
         updatedAt: ts,
       };
       // Volta do aluno (reativado ou assinatura retomada): a cobranca recomeca

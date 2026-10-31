@@ -18,6 +18,7 @@ import { validateClient } from "./clientValidation";
 import { cpfDigits } from "@gestarahub/core/payer";
 import { teacherStudentIds } from "../classes/teacherScope";
 import { clientWithoutMoney } from "./studentSummaryRules";
+import { consentFieldsFor } from "./clientConsentRules";
 
 /**
  * O professor ve so os alunos das turmas dele, sem dinheiro, documentos nem
@@ -106,10 +107,8 @@ export const clientBaseService = {
         dueDay: payload.dueDay || store.organization.settings?.defaultDueDay || 10,
         discount: payload.discount,
         membershipStatus: payload.membershipStatus ?? "active",
-        minorConsentStatus: payload.minorConsentStatus || "not_applicable",
-        minorConsentAt: payload.minorConsentAt || undefined,
-        minorConsentBy: payload.minorConsentBy || undefined,
-        minorConsentEvidence: payload.minorConsentEvidence || undefined,
+        // Autorizacao do menor: a regra do servidor, nao o que o navegador mandou.
+        ...consentFieldsFor(payload),
         status: payload.status ?? "active",
         createdAt: ts,
         updatedAt: ts,
