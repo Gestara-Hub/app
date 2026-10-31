@@ -453,6 +453,32 @@ test.describe("Configurações: Certificado", () => {
     await expect(panel.getByRole("button", { name: "Adicionar assinatura" })).toBeVisible();
   });
 
+  test("Pro: \"Ver em PDF\" gera a prévia do modelo em edição sem salvar", async ({ page }) => {
+    const panel = await openEditor(page);
+    await expect(panel.getByRole("button", { name: "Ver em PDF" })).toBeVisible();
+    // A rota devolve o PDF com o modelo que veio do navegador e nao grava nada.
+    const res = await page.request.post("/api/documents/certificates/preview", {
+      data: {
+        template: {
+          layout: "modern",
+          accentColor: "green",
+          title: "Certificado de participação",
+          body: "Parabéns, {aluno}, pelo curso {curso}.",
+          signatures: [{ name: "{professor}", role: "Instrutor" }],
+          showAttendance: true,
+        },
+      },
+    });
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("application/pdf");
+    expect((await readTenant(page)).certificateTemplate).toBeUndefined();
+    // Modelo invalido: o erro do servico, sem PDF.
+    const bad = await page.request.post("/api/documents/certificates/preview", {
+      data: { template: { layout: "modern", accentColor: "green", title: "", body: "x", signatures: [], showAttendance: true } },
+    });
+    expect(bad.status()).toBe(422);
+  });
+
   test("Pro: modelo por modalidade, com volta ao modelo do espaço", async ({ page }) => {
     const panel = await openEditor(page);
     const scope = panel.locator("#certificate-scope");

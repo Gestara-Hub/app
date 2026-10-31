@@ -15,6 +15,10 @@ Guia: /settings?tab=certificado
 + texto "Assinaturas": Aqui você escolhe quem assina: o professor da turma, o nome do espaço ou outro nome. Depois, salve na barra que aparece embaixo.
 Em Configurações, aba Certificado, edite o título, o texto, as assinaturas e a cor. Use as variáveis (aluno, curso, início, fim, aulas, carga horária, frequência, professor, empresa, cidade, data). Trecho com variável sem valor some sozinho da frase.
 
+## Ver o PDF antes de salvar
+Resumo: Confira como o certificado sai no papel, com dados de exemplo.
+Ao lado da prévia, "Ver em PDF" abre o PDF do modelo como está na tela, com dados de exemplo, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar.
+
 ## Um modelo por modalidade
 Resumo: Cursos de uma modalidade podem ter o próprio certificado.
 Guia: /settings?tab=certificado

@@ -4,7 +4,9 @@ import { FormProvider, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "@/lib/toast";
-import { Award, Check, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Award, Check, FileText, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { isSupabaseOrganization } from "@/lib/session";
+import { logError } from "@/lib/log";
 import { useCallback, useState } from "react";
 import type { CertificatePart, CertificateTemplate, Id } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -40,7 +42,7 @@ import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { CERTIFICATE_ARTWORK_RULES, CERTIFICATE_LOGO_RULES, filesSchema, fileIssue } from "@/lib/files";
 import { handleFormApiError } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
-import { useCan, useHasFeature } from "@/features/auth";
+import { useCan, useCurrentUser, useHasFeature } from "@/features/auth";
 import { useCategories } from "@/features/categories";
 import {
   ACCENT_COLORS,
@@ -355,6 +357,9 @@ function CertificateTemplateForm({
   const { confirm, dialog: confirmDialog } = useConfirmAction();
   const { data: organization } = useOrganization();
   const { data: unit } = useUnit();
+  // "Ver em PDF": so na conta real (o PDF sai do servidor); na demonstracao fica a previa da tela.
+  const serverDocuments = isSupabaseOrganization(useCurrentUser().organizationId);
+  const [previewing, setPreviewing] = useState(false);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
@@ -450,6 +455,51 @@ function CertificateTemplateForm({
   }
 
   const textIsDefault = values.title === DEFAULT_CERTIFICATE_TITLE && values.body === DEFAULT_CERTIFICATE_BODY;
+
+  /** PDF da previa com o modelo como esta agora (sem salvar); logo e arte so as ja salvas. */
+  async function previewPdf() {
+    const ok = await form.trigger();
+    if (!ok) {
+      toast.error("Revise os campos destacados.");
+      return;
+    }
+    const v = form.getValues();
+    setPreviewing(true);
+    try {
+      const res = await fetch("/api/documents/certificates/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: {
+            layout: v.layout,
+            accentColor: v.accentColor,
+            title: v.title,
+            body: v.body,
+            signatures: v.signatures,
+            showAttendance: v.showAttendance,
+            ...(v.keepLogo && template.logoFileId ? { logoFileId: template.logoFileId } : {}),
+            ...(v.layout === "custom" ? { artwork: artworkOf(v, v.keepArtwork ? template.artwork?.fileId : "") } : {}),
+          },
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { message?: string } | null;
+        toast.error(data?.message ?? "Não foi possível gerar o PDF.");
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      window.open(url, "_blank", "noopener");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if ((v.logo[0] && !v.keepLogo) || (v.layout === "custom" && v.artwork[0])) {
+        toast.info("Logo ou arte nova aparecem no PDF depois de salvar.");
+      }
+    } catch (error) {
+      logError("[certificate] Erro ao gerar a prévia em PDF:", error);
+      toast.error("Não foi possível gerar o PDF.");
+    } finally {
+      setPreviewing(false);
+    }
+  }
 
   return (
     <FormProvider {...form}>
@@ -744,7 +794,15 @@ function CertificateTemplateForm({
           </div>
 
           <div className="space-y-2 lg:sticky lg:top-20">
-            <p className="text-sm font-medium text-foreground">Prévia</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-foreground">Prévia</p>
+              {serverDocuments ? (
+                <Button type="button" variant="outline" className="gap-1.5" disabled={pending || previewing} onClick={() => void previewPdf()}>
+                  <FileText className="size-4" />
+                  {previewing ? "Gerando..." : "Ver em PDF"}
+                </Button>
+              ) : null}
+            </div>
             <CertificateSheet
               certificate={sample}
               template={{ ...values, artwork: artworkOf(values) }}

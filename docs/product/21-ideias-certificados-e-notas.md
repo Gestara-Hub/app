@@ -54,6 +54,8 @@ No menu ⋮ da turma de curso terminada, "Emitir certificados" emite para todos 
 - **Cancelar:** na tela do certificado, quem gere turmas cancela com confirmação (sem desfazer); o PDF e a impressão somem e a página passa a dizer "cancelado". Reemitir fica para o suporte (apagar o registro) até alguém pedir na tela.
 - **Fora, por ora:** assinatura digital ICP-Brasil (caro e pouco pedido; a página resolve a confiança do dia a dia).
 
+**"Ver em PDF" (31/10/2026):** ao lado da prévia, abre o PDF do modelo em edição com os dados de exemplo (`POST /api/documents/certificates/preview`, sem gravar; só conta real, porque o PDF sai do servidor). Logo e arte só as já salvas.
+
 ### 1.2 Modelo por modalidade (entregue em 31/10/2026)
 
 Em Configurações → Certificado, o seletor **"Vale para"** troca entre o modelo do espaço e o de uma modalidade. Modalidade sem modelo próprio abre com o do espaço como ponto de partida; salvar grava o dela (`categories.certificate_template`, migração 79) e os cursos dela passam a sair com ele; as outras seguem com o do espaço. "Usar o modelo do espaço" apaga o da modalidade, com confirmação. Por modalidade, não por curso: a modalidade é estável e o curso pertence a uma; se um espaço pedir por curso, entra como exceção dentro da modalidade. A emissão (`getCourseCertificate`) escolhe o modelo pela modalidade da turma; o PDF segue o mesmo caminho.

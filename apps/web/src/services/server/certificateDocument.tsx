@@ -1,7 +1,12 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
-import type { CertificateTemplate, CourseCertificate, Id } from "@gestarahub/contracts";
-import { CERTIFICATE_ACCENT_HEX, renderCertificate } from "@gestarahub/core/certificate";
+import type { CertificateTemplate, CourseCertificate, Id, SaveCertificateTemplate } from "@gestarahub/contracts";
+import { CERTIFICATE_ACCENT_HEX, renderCertificate, validateCertificateTemplate } from "@gestarahub/core/certificate";
+import { apiError, validationError } from "@gestarahub/core/api-error";
+import { todayISO } from "@gestarahub/core/date";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { tierHasFeature, tierOf } from "@/lib/subscription";
+import { sampleCertificate } from "@/features/certificates/certificate-meta";
 import type { DocumentLogo } from "@/lib/documents/document-pdf";
 import { CertificatePdf, CertificatesPdf, type CertificatePageProps } from "@/lib/documents/certificate-pdf";
 import { courseCertificateService } from "../classes/courseCertificateService";
@@ -89,4 +94,45 @@ export async function renderCertificatePdf(
   const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
   const pdf = await renderToBuffer(<CertificatePdf {...page} />);
   return { pdf, fileName: `certificado-${slugOf(certificate.studentName, certificate.enrollmentId.slice(0, 8))}` };
+}
+
+/**
+ * Previa em PDF do modelo em edicao (botao "Ver em PDF" do editor): os dados
+ * de exemplo da previa da tela com o modelo que veio do navegador, sem gravar
+ * nada. Logo e arte so as ja salvas (arquivo novo aparece depois de salvar).
+ * Mesmas regras do salvar (plano e validacao do modelo).
+ */
+export async function renderCertificatePreviewPdf(
+  ctx: TenantContext,
+  input: SaveCertificateTemplate,
+): Promise<{ pdf: Buffer; fileName: string }> {
+  const admin = createSupabaseAdminClient();
+  const [{ data: org }, { data: units }] = await Promise.all([
+    admin.from("organizations").select("name, subscription").eq("id", ctx.organizationId).maybeSingle(),
+    admin.from("units").select("address").eq("organization_id", ctx.organizationId).order("created_at", { ascending: true }).limit(1),
+  ]);
+  if (!tierHasFeature(tierOf({ subscription: org?.subscription ?? undefined }), "certificates")) {
+    throw apiError("FEATURE_NOT_IN_PLAN", "Certificado de conclusão está disponível no Plano Profissional.", { httpStatus: 403 });
+  }
+  const template: CertificateTemplate = {
+    layout: input.layout,
+    accentColor: input.accentColor,
+    title: String(input.title ?? ""),
+    body: String(input.body ?? ""),
+    signatures: Array.isArray(input.signatures) ? input.signatures.map((s) => ({ name: String(s.name ?? ""), role: String(s.role ?? "") })) : [],
+    showAttendance: Boolean(input.showAttendance),
+    ...(typeof input.logoFileId === "string" && input.logoFileId ? { logoFileId: input.logoFileId } : {}),
+    ...(input.layout === "custom" && input.artwork ? { artwork: input.artwork } : {}),
+  };
+  const issues = validateCertificateTemplate(template);
+  if (issues.length > 0) throw validationError(issues);
+  const address = units?.[0]?.address as { city?: string } | string | null | undefined;
+  const certificate = sampleCertificate({
+    organizationName: String(org?.name ?? ""),
+    city: typeof address === "object" ? address?.city : undefined,
+    today: todayISO(),
+  });
+  const page = await certificatePage(certificate, template, await loadTemplateImages(ctx.organizationId, template));
+  const pdf = await renderToBuffer(<CertificatePdf {...page} />);
+  return { pdf, fileName: "certificado-previa" };
 }

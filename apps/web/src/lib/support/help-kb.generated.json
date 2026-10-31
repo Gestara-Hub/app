@@ -383,6 +383,14 @@
     }
   },
   {
+    "id": "certificados#ver-o-pdf-antes-de-salvar",
+    "article": "Certificados de conclusão",
+    "title": "Ver o PDF antes de salvar",
+    "route": "/settings?tab=certificado",
+    "text": "Ao lado da prévia, \"Ver em PDF\" abre o PDF do modelo como está na tela, com dados de exemplo, sem salvar nada. Logo ou arte nova só entram no PDF depois de salvar.",
+    "summary": "Confira como o certificado sai no papel, com dados de exemplo."
+  },
+  {
     "id": "certificados#um-modelo-por-modalidade",
     "article": "Certificados de conclusão",
     "title": "Um modelo por modalidade",
