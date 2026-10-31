@@ -26,9 +26,10 @@ import { logError } from "@/lib/log";
 interface MinorConsentFormProps {
   student: {
     id: string;
+    /** Mascarado no servidor ("Gabi S."): rota publica. */
     name: string;
-    birthDate?: string;
-    guardians?: Array<{ name: string; relationship?: string; phone?: string }>;
+    birthDateMasked?: string;
+    guardians?: Array<{ nameMasked: string; relationship?: string }>;
     minorConsentStatus?: string;
     organizationName: string;
   };
@@ -36,13 +37,13 @@ interface MinorConsentFormProps {
 
 export function MinorConsentForm({ student }: MinorConsentFormProps) {
   const primaryGuardian = student.guardians?.[0];
-  const [guardianName, setGuardianName] = useState(
-    primaryGuardian?.name || "",
-  );
+  // Quem assina digita o proprio nome e telefone: a pagina so recebe dados
+  // mascarados, e o nome digitado vai para a prova do consentimento.
+  const [guardianName, setGuardianName] = useState("");
   const [relationship, setRelationship] = useState(
     primaryGuardian?.relationship || "Pai / Mãe / Responsável Legal",
   );
-  const [phone, setPhone] = useState(primaryGuardian?.phone || "");
+  const [phone, setPhone] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,9 +87,7 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
     }
   };
 
-  const formattedBirthDate = student.birthDate
-    ? student.birthDate.split("-").reverse().join("/")
-    : null;
+  const formattedBirthDate = student.birthDateMasked ?? null;
 
   if (isConfirmed) {
     return (
@@ -196,6 +195,9 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
                 required
                 disabled={isSubmitting}
               />
+              {primaryGuardian ? (
+                <p className="text-xs text-muted-foreground">Responsável cadastrado no espaço: {primaryGuardian.nameMasked}</p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="guardian-relationship" className="text-xs">
@@ -205,7 +207,7 @@ export function MinorConsentForm({ student }: MinorConsentFormProps) {
                 id="guardian-relationship"
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
-                placeholder="Ex.: Pai, Mãe, Avó, Tutor"
+                placeholder="Informe o grau de parentesco"
                 disabled={isSubmitting}
               />
             </div>

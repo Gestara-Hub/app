@@ -80,3 +80,19 @@ export interface OnlinePaymentSettings {   // em OrganizationSettings
   - O app cancela essa cobrança no Asaas, para ela não ficar órfã (`asaasAdapter.createPix`).
   - A tela mostra "A conta ainda está liberando o Pix. Tente de novo em alguns minutos." (`PixNotReadyError`).
   - Outro erro na busca do QR também cancela a cobrança no parceiro.
+
+## 7. Fatura Pública e Autoatendimento do Aluno (/p/c/:id)
+
+- Quando uma cobrança em aberto não possui pagamento online gerado previamente e o espaço possui Recebimentos Online ativo (`onlinePayments.enabled = true`), os lembretes automáticos e manuais de cobrança enviam o link da fatura do GestaraHub: `/p/c/:chargeId`.
+- **Quem paga e o CPF** (`services/server/chargeInvoiceActions.ts`; a página é aberta sem login, por quem tiver o link):
+  - Com CPF válido no cadastro (do aluno, ou do responsável financeiro se for menor), a página mostra as formas aceitas pelo espaço.
+  - Adulto sem CPF no cadastro: a página pede um CPF válido, que **vale só para esta cobrança**. Não é gravado no cadastro (corrigido em 30/10/2026: antes gravava sem login).
+  - Aluno menor sem responsável financeiro: a página pede ao espaço para cadastrar o responsável (a mesma regra do "Cobrar online").
+  - Só as formas ligadas em Recebimentos online.
+- **Um código válido por vez:** ao gerar um novo, os códigos em aberto da cobrança são cancelados também no Asaas (senão o antigo ainda poderia ser pago); falha no Asaas fica marcada para a rotina de hora em hora tentar de novo. Se o código novo não for gravado no banco, ele é cancelado no Asaas, para não ficar órfão.
+- **Dados mascarados (decisão do usuário, 30/10/2026):** o servidor manda só o nome mascarado do aluno e de quem paga ("Ana S. L.") e o CPF mascarado ("***.982.247-**"), como em toda rota pública (doc `product/24` §6).
+- **Cálculo de Tarifas e Repasse:** Os valores por método consideram a taxa do gateway e split do GestaraHub, calculando o acréscimo se o repasse de taxas estiver configurado.
+- **Emissão na hora:**
+  - **Pix:** Gera o QR Code com código Copia e Cola na hora e ativa verificação em tempo real (polling) para confirmar o pagamento assim que quitado.
+  - **Cartão / Boleto:** Redireciona o pagador para o checkout seguro do parceiro.
+- **Espaço sem recebimento online:** Se a subconta estiver inativa ou não configurada, o lembrete de cobrança não inclui link quebrado.

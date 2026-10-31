@@ -52,7 +52,7 @@ Procure o assunto aqui antes de escrever: se ele já tem doc, acrescente uma se�
 10. [product/20-plano-novas-formas-de-cobranca.md](product/20-plano-novas-formas-de-cobranca.md) — Proposta: cobrança avulsa, curso fechado e pacote de aulas (fases A a D e decisões pendentes).
 11. [product/21-ideias-certificados-e-notas.md](product/21-ideias-certificados-e-notas.md) — Ideias para refinar: gerador de certificados (Pro) e notas dos alunos (fase 1 entregue: avaliações na turma, lançamento e boletim; critério da trilha na fase 2).
 12. [product/23-area-do-aluno-e-professor.md](product/23-area-do-aluno-e-professor.md) — **Área do Aluno e do Professor:** Mapeamento completo de funcionalidades e matriz de distribuição por plano (Grátis, Profissional e Expansão).
-13. [product/24-diretrizes-exclusao-e-lgpd.md](product/24-diretrizes-exclusao-e-lgpd.md) — **Diretrizes de Exclusão e LGPD:** Enquadramento legal (BACEN, CTN, CLT, Marco Civil), travas de subconta, esteira de 3 fases e anonimização por papel (Dono, Aluno, Professor, Staff).
+13. [product/24-diretrizes-exclusao-e-lgpd.md](product/24-diretrizes-exclusao-e-lgpd.md) — **Diretrizes de Exclusão e LGPD:** Enquadramento legal (BACEN, CTN, CLT, Marco Civil), travas de subconta, esteira de 3 fases, anonimização por papel (Dono, Aluno, Professor, Staff) e rotas públicas só com dados mascarados (§6).
 14. [product/25-lembretes-e-seguranca.md](product/25-lembretes-e-seguranca.md) — **Lembretes inteligentes e aviso de segurança:** um motor de lembretes a partir dos modelos de mensagem (cobrança, pacote, faltas, aniversário, relacionamento, avisos), prioridade, sem repetir, adiar, envio em sequência, sino no topo; janela da verificação em duas etapas em quatro momentos.
 
 ---

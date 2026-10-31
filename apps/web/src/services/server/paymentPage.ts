@@ -1,7 +1,18 @@
-import type { ChargeKind, OnlinePaymentMethod } from "@gestarahub/contracts";
-import { resolveSpaceTimeZone } from "@gestarahub/core/date";
+import type { ChargeKind, OnlinePaymentMethod, OnlinePaymentSettings, StudentGuardian } from "@gestarahub/contracts";
+import { resolveSpaceTimeZone, todayISO } from "@gestarahub/core/date";
 import { whatsappDigits } from "@gestarahub/core/phone";
+import { resolveOnlinePayer } from "@gestarahub/core/payer";
+import { maskCpf, maskPersonName } from "@gestarahub/core/privacy";
+import {
+  availableOnlineMethods,
+  calculateOnlineChargeAmounts,
+  defaultPassFeeFor,
+  effectiveGatewayFees,
+  platformSplitCents,
+  type PlatformTier,
+} from "@gestarahub/core/payment-fees";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { logWarn } from "@/lib/log";
 
 /**
  * Pagina publica da cobranca online (/p/<codigo>, migracao 35). Sem login: le
@@ -163,5 +174,240 @@ export async function loadPaymentPage(code: string, now = new Date()): Promise<P
     expiresAt: new Date(String(payment.expires_at)).toISOString(),
     pixCopyPaste: payment.pix_copy_paste ? String(payment.pix_copy_paste) : undefined,
     linkUrl: payment.link_url ? String(payment.link_url) : undefined,
+  };
+}
+
+export interface ChargeInvoiceView {
+  state: "open" | "paid" | "canceled" | "unavailable";
+  chargeId: string;
+  organizationId: string;
+  organizationName: string;
+  timeZone: string;
+  label: string;
+  amountCents: number;
+  dueDate: string;
+  /** Rota publica: nome e CPF sempre mascarados ("Ana S.", "***.982.247-**"). */
+  studentName: string;
+  hasPayerCpf: boolean;
+  payerName: string;
+  payerCpfMasked?: string;
+  contactWhatsapp?: string;
+  existingPayment?: {
+    method: OnlinePaymentMethod;
+    pixCopyPaste?: string;
+    linkUrl?: string;
+    publicCode?: string;
+    expiresAt: string;
+  };
+  acceptedMethods: OnlinePaymentMethod[];
+  amountsByMethod: Partial<Record<OnlinePaymentMethod, number>>;
+  passFeeByMethod: Partial<Record<OnlinePaymentMethod, boolean>>;
+}
+
+/**
+ * Fatura pública da cobrança (/p/c/<id>):
+ * Permite ao aluno visualizar a fatura, conferir ou inserir o CPF e gerar Pix/Cartão na hora.
+ */
+export async function loadChargeInvoice(
+  chargeId: string,
+  now = new Date(),
+): Promise<ChargeInvoiceView | null> {
+  if (!chargeId || typeof chargeId !== "string") return null;
+
+  const admin = createSupabaseAdminClient();
+  let charge: Record<string, unknown> | null = null;
+  let org: Record<string, unknown> | null = null;
+  let client: Record<string, unknown> | null = null;
+  let units: Record<string, unknown>[] | null = null;
+  let existingPaymentRow: Record<string, unknown> | null = null;
+
+  try {
+    const [chargeRes, existingRes] = await Promise.all([
+      admin
+        .from("charges")
+        .select("id, organization_id, student_id, amount_cents, due_date, status, kind, description, paid_at, paid_via")
+        .eq("id", chargeId)
+        .maybeSingle(),
+      admin
+        .from("online_payments")
+        .select("id, method, status, pix_copy_paste, link_url, public_code, expires_at")
+        .eq("charge_id", chargeId)
+        .eq("status", "awaiting")
+        .gt("expires_at", now.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    charge = (chargeRes.data as Record<string, unknown> | null) ?? null;
+    existingPaymentRow = (existingRes.data as Record<string, unknown> | null) ?? null;
+
+    if (charge) {
+      const [orgRes, clientRes, unitsRes] = await Promise.all([
+        admin
+          .from("organizations")
+          .select("id, name, settings, subscription, gateway_api_key")
+          .eq("id", charge.organization_id)
+          .maybeSingle(),
+        admin
+          .from("clients")
+          .select("id, name, cpf, phone, email, birth_date, guardians")
+          .eq("id", charge.student_id)
+          .maybeSingle(),
+        admin
+          .from("units")
+          .select("phone, address")
+          .eq("organization_id", charge.organization_id)
+          .order("created_at", { ascending: true })
+          .limit(1),
+      ]);
+      org = (orgRes.data as Record<string, unknown> | null) ?? null;
+      client = (clientRes.data as Record<string, unknown> | null) ?? null;
+      units = (unitsRes.data as Record<string, unknown>[] | null) ?? null;
+    }
+  } catch (err) {
+    logWarn("[loadChargeInvoice] Falha ao consultar a cobrança no banco:", err);
+  }
+
+  if (!charge) return null;
+
+  const orgSettings = (org?.settings as Record<string, unknown> | null) ?? {};
+  const onlineSettings = (orgSettings.onlinePayments as OnlinePaymentSettings | null) ?? undefined;
+  const isOnlineEnabled = Boolean(onlineSettings?.enabled);
+
+  const contactWhatsapp = whatsappDigits((units?.[0]?.phone as string | undefined) ?? undefined) ?? undefined;
+  const timeZone = resolveSpaceTimeZone(org?.settings as { timeZone?: string } | null, units?.[0]?.address as string | undefined);
+  const label = chargeLabelOf((charge?.kind ?? "extra") as ChargeKind, (charge?.description as string | null) ?? null);
+
+  if (charge.status === "paid") {
+    return {
+      state: "paid",
+      chargeId: String(charge.id),
+      organizationId: String(charge.organization_id),
+      organizationName: String(org?.name ?? "o espaço"),
+      timeZone,
+      label,
+      amountCents: Number(charge.amount_cents) || 0,
+      dueDate: String(charge.due_date),
+      studentName: maskPersonName(String(client?.name ?? "Aluno")),
+      hasPayerCpf: true,
+      payerName: maskPersonName(String(client?.name ?? "Aluno")),
+      contactWhatsapp,
+      acceptedMethods: [],
+      amountsByMethod: {},
+      passFeeByMethod: {},
+    };
+  }
+
+  if (charge.status === "canceled") {
+    return {
+      state: "canceled",
+      chargeId: String(charge.id),
+      organizationId: String(charge.organization_id),
+      organizationName: String(org?.name ?? "o espaço"),
+      timeZone,
+      label,
+      amountCents: Number(charge.amount_cents) || 0,
+      dueDate: String(charge.due_date),
+      studentName: maskPersonName(String(client?.name ?? "Aluno")),
+      hasPayerCpf: true,
+      payerName: maskPersonName(String(client?.name ?? "Aluno")),
+      contactWhatsapp,
+      acceptedMethods: [],
+      amountsByMethod: {},
+      passFeeByMethod: {},
+    };
+  }
+
+  if (!isOnlineEnabled) {
+    return {
+      state: "unavailable",
+      chargeId: String(charge.id),
+      organizationId: String(charge.organization_id),
+      organizationName: String(org?.name ?? "o espaço"),
+      timeZone,
+      label,
+      amountCents: Number(charge.amount_cents) || 0,
+      dueDate: String(charge.due_date),
+      studentName: maskPersonName(String(client?.name ?? "Aluno")),
+      hasPayerCpf: false,
+      payerName: maskPersonName(String(client?.name ?? "Aluno")),
+      contactWhatsapp,
+      acceptedMethods: [],
+      amountsByMethod: {},
+      passFeeByMethod: {},
+    };
+  }
+
+  // Payer resolution
+  const payerClient = client
+    ? {
+        name: String(client.name || ""),
+        cpf: client.cpf ? String(client.cpf) : undefined,
+        phone: client.phone ? String(client.phone) : "",
+        email: client.email ? String(client.email) : undefined,
+        birthDate: client.birth_date ? String(client.birth_date) : undefined,
+        guardians: (client.guardians as StudentGuardian[] | undefined) ?? undefined,
+      }
+    : { name: "Aluno", cpf: undefined, phone: "", email: undefined, birthDate: undefined, guardians: undefined };
+
+  const payerResult = resolveOnlinePayer(payerClient, todayISO());
+  const hasPayerCpf = payerResult.ok;
+  const payerName = payerResult.ok ? payerResult.payer.name : payerClient.name;
+  const rawCpf = payerResult.ok ? payerResult.payer.cpf : "";
+  const payerCpfMasked = maskCpf(rawCpf);
+
+  // Available methods & amounts calculation
+  const acceptedMethods = availableOnlineMethods(onlineSettings).filter((m) => m !== "choice");
+  const tier = ((org?.subscription as Record<string, unknown> | null)?.tier as PlatformTier | undefined) ?? "free";
+  const splitAmountCents = platformSplitCents(tier);
+  const fees = effectiveGatewayFees(onlineSettings?.gatewayFees, todayISO());
+
+  const amountsByMethod: Partial<Record<OnlinePaymentMethod, number>> = {};
+  const passFeeByMethod: Partial<Record<OnlinePaymentMethod, boolean>> = {};
+
+  const baseAmount = Number(charge.amount_cents) || 0;
+  for (const method of acceptedMethods) {
+    const passFee = defaultPassFeeFor(onlineSettings, method);
+    const calc = calculateOnlineChargeAmounts({
+      amountCents: baseAmount,
+      method,
+      splitAmountCents,
+      passFee,
+      fees,
+    });
+    amountsByMethod[method] = calc.chargedAmountCents;
+    passFeeByMethod[method] = passFee;
+  }
+
+  let existingPayment: ChargeInvoiceView["existingPayment"] = undefined;
+  if (existingPaymentRow) {
+    existingPayment = {
+      method: existingPaymentRow.method as OnlinePaymentMethod,
+      pixCopyPaste: existingPaymentRow.pix_copy_paste ? String(existingPaymentRow.pix_copy_paste) : undefined,
+      linkUrl: existingPaymentRow.link_url ? String(existingPaymentRow.link_url) : undefined,
+      publicCode: existingPaymentRow.public_code ? String(existingPaymentRow.public_code) : undefined,
+      expiresAt: new Date(String(existingPaymentRow.expires_at)).toISOString(),
+    };
+  }
+
+  return {
+    state: "open",
+    chargeId: String(charge.id),
+    organizationId: String(charge.organization_id),
+    organizationName: String(org?.name ?? "o espaço"),
+    timeZone,
+    label,
+    amountCents: baseAmount,
+    dueDate: String(charge.due_date),
+    studentName: maskPersonName(payerClient.name),
+    hasPayerCpf,
+    payerName: maskPersonName(payerName),
+    payerCpfMasked,
+    contactWhatsapp,
+    existingPayment,
+    acceptedMethods,
+    amountsByMethod,
+    passFeeByMethod,
   };
 }

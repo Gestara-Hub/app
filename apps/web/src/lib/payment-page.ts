@@ -7,3 +7,12 @@ export function paymentPageUrl(publicCode: string): string {
   const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
   return `${base.replace(/\/+$/, "")}/p/${publicCode}`;
 }
+
+/**
+ * Endereço público da fatura da cobrança (/p/c/<chargeId>):
+ * Permite ao aluno escolher o método de pagamento e informar o CPF caso ainda não tenha.
+ */
+export function chargeInvoiceUrl(chargeId: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base.replace(/\/+$/, "")}/p/c/${chargeId}`;
+}

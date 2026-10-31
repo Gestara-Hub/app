@@ -119,3 +119,28 @@ Quando a funcionalidade for implementada na interface:
 2. **Permissão Restrita:** Exclusiva para o perfil `owner` (Proprietário).
 3. **Pré-verificação em tela:** Se houver saldo ou pendências na subconta, o card deve exibir um estado de bloqueio com link direto para a tela de transferência/saque.
 4. **Confirmação Estrita:** Exigir que o usuário digite o nome exato da organização (em caixa alta) e confirme sua senha antes de agendar a exclusão.
+
+## 6. Rotas públicas: só dados mascarados (decisão do usuário, 30/10/2026)
+
+### Decisao
+Toda página aberta sem login (link que circula por WhatsApp: fatura da cobrança `/p/c/<cobrança>`, pagamento `/p/<código>` e comprovante, termo do responsável `/consent/minor/<aluno>`) recebe do servidor **só dados pessoais mascarados**. Máscaras únicas em `@gestarahub/core/privacy`:
+- nome: o primeiro inteiro e as iniciais do resto, sem "de", "da", "dos" ("Ana Souza Lima" vira "Ana S. L.");
+- CPF: só os dígitos do meio, padrão do gov.br ("***.982.247-**");
+- nascimento: só o ano ("**/**/2015");
+- telefone: só os 4 últimos dígitos.
+
+Também valem nessas páginas:
+- Formulário não vem preenchido com dado pessoal: no termo do responsável, quem assina digita o próprio nome e telefone (o nome digitado vai para a prova do consentimento).
+- Página pública não grava no cadastro: o CPF digitado na fatura vale só para aquela cobrança.
+
+### Contexto
+Quem tem o link nem sempre é o aluno: o link é encaminhado, fica no histórico do WhatsApp e no navegador. Antes, a fatura mostrava o nome completo do aluno, e o termo mostrava o nome completo e o nascimento da criança e o telefone do responsável.
+
+### Escopo
+- **Código:** `services/server/paymentPage.ts` (`loadChargeInvoice`) e `services/legalConsent/minorConsentActions.ts` (`getPublicMinorConsentDetailsAction`). A página `/p/<código>` e o comprovante já não mostravam dados do aluno.
+- **Testes:** `packages/core/test/privacy.test.ts` e `apps/web/src/services/server/__tests__/publicRoutesPrivacy.db.test.ts` (o que sai do servidor não contém o nome inteiro, o CPF, o telefone nem a data completa).
+- **Regra do projeto:** está em `CLAUDE.md` e `AGENTS.md`, seção 3, para toda rota pública nova.
+
+### Alternativas
+- **Não mostrar nada do aluno:** descartado. Quem paga ou assina precisa reconhecer de quem é a cobrança ou o termo.
+- **Mascarar só na tela:** descartado. O dado inteiro chegaria ao navegador de quem só tem o link.

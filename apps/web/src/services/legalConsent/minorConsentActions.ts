@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/features/auth/get-current-user";
 import { computeTermsDocumentHash } from "./consentShared";
+import { maskBirthDate, maskPersonName } from "@gestarahub/core/privacy";
 
 /**
  * Autorizacao do responsavel pelo aluno menor (LGPD art. 14): pelo link, no papel e a pagina publica.
@@ -132,13 +133,22 @@ export async function confirmPaperMinorConsentAction(
 /**
  * Consulta pública para a página de autorização aberta pelo pai no celular.
  */
+/**
+ * Dados do termo publico do responsavel (/consent/minor/<aluno>), aberto sem
+ * login por quem tiver o link: tudo mascarado no servidor (doc product/24,
+ * "Rotas publicas"). O nome inteiro, a data de nascimento e o telefone nunca
+ * vao para a pagina.
+ */
 export async function getPublicMinorConsentDetailsAction(studentId: string): Promise<{
   success: boolean;
   student?: {
     id: string;
+    /** Mascarado: "Gabi S." */
     name: string;
-    birthDate?: string;
-    guardians?: Array<{ name: string; relationship?: string; phone?: string }>;
+    /** So o ano: "**\/**\/2015". */
+    birthDateMasked?: string;
+    /** Responsaveis cadastrados, so o nome mascarado (para quem assina se reconhecer). */
+    guardians?: Array<{ nameMasked: string; relationship?: string }>;
     minorConsentStatus?: string;
     organizationName: string;
   };
@@ -162,16 +172,18 @@ export async function getPublicMinorConsentDetailsAction(studentId: string): Pro
     .maybeSingle();
 
   const guardiansList = Array.isArray(student.guardians)
-    ? (student.guardians as Array<{ name: string; relationship?: string; phone?: string }>)
+    ? (student.guardians as Array<{ name?: string; relationship?: string }>)
     : [];
 
   return {
     success: true,
     student: {
       id: student.id,
-      name: student.name,
-      birthDate: student.birth_date ? String(student.birth_date) : undefined,
-      guardians: guardiansList,
+      name: maskPersonName(String(student.name ?? "")),
+      birthDateMasked: maskBirthDate(student.birth_date ? String(student.birth_date) : undefined),
+      guardians: guardiansList
+        .filter((g) => g?.name)
+        .map((g) => ({ nameMasked: maskPersonName(g.name), ...(g.relationship ? { relationship: g.relationship } : {}) })),
       minorConsentStatus: student.minor_consent_status as string,
       organizationName: org?.name || "Espaço de Aulas",
     },
