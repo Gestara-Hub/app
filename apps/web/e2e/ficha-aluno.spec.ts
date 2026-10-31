@@ -872,7 +872,7 @@ test.describe("seções", () => {
     await expect(page.getByRole("button", { name: "Nova mensagem" })).toHaveCount(0);
   });
 
-  test("Cadastro: dados, mensalidade e responsáveis; 'Editar' abre o formulário", async ({ page }) => {
+  test("Cadastro: dados e responsáveis; o plano em 'Plano e pacotes'; 'Editar' do topo abre o formulário", async ({ page }) => {
     await seedProfile(page, (t) => {
       t.clients[0].guardians = [{ name: "Maria Ficha", relationship: "Mãe", phone: "11966660000" }];
     });
@@ -889,7 +889,9 @@ test.describe("seções", () => {
     await expect(plan).toContainText("Vence todo dia 10");
     await expect(plan).toContainText("Pagamento antecipado");
     await expect(panel).toContainText("(11) 96666-0000");
-    await panel.getByRole("button", { name: "Editar" }).click();
+    // Cadastro sem cartões (30/10/2026): sem o segundo "Editar"; o do topo abre o formulário.
+    await expect(panel.getByRole("button", { name: "Editar" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Editar aluno" })).toBeVisible();
   });
 });
@@ -898,8 +900,7 @@ test.describe("comunicação", () => {
   test("modelos 'Lembrete de cobrança' e 'Pacote acabando': prévia com as variáveis e texto editado", async ({ page }) => {
     await seedProfile(page);
     await page.goto("/communication");
-    const card = (title: string) =>
-      page.locator("div.rounded-xl").filter({ has: page.getByText(title, { exact: true }) }).last();
+    const card = (title: string) => page.getByRole("group", { name: title, exact: true });
     const reminder = card("Lembrete de cobrança");
     await expect(reminder).toContainText(
       "Olá, Ana Souza! Lembrete da mensalidade de novembro de R$ 150,00 na Academia X, com vencimento em 10/11.",

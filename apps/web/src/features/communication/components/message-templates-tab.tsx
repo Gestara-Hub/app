@@ -69,7 +69,11 @@ function TemplateCard({
   }
 
   return (
+    // Um grupo com o nome do modelo: leitor de tela anuncia o cartao, e os testes
+    // acham o cartao certo dentro da sanfona (que tambem e um cartao arredondado).
     <div
+      role="group"
+      aria-label={meta.label}
       className={cn(
         "rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 transition-colors space-y-2.5",
         automatic && !template.enabled && "opacity-75",

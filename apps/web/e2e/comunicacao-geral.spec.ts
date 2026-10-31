@@ -186,7 +186,7 @@ test.describe("modelos de mensagem", () => {
   test("editar o aniversário mostra a prévia, valida vazio e cancelar descarta", async ({ page }) => {
     await seedComm(page);
     await page.goto("/communication");
-    const card = page.locator("div.rounded-xl").filter({ has: page.getByText("Aniversário", { exact: true }) });
+    const card = page.getByRole("group", { name: "Aniversário", exact: true });
     await card.getByRole("button", { name: "Editar texto" }).click();
     const dialog = page.getByRole("dialog", { name: "Aniversário" });
     const text = dialog.getByLabel("Texto");

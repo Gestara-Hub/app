@@ -213,102 +213,57 @@ export function ConnectionSettingsTab() {
 
           <Steps items={OFFICIAL_STEPS} />
 
-          {hasPhone ? (
-            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+          {isConfigured ? (
+            <div className="flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <span>Você escolhe e confirma o número na janela da Meta. Depois, ele fica salvo no seu espaço.</span>
+            </div>
+          ) : hasPhone ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                 <span>
-                  Número sugerido: <strong className="font-semibold text-foreground">{formatPhone(phone!)}</strong>
-                  <span className="hidden sm:inline text-muted-foreground"> — você pode confirmar ou escolher outro no popup da Meta</span>
+                  Número do espaço: <strong className="font-semibold text-foreground">{formatPhone(phone!)}</strong>.
                 </span>
-              </div>
-              <Link href="/settings#phone" className="font-medium text-primary hover:underline">
+              </span>
+              <Link href="/settings#phone" className="shrink-0 font-medium text-primary hover:underline">
                 Alterar
               </Link>
             </div>
           ) : (
             <div className="flex items-start gap-2.5 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <span>
-                Você escolherá e verificará o número de WhatsApp diretamente na janela da Meta. Após a conexão, salvaremos o número no seu espaço automaticamente.
-              </span>
+              <span>Cadastre o telefone do espaço em Configurações antes de conectar.</span>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              disabled={!canManage || connectMut.isPending || isSigningUp}
-              onClick={async () => {
-                try {
-                  if (isConfigured) {
-                    const result = await launchSignup({
-                      businessName: unit?.name,
-                      phone: phone ?? undefined,
-                    });
-                    connectMut.mutate(
-                      {
-                        code: result.code,
-                        phoneNumberId: result.phoneNumberId,
-                        wabaId: result.wabaId,
-                      },
-                      {
-                        onSuccess: () => toast.success("WhatsApp oficial conectado via Meta!"),
-                        onError: (err) =>
-                          toast.error(
-                            getFieldErrors(err)?.[0]?.message ??
-                              getErrorMessage(err, "Não foi possível concluir a conexão do WhatsApp oficial."),
-                          ),
-                      },
-                    );
-                  } else {
-                    connectMut.mutate(undefined, {
-                      onSuccess: () => toast.success("WhatsApp oficial conectado."),
-                      onError: (err) =>
-                        toast.error(
-                          getFieldErrors(err)?.[0]?.message ??
-                            getErrorMessage(err, "Não foi possível conectar o WhatsApp oficial."),
-                        ),
-                    });
-                  }
-                } catch (err: unknown) {
-                  toast.error(err instanceof Error ? err.message : "Conexão com a Meta cancelada ou interrompida.");
-                }
-              }}
-            >
-              {isSigningUp ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Aguardando autorização na Meta...
-                </>
-              ) : connectMut.isPending ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Conectando WhatsApp oficial...
-                </>
-              ) : (
-                "Conectar via Popup da Meta"
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!canManage || connectMut.isPending || isSigningUp}
-              onClick={() => {
-                connectMut.mutate(undefined, {
-                  onSuccess: () => toast.success("WhatsApp oficial conectado em modo Sandbox / Local!"),
-                  onError: (err) =>
-                    toast.error(
-                      getFieldErrors(err)?.[0]?.message ??
-                        getErrorMessage(err, "Não foi possível ativar a conexão de teste."),
-                    ),
-                });
-              }}
-            >
-              Conectar modo Sandbox (Ambiente local)
-            </Button>
-          </div>
+          {/* Um botao so (31/10/2026): com o app da Meta configurado, o cadastro guiado
+              (o numero vem de la); sem ele (desenvolvimento e testes), conecta pelo
+              telefone do espaco. Saiu o "modo Sandbox", jargao que aparecia ao cliente. */}
+          <Button
+            type="button"
+            disabled={!canManage || connectMut.isPending || isSigningUp || (!isConfigured && !hasPhone)}
+            onClick={async () => {
+              const onError = (err: unknown) =>
+                toast.error(getFieldErrors(err)?.[0]?.message ?? getErrorMessage(err, "Não foi possível conectar o WhatsApp oficial."));
+              if (!isConfigured) {
+                connectMut.mutate(undefined, { onSuccess: () => toast.success("WhatsApp oficial conectado."), onError });
+                return;
+              }
+              try {
+                const result = await launchSignup({ businessName: unit?.name, phone: phone ?? undefined });
+                connectMut.mutate(
+                  { code: result.code, phoneNumberId: result.phoneNumberId, wabaId: result.wabaId },
+                  { onSuccess: () => toast.success("WhatsApp oficial conectado."), onError },
+                );
+              } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : "A conexão com a Meta foi cancelada.");
+              }
+            }}
+          >
+            {isSigningUp || connectMut.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            {isSigningUp ? "Esperando a confirmação na Meta..." : connectMut.isPending ? "Conectando..." : "Conectar WhatsApp oficial"}
+          </Button>
         </section>
         {assistedCard}
       </div>

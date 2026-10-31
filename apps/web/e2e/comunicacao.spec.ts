@@ -154,7 +154,7 @@ test.describe("envio assistido (grátis)", () => {
     test.slow(); // tres telas e um reload
     await seedAcademy(page, { extra: withStudent });
     await page.goto("/communication");
-    const card = page.locator("div.rounded-xl").filter({ has: page.getByText("Em atraso", { exact: true }) });
+    const card = page.getByRole("group", { name: "Em atraso", exact: true });
     await card.getByRole("button", { name: "Editar texto" }).click();
     const dialog = page.getByRole("dialog", { name: "Em atraso" });
     const text = dialog.getByLabel("Texto");
