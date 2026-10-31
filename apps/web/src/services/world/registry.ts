@@ -205,8 +205,15 @@ export async function resolveServiceMethod(name: string): Promise<ResolvedMethod
   if (!Object.hasOwn(SERVICE_NAMESPACES, namespace)) return undefined;
   const entry = SERVICE_NAMESPACES[namespace];
   if (!method || entry.browserOnly?.includes(method)) return undefined;
-  const service = await entry.load();
-  if (!Object.hasOwn(service, method)) return undefined;
+  // Duas chamadas no primeiro uso: o import dinamico pode devolver o modulo ainda
+  // inicializando (import circular) e o servico vir `undefined`. Espera e tenta
+  // de novo antes de desistir (revisao geral de 31/10/2026, teste de banco).
+  let service = await entry.load();
+  for (let attempt = 0; !service && attempt < 5; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+    service = await entry.load();
+  }
+  if (!service || !Object.hasOwn(service, method)) return undefined;
   const fn = service[method];
   if (typeof fn !== "function") return undefined;
   return {
