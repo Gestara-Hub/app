@@ -53,7 +53,9 @@ export function PageTabs<T extends string>({ tabs, value, onChange, label, idPre
             aria-controls={idPrefix ? `${idPrefix}-panel-${t.value}` : undefined}
             onClick={() => onChange(t.value)}
             className={cn(
-              "inline-flex flex-auto cursor-pointer items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors sm:flex-none sm:px-3.5",
+              // Foco so pelo teclado, com o anel do app (o contorno do navegador
+              // ficava na aba depois do clique).
+              "inline-flex flex-auto cursor-pointer items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 sm:flex-none sm:px-3.5",
               active ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
             )}
           >

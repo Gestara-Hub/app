@@ -121,7 +121,8 @@ export function FileDropzone({
 
   const limits = [
     acceptLabel ? acceptLabel.charAt(0).toUpperCase() + acceptLabel.slice(1) : null,
-    maxSizeBytes !== undefined ? `até ${formatBytes(maxSizeBytes)} cada` : null,
+    // "cada" so quando cabe mais de um arquivo (a logo do certificado e uma so).
+    maxSizeBytes !== undefined ? `até ${formatBytes(maxSizeBytes)}${multiple ? " cada" : ""}` : null,
     multiple && maxFiles !== undefined ? `no máximo ${maxFiles}` : null,
   ]
     .filter(Boolean)
