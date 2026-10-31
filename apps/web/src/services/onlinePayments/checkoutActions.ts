@@ -1,5 +1,6 @@
 "use server";
 
+import { platformSplitCents } from "@gestarahub/core/payment-fees";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PixNotReadyError,
@@ -14,75 +15,69 @@ import { logError, logWarn } from "@/lib/log";
 
 /**
  * Gera o Pix ou o link de pagamento de uma cobranca no gateway ativo.
+ *
+ * Como actions, o navegador tambem chama estas funcoes direto, com o que quiser
+ * (auditoria de 30/10/2026). Por isso so vale o que o servidor confere: permissao
+ * de cobrar, cobranca do proprio espaco e em aberto, valor nunca abaixo do dela,
+ * chave da subconta e taxa do GestaraHub lidas aqui (as do pedido sao ignoradas) e
+ * nada na conta principal do GestaraHub. A demonstracao (cobranca fora do banco)
+ * so usa o provedor de demonstracao.
  */
+type Checked<T> = { input: T } | { error: string };
 
-/**
- * Server Action agnóstica para criação de Pix online via gateway ativo.
- * Recupera de forma segura a subconta da organização e aplica a taxa de split correta.
- */
+async function checkedInput<T extends CreatePixInput | CreateLinkInput>(input: T, realGateway: boolean): Promise<Checked<T>> {
+  const ctx = await requireTenant();
+  ctx.require("billing:manage");
+  const admin = createSupabaseAdminClient();
+  const { data: charge } = input.chargeId
+    ? await admin
+        .from("charges")
+        .select("organization_id, status, amount_cents, due_date, competence, kind, description")
+        .eq("id", input.chargeId)
+        .maybeSingle()
+    : { data: null };
+
+  if (!charge) {
+    // Demonstracao: a cobranca vive so no navegador; nunca no parceiro de verdade.
+    return realGateway ? { error: "Cobrança não encontrada." } : { input: { ...input, subaccountApiKey: undefined } };
+  }
+  if (charge.organization_id !== ctx.organizationId) return { error: "Cobrança de outro espaço." };
+  if (charge.status !== "pending" && charge.status !== "overdue") return { error: "Esta cobrança não está em aberto." };
+  if (!Number.isInteger(input.amountCents) || input.amountCents < Number(charge.amount_cents)) {
+    return { error: "O valor não pode ser menor que o da cobrança." };
+  }
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("gateway_api_key, subscription")
+    .eq("id", ctx.organizationId)
+    .maybeSingle();
+  const tier = (org?.subscription as { tier?: "free" | "pro" | "scale" } | null)?.tier;
+  const subaccountApiKey = (org?.gateway_api_key as string | null) ?? undefined;
+  if (realGateway && !subaccountApiKey) return { error: "Ative a conta de recebimento em Recebimentos online." };
+  return {
+    input: {
+      ...input,
+      subaccountApiKey,
+      splitAmountCents: platformSplitCents(tier),
+      chargeDueDate: input.chargeDueDate || (charge.due_date as string),
+      competence: input.competence || (charge.competence as string | undefined),
+      chargeKind: input.chargeKind || (charge.kind as string),
+      description: input.description || ((charge.description as string | null) ?? undefined),
+    },
+  };
+}
+
+/** Pix da cobranca no gateway ativo, com a subconta e a taxa conferidas no servidor. */
 export async function createOnlinePixPaymentAction(
   input: CreatePixInput,
   provider?: string,
 ): Promise<PixPayment | { error: string; reason?: string }> {
-  const ctx = await requireTenant();
   try {
-    let subaccountApiKey = input.subaccountApiKey;
-    let splitAmountCents = input.splitAmountCents;
-    let enrichedInput = { ...input };
-    // A cobranca da demonstracao nao esta no banco; a consulta nao pode derrubar a chamada ao gateway.
-    try {
-
-    // Se subaccountApiKey não foi fornecida, busca do tenant no banco
-    if (input.chargeId) {
-      const adminClient = createSupabaseAdminClient();
-      const { data: charge } = await adminClient
-        .from("charges")
-        .select("organization_id, due_date, competence, kind, description")
-        .eq("id", input.chargeId)
-        .maybeSingle();
-
-      if (charge && charge.organization_id !== ctx.organizationId) {
-        return { error: "Cobrança de outro espaço." };
-      }
-      if (charge) {
-        enrichedInput = {
-          ...enrichedInput,
-          chargeDueDate: enrichedInput.chargeDueDate || charge.due_date,
-          competence: enrichedInput.competence || charge.competence,
-          chargeKind: enrichedInput.chargeKind || charge.kind,
-          description: enrichedInput.description || charge.description,
-        };
-      }
-
-      if (charge?.organization_id) {
-        const { data: org } = await adminClient
-          .from("organizations")
-          .select("gateway_api_key, subscription")
-          .eq("id", charge.organization_id)
-          .maybeSingle();
-
-        if (org?.gateway_api_key) {
-          subaccountApiKey = org.gateway_api_key;
-        }
-
-        // Determina o valor do split com base no plano (Pro = R$ 1,29, Free = R$ 1,99)
-        if (splitAmountCents === undefined) {
-          const tier = (org?.subscription as Record<string, unknown>)?.tier;
-          splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
-        }
-      }
-    }
-
-    } catch (lookupError) {
-      logWarn("[createOnlinePixPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
-    }
-
     const gateway = getPaymentGateway(provider);
-    const result = await gateway.createPix({
-      ...enrichedInput,
-      subaccountApiKey,
-      splitAmountCents: splitAmountCents ?? 199,
-    });
+    const checked = await checkedInput(input, gateway.provider !== "mock");
+    if ("error" in checked) return checked;
+    const result = await gateway.createPix(checked.input);
     if (gateway.provider === "mock") {
       return {
         ...result,
@@ -105,71 +100,16 @@ export async function createOnlinePixPaymentAction(
   }
 }
 
-/**
- * Server Action agnóstica para criação de link de pagamento via gateway ativo.
- */
+/** Link de pagamento da cobranca no gateway ativo, com a subconta e a taxa conferidas no servidor. */
 export async function createOnlineLinkPaymentAction(
   input: CreateLinkInput,
   provider?: string,
 ): Promise<PaymentLinkPayment | { error: string }> {
-  const ctx = await requireTenant();
   try {
-    let subaccountApiKey = input.subaccountApiKey;
-    let splitAmountCents = input.splitAmountCents;
-    let enrichedInput = { ...input };
-    // A cobranca da demonstracao nao esta no banco; a consulta nao pode derrubar a chamada ao gateway.
-    try {
-
-    if (input.chargeId) {
-      const adminClient = createSupabaseAdminClient();
-      const { data: charge } = await adminClient
-        .from("charges")
-        .select("organization_id, due_date, competence, kind, description")
-        .eq("id", input.chargeId)
-        .maybeSingle();
-
-      if (charge && charge.organization_id !== ctx.organizationId) {
-        return { error: "Cobrança de outro espaço." };
-      }
-      if (charge) {
-        enrichedInput = {
-          ...enrichedInput,
-          chargeDueDate: enrichedInput.chargeDueDate || charge.due_date,
-          competence: enrichedInput.competence || charge.competence,
-          chargeKind: enrichedInput.chargeKind || charge.kind,
-          description: enrichedInput.description || charge.description,
-        };
-      }
-
-      if (charge?.organization_id) {
-        const { data: org } = await adminClient
-          .from("organizations")
-          .select("gateway_api_key, subscription")
-          .eq("id", charge.organization_id)
-          .maybeSingle();
-
-        if (org?.gateway_api_key) {
-          subaccountApiKey = org.gateway_api_key;
-        }
-
-        // Determina o valor do split com base no plano (Pro = R$ 1,29, Free = R$ 1,99)
-        if (splitAmountCents === undefined) {
-          const tier = (org?.subscription as Record<string, unknown>)?.tier;
-          splitAmountCents = tier === "pro" || tier === "scale" ? 129 : 199;
-        }
-      }
-    }
-
-    } catch (lookupError) {
-      logWarn("[createOnlineLinkPaymentAction] Cobrança não encontrada no banco; segue com a chave principal:", lookupError);
-    }
-
     const gateway = getPaymentGateway(provider);
-    const result = await gateway.createLink({
-      ...enrichedInput,
-      subaccountApiKey,
-      splitAmountCents: splitAmountCents ?? 199,
-    });
+    const checked = await checkedInput(input, gateway.provider !== "mock");
+    if ("error" in checked) return checked;
+    const result = await gateway.createLink(checked.input);
     if (gateway.provider === "mock") {
       return {
         ...result,
