@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { HeartHandshake, Megaphone, MessageSquare, Pencil, Wallet } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { MessageTemplate, MetaTemplateStatus } from "@gestarahub/contracts";
+import type { MessageTemplate } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,63 +25,14 @@ import { cn } from "@/lib/utils";
 import { useCan, useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useMessageTemplates, useUpdateTemplate, useWhatsAppConnection } from "../hooks/use-communication";
-import { TRIGGER_META, TRIGGER_ORDER, automationTiming, sampleValues, templatePreview } from "../message-meta";
+import { TRIGGER_META, TRIGGER_ORDER, automationTiming, metaStatusNotice, sampleValues, templatePreview } from "../message-meta";
+
+const NOTICE_TONE = {
+  warning: "text-amber-700 dark:text-amber-400",
+  danger: "text-destructive",
+} as const;
 import { EditTemplateDialog } from "./edit-template-dialog";
 import { MessageBubble } from "./message-bubble";
-
-function MetaStatusBadge({ status }: { status?: MetaTemplateStatus }) {
-  if (!status) return null;
-
-  if (status === "APPROVED") {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Aprovado na Meta
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          Modelo oficial aprovado pela Meta. Disparos automáticos liberados 24h para qualquer aluno.
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  if (status === "PENDING") {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-            <span className="size-1.5 rounded-full bg-amber-500" />
-            Em análise na Meta
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          A Meta está revisando este modelo. A aprovação costuma levar alguns minutos.
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  if (status === "REJECTED") {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-destructive/30 bg-destructive/10 text-destructive">
-            <span className="size-1.5 rounded-full bg-destructive" />
-            Recusado na Meta
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          Este modelo não foi aprovado pela Meta. Edite o texto para reavaliar.
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return null;
-}
 
 function TemplateCard({
   template,
@@ -105,6 +56,7 @@ function TemplateCard({
   const preview = templatePreview(template.trigger, fillMessage(template.content, sampleValues(orgName, withPaymentLink)));
   // Modelo so de envio manual: sem interruptor nem prazo, nem no oficial.
   const automatic = official && !isManualTrigger(template.trigger);
+  const notice = official ? metaStatusNotice(template.metaStatus) : null;
 
   function toggle(enabled: boolean) {
     updateMut.mutate(
@@ -125,11 +77,30 @@ function TemplateCard({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">{meta.label}</p>
-            {official ? <MetaStatusBadge status={template.metaStatus} /> : null}
-          </div>
-          <p className="text-xs text-muted-foreground">{automatic ? automationTiming(template) : meta.where}</p>
+          <p className="text-sm font-semibold text-foreground">{meta.label}</p>
+          <p className="text-xs text-muted-foreground break-words">
+            {automatic ? automationTiming(template) : meta.where}
+            {notice ? (
+              <>
+                {" · "}
+                {/* So o que pede atencao: aprovado e o normal e nao aparece. */}
+                {notice.needsEdit && canManage ? (
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    title={notice.hint}
+                    className={cn("font-medium underline-offset-2 hover:underline", NOTICE_TONE[notice.tone])}
+                  >
+                    {notice.text}
+                  </button>
+                ) : (
+                  <span title={notice.hint} className={cn("font-medium", NOTICE_TONE[notice.tone])}>
+                    {notice.text}
+                  </span>
+                )}
+              </>
+            ) : null}
+          </p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">

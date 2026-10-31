@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useHasFeature } from "@/features/auth";
 import { useOrganization } from "@/features/settings";
 import { useUpdateTemplate } from "../hooks/use-communication";
-import { TRIGGER_META, automationTiming, sampleValues, templatePreview } from "../message-meta";
+import { TRIGGER_META, automationTiming, metaStatusNotice, sampleValues, templatePreview } from "../message-meta";
 import { MessageBubble } from "./message-bubble";
 
 /** Texto do modelo: ate 900 caracteres, com folga para os nomes (o envio aceita 1000). */
@@ -64,6 +64,7 @@ function EditTemplateForm({
   const [sendHour, setSendHour] = useState(template.sendHour);
   // Modelo so de envio manual: sem envio automatico nem horario.
   const automatic = official && !isManualTrigger(template.trigger);
+  const notice = metaStatusNotice(template.metaStatus);
 
   // Insere a variavel onde esta o cursor (ou no fim).
   function insertVariable(variable: string) {
@@ -117,32 +118,21 @@ function EditTemplateForm({
   return (
     <>
       <DialogBody className="space-y-4">
-        {official && template.metaStatus ? (
-          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Status na Meta:</span>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                template.metaStatus === "APPROVED" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-                template.metaStatus === "PENDING" && "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-                template.metaStatus === "REJECTED" && "bg-destructive/10 text-destructive",
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  template.metaStatus === "APPROVED" && "bg-emerald-500",
-                  template.metaStatus === "PENDING" && "bg-amber-500",
-                  template.metaStatus === "REJECTED" && "bg-destructive",
-                )}
-              />
-              {template.metaStatus === "APPROVED"
-                ? "Aprovado na Meta"
-                : template.metaStatus === "PENDING"
-                  ? "Em análise na Meta"
-                  : "Recusado na Meta"}
-            </span>
-          </div>
+        {official ? (
+          // Sem selo: so o que importa ao editar. Aprovado e o normal.
+          <p
+            className={cn(
+              "rounded-lg border px-3 py-2 text-xs",
+              notice?.tone === "danger"
+                ? "border-destructive/30 bg-destructive/10 text-destructive"
+                : notice
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "border-border/60 bg-muted/40 text-muted-foreground",
+            )}
+          >
+            {notice ? `${notice.text}. ${notice.hint} ` : ""}
+            Ao salvar um texto novo, o WhatsApp analisa de novo. Leva alguns minutos.
+          </p>
         ) : null}
 
         {automatic ? (

@@ -2,7 +2,17 @@
 
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { useState } from "react";
-import { Eye, MessageCircle, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCheck,
+  Clock,
+  ExternalLink,
+  Eye,
+  MessageCircle,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "@/lib/toast";
 import type { MessageLog, MessageLogKind, MessageLogStatus } from "@gestarahub/contracts";
 import { getErrorMessage } from "@gestarahub/core/api-error";
@@ -61,9 +71,26 @@ const KIND_FILTERS: { value: KindFilter; label: string }[] = [
   { value: "manual", label: "Avulsa" },
 ];
 
+/** Os tiques do WhatsApp: enviada ✓, entregue e lida ✓✓ (a cor diferencia a lida). */
+const STATUS_ICON: Record<MessageLogStatus, LucideIcon> = {
+  opened: ExternalLink,
+  queued: Clock,
+  sent: Check,
+  delivered: CheckCheck,
+  read: CheckCheck,
+  failed: AlertCircle,
+};
+
 export function MessageStatusBadge({ status }: { status: MessageLogStatus }) {
+  const Icon = STATUS_ICON[status];
   return (
-    <span className={cn("inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium", STATUS_META[status].className)}>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        STATUS_META[status].className,
+      )}
+    >
+      <Icon className="size-3" aria-hidden />
       {STATUS_META[status].label}
     </span>
   );

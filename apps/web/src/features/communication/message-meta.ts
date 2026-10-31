@@ -4,6 +4,7 @@ import type {
   MessageLogStatus,
   MessageTemplate,
   MessageTrigger,
+  MetaTemplateStatus,
 } from "@gestarahub/contracts";
 
 /** Nome curto de cada tipo de mensagem e onde o botao aparece no sistema. */
@@ -28,15 +29,19 @@ export const TRIGGER_META: Record<MessageTrigger, { label: string; where: string
   manual_broadcast: { label: "Mensagem avulsa", where: "Botão Nova mensagem" },
 };
 
+/**
+ * Situacao da mensagem no Historico, cor por significado (30/10/2026): cinza =
+ * assistido (o sistema so sabe que abriu o WhatsApp), ambar = esperando, azul
+ * = a caminho (enviada, entregue), verde = lida (o fim esperado), vermelho =
+ * falhou. O icone segue os tiques do WhatsApp (componente MessageStatusBadge).
+ */
+const SKY = "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
 export const STATUS_META: Record<MessageLogStatus, { label: string; className: string }> = {
   opened: { label: "Aberto no WhatsApp", className: "border-border bg-muted text-muted-foreground" },
   queued: { label: "Na fila", className: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
-  sent: { label: "Enviada", className: "border-border bg-muted text-foreground" },
-  delivered: {
-    label: "Entregue",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  },
-  read: { label: "Lida", className: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+  sent: { label: "Enviada", className: SKY },
+  delivered: { label: "Entregue", className: SKY },
+  read: { label: "Lida", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
   failed: { label: "Falhou", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
@@ -113,4 +118,47 @@ export function billingReminderTrigger(
     return days >= 10 ? "billing_critical" : "billing_after_due";
   }
   return charge.dueDate === today ? "billing_due_date" : "billing_before_due";
+}
+
+export interface MetaStatusNotice {
+  /** Curto, na linha do prazo: "Em análise no WhatsApp". */
+  text: string;
+  /** O que acontece ou o que fazer. */
+  hint: string;
+  tone: "warning" | "danger";
+  /** Pede uma acao no texto (recusado): a linha leva a edicao. */
+  needsEdit: boolean;
+}
+
+/**
+ * Situacao do modelo no WhatsApp oficial, so quando pede atencao: aprovado e
+ * o normal e nao aparece (menos poluicao na tela de Comunicacao). Na tela,
+ * "WhatsApp" em vez de "Meta": o dono conhece o WhatsApp.
+ */
+export function metaStatusNotice(status: MetaTemplateStatus | undefined): MetaStatusNotice | null {
+  switch (status) {
+    case "PENDING":
+      return {
+        text: "Em análise no WhatsApp",
+        hint: "Leva alguns minutos. A mensagem sai sozinha quando aprovar.",
+        tone: "warning",
+        needsEdit: false,
+      };
+    case "REJECTED":
+      return {
+        text: "Recusado pelo WhatsApp: ajuste o texto",
+        hint: "O WhatsApp não aprovou este texto. Edite e salve para ele analisar de novo.",
+        tone: "danger",
+        needsEdit: true,
+      };
+    case "PAUSED":
+      return {
+        text: "Pausado pelo WhatsApp: revise o texto",
+        hint: "Muitos alunos bloquearam ou denunciaram esta mensagem. Revise o texto.",
+        tone: "warning",
+        needsEdit: true,
+      };
+    default:
+      return null;
+  }
 }
