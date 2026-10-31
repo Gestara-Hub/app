@@ -59,9 +59,10 @@ export function DiscoveryNextStepBar() {
         {isOnStep ? (
           <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{next.hint}</span>
         ) : (
+          // Celular: so a seta, para o titulo caber numa linha (revisao de celular de 31/10/2026).
           <Button asChild className="shrink-0">
-            <Link href={next.href}>
-              Fazer agora
+            <Link href={next.href} aria-label={`Fazer agora: ${next.title}`}>
+              <span className="hidden sm:inline">Fazer agora</span>
               <ArrowRight className="size-4" />
             </Link>
           </Button>

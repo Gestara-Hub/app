@@ -362,6 +362,7 @@ Quem termina a configuração inicial costuma fechar a comemoração sem ler, e 
 - Na turma, "Fazer agora" de "Matricular alunos" reabre o formulário mesmo já estando na página (a turma reage ao `?enroll=true` de novo).
 - Como a faixa está em toda tela, os marcos refazem a leitura depois de cada ação em qualquer lugar (o `createQueryClient` só refaz o que está montado).
 - Código: `features/onboarding/components/discovery-next-step-bar.tsx` (montado no `app/(app)/layout.tsx`, abaixo do `OnboardingTopBanner`), ícones em `features/onboarding/discovery-icons.ts`, comemoração em `features/turmas/components/setup-complete-dialog.tsx`.
+- **Celular** (revisão de 31/10/2026): a faixa e os itens do card mostram só a seta, sem o texto "Fazer agora" (que segue no nome acessível), para o título caber numa linha. No card, o item inteiro abre o passo.
 
 ---
 

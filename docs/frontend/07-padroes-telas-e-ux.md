@@ -254,6 +254,7 @@ O GestaraHub é utilizado diariamente pelo celular no tatame/recepção. As segu
 - **Nada de reticências em nome ou valor:** `truncate` saiu das listas, cartões e diálogos do modelo de turmas; o texto quebra a linha (`min-w-0 break-words`, e-mail com `break-all`). As notas do aluno saíram da linha da lista (ficam na ficha).
 - **Campos de seleção crescem:** `SelectField` e `Combobox` usam `min-h-9` e quebram o valor longo em duas linhas. Filtros com `Select` usam `sm:w-auto sm:min-w-*` (o rótulo cabe inteiro).
 - **Abas segmentadas quebram a linha** (Financeiro, Configurações, Planos, Comunicação), sem rolagem lateral escondida.
+  - Revisão de celular de 31/10/2026: as quatro usam um componente só, `PageTabs` (`@/components/shared/page-tabs`). No celular as abas ocupam a largura toda, em partes iguais e sem ícone (três abas cabem numa linha); do `sm` para cima ficam do tamanho do texto, com ícone. Aba nova de tela usa `PageTabs`.
 - **`PageHeader`:** no desktop as ações ficam numa linha só (`sm:shrink-0`); quem quebra é a descrição.
 - **Valores do Financeiro** diminuem com a largura (`text-2xl sm:text-3xl lg:text-2xl xl:text-3xl`) e os cartões têm `min-w-0`.
 - **Simulação das regras da mensalidade** vira um bloco por cobrança no celular (a tabela fica do `sm` para cima).

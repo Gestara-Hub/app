@@ -81,7 +81,7 @@ export function DiscoveryChecklist({
             <li
               key={item.id}
               className={cn(
-                "flex items-center gap-3 rounded-xl border p-3",
+                "relative flex items-center gap-3 rounded-xl border p-3",
                 item.done
                   ? "border-border/60 bg-muted/20"
                   : locked
@@ -131,10 +131,11 @@ export function DiscoveryChecklist({
                   <Link
                     href={item.href}
                     aria-label={`Fazer agora: ${item.title}`}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                    // O cartao inteiro abre o passo (toque facil no celular, onde fica so a seta).
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold text-primary after:absolute after:inset-0 after:rounded-xl hover:bg-primary/10"
                   >
-                    Fazer agora
-                    <ArrowRight className="size-3.5" />
+                    <span className="hidden sm:inline">Fazer agora</span>
+                    <ArrowRight className="size-4 sm:size-3.5" />
                   </Link>
                 )}
               </div>

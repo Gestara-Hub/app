@@ -75,11 +75,17 @@ function TemplateCard({
       role="group"
       aria-label={meta.label}
       className={cn(
-        "rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 transition-colors space-y-2.5",
+        "rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 transition-colors",
         automatic && !template.enabled && "opacity-75",
       )}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {/* Celular: os dois icones cabem ao lado do nome; o automatico (com a chave) desce. */}
+      <div
+        className={cn(
+          "flex gap-2",
+          automatic ? "flex-col sm:flex-row sm:items-center sm:justify-between" : "items-start justify-between sm:items-center",
+        )}
+      >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{meta.label}</p>
           <p className="text-xs text-muted-foreground break-words">
@@ -163,7 +169,7 @@ function TemplateCard({
       </div>
 
       {showPreview ? (
-        <div className="pt-1 border-t border-border/40">
+        <div className="mt-2.5 pt-1 border-t border-border/40">
           <MessageBubble text={preview} />
         </div>
       ) : (

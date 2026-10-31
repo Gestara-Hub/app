@@ -11,7 +11,7 @@ import { PLAN_SETTINGS_HREF } from "@/components/shared/feature-locked";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { type PageTab, PageTabs } from "@/components/shared/page-tabs";
 import { useCommunicationMetrics, useWhatsAppConnection } from "../hooks/use-communication";
 import { ConnectionSettingsTab } from "./connection-settings-tab";
 import { MessageLogsTab } from "./message-logs-tab";
@@ -20,7 +20,7 @@ import { SendMessageDialog } from "./send-message-dialog";
 
 type Tab = "messages" | "history" | "connection";
 
-const TABS: { value: Tab; label: string; icon: typeof History }[] = [
+const TABS: PageTab<Tab>[] = [
   { value: "messages", label: "Mensagens", icon: MessageSquareText },
   { value: "history", label: "Histórico", icon: History },
   { value: "connection", label: "Conexão", icon: Smartphone },
@@ -123,7 +123,7 @@ function ModeBanner({
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <Card className="shadow-2xs">
+    <Card className="py-0 shadow-2xs">
       <CardContent className="space-y-1 p-4">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <p className="text-xl font-semibold tabular-nums text-foreground">{value}</p>
@@ -138,7 +138,7 @@ function SummaryCards({ metrics }: { metrics: CommunicationMetrics }) {
   const rate = (value: number | null) => (value === null ? "—" : `${value.toLocaleString("pt-BR")}%`);
   if (metrics.mode === "assisted") {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <SummaryCard
           label="Abertas no WhatsApp"
           value={String(metrics.messagesThisMonth)}
@@ -153,7 +153,7 @@ function SummaryCards({ metrics }: { metrics: CommunicationMetrics }) {
     );
   }
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <SummaryCard
         label="Enviadas no mês"
         value={String(metrics.messagesThisMonth)}
@@ -223,28 +223,7 @@ export function CommunicationView() {
       )}
 
       <div className="space-y-4">
-        <div
-          role="tablist"
-          aria-label="Seções de comunicação"
-          className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.value}
-              onClick={() => setTab(t.value)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-                tab === t.value ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <t.icon className="size-4 shrink-0" />
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <PageTabs tabs={TABS} value={tab} onChange={setTab} label="Seções de comunicação" />
 
         <div role="tabpanel">
           {tab === "messages" ? <MessageTemplatesTab /> : null}

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { ConfirmActionDialog } from "@/components/shared/confirm-action-dialog";
 import { useRetainedValue } from "@/lib/use-retained-value";
 import { PageHeader } from "@/components/layout/page-header";
+import { type PageTab, PageTabs } from "@/components/shared/page-tabs";
 import {
   ListItemActionsMenu,
   ListItemContextMenu,
@@ -578,7 +579,7 @@ function MembershipPlansTab({
 
 type PlansTab = "plans" | "packages";
 
-const PLANS_TABS: { value: PlansTab; label: string; icon: typeof Layers }[] = [
+const PLANS_TABS: PageTab<PlansTab>[] = [
   { value: "plans", label: "Planos de mensalidade", icon: Layers },
   { value: "packages", label: "Pacotes de aulas", icon: Ticket },
 ];
@@ -629,34 +630,14 @@ export function PlansView() {
       </PageHeader>
 
 
-      <div
-        role="tablist"
-        aria-label="Seções de planos"
-        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
-      >
-        {PLANS_TABS.map((t) => {
-          const active = t.value === tab;
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              id={`plans-tab-${t.value}`}
-              aria-selected={active}
-              aria-controls={`plans-panel-${t.value}`}
-              onClick={() => setTab(t.value)}
-              className={cn(
-                "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-                active ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <PageTabs
+        tabs={PLANS_TABS}
+        value={tab}
+        onChange={setTab}
+        label="Seções de planos"
+        idPrefix="plans"
+        className="mb-6"
+      />
 
       <div role="tabpanel" id={`plans-panel-${tab}`} aria-labelledby={`plans-tab-${tab}`}>
         {tab === "plans" ? (

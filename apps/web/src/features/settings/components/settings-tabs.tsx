@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Award, Building2, Clock, SlidersHorizontal, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { PageTabs } from "@/components/shared/page-tabs";
 import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useModel } from "@/features/auth";
 import { UserPreferencesView } from "@/features/preferences";
@@ -139,42 +139,22 @@ export function SettingsTabs() {
   return (
     // O editor do certificado usa duas colunas (campos e previa): aba mais larga.
     <div className={tab === "certificado" ? "max-w-6xl" : "max-w-3xl"}>
-      <div
-        role="tablist"
-        aria-label="Seções de configurações"
-        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
-      >
-        {visibleTabs.map((t) => {
-          const active = t.value === tab;
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              id={`settings-tab-${t.value}`}
-              aria-selected={active}
-              aria-controls={`settings-panel-${t.value}`}
-              onClick={() => void handleTabChange(t.value)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors cursor-pointer",
-                active
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {t.label}
-              {dirtyTabs[t.value] ? (
-                <>
-                  <span aria-hidden className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="sr-only">(alterações não salvas)</span>
-                </>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      <PageTabs
+        tabs={visibleTabs.map((t) => ({
+          ...t,
+          extra: dirtyTabs[t.value] ? (
+            <>
+              <span aria-hidden className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="sr-only">(alterações não salvas)</span>
+            </>
+          ) : null,
+        }))}
+        value={tab}
+        onChange={(value) => void handleTabChange(value)}
+        label="Seções de configurações"
+        idPrefix="settings"
+        className="mb-6"
+      />
 
       {visibleTabs.map((t) => (
         <div

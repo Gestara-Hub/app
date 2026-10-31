@@ -4,10 +4,10 @@ import { useTeamWords } from "@/features/settings";
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, LayoutDashboard, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { type PageTab, PageTabs } from "@/components/shared/page-tabs";
 import { Button } from "@/components/ui/button";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { markDiscoveryVisit } from "@/lib/discovery-flags";
-import { cn } from "@/lib/utils";
 import { useFinanceUrlState } from "../hooks/use-finance-url-state";
 import type { FinanceTab } from "../lib";
 import { CompetencePicker } from "./competence-picker";
@@ -16,7 +16,7 @@ import { FinanceEntryFormDialog } from "./finance-entry-form-dialog";
 import { FinanceSummaryTab } from "./finance-summary-tab";
 import { TeacherPayTab } from "./teacher-pay-tab";
 
-function financeTabs(teacherLabel: string): { value: FinanceTab; label: string; icon: typeof LayoutDashboard }[] {
+function financeTabs(teacherLabel: string): PageTab<FinanceTab>[] {
   return [
     { value: "resumo", label: "Resumo", icon: LayoutDashboard },
     { value: "lancamentos", label: "Lançamentos", icon: ArrowLeftRight },
@@ -58,36 +58,14 @@ export function FinanceView() {
         </div>
       </PageHeader>
 
-      <div
-        role="tablist"
-        aria-label="Seções do financeiro"
-        className="mb-6 inline-flex max-w-full flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
-      >
-        {financeTabs(team.titlePlural).map((t) => {
-          const active = t.value === tab;
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              id={`finance-tab-${t.value}`}
-              aria-selected={active}
-              aria-controls={`finance-panel-${t.value}`}
-              onClick={() => setTab(t.value)}
-              className={cn(
-                "inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <PageTabs
+        tabs={financeTabs(team.titlePlural)}
+        value={tab}
+        onChange={setTab}
+        label="Seções do financeiro"
+        idPrefix="finance"
+        className="mb-6"
+      />
 
       <div
         role="tabpanel"
