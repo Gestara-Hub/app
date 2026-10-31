@@ -2,15 +2,13 @@ export type ThemeMode = "light" | "dark" | "system";
 export type DensityMode = "comfortable" | "compact";
 export type ListViewMode = "list" | "grid";
 
+/**
+ * Tema da pessoa: so a cor de destaque desde 31/10/2026 (cor base, cantos, menu,
+ * fonte e estilo ficaram fixos). Preferencias antigas podem trazer outras
+ * chaves; ninguem le mais.
+ */
 export interface ThemeStylingPreferences {
-  baseColor?: "zinc" | "slate" | "stone" | "gray" | "neutral" | string;
   themeColor?: string;
-  radius?: string;
-  menuColor?: "default" | "inverted" | "subtle" | string;
-  menuAccent?: "subtle" | "bold" | string;
-  font?: string;
-  style?: string;
-  presetId?: string;
 }
 
 export interface UserPreferences {
@@ -66,14 +64,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   },
   dismissedAlertKeys: [],
   themeStyling: {
-    baseColor: "zinc",
     themeColor: "zinc",
-    radius: "0.5",
-    menuColor: "inverted",
-    menuAccent: "subtle",
-    font: "geist",
-    style: "default",
-    presetId: "default",
   },
 };
 

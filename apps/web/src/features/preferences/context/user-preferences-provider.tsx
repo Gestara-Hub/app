@@ -14,11 +14,11 @@ import type { UserPreferences } from "@gestarahub/contracts";
 import { DEFAULT_USER_PREFERENCES, mergeUserPreferences } from "@gestarahub/contracts";
 import { PREFERENCES_STORAGE_KEY } from "@/services/preferences/preferencesService";
 import {
-  applyThemeStateFromServer,
+  applyThemeColorFromServer,
   isThemeSyncingFromServer,
-  resetThemeCustomizerState,
-  subscribeToThemeCustomizer,
-} from "@/lib/theme-customizer";
+  resetThemeColor,
+  subscribeToThemeColor,
+} from "@/lib/theme-accent";
 import { logWarn } from "@/lib/log";
 
 interface UserPreferencesContextValue {
@@ -138,7 +138,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   );
 
   const resetPreferences = useCallback(async () => {
-    resetThemeCustomizerState();
+    resetThemeColor();
     setPreferences(DEFAULT_USER_PREFERENCES);
     try {
       window.localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(DEFAULT_USER_PREFERENCES));
@@ -167,8 +167,8 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         if (!res.ok) return;
         const data = await res.json();
         if (active && data?.preferences) {
-          if (data.preferences.themeStyling) {
-            applyThemeStateFromServer(data.preferences.themeStyling);
+          if (data.preferences.themeStyling?.themeColor) {
+            applyThemeColorFromServer(data.preferences.themeStyling.themeColor);
           }
           setPreferences((prev) => {
             const merged = mergeUserPreferences(prev, data.preferences);
@@ -194,21 +194,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Escutar alterações de estilização do tema no customizer
+  // A cor de destaque mudou (nesta tela): guarda nas preferencias da pessoa.
   useEffect(() => {
-    const unsubscribe = subscribeToThemeCustomizer((themeState) => {
+    const unsubscribe = subscribeToThemeColor((themeColor) => {
       if (isThemeSyncingFromServer()) return;
 
-      const stylingPayload = {
-        baseColor: themeState.baseColor,
-        themeColor: themeState.themeColor,
-        radius: themeState.radius,
-        menuColor: themeState.menuColor,
-        menuAccent: themeState.menuAccent,
-        font: themeState.font,
-        style: themeState.style,
-        presetId: themeState.presetId,
-      };
+      const stylingPayload = { themeColor };
 
       setPreferences((prev) => {
         const next = {

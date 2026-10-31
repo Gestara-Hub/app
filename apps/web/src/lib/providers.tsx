@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { initAnalytics } from "@/lib/analytics";
-import { reapplySavedTheme } from "@/lib/theme-customizer";
+import { reapplySavedTheme } from "@/lib/theme-accent";
 import { toast } from "@/lib/toast";
 import { getErrorMessage, getFieldErrors } from "@gestarahub/core/api-error";
 import { queryKeys } from "./queryKeys";

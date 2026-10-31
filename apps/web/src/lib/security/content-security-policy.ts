@@ -47,8 +47,9 @@ export function contentSecurityPolicy({ isDev, supabaseUrl, posthogHost }: Conte
   const directives: Record<string, string> = {
     "default-src": "'self'",
     "script-src": list("'self'", "'unsafe-inline'", isDev && "'unsafe-eval'", "https://connect.facebook.net", posthog, "https://*.posthog.com"),
-    "style-src": list("'self'", "'unsafe-inline'", "https://fonts.googleapis.com"),
-    "font-src": list("'self'", "data:", "https://fonts.gstatic.com"),
+    // Sem Google Fonts desde 31/10/2026: as fontes extras eram do personalizador de tema.
+    "style-src": list("'self'", "'unsafe-inline'"),
+    "font-src": list("'self'", "data:"),
     "img-src": list("'self'", "data:", "blob:", "https:", supabase),
     "connect-src": list(
       "'self'",

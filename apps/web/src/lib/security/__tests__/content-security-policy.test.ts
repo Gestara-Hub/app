@@ -39,8 +39,9 @@ describe("contentSecurityPolicy", () => {
       ]),
     );
     expect(prod["script-src"]).toEqual(expect.arrayContaining(["https://connect.facebook.net", "https://eu.i.posthog.com"]));
-    expect(prod["style-src"]).toContain("https://fonts.googleapis.com");
-    expect(prod["font-src"]).toContain("https://fonts.gstatic.com");
+    // Fontes so do proprio app (o personalizador com Google Fonts saiu em 31/10/2026).
+    expect(prod["style-src"]).toEqual(["'self'", "'unsafe-inline'"]);
+    expect(prod["font-src"]).toEqual(["'self'", "data:"]);
     expect(prod["frame-src"]).toEqual(["https://*.facebook.com"]);
   });
 

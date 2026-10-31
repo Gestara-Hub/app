@@ -34,10 +34,10 @@ export function UserPreferencesDialog({
             </div>
             <div>
               <SheetTitle className="text-lg font-semibold text-foreground">
-                Preferências do Usuário
+                Preferências
               </SheetTitle>
               <SheetDescription className="text-sm text-muted-foreground">
-                Personalize sua experiência de navegação, aparência, tema e sons.
+                Tema, cor de destaque e som. Valem só para você.
               </SheetDescription>
             </div>
           </div>

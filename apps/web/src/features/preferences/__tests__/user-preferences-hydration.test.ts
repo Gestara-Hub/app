@@ -8,7 +8,6 @@ import { describe, expect, it, vi } from "vitest";
 // sem escolha; ela aparece depois de montar.
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ setTheme: () => {} }) }));
-vi.mock("@/components/theme/theme-customizer", () => ({ ThemeCustomizerPanel: () => null }));
 vi.mock("../hooks/use-user-preferences", () => ({
   useUserPreferences: () => ({
     preferences: { theme: "dark", audioFeedbackEnabled: true },

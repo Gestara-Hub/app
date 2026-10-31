@@ -2,37 +2,47 @@
 
 import { useTheme } from "next-themes";
 import { toast } from "@/lib/toast";
-import {
-  Check,
-  Monitor,
-  Moon,
-  Palette,
-  RotateCcw,
-  Rows3,
-  Sparkles,
-  Sun,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+import { Check, Monitor, Moon, RotateCcw, Rows3, Sparkles, Sun, Volume2, VolumeX } from "lucide-react";
+import type { ThemeMode } from "@gestarahub/contracts";
 import { cn } from "@/lib/utils";
 import { useIsClient } from "@/lib/use-is-client";
+import { THEME_COLORS, useThemeColor } from "@/lib/theme-accent";
+import { playAudioFeedback } from "@/lib/audio-feedback";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { ThemeCustomizerPanel } from "@/components/theme/theme-customizer";
+import { useConfirmAction } from "@/components/shared/confirm-action-dialog";
 import { useUserPreferences } from "../hooks/use-user-preferences";
-import { playAudioFeedback } from "@/lib/audio-feedback";
-import type { ThemeMode } from "@gestarahub/contracts";
 
+const THEME_MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Claro", icon: Sun },
+  { value: "dark", label: "Escuro", icon: Moon },
+  { value: "system", label: "Do sistema", icon: Monitor },
+];
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+/**
+ * Preferências de cada pessoa (menu da conta). Desde 31/10/2026: tema, cor de
+ * destaque e sons; o personalizador completo (fontes, cantos, menu) saiu.
+ */
 export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () => void }) {
-  const { preferences, updatePreference, updatePreferences, resetPreferences } =
-    useUserPreferences();
+  const { preferences, updatePreference, updatePreferences, resetPreferences } = useUserPreferences();
   const { setTheme } = useTheme();
+  const [themeColor, setThemeColor] = useThemeColor();
+  const { confirm, dialog: confirmDialog } = useConfirmAction();
   // As preferencias vem do armazenamento do navegador: o servidor nao as
-  // conhece. A escolha (tema, som) so aparece depois de montar, senao o
+  // conhece. A escolha (tema, cor, som) so aparece depois de montar, senao o
   // desenho do servidor e o do navegador diferem (achado 75 do teste geral).
   const isClient = useIsClient();
   const theme = isClient ? preferences.theme : undefined;
+  const color = isClient ? themeColor : undefined;
   const audioEnabled = isClient && preferences.audioFeedbackEnabled;
 
   const handleThemeChange = (mode: ThemeMode) => {
@@ -44,194 +54,138 @@ export function UserPreferencesView({ onResetComplete }: { onResetComplete?: () 
     updatePreference("audioFeedbackEnabled", enabled);
     if (enabled) {
       playAudioFeedback("checkin");
-      toast.success("Feedback sonoro ativado.");
+      toast.success("Som ligado.");
     } else {
-      toast.info("Feedback sonoro desativado.");
+      toast.info("Som desligado.");
     }
   };
 
   const handleResetOnboarding = () => {
-    updatePreferences({
-      onboarding: {
-        dismissed: false,
-        completedStepIds: [],
-      },
-    });
-    toast.success("Checklist dos primeiros passos reativado!");
+    updatePreferences({ onboarding: { dismissed: false, completedStepIds: [] } });
+    toast.success("Primeiros passos de volta no painel.");
   };
 
   const handleResetDismissedAlerts = () => {
     updatePreference("dismissedAlertKeys", []);
-    toast.success("Dicas e avisos dispensados foram restaurados.");
+    toast.success("Dicas e avisos dispensados voltaram.");
   };
 
   const handleFullReset = async () => {
+    const ok = await confirm({
+      title: "Voltar ao padrão?",
+      description: "Tema, cor, som, primeiros passos e dicas voltam como no primeiro acesso.",
+      confirmLabel: "Voltar ao padrão",
+      cancelLabel: "Cancelar",
+    });
+    if (!ok) return;
     await resetPreferences();
     setTheme("system");
-    toast.success("Todas as preferências foram restauradas para o padrão.");
+    toast.success("Preferências de volta ao padrão.");
     onResetComplete?.();
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Aparência e Tema */}
+      {confirmDialog}
       <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Aparência e Tema</h3>
-          <p className="text-xs text-muted-foreground">
-            Escolha o esquema de cores e o modo de exibição do sistema.
-          </p>
+        <SectionTitle title="Aparência" description="Tema e cor de destaque das telas." />
+
+        <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-3">
+          {THEME_MODES.map(({ value, label, icon: Icon }) => {
+            const selected = theme === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => handleThemeChange(value)}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                  selected
+                    ? "border-primary bg-primary/5 font-medium text-primary"
+                    : "border-border bg-card text-muted-foreground",
+                )}
+              >
+                <Icon className="size-5" />
+                <span className="text-xs">{label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          {/* Modo Claro */}
-          <button
-            type="button"
-            onClick={() => handleThemeChange("light")}
-            className={cn(
-              "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              theme === "light"
-                ? "border-primary bg-primary/5 text-primary font-medium"
-                : "border-border bg-card text-muted-foreground",
-            )}
-          >
-            <Sun className="size-5" />
-            <span className="text-xs">Claro</span>
-            {theme === "light" && <Check className="size-3 text-primary" />}
-          </button>
-
-          {/* Modo Escuro */}
-          <button
-            type="button"
-            onClick={() => handleThemeChange("dark")}
-            className={cn(
-              "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              theme === "dark"
-                ? "border-primary bg-primary/5 text-primary font-medium"
-                : "border-border bg-card text-muted-foreground",
-            )}
-          >
-            <Moon className="size-5" />
-            <span className="text-xs">Escuro</span>
-            {theme === "dark" && <Check className="size-3 text-primary" />}
-          </button>
-
-          {/* Automático / Sistema */}
-          <button
-            type="button"
-            onClick={() => handleThemeChange("system")}
-            className={cn(
-              "flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-center transition-all hover:border-primary/50",
-              theme === "system"
-                ? "border-primary bg-primary/5 text-primary font-medium"
-                : "border-border bg-card text-muted-foreground",
-            )}
-          >
-            <Monitor className="size-5" />
-            <span className="text-xs">Sistema</span>
-            {theme === "system" && <Check className="size-3 text-primary" />}
-          </button>
-        </div>
-
-        {/* Estilização Completa do Tema */}
-        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-          <div className="flex items-center gap-2.5 border-b border-border/40 pb-3">
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Palette className="size-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold text-foreground">Estilização do Tema</h4>
-              <p className="text-[11px] text-muted-foreground">
-                Personalize cores de destaque, base neutra, tipografia e bordas.
-              </p>
-            </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-foreground">Cor de destaque</p>
+          <div role="radiogroup" aria-label="Cor de destaque" className="flex flex-wrap gap-2">
+            {THEME_COLORS.map((option) => {
+              const selected = color === option.name;
+              return (
+                <button
+                  key={option.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={option.label}
+                  title={option.label}
+                  onClick={() => setThemeColor(option.name)}
+                  className={cn(
+                    "flex size-8 cursor-pointer items-center justify-center rounded-full border-2 border-background ring-1 ring-border transition-shadow",
+                    "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected && "ring-2 ring-foreground",
+                  )}
+                  style={{ backgroundColor: option.color }}
+                >
+                  {selected ? <Check className="size-4 text-white" aria-hidden /> : null}
+                </button>
+              );
+            })}
           </div>
-          <ThemeCustomizerPanel />
         </div>
       </section>
 
-      {/* 2. Sons */}
       <section className="space-y-3 border-t border-border/40 pt-4">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Sons</h3>
-          <p className="text-xs text-muted-foreground">
-            Sinais sonoros nas tarefas rápidas do dia a dia.
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-3">
+        <SectionTitle title="Sons" description="Sinais sonoros nas tarefas rápidas do dia a dia." />
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
           <div className="flex items-center gap-3">
             {audioEnabled ? (
-              <Volume2 className="size-5 text-primary" />
+              <Volume2 className="size-5 shrink-0 text-primary" />
             ) : (
-              <VolumeX className="size-5 text-muted-foreground" />
+              <VolumeX className="size-5 shrink-0 text-muted-foreground" />
             )}
             <div>
-              <Label className="text-xs font-medium text-foreground">
-                Sons de confirmação (presença)
-              </Label>
-              <p className="text-[11px] text-muted-foreground">
-                Toca um bipe discreto ao marcar presença de aluno na lista de chamada.
-              </p>
+              <p className="text-xs font-medium text-foreground">Som ao marcar presença</p>
+              <p className="text-[11px] text-muted-foreground">Um bipe discreto na lista de chamada.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => playAudioFeedback("checkin")}
-              title="Testar som"
-            >
+            <Button type="button" variant="outline" onClick={() => playAudioFeedback("checkin")}>
               Testar
             </Button>
-            <Switch
-              checked={audioEnabled}
-              onCheckedChange={handleAudioToggle}
-              aria-label="Ativar feedback sonoro"
-            />
+            <Switch checked={audioEnabled} onCheckedChange={handleAudioToggle} aria-label="Som ao marcar presença" />
           </div>
         </div>
       </section>
 
-      {/* 3. Restauração e Primeiros Passos */}
       <section className="space-y-3 border-t border-border/40 pt-4">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Guias e Restauração</h3>
-          <p className="text-xs text-muted-foreground">
-            Recupere tutoriais, checklist e retorne as preferências ao estado inicial.
-          </p>
-        </div>
-
+        <SectionTitle title="Guias e dicas" description="Traga de volta o que você dispensou." />
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleResetOnboarding}
-            className="text-xs"
-          >
+          <Button type="button" variant="outline" onClick={handleResetOnboarding}>
             <Sparkles className="size-3.5" />
             Reativar primeiros passos
           </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleResetDismissedAlerts}
-            className="text-xs"
-          >
+          <Button type="button" variant="outline" onClick={handleResetDismissedAlerts}>
             <Rows3 className="size-3.5" />
             Restaurar dicas dispensadas
           </Button>
-
           <Button
             type="button"
             variant="ghost"
-            onClick={handleFullReset}
-            className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => void handleFullReset()}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <RotateCcw className="size-3.5" />
-            Restaurar padrões de fábrica
+            Voltar ao padrão
           </Button>
         </div>
       </section>
