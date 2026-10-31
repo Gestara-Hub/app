@@ -1,3 +1,4 @@
+import { clientForActor } from "./studentSummaryRules";
 import type {
   Category,
   Client,
@@ -13,7 +14,7 @@ import { resolveModalityTrack } from "@/lib/progression-tracks";
 import { store } from "@/services/world/store";
 import { newId, notFoundError, nowIso, readOp, writeOp, validationError } from "@/services/world/ops";
 import { auditLogService } from "../audit/auditLogService";
-import { assertCanManageProgression } from "../classes/teacherScope";
+import { assertCanManageProgression, assertTeacherSeesStudent } from "../classes/teacherScope";
 import { progressionTermSuggestions } from "./clientProgression";
 import { NOT_FOUND, clone, todayISO } from "./clientStore";
 
@@ -23,6 +24,8 @@ export const clientProgressionService = {
     return readOp(async () => {
       const client = store.clients.find((c) => c.id === studentId);
       if (!client) throw notFoundError(NOT_FOUND);
+      // Professor: so os alunos das turmas dele (revisao geral de 31/10/2026, achado S4).
+      assertTeacherSeesStudent(studentId, "Você só vê a evolução dos alunos das suas turmas.");
 
       const activeEnrollments = store.enrollments.filter(
         (e) => e.studentId === studentId && e.status === "active",
@@ -145,7 +148,7 @@ export const clientProgressionService = {
         target: { type: "client", id: updated.id, label: updated.name },
         predicate: `atualizou o progresso de ${updated.name} (${progression.levelName})`,
       });
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 
@@ -228,7 +231,7 @@ export const clientProgressionService = {
         target: { type: "client", id: updated.id, label: updated.name },
         predicate: `graduou ${updated.name} para ${payload.toLevelName}${payload.toSubLevel > 0 ? ` (${payload.toSubLevel}º grau)` : ""}`,
       });
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 };

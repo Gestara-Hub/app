@@ -113,8 +113,19 @@ export function assertCanManageProgression(
   const teacherId = actorTeacherId();
   if (teacherId === undefined) return;
   if (opts.sessionId && opts.classGroupId) {
+    // Pela aula (substituto incluido): so aluno daquela turma (matriculado ou com
+    // reserva na aula) e na modalidade dela. Antes qualquer aluno passava por
+    // aqui (revisao geral de 31/10/2026, achado S2).
     const g = store.classGroups.find((x) => x.id === opts.classGroupId);
-    if (g && teacherSeesSession(g, opts.sessionId, teacherId)) return;
+    const sessionId = opts.sessionId;
+    const inClass =
+      g !== undefined &&
+      (store.enrollments.some((e) => e.studentId === studentId && e.classGroupId === g.id) ||
+        (store.reservations ?? []).some(
+          (r) => r.studentId === studentId && r.classGroupId === g.id && r.sessionId === sessionId,
+        ));
+    const sameModality = !opts.modalityId || g?.modalityId === opts.modalityId;
+    if (g && inClass && sameModality && teacherSeesSession(g, sessionId, teacherId)) return;
   }
   const teaches = store.enrollments.some(
     (e) =>

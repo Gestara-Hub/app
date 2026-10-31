@@ -1,3 +1,4 @@
+import { actorTeacherId } from "../classes/teacherScope";
 import type {
   Charge,
   Client,
@@ -307,6 +308,15 @@ export function activePackagesOf(client: Client, today: DateISO): StudentPackage
  * dinheiro (plano, bolsa, desconto, vencimento) nem documentos e endereco. Vale
  * para a ficha e, desde a auditoria de 30/10/2026, para a lista e a busca por id.
  */
+/**
+ * O que a escrita da evolucao devolve: para o professor, o aluno sem dinheiro,
+ * documentos nem endereco, como na leitura (revisao geral de 31/10/2026,
+ * achado S2: as escritas devolviam o cadastro inteiro).
+ */
+export function clientForActor(client: Client): Client {
+  return actorTeacherId() !== undefined ? clientWithoutMoney(client) : client;
+}
+
 export function clientWithoutMoney(client: Client): Client {
   const {
     discount: _discount,

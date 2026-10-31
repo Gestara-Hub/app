@@ -1,3 +1,4 @@
+import { clientForActor } from "./studentSummaryRules";
 import type {
   ApiErrorField,
   Client,
@@ -57,7 +58,7 @@ export const clientRecordsService = {
         target: { type: "client", id: updated.id, label: updated.name },
         predicate: `registrou a aula de ${updated.name}${payload.classGroupName ? ` (${payload.classGroupName})` : ""}`,
       });
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 
@@ -131,7 +132,7 @@ export const clientRecordsService = {
       const progression = progressionOf(store.clients[idx], modalityId, todayISO());
       progression.strengths = [...new Set(strengths.map((t) => t.trim()).filter(Boolean))];
       const updated = await writeProgression(idx, progression);
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 
@@ -159,7 +160,7 @@ export const clientRecordsService = {
         },
       ];
       const updated = await writeProgression(idx, progression);
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 
@@ -178,7 +179,7 @@ export const clientRecordsService = {
         if (goal.target && goal.progress >= goal.target) goal.progress = goal.target - 1;
       }
       const updated = await writeProgression(idx, progression);
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 
@@ -190,7 +191,7 @@ export const clientRecordsService = {
       findGoal(progression, goalId);
       progression.goals = progression.goals.filter((g) => g.id !== goalId);
       const updated = await writeProgression(idx, progression);
-      return clone(updated);
+      return clone(clientForActor(updated));
     });
   },
 };
