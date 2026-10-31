@@ -45,7 +45,13 @@ function Verification({ code, ink }: { code: string; ink: "dark" | "light" }) {
  * mantem as cores do modelo (`print-color-adjust: exact`).
  */
 
-type SheetProps = { text: RenderedCertificate; organizationName: string; logoUrl: string | null };
+type SheetProps = {
+  text: RenderedCertificate;
+  organizationName: string;
+  logoUrl: string | null;
+  /** Com o rodape de verificacao, as assinaturas sobem para nao encostar nele. */
+  reserveFooter: boolean;
+};
 
 /** Posicao do bloco de texto sobre a arte ("Minha arte"). */
 const TEXT_POSITION_CLASS = { top: "justify-start", center: "justify-center", bottom: "justify-end" } as const;
@@ -95,10 +101,15 @@ function Signatures({
   );
 }
 
-function ClassicSheet({ text, organizationName, logoUrl }: SheetProps) {
+function ClassicSheet({ text, organizationName, logoUrl, reserveFooter }: SheetProps) {
   return (
     <div className="flex h-full flex-col border-[0.7cqw] border-double border-[color:var(--cert-accent)] p-[0.8cqw]">
-      <div className="flex h-full flex-col items-center border border-[color:var(--cert-accent)]/40 px-[6cqw] py-[3.5cqw] text-center">
+      <div
+        className={cn(
+          "flex h-full flex-col items-center border border-[color:var(--cert-accent)]/40 px-[6cqw] py-[3.5cqw] text-center",
+          reserveFooter && "pb-[8.5cqw]",
+        )}
+      >
         <Logo url={logoUrl} className="mb-[1cqw] h-[6cqw]" />
         <p className="text-[1.3cqw] font-semibold tracking-[0.2em] text-zinc-500 uppercase">{organizationName}</p>
         <div className="flex flex-1 flex-col items-center justify-center gap-[2cqw]">
@@ -116,7 +127,7 @@ function ClassicSheet({ text, organizationName, logoUrl }: SheetProps) {
   );
 }
 
-function ModernSheet({ text, organizationName, logoUrl }: SheetProps) {
+function ModernSheet({ text, organizationName, logoUrl, reserveFooter }: SheetProps) {
   return (
     <div className="flex h-full">
       <div className="flex w-[22%] shrink-0 flex-col justify-between bg-[color:var(--cert-accent)] p-[3cqw] text-white">
@@ -129,7 +140,7 @@ function ModernSheet({ text, organizationName, logoUrl }: SheetProps) {
         )}
         <p className="text-[1.4cqw] leading-snug font-semibold tracking-[0.15em] uppercase">{organizationName}</p>
       </div>
-      <div className="flex flex-1 flex-col px-[5cqw] py-[4.5cqw] text-left">
+      <div className={cn("flex flex-1 flex-col px-[5cqw] py-[4.5cqw] text-left", reserveFooter && "pb-[8.5cqw]")}>
         <div className="flex flex-1 flex-col justify-center gap-[2cqw]">
           <div className="space-y-[1.2cqw]">
             <h1 className="text-[4.4cqw] leading-tight font-bold tracking-tight">{text.title}</h1>
@@ -146,9 +157,9 @@ function ModernSheet({ text, organizationName, logoUrl }: SheetProps) {
   );
 }
 
-function MinimalSheet({ text, organizationName, logoUrl }: SheetProps) {
+function MinimalSheet({ text, organizationName, logoUrl, reserveFooter }: SheetProps) {
   return (
-    <div className="flex h-full flex-col px-[7cqw] py-[5cqw] text-left">
+    <div className={cn("flex h-full flex-col px-[7cqw] py-[5cqw] text-left", reserveFooter && "pb-[8.5cqw]")}>
       <div className="flex items-center gap-[1.5cqw]">
         <Logo url={logoUrl} className="h-[4.5cqw]" />
         <p className="text-[1.3cqw] font-medium tracking-[0.15em] text-zinc-500 uppercase">{organizationName}</p>
@@ -175,6 +186,7 @@ function CustomSheet({
   logoUrl,
   artworkUrl,
   artwork,
+  reserveFooter,
 }: SheetProps & { artworkUrl: string | null; artwork: Omit<CertificateArtwork, "fileId"> }) {
   const show = (part: CertificatePart) => !artwork.hidden.includes(part);
   const light = artwork.ink === "light";
@@ -184,7 +196,13 @@ function CustomSheet({
         // eslint-disable-next-line @next/next/no-img-element -- object URL local, sem otimizacao do Next
         <img src={artworkUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : null}
-      <div className={cn("relative flex h-full flex-col items-center px-[8cqw] py-[5cqw] text-center", TEXT_POSITION_CLASS[artwork.textPosition])}>
+      <div
+        className={cn(
+          "relative flex h-full flex-col items-center px-[8cqw] py-[5cqw] text-center",
+          TEXT_POSITION_CLASS[artwork.textPosition],
+          reserveFooter && "pb-[8.5cqw]",
+        )}
+      >
         <div className="flex max-w-[84%] flex-col items-center gap-[1.6cqw]">
           {show("logo") ? <Logo url={logoUrl} className="h-[5cqw]" /> : null}
           {show("organizationName") ? (
@@ -228,7 +246,12 @@ export function CertificateSheet({
 }) {
   const text = renderCertificate(certificate, template);
   const accent = ACCENT_COLORS[template.accentColor]?.hex ?? ACCENT_COLORS.graphite.hex;
-  const props: SheetProps = { text, organizationName: certificate.organizationName, logoUrl };
+  const props: SheetProps = {
+    text,
+    organizationName: certificate.organizationName,
+    logoUrl,
+    reserveFooter: Boolean(certificate.verificationCode),
+  };
   return (
     // A4 deitado; na impressao (folha de 277 x 190 mm uteis) a altura fica fixa para caber em 1 pagina.
     <div className={cn("@container w-full print:w-[277mm]", className)}>

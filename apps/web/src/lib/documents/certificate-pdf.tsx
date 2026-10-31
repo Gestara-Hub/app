@@ -43,7 +43,12 @@ interface SheetProps {
   organizationName: string;
   logo: DocumentLogo | null;
   accent: string;
+  /** Com o rodape de verificacao, as assinaturas sobem para nao encostar nele. */
+  reserveFooter: boolean;
 }
+
+/** Espaco do rodape de verificacao (QR de 6 cqw mais a margem). */
+const FOOTER_PAD = cq(8.5);
 
 function Signatures({
   text,
@@ -86,7 +91,7 @@ function Signatures({
   );
 }
 
-function ClassicSheet({ text, organizationName, logo, accent }: SheetProps) {
+function ClassicSheet({ text, organizationName, logo, accent, reserveFooter }: SheetProps) {
   return (
     <View style={{ flex: 1, margin: 18, borderWidth: 3, borderColor: accent, padding: 2 }}>
       <View style={{ flex: 1, borderWidth: 1, borderColor: accent, padding: cq(0.8) }}>
@@ -97,6 +102,7 @@ function ClassicSheet({ text, organizationName, logo, accent }: SheetProps) {
             borderColor: tint(accent, 0.6),
             paddingHorizontal: cq(6),
             paddingVertical: cq(3.5),
+            ...(reserveFooter ? { paddingBottom: FOOTER_PAD } : {}),
             alignItems: "center",
             textAlign: "center",
           }}
@@ -120,7 +126,7 @@ function ClassicSheet({ text, organizationName, logo, accent }: SheetProps) {
   );
 }
 
-function ModernSheet({ text, organizationName, logo, accent }: SheetProps) {
+function ModernSheet({ text, organizationName, logo, accent, reserveFooter }: SheetProps) {
   return (
     <View style={{ flex: 1, flexDirection: "row" }}>
       <View style={{ width: "22%", backgroundColor: accent, padding: cq(3), justifyContent: "space-between" }}>
@@ -144,7 +150,7 @@ function ModernSheet({ text, organizationName, logo, accent }: SheetProps) {
           {organizationName.toUpperCase()}
         </Text>
       </View>
-      <View style={{ flex: 1, paddingHorizontal: cq(5), paddingVertical: cq(4.5) }}>
+      <View style={{ flex: 1, paddingHorizontal: cq(5), paddingVertical: cq(4.5), ...(reserveFooter ? { paddingBottom: FOOTER_PAD } : {}) }}>
         <View style={{ flex: 1, justifyContent: "center", gap: cq(2) }}>
           <View style={{ gap: cq(1.2) }}>
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: cq(4.4), lineHeight: 1.2 }}>{text.title}</Text>
@@ -161,9 +167,9 @@ function ModernSheet({ text, organizationName, logo, accent }: SheetProps) {
   );
 }
 
-function MinimalSheet({ text, organizationName, logo, accent }: SheetProps) {
+function MinimalSheet({ text, organizationName, logo, accent, reserveFooter }: SheetProps) {
   return (
-    <View style={{ flex: 1, paddingHorizontal: cq(7), paddingVertical: cq(5) }}>
+    <View style={{ flex: 1, paddingHorizontal: cq(7), paddingVertical: cq(5), ...(reserveFooter ? { paddingBottom: FOOTER_PAD } : {}) }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: cq(1.5) }}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt */}
         {logo ? <Image src={logo.src} style={{ height: cq(4.5), objectFit: "contain" }} /> : null}
@@ -189,6 +195,7 @@ function CustomSheet({
   logo,
   artwork,
   settings,
+  reserveFooter,
 }: SheetProps & { artwork: DocumentLogo | null; settings: Omit<CertificateArtwork, "fileId"> }) {
   const show = (part: CertificatePart) => !settings.hidden.includes(part);
   const light = settings.ink === "light";
@@ -201,7 +208,16 @@ function CustomSheet({
         // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
         <Image src={artwork.src} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
       ) : null}
-      <View style={{ flex: 1, paddingHorizontal: cq(8), paddingVertical: cq(5), justifyContent: justify, alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: cq(8),
+          paddingVertical: cq(5),
+          ...(reserveFooter ? { paddingBottom: FOOTER_PAD } : {}),
+          justifyContent: justify,
+          alignItems: "center",
+        }}
+      >
         <View style={{ maxWidth: "84%", alignItems: "center", gap: cq(1.6), color: ink }}>
           {show("logo") && logo ? (
             // eslint-disable-next-line jsx-a11y/alt-text -- Image do @react-pdf nao tem alt
@@ -267,7 +283,7 @@ export interface CertificatePageProps {
 
 /** Uma folha (A4 deitado) no modelo escolhido. */
 function CertificatePage({ text, layout, organizationName, accent, logo, artwork = null, artworkSettings, verification }: CertificatePageProps) {
-  const props: SheetProps = { text, organizationName, logo, accent };
+  const props: SheetProps = { text, organizationName, logo, accent, reserveFooter: Boolean(verification) };
   return (
     <Page size="A4" orientation="landscape" style={styles.page}>
       {layout === "custom" && artworkSettings ? (
